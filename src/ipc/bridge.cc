@@ -94,7 +94,7 @@ static String getcwd () {
 }
 
 #define RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)                     \
-  [=](auto seq, auto json, auto post) {                                        \
+  [message, reply](auto seq, auto json, auto post) {                           \
     reply(Result { seq, message, json, post });                                \
   }
 
@@ -115,7 +115,7 @@ static String getcwd () {
     }                                                                          \
   }                                                                            \
                                                                                \
-  if (!router->core->hasPost(result.post.id)) {                                \
+  if (!router->core->hasPostBody(result.post.body)) {                          \
     if (result.post.body != nullptr) {                                         \
       delete [] result.post.body;                                              \
     }                                                                          \
@@ -149,7 +149,7 @@ void initFunctionsTable (Router *router) {
     router->bridge->bluetooth.startService(
       message.seq,
       message.get("serviceId"),
-      [=](auto seq, auto json) {
+      [reply, message](auto seq, auto json) {
         reply(Result { seq, message, json });
       }
     );
@@ -174,7 +174,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       message.get("serviceId"),
       message.get("characteristicId"),
-      [=](auto seq, auto json) {
+      [reply, message](auto seq, auto json) {
         reply(Result { seq, message, json });
       }
     );
@@ -209,7 +209,7 @@ void initFunctionsTable (Router *router) {
       size,
       message.get("serviceId"),
       message.get("characteristicId"),
-      [=](auto seq, auto json) {
+      [reply, message](auto seq, auto json) {
         reply(Result { seq, message, json });
       }
     );
@@ -235,7 +235,7 @@ void initFunctionsTable (Router *router) {
    * @param family IP address family to resolve [default = 0 (AF_UNSPEC)]
    * @see getaddrinfo(3)
    */
-  router->map("dns.lookup", [=](auto message, auto router, auto reply) {
+  router->map("dns.lookup", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"hostname"});
 
     if (err.type != JSON::Type::Null) {
@@ -258,7 +258,7 @@ void initFunctionsTable (Router *router) {
    * @param mode
    * @see access(2)
    */
-  router->map("fs.access", [=](auto message, auto router, auto reply) {
+  router->map("fs.access", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -279,7 +279,7 @@ void initFunctionsTable (Router *router) {
   /**
    * Returns a mapping of file system constants.
    */
-  router->map("fs.constants", [=](auto message, auto router, auto reply) {
+  router->map("fs.constants", [](auto message, auto router, auto reply) {
     router->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
@@ -289,7 +289,7 @@ void initFunctionsTable (Router *router) {
    * @param mode
    * @see chmod(2)
    */
-  router->map("fs.chmod", [=](auto message, auto router, auto reply) {
+  router->map("fs.chmod", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -311,7 +311,7 @@ void initFunctionsTable (Router *router) {
    * @TODO
    * @see chown(2)
    */
-  router->map("fs.chown", [=](auto message, auto router, auto reply) {
+  router->map("fs.chown", [](auto message, auto router, auto reply) {
     // TODO
   });
 
@@ -320,7 +320,7 @@ void initFunctionsTable (Router *router) {
    * @param id
    * @see close(2)
    */
-  router->map("fs.close", [=](auto message, auto router, auto reply) {
+  router->map("fs.close", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -338,7 +338,7 @@ void initFunctionsTable (Router *router) {
    * @param id
    * @see closedir(3)
    */
-  router->map("fs.closedir", [=](auto message, auto router, auto reply) {
+  router->map("fs.closedir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -357,7 +357,7 @@ void initFunctionsTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptor", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -381,7 +381,7 @@ void initFunctionsTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptors", [](auto message, auto router, auto reply) {
     router->core->fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
@@ -396,7 +396,7 @@ void initFunctionsTable (Router *router) {
    * @param flags
    * @see copyfile(3)
    */
-  router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
+  router->map("fs.copyFile", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -421,7 +421,7 @@ void initFunctionsTable (Router *router) {
    * @see stat(2)
    * @see fstat(2)
    */
-  router->map("fs.fstat", [=](auto message, auto router, auto reply) {
+  router->map("fs.fstat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -437,7 +437,7 @@ void initFunctionsTable (Router *router) {
   /**
    * Returns all open file or directory descriptors.
    */
-  router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
+  router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
     router->core->fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -450,7 +450,7 @@ void initFunctionsTable (Router *router) {
    * @see stat(2)
    * @see lstat(2)
    */
-  router->map("fs.lstat", [=](auto message, auto router, auto reply) {
+  router->map("fs.lstat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -470,7 +470,7 @@ void initFunctionsTable (Router *router) {
    * @param mode
    * @see mkdir(2)
    */
-  router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.mkdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -531,7 +531,7 @@ void initFunctionsTable (Router *router) {
    * @param path
    * @see opendir(3)
    */
-  router->map("fs.opendir", [=](auto message, auto router, auto reply) {
+  router->map("fs.opendir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -556,7 +556,7 @@ void initFunctionsTable (Router *router) {
    * @param offset
    * @see read(2)
    */
-  router->map("fs.read", [=](auto message, auto router, auto reply) {
+  router->map("fs.read", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "size", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -584,7 +584,7 @@ void initFunctionsTable (Router *router) {
    * @param id
    * @param entries (default: 256)
    */
-  router->map("fs.readdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.readdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -608,7 +608,7 @@ void initFunctionsTable (Router *router) {
    * Marks a file or directory descriptor as retained.
    * @param id
    */
-  router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
+  router->map("fs.retainOpenDescriptor", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -631,7 +631,7 @@ void initFunctionsTable (Router *router) {
    * @param dest
    * @see rename(2)
    */
-  router->map("fs.rename", [=](auto message, auto router, auto reply) {
+  router->map("fs.rename", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -651,7 +651,7 @@ void initFunctionsTable (Router *router) {
    * @param path
    * @see rmdir(2)
    */
-  router->map("fs.rmdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.rmdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -670,7 +670,7 @@ void initFunctionsTable (Router *router) {
    * @param path
    * @see stat(2)
    */
-  router->map("fs.stat", [=](auto message, auto router, auto reply) {
+  router->map("fs.stat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -689,7 +689,7 @@ void initFunctionsTable (Router *router) {
    * @param path
    * @see unlink(2)
    */
-  router->map("fs.unlink", [=](auto message, auto router, auto reply) {
+  router->map("fs.unlink", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -710,7 +710,7 @@ void initFunctionsTable (Router *router) {
    * @param offset The offset to start writing at
    * @see write(2)
    */
-  router->map("fs.write", [=](auto message, auto router, auto reply) {
+  router->map("fs.write", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -743,7 +743,7 @@ void initFunctionsTable (Router *router) {
    * This is only useful on platforms that need to set this value from an
    * external source, like Android or ChromeOS.
    */
-  router->map("internal.setcwd", [=](auto message, auto router, auto reply) {
+  router->map("internal.setcwd", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -758,7 +758,7 @@ void initFunctionsTable (Router *router) {
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
-  router->map("log", [=](auto message, auto router, auto reply) {
+  router->map("log", [](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
     NSLog(@"%s", value);
@@ -776,7 +776,7 @@ void initFunctionsTable (Router *router) {
    * @param size If given, the size to set in the buffer [default = 0]
    * @param buffer The buffer to read/modify (SEND_BUFFER, RECV_BUFFER) [default = 0 (SEND_BUFFER)]
    */
-  router->map("os.bufferSize", [=](auto message, auto router, auto reply) {
+  router->map("os.bufferSize", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -802,34 +802,34 @@ void initFunctionsTable (Router *router) {
   /**
    * Returns a mapping of network interfaces.
    */
-  router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
+  router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
     router->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
-  router->map("os.cpus", [=](auto message, auto router, auto reply) {
+  router->map("os.cpus", [](auto message, auto router, auto reply) {
     router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.rusage", [=](auto message, auto router, auto reply) {
+  router->map("os.rusage", [](auto message, auto router, auto reply) {
     router->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uptime", [=](auto message, auto router, auto reply) {
+  router->map("os.uptime", [](auto message, auto router, auto reply) {
     router->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uname", [=](auto message, auto router, auto reply) {
+  router->map("os.uname", [](auto message, auto router, auto reply) {
     router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.hrtime", [=](auto message, auto router, auto reply) {
+  router->map("os.hrtime", [](auto message, auto router, auto reply) {
     router->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
+  router->map("os.availableMemory", [](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
@@ -847,7 +847,7 @@ void initFunctionsTable (Router *router) {
    * @param value The event name [domcontentloaded]
    * @param data Optional data associated with the platform event.
    */
-  router->map("platform.event", [=](auto message, auto router, auto reply) {
+  router->map("platform.event", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -869,7 +869,7 @@ void initFunctionsTable (Router *router) {
    * @param title
    * @param body
    */
-  router->map("platform.notify", [=](auto message, auto router, auto reply) {
+  router->map("platform.notify", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"body", "title"});
 
     if (err.type != JSON::Type::Null) {
@@ -888,7 +888,7 @@ void initFunctionsTable (Router *router) {
    * Requests a URL to be opened externally.
    * @param value
    */
-  router->map("platform.openExternal", [=](auto message, auto router, auto reply) {
+  router->map("platform.openExternal", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -905,7 +905,7 @@ void initFunctionsTable (Router *router) {
   /**
    * Return Socket Runtime primordials.
    */
-  router->map("platform.primordials", [=](auto message, auto router, auto reply) {
+  router->map("platform.primordials", [](auto message, auto router, auto reply) {
     std::regex platform_pattern("^mac$", std::regex_constants::icase);
     auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
@@ -958,7 +958,7 @@ void initFunctionsTable (Router *router) {
   /**
    * Prints incoming message value to stdout.
    */
-  router->map("stdout", [=](auto message, auto router, auto reply) {
+  router->map("stdout", [](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
@@ -968,7 +968,7 @@ void initFunctionsTable (Router *router) {
   /**
    * Prints incoming message value to stderr.
    */
-  router->map("stderr", [=](auto message, auto router, auto reply) {
+  router->map("stderr", [](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
@@ -983,7 +983,7 @@ void initFunctionsTable (Router *router) {
    * @param address The address to bind the UDP socket to (default: 0.0.0.0)
    * @param reuseAddr Reuse underlying UDP socket address (default: false)
    */
-  router->map("udp.bind", [=](auto message, auto router, auto reply) {
+  router->map("udp.bind", [](auto message, auto router, auto reply) {
     Core::UDP::BindOptions options;
     auto err = validateMessageParameters(message, {"id", "port"});
 
@@ -1010,7 +1010,7 @@ void initFunctionsTable (Router *router) {
    * Close socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.close", [=](auto message, auto router, auto reply) {
+  router->map("udp.close", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1030,7 +1030,7 @@ void initFunctionsTable (Router *router) {
    * @param port Port to connect the UDP socket to
    * @param address The address to connect the UDP socket to (default: 0.0.0.0)
    */
-  router->map("udp.connect", [=](auto message, auto router, auto reply) {
+  router->map("udp.connect", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -1056,7 +1056,7 @@ void initFunctionsTable (Router *router) {
    * Disconnects a connected socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.disconnect", [=](auto message, auto router, auto reply) {
+  router->map("udp.disconnect", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1077,7 +1077,7 @@ void initFunctionsTable (Router *router) {
    * Returns connected peer socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getPeerName", [=](auto message, auto router, auto reply) {
+  router->map("udp.getPeerName", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1098,7 +1098,7 @@ void initFunctionsTable (Router *router) {
    * Returns local socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getSockName", [=](auto message, auto router, auto reply) {
+  router->map("udp.getSockName", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1119,7 +1119,7 @@ void initFunctionsTable (Router *router) {
    * Returns socket state information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getState", [=](auto message, auto router, auto reply) {
+  router->map("udp.getState", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1141,7 +1141,7 @@ void initFunctionsTable (Router *router) {
    * socket and route through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStart", [=](auto message, auto router, auto reply) {
+  router->map("udp.readStart", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1163,7 +1163,7 @@ void initFunctionsTable (Router *router) {
    * socket and routing through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStop", [=](auto message, auto router, auto reply) {
+  router->map("udp.readStop", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1192,7 +1192,7 @@ void initFunctionsTable (Router *router) {
    * @param address The address to send to (default: 0.0.0.0)
    * @param ephemeral Indicates that the socket handle, if created is ephemeral and should eventually be destroyed
    */
-  router->map("udp.send", [=](auto message, auto router, auto reply) {
+  router->map("udp.send", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -1446,9 +1446,9 @@ static void registerSchemeHandler (Router *router) {
   }
 
   if (message.name == "post") {
-    auto headers = [NSMutableDictionary dictionary];
     auto id = std::stoull(message.get("id"));
     auto post = self.router->core->getPost(id);
+    auto headers = [NSMutableDictionary dictionary];
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"content-length"] = [@(post.length) stringValue];
@@ -1464,7 +1464,7 @@ static void registerSchemeHandler (Router *router) {
       }
     }
 
-    NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
+    auto response = [[NSHTTPURLResponse alloc]
        initWithURL: request.URL
         statusCode: 200
        HTTPVersion: @"HTTP/1.1"
@@ -1507,14 +1507,9 @@ static void registerSchemeHandler (Router *router) {
     auto json = result.str();
     auto size = result.post.body != nullptr ? result.post.length : json.size();
     auto body = result.post.body != nullptr ? result.post.body : json.c_str();
-    char* data = nullptr;
+    auto data = [NSData dataWithBytes: body length: size];
+    auto  headers = [NSMutableDictionary dictionary];
 
-    if (size > 0) {
-      data = new char[size]{0};
-      memcpy(data, body, size);
-    }
-
-    auto headers = [[NSMutableDictionary alloc] init];
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"content-length"] = [@(size) stringValue];
@@ -1527,15 +1522,12 @@ static void registerSchemeHandler (Router *router) {
     ];
 
     [task didReceiveResponse: response];
-    [task didReceiveData: [NSData dataWithBytes: data length: size]];
+    [task didReceiveData: data];
     [task didFinish];
 
   #if !__has_feature(objc_arc)
-    [headers release];
     [response release];
   #endif
-
-    delete [] data;
   });
 
   if (!invoked) {
@@ -1555,7 +1547,7 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"content-length"] = [@(msg.size()) stringValue];
 
-    NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
+    auto response = [[NSHTTPURLResponse alloc]
        initWithURL: request.URL
         statusCode: 404
        HTTPVersion: @"HTTP/1.1"
@@ -1760,7 +1752,7 @@ namespace SSC::IPC {
 
   bool Router::send (
     const Message::Seq& seq,
-    const String& data,
+    const String data,
     const Post post
   ) {
     if (post.body || seq == "-1") {

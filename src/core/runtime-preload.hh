@@ -22,7 +22,7 @@ namespace SSC {
     }
   #endif
 
-    auto preload = SSC::String(
+    auto preload = String(
       ";(() => {                                                             \n"
       "  if (globalThis.__args) return;                                      \n"
       "  globalThis.__args = {}                                              \n"
@@ -39,7 +39,11 @@ namespace SSC {
       "    configurable: true                                                \n"
       "  },                                                                  \n"
       "  debug: {                                                            \n"
-      "    value: " + std::to_string(opts.debug) + ",                        \n"
+      "    value: Boolean(" + std::to_string(opts.debug) + "),               \n"
+      "    enumerable: true                                                  \n"
+      "  },                                                                  \n"
+      "  headless: {                                                         \n"
+      "    value: Boolean(" + std::to_string((int) opts.headless) + "),      \n"
       "    enumerable: true                                                  \n"
       "  },                                                                  \n"
       "  env: {                                                              \n"

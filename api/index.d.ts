@@ -475,10 +475,29 @@ declare module "socket:util" {
     
 }
 declare module "socket:console" {
-    export function patchGlobalConsole(globalConsole: any, options: any): any;
+    export function patchGlobalConsole(globalConsole: any, options?: {}): any;
     export const globalConsole: globalThis.Console;
     export class Console {
+        /**
+         * @ignore
+         */
         constructor(options: any);
+        /**
+         * @type {import('dom').Console}
+         */
+        console: any;
+        /**
+         * @type {Map}
+         */
+        timers: Map<any, any>;
+        /**
+         * @type {Map}
+         */
+        counters: Map<any, any>;
+        /**
+         * @type {function?}
+         */
+        postMessage: Function | null;
         write(destination: any, ...args: any[]): Promise<any>;
         assert(assertion: any, ...args: any[]): void;
         clear(): void;

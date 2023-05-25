@@ -149,6 +149,7 @@ function initializeXHRIntercept () {
               data = data.join('')
 
               try {
+                // @ts-ignore
                 data = decodeURIComponent(escape(data))
               } catch (_) {}
               await postMessage(data)
@@ -1383,7 +1384,7 @@ export function createBinding (domain, ctx) {
   }
 
   const proxy = new Proxy(ctx, {
-    apply (target, bound, args) {
+    apply (target, _, args) {
       const chain = [...target.chain].slice(0, -1)
       const path = chain.join('.')
       target.chain = new Set()
@@ -1391,7 +1392,7 @@ export function createBinding (domain, ctx) {
       return dispatchable[method](path, ...args)
     },
 
-    get (target, key, receiver) {
+    get (_, key, __) {
       if (key === '__proto__') { return null }
       (ctx.chain ||= new Set()).add(key)
       return new Proxy(ctx, this)
@@ -1412,7 +1413,7 @@ export function createBinding (domain, ctx) {
 /**
  * @ignore
  */
-export const primordials = sendSync('platform.primordials')?.data || {}
+export const primordials = Object.freeze(sendSync('platform.primordials')?.data || {})
 
 initializeXHRIntercept()
 
