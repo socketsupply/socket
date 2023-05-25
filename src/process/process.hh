@@ -185,7 +185,7 @@ namespace SSC {
 
     int wait () {
       do {
-        std::this_thread::yield();
+        msleep(256);
       } while (this->closed == false);
 
       return this->status;
