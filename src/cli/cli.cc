@@ -479,7 +479,8 @@ int runApp (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
   if (!fs::exists(path)) {
-    log("executable not found: " + cmd);
+    log("Executable not found at " + cmd);
+    std::cout << "Try running `ssc build` first." << std::endl;
     return 1;
   }
 
@@ -999,7 +1000,7 @@ bool startAndroidEmulator (AndroidCliState& state) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     emulatorStartWaited += state.androidTaskSleepTime;
-    
+
     if (std::system((state.adb.str() + " shell getprop sys.boot_completed" + state.devNull).c_str()) == 0) {
       log("OK.");
       return true;
@@ -1344,7 +1345,7 @@ String validateArgument(
     printHelp(subcommand);
     exit(1);
   }
-  if (!isOptional) {
+  if (!isOptional && argument.empty()) {
     std::cerr << "ERROR: option '" << argument << "' requires a value";
     printHelp(subcommand);
     exit(1);
