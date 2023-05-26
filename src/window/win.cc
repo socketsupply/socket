@@ -708,6 +708,7 @@ namespace SSC {
                     GetClientRect(window, &bounds);
                     controller->put_Bounds(bounds);
                     controller->AddRef();
+                    controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                   }
 
                   ICoreWebView2Settings* Settings;
@@ -728,7 +729,9 @@ namespace SSC {
                   Settings->put_IsZoomControlEnabled(FALSE);
 
                   auto settings3 = (ICoreWebView2Settings3*) Settings;
-                  settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+                  if (!isDebugEnabled()) {
+                    settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+                  }
 
                   auto settings6 = (ICoreWebView2Settings6*) Settings;
                   settings6->put_IsPinchZoomEnabled(FALSE);
@@ -1119,9 +1122,7 @@ namespace SSC {
     auto res = init();
 
     if (!SUCCEEDED(res)) {
-      // TODO(trevnorris):
-      // 1. power-shell-out to download and run webview installer
-      // 2. restart app
+      std::cerr << "Webview2 failed to initialize: " << std::to_string(res) << std::endl;
     }
   }
 
@@ -1160,7 +1161,7 @@ namespace SSC {
   }
 
   void Window::showInspector () {
-    // TODO: show inspector.
+    webview->OpenDevToolsWindow();
   }
 
   void Window::exit (int code) {
