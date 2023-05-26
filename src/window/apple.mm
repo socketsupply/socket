@@ -512,6 +512,9 @@ namespace SSC {
 
     if (SSC::isDebugEnabled()) {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
+      if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
+        [webview setInspectable: YES];
+      }
     }
 
     WKUserContentController* controller = [config userContentController];
