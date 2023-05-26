@@ -2005,11 +2005,11 @@ int main (const int argc, const char* argv[]) {
     { { "--quiet" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
-    { { "-p" }, true, true },
-    { { "-c" }, true, true },
-    { { "-s" }, true, true },
-    { { "-e" }, true, true },
-    { { "-n" }, true, true }
+    { { "-p" }, true, false },
+    { { "-c" }, true, false },
+    { { "-s" }, true, false },
+    { { "-e" }, true, false },
+    { { "-n" }, true, false }
   };
 
   // Insert the elements of runOptions into buildOptions
