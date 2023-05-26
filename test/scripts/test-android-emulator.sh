@@ -17,7 +17,9 @@ if [[ "$host" = "Linux" ]]; then
 elif [[ "$host" == *"MINGW64_NT"* ]]; then
   host="Win32"
 elif [[ "$host" == *"MSYS_NT"* ]]; then
-  host="Win32"
+  # handle error: /bin/bash: C:/socket/test/scripts/bootstrap-android-emulator.sh: No such file or directory
+  echo >&2 "MSYS bash is not supported, please add Git\\bin to path."
+  exit 1
 fi
 
 ssc_env=""
