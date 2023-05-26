@@ -247,10 +247,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-  if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
-    self.webview.inspectable = YES;
-  }
-
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
@@ -269,6 +265,12 @@ static dispatch_queue_t queue = dispatch_queue_create(
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
   NSURL* url;
   int port = getDevPort();
+
+  if (@available(iOS 16.4, *)) {
+    if (isDebugEnabled()) {
+      [self.webview setInspectable: YES];
+    }
+  }
 
   if (isDebugEnabled() && port > 0 && getDevHost() != nullptr) {
     NSString* host = [NSString stringWithUTF8String:getDevHost()];
