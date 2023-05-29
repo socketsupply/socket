@@ -149,8 +149,9 @@ export function InvertedPromise () {
       },
 
       reject (error) {
-        promise.error = error
-        reject(error)
+        const err = new Error(error.message, { cause: error })
+        promise.error = err
+        reject(err)
         return promise
       }
     })
