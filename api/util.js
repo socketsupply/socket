@@ -149,11 +149,9 @@ export function InvertedPromise () {
       },
 
       reject (error) {
-        // ipc errors start stack trace from the event eval position
-        // overwriting the stack trace as below ensures that the stack trace traces back to the original call
-        error.stack = Error().stack
-        promise.error = error
-        reject(error)
+        const err = new Error(error.message, { cause: error })
+        promise.error = err
+        reject(err)
         return promise
       }
     })
