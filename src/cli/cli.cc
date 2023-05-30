@@ -1621,18 +1621,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        // pre read ini to extract env vars
-        settings = parseINI(ini);
-        if (settings["build_env"].size() > 0) {
-          for (const auto& value : split(settings["build_env"], ' ')) {
-            // note that envs is a copy, therefore it is safe to add values
-            if (value.size() > 0) {
-              envs.push_back(value);
-            }
-          }
-        }
-
-        for (const auto& env : envs) {
+        if (envs.size() > 0) {
           auto stream = StringStream();
           stream << "\n";
           stream << "[env]" << "\n";
@@ -1676,7 +1665,6 @@ int main (const int argc, const char* argv[]) {
           );
         }
 
-        // reprocess ini with env[] values populated
         settings = parseINI(ini);
 
         // allow for local `.sscrc` '[settings] ...' entries to overload the
