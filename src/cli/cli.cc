@@ -1781,8 +1781,8 @@ int main (const int argc, const char* argv[]) {
   // second flag indicating whether option should be followed by a value
  Options listDevicesOptions = {
     { { "--platform" }, false, true },
-    { { "--ecid" }, true, true },
-    { { "--udid" }, true, true },
+    { { "--ecid" }, true, false },
+    { { "--udid" }, true, false },
     { { "--only" }, true, false }
   };
   createSubcommand("list-devices", listDevicesOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
