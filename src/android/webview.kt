@@ -108,19 +108,10 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
       val file = java.io.File(filePath.toString())
       if (file.exists() && !file.isDirectory()) {
-        var input = java.io.FileInputStream(file)
-        var bytes = input.readAllBytes()
-        input.close()
-        val stream = java.io.PipedOutputStream()
-        kotlin.concurrent.thread {
-          stream.write(bytes, 0, bytes.size)
-          stream.close()
-        }
-
         val response = android.webkit.WebResourceResponse(
           if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
           "utf-8",
-          java.io.PipedInputStream(stream)
+          java.io.FileInputStream(file)
         )
 
         response.responseHeaders = mapOf(
@@ -168,9 +159,8 @@ export default module
       )
 
       // prevent piped streams blocking each other, have to write on a separate thread if data > 1024 bytes
-      val bytes = moduleTemplate.toByteArray()
       kotlin.concurrent.thread {
-        stream.write(bytes, 0, bytes.size)
+        stream.write(moduleTemplate.toByteArray(), 0, moduleTemplate.length)
         stream.close()
       }
       return response
