@@ -1607,6 +1607,10 @@ int main (const int argc, const char* argv[]) {
 
       auto envs = optionsAndEnv.envs;
 
+      auto targetPlatform = optionsAndEnv.optionsWithValue["--platform"];
+      auto isMobile = (targetPlatform.find("ios") != String::npos || targetPlatform.find("android") != String::npos);
+      log("isMobile: " + std::to_string(isMobile));
+
       if (needsConfig) {
         auto configExists = false;
         auto configPath = targetPath / "socket.ini";
@@ -1621,7 +1625,20 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        if (envs.size() > 0) {
+        // pre read ini to extract env vars
+        settings = parseINI(ini);
+        if (settings["build_env"].size() > 0) {
+          for (const auto& value : split(settings["build_env"], ' ')) {
+            // note that envs is a copy, therefore it is safe to add values
+            if (value.size() > 0 && isMobile) { // (targetPlatform == "android" || targetPlatform == "android-emulator")) {
+              if (settings["env_" + value].size() == 0) {
+                envs.push_back(value);
+              }
+            }
+          }
+        }
+
+        for (const auto& env : envs) {
           auto stream = StringStream();
           stream << "\n";
           stream << "[env]" << "\n";
@@ -1636,6 +1653,8 @@ int main (const int argc, const char* argv[]) {
 
           ini += stream.str();
         }
+
+        log("ini: " + ini);
 
         if (configExists) {
           auto hex = stringToHex(ini);
@@ -1661,10 +1680,12 @@ int main (const int argc, const char* argv[]) {
           }
 
           code = String(
+            "/*\n" + ini + "\n*/\n" + 
             "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
           );
         }
 
+        // reprocess ini with env[] values populated
         settings = parseINI(ini);
 
         // allow for local `.sscrc` '[settings] ...' entries to overload the

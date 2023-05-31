@@ -1,8 +1,15 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 #include "internal.hh"
+#include <android/log.h>
+#define TAG "Console"
 
 using namespace SSC::android;
+
+
+void logd(SSC::String s) {
+  __android_log_print(ANDROID_LOG_DEBUG, TAG, "%s", s.c_str());
+}
 
 namespace SSC::android {
   Window::Window (
@@ -17,17 +24,38 @@ namespace SSC::android {
     this->config = SSC::getUserConfig();
     this->pointer = reinterpret_cast<jlong>(this);
 
+    logd("env: " + options.env);
+    logd("config: " + this->config["build_env"]);
+    logd("appData: " + this->options.appData["build_env"]);
+
     StringStream stream;
 
-    for (auto const &var : parseStringList(this->config["build_env"])) {
-      auto key = trim(var);
-      auto value = getEnv(key.c_str());
+    // if (options.appData.size() == 0) {
+      for (auto const &var : parseStringList(this->config["build_env"])) {
+        auto key = trim(var);
+        auto value = getEnv(key.c_str());
 
-      if (value.size() > 0) {
-        stream << key << "=" << encodeURIComponent(value) << "&";
-        envvars[key] = value;
+        if (value.size() > 0) {
+          stream << key << "=" << encodeURIComponent(value) << "&";
+          envvars[key] = value;
+        } else {
+          logd("config env not set: " + key + ", '" + var + "'");
+        }
       }
-    }
+    // } else {
+      for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
+        auto cleanKey = trim(envKey);
+        auto value = getEnv(cleanKey.c_str());
+
+        if (value.size() > 0) {
+          // stream << key << "
+          stream << cleanKey << "=" << encodeURIComponent(value) << "&";
+          envvars[cleanKey] = value;
+        } else {
+          logd("appData env not set: " + key + ", '" + var + "'");
+        }
+      }
+    //}
 
     StringWrap rootDirectory(env, (jstring) CallObjectClassMethodFromEnvironment(
       env,
@@ -36,9 +64,13 @@ namespace SSC::android {
       "()Ljava/lang/String;"
     ));
 
+    
+    logd("stream: " + stream.str());
+
     options.headless = this->config["build_headless"] == "true";
     options.debug = isDebugEnabled() ? true : false;
-    options.env = stream.str();
+    // options.env = env;
+    // options.env = stream.str();
     options.cwd = rootDirectory.str();
     options.appData = this->config;
 
