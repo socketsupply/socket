@@ -1023,6 +1023,8 @@ namespace SSC {
                   );
 
                   webview->AddScriptToExecuteOnDocumentCreated(
+                    // Note that this may not do anything as preload goes out of scope before event fires
+                    // Consider using w->preloadJavascript, but apps work without this
                     SSC::StringToWString(preload).c_str(),
                     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {

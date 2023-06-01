@@ -10,7 +10,8 @@ fun decodeURIComponent (string: String): String {
 fun isAssetUri (uri: android.net.Uri): Boolean {
   val scheme = uri.scheme
   val host = uri.host
-  val path = uri.pathSegments.get(0)
+  // handle no path segments, not currently required but future proofing
+  val path = uri.pathSegments?.get(0)
 
   if (host == "appassets.androidplatform.net") {
     return true
@@ -36,6 +37,12 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = WeakReference(activity)
   open protected val TAG = "WebViewClient"
+  open protected var rootDirectory = ""
+
+  fun putRootDirectory(rootDirectory: String) {
+    this.rootDirectory = rootDirectory
+  }
+
   open protected var assetLoader: androidx.webkit.WebViewAssetLoader = androidx.webkit.WebViewAssetLoader.Builder()
     .addPathHandler(
       "/assets/",
@@ -84,6 +91,41 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): android.webkit.WebResourceResponse? {
     var url = request.url
 
+    // should be set in window loader
+    assert(rootDirectory.length > 0)
+
+    // look for updated resources in ${pwd}/files
+    // live update systems can write to /files (/assets is read only)
+    if (url.host == "appassets.androidplatform.net" && url.pathSegments.get(0) == "assets") {
+      var first = true
+      val filePath = StringBuilder(rootDirectory)
+      for (item in url.pathSegments) {
+        if (!first) {
+          filePath.append("/${item}")
+        }
+        first = false
+      }
+
+      val file = java.io.File(filePath.toString())
+      if (file.exists() && !file.isDirectory()) {
+        val response = android.webkit.WebResourceResponse(
+          if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
+          "utf-8",
+          java.io.FileInputStream(file)
+        )
+
+        response.responseHeaders = mapOf(
+          "Access-Control-Allow-Origin" to "*",
+          "Access-Control-Allow-Headers" to "*",
+          "Access-Control-Allow-Methods" to "*"
+        )
+
+        return response
+      } else {
+        // default to normal asset loader behaviour
+      }
+    }
+
     if (url.scheme == "socket") {
       var path = url.toString().replace("socket:", "")
 
@@ -116,14 +158,15 @@ export default module
         "Access-Control-Allow-Methods" to "*"
       )
 
-      val bytes = moduleTemplate.toByteArray()
-      stream.write(bytes, 0, bytes.size)
-      stream.close()
+      // prevent piped streams blocking each other, have to write on a separate thread if data > 1024 bytes
+      kotlin.concurrent.thread {
+        stream.write(moduleTemplate.toByteArray(), 0, moduleTemplate.length)
+        stream.close()
+      }
       return response
     }
 
     val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
-
     if (assetLoaderResponse != null) {
       assetLoaderResponse.responseHeaders = mapOf(
         "Content-Location" to url.toString(),
@@ -131,7 +174,6 @@ export default module
         "Access-Control-Allow-Headers" to "*",
         "Access-Control-Allow-Methods" to "*"
       )
-
       return assetLoaderResponse
     }
 
@@ -246,7 +288,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    android.util.Log.d(TAG, "WebViewActivity is loading: $url")
+    console.log("WebViewActivity is loading: $url")
   }
 
   open fun onSchemeRequest (

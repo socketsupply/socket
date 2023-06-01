@@ -28,7 +28,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
-    val runtime = this.runtime.get() ?: return
 
     val rootDirectory = this.getRootDirectory()
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
@@ -42,7 +41,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.allowFileAccess = true
           settings.allowContentAccess = true
           settings.allowFileAccessFromFileURLs = true // deprecated
-
+          activity.client.putRootDirectory(rootDirectory)
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")

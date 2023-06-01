@@ -706,17 +706,27 @@ namespace SSC {
         auto value = trim(entry.substr(index + 1));
 
         // trim quotes from quoted strings
-        if (value[0] == '"' && value[value.length() - 1] == '"') {
-          value = trim(value.substr(1, value.length() - 2));
+        size_t closing_quote_index = -1;
+        bool quoted_value = false;
+        if (value[0] == '"') {
+          closing_quote_index = value.find_first_of('"', 1);
+          if (closing_quote_index != std::string::npos) {
+            quoted_value = true;
+            value = trim(value.substr(1, closing_quote_index - 1));
+          }
         }
 
-        auto i = value.find_first_of(';');
-        auto j = value.find_first_of('#');
+        if (!quoted_value) {
+          // ignore comments within quoted part of value
+          auto i = value.find_first_of(';');
+          auto j = value.find_first_of('#');
 
-        if (i > 0) {
-          value = trim(value.substr(0, i));
-        } else if (j > 0) {
-          value = trim(value.substr(0, j));
+          if (i > 0) {
+            value = trim(value.substr(0, i));
+          }
+          else if (j > 0) {
+            value = trim(value.substr(0, j));
+          }
         }
 
         if (key.ends_with("[]")) {

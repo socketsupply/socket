@@ -950,11 +950,15 @@ export class Result {
  * @ignore
  */
 export async function ready () {
-  return await new Promise((resolve) => {
+  const startReady = Date.now()
+  return await new Promise((resolve, reject) => {
     return loop()
 
     function loop () {
-      if (globalThis.__args) {
+      // this can hang on android. Give it some time because emulators can be slow.
+      if (Date.now() - startReady > 10000) {
+        reject(new Error('failed to resolve globalThis.__args'))
+      } else if (globalThis.__args) {
         queueMicrotask(resolve)
       } else {
         queueMicrotask(loop)
