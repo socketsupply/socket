@@ -3541,6 +3541,11 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
+      // Check for gradle in pwd. Don't fail, this is just for support.
+      if (!fs::exists(String("gradlew") + (platform.win ? ".bat" : ""))) {
+        log("WARN: gradlew script not in pwd: " + fs::current_path().string());
+      }
+
       String bundle = flagDebugMode ?
         localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
         localDirPrefix + "gradlew :app:bundle";
