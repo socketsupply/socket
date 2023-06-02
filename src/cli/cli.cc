@@ -4249,7 +4249,8 @@ int main (const int argc, const char* argv[]) {
     AndroidCliState androidState;
     androidState.androidHome = getAndroidHome();
     androidState.verbose = debugEnv || verboseEnv;
-    androidState.devNull = devNull;
+    androidState.devNull = devNull;    
+    androidState.targetPlatform = targetPlatform;
     androidState.platform = androidPlatform;
     androidState.appPath = paths.platformSpecificOutputPath / "app";
     androidState.quote = quote;
