@@ -826,6 +826,9 @@ void runIOSSimulator (const Path& path, Map& settings) {
 struct AndroidCliState {
   StringStream adb;
   SSC::String androidHome;
+  // android, android-emulator
+  SSC::String targetPlatform;
+  // android-33 or current platform number
   SSC::String platform;
   StringStream avdmanager;
   bool sscAvdExists = false;
@@ -1047,6 +1050,10 @@ bool installAndroidApp (AndroidCliState& state) {
     // Note that there are several different errors that can occur here based on the state of the emulator, just keep trying to install with a timeout
     adbInstallOutput = exec(state.adbInstall.str() + " 2>&1");
     if (adbInstallOutput.exitCode != 0) {
+      if (state.targetPlatform == "android") {
+        // not waiting for emulator to boot, break immediately
+        break;
+      }
       if (adbInstallWaited >= state.androidTaskTimeout) {
         log("Wait for ADB Install timed out.");
         break;
@@ -1061,8 +1068,18 @@ bool installAndroidApp (AndroidCliState& state) {
     }
   }
 
+  String target = state.targetPlatform == "android" ? "device" : "Emulator";
+
   if (adbInstallOutput.exitCode != 0) {
-    log("ERROR: failed to install APK to Android Emulator (adb)");
+    if (!state.verbose) {
+      // log command for user debug purposes
+      log(state.adbInstall.str());
+    }
+
+    log(adbInstallOutput.output);
+    log("ERROR: failed to install APK on Android " + target + " (adb)");
+    std::cout << "Ensure your " << target << " serial number appears (without UNAUTHORIZED) when running" << std::endl;
+    std::cout << state.adb.str() << " devices" << std::endl;
     return false;
   }
 
@@ -2110,6 +2127,7 @@ int main (const int argc, const char* argv[]) {
     auto cnt = 0;
 
     AndroidCliState androidState;
+    androidState.targetPlatform = targetPlatform;
 
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
@@ -3514,6 +3532,11 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
+      // Check for gradle in pwd. Don't fail, this is just for support.
+      if (!fs::exists(String("gradlew") + (platform.win ? ".bat" : ""))) {
+        log("WARN: gradlew script not in pwd: " + fs::current_path().string());
+      }
+
       String bundle = flagDebugMode ?
         localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
         localDirPrefix + "gradlew :app:bundle";
@@ -4217,7 +4240,8 @@ int main (const int argc, const char* argv[]) {
     AndroidCliState androidState;
     androidState.androidHome = getAndroidHome();
     androidState.verbose = debugEnv || verboseEnv;
-    androidState.devNull = devNull;
+    androidState.devNull = devNull;    
+    androidState.targetPlatform = targetPlatform;
     androidState.platform = androidPlatform;
     androidState.appPath = paths.platformSpecificOutputPath / "app";
     androidState.quote = quote;
