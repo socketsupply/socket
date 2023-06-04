@@ -3000,13 +3000,6 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
     if (settings.count("build_script") != 0) {
-      //
-      // cd into the targetPath and run the user's build command,
-      // pass it to the platform-specific directory where they
-      // should send their build artifacts.
-      //
-      fs::current_path(oldCwd / targetPath);
-
       {
         char prefix[4096] = {0};
         std::memcpy(
@@ -3049,7 +3042,7 @@ int main (const int argc, const char* argv[]) {
       auto process = new SSC::Process(
         buildScript,
         scriptArgs,
-        fs::current_path().string(),
+        (oldCwd / targetPath).string(),
         [](SSC::String const &out) { stdWrite(out, false); },
         [](SSC::String const &out) { stdWrite(out, true); }
       );
@@ -3064,8 +3057,6 @@ int main (const int argc, const char* argv[]) {
       }
 
       log("ran user build command");
-
-      fs::current_path(oldCwd);
     }
 
     if (settings.count("build_copy") != 0) {
