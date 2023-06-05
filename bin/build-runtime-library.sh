@@ -80,7 +80,7 @@ while (( $# > 0 )); do
       export TARGET_IPHONE_SIMULATOR=1
     elif [[ "$1" = "android" ]]; then
       platform="$1";
-      export TARGET_OS_ANDROID=1      
+      export TARGET_OS_ANDROID=1
     else
       platform="$1";
     fi
@@ -101,6 +101,7 @@ declare sources=(
   $(find "$root"/src/app/*.cc)
   $(find "$root"/src/core/*.cc)
   $(find "$root"/src/ipc/*.cc)
+  $(find "$root"/src/extension/*.cc)
 )
 
 declare test_headers=()
@@ -153,7 +154,7 @@ for source in "${sources[@]}"; do
 done
 
 if [[ -z "$ignore_header_mtimes" ]]; then
-  test_headers+="$(find "$root/src"/**/*.hh)"
+  test_headers+="$(find "$root/src"/core/*.hh)"
 fi
 
 function main () {
@@ -163,6 +164,9 @@ function main () {
 
   local newest_mtime=0
   newest_mtime="$(latest_mtime ${test_headers[@]})"
+
+  mkdir -p "$output_directory/include"
+  cp -rf "$root/include"/* "$output_directory/include"
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -176,7 +180,7 @@ function main () {
       declare src_directory="$root/src"
       declare object="${source/.cc/$d.o}"
       declare object="${object/$src_directory/$output_directory}"
-      
+
       if (( force )) || ! test -f "$object" || (( newest_mtime > $(stat_mtime "$object") )) || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
