@@ -120,7 +120,7 @@ using namespace SSC;
     }}
   };
 
-  self.bluetooth->emit("bluetooth", JSON::Object(json).str());
+  self.bluetooth->emit("bluetooth", json);
 }
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*) peripheral
@@ -138,7 +138,7 @@ using namespace SSC;
       }}
     };
 
-    self.bluetooth->emit("bluetooth", JSON::Object(json).str());
+    self.bluetooth->emit("bluetooth", json);
     return;
   }
 
@@ -269,7 +269,7 @@ using namespace SSC;
     }}
   };
 
-  self.bluetooth->emit("bluetooth", JSON::Object(json).str());
+  self.bluetooth->emit("bluetooth", json);
 
   [peripheral discoverServices: uuids];
 }
@@ -321,7 +321,7 @@ using namespace SSC;
     }}
   };
 
-  self.bluetooth->emit("bluetooth", JSON::Object(json).str());
+  self.bluetooth->emit("bluetooth", json);
 }
 
 -              (void) peripheral: (CBPeripheral*) peripheral
