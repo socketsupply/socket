@@ -468,6 +468,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
   objects = {
 
 /* Begin PBXBuildFile section */
+    {{__ios_native_extensions_build_context_sections}}
 		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
 		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
 		17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
@@ -484,6 +485,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+    {{__ios_native_extensions_build_context_refs}}
 		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
 		17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
 		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
@@ -509,6 +511,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+        {{__ios_native_extensions_build_ids}}
 				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
 				17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
 				17A7F8F729358D4D0051D146 /* main.o in Frameworks */,
@@ -567,6 +570,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+        {{__ios_native_extensions_build_refs}}
 				17A7F8F329358D430051D146 /* libsocket-runtime.a */,
 				17A7F8F429358D430051D146 /* libuv.a */,
 				17E73FEE28FCD3360087604F /* libuv-ios.a */,
@@ -1152,6 +1156,9 @@ LOCAL_MODULE := libsocket-runtime-static
 
 LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libsocket-runtime.a
 include $(PREBUILT_STATIC_LIBRARY)
+
+## Injected extensions
+{{__android_native_extensions_context}}
 
 ## libsocket-runtime.so
 include $(CLEAR_VARS)
