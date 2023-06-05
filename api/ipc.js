@@ -1383,27 +1383,29 @@ export function createBinding (domain, ctx) {
     ctx = Object.assign(function () {}, ctx)
   }
 
+  ctx.chain = new Set()
+  ctx.chain.add(domain)
+
   const proxy = new Proxy(ctx, {
     apply (target, _, args) {
-      const chain = [...target.chain].slice(0, -1)
-      const path = chain.join('.')
-      target.chain = new Set()
+      const chain = Array.from(ctx.chain)
+      const path = chain.filter(Boolean).filter((v) => typeof v === 'string').join('.')
       const method = (ctx[path]?.method || ctx[path]) || ctx.default || 'send'
+      ctx.chain = new Set()
+      ctx.chain.add(domain)
       return dispatchable[method](path, ...args)
     },
 
-    get (_, key, __) {
-      if (key === '__proto__') { return null }
-      (ctx.chain ||= new Set()).add(key)
+    get (target, key, ...args) {
+      const value = Reflect.get(target, key, ...args)
+      if (value !== undefined) return value
+      if (key === 'inspect' || key === '__proto__' || key === 'constructor' || key in Function.prototype) return
+      ctx.chain.add(key)
       return new Proxy(ctx, this)
     }
   })
 
-  if (typeof domain === 'string') {
-    return proxy[domain]
-  }
-
-  return domain
+  return proxy
 }
 
 // TODO(@chicoxyzzy): generate the primordials file during the build
