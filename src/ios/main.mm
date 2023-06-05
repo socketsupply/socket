@@ -94,45 +94,45 @@ static dispatch_queue_t queue = dispatch_queue_create(
 }
 
 - (void) keyboardWillHide {
-  auto json = JSON::Object::Entries {
+  JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "will-hide"}
     }}
   };
 
   self.webview.scrollView.scrollEnabled = YES;
-  bridge->router.emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", json.str());
 }
 
 - (void) keyboardDidHide {
-  auto json = JSON::Object::Entries {
+  JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "did-hide"}
     }}
   };
 
-  bridge->router.emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", json.str());
 }
 
 - (void) keyboardWillShow {
-  auto json = JSON::Object::Entries {
+  JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "will-show"}
     }}
   };
 
   self.webview.scrollView.scrollEnabled = NO;
-  bridge->router.emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", json.str());
 }
 
 - (void) keyboardDidShow {
-  auto json = JSON::Object::Entries {
+  JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "did-show"}
     }}
   };
 
-  bridge->router.emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", json.str());
 }
 
 - (void) keyboardWillChange: (NSNotification*) notification {
@@ -142,7 +142,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   CGFloat width = rect.size.width;
   CGFloat height = rect.size.height;
 
-  auto json = JSON::Object::Entries {
+  JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "will-change"},
       {"width", width},
@@ -150,7 +150,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     }}
   };
 
-  bridge->router.emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", json.str());
 }
 
 - (void) scrollViewDidScroll: (UIScrollView*) scrollView {
@@ -162,8 +162,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
              options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*) options
 {
   // TODO can this be escaped or is the url encoded property already?
-  auto json = JSON::Object::Entries {{"url", [url.absoluteString UTF8String]}};
-  bridge->router.emit("protocol", JSON::Object(json).str());
+  JSON::Object json = JSON::Object::Entries {{"url", [url.absoluteString UTF8String]}};
+  bridge->router.emit("protocol", json.str());
   return YES;
 }
 
