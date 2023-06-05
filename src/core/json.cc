@@ -1,6 +1,9 @@
 #include "json.hh"
 
 namespace SSC::JSON {
+  Null null;
+  Any anyNull = nullptr;
+
   Number::Number (const String& string) {
     this->data = std::stod(string.str());
   }
@@ -17,11 +20,11 @@ namespace SSC::JSON {
     // trim trailing zeros
     if (decimal >= 0) {
       auto i = output.size() - 1;
-      while (output[i] != '0') {
+      while (output[i] == '0' && i >= decimal) {
         i--;
       }
 
-      return output.substr(0, i + 1);
+      return output.substr(0, i);
     }
 
     return output;
@@ -31,7 +34,6 @@ namespace SSC::JSON {
     std::stringstream stream;
     auto count = this->data.size();
     stream << std::string("{");
-
     for (const auto& tuple : this->data) {
       auto key = replace(tuple.first, "\"","\\\"");
       auto value = tuple.second.str();
@@ -55,7 +57,7 @@ namespace SSC::JSON {
     auto count = this->data.size();
     stream << std::string("[");
 
-    for (const auto value : this->data) {
+    for (const auto& value : this->data) {
       stream << value.str();
 
       if (--count > 0) {
@@ -169,16 +171,19 @@ namespace SSC::JSON {
   }
 
   std::string Any::str () const {
-    auto ptr = this->pointer.get();
+    const auto ptr = this->pointer.get() == nullptr
+      ? reinterpret_cast<const void*>(this)
+      : this->pointer.get();
 
     switch (this->type) {
       case Type::Any: return "";
-      case Type::Null: return Null().str();
-      case Type::Object: return reinterpret_cast<Object *>(ptr)->str();
-      case Type::Array: return reinterpret_cast<Array *>(ptr)->str();
-      case Type::Boolean: return reinterpret_cast<Boolean *>(ptr)->str();
-      case Type::Number: return reinterpret_cast<Number *>(ptr)->str();
-      case Type::String: return reinterpret_cast<String *>(ptr)->str();
+      case Type::Empty: return "";
+      case Type::Null: return "null";
+      case Type::Object: return reinterpret_cast<const Object*>(ptr)->str();
+      case Type::Array: return reinterpret_cast<const Array*>(ptr)->str();
+      case Type::Boolean: return reinterpret_cast<const Boolean*>(ptr)->str();
+      case Type::Number: return reinterpret_cast<const Number*>(ptr)->str();
+      case Type::String: return reinterpret_cast<const String*>(ptr)->str();
     }
 
     return "";
