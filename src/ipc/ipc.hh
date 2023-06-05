@@ -80,14 +80,16 @@ namespace SSC::IPC {
       MessageBuffer buffer;
       String value = "";
       String name = "";
-      String seq = "";
       String uri = "";
       int index = -1;
+      Seq seq = "";
       Map args;
 
       Message () = default;
       Message (const Message& message);
+      Message (const String& source, bool decodeValues);
       Message (const String& source);
+      Message (const String& source, bool decodeValues, char *bytes, size_t size);
       Message (const String& source, char *bytes, size_t size);
       bool has (const String& key) const;
       String get (const String& key) const;
@@ -125,6 +127,7 @@ namespace SSC::IPC {
       JSON::Any value = nullptr;
       JSON::Any data = nullptr;
       JSON::Any err = nullptr;
+      Headers headers;
       Post post;
 
       Result () = default;
@@ -143,7 +146,7 @@ namespace SSC::IPC {
       using DispatchCallback = std::function<void()>;
       using ReplyCallback = std::function<void(const Result&)>;
       using ResultCallback = std::function<void(Result)>;
-      using MessageCallback = std::function<void(const Message, Router*, ReplyCallback)>;
+      using MessageCallback = std::function<void(const Message&, Router*, ReplyCallback)>;
       using BufferMap = std::map<String, MessageBuffer>;
 
       struct MessageCallbackContext {
@@ -151,21 +154,32 @@ namespace SSC::IPC {
         MessageCallback callback;
       };
 
-      using Table = std::map<String, MessageCallbackContext>;
+      struct MessageCallbackListenerContext {
+        uint64_t token;
+        MessageCallback callback;
+      };
 
+      using Table = std::map<String, MessageCallbackContext>;
+      using Listeners = std::map<String, std::vector<MessageCallbackListenerContext>>;
+
+    private:
+      Table preserved;
+
+    public:
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
       BufferMap buffers;
       bool isReady = false;
       Mutex mutex;
       Table table;
+      Listeners listeners;
       Core *core = nullptr;
       Bridge *bridge = nullptr;
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
-#endif
+    #endif
 
       Router ();
       Router (const Router &) = delete;
@@ -176,11 +190,15 @@ namespace SSC::IPC {
       void removeMappedBuffer (int index, const Message::Seq seq);
       void setMappedBuffer(int index, const Message::Seq seq, MessageBuffer msg_buf);
 
+      void preserveCurrentTable ();
+
+      uint64_t listen (const String& name, MessageCallback callback);
+      bool unlisten (const String& name, uint64_t token);
       void map (const String& name, MessageCallback callback);
       void map (const String& name, bool async, MessageCallback callback);
       void unmap (const String& name);
       bool dispatch (DispatchCallback callback);
-      bool emit (const String& name, const String& data);
+      bool emit (const String& name, const String data);
       bool evaluateJavaScript (const String javaScript);
       bool send (const Message::Seq& seq, const String data, const Post post);
       bool invoke (const String& msg, ResultCallback callback);
