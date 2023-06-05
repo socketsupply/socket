@@ -29,6 +29,7 @@ namespace SSC::JSON {
       std::string name;
       std::string message;
       std::string location;
+
       Error (
         const std::string& name,
         const std::string& message,
@@ -45,23 +46,24 @@ namespace SSC::JSON {
   };
 
   enum class Type {
-    Any,
-    Null,
-    Object,
-    Array,
-    Boolean,
-    Number,
-    String
+    Empty = -1,
+    Any = 0,
+    Null = 1,
+    Object = 2,
+    Array = 3,
+    Boolean = 4,
+    Number = 5,
+    String = 6
   };
 
-  template <typename D, Type t> class Value {
-    protected:
-      D data;
-
+  template <typename D, Type t> struct Value {
     public:
       Type type = t;
+      D data;
+
       auto typeof () const {
         switch (this->type) {
+          case Type::Empty: return std::string("empty");
           case Type::Any: return std::string("any");
           case Type::Array: return std::string("array");
           case Type::Boolean: return std::string("boolean");
@@ -80,6 +82,7 @@ namespace SSC::JSON {
       auto isString () const { return this->type == Type::String; }
       auto isEmpty () const {
         switch (this->type) {
+          case Type::Empty: return true;
           case Type::Any: return false;
           case Type::Array: return false;
           case Type::Boolean: return false;
@@ -93,7 +96,7 @@ namespace SSC::JSON {
       }
   };
 
-  class Null : Value<std::nullptr_t, Type::Null> {
+  class Null : public Value<std::nullptr_t, Type::Null> {
     public:
       Null () {}
       Null (std::nullptr_t) : Null() {}
@@ -106,11 +109,11 @@ namespace SSC::JSON {
       }
   };
 
-  const Null null;
+  extern Null null;
 
   class Any : public Value<void *, Type::Any> {
     public:
-      std::shared_ptr<void> pointer;
+      std::shared_ptr<void> pointer = nullptr;
 
       Any () {
         this->pointer = nullptr;
@@ -125,6 +128,11 @@ namespace SSC::JSON {
       Any (const Any &any) {
         this->pointer = any.pointer;
         this->type = any.type;
+      }
+
+      Any (Type type, std::shared_ptr<void> pointer) {
+        this->type = type;
+        this->pointer = pointer;
       }
 
       Any (std::nullptr_t);
@@ -162,11 +170,13 @@ namespace SSC::JSON {
       }
   };
 
+  extern Any anyNull;
+
   inline const auto typeof (const Any& any) {
     return any.typeof();
   }
 
-  class Object : Value<ObjectEntries, Type::Object> {
+  class Object : public Value<ObjectEntries, Type::Object> {
     public:
       using Entries = ObjectEntries;
       Object () = default;
@@ -228,12 +238,12 @@ namespace SSC::JSON {
         return this->data;
       }
 
-      Any get (const std::string key) const {
+      Any& get (const std::string key) {
         if (this->data.find(key) != this->data.end()) {
           return this->data.at(key);
         }
 
-        return null;
+        return anyNull;
       }
 
       void set (const std::string key, Any value) {
@@ -261,7 +271,7 @@ namespace SSC::JSON {
       }
   };
 
-  class Array : Value<ArrayEntries, Type::Array> {
+  class Array : public Value<ArrayEntries, Type::Array> {
     public:
       using Entries = ArrayEntries;
       Array () = default;
@@ -281,6 +291,14 @@ namespace SSC::JSON {
         return this->data;
       }
 
+      bool has (const unsigned int index) const {
+        return this->data.size() < index;
+      }
+
+      auto size () const {
+        return this->data.size();
+      }
+
       Any get (const unsigned int index) const {
         if (index < this->data.size()) {
           return this->data.at(index);
@@ -295,6 +313,20 @@ namespace SSC::JSON {
         }
 
         this->data[index] = value;
+      }
+
+      void push (Any value) {
+        this->set(this->size(), value);
+      }
+
+      Any& pop () {
+        if (this->size() == 0) {
+          return anyNull;
+        }
+
+        auto& value = this->data.back();
+        this->data.pop_back();
+        return value;
       }
 
       Any operator [] (const unsigned int index) const {
@@ -312,13 +344,9 @@ namespace SSC::JSON {
 
         return this->data.at(index);
       }
-
-      auto size () const {
-        return this->data.size();
-      }
   };
 
-  class Boolean : Value<bool, Type::Boolean> {
+  class Boolean : public Value<bool, Type::Boolean> {
     public:
       Boolean () = default;
       Boolean (const Boolean& boolean) {
@@ -358,7 +386,7 @@ namespace SSC::JSON {
       }
   };
 
-  class Number : Value<double, Type::Number> {
+  class Number : public Value<double, Type::Number> {
     public:
       Number () = default;
       Number (const Number& number) {
@@ -394,7 +422,7 @@ namespace SSC::JSON {
       std::string str () const;
   };
 
-  class String : Value<std::string, Type::Number> {
+  class String : public Value<std::string, Type::String> {
     public:
       String () = default;
       String (const String& data) {
