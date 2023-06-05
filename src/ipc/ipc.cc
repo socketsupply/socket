@@ -14,13 +14,25 @@ namespace SSC::IPC {
   }
 
   Message::Message (const String& source, char *bytes, size_t size)
-    : Message(source)
+    : Message(source, false, bytes, size)
+  {}
+
+  Message::Message (
+    const String& source,
+    bool decodeValues,
+    char *bytes,
+    size_t size
+  ) : Message(source, decodeValues)
   {
     this->buffer.bytes = bytes;
     this->buffer.size = size;
   }
 
-  Message::Message (const String& source) {
+  Message::Message (const String& source)
+  : Message(source, false)
+  {}
+
+  Message::Message (const String& source, bool decodeValues) {
     String str = source;
     uri = str;
 
@@ -64,7 +76,11 @@ namespace SSC::IPC {
         seq = decodeURIComponent(pair[1]);
       }
 
-      args[pair[0]] = pair[1];
+      if (decodeValues) {
+        args[pair[0]] = decodeURIComponent(pair[1]);
+      } else {
+        args[pair[0]] = pair[1];
+      }
     }
   }
 
