@@ -82,7 +82,11 @@ export function isBufferLike (object) {
 }
 
 export function isFunction (value) {
-  return typeof value === 'function' && !/^class/.test(value.toString())
+  return (
+    typeof value === 'function' &&
+    typeof value.toString === 'function' &&
+    !/^class/.test(value.toString())
+  )
 }
 
 export function isErrorLike (error) {
