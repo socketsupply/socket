@@ -750,6 +750,10 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
+    if (this->window == nil) {
+      return ScreenSize {0, 0};
+    }
+
     NSRect e = this->window.frame;
 
     this->height = e.size.height;
