@@ -4131,7 +4131,10 @@ int main (const int argc, const char* argv[]) {
             << " -L" + prefixFile("lib/" + platform.arch + "-desktop")
             << " -lsocket-runtime"
             << " -luv"
-            << " -shared "
+            << " -shared"
+          #if defined(__linux__)
+            << " -fPIC"
+          #endif
             << " " << flags
             << " " << extraFlags
             << " -o " << lib
