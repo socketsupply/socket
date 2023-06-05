@@ -1,4 +1,5 @@
 #include "ipc.hh"
+#include "../extension/extension.hh"
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
@@ -122,9 +123,9 @@ static String getcwd () {
   }                                                                            \
 }
 
-void initFunctionsTable (Router *router) {
-#if defined(__APPLE__)
+void initRouterTable (Router *router) {
   static auto userConfig = SSC::getUserConfig();
+#if defined(__APPLE__)
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
@@ -250,6 +251,140 @@ void initFunctionsTable (Router *router) {
       Core::DNS::LookupOptions { message.get("hostname"), family },
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
+  });
+
+  router->map("extension.stats", [](auto message, auto router, auto reply) {
+    auto extensions = Extension::all();
+    int loaded = 0;
+
+    for (const auto& tuple : extensions) {
+      if (tuple.second != nullptr) {
+        loaded++;
+      }
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "extension.stats"},
+      {"data", JSON::Object::Entries {
+        {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
+        {"loaded", loaded}
+      }}
+    };
+
+    reply(Result { message.seq, message, json });
+  });
+
+  /**
+   * Load a named native extension.
+   * @param name
+   */
+  router->map("extension.load", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto name = message.get("name");
+    if (!Extension::load(name)) {
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Failed to load extension: '" + name + "'. " + String(dlerror())}
+      }});
+    }
+
+    auto ctx = Extension::Context { router };
+
+    if (!Extension::initialize(&ctx, name, nullptr)) {
+      if (ctx.state == Extension::Context::State::Error) {
+        auto json = JSON::Object::Entries {
+          {"source", "extension.load"},
+          {"extension", name},
+          {"err", JSON::Object::Entries {
+            {"code", ctx.error.code},
+            {"name", ctx.error.name},
+            {"message", ctx.error.message},
+            {"location", ctx.error.location},
+          }}
+        };
+
+        reply(Result { message.seq, message, json });
+      } else {
+        auto json = JSON::Object::Entries {
+          {"source", "extension.load"},
+          {"extension", name},
+          {"err", JSON::Object::Entries {
+            {"message", "Failed to initialize extension: '" + name + "'"},
+          }}
+        };
+
+        reply(Result { message.seq, message, json });
+      }
+    } else {
+      auto extension = Extension::get(name);
+      auto json = JSON::Object::Entries {
+        {"source", "extension.load"},
+        {"data", JSON::Object::Entries {
+         {"abi", (uint64_t) extension->abi},
+         {"name", extension->name},
+         {"version", extension->version},
+         {"description", extension->description}
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    }
+  });
+
+  /**
+   * Unload a named native extension.
+   * @param name
+   */
+  router->map("extension.unload", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto name = message.get("name");
+
+    if (!Extension::isLoaded(name)) {
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Extension '" + name + "' is not loaded" + String(dlerror())}
+      }});
+    }
+
+    if (Extension::unload(name)) {
+      return reply(Result { message.seq, message });
+    }
+
+    auto extension = Extension::get(name);
+    auto& ctx = extension->context;
+
+    if (ctx.state == Extension::Context::State::Error) {
+      auto json = JSON::Object::Entries {
+        {"source", "extension.unload"},
+        {"extension", name},
+        {"err", JSON::Object::Entries {
+          {"code", ctx.error.code},
+          {"name", ctx.error.name},
+          {"message", ctx.error.message},
+          {"location", ctx.error.location},
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    } else {
+      auto json = JSON::Object::Entries {
+        {"source", "extension.unload"},
+        {"extension", name},
+        {"err", JSON::Object::Entries {
+          {"message", "Failed to unload extension: '" + name + "'"},
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    }
   });
 
   /**
@@ -1253,6 +1388,8 @@ static void registerSchemeHandler (Router *router) {
         webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
       }
 
+      // TODO(@jwerle): send HTTP response headers (result.headers, result.post.headers)
+
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_input_stream_close_async(stream, 0, nullptr, +[](
         GObject* object,
@@ -1514,6 +1651,23 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"content-length"] = [@(size) stringValue];
 
+    if (result.post.headers.size() > 0) {
+      auto lines = SSC::split(SSC::trim(result.post.headers), '\n');
+
+      for (auto& line : lines) {
+        auto pair = split(trim(line), ':');
+        auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
+        auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+        headers[key] = value;
+      }
+    }
+
+    for (const auto& header : result.headers.entries) {
+      auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
+      auto value = [NSString stringWithUTF8String: trim(header.value.str()).c_str()];
+      headers[key] = value;
+    }
+
     auto response = [[NSHTTPURLResponse alloc]
       initWithURL: task.request.URL
        statusCode: 200
@@ -1624,7 +1778,7 @@ namespace SSC::IPC {
   }
 
   Router::Router () {
-    initFunctionsTable(this);
+    initRouterTable(this);
     registerSchemeHandler(this);
 #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
@@ -1633,6 +1787,8 @@ namespace SSC::IPC {
     [this->schemeHandler setRouter: this];
     [this->networkStatusObserver setRouter: this];
 #endif
+
+    this->preserveCurrentTable();
   }
 
   Router::~Router () {
@@ -1654,11 +1810,50 @@ namespace SSC::IPC {
 #endif
   }
 
+  void Router::preserveCurrentTable () {
+    Lock lock(mutex);
+    this->preserved = this->table;
+  }
+
+  uint64_t Router::listen (const String& name, MessageCallback callback) {
+    Lock lock(mutex);
+
+    if (!this->listeners.contains(name)) {
+      this->listeners[name] = std::vector<MessageCallbackListenerContext>();
+    }
+
+    auto& listeners = this->listeners.at(name);
+    auto token = rand64();
+    listeners.push_back(MessageCallbackListenerContext { token , callback });
+    return token;
+  }
+
+  bool Router::unlisten (const String& name, uint64_t token) {
+    Lock lock(mutex);
+
+    if (!this->listeners.contains(name)) {
+      return false;
+    }
+
+    auto& listeners = this->listeners.at(name);
+    for (int i = 0; i < listeners.size(); ++i) {
+      const auto& listener = listeners[i];
+      if (listener.token == token) {
+        listeners.erase(listeners.begin() + i);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   void Router::map (const String& name, MessageCallback callback) {
     return this->map(name, true, callback);
   }
 
   void Router::map (const String& name, bool async, MessageCallback callback) {
+    Lock lock(mutex);
+
     String data = name;
     // URI hostnames are not case sensitive. Convert to lowercase.
     std::transform(data.begin(), data.end(), data.begin(),
@@ -1669,6 +1864,8 @@ namespace SSC::IPC {
   }
 
   void Router::unmap (const String& name) {
+    Lock lock(mutex);
+
     String data = name;
     // URI hostnames are not case sensitive. Convert to lowercase.
     std::transform(data.begin(), data.end(), data.begin(),
@@ -1696,18 +1893,25 @@ namespace SSC::IPC {
   ) {
     auto message = Message { uri };
     auto name = message.name;
+    MessageCallbackContext ctx;
 
     // URI hostnames are not case sensitive. Convert to lowercase.
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
       return std::tolower(c);
     });
 
-    // lookup router function in table, return early if it doesn't exist
-    if (this->table.find(name) == this->table.end()) {
-      return false;
-    }
-
-    auto ctx = this->table.at(name);
+    do {
+      Lock lock(mutex);
+      // lookup router function in the preserved table,
+      // then the public table, return if unable to determine a context
+      if (this->preserved.find(name) != this->preserved.end()) {
+        ctx = this->preserved.at(name);
+      } else if (this->table.find(name) != this->table.end()) {
+        ctx = this->table.at(name);
+      } else {
+        return false;
+      }
+    } while (0);
 
     if (ctx.callback != nullptr) {
       Message msg(message);
@@ -1723,6 +1927,22 @@ namespace SSC::IPC {
         msg.buffer.size = size;
         memcpy(msg.buffer.bytes, bytes, size);
       }
+
+      // named listeners
+      do {
+        auto listeners = this->listeners[name];
+        for (const auto& listener : listeners) {
+          listener.callback(msg, this, [](const auto& _) {});
+        }
+      } while (0);
+
+      // wild card (*) listeners
+      do {
+        auto listeners = this->listeners["*"];
+        for (const auto& listener : listeners) {
+          listener.callback(msg, this, [](const auto& _) {});
+        }
+      } while (0);
 
       if (ctx.async) {
         auto dispatched = this->dispatch([ctx, msg, callback, this]() mutable {
@@ -1755,6 +1975,7 @@ namespace SSC::IPC {
     const String data,
     const Post post
   ) {
+    Lock lock(this->mutex);
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
@@ -1776,8 +1997,9 @@ namespace SSC::IPC {
 
   bool Router::emit (
     const String& name,
-    const String& data
+    const String data
   ) {
+    Lock lock(this->mutex);
     auto value = encodeURIComponent(data);
     auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);
@@ -1849,12 +2071,14 @@ namespace SSC::IPC {
       }
     }
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-      auto json = JSON::Object::Entries {
-        {"message", message}
-      };
+    auto json = JSON::Object::Entries {
+      {"message", message}
+    };
 
-      self.router->emit(name, JSON::Object(json).str());
+    auto router = self.router;
+    self.router->dispatch([router, json, name] () {
+      auto data = JSON::Object(json);
+      router->emit(name, data.str());
     });
   });
 
