@@ -14,6 +14,8 @@ namespace SSC::android {
     this->pointer = reinterpret_cast<jlong>(this);
     this->runtime = runtime;
     this->router.dispatchFunction = [this](auto callback) {
+      // TODO(@jwerle): get `JavaVM*` from `JNIEnv*` above and then
+      // use use `JNIEnvironmentAttachment` to execute `callback`
       if (callback != nullptr) {
         callback();
       }
