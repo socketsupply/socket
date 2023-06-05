@@ -71,7 +71,7 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #define debug(format, ...) \
   __android_log_print(     \
       ANDROID_LOG_DEBUG,   \
-      __FUNCTION__,        \
+      "Console",           \
       format,              \
       ##__VA_ARGS__        \
     );
