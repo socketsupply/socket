@@ -109,7 +109,9 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "WebKit")
   ldflags+=("-framework" "UserNotifications")
   ldflags+=("-framework" "OSLog")
+  ldflags+=("-ldl")
 elif [[ "$host" = "Linux" ]]; then
+  ldflags+=("-ldl")
   if [ -z "$BUILDING_SSC_CLI" ]; then
     ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
   fi
