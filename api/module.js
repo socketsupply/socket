@@ -19,6 +19,7 @@ import console from './console.js'
 import dgram from './dgram.js'
 import dns from './dns.js'
 import events from './events.js'
+import extension from './extension.js'
 import fs from './fs.js'
 import gc from './gc.js'
 import ipc from './ipc.js'
@@ -158,6 +159,7 @@ export const builtins = {
   dns,
   'dns/promises': dns.promises,
   events,
+  extension,
   fs,
   'fs/promises': fs.promises,
   gc,
