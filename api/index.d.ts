@@ -320,9 +320,9 @@ declare module "socket:buffer" {
         get parent(): any;
         get offset(): any;
         _isBuffer: boolean;
-        swap16(): Buffer;
-        swap32(): Buffer;
-        swap64(): Buffer;
+        swap16(): this;
+        swap32(): this;
+        swap64(): this;
         toString(...args: any[]): any;
         toLocaleString: any;
         equals(b: any): boolean;
@@ -396,11 +396,11 @@ declare module "socket:buffer" {
         writeDoubleLE(value: any, offset: any, noAssert: any): any;
         writeDoubleBE(value: any, offset: any, noAssert: any): any;
         copy(target: any, targetStart: any, start: any, end: any): number;
-        fill(val: any, start: any, end: any, encoding: any): Buffer;
+        fill(val: any, start: any, end: any, encoding: any): this;
     }
     export namespace Buffer {
-        export const TYPED_ARRAY_SUPPORT: boolean;
-        export const poolSize: number;
+        export let TYPED_ARRAY_SUPPORT: boolean;
+        export let poolSize: number;
         /**
          * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
          * if value is a number.
@@ -459,8 +459,8 @@ declare module "socket:util" {
     export function promisify(original: any): any;
     export function inspect(value: any, options: any): any;
     export namespace inspect {
-        const custom: symbol;
-        const ignore: symbol;
+        let custom: symbol;
+        let ignore: symbol;
     }
     export function format(format: any, ...args: any[]): string;
     export function parseJSON(string: any): any;
@@ -537,7 +537,7 @@ declare module "socket:ipc" {
     export function debug(enable?: (boolean)): boolean;
     export namespace debug {
         function log(): any;
-        const enabled: any;
+        let enabled: any;
     }
     /**
      * @ignore
@@ -1337,17 +1337,17 @@ declare module "socket:events" {
         _events: any;
         _eventsCount: number;
         _maxListeners: number;
-        setMaxListeners(n: any): EventEmitter;
+        setMaxListeners(n: any): this;
         getMaxListeners(): any;
         emit(type: any, ...args: any[]): boolean;
         addListener(type: any, listener: any): any;
         on: any;
         prependListener(type: any, listener: any): any;
-        once(type: any, listener: any): EventEmitter;
-        prependOnceListener(type: any, listener: any): EventEmitter;
-        removeListener(type: any, listener: any): EventEmitter;
+        once(type: any, listener: any): this;
+        prependOnceListener(type: any, listener: any): this;
+        removeListener(type: any, listener: any): this;
         off: any;
-        removeAllListeners(type: any, ...args: any[]): EventEmitter;
+        removeAllListeners(type: any, ...args: any[]): this;
         listeners(type: any): any[];
         rawListeners(type: any): any[];
         listenerCount: typeof listenerCount;
@@ -1355,7 +1355,7 @@ declare module "socket:events" {
     }
     export namespace EventEmitter {
         export { EventEmitter };
-        export const defaultMaxListeners: number;
+        export let defaultMaxListeners: number;
         export function init(): void;
         export function listenerCount(emitter: any, type: any): any;
         export { once };
@@ -1730,10 +1730,9 @@ declare module "socket:diagnostics/index" {
     export { channels, window };
 }
 declare module "socket:diagnostics" {
-    export * from "socket:diagnostics/index";
+    export * as exports from "socket:diagnostics/index";
+    const exports: any;
     export default exports;
-    import * as exports from "socket:diagnostics";
-    
 }
 declare module "socket:bluetooth" {
     export default exports;
@@ -2139,10 +2138,9 @@ declare module "socket:path" {
     export { Path, posix, win32 };
 }
 declare module "socket:fs" {
-    export * from "socket:fs/index";
+    export * as exports from "socket:fs/index";
+    const exports: any;
     export default exports;
-    import * as exports from "socket:fs";
-    
 }
 declare module "socket:external/libsodium/index" {
     export {};
@@ -2197,7 +2195,7 @@ declare module "socket:crypto" {
     export default exports;
     import { Buffer } from "socket:buffer";
     export namespace sodium {
-        const ready: Promise<any>;
+        let ready: Promise<any>;
     }
     import * as exports from "socket:crypto";
     
@@ -2328,8 +2326,8 @@ declare module "socket:stream" {
         read(): any;
         push(data: any): boolean;
         unshift(data: any): void;
-        resume(): exports.Readable;
-        pause(): exports.Readable;
+        resume(): this;
+        pause(): this;
     }
     export class Writable extends exports.Stream {
         static isBackpressured(ws: any): boolean;
@@ -2338,7 +2336,7 @@ declare module "socket:stream" {
         _write(data: any, cb: any): void;
         _final(cb: any): void;
         write(data: any): boolean;
-        end(data: any): exports.Writable;
+        end(data: any): this;
     }
     export class Duplex extends exports.Readable {
         _writableState: exports.WritableState;
@@ -2346,7 +2344,7 @@ declare module "socket:stream" {
         _write(data: any, cb: any): void;
         _final(cb: any): void;
         write(data: any): boolean;
-        end(data: any): exports.Duplex;
+        end(data: any): this;
     }
     export class Transform extends exports.Duplex {
         _transformState: exports.TransformState;
@@ -3488,7 +3486,7 @@ declare module "socket:net" {
         _connections: number;
         id: bigint;
         onconnection(data: any): void;
-        listen(port: any, address: any, cb: any): exports.Server;
+        listen(port: any, address: any, cb: any): this;
         _address: {
             port: any;
             address: any;
@@ -3502,7 +3500,7 @@ declare module "socket:net" {
         };
         close(cb: any): void;
         getConnections(cb: any): void;
-        unref(): exports.Server;
+        unref(): this;
     }
     export class Socket extends Duplex {
         _server: any;
@@ -3513,17 +3511,17 @@ declare module "socket:net" {
         setKeepAlive(enabled: any): void;
         _onTimeout(): void;
         address(): any;
-        _final(cb: any): exports.Socket;
+        _final(cb: any): this;
         destroySoon(): void;
         __write(data: any): void;
         _read(cb: any): any;
-        pause(): exports.Socket;
-        resume(): exports.Socket;
-        connect(...args: any[]): exports.Socket;
+        pause(): this;
+        resume(): this;
+        connect(...args: any[]): this;
         id: bigint;
         remotePort: any;
         remoteAddress: any;
-        unref(): exports.Socket;
+        unref(): this;
         [kLastWriteQueueSize]: any;
     }
     export function connect(...args: any[]): exports.Socket;
@@ -3588,10 +3586,9 @@ declare module "socket:dns/index" {
     
 }
 declare module "socket:dns" {
-    export * from "socket:dns/index";
+    export * as exports from "socket:dns/index";
+    const exports: any;
     export default exports;
-    import * as exports from "socket:dns";
-    
 }
 declare module "socket:dgram" {
     export function createSocket(options: string | any, callback?: Function | undefined): Socket;
@@ -3625,7 +3622,7 @@ declare module "socket:dgram" {
          * @param {function} callback - With no parameters. Called when binding is complete.
          * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
          */
-        bind(arg1: any, arg2: any, arg3: any): exports.Socket;
+        bind(arg1: any, arg2: any, arg3: any): this;
         dataListener: ({ detail }: {
             detail: any;
         }) => any;
@@ -3710,7 +3707,7 @@ declare module "socket:dgram" {
          *
          * @see {@link https://nodejs.org/api/dgram.html#socketclosecallback}
          */
-        close(cb: any): exports.Socket;
+        close(cb: any): this;
         /**
          *
          * Returns an object containing the address information for a socket. For
@@ -3772,8 +3769,8 @@ declare module "socket:dgram" {
         dropMembership(): void;
         addSourceSpecificMembership(): void;
         dropSourceSpecificMembership(): void;
-        ref(): exports.Socket;
-        unref(): exports.Socket;
+        ref(): this;
+        unref(): this;
     }
     /**
      * Generic error class for an error occurring on a `Socket` instance.
@@ -4198,11 +4195,11 @@ declare module "socket:module" {
         buffer: typeof buffer;
         console: import("socket:console").Console;
         dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
+        dns: any;
+        'dns/promises': any;
         events: typeof events;
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
+        fs: any;
+        'fs/promises': any;
         gc: any;
         ipc: typeof ipc;
         module: typeof exports;
@@ -4224,8 +4221,8 @@ declare module "socket:module" {
      */
     export const MAIN_SOURCE_URL: string;
     export namespace scope {
-        const current: any;
-        const previous: any;
+        let current: any;
+        let previous: any;
     }
     /**
      * A container for a loaded CommonJS module. All errors bubble
@@ -4368,9 +4365,7 @@ declare module "socket:module" {
     import * as exports from "socket:module";
     import buffer from "socket:buffer";
     import dgram from "socket:dgram";
-    import dns from "socket:dns";
     import events from "socket:events";
-    import fs from "socket:fs";
     import ipc from "socket:ipc";
     import os from "socket:os";
     import { posix as path } from "socket:path";
