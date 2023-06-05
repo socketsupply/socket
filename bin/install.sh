@@ -780,8 +780,13 @@ function _compile_libuv {
   if [ "$platform" == "desktop" ]; then
     if [[ "$host" != "Win32" ]]; then
       if ! test -f Makefile; then
+      if [[ "$host" == "Linux" ]]; then
+        CFLAGS="-fPIC" quiet ./configure --prefix="$BUILD_DIR/$target-$platform"
+        die $? "not ok - desktop configure"
+      else
         quiet ./configure --prefix="$BUILD_DIR/$target-$platform"
         die $? "not ok - desktop configure"
+      fi
 
         quiet make clean
         quiet make "-j$CPU_CORES"
