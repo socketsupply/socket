@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <unordered_set>
+#include <algorithm>
 
 #ifdef __linux__
 #include <cstring>
@@ -62,6 +63,7 @@ using namespace SSC;
 using namespace std::chrono;
 
 String _settings;
+Path targetPath;
 Map settings;
 Map rc;
 
@@ -1508,7 +1510,6 @@ int main (const int argc, const char* argv[]) {
   }
 
   auto const lastOption = argv[argc-1];
-  Path targetPath;
   int numberOfOptions = argc - 3;
 
   // if no path provided, use current directory
@@ -2613,6 +2614,156 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
+      for (const auto& tuple : settings) {
+        auto& key = tuple.first;
+        if (tuple.second.size() == 0) continue;
+        if (key.starts_with("build_extensions_")) {
+          if (key.find("compiler_flags") != String::npos) continue;
+          if (key.find("compiler_debug_flags") != String::npos) continue;
+          if (key.find("linker_flags") != String::npos) continue;
+          if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.starts_with("build_extensions_mac_")) continue;
+          if (key.starts_with("build_extensions_linux_")) continue;
+          if (key.starts_with("build_extensions_win_")) continue;
+          if (key.starts_with("build_extensions_ios_")) continue;
+
+          String extension;
+          if (key.starts_with("build_extensions_android")) {
+            extension = replace(key, "build_extensions_android_", "");
+          } else {
+            extension = replace(key, "build_extensions_", "");
+          }
+
+          auto compilerFlags = (
+            settings["build_extensions_compiler_flags"] + " " +
+            settings["build_extensions_android_compiler_flags"] + " " +
+            settings[key + "_compiler_flags"] + " " +
+            settings[key + "_android_compiler_flags"] +  " "
+          );
+
+          auto compilerDebugFlags = (
+            settings["build_extensions_compiler_debug_flags"] + " " +
+            settings["build_extensions_android_compiler_debug_flags"] + " " +
+            settings[key + "_compiler_debug_flags"] + " " +
+            settings[key + "_android_compiler_debug_flags"] +  " "
+          );
+
+          auto linkerFlags = (
+            settings["build_extensions_linker_flags"] + " " +
+            settings["build_extensions_android_linker_flags"] + " " +
+            settings[key + "_linker_flags"] + " " +
+            settings[key + "_android_linker_flags"] +  " "
+          );
+
+          auto linkerDebugFlags = (
+            settings["build_extensions_linker_debug_flags"] + " " +
+            settings["build_extensions_android_linker_debug_flags"] + " " +
+            settings[key + "_linker_debug_flags"] + " " +
+            settings[key + "_android_linker_debug_flags"] + " "
+          );
+
+          auto sources = StringStream();
+          auto make = StringStream();
+          auto cwd = targetPath;
+          std::unordered_set<String> cflags;
+          std::unordered_set<String> cppflags;
+
+          for (auto source : parseStringList(tuple.second, ' ')) {
+            auto destination= (
+              Path(source).parent_path() /
+              Path(source).filename().string()
+            ).string();
+
+            fs::create_directories(jni / "src" / Path(destination).parent_path());
+            fs::copy(cwd / source, jni / "src" / destination, fs::copy_options::overwrite_existing);
+
+            if (destination.ends_with(".hh") || destination.ends_with(".h")) {
+              continue;
+            } else if (destination.ends_with(".cc") || destination.ends_with(".cpp") || destination.ends_with(".c++") || destination.ends_with(".mm")) {
+              cppflags.insert("-std=c++2a");
+              cppflags.insert("-fexceptions");
+              cppflags.insert("-frtti");
+              cppflags.insert("-fsigned-char");
+            }
+
+            if (platform.win) {
+              sources << "src\\" << destination << " ";
+            } else {
+              sources << "src/" << destination << " ";
+            }
+          }
+
+          make << "## socket/extensions/" << extension << ".so" << std::endl;
+          make << "include $(CLEAR_VARS)" << std::endl;
+          make << "LOCAL_MODULE := extension-" << extension << std::endl;
+          make << std::endl;
+          make << "LOCAL_CFLAGS += \\" << std::endl;
+          for (const auto& cflag : cflags) {
+            make << "  " << cflag << " \\" << std::endl;
+          }
+          make << "  -g                         \\" << std::endl;
+          make << "  -I$(LOCAL_PATH)/include    \\" << std::endl;
+          make << "  -I$(LOCAL_PATH)            \\" << std::endl;
+          make << "  -pthreads                  \\" << std::endl;
+          make << "  -fPIC                      \\" << std::endl;
+          make << "  -O0" << std::endl;
+          make << std::endl;
+
+          make << "LOCAL_CFLAGS += \\" << std::endl;
+          make << "  -DDEBUG=" << (flagDebugMode ? 1 : 0) << " \\" << std::endl;
+          make << "  -DANDROID=1" << " \\" << std::endl;
+          make << "  -DSSC_VERSION=" << SSC::VERSION_STRING << " \\" << std::endl;
+          make << "  -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING << std::endl;
+          make << std::endl;
+
+          if (compilerFlags.size() > 0) {
+            make << "LOCAL_CFLAGS +=  \\" << std::endl;
+            make << compilerFlags << std::endl;
+            make << std::endl;
+          }
+
+          if (flagDebugMode && compilerDebugFlags.size() > 0) {
+            make << "LOCAL_CFLAGS +=  \\" << std::endl;
+            make << compilerDebugFlags << std::endl;
+            make << std::endl;
+          }
+
+          if (linkerFlags.size() > 0) {
+            make << "LOCAL_LDFLAGS +=  \\" << std::endl;
+            make << linkerFlags << std::endl;
+            make << std::endl;
+          }
+
+          if (flagDebugMode && linkerDebugFlags.size() > 0) {
+            make << "LOCAL_LDFLAGS +=  \\" << std::endl;
+            make << linkerDebugFlags << std::endl;
+            make << std::endl;
+          }
+
+          if (flags.size() > 0) {
+            make << "LOCAL_CFLAGS += " << flags << std::endl;
+          }
+
+          if (settings["android_native_cflags"].size() > 0) {
+            make << "LOCAL_CFLAGS += " << settings["android_native_cflags"] << std::endl;
+          }
+
+          make << "LOCAL_CPPFLAGS += \\" << std::endl;
+          for (const auto& cppflag : cppflags) {
+            make << "  " << cppflag << " \\" << std::endl;
+          }
+          make << std::endl;
+
+          make << "LOCAL_LDLIBS := -landroid -llog" << std::endl;
+          make << "LOCAL_WHOLE_STATIC_LIBRARIES := libuv libsocket-runtime-static" << std::endl;
+          make << "LOCAL_SRC_FILES = init.cc " << sources.str() << std::endl;
+          make << "include $(BUILD_SHARED_LIBRARY)" << std::endl;
+          make << std::endl;
+
+          makefileContext["__android_native_extensions_context"] += make.str();
+        }
+      }
+
       if (settings["android_native_makefile"].size() > 0) {
         makefileContext["android_native_make_context"] =
           trim(tmpl(tmpl(WStringToString(readFile(targetPath / settings["android_native_makefile"])), settings), makefileContext));
@@ -2825,7 +2976,219 @@ int main (const int argc, const char* argv[]) {
         {"SSC_SETTINGS", _settings},
         {"SSC_VERSION", VERSION_STRING},
         {"SSC_VERSION_HASH", VERSION_HASH_STRING},
+        {"__ios_native_extensions_build_ids", ""},
+        {"__ios_native_extensions_build_refs", ""},
+        {"__ios_native_extensions_build_context_refs", ""},
+        {"__ios_native_extensions_build_context_sections", ""}
       });
+
+      fs::create_directories(paths.pathResourcesRelativeToUserBuild / "socket" / "extensions");
+      auto iosSdkPath = trim(flagBuildForSimulator
+        ? exec("xcrun -sdk iphonesimulator -show-sdk-path").output
+        : exec("xcrun -sdk iphoneos -show-sdk-path").output
+      );
+
+      auto extensions = Vector<String>();
+      for (const auto& tuple : settings) {
+        auto& key = tuple.first;
+        if (tuple.second.size() == 0) continue;
+        if (key.starts_with("build_extensions_")) {
+          if (key.find("compiler_flags") != String::npos) continue;
+          if (key.find("compiler_debug_flags") != String::npos) continue;
+          if (key.find("linker_flags") != String::npos) continue;
+          if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.starts_with("build_extensions_mac_")) continue;
+          if (key.starts_with("build_extensions_linux_")) continue;
+          if (key.starts_with("build_extensions_win_")) continue;
+          if (key.starts_with("build_extensions_android_")) continue;
+
+          String extension;
+          if (key.starts_with("build_extensions_ios")) {
+            extension = replace(key, "build_extensions_ios_", "");
+          } else {
+            extension = replace(key, "build_extensions_", "");
+          }
+
+          auto objects = StringStream();
+          auto libdir = platform.arch == "arm64"
+            ? prefixFile(String("lib/arm64-") + (flagBuildForSimulator ? "iPhoneSimulator" : "iPhone"))
+            : prefixFile(String("lib/") + (flagBuildForSimulator ? "x86_64-iPhoneSimulator" : "arm64-iPhoneOS"));
+
+          if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
+            log("Building extension: " + extension + " (" + (flagBuildForSimulator ? "x86_64-iPhoneSimulator" : "arm64-iPhoneOS") + ")");
+            extensions.push_back(extension);
+          }
+
+          for (const auto& source : parseStringList(tuple.second, ' ')) {
+            String compiler;
+            auto compilerFlags = (
+              settings["build_extensions_compiler_flags"] +
+              settings["build_extensions_ios_compiler_flags"] +
+              settings[key + "_compiler_flags"] +
+              settings[key + "_ios_compiler_flags"] +
+              " -framework UniformTypeIdentifiers" +
+              " -framework CoreBluetooth" +
+              " -framework Network" +
+              " -framework UserNotifications" +
+              " -framework WebKit" +
+              " -framework Cocoa" +
+              " -framework OSLog"
+            );
+
+            auto compilerDebugFlags = (
+              settings["build_extensions_compiler_debug_flags"] + " " +
+              settings["build_extensions_ios_compiler_debug_flags"] + " " +
+              settings[key + "_compiler_debug_flags"] + " " +
+              settings[key + "_ios_compiler_debug_flags"] + " "
+            );
+
+            if (source.ends_with(".hh") || source.ends_with(".h")) {
+              continue;
+            } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
+              compiler = "clang++";
+              compilerFlags += " -std=c++2a -ObjC++ -v ";
+            } else {
+              compiler = "clang";
+              compilerFlags += " -ObjC -v ";
+            }
+
+            auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
+            auto object = (
+              paths.pathResourcesRelativeToUserBuild /
+              "socket" /
+              "extensions" /
+              extension /
+              filename
+            );
+
+            fs::create_directories(object.parent_path());
+
+            objects << object.string() << " ";
+            auto compileExtensionObjectCommand = StringStream();
+            compileExtensionObjectCommand
+              << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
+              << " " << compiler
+              << " -I" << Path(paths.platformSpecificOutputPath / "include").string()
+              << " -I" << prefixFile()
+              << " -I" << prefixFile("include")
+              << " -DIOS=1"
+              << " -DANDROID=0"
+              << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+              << " -DHOST=" << devHost
+              << " -DPORT=" << devPort
+              << " -DSSC_VERSION=" << SSC::VERSION_STRING
+              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -fPIC"
+              << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " -c " << source
+              << " -o " << object.string()
+            ;
+
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log(compileExtensionObjectCommand.str());
+            }
+
+            do {
+              auto r = exec(compileExtensionObjectCommand.str());
+
+              if (r.exitCode != 0) {
+                log("Unable to build extension object (" + object.string() + ")");
+                log(r.output);
+                exit(r.exitCode);
+              }
+            } while (0);
+          }
+
+          auto linkerFlags = (
+            settings["build_extensions_linker_flags"] + " " +
+            settings["build_extensions_ios_linker_flags"] + " " +
+            settings[key + "_linker_flags"] + " " +
+            settings[key + "_ios_linker_flags"] + " "
+          );
+
+          auto linkerDebugFlags = (
+            settings["build_extensions_linker_debug_flags"] + " " +
+            settings["build_extensions_ios_linker_debug_flags"] + " " +
+            settings[key + "_linker_debug_flags"] + " " +
+            settings[key + "_ios_linker_debug_flags"] + " "
+          );
+
+          auto compileExtensionLibraryCommand = StringStream();
+          compileExtensionLibraryCommand
+            << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
+            << " clang++"
+            << " " << objects.str()
+            << " " << prefixFile("src/init.cc")
+            << " " << flags
+            << " -I" << Path(paths.platformSpecificOutputPath / "include").string()
+            << " -I" << prefixFile()
+            << " -I" << prefixFile("include")
+            << " -L" + libdir
+            << " -lsocket-runtime"
+            << " -luv"
+            << " -isysroot " << iosSdkPath << "/"
+            << " -iframeworkwithsysroot /System/Library/Frameworks/"
+            << " -F " << iosSdkPath << "/System/Library/Frameworks/"
+            << " -framework UniformTypeIdentifiers"
+            << " -framework CoreBluetooth"
+            << " -framework Foundation"
+            << " -framework Network"
+            << " -framework UserNotifications"
+            << " -framework WebKit"
+            << " -framework UIKit"
+            << " -std=c++2a"
+            << " -ObjC++"
+            << " -shared"
+            << " -v"
+            << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
+            << " -o " << (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"))
+          ;
+
+          if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+            log(compileExtensionLibraryCommand.str());
+          }
+
+          do {
+            auto r = exec(compileExtensionLibraryCommand.str());
+
+            if (r.exitCode != 0) {
+              log("Unable to build extension (" + extension + ")");
+              log(r.output);
+              exit(r.exitCode);
+            }
+          } while (0);
+
+          if (flagDebugMode) {
+            for (const auto& object: parseStringList(objects.str(), ' ')) {
+              fs::remove_all(object);
+            }
+          }
+
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"));
+          // mostly random build IDs and refs
+          auto id = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
+          auto ref = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
+
+          xCodeProjectVariables["__ios_native_extensions_build_context_sections"] +=
+            id + " /* " + lib.filename().string() + " */ = {"                     +
+              ("isa = PBXBuildFile; ")                                            +
+              ("fileRef = " + ref+ ";")                                           +
+            "};\n"
+          ;
+
+          xCodeProjectVariables["__ios_native_extensions_build_context_refs"]        +=
+            ref + " /* " + lib.filename().string() + " */ = {"                       +
+              ("isa = PBXFileReference; ")                                           +
+              ("name = \"" + lib.filename().string() +  "\"; ")                      +
+              ("path = \"ui/socket/extensions/" + lib.filename().string() + "\"; ")  +
+              ("sourceTree = \"<group>\"; ")                                         +
+            "};\n"
+          ;
+
+          xCodeProjectVariables["__ios_native_extensions_build_ids"] += id + ",\n";
+          xCodeProjectVariables["__ios_native_extensions_build_refs"] += ref + ",\n";
+        }
+      }
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
@@ -3367,9 +3730,11 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
+      auto cwd = fs::current_path();
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getAndroidHome();
 
+      fs::current_path(paths.platformSpecificOutputPath);
       StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
@@ -3434,7 +3799,6 @@ int main (const int argc, const char* argv[]) {
         // TODO(mribbons): Expand cache system to other target platforms
 
         auto output = paths.platformSpecificOutputPath;
-        // auto app = output / "app";
         auto src = app / "src";
         auto _main = src / "main";
         auto app_mk = _main / "jni" / "Application.mk";
@@ -3469,8 +3833,8 @@ int main (const int argc, const char* argv[]) {
         }
 
         if (androidStaticLibCount == 0) {
-            log("ERROR: No android static libs copied, app won't build. Check " + prefixFile() + "lib");
-            exit(1);
+          log("ERROR: No android static libs copied, app won't build. Check " + prefixFile() + "lib");
+          exit(1);
         }
 
         auto buildJniLibs = true;
@@ -3566,19 +3930,248 @@ int main (const int argc, const char* argv[]) {
       androidState.appPath = app;
       androidState.quote = quote;
       androidState.slash = slash;
+      fs::current_path(cwd);
+    }
+
+    auto extraFlags = flagDebugMode
+      ? settings.count("debug_flags") ? settings["debug_flags"] : ""
+      : settings.count("build_flags") ? settings["build_flags"] : "";
+
+    quote = "";
+    if (platform.win && getEnv("CXX").find(" ") != SSC::String::npos) {
+      quote = "\"";
+    }
+
+    // build desktop extension
+    if (isForDesktop) {
+      auto oldCwd = fs::current_path();
+      fs::current_path(targetPath);
+
+      StringStream compileCommand;
+
+      fs::create_directories(paths.pathResourcesRelativeToUserBuild / "socket" / "extensions");
+
+      auto extensions = Vector<String>();
+      for (const auto& tuple : settings) {
+        auto& key = tuple.first;
+        if (tuple.second.size() == 0) continue;
+        if (key.starts_with("build_extensions_")) {
+          if (key.find("compiler_flags") != String::npos) continue;
+          if (key.find("compiler_debug_flags") != String::npos) continue;
+          if (key.find("linker_flags") != String::npos) continue;
+          if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.starts_with("build_extensions_ios_")) continue;
+          if (key.starts_with("build_extensions_android_")) continue;
+
+          if (!platform.win && key.starts_with("build_extensions_win_")) continue;
+          if (!platform.mac && key.starts_with("build_extensions_mac_")) continue;
+          if (!platform.linux && key.starts_with("build_extensions_linux_")) continue;
+
+          String extension;
+          auto os = replace(platform.os, "win32", "win");
+          if (key.starts_with("build_extensions_" + os)) {
+            extension = replace(key, "build_extensions_" + os + "_", "");
+          } else {
+            extension = replace(key, "build_extensions_", "");
+          }
+
+          auto objects = StringStream();
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"));
+
+          if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
+            log("Building extension: " + extension + " ((" + platform.os +  ") desktop-" + platform.arch + ")");
+            extensions.push_back(extension);
+          }
+
+          for (auto source : parseStringList(tuple.second, ' ')) {
+            source = fs::absolute(Path(targetPath) / source);
+
+            auto compilerFlags = (
+              settings["build_extensions_compiler_flags"] + " " +
+              settings["build_extensions_" + os + "_compiler_flags"] + " " +
+              settings[key + "_compiler_flags"] + " " +
+              settings[key + "_" + os + "_compiler_flags"] + " "
+            );
+
+            auto compilerDebugFlags = (
+              settings["build_extensions_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + os + "_compiler_debug_flags"] + " " +
+              settings[key + "_compiler_debug_flags"] + " " +
+              settings[key + "_" + os + "_compiler_debug_flags"] + " "
+            );
+
+            if (platform.mac) {
+              compilerFlags += " -framework UniformTypeIdentifiers";
+              compilerFlags += " -framework CoreBluetooth";
+              compilerFlags += " -framework Network";
+              compilerFlags += " -framework UserNotifications";
+              compilerFlags += " -framework WebKit";
+              compilerFlags += " -framework Cocoa";
+              compilerFlags += " -framework OSLog";
+            }
+
+            auto CXX = getEnv("CXX");
+            auto CC = getEnv("CC");
+            String compiler;
+
+            if (source.ends_with(".hh") || source.ends_with(".h")) {
+              continue;
+            } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
+              compiler = CXX.size() > 0 ? CXX : "clang++";
+              compilerFlags += " -std=c++2a -v ";
+              if (platform.mac) {
+                compilerFlags += " -ObjC++";
+              }
+            } else {
+              compiler = CC.size() > 0 ? CC : "clang";
+              if (platform.mac) {
+                compilerFlags += " -ObjC -v";
+              }
+            }
+
+            auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
+            auto object = (
+              paths.pathResourcesRelativeToUserBuild /
+              "socket" /
+              "extensions" /
+              extension /
+              filename
+            );
+
+            fs::create_directories(object.parent_path());
+
+            objects << object.string() << " ";
+            auto compileExtensionObjectCommand = StringStream();
+            compileExtensionObjectCommand
+              << quote // win32 - quote the entire command
+              << quote // win32 - quote the binary path
+              << compiler
+              << quote // win32 - quote the binary path
+              << " -I" + prefixFile()
+              << " -I" + prefixFile("include")
+              << " -L" + prefixFile("lib/" + platform.arch + "-desktop")
+              << " -DIOS=0"
+              << " -DANDROID=0"
+              << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+              << " -DHOST=" << devHost
+              << " -DPORT=" << devPort
+              << " -DSSC_VERSION=" << SSC::VERSION_STRING
+              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -fPIC"
+              << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " -c " << source
+              << " -o " << object.string()
+              << quote // win32 - quote the entire command
+            ;
+
+            struct stat sourceStats;
+            struct stat objectStats;
+            struct stat libraryStats;
+
+            if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
+              if (stat(WStringToString(object).c_str(), &objectStats) == 0) {
+                if (objectStats.st_mtime > sourceStats.st_mtime) {
+                  continue;
+                }
+              }
+            }
+
+            if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
+              if (stat(WStringToString(lib).c_str(), &libraryStats) == 0) {
+                if (libraryStats.st_mtime > sourceStats.st_mtime) {
+                  continue;
+                }
+              }
+            }
+
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log(compileExtensionObjectCommand.str());
+            }
+
+            do {
+              auto r = exec(compileExtensionObjectCommand.str());
+
+              if (r.exitCode != 0) {
+                log("Unable to build extension object (" + object.string() + ")");
+                log(r.output);
+                exit(r.exitCode);
+              }
+            } while (0);
+          }
+
+          auto linkerFlags = (
+            settings["build_extensions_linker_flags"] +
+            settings["build_extensions_" + os + "_linker_flags"] +
+            settings[key + "_linker_flags"] +
+            settings[key + "_" + os + "_linker_flags"]
+          );
+
+          auto linkerDebugFlags = (
+            settings["build_extensions_linker_debug_flags"] +
+            settings["build_extensions_" + platform.os + "_linker_debug_flags"] +
+            settings[key + "_linker_debug_flags"] +
+            settings[key + "_" + os + "_linker_debug_flags"]
+          );
+
+          auto compileExtensionLibraryCommand = StringStream();
+        #if defined(_WIN32)
+          // TODO
+        #else
+          compileExtensionLibraryCommand
+            << quote // win32 - quote the entire command
+            << quote // win32 - quote the binary path
+            << getEnv("CXX")
+            << quote // win32 - quote the binary path
+            << " " << objects.str()
+            << " " << prefixFile("src/init.cc")
+            << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
+            << " -I" + prefixFile()
+            << " -I" + prefixFile("include")
+            << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+            << " -L" + prefixFile("lib/" + platform.arch + "-desktop")
+            << " -lsocket-runtime"
+            << " -luv"
+            << " -shared "
+            << " " << flags
+            << " " << extraFlags
+            << " -o " << lib
+            << quote // win32 - quote the entire command
+          ;
+        #endif
+
+          if (platform.mac) {
+            if (isForDesktop) {
+              settings["mac_sign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so")).string() + ";";
+            }
+          }
+
+          if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+            log(compileExtensionLibraryCommand.str());
+          }
+
+          do {
+            auto r = exec(compileExtensionLibraryCommand.str());
+
+            if (r.exitCode != 0) {
+              log("Unable to build extension (" + extension + ")");
+              log(r.output);
+              exit(r.exitCode);
+            }
+          } while (0);
+
+          if (flagDebugMode) {
+            for (const auto& object: parseStringList(objects.str(), ' ')) {
+              fs::remove_all(object);
+            }
+          }
+        }
+      }
+
+      fs::current_path(oldCwd);
     }
 
     if (flagRunUserBuildOnly == false && isForDesktop) {
       StringStream compileCommand;
-
-      auto extraFlags = flagDebugMode
-        ? settings.count("debug_flags") ? settings["debug_flags"] : ""
-        : settings.count("build_flags") ? settings["build_flags"] : "";
-
-      auto quote = "";
-      if (platform.win && getEnv("CXX").find(" ") != SSC::String::npos) {
-        quote = "\"";
-      }
 
       // windows / spaces in bin path - https://stackoverflow.com/a/27976653/3739540
       compileCommand
