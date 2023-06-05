@@ -577,6 +577,7 @@ function _install {
     rm -rf "$SOCKET_HOME/include"
     mkdir -p "$SOCKET_HOME/include"
     cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+    cp -rfp "$root"/include/* "$SOCKET_HOME/include"
 
     if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
       if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
@@ -847,6 +848,10 @@ function _compile_libuv {
 }
 
 function _check_compiler_features {
+  if [[ -z "$DEBUG" ]]; then
+    return
+  fi
+
   if [[ "$host" == "Win32" ]]; then
     # TODO(@mribbons) - https://github.com/socketsupply/socket/issues/150
     # Compiler test not working on windows, 9 unresolved externals
@@ -856,10 +861,6 @@ function _check_compiler_features {
   echo "# checking compiler features"
   local cflags=($("$root/bin/cflags.sh"))
   local ldflags=($("$root/bin/ldflags.sh"))
-
-  if [[ -z "$DEBUG" ]]; then
-    cflags+=(-o /dev/null)
-  fi
 
   if [[ "$host" == "Darwin" ]]; then
     cflags+=(-x objective-c++)
