@@ -1,7 +1,7 @@
+/* eslint-disable no-var, no-redeclare */
 import extension from 'socket:extension'
 import process from 'socket:process'
 import test from 'socket:test'
-import ipc from 'socket:ipc'
 import fs from 'socket:fs'
 
 test('extension.load(name) - sqlite3', async (t) => {

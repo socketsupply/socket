@@ -4,8 +4,8 @@
  *
  * @example
  * import extension from 'socket:extension'
- * const sqlite = await extension.load('sqlite')
- * const results = await sqlite.binding.query('SELECT name FROM "names"')
+ * const ex = await extension.load('native_extension')
+ * const result = ex.binding.method('argument')
  */
 import ipc from './ipc.js'
 
@@ -23,7 +23,6 @@ const $loaded = Symbol('loaded')
  * A interface for a native extension.
  */
 export class Extension extends EventTarget {
-
   /**
    * Load an extension by name.
    * @param {string} name
