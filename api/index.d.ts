@@ -3837,6 +3837,104 @@ declare module "socket:dgram" {
     import { InternalError } from "socket:errors";
     
 }
+declare module "socket:extension" {
+    /**
+     * Load an extension by name.
+     * @param {string} name
+     * @param {objects?} [options]
+     * @return {Promise<Extension>}
+     */
+    export function load(name: string, options?: objects): Promise<Extension>;
+    /**
+     * Provides current stats about the loaded extensions.
+     * @return {Promise<ExtensionStats>}
+     */
+    export function stats(): Promise<ExtensionStats>;
+    /**
+     * @typedef {{ abi: number, version: string, description: string }} ExtensionInfo
+     */
+    /**
+     * @typedef {{ abi: number, loaded: number }} ExtensionStats
+     */
+    /**
+     * A interface for a native extension.
+     */
+    export class Extension extends EventTarget {
+        /**
+         * Load an extension by name.
+         * @param {string} name
+         * @param {objects?} [options]
+         * @return {Promise<Extension>}
+         */
+        static load(name: string, options?: objects): Promise<Extension>;
+        /**
+         * Provides current stats about the loaded extensions.
+         * @return {Promise<ExtensionStats>}
+         */
+        static stats(): Promise<ExtensionStats>;
+        /**
+         * `Extension` class constructor.
+         * @param {string} name
+         * @param {ExtensionInfo} info
+         * @param {object?} [options]
+         */
+        constructor(name: string, info: ExtensionInfo, options?: object | null);
+        /**
+         * The name of the extension
+         * @type {string?}
+         */
+        name: string | null;
+        /**
+         * The version of the extension
+         * @type {string?}
+         */
+        version: string | null;
+        /**
+         * The description of the extension
+         * @type {string?}
+         */
+        description: string | null;
+        /**
+         * The abi of the extension
+         * @type {number}
+         */
+        abi: number;
+        /**
+         * @type {object}
+         */
+        options: object;
+        /**
+         * @type {Proxy}
+         */
+        binding: ProxyConstructor;
+        /**
+         * `true` if the extension was loaded, otherwise `false`
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * Unloads the loaded extension.
+         * @throws Error
+         */
+        unload(): Promise<void>;
+        [$loaded]: boolean;
+    }
+    namespace _default {
+        export { load };
+        export { stats };
+    }
+    export default _default;
+    export type ExtensionInfo = {
+        abi: number;
+        version: string;
+        description: string;
+    };
+    export type ExtensionStats = {
+        abi: number;
+        loaded: number;
+    };
+    const $loaded: unique symbol;
+}
 declare module "socket:hooks" {
     /**
      * An event dispatched when the runtime has been initialized.
@@ -4201,6 +4299,10 @@ declare module "socket:module" {
         dns: typeof dns;
         'dns/promises': typeof dns.promises;
         events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
         gc: any;
