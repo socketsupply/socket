@@ -185,25 +185,28 @@ namespace SSC {
     Lock lock(mutex);
 
     static auto userConfig = SSC::getUserConfig();
-
-  #if defined(_WIN32)
-    // TODO LoadLibrary, GetProcAddress, CloseLibrary
-    return false;
-  #else
     // check if extension is already known
     if (isLoaded(name)) return true;
 
     auto path = getExtensionsDirectory(name) + (name + ".so");
-    #if defined(__ANDROID__)
+
+  #if defined(_WIN32)
+    auto handle = LoadLibrary(path.c_str());
+    if (handle == nullptr) return false;
+    auto __sapi_extension_init = (sapi_extension_registration_entry) GetProcAddress(handle, "__sapi_extension_init");
+    if (!__sapi_extension_init) return false;
+  #else
+  #if defined(__ANDROID__)
     auto handle = dlopen(String("libextension-" + name + ".so").c_str(), RTLD_NOW | RTLD_LOCAL);
-    #else
+  #else
     auto handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
-    #endif
+  #endif
 
     if (handle == nullptr) return false;
 
     auto __sapi_extension_init = (sapi_extension_registration_entry) dlsym(handle, "__sapi_extension_init");
     if (!__sapi_extension_init) return false;
+  #endif
 
     if (__sapi_extension_init != nullptr) {
       sapi_extension_registration_t* registration = __sapi_extension_init();
@@ -240,10 +243,15 @@ namespace SSC {
         }
 
         debug("Registering loaded extension: %s", registration->name);
-        return sapi_extension_register(registration);
+        if (sapi_extension_register(registration)) {
+          auto extension = Extension::get(registration->name);
+          if (extension) {
+            extension->handle = reinterpret_cast<void*>(handle);
+          }
+        }
       }
     }
-  #endif
+
     return false;
   }
 
@@ -255,7 +263,17 @@ namespace SSC {
       auto ctx = const_cast<Context*>(&extension->context);
 
       if (extension->deinitializer(ctx, ctx->data)) {
-        return true;
+      #if defined(_WIN32)
+        if (FreeLibrary(reinterpret_cast<HMODULE>(extension->handle)) {
+          extension->handle = nullptr;
+          return true;
+        }
+      #else
+        if (dlclose(extension->handle) == 0) {
+          extension->handle = nullptr;
+          return true;
+        }
+      #endif
       }
     }
 
