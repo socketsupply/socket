@@ -752,7 +752,8 @@ export function parseJSON (string) {
     try {
       const encoded = encodeURIComponent(string)
       if (encoded.includes('%5C')) {
-        return JSON.parse(decodeURIComponent(encoded.replace(/(?<!%5C)%5C/g, '%5C%5C')))
+        const regex = new RegExp('(?<!%5C)%5C', 'g')
+        return JSON.parse(decodeURIComponent(encoded.replace(regex, '%5C%5C')))
       }
     } catch (err) {}
 
