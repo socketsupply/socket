@@ -194,7 +194,7 @@ sapi_ipc_result_t* sapi_ipc_result_create (
   return result;
 }
 
-int sapi_ipc_message_get_index (const sapi_ipc_message_t* message) {
+const int sapi_ipc_message_get_index (const sapi_ipc_message_t* message) {
   return message->index;
 }
 

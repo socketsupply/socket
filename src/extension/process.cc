@@ -1,6 +1,6 @@
 #include "extension.hh"
 
-sapi_process_exec_t* sapi_process_exec (
+const sapi_process_exec_t* sapi_process_exec (
   sapi_context_t* ctx,
   const char* command
 ) {
