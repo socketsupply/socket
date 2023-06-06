@@ -360,6 +360,8 @@ bool sapi_extension_register (
       extension->version = registration->version;
     }
 
+    extension->registration = registration;
+
     return true;
   }
 
@@ -374,8 +376,14 @@ const sapi_extension_registration_t* sapi_extension_get (
     return nullptr;
   }
 
-  auto pointer = SSC::Extension::get(name).get();
-  return reinterpret_cast<const sapi_extension_registration_t*>(pointer);
+  auto extension = SSC::Extension::get(name).get();
+  if (extension) {
+    return reinterpret_cast<const sapi_extension_registration_t*>(
+      extension->registration
+    );
+  }
+
+  return nullptr;
 }
 
 bool sapi_extension_load (
