@@ -898,6 +898,128 @@ declare module "socket:window/constants" {
     export * as _default from "socket:window/constants";
     
 }
+declare module "socket:events" {
+    export const Event: {
+        new (type: string, eventInitDict?: EventInit): Event;
+        prototype: Event;
+        readonly NONE: 0;
+        readonly CAPTURING_PHASE: 1;
+        readonly AT_TARGET: 2;
+        readonly BUBBLING_PHASE: 3;
+    } | {
+        new (): {};
+    };
+    export const CustomEvent: {
+        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
+        prototype: CustomEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#1@#detail": any;
+            readonly detail: any;
+        };
+    };
+    export const MessageEvent: {
+        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
+        prototype: MessageEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#2@#detail": any;
+            "__#2@#data": any;
+            readonly detail: any;
+            readonly data: any;
+        };
+    };
+    export const ErrorEvent: {
+        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
+        prototype: ErrorEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#3@#detail": any;
+            "__#3@#error": any;
+            readonly detail: any;
+            readonly error: any;
+        };
+    };
+    export default exports;
+    export function EventEmitter(): void;
+    export class EventEmitter {
+        _events: any;
+        _eventsCount: number;
+        _maxListeners: number;
+        setMaxListeners(n: any): this;
+        getMaxListeners(): any;
+        emit(type: any, ...args: any[]): boolean;
+        addListener(type: any, listener: any): any;
+        on: any;
+        prependListener(type: any, listener: any): any;
+        once(type: any, listener: any): this;
+        prependOnceListener(type: any, listener: any): this;
+        removeListener(type: any, listener: any): this;
+        off: any;
+        removeAllListeners(type: any, ...args: any[]): this;
+        listeners(type: any): any[];
+        rawListeners(type: any): any[];
+        listenerCount: typeof listenerCount;
+        eventNames(): any;
+    }
+    export namespace EventEmitter {
+        export { EventEmitter };
+        export let defaultMaxListeners: number;
+        export function init(): void;
+        export function listenerCount(emitter: any, type: any): any;
+        export { once };
+    }
+    export function once(emitter: any, name: any): Promise<any>;
+    import * as exports from "socket:events";
+    function listenerCount(type: any): any;
+    
+}
+declare module "socket:os" {
+    export function arch(): any;
+    export function cpus(): any;
+    export function networkInterfaces(): any;
+    export function platform(): any;
+    export function type(): string;
+    export function isWindows(): boolean;
+    export function tmpdir(): string;
+    export function rusage(): any;
+    export function uptime(): any;
+    export function uname(): string;
+    export function hrtime(): any;
+    export function availableMemory(): any;
+    export const EOL: "\n" | "\r\n";
+    export default exports;
+    import * as exports from "socket:os";
+    
+}
+declare module "socket:process" {
+    export function nextTick(callback: any): void;
+    /**
+     * @returns {string} The home directory of the current user.
+     */
+    export function homedir(): string;
+    /**
+     * Computed high resolution time as a `BigInt`.
+     * @param {Array<number>?} [time]
+     * @return {bigint}
+     */
+    export function hrtime(time?: Array<number> | null): bigint;
+    export namespace hrtime {
+        function bigint(): any;
+    }
+    /**
+     * @param {number=} [code=0] - The exit code. Default: 0.
+     */
+    export function exit(code?: number | undefined): Promise<void>;
+    export function memoryUsage(): {
+        rss: any;
+    };
+    export namespace memoryUsage {
+        function rss(): any;
+    }
+    export default process;
+    const process: any;
+}
 declare module "socket:window" {
     /**
      * @param {string} url
@@ -1288,128 +1410,6 @@ declare module "socket:application" {
     import ipc from "socket:ipc";
     import * as exports from "socket:application";
     
-}
-declare module "socket:events" {
-    export const Event: {
-        new (type: string, eventInitDict?: EventInit): Event;
-        prototype: Event;
-        readonly NONE: 0;
-        readonly CAPTURING_PHASE: 1;
-        readonly AT_TARGET: 2;
-        readonly BUBBLING_PHASE: 3;
-    } | {
-        new (): {};
-    };
-    export const CustomEvent: {
-        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
-        prototype: CustomEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#2@#detail": any;
-            readonly detail: any;
-        };
-    };
-    export const MessageEvent: {
-        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
-        prototype: MessageEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#3@#detail": any;
-            "__#3@#data": any;
-            readonly detail: any;
-            readonly data: any;
-        };
-    };
-    export const ErrorEvent: {
-        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
-        prototype: ErrorEvent;
-    } | {
-        new (type: any, options: any): {
-            "__#4@#detail": any;
-            "__#4@#error": any;
-            readonly detail: any;
-            readonly error: any;
-        };
-    };
-    export default exports;
-    export function EventEmitter(): void;
-    export class EventEmitter {
-        _events: any;
-        _eventsCount: number;
-        _maxListeners: number;
-        setMaxListeners(n: any): this;
-        getMaxListeners(): any;
-        emit(type: any, ...args: any[]): boolean;
-        addListener(type: any, listener: any): any;
-        on: any;
-        prependListener(type: any, listener: any): any;
-        once(type: any, listener: any): this;
-        prependOnceListener(type: any, listener: any): this;
-        removeListener(type: any, listener: any): this;
-        off: any;
-        removeAllListeners(type: any, ...args: any[]): this;
-        listeners(type: any): any[];
-        rawListeners(type: any): any[];
-        listenerCount: typeof listenerCount;
-        eventNames(): any;
-    }
-    export namespace EventEmitter {
-        export { EventEmitter };
-        export let defaultMaxListeners: number;
-        export function init(): void;
-        export function listenerCount(emitter: any, type: any): any;
-        export { once };
-    }
-    export function once(emitter: any, name: any): Promise<any>;
-    import * as exports from "socket:events";
-    function listenerCount(type: any): any;
-    
-}
-declare module "socket:os" {
-    export function arch(): any;
-    export function cpus(): any;
-    export function networkInterfaces(): any;
-    export function platform(): any;
-    export function type(): string;
-    export function isWindows(): boolean;
-    export function tmpdir(): string;
-    export function rusage(): any;
-    export function uptime(): any;
-    export function uname(): string;
-    export function hrtime(): any;
-    export function availableMemory(): any;
-    export const EOL: "\n" | "\r\n";
-    export default exports;
-    import * as exports from "socket:os";
-    
-}
-declare module "socket:process" {
-    export function nextTick(callback: any): void;
-    /**
-     * @returns {string} The home directory of the current user.
-     */
-    export function homedir(): string;
-    /**
-     * Computed high resolution time as a `BigInt`.
-     * @param {Array<number>?} [time]
-     * @return {bigint}
-     */
-    export function hrtime(time?: Array<number> | null): bigint;
-    export namespace hrtime {
-        function bigint(): any;
-    }
-    /**
-     * @param {number=} [code=0] - The exit code. Default: 0.
-     */
-    export function exit(code?: number | undefined): Promise<void>;
-    export function memoryUsage(): {
-        rss: any;
-    };
-    export namespace memoryUsage {
-        function rss(): any;
-    }
-    export default process;
-    const process: any;
 }
 declare module "socket:diagnostics/channels" {
     /**
