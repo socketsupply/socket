@@ -27,7 +27,7 @@ test('process.cwd', async (t) => {
     t.ok(process.cwd(), 'process.cwd() returns a correct value')
   } else if (process.platform === 'win32') {
     // TODO(trevnorris): Fix to use path once implemented for Windows
-    t.equal(process.cwd(), process.argv0.slice(0, process.argv0.lastIndexOf('\\') + 1), 'process.cwd() returns a correct value')
+    t.equal(process.cwd(), process.argv0.slice(0, process.argv0.lastIndexOf('\\')), 'process.cwd() returns a correct value')
   } else {
     // for future platforms
     t.fail(`FIXME: not implemented for platform ${process.platform}`)
