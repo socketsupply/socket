@@ -64,7 +64,6 @@ namespace SSC {
         IPC::Router* router = nullptr;
         Context* context = nullptr;
         void *internal = nullptr;
-        void *handle = nullptr;
         const void *data = nullptr;
 
         Memory memory;
@@ -96,12 +95,14 @@ namespace SSC {
       String version = "";
       String description = "";
       unsigned long abi = 0;
+      void *handle = nullptr;
       Initializer initializer = nullptr;
       Deinitializer deinitializer = nullptr;
 
       static String getExtensionsDirectory (const String& name);
       static const Extension::Map& all ();
       static const Entry get (const String& name);
+      static bool setHandle (const String& name, void* handle);
       static void create (const String& name, const Initializer initializer);
       static bool load (const String& name);
       static bool unload (const String& name);

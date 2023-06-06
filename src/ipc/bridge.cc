@@ -1909,7 +1909,6 @@ namespace SSC::IPC {
     });
 
     do {
-      Lock lock(mutex);
       // lookup router function in the preserved table,
       // then the public table, return if unable to determine a context
       if (this->preserved.find(name) != this->preserved.end()) {
