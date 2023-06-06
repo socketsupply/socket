@@ -176,6 +176,12 @@ namespace SSC {
     return extensions.at(name);
   }
 
+  bool Extension::setHandle (const String& name, void* handle) {
+    if (!extensions.contains(name)) return false;
+    extensions.at(name)->handle = handle;
+    return true;
+  }
+
   bool Extension::isLoaded (const String& name) {
     Lock lock(mutex);
     return extensions.contains(name) && extensions.at(name) != nullptr;
@@ -244,10 +250,7 @@ namespace SSC {
 
         debug("Registering loaded extension: %s", registration->name);
         if (sapi_extension_register(registration)) {
-          auto extension = Extension::get(registration->name);
-          if (extension) {
-            extension->handle = reinterpret_cast<void*>(handle);
-          }
+          return Extension::setHandle(name, reinterpret_cast<void*>(handle));
         }
       }
     }
@@ -265,12 +268,10 @@ namespace SSC {
       if (extension->deinitializer(ctx, ctx->data)) {
       #if defined(_WIN32)
         if (FreeLibrary(reinterpret_cast<HMODULE>(extension->handle)) {
-          extension->handle = nullptr;
           return true;
         }
       #else
         if (dlclose(extension->handle) == 0) {
-          extension->handle = nullptr;
           return true;
         }
       #endif
