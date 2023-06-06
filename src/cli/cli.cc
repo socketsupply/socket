@@ -2701,7 +2701,9 @@ int main (const int argc, const char* argv[]) {
           for (const auto& cflag : cflags) {
             make << "  " << cflag << " \\" << std::endl;
           }
-          make << "  -g                         \\" << std::endl;
+          if (flagDebugMode) {
+            make << "  -g                         \\" << std::endl;
+          }
           make << "  -I$(LOCAL_PATH)/include    \\" << std::endl;
           make << "  -I$(LOCAL_PATH)            \\" << std::endl;
           make << "  -pthreads                  \\" << std::endl;
@@ -3975,16 +3977,25 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          auto sources = parseStringList(tuple.second, ' ');
           auto objects = StringStream();
           auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"));
+
+          if (sources.size() == 0) {
+            continue;
+          }
 
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
             log("Building extension: " + extension + " ((" + platform.os +  ") desktop-" + platform.arch + ")");
             extensions.push_back(extension);
           }
 
-          for (auto source : parseStringList(tuple.second, ' ')) {
-            source = fs::absolute(Path(targetPath) / source);
+          sources.push_back(
+            trim(prefixFile("src/init.cc"))
+          );
+
+          for (auto source : sources) {
+            source = fs::absolute(Path(targetPath) / source).string();
 
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] + " " +
@@ -4010,6 +4021,10 @@ int main (const int argc, const char* argv[]) {
               compilerFlags += " -framework OSLog";
             }
 
+            if (platform.win) {
+              compilerDebugFlags += "-D_DEBUG";
+            }
+
             auto CXX = getEnv("CXX");
             auto CC = getEnv("CC");
             String compiler;
@@ -4018,12 +4033,26 @@ int main (const int argc, const char* argv[]) {
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
               compiler = CXX.size() > 0 ? CXX : "clang++";
-              compilerFlags += " -std=c++2a -v ";
+              compilerFlags += " -v";
+              compilerFlags += " -std=c++2a -v";
               if (platform.mac) {
                 compilerFlags += " -ObjC++";
+              } else if (platform.win) {
+                compilerFlags += " -stdlib=libstdc++";
               }
             } else {
-              compiler = CC.size() > 0 ? CC : "clang";
+              if (CC.size() > 0) {
+                compiler = CC;
+              } else if (CXX.ends_with("clang++")) {
+                compiler = CXX.substr(0, CXX.size() - 3);
+              } else if (CXX.ends_with("clang++.exe")) {
+                compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
+              } else if (CXX.ends_with("g++")) {
+                compiler = CXX.substr(0, CXX.size() - 3) + "cc";
+              } else if (CXX.ends_with("g++.exe")) {
+                compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
+              }
+
               if (platform.mac) {
                 compilerFlags += " -ObjC -v";
               }
@@ -4040,28 +4069,43 @@ int main (const int argc, const char* argv[]) {
 
             fs::create_directories(object.parent_path());
 
-            objects << object.string() << " ";
+            objects << (quote + object.string() + quote) << " ";
             auto compileExtensionObjectCommand = StringStream();
             compileExtensionObjectCommand
               << quote // win32 - quote the entire command
               << quote // win32 - quote the binary path
               << compiler
               << quote // win32 - quote the binary path
-              << " -I" + prefixFile()
-              << " -I" + prefixFile("include")
-              << " -L" + prefixFile("lib/" + platform.arch + "-desktop")
+              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("src")) + quote)
+              << (" -L" + quote + trim(prefixFile("lib")) + quote)
+            #if defined(_WIN32)
+              << (" -L" + quote + trim(prefixFile("lib\\" + platform.arch + "-desktop")) + quote)
+              << " -D_MT"
+              << " -D_DLL"
+              << " -DWIN32"
+              << " -DWIN32_LEAN_AND_MEAN"
+              << " -Xlinker /NODEFAULTLIB:libcmt"
+              << " -Wno-nonportable-include-path"
+            #else
+              << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+            #endif
               << " -DIOS=0"
+              << " -U__CYGWIN__"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << devHost
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+            #if !defined(_WIN32)
               << " -fPIC"
+            #endif
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
-              << " -c " << source
-              << " -o " << object.string()
-              << quote // win32 - quote the entire command
+              << " -c " << (quote + source + quote)
+              << " -o " << (quote + object.string() + quote)
+              << quote
             ;
 
             struct stat sourceStats;
@@ -4113,34 +4157,69 @@ int main (const int argc, const char* argv[]) {
             settings[key + "_" + os + "_linker_debug_flags"]
           );
 
-          auto compileExtensionLibraryCommand = StringStream();
+          if (platform.win) {
+            linkerDebugFlags += "-D_DEBUG";
+            for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
+              if (libString.size() > 0) {
+                if (libString[0] == '\"' && libString[libString.size()-2] == '\"') {
+                  libString = libString.substr(1, libString.size()-2);
+                }
+
+                Path lib(libString);
+                if (!fs::exists(lib)) {
+                  log("WARNING: WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
+                  exit(1);
+                } else {
+                  linkerDebugFlags += " " + lib.string();
+                }
+              }
+            }
+          }
+
         #if defined(_WIN32)
-          // TODO
-        #else
+          auto d = String(platform.win && getEnv("DEBUG") == "1" ? "d" : "");
+          auto static_uv = prefixFile("lib" + d + "/" + platform.arch + "-desktop/uv_a" + d + ".lib");
+          auto static_runtime = trim(prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a"));
+        #endif
+
+          auto compileExtensionLibraryCommand = StringStream();
+
           compileExtensionLibraryCommand
             << quote // win32 - quote the entire command
             << quote // win32 - quote the binary path
             << getEnv("CXX")
             << quote // win32 - quote the binary path
-            << " " << objects.str()
-            << " " << prefixFile("src/init.cc")
-            << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
-            << " -I" + prefixFile()
-            << " -I" + prefixFile("include")
-            << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
-            << " -L" + prefixFile("lib/" + platform.arch + "-desktop")
+          #if defined(_WIN32)
+            << " " << static_runtime
+            << " " << static_uv
+            << (" -L" + quote + trim(prefixFile("lib\\" + platform.arch + "-desktop")) + quote)
+            << " -D_MT"
+            << " -D_DLL"
+            << " -DWIN32"
+            << " -DWIN32_LEAN_AND_MEAN"
+            << " -Xlinker /NODEFAULTLIB:libcmt"
+            << " -Wno-nonportable-include-path"
+          #else
+            << " " << flags
+            << " " << extraFlags
             << " -lsocket-runtime"
             << " -luv"
+            << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+          #endif
+            << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
+            << (" -I" + quote + trim(prefixFile("include")) + quote)
+            << (" -I" + quote + trim(prefixFile("src")) + quote)
+            << (" -L" + quote + trim(prefixFile("lib")) + quote)
             << " -shared"
+            << " -std=c++2a"
+            <<" -I" + Path(paths.platformSpecificOutputPath / "include").string()
           #if defined(__linux__)
             << " -fPIC"
           #endif
-            << " " << flags
-            << " " << extraFlags
-            << " -o " << lib
+            << " " << objects.str()
+            << " -o " << (quote + lib.string() + quote)
             << quote // win32 - quote the entire command
           ;
-        #endif
 
           if (platform.mac) {
             if (isForDesktop) {
