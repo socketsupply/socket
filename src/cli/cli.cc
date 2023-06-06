@@ -3160,7 +3160,8 @@ int main (const int argc, const char* argv[]) {
             }
           } while (0);
 
-          if (flagDebugMode) {
+
+          if (!flagDebugMode) {
             for (const auto& object: parseStringList(objects.str(), ' ')) {
               fs::remove_all(object);
             }
@@ -4090,6 +4091,7 @@ int main (const int argc, const char* argv[]) {
               << " -Wno-nonportable-include-path"
             #else
               << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+              << " -lsocket-runtime"
             #endif
               << " -DIOS=0"
               << " -U__CYGWIN__"
@@ -4120,12 +4122,12 @@ int main (const int argc, const char* argv[]) {
                   }
                 }
               }
-            }
 
-            if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
-              if (stat(WStringToString(lib).c_str(), &libraryStats) == 0) {
-                if (libraryStats.st_mtime > sourceStats.st_mtime) {
-                  continue;
+              if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
+                if (stat(WStringToString(lib).c_str(), &libraryStats) == 0) {
+                  if (libraryStats.st_mtime > sourceStats.st_mtime) {
+                    continue;
+                  }
                 }
               }
             }
@@ -4180,8 +4182,11 @@ int main (const int argc, const char* argv[]) {
 
         #if defined(_WIN32)
           auto d = String(platform.win && getEnv("DEBUG") == "1" ? "d" : "");
-          auto static_uv = prefixFile("lib" + d + "/" + platform.arch + "-desktop/uv_a" + d + ".lib");
-          auto static_runtime = trim(prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a"));
+          auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\uv_a" + d + ".lib");
+          auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
+        #else
+          auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
+          auto static_runtime = trim(prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a"));
         #endif
 
           auto compileExtensionLibraryCommand = StringStream();
@@ -4191,9 +4196,10 @@ int main (const int argc, const char* argv[]) {
             << quote // win32 - quote the binary path
             << getEnv("CXX")
             << quote // win32 - quote the binary path
-          #if defined(_WIN32)
             << " " << static_runtime
             << " " << static_uv
+            << " " << objects.str()
+          #if defined(_WIN32)
             << (" -L" + quote + trim(prefixFile("lib\\" + platform.arch + "-desktop")) + quote)
             << " -D_MT"
             << " -D_DLL"
@@ -4206,6 +4212,7 @@ int main (const int argc, const char* argv[]) {
             << " " << extraFlags
             << " -lsocket-runtime"
             << " -luv"
+            << " -fvisibility=hidden"
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
@@ -4218,7 +4225,6 @@ int main (const int argc, const char* argv[]) {
           #if defined(__linux__)
             << " -fPIC"
           #endif
-            << " " << objects.str()
             << " -o " << (quote + lib.string() + quote)
             << quote // win32 - quote the entire command
           ;
@@ -4243,7 +4249,7 @@ int main (const int argc, const char* argv[]) {
             }
           } while (0);
 
-          if (flagDebugMode) {
+          if (!flagDebugMode) {
             for (const auto& object: parseStringList(objects.str(), ' ')) {
               fs::remove_all(object);
             }
