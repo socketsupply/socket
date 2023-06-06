@@ -4044,13 +4044,13 @@ int main (const int argc, const char* argv[]) {
               if (CC.size() > 0) {
                 compiler = CC;
               } else if (CXX.ends_with("clang++")) {
-                compiler = CXX.substr(0, CXX.size() - 3);
+                compiler = CXX.substr(0, CXX.size() - 2);
               } else if (CXX.ends_with("clang++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
+                compiler = CXX.substr(0, CXX.size() - 5) + ".exe";
               } else if (CXX.ends_with("g++")) {
-                compiler = CXX.substr(0, CXX.size() - 3) + "cc";
+                compiler = CXX.substr(0, CXX.size() - 2) + "cc";
               } else if (CXX.ends_with("g++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
+                compiler = CXX.substr(0, CXX.size() - 5) + "cc.exe";
               }
 
               if (platform.mac) {
@@ -4112,10 +4112,12 @@ int main (const int argc, const char* argv[]) {
             struct stat objectStats;
             struct stat libraryStats;
 
-            if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
-              if (stat(WStringToString(object).c_str(), &objectStats) == 0) {
-                if (objectStats.st_mtime > sourceStats.st_mtime) {
-                  continue;
+            if (fs::exists(object)) {
+              if (stat(WStringToString(source).c_str(), &sourceStats) == 0) {
+                if (stat(WStringToString(object).c_str(), &objectStats) == 0) {
+                  if (objectStats.st_mtime > sourceStats.st_mtime) {
+                    continue;
+                  }
                 }
               }
             }
