@@ -1694,11 +1694,11 @@ External docs: module:Application Application
  Usaully you don't need to use this module directly, instance of ApplicationWindow
  are returned by the methods of the {@link module:Application Application} module.
 
-## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L28)
+## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L29)
 
  Represents a window in the application
 
-### [`index()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L56)
+### [`index()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L57)
 
 Get the index of the window
 
@@ -1707,7 +1707,7 @@ Get the index of the window
 | Not specified | number | the index of the window |
 
 
-### [`getSize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L64)
+### [`getSize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L65)
 
 Get the size of the window
 
@@ -1716,7 +1716,7 @@ Get the size of the window
 | Not specified | { width: number, height: number  | } - the size of the window |
 
 
-### [`getTitle()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L75)
+### [`getTitle()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L76)
 
 Get the title of the window
 
@@ -1725,7 +1725,7 @@ Get the title of the window
 | Not specified | string | the title of the window |
 
 
-### [`getStatus()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L83)
+### [`getStatus()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L84)
 
 Get the status of the window
 
@@ -1734,7 +1734,7 @@ Get the status of the window
 | Not specified | string | the status of the window |
 
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L91)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L92)
 
 Close the window
 
@@ -1743,7 +1743,7 @@ Close the window
 | Not specified | Promise<object> | the options of the window |
 
 
-### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L106)
+### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L107)
 
 Shows the window
 
@@ -1752,7 +1752,7 @@ Shows the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L115)
+### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L116)
 
 Hides the window
 
@@ -1761,7 +1761,7 @@ Hides the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L125)
+### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L126)
 
 Sets the title of the window
 
@@ -1775,7 +1775,7 @@ Sets the title of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L138)
+### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L139)
 
 Sets the size of the window
 
@@ -1791,7 +1791,7 @@ Sets the size of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L178)
+### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L179)
 
 Navigate the window to a given path
 
@@ -1805,7 +1805,7 @@ Navigate the window to a given path
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L187)
+### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L188)
 
 Opens the Web Inspector for the window
 
@@ -1814,7 +1814,7 @@ Opens the Web Inspector for the window
 | Not specified | Promise<object> |  |
 
 
-### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L204)
+### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L205)
 
 Sets the background color of the window
 
@@ -1832,7 +1832,7 @@ Sets the background color of the window
 | Not specified | Promise<object> |  |
 
 
-### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L214)
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L215)
 
 Opens a native context menu.
 
@@ -1846,7 +1846,7 @@ Opens a native context menu.
 | Not specified | Promise<object> |  |
 
 
-### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L231)
+### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L232)
 
 Shows a native open file dialog.
 
@@ -1860,7 +1860,7 @@ Shows a native open file dialog.
 | Not specified | Promise<string[]> | an array of file paths |
 
 
-### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L242)
+### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L243)
 
 Shows a native save file dialog.
 
@@ -1874,7 +1874,7 @@ Shows a native save file dialog.
 | Not specified | Promise<string[]> | an array of file paths |
 
 
-### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L253)
+### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L254)
 
 Shows a native directory dialog.
 
@@ -1888,7 +1888,7 @@ Shows a native directory dialog.
 | Not specified | Promise<string[]> | an array of file paths |
 
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L268)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L269)
 
 Sends an IPC message to the window or to qthe backend.
 
@@ -1901,7 +1901,7 @@ Sends an IPC message to the window or to qthe backend.
 | options.value | string \| object |  | true | the value to send |
 
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L305)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L306)
 
 Opens an URL in the default browser.
 
@@ -1915,7 +1915,7 @@ Opens an URL in the default browser.
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L316)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L317)
 
 Adds a listener to the window.
 
@@ -1925,7 +1925,7 @@ Adds a listener to the window.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L334)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L335)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -1935,7 +1935,7 @@ Adds a listener to the window. An alias for `addListener`.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L351)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L352)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -1945,7 +1945,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L367)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L368)
 
 Removes a listener from the window.
 
@@ -1955,7 +1955,7 @@ Removes a listener from the window.
 | cb | function(*): void |  | false | the callback to remove |
 
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L380)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L381)
 
 Removes all listeners from the window.
 
@@ -1964,7 +1964,7 @@ Removes all listeners from the window.
 | event | string |  | false | the event to remove the listeners from |
 
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L396)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L397)
 
 Removes a listener from the window. An alias for `removeListener`.
 
@@ -1974,7 +1974,7 @@ Removes a listener from the window. An alias for `removeListener`.
 | cb | function(*): void |  | false | the callback to remove |
 
 
-## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L406)
+## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L407)
 
 This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
 
