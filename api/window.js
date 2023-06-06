@@ -8,9 +8,10 @@
  * are returned by the methods of the {@link module:Application Application} module.
  */
 
-import * as statuses from './window/constants.js'
-import ipc, { primordials } from './ipc.js'
 import { isValidPercentageValue } from './util.js'
+import * as statuses from './window/constants.js'
+import process from './process.js'
+import ipc from './ipc.js'
 
 /**
  * @param {string} url
@@ -18,7 +19,7 @@ import { isValidPercentageValue } from './util.js'
  * @ignore
  */
 export function formatFileUrl (url) {
-  return `file://${primordials.cwd}/${url}`
+  return `file://${process.cwd()}/${url}`
 }
 
 /**
