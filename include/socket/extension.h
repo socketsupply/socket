@@ -8,6 +8,16 @@
 
 #include "platform.h"
 
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+# define SOCKET_RUNTIME_EXTENSION_EXPORT __declspec(dllexport)
+#elif SOCKET_RUNTIME_PLATFORM_LINUX
+# define SOCKET_RUNTIME_EXTENSION_EXPORT __attribute__((visibility("default")))
+#elif SOCKET_RUNTIME_PLATFORM_MACOS || SOCKET_RUNTIME_PLATFORM_IOS
+# define SOCKET_RUNTIME_EXTENSION_EXPORT __attribute__((visibility("default")))
+#else
+# define SOCKET_RUNTIME_EXTENSION_EXPORT
+#endif
+
 /**
  * Major version of the extension ABI.
  */
@@ -24,7 +34,8 @@
 #define SOCKET_RUNTIME_EXTENSION_ABI_VERSION_PATCH (unsigned int) 1
 
 /**
- * The packed version of the extension ABI useful for semantic comparison purposes.
+ * The packed version of the extension ABI useful for semantic
+ * comparison purposes.
  */
 #define SOCKET_RUNTIME_EXTENSION_ABI_VERSION ((int) (                          \
  SOCKET_RUNTIME_EXTENSION_ABI_VERSION_MAJOR << 16 |                            \
@@ -52,22 +63,27 @@
       _name, _initializer, ##__VA_ARGS__                                       \
     };                                                                         \
                                                                                \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const unsigned int __sapi_extension_abi () {                               \
       return __sapi_extension__.abi;                                           \
     }                                                                          \
                                                                                \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const char* __sapi_extension_name () {                                     \
       return __sapi_extension__.name;                                          \
     }                                                                          \
                                                                                \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const char* __sapi_extension_description () {                              \
       return __sapi_extension__.description;                                   \
     }                                                                          \
                                                                                \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const char* __sapi_extension_version () {                                  \
       return __sapi_extension__.version;                                       \
     }                                                                          \
                                                                                \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const sapi_extension_registration_t* __sapi_extension_init () {            \
       return &__sapi_extension__;                                              \
     }                                                                          \
@@ -539,7 +555,7 @@ extern "C" {
     const char* version;
 
     // reserved for future ABI changes
-    char __reserved[1024];
+    char __reserved__[1024];
   };
 
   /**
