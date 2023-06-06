@@ -747,8 +747,17 @@ export function format (format, ...args) {
 
 export function parseJSON (string) {
   if (string !== null) {
+    string = String(string)
+
     try {
-      return JSON.parse(String(string))
+      const encoded = encodeURIComponent(string)
+      if (encoded.includes('%5C')) {
+        return JSON.parse(decodeURIComponent(encoded.replace(/(?<!%5C)%5C/g, '%5C%5C')))
+      }
+    } catch (err) {}
+
+    try {
+      return JSON.parse(string)
     } catch (err) {}
   }
 
