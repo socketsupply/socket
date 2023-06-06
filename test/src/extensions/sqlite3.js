@@ -1,15 +1,16 @@
 /* eslint-disable no-var, no-redeclare */
 import extension from 'socket:extension'
 import process from 'socket:process'
+import path from 'socket:path'
 import test from 'socket:test'
 import fs from 'socket:fs'
 
 test('extension.load(name) - sqlite3', async (t) => {
-  const path = process.cwd() + '/data.db'
+  const databasePath = process.cwd().replace(/\\$/, '') + path.sep + 'data.db'
   let sqlite3
   let query
 
-  await fs.unlink(path)
+  await fs.unlink(databasePath)
 
   try {
     sqlite3 = await extension.load('sqlite3')
@@ -18,12 +19,12 @@ test('extension.load(name) - sqlite3', async (t) => {
     return
   }
 
-  var { err, data: db } = await sqlite3.binding.open({ path })
+  var { err, data: db } = await sqlite3.binding.open({ path: databasePath })
   if (err) return t.ifError(err)
 
   t.ok(db, 'sqlite3.binding.open result data')
   t.ok(db?.id, 'sqlite3.binding.open result data has id')
-  t.equal(db?.path, path, 'sqlite3.binding.open result data has path')
+  t.equal(db?.path, databasePath, 'sqlite3.binding.open result data has path')
 
   query = `
     CREATE TABLE IF NOT EXISTS users (
