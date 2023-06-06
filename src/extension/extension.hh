@@ -1,10 +1,7 @@
 #ifndef SSC_EXTENSION_H
 #define SSC_EXTENSION_H
 
-#if defined(_WIN32)
-#  include <libloaderapi.h>
-  // TODO
-#else
+#if !defined(_WIN32)
 #  include <dlfcn.h>
 #endif
 
@@ -67,6 +64,7 @@ namespace SSC {
         IPC::Router* router = nullptr;
         Context* context = nullptr;
         void *internal = nullptr;
+        void *handle = nullptr;
         const void *data = nullptr;
 
         Memory memory;
