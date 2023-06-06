@@ -123,6 +123,7 @@ extern "C" {
    * @param parent - An optional parent to own the new context
    * @return The new context (`sapi_context_t*`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_context_t* sapi_context_create (sapi_context_t* parent);
 
   /**
@@ -131,6 +132,7 @@ extern "C" {
    * @param data     - User data to be given to `callback` when called
    * @param callback - The callback to dispatch
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_context_dispatch (
     sapi_context_t* context,
     const void* data,
@@ -145,6 +147,7 @@ extern "C" {
    * associated with the context.
    * @param context - An extension context
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_retain (sapi_context_t* context);
 
   /**
@@ -154,6 +157,7 @@ extern "C" {
    * function was called for a given context.
    * @param context - An extension context
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_release (sapi_context_t* context);
 
   /**
@@ -162,6 +166,7 @@ extern "C" {
    * @param context - An extension context
    * @return `true` if retained, otherwise `false`.
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_context_retained (const sapi_context_t* context);
 
   /**
@@ -169,6 +174,7 @@ extern "C" {
    * @param context - An extension context
    * @return The libuv event loop (`uv_loop_t`).
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   uv_loop_t* sapi_context_get_loop (
     const sapi_context_t* context
   );
@@ -178,6 +184,7 @@ extern "C" {
    * @param context - An extension context
    * @return A IPC bridge router (`sapi_ipc_router_t*`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const struct sapi_ipc_router* sapi_context_get_router (
     const sapi_context_t* context
   );
@@ -187,6 +194,7 @@ extern "C" {
    * @param context - An extension context
    * @param code    - The code of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_error_set_code (
     sapi_context_t* context,
     const int code
@@ -197,6 +205,7 @@ extern "C" {
    * @param context - An extension context
    * @return The code of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const int sapi_context_error_get_code (const sapi_context_t* context);
 
   /**
@@ -204,6 +213,7 @@ extern "C" {
    * @param context - An extension context
    * @param name    - The name of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_error_set_name (
     sapi_context_t* context,
     const char* name
@@ -214,6 +224,7 @@ extern "C" {
    * @param context - An extension context
    * @return The name of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_context_error_get_name (const sapi_context_t* context);
 
   /**
@@ -221,6 +232,7 @@ extern "C" {
    * @param context - An extension context
    * @param message - The message of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_error_set_message (
     sapi_context_t* context,
     const char* message
@@ -231,6 +243,7 @@ extern "C" {
    * @param context - An extension context
    * @return The message of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_context_error_get_message (const sapi_context_t* context);
 
   /**
@@ -238,6 +251,7 @@ extern "C" {
    * @param context  - An extension context
    * @param location - The location of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_error_set_location (
     sapi_context_t* context,
     const char* location
@@ -248,6 +262,7 @@ extern "C" {
    * @param context - An extension context
    * @preturn The location of the error
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_context_error_get_location (const sapi_context_t* context);
 
 
@@ -262,6 +277,7 @@ extern "C" {
    * @param name    - The name of the script to evaluate
    * @param source  - The source of the script to evaluate
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_evaluate_javascript (
     sapi_context_t* context,
     const char* name,
@@ -391,6 +407,7 @@ extern "C" {
    * Computes the `sapi_json_type_t` enumeration value of a given `sapi_json_type_t`
    * type.
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_json_type_t sapi_json_typeof (const sapi_json_any_t*);
 
   /**
@@ -398,6 +415,7 @@ extern "C" {
    * @param context - A context associated with the extension
    * @return The JSON object
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_object_t* sapi_json_object_create (sapi_context_t* context);
 
   /**
@@ -405,6 +423,7 @@ extern "C" {
    * @param context - A context associated with the extension
    * @return The JSON array
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_array_t* sapi_json_array_create (sapi_context_t* context);
 
   /**
@@ -413,6 +432,7 @@ extern "C" {
    * @param string  - The raw string
    * @return The JSON string
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_string_t* sapi_json_string_create (
     sapi_context_t* context,
     const char* string
@@ -424,6 +444,7 @@ extern "C" {
    * @param boolean - The boolean
    * @return The JSON boolean
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_boolean_t* sapi_json_boolean_create (
     sapi_context_t* context,
     const bool boolean
@@ -435,6 +456,7 @@ extern "C" {
    * @param number - The number
    * @return The JSON number
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_number_t* sapi_json_number_create (
     sapi_context_t* context,
     const double number
@@ -446,6 +468,7 @@ extern "C" {
    * @param key    - The key of the value to set
    * @param value  - The JSON value to set
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_json_object_set (
     sapi_json_object_t* object,
     const char* key,
@@ -458,6 +481,7 @@ extern "C" {
    * @param key    - The key of the value to set
    * @return The JSON value to set
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_any_t* sapi_json_object_get (
     const sapi_json_object_t* object,
     const char* key
@@ -469,6 +493,7 @@ extern "C" {
    * @param index - The index of the value to set
    * @param value - The JSON value to set
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_json_array_set (
     sapi_json_array_t* array,
     const unsigned int index,
@@ -481,6 +506,7 @@ extern "C" {
    * @param index - The index of the value to set
    * @return The JSON value to set
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_any_t* sapi_json_array_get (
     const sapi_json_array_t* array,
     const unsigned int index
@@ -491,6 +517,7 @@ extern "C" {
    * @param array - The array to set a value on
    * @param value - The JSON value to set
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_json_array_push (
     sapi_json_array_t* json,
     sapi_json_any_t* any
@@ -501,6 +528,7 @@ extern "C" {
    * @param array - The array to set a value on
    * @return The popped JSON value.
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_any_t* sapi_json_array_pop (
     sapi_json_array_t* json
   );
@@ -510,6 +538,7 @@ extern "C" {
    * @param value - The JSON value to convert to a string
    * @return The JSON value as a string
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char * sapi_json_stringify (const sapi_json_any_t*);
 
 
@@ -563,6 +592,7 @@ extern "C" {
    * @param registration - The registration info for an extension
    * @return `true` if successful, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_extension_register (
     const sapi_extension_registration_t* registration
   );
@@ -572,6 +602,7 @@ extern "C" {
    * @param context - An extension context
    * @param message - A message to write to stdout
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_log (const sapi_context_t* ctx, const char *message);
 
   /**
@@ -579,6 +610,7 @@ extern "C" {
    * @param context - An extension context
    * @param message - A message to write to stderr
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_debug (const sapi_context_t* ctx, const char *message);
 
   /**
@@ -598,6 +630,7 @@ extern "C" {
    * Computes a random `uint64_t` value.
    * @return The random `uint64_t` value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   uint64_t sapi_rand64 ();
 
 
@@ -658,7 +691,8 @@ extern "C" {
    * @param message The IPC message
    * @return The window index the IPC message was initiated from or intended for
    */
-  int sapi_ipc_message_get_index (
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const int sapi_ipc_message_get_index (
     const sapi_ipc_message_t* message
   );
 
@@ -667,6 +701,7 @@ extern "C" {
    * @param message The IPC message
    * @return The IPC message value (possibly `NULL`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get_value (
     const sapi_ipc_message_t* message
   );
@@ -676,6 +711,7 @@ extern "C" {
    * @param message The IPC message
    * @return The IPC message name (possibly `NULL`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get_name (
     const sapi_ipc_message_t* message
   );
@@ -685,6 +721,7 @@ extern "C" {
    * @param message The IPC message
    * @return The IPC message sequence value (possibly `NULL`, "", "-1", or "...")
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get_seq (
     const sapi_ipc_message_t* message
   );
@@ -694,6 +731,7 @@ extern "C" {
    * @param message The IPC message
    * @return The IPC message URI value (possibly `NULL`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get_uri (
     const sapi_ipc_message_t* message
   );
@@ -703,6 +741,7 @@ extern "C" {
    * @param message The IPC message
    * @return The IPC message parameter value (possibly `NULL`)
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get (
     const sapi_ipc_message_t* message,
     const char* key
@@ -714,6 +753,7 @@ extern "C" {
    * @param message - The IPC message for this request
    * @return The new IPC result
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_ipc_result_t* sapi_ipc_result_create (
     sapi_context_t* context,
     sapi_ipc_message_t *message
@@ -724,6 +764,7 @@ extern "C" {
    * @param result - An IPC request result
    * @param seq    - An IPC sequence value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_seq (
     sapi_ipc_result_t* result,
     const char* seq
@@ -734,6 +775,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return The result sequence value (possibly `NULL`, "", "-1", or "...")
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_result_get_seq (
     const sapi_ipc_result_t* result
   );
@@ -743,6 +785,7 @@ extern "C" {
    * @param result  - An IPC request result
    * @param message - The IPC message for this result
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_message (
     sapi_ipc_result_t* result,
     sapi_ipc_message_t* message
@@ -753,6 +796,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return the IPC message
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_ipc_message_t* sapi_ipc_result_get_message (
     const sapi_ipc_result_t* result
   );
@@ -762,6 +806,7 @@ extern "C" {
    * @param result - An IPC request result
    * @param json   - The result JSON
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_json (
     sapi_ipc_result_t* result,
     const sapi_json_any_t* json
@@ -772,6 +817,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return The IPC result JSON
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_json_any_t* sapi_ipc_result_get_json (
     const sapi_ipc_result_t* result
   );
@@ -781,6 +827,7 @@ extern "C" {
    * @param result - An IPC request result
    * @param json   - The result JSON "data" field value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_json_data (
     sapi_ipc_result_t* result,
     const sapi_json_any_t* json
@@ -791,6 +838,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return The result JSON "data" field value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_json_any_t* sapi_ipc_result_get_json_data (
     const sapi_ipc_result_t* result
   );
@@ -800,6 +848,7 @@ extern "C" {
    * @param result - An IPC request result
    * @param json   - The result JSON "err" field value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_json_error (
     sapi_ipc_result_t* result,
     const sapi_json_any_t* json
@@ -810,6 +859,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return The result JSON "err" field value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_json_any_t* sapi_ipc_result_get_json_error (
     const sapi_ipc_result_t* result
   );
@@ -820,6 +870,7 @@ extern "C" {
    * @param size   - The size of the bytes
    * @param bytes  - The bytes
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_bytes (
     sapi_ipc_result_t* result,
     const unsigned int size,
@@ -831,6 +882,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return THe IPC result bytes
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const unsigned char* sapi_ipc_result_get_bytes (
     const sapi_ipc_result_t* result
   );
@@ -840,6 +892,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return The size of the IPC result bytes
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const unsigned int sapi_ipc_result_get_bytes_size (
     const sapi_ipc_result_t* result
   );
@@ -850,6 +903,7 @@ extern "C" {
    * @param name   - The name of the header
    * @param value  - The value of the header
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_header (
     sapi_ipc_result_t* result,
     const char* name,
@@ -860,6 +914,7 @@ extern "C" {
    * Get an IPC result response header.
    * @param result - An IPC request result
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_result_get_header (
     const sapi_ipc_result_t* result,
     const char* name
@@ -872,6 +927,7 @@ extern "C" {
    * @param json    - The result JSON
    * @return The new IPC result
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_ipc_result_t* sapi_ipc_result_from_json (
     sapi_context_t* context,
     sapi_ipc_message_t* message,
@@ -883,6 +939,7 @@ extern "C" {
    * @param result - An IPC request result
    * @return `true` if successful, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_reply (const sapi_ipc_result_t* result);
 
   /**
@@ -892,6 +949,7 @@ extern "C" {
    * @param json    - The result JSON
    * @return `true` if successful, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_json (
     sapi_context_t* context,
     const char* seq,
@@ -906,6 +964,7 @@ extern "C" {
    * @param bytes   - The bytes
    * @return `true` if successful, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_bytes (
     sapi_context_t* context,
     const char* seq,
@@ -922,6 +981,7 @@ extern "C" {
    * @param callback - The callback called when an IPC route receives a request
    * @param data     - User data propagated to `callback`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_router_map (
     sapi_context_t* context,
     const char* route,
@@ -935,6 +995,7 @@ extern "C" {
    * @param context  - An extension context
    * @param route    - The route name to map
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_router_unmap (
     sapi_context_t* context,
     const char* route
@@ -950,6 +1011,7 @@ extern "C" {
    * @param data     - User data propagated to `callback`
    * @return A token to be used with `sapi_ipc_router_unlisten()`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   uint64_t sapi_ipc_router_listen (
     sapi_context_t* context,
     const char* route,
@@ -966,6 +1028,7 @@ extern "C" {
    * @param token   - A token from `sapi_ipc_router_listen()`
    * @return `true` if retained, otherwise `false`.
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_router_unlisten (
     sapi_context_t* context,
     const char* route,
@@ -991,20 +1054,15 @@ extern "C" {
    * @param command - A system shell command to execute
    * @return The process execution result with output.
    */
-  sapi_process_exec_t* sapi_process_exec (sapi_context_t*, const char* command);
-
-  /**
-   * Frees up a process execution result and any allocated resources.
-   * @param process - The process execution result
-   * @return The exit code of the process
-   */
-  int sapi_process_exec_finish (sapi_process_exec_t* process);
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const sapi_process_exec_t* sapi_process_exec (sapi_context_t*, const char* command);
 
   /**
    * Get the exit code of an execution result.
    * @param process - The process execution result
    * @return The exit code of the process
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const int sapi_process_exec_get_exit_code (
     const sapi_process_exec_t* process
   );
@@ -1014,6 +1072,7 @@ extern "C" {
    * @param process - The process execution result
    * @return The output of the process
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_process_exec_get_output (const sapi_process_exec_t* process);
 
 
@@ -1029,6 +1088,7 @@ extern "C" {
    * @param key     - A configuration key path
    * @return The configuration value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const char * sapi_context_config_get (
     const sapi_context_t* context,
     const char* key
@@ -1040,6 +1100,7 @@ extern "C" {
    * @param key     - A configuration key path
    * @param value   - The configuration value
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_config_set (
     sapi_context_t* context,
     const char* key,
@@ -1059,6 +1120,7 @@ extern "C" {
    * @param data    - Optional user data to pass to the initializer
    * @return `true` if the extension was loaded, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_extension_load (
     sapi_context_t* context,
     const char *name,
@@ -1071,6 +1133,7 @@ extern "C" {
    * @param name    - The name of the extension
    * @return `true` if the extension was loaded, otherwise `false`
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_extension_unload (sapi_context_t* context, const char *name);
 
   /**
@@ -1079,6 +1142,7 @@ extern "C" {
    * @param name    - The name of the extension
    * @return The extension registration info
    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
   const sapi_extension_registration_t* sapi_extension_get (
     const sapi_context_t* context,
     const char *name
