@@ -1415,8 +1415,11 @@ export function createBinding (domain, ctx) {
 /**
  * @ignore
  */
-export const primordials = Object.freeze(sendSync('platform.primordials')?.data || {})
+export const primordials = sendSync('platform.primordials')?.data || {}
 
+// remove trailing slash on windows
+primordials.cwd = primordials.cwd.replace(/\\$/, '')
+Object.freeze(primordials)
 initializeXHRIntercept()
 
 if (typeof globalThis?.window !== 'undefined') {
