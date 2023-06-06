@@ -89,6 +89,7 @@ namespace SSC {
 
       Context context;
       const void *data = nullptr;
+      const sapi_extension_registration_t* registration = nullptr;
 
       // registration
       String name = "";
