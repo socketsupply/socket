@@ -17,7 +17,12 @@ void sapi_ipc_router_map (
     auto reply
   ) {
     auto ctx = new sapi_context_t(context);
-    auto msg = SSC::IPC::Message(message.uri, true, message.buffer.bytes, message.buffer.size);
+    auto msg = SSC::IPC::Message(
+      message.uri,
+      true, // decode parameter values AOT in `message.uri`
+      message.buffer.bytes,
+      message.buffer.size
+    );
     ctx->internal = ctx->memory.alloc<SSC::IPC::Router::ReplyCallback>(reply);
     callback(
       ctx,
