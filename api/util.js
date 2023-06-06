@@ -752,6 +752,7 @@ export function parseJSON (string) {
     try {
       const encoded = encodeURIComponent(string)
       if (encoded.includes('%5C')) {
+        // eslint-disable-next-line prefer-regex-literals
         const regex = new RegExp('(?<!%5C)%5C', 'g')
         return JSON.parse(decodeURIComponent(encoded.replace(regex, '%5C%5C')))
       }
