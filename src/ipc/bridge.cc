@@ -288,7 +288,11 @@ void initRouterTable (Router *router) {
     auto name = message.get("name");
     if (!Extension::load(name)) {
       return reply(Result::Err { message, JSON::Object::Entries {
+      #if defined(_WIN32)
+        {"message", "Failed to load extension: '" + name + "'."}
+      #else
         {"message", "Failed to load extension: '" + name + "'. " + String(dlerror())}
+      #endif
       }});
     }
 
@@ -350,7 +354,11 @@ void initRouterTable (Router *router) {
 
     if (!Extension::isLoaded(name)) {
       return reply(Result::Err { message, JSON::Object::Entries {
+      #if defined(_WIN32)
+        {"message", "Extension '" + name + "' is not loaded"}
+      #else
         {"message", "Extension '" + name + "' is not loaded" + String(dlerror())}
+      #endif
       }});
     }
 
