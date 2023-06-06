@@ -267,7 +267,7 @@ namespace SSC {
 
       if (extension->deinitializer(ctx, ctx->data)) {
       #if defined(_WIN32)
-        if (FreeLibrary(reinterpret_cast<HMODULE>(extension->handle)) {
+        if (FreeLibrary(reinterpret_cast<HMODULE>(extension->handle))) {
           return true;
         }
       #else

@@ -4046,11 +4046,11 @@ int main (const int argc, const char* argv[]) {
               } else if (CXX.ends_with("clang++")) {
                 compiler = CXX.substr(0, CXX.size() - 2);
               } else if (CXX.ends_with("clang++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 5) + ".exe";
+                compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
               } else if (CXX.ends_with("g++")) {
                 compiler = CXX.substr(0, CXX.size() - 2) + "cc";
               } else if (CXX.ends_with("g++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 5) + "cc.exe";
+                compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
               }
 
               if (platform.mac) {
