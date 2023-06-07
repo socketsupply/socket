@@ -2,10 +2,7 @@
 
 sapi_context_t* sapi_context_create (sapi_context_t* parent) {
   if (parent) {
-    if (
-      !parent->isAllowed("context") &&
-      !parent->isAllowed("context_create")
-     ) {
+    if (!parent->isAllowed("context_create")) {
       sapi_debug(parent, "'context_create' is not allowed.");
       return nullptr;
     }
@@ -34,10 +31,7 @@ bool sapi_context_dispatch (
   if (ctx->router->bridge == nullptr) return false;
   if (ctx->router->bridge->core == nullptr) return false;
 
-  if (
-    !ctx->isAllowed("context") &&
-    !ctx->isAllowed("context_dispatch")
-  ) {
+  if (!ctx->isAllowed("context_dispatch")) {
     sapi_debug(ctx, "'context_dispatch' is not allowed.");
     return false;
   }
@@ -50,11 +44,8 @@ bool sapi_context_dispatch (
 }
 
 void sapi_context_retain (sapi_context_t* ctx) {
-  if (
-    ctx == nullptr ||
-    !ctx->isAllowed("context") &&
-    !ctx->isAllowed("context_retain")
-  ) {
+  if (ctx == nullptr) return;
+  if (!ctx->isAllowed("context_retain")) {
     sapi_debug(ctx, "'context_retain' is not allowed.");
     return;
   }
@@ -68,11 +59,8 @@ bool sapi_context_retained (const sapi_context_t* ctx) {
 }
 
 void sapi_context_release (sapi_context_t* ctx) {
-  if (
-    ctx == nullptr ||
-    !ctx->isAllowed("context") &&
-    !ctx->isAllowed("context_release")
-  ) {
+  if (ctx == nullptr) return;
+  if (!ctx->isAllowed("context_release")) {
     sapi_debug(ctx, "'context_release' is not allowed.");
     return;
   }
@@ -85,10 +73,7 @@ uv_loop_t* sapi_context_get_loop (const sapi_context_t* ctx) {
   if (ctx->router == nullptr) return nullptr;
   if (ctx->router->bridge == nullptr) return nullptr;
   if (ctx->router->bridge->core == nullptr) return nullptr;
-  if (
-    !ctx->isAllowed("context") &&
-    !ctx->isAllowed("context_get_loop")
-  ) {
+  if (!ctx->isAllowed("context_get_loop")) {
     sapi_debug(ctx, "'context_get_loop' is not allowed.");
     return nullptr;
   }
@@ -99,10 +84,7 @@ uv_loop_t* sapi_context_get_loop (const sapi_context_t* ctx) {
 const sapi_ipc_router_t* sapi_context_get_router (const sapi_context_t* ctx) {
   if (ctx == nullptr) return nullptr;
   if (ctx->router == nullptr) return nullptr;
-  if (
-    !ctx->isAllowed("context") &&
-    !ctx->isAllowed("context_get_router")
-  ) {
+  if (!ctx->isAllowed("context_get_router")) {
     sapi_debug(ctx, "'context_get_router' is not allowed.");
     return nullptr;
   }

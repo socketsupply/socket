@@ -5,10 +5,7 @@ const sapi_process_exec_t* sapi_process_exec (
   const char* command
 ) {
   if (ctx == nullptr) return nullptr;
-  if (
-    !ctx->isAllowed("process") &&
-    !ctx->isAllowed("process_exec")
-  ) {
+  if (!ctx->isAllowed("process_exec")) {
     sapi_debug(ctx, "'process_exec' is not allowed.");
     return nullptr;
   }

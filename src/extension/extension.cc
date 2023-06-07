@@ -154,7 +154,24 @@ namespace SSC {
 
   bool Extension::Context::isAllowed (const String& name) const {
     if (this->policies.size() == 0) return true;
-    return this->hasPolicy(name) && this->getPolicy(name).allowed;
+    auto names = SSC::split(name, ',');
+
+    // parse each comma (',') separated policy
+    for (const auto& value: names) {
+      auto parts = SSC::split(SSC::trim(value), '_');
+      String current = "";
+      // try each part of the policy (ipc, ipc_router, ipc_router_map)
+      for (const auto& part : parts) {
+        current += part;
+        if (this->hasPolicy(current) && this->getPolicy(current).allowed) {
+          return true;
+        }
+
+        current += "_";
+      }
+    }
+
+    return false;
   }
 
   Extension::Context::Memory::~Memory () {
@@ -436,6 +453,12 @@ bool sapi_extension_register (
   }
 
   return false;
+}
+
+bool sapi_extension_is_allowed (sapi_context_t* context, const char *allowed) {
+  if (context == nullptr) return false;
+  if (allowed == nullptr) return false;
+  return context->isAllowed(allowed);
 }
 
 const sapi_extension_registration_t* sapi_extension_get (
