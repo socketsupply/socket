@@ -3021,7 +3021,7 @@ int main (const int argc, const char* argv[]) {
 
           auto objects = StringStream();
           auto libdir = platform.arch == "arm64"
-            ? prefixFile(String("lib/arm64-") + (flagBuildForSimulator ? "iPhoneSimulator" : "iPhone"))
+            ? prefixFile(String("lib/arm64-") + (flagBuildForSimulator ? "iPhoneSimulator" : "iPhoneOS"))
             : prefixFile(String("lib/") + (flagBuildForSimulator ? "x86_64-iPhoneSimulator" : "arm64-iPhoneOS"));
 
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
