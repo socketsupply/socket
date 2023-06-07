@@ -273,17 +273,28 @@ extern "C" {
    */
 
   /**
+   * Evaluate named JavaScript in context.
    * @param context - An extension context
    * @param name    - The name of the script to evaluate
    * @param source  - The source of the script to evaluate
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_context_evaluate_javascript (
+  void sapi_evaluate_javascript (
     sapi_context_t* context,
     const char* name,
     const char* source
   );
 
+  /**
+   * Get an environment variable
+   * @param context - An extension context
+   * @param name    - The name of the environment variable
+   * @return The value of the environment which can be `NULL`
+   */
+  const char* sapi_env_get (
+    sapi_context_t* context,
+    const char* name
+  );
 
   /**
    * JSON API
@@ -301,6 +312,7 @@ extern "C" {
   #define SAPI_JSON_TYPE_BOOLEAN 4
   #define SAPI_JSON_TYPE_NUMBER 5
   #define SAPI_JSON_TYPE_STRING 6
+  #define SAPI_JSON_TYPE_RAW 7
 
   /**
    * `true` if `value` is an empty JSON type.
@@ -387,6 +399,11 @@ extern "C" {
   typedef struct sapi_json_string sapi_json_string_t;
 
   /**
+   * An opaque JSON type that represents to a "raw" JSON value.
+   */
+  typedef struct sapi_json_raw sapi_json_raw_t;
+
+  /**
    * A scalar type that represents the JSON type enumeration.
    */
   typedef int sapi_json_type_t;
@@ -460,6 +477,18 @@ extern "C" {
   sapi_json_number_t* sapi_json_number_create (
     sapi_context_t* context,
     const double number
+  );
+
+  /**
+   * Creates raw JSON from a source string. The source string is NOT parsed.
+   * @param context - A context associated with the extension
+   * @param source  - The raw JSON source string
+   * @return The JSON created from raw source.
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_json_any_t* sapi_json_raw_from (
+    sapi_context_t* context,
+    const char* source
   );
 
   /**
@@ -1066,7 +1095,10 @@ extern "C" {
    * @return The process execution result with output.
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const sapi_process_exec_t* sapi_process_exec (sapi_context_t*, const char* command);
+  const sapi_process_exec_t* sapi_process_exec (
+    sapi_context_t* context,
+    const char* command
+  );
 
   /**
    * Get the exit code of an execution result.
