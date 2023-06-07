@@ -233,6 +233,20 @@ extern "C" {
       : context(ctx), SSC::JSON::String(string)
     {}
   };
+
+  struct sapi_json_raw : public SSC::JSON::Raw {
+    sapi_context_t* context = nullptr;
+    sapi_json_raw (
+      const char* source
+    ) : SSC::JSON::Raw(source)
+    {}
+
+    sapi_json_raw (
+      sapi_context_t* ctx,
+      const char* source
+    ) : context(ctx), SSC::JSON::Raw(source)
+    {}
+  };
 };
 
 #endif
