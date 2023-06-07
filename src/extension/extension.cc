@@ -87,6 +87,7 @@ namespace SSC {
     this->router = extension->context.router;
     this->config = extension->context.config;
     this->data = extension->context.data;
+    this->policies = extension->context.policies;
   }
 
   Extension::Context::Context (const Context& context) {
@@ -94,6 +95,7 @@ namespace SSC {
     this->router = context.router;
     this->config = context.config;
     this->data = context.data;
+    this->policies = context.policies;
   }
 
   Extension::Context::Context (const Context* context) {
@@ -101,7 +103,17 @@ namespace SSC {
     this->router = context->router;
     this->config = context->config;
     this->data = context->data;
+    this->policies = context->policies;
   }
+
+  Extension::Context::Context (const Context& context, IPC::Router* router)
+    : Context(router) {
+      this->extension = context.extension;
+      this->router = router;
+      this->config = context.config;
+      this->data = context.data;
+      this->policies = context.policies;
+    }
 
   Extension::Context::Context (IPC::Router* router) : Context() {
     this->router = router;
@@ -114,6 +126,35 @@ namespace SSC {
   void Extension::Context::release () {
     this->retained = false;
     this->memory.release();
+  }
+
+  Extension::Context* Extension::getContext (const String& name) {
+    return &extensions.at(name)->context;
+  }
+
+  void Extension::Context::setPolicy (const String& name, bool allowed) {
+    if (this->hasPolicy(name)) {
+      auto policy = this->getPolicy(name);
+      policy.allowed = allowed;
+      policy.name = name;
+    } else {
+      this->policies.insert_or_assign(name, Policy { name, allowed });
+    }
+  }
+
+  const Extension::Context::Policy& Extension::Context::getPolicy (
+    const String& name
+  ) const {
+    return this->policies.at(name);
+  }
+
+  bool Extension::Context::hasPolicy (const String& name) const {
+    return this->policies.contains(name);
+  }
+
+  bool Extension::Context::isAllowed (const String& name) const {
+    if (this->policies.size() == 0) return true;
+    return this->hasPolicy(name) && this->getPolicy(name).allowed;
   }
 
   Extension::Context::Memory::~Memory () {
@@ -180,6 +221,28 @@ namespace SSC {
     if (!extensions.contains(name)) return false;
     extensions.at(name)->handle = handle;
     return true;
+  }
+
+  void Extension::setRouterContext (const String& name, IPC::Router* router, Context* context) {
+    if (!extensions.contains(name)) return;
+    auto extension = extensions.at(name);
+    extension->contexts[router] = context;
+  }
+
+  Extension::Context* Extension::getRouterContext (
+    const String& name,
+    IPC::Router* router
+  ) {
+    if (!extensions.contains(name)) return nullptr;
+    return extensions.at(name)->contexts[router];
+  }
+
+  void Extension::removeRouterContext (
+    const String& name,
+    IPC::Router* router
+  ) {
+    if (!extensions.contains(name)) return;
+    extensions.at(name)->contexts.erase(router);
   }
 
   bool Extension::isLoaded (const String& name) {
@@ -258,31 +321,38 @@ namespace SSC {
     return false;
   }
 
-  bool Extension::unload (const String& name) {
+  bool Extension::unload (Context* ctx, const String& name, bool shutdown) {
     Lock lock(mutex);
 
-    if (Extension::isLoaded(name)) {
-      auto extension = Extension::get(name);
-      auto ctx = const_cast<Context*>(&extension->context);
-
-      if (extension->deinitializer(ctx, ctx->data)) {
-      #if defined(_WIN32)
-        if (FreeLibrary(reinterpret_cast<HMODULE>(extension->handle))) {
-          return true;
-        }
-      #else
-        if (dlclose(extension->handle) == 0) {
-          return true;
-        }
-      #endif
-      }
+    if (!Extension::isLoaded(name)) {
+      return false;
     }
+
+    auto extension = Extension::get(name);
+
+    if (!extension->deinitializer(ctx, ctx->data)) {
+      return false;
+    }
+
+    if (!shutdown) {
+      return true;
+    }
+
+  #if defined(_WIN32)
+    if (!FreeLibrary(reinterpret_cast<HMODULE>(extension->handle))) {
+      return false;
+    }
+  #else
+    if (dlclose(extension->handle)) {
+      return false;
+    }
+  #endif
 
     if (extensions.contains(name)) {
       extensions.erase(name);
     }
 
-    return false;
+    return true;
   }
 
   void Extension::create (
@@ -300,7 +370,7 @@ namespace SSC {
   }
 
   bool Extension::initialize (
-    const Context* ctx,
+    Context* ctx,
     const String& name,
     const void* data
   ) {
@@ -313,9 +383,8 @@ namespace SSC {
     auto extension = extensions.at(name);
     if (extension != nullptr && extension->initializer != nullptr) {
       debug("Initializing loaded extension: %s", name.c_str());
-      extension->context.router = ctx->router;
       extension->context.data = data;
-      return extension->initializer(&extension->context, data);
+      return extension->initializer(ctx, data);
     }
 
     return false;
@@ -346,6 +415,7 @@ bool sapi_extension_register (
     extension->deinitializer = [registration] (auto ctx, auto data) {
       auto deinitializer = registration->deinitializer;
       if (deinitializer != nullptr) {
+        debug("Unloading extension: %s", registration->name);
         return deinitializer(reinterpret_cast<sapi_context_t*>(ctx), data);
       }
 
@@ -407,7 +477,7 @@ bool sapi_extension_unload (sapi_context_t* context, const char *name) {
     return false;
   }
 
-  if (!SSC::Extension::unload(name)) {
+  if (!SSC::Extension::unload(context, name, true)) {
     return false;
   }
 

@@ -1,6 +1,16 @@
 #include "extension.hh"
 
 sapi_context_t* sapi_context_create (sapi_context_t* parent) {
+  if (parent) {
+    if (
+      !parent->isAllowed("context") &&
+      !parent->isAllowed("context_create")
+     ) {
+      sapi_debug(parent, "'context_create' is not allowed.");
+      return nullptr;
+    }
+  }
+
   auto context = parent == nullptr
     ? new sapi_context_t
     : parent->memory.alloc<sapi_context_t>();
@@ -24,6 +34,14 @@ bool sapi_context_dispatch (
   if (ctx->router->bridge == nullptr) return false;
   if (ctx->router->bridge->core == nullptr) return false;
 
+  if (
+    !ctx->isAllowed("context") &&
+    !ctx->isAllowed("context_dispatch")
+  ) {
+    sapi_debug(ctx, "'context_dispatch' is not allowed.");
+    return false;
+  }
+
   return ctx->router->dispatch([&]() {
     ctx->router->bridge->core->dispatchEventLoop([ctx, data, callback] () {
       callback(ctx, data);
@@ -32,7 +50,15 @@ bool sapi_context_dispatch (
 }
 
 void sapi_context_retain (sapi_context_t* ctx) {
-  if (ctx == nullptr) return;
+  if (
+    ctx == nullptr ||
+    !ctx->isAllowed("context") &&
+    !ctx->isAllowed("context_retain")
+  ) {
+    sapi_debug(ctx, "'context_retain' is not allowed.");
+    return;
+  }
+
   ctx->retain();
 }
 
@@ -42,7 +68,14 @@ bool sapi_context_retained (const sapi_context_t* ctx) {
 }
 
 void sapi_context_release (sapi_context_t* ctx) {
-  if (ctx == nullptr) return;
+  if (
+    ctx == nullptr ||
+    !ctx->isAllowed("context") &&
+    !ctx->isAllowed("context_release")
+  ) {
+    sapi_debug(ctx, "'context_release' is not allowed.");
+    return;
+  }
   ctx->release();
   delete ctx;
 }
@@ -52,12 +85,27 @@ uv_loop_t* sapi_context_get_loop (const sapi_context_t* ctx) {
   if (ctx->router == nullptr) return nullptr;
   if (ctx->router->bridge == nullptr) return nullptr;
   if (ctx->router->bridge->core == nullptr) return nullptr;
+  if (
+    !ctx->isAllowed("context") &&
+    !ctx->isAllowed("context_get_loop")
+  ) {
+    sapi_debug(ctx, "'context_get_loop' is not allowed.");
+    return nullptr;
+  }
+
   return ctx->router->bridge->core->getEventLoop();
 }
 
 const sapi_ipc_router_t* sapi_context_get_router (const sapi_context_t* ctx) {
   if (ctx == nullptr) return nullptr;
   if (ctx->router == nullptr) return nullptr;
+  if (
+    !ctx->isAllowed("context") &&
+    !ctx->isAllowed("context_get_router")
+  ) {
+    sapi_debug(ctx, "'context_get_router' is not allowed.");
+    return nullptr;
+  }
   return reinterpret_cast<const sapi_ipc_router_t*>(ctx->router);
 }
 
@@ -84,9 +132,9 @@ const int sapi_context_error_get_code (const sapi_context_t* context) {
 }
 
 void sapi_context_error_set_name (
-    sapi_context_t* context,
-    const char* name
-    ) {
+  sapi_context_t* context,
+  const char* name
+) {
   if (context == nullptr) return;
   context->error.name = name;
   context->state = SSC::Extension::Context::State::Error;

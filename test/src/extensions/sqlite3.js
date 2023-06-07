@@ -6,7 +6,7 @@ import test from 'socket:test'
 import fs from 'socket:fs'
 
 test('extension.load(name) - sqlite3', async (t) => {
-  const databasePath = process.cwd().replace(/\\$/, '') + path.sep + 'data.db'
+  const databasePath = process.cwd() + path.sep + 'data.db'
   let sqlite3
   let query
 

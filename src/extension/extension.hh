@@ -30,6 +30,14 @@ namespace SSC {
           String location = "";
         };
 
+        struct Policy {
+          String name;
+          bool allowed = false;
+          Policy (const String& name, bool allowed)
+            : name(name), allowed(allowed)
+          {}
+        };
+
         struct Memory {
           std::vector<std::function<void()>> pool;
           Mutex mutex;
@@ -60,6 +68,8 @@ namespace SSC {
           }
         };
 
+        using PolicyMap = std::map<String, Policy>;
+
         const Extension* extension = nullptr;
         IPC::Router* router = nullptr;
         Context* context = nullptr;
@@ -70,6 +80,7 @@ namespace SSC {
         State state = State::None;
         Error error;
         std::atomic<bool> retained = false;
+        PolicyMap policies;
         Map config;
 
         Context () = default;
@@ -77,16 +88,24 @@ namespace SSC {
         Context (const Context* context);
         Context (const Context& context);
         Context (IPC::Router* router);
+        Context (const Context& context, IPC::Router* router);
 
         void retain ();
         void release ();
+
+        void setPolicy (const String& name, bool allowed);
+        const Policy& getPolicy (const String& name) const;
+        bool hasPolicy (const String& name) const;
+        bool isAllowed (const String& name) const;
       };
 
       using Map = std::map<String, std::shared_ptr<Extension>>;
       using Entry = std::shared_ptr<const Extension>;
       using Initializer = std::function<bool(Context*, const void*)>;
       using Deinitializer = std::function<bool(Context*, const void*)>;
+      using RouterContexts = std::map<IPC::Router*, Context*>;
 
+      RouterContexts contexts;
       Context context;
       const void *data = nullptr;
       const sapi_extension_registration_t* registration = nullptr;
@@ -103,14 +122,31 @@ namespace SSC {
       static String getExtensionsDirectory (const String& name);
       static const Extension::Map& all ();
       static const Entry get (const String& name);
+      static Context* getContext (const String& name);
       static bool setHandle (const String& name, void* handle);
       static void create (const String& name, const Initializer initializer);
       static bool load (const String& name);
-      static bool unload (const String& name);
+      static bool unload (Context* ctx, const String& name, bool shutdown);
       static bool isLoaded (const String& name);
 
+      static void setRouterContext (
+        const String& name,
+        IPC::Router* router,
+        Context* context
+      );
+
+      static Context* getRouterContext (
+        const String& name,
+        IPC::Router* router
+      );
+
+      static void removeRouterContext (
+        const String& name,
+        IPC::Router* router
+      );
+
       static bool initialize (
-        const Context* ctx,
+        Context* ctx,
         const String& name,
         const void* data = nullptr // owned by caller
       );

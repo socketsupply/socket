@@ -4,6 +4,14 @@ const sapi_process_exec_t* sapi_process_exec (
   sapi_context_t* ctx,
   const char* command
 ) {
+  if (ctx == nullptr) return nullptr;
+  if (
+    !ctx->isAllowed("process") &&
+    !ctx->isAllowed("process_exec")
+  ) {
+    sapi_debug(ctx, "'process_exec' is not allowed.");
+    return nullptr;
+  }
   auto process = SSC::exec(command);
   process.output = SSC::trim(process.output);
   return ctx->memory.alloc<sapi_process_exec_t>(ctx, process);
