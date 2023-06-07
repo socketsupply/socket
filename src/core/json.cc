@@ -170,14 +170,20 @@ namespace SSC::JSON {
     this->type = Type::Array;
   }
 
+  Any::Any (const Raw source) {
+    this->pointer = std::shared_ptr<void>(new Raw(source));
+    this->type = Type::Raw;
+  }
+
   std::string Any::str () const {
     const auto ptr = this->pointer.get() == nullptr
       ? reinterpret_cast<const void*>(this)
       : this->pointer.get();
 
     switch (this->type) {
-      case Type::Any: return "";
       case Type::Empty: return "";
+      case Type::Any: return "";
+      case Type::Raw: return reinterpret_cast<const Raw*>(ptr)->str();
       case Type::Null: return "null";
       case Type::Object: return reinterpret_cast<const Object*>(ptr)->str();
       case Type::Array: return reinterpret_cast<const Array*>(ptr)->str();

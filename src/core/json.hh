@@ -6,6 +6,7 @@
 namespace SSC::JSON {
   // forward
   class Any;
+  class Raw;
   class Null;
   class Object;
   class Array;
@@ -53,7 +54,8 @@ namespace SSC::JSON {
     Array = 3,
     Boolean = 4,
     Number = 5,
-    String = 6
+    String = 6,
+    Raw = 7
   };
 
   template <typename D, Type t> struct Value {
@@ -64,6 +66,7 @@ namespace SSC::JSON {
       auto typeof () const {
         switch (this->type) {
           case Type::Empty: return std::string("empty");
+          case Type::Raw: return std::string("raw");
           case Type::Any: return std::string("any");
           case Type::Array: return std::string("array");
           case Type::Boolean: return std::string("boolean");
@@ -74,26 +77,14 @@ namespace SSC::JSON {
         }
       }
 
+      auto isRaw() const { return this->type == Type::Raw; }
       auto isArray () const { return this->type == Type::Array; }
       auto isBoolean () const { return this->type == Type::Boolean; }
       auto isNumber () const { return this->type == Type::Number; }
       auto isNull () const { return this->type == Type::Null; }
       auto isObject () const { return this->type == Type::Object; }
       auto isString () const { return this->type == Type::String; }
-      auto isEmpty () const {
-        switch (this->type) {
-          case Type::Empty: return true;
-          case Type::Any: return false;
-          case Type::Array: return false;
-          case Type::Boolean: return false;
-          case Type::Number: return false;
-          case Type::Null: return false;
-          case Type::Object: return false;
-          case Type::String: return false;
-        }
-
-        return true;
-      }
+      auto isEmpty () const { return this->type == Type::Empty; }
   };
 
   class Null : public Value<std::nullptr_t, Type::Null> {
@@ -156,6 +147,7 @@ namespace SSC::JSON {
       Any (const ObjectEntries);
       Any (const Array);
       Any (const ArrayEntries);
+      Any (const Raw source);
 
       std::string str () const;
 
@@ -167,6 +159,17 @@ namespace SSC::JSON {
         }
 
         throw Error("BadCastError", "cannot cast to null value", __PRETTY_FUNCTION__);
+      }
+  };
+
+  class Raw : public Value<std::string, Type::Raw> {
+    public:
+      Raw (const Raw& raw) { this->data = raw.data; }
+      Raw (const Raw* raw) { this->data = raw->data; }
+      Raw (const std::string& source) { this->data = source; }
+
+      const std::string str () const {
+        return this->data;
       }
   };
 
