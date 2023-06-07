@@ -14,11 +14,7 @@ void sapi_ipc_router_map (
     return;
   }
 
-  if (
-    !ctx->isAllowed("ipc") &&
-    !ctx->isAllowed("ipc_router") &&
-    !ctx->isAllowed("ipc_router_map")
-  ) {
+  if (!ctx->isAllowed("ipc_router_map")) {
     sapi_debug(ctx, "'ipc_router_map' is not allowed.");
     return;
   }
@@ -50,11 +46,7 @@ void sapi_ipc_router_unmap (sapi_context_t* ctx, const char* name) {
     return;
   }
 
-  if (
-    !ctx->isAllowed("ipc") &&
-    !ctx->isAllowed("ipc_router") &&
-    !ctx->isAllowed("ipc_router_unmap")
-  ) {
+  if (!ctx->isAllowed("ipc_router_unmap")) {
     sapi_debug(ctx, "'ipc_router_unmap' is not allowed.");
     return;
   }
@@ -72,11 +64,7 @@ uint64_t sapi_ipc_router_listen (
     return 0;
   }
 
-  if (
-    !ctx->isAllowed("ipc") &&
-    !ctx->isAllowed("ipc_router") &&
-    !ctx->isAllowed("ipc_router_listen")
-  ) {
+  if (!ctx->isAllowed("ipc_router_listen")) {
     sapi_debug(ctx, "'ipc_router_listen' is not allowed.");
     return 0;
   }
@@ -106,11 +94,7 @@ bool sapi_ipc_router_unlisten (
     return false;
   }
 
-  if (
-    !ctx->isAllowed("ipc") &&
-    !ctx->isAllowed("ipc_router") &&
-    !ctx->isAllowed("ipc_router_unlisten")
-  ) {
+  if (!ctx->isAllowed("ipc_router_unlisten")) {
     sapi_debug(ctx, "'ipc_router_unlisten' is not allowed.");
     return false;
   }
@@ -122,11 +106,7 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   if (result == nullptr) return false;
   if (result->context == nullptr) return false;
 
-  if (
-    !result->context->isAllowed("ipc") &&
-    !result->context->isAllowed("ipc_router") &&
-    !result->context->isAllowed("ipc_router_reply")
-  ) {
+  if (!result->context->isAllowed("ipc_router_reply")) {
     sapi_debug(result->context, "'ipc_router_reply' is not allowed.");
     return 0;
   }
@@ -145,7 +125,8 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
 
   // if retained, then then caller must eventually call `sapi_context_release()`
   if (!context->retained) {
-    sapi_context_release(context);
+    context->release();
+    delete context;
   }
 
   return success;

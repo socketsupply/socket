@@ -254,7 +254,7 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 #if defined(__APPLE__)
-void pollOSLogStream (String bundleIdentifier, int processIdentifier) {
+void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIdentifier) {
   // It appears there is a bug with `:predicateWithFormat:` as the
   // following does not appear to work:
   //
@@ -270,9 +270,10 @@ void pollOSLogStream (String bundleIdentifier, int processIdentifier) {
   auto bid = bundleIdentifier.c_str();
   queryStream
     << "("
-    << "  category == 'socket.runtime.desktop' OR "
-    << "  category == 'socket.runtime.mobile' OR "
-    << "  category == 'socket.runtime.debug'"
+    << (isForDesktop
+        ? "category == 'socket.runtime.desktop'"
+        : "category == 'socket.runtime.mobile'")
+    << " OR category == 'socket.runtime.debug'"
     << ") AND ";
 
     if (processIdentifier > 0) {
@@ -417,7 +418,13 @@ void pollOSLogStream (String bundleIdentifier, int processIdentifier) {
                 entry.level == OSLogEntryLogLevelError ||
                 entry.level == OSLogEntryLogLevelFault
               ) {
-                std::cerr << message << std::endl;
+                if (entry.level == OSLogEntryLogLevelDebug) {
+                  if (flagDebugMode) {
+                    std::cerr << message << std::endl;
+                  }
+                } else {
+                  std::cerr << message << std::endl;
+                }
               } else {
                 std::cout << message << std::endl;
               }
@@ -588,6 +595,7 @@ int runApp (const Path& path, const String& args, bool headless) {
       appPid = app.processIdentifier;
 
       pollOSLogStream(
+        true,
         String(bundle.bundleIdentifier.UTF8String),
         app.processIdentifier
       );

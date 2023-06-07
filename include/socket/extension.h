@@ -598,6 +598,17 @@ extern "C" {
   );
 
   /**
+   * Predicate to determine if a policy is allowed in an extension context.
+   * Multiple policy names can be given as a list seperated by `,`.
+   * ie: "ipc,context,process"
+   * @param context - An extension context
+   * @param allowed - An extension context policy name
+   * @return `true` if `allowed` is allowed in `context`.
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_extension_is_allowed (sapi_context_t* context, const char *allowed);
+
+  /**
    * Print `message` to the stdout log.
    * @param context - An extension context
    * @param message - A message to write to stdout

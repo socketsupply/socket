@@ -6,10 +6,7 @@ void sapi_javascript_evaluate (
   const char* source
 ) {
   if (ctx == nullptr || name == nullptr || source == nullptr) return;
-  if (
-    !ctx->isAllowed("javascript") &&
-    !ctx->isAllowed("javascript_evaluate")
-  ) {
+  if (!ctx->isAllowed("javascript_evaluate")) {
     sapi_debug(ctx, "'javascript_evaluate' is not allowed.");
     return;
   }

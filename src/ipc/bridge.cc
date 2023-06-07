@@ -303,8 +303,9 @@ void initRouterTable (Router *router) {
     auto context = Extension::getContext(name);
     auto ctx = context->memory.template alloc<Extension::Context>(context, router);
 
-    for (const auto& feature : allowed) {
-      ctx->setPolicy(feature, true);
+    for (const auto& value : allowed) {
+      auto policy = trim(value);
+      ctx->setPolicy(policy, true);
     }
 
     Extension::setRouterContext(name, router, ctx);
