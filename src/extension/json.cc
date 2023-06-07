@@ -8,6 +8,7 @@ const sapi_json_type_t sapi_json_typeof (const sapi_json_any_t* json) {
   if (json->isNumber()) return SAPI_JSON_TYPE_NUMBER;
   if (json->isString()) return SAPI_JSON_TYPE_STRING;
   if (json->isEmpty()) return SAPI_JSON_TYPE_EMPTY;
+  if (json->isRaw()) return SAPI_JSON_TYPE_RAW;
   return SAPI_JSON_TYPE_ANY;
 }
 
@@ -40,6 +41,15 @@ sapi_json_number_t* sapi_json_number_create (
   return ctx->memory.alloc<sapi_json_number_t>(ctx, number);
 }
 
+sapi_json_any_t* sapi_json_raw_from (
+  sapi_context_t* ctx,
+  const char* source
+) {
+  return reinterpret_cast<sapi_json_any_t*>(
+    ctx->memory.alloc<sapi_json_raw_t>(ctx, source)
+  );
+}
+
 const char * sapi_json_stringify (const sapi_json_any_t* json) {
   SSC::String string;
   switch (sapi_json_typeof(json)) {
@@ -62,6 +72,9 @@ const char * sapi_json_stringify (const sapi_json_any_t* json) {
       break;
     case SAPI_JSON_TYPE_STRING:
       string = reinterpret_cast<const SSC::JSON::String*>(json)->str();
+      break;
+    case SAPI_JSON_TYPE_RAW:
+      string = reinterpret_cast<const SSC::JSON::Raw*>(json)->str();
       break;
 
     case SAPI_JSON_TYPE_EMPTY:
@@ -108,6 +121,9 @@ void sapi_json_object_set (
     } else if (any->isNumber()) {
       auto number = reinterpret_cast<SSC::JSON::Number*>(any);
       json->set(key, SSC::JSON::Number(number->data));
+    } else if (any->isRaw()) {
+      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
+      json->set(key, SSC::JSON::Raw(raw->data));
     }
   }
 }
@@ -149,6 +165,9 @@ void sapi_json_array_set (
     } else if (any->isNumber()) {
       auto number = reinterpret_cast<SSC::JSON::Number*>(any);
       json->set(index, SSC::JSON::Number(number->data));
+    } else if (any->isRaw()) {
+      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
+      json->set(index, SSC::JSON::Raw(raw->data));
     }
   }
 }
@@ -177,6 +196,9 @@ void sapi_json_array_push (
     } else if (any->isNumber()) {
       auto number = reinterpret_cast<SSC::JSON::Number*>(any);
       json->push(SSC::JSON::Number(number->data));
+    } else if (any->isRaw()) {
+      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
+      json->push(SSC::JSON::Raw(raw->data));
     }
   }
 }

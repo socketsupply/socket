@@ -82,6 +82,12 @@ namespace SSC {
     int64_t
   );
 
+  template sapi_json_raw_t*
+  SSC::Extension::Context::Memory::alloc<sapi_json_raw_t> (
+    sapi_context_t*,
+    const char*
+  );
+
   Extension::Context::Context (const Extension* extension) {
     this->extension = extension;
     this->router = extension->context.router;
