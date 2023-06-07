@@ -277,6 +277,7 @@ void initRouterTable (Router *router) {
   /**
    * Load a named native extension.
    * @param name
+   * @param allow
    */
   router->map("extension.load", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
@@ -286,6 +287,7 @@ void initRouterTable (Router *router) {
     }
 
     auto name = message.get("name");
+
     if (!Extension::load(name)) {
       return reply(Result::Err { message, JSON::Object::Entries {
       #if defined(_WIN32)
@@ -296,18 +298,28 @@ void initRouterTable (Router *router) {
       }});
     }
 
-    auto ctx = Extension::Context { router };
+    auto extension = Extension::get(name);
+    auto allowed = split(message.get("allow"), ',');
+    auto context = Extension::getContext(name);
+    auto ctx = context->memory.template alloc<Extension::Context>(context, router);
 
-    if (!Extension::initialize(&ctx, name, nullptr)) {
-      if (ctx.state == Extension::Context::State::Error) {
+    for (const auto& feature : allowed) {
+      ctx->setPolicy(feature, true);
+    }
+
+    Extension::setRouterContext(name, router, ctx);
+
+    /// init context
+    if (!Extension::initialize(ctx, name, nullptr)) {
+      if (ctx->state == Extension::Context::State::Error) {
         auto json = JSON::Object::Entries {
           {"source", "extension.load"},
           {"extension", name},
           {"err", JSON::Object::Entries {
-            {"code", ctx.error.code},
-            {"name", ctx.error.name},
-            {"message", ctx.error.message},
-            {"location", ctx.error.location},
+            {"code", ctx->error.code},
+            {"name", ctx->error.name},
+            {"message", ctx->error.message},
+            {"location", ctx->error.location},
           }}
         };
 
@@ -324,7 +336,6 @@ void initRouterTable (Router *router) {
         reply(Result { message.seq, message, json });
       }
     } else {
-      auto extension = Extension::get(name);
       auto json = JSON::Object::Entries {
         {"source", "extension.load"},
         {"data", JSON::Object::Entries {
@@ -362,22 +373,28 @@ void initRouterTable (Router *router) {
       }});
     }
 
-    if (Extension::unload(name)) {
-      return reply(Result { message.seq, message });
+    auto extension = Extension::get(name);
+    auto ctx = Extension::getRouterContext(name, router);
+
+    if (Extension::unload(ctx, name, extension->contexts.size() == 1)) {
+      Extension::removeRouterContext(name, router);
+      auto json = JSON::Object::Entries {
+        {"source", "extension.unload"},
+        {"extension", name},
+        {"data", JSON::Object::Entries {}}
+      };
+      return reply(Result { message.seq, message, json });
     }
 
-    auto extension = Extension::get(name);
-    auto& ctx = extension->context;
-
-    if (ctx.state == Extension::Context::State::Error) {
+    if (ctx->state == Extension::Context::State::Error) {
       auto json = JSON::Object::Entries {
         {"source", "extension.unload"},
         {"extension", name},
         {"err", JSON::Object::Entries {
-          {"code", ctx.error.code},
-          {"name", ctx.error.name},
-          {"message", ctx.error.message},
-          {"location", ctx.error.location},
+          {"code", ctx->error.code},
+          {"name", ctx->error.name},
+          {"message", ctx->error.message},
+          {"location", ctx->error.location},
         }}
       };
 

@@ -3860,10 +3860,10 @@ declare module "socket:extension" {
         /**
          * Load an extension by name.
          * @param {string} name
-         * @param {objects?} [options]
+         * @param {{ features: string[] | string ?} [options]
          * @return {Promise<Extension>}
          */
-        static load(name: string, options?: objects): Promise<Extension>;
+        static load(name: string, options: any): Promise<Extension>;
         /**
          * Provides current stats about the loaded extensions.
          * @return {Promise<ExtensionStats>}
@@ -3913,7 +3913,7 @@ declare module "socket:extension" {
          * Unloads the loaded extension.
          * @throws Error
          */
-        unload(): Promise<void>;
+        unload(): Promise<any>;
         [$loaded]: boolean;
     }
     namespace _default {

@@ -26,11 +26,18 @@ export class Extension extends EventTarget {
   /**
    * Load an extension by name.
    * @param {string} name
-   * @param {objects?} [options]
+   * @param {{ features: string[] | string ?} [options]
    * @return {Promise<Extension>}
    */
   static async load (name, options) {
-    const result = await ipc.request('extension.load', { name, ...options })
+    options = { name, ...options }
+
+    if (Array.isArray(options.features)) {
+      options.features = options.features.join(',')
+    }
+
+    const result = await ipc.request('extension.load', options)
+
     if (result.err) {
       throw new Error('Failed to load extensions', { cause: result.err })
     }
@@ -132,6 +139,8 @@ export class Extension extends EventTarget {
 
     this[$loaded] = false
     this.dispatchEvent(new Event('unload'))
+
+    return result.data
   }
 }
 

@@ -20,6 +20,7 @@ bool initialize (sapi_context_t* context, const void *data) {
 }
 
 bool deinitialize (sapi_context_t* context, const void *data) {
+  sapi_ipc_router_unmap(context, "simple.ping");
   return true;
 }
 
