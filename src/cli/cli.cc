@@ -2702,7 +2702,7 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          make << "## socket/extensions/" << extension << ".so" << std::endl;
+          make << "## socket/extensions/" << extension << SHARED_OBJ_EXT << std::endl;
           make << "include $(CLEAR_VARS)" << std::endl;
           make << "LOCAL_MODULE := extension-" << extension << std::endl;
           make << std::endl;
@@ -3152,7 +3152,7 @@ int main (const int argc, const char* argv[]) {
             << " -shared"
             << " -v"
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
-            << " -o " << (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"))
+            << " -o " << (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT))
           ;
 
           if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
@@ -3176,7 +3176,7 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"));
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
           // mostly random build IDs and refs
           auto id = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
           auto ref = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
@@ -3989,7 +3989,7 @@ int main (const int argc, const char* argv[]) {
 
           auto sources = parseStringList(tuple.second, ' ');
           auto objects = StringStream();
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so"));
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
 
           if (sources.size() == 0) {
             continue;
@@ -4240,7 +4240,7 @@ int main (const int argc, const char* argv[]) {
 
           if (platform.mac) {
             if (isForDesktop) {
-              settings["mac_sign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".so")).string() + ";";
+              settings["mac_sign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT)).string() + ";";
             }
           }
 
