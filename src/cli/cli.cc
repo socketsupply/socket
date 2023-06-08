@@ -2141,7 +2141,8 @@ int main (const int argc, const char* argv[]) {
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
       getEnv("DEBUG").size() > 0
-    );
+    );    
+    auto debugBuild = debugEnv;
 
     const bool verboseEnv = (
       getEnv("SSC_VERBOSE").size() > 0 ||
@@ -4030,7 +4031,7 @@ int main (const int argc, const char* argv[]) {
               compilerFlags += " -framework OSLog";
             }
 
-            if (platform.win) {
+            if (platform.win && debugBuild) {
               compilerDebugFlags += "-D_DEBUG";
             }
 
@@ -4102,7 +4103,7 @@ int main (const int argc, const char* argv[]) {
               << " -lsocket-runtime"
             #endif
               << " -DIOS=0"
-              << " -U__CYGWIN__"
+              // << " -U__CYGWIN__"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << devHost
@@ -4169,7 +4170,7 @@ int main (const int argc, const char* argv[]) {
             settings[key + "_" + os + "_linker_debug_flags"]
           );
 
-          if (platform.win) {
+          if (platform.win && debugBuild) {
             linkerDebugFlags += "-D_DEBUG";
             for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
               if (libString.size() > 0) {
@@ -4189,8 +4190,8 @@ int main (const int argc, const char* argv[]) {
           }
 
         #if defined(_WIN32)
-          auto d = String(platform.win && getEnv("DEBUG") == "1" ? "d" : "");
-          auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\uv_a" + d + ".lib");
+          auto d = String(platform.win && debugBuild ? "d" : "");
+          auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\uv_a.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
         #else
           auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
