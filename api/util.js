@@ -751,7 +751,12 @@ export function parseJSON (string) {
 
     try {
       const encoded = encodeURIComponent(string)
+      // detect back slashes without regex hell as they may not be escaped
+      // ie: '\Users' instead of '\\Users' which results in invalid JSON
       if (encoded.includes('%5C')) {
+        // use `RegExp` because a literal regex may throw a syntax error
+        // in environments where negative lookbehinds are not supported
+        // see https://stackoverflow.com/a/50434875 for platform support
         // eslint-disable-next-line prefer-regex-literals
         const regex = new RegExp('(?<!%5C)%5C', 'g')
         return JSON.parse(decodeURIComponent(encoded.replace(regex, '%5C%5C')))
