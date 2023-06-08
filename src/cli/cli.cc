@@ -3530,6 +3530,9 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
+    std::vector<Path> copyMapFiles;
+
+    // copy map file for all platforms
     if (settings.count("build_copy_map") != 0) {
       auto copyMapFile = Path{settings["build_copy_map"]}.make_preferred();
 
@@ -3537,7 +3540,51 @@ int main (const int argc, const char* argv[]) {
         copyMapFile = targetPath / copyMapFile;
       }
 
-      if (!fs::exists(fs::status(copyMapFile))) {
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    // copy map file for target platform
+    if (
+      targetPlatform.starts_with("ios") &&
+      settings.count("build_ios_copy_map") != 0
+    ) {
+      auto copyMapFile = Path{settings["build_ios_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    if (
+      targetPlatform.starts_with("android") &&
+      settings.count("build_ios_copy_map") != 0
+    ) {
+      auto copyMapFile = Path{settings["build_android_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    if (
+      settings.count("build_" + platform.os +  "_copy_map") != 0 &&
+      settings.count("build_ios_copy_map") != 0
+    ) {
+      auto copyMapFile = Path{settings["build_" + platform.os +  "_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    for (const auto& copyMapFile : copyMapFiles) {
+      if (!fs::exists(fs::status(copyMapFile)) || !fs::is_regular_file(copyMapFile)) {
         log("WARNING: file specified in [build] copy_map does not exist");
       } else {
         auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
@@ -3546,6 +3593,31 @@ int main (const int argc, const char* argv[]) {
         for (const auto& tuple : copyMap) {
           auto key = tuple.first;
           auto& value = tuple.second;
+
+          if (key.starts_with("win_")) {
+            if (!platform.win) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("mac_")) {
+            if (!platform.mac) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("ios_")) {
+            if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("linux_")) {
+            if (!platform.linux) continue;
+            key = key.substr(6, key.size() - 6);
+          }
+
+          if (key.starts_with("android_")) {
+            if (!targetPlatform.starts_with("android")) continue;
+            key = key.substr(8, key.size() - 8);
+          }
 
           if (key.starts_with("debug_")) {
             if (!flagDebugMode) continue;
