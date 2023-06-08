@@ -1,21 +1,29 @@
 #include "extension.hh"
 
-sapi_context_t* sapi_context_create (sapi_context_t* parent) {
-  if (parent) {
-    if (!parent->isAllowed("context_create")) {
-      sapi_debug(parent, "'context_create' is not allowed.");
-      return nullptr;
-    }
+sapi_context_t* sapi_context_create (
+  sapi_context_t* parent,
+  const bool retained
+) {
+  if (parent && !parent->isAllowed("context_create")) {
+    sapi_debug(parent, "'context_create' is not allowed.");
+    return nullptr;
   }
 
-  auto context = parent == nullptr
-    ? new sapi_context_t
+  auto context = retained || parent == nullptr
+    ? new sapi_context_t(parent)
     : parent->memory.alloc<sapi_context_t>();
 
-  if (parent == nullptr) {
+  if (retained || parent == nullptr) {
     context->retained = true;
-  } else {
+  }
+
+  if (parent != nullptr) {
     context->context = parent;
+    context->extension = parent->extension;
+    context->router = parent->router;
+    context->config = parent->config;
+    context->data = parent->data;
+    context->policies = parent->policies;
   }
 
   return context;
