@@ -166,6 +166,14 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #define PORT 0
 #endif
 
+
+#if defined(_WIN32)
+#define SHARED_OBJ_EXT ".dll"
+#else
+#define SHARED_OBJ_EXT ".so"
+#endif
+
+
       /*
 #if !DEBUG
 #ifdef debug
@@ -246,6 +254,10 @@ namespace SSC {
   inline String WStringToString (const String& s) {
     return s;
   }
+  
+  #if defined(_WIN32)
+  SSC::String FormatError(DWORD error, SSC::String source);
+  #endif
 
   //
   // Reporting on the platform.
