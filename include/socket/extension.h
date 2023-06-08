@@ -120,11 +120,15 @@ extern "C" {
   /**
    * Creates a new context. The context is retained if a `parent` is not given
    * and therefor emust be disposed with `sapi_context_release()`.
-   * @param parent - An optional parent to own the new context
+   * @param parent   - An optional parent to own the new context
+   * @param retained - `true` if the returned context should be retained (owned) by the caller
    * @return The new context (`sapi_context_t*`)
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  sapi_context_t* sapi_context_create (sapi_context_t* parent);
+  sapi_context_t* sapi_context_create (
+    sapi_context_t* parent,
+    const bool retained
+  );
 
   /**
    * Queues `callback` to be called sometime in the future for a `context`.
