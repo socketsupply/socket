@@ -160,7 +160,9 @@ extern "C" {
   typedef sapi_extension_registration_t* (*sapi_extension_registration_entry)();
   struct sapi_context : public SSC::Extension::Context {
     sapi_context () = default;
-    sapi_context (sapi_context* ctx) : SSC::Extension::Context(ctx) {}
+    sapi_context (sapi_context* ctx)
+      : SSC::Extension::Context(reinterpret_cast<SSC::Extension::Context*>(ctx))
+    {}
   };
 
   struct sapi_process_exec : public SSC::ExecOutput {

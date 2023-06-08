@@ -105,15 +105,19 @@ namespace SSC {
   }
 
   Extension::Context::Context (const Context* context) {
-    this->extension = context->extension;
-    this->router = context->router;
-    this->config = context->config;
-    this->data = context->data;
-    this->policies = context->policies;
+    if (context != nullptr) {
+      this->extension = context->extension;
+      this->router = context->router;
+      this->config = context->config;
+      this->data = context->data;
+      this->policies = context->policies;
+    }
   }
 
-  Extension::Context::Context (const Context& context, IPC::Router* router)
-    : Context(router) {
+  Extension::Context::Context (
+    const Context& context,
+    IPC::Router* router
+  ) : Context(router) {
       this->extension = context.extension;
       this->router = router;
       this->config = context.config;
