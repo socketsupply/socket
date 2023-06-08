@@ -1,6 +1,27 @@
 #include "../core/core.hh"
 #include "ipc.hh"
+namespace SSC {
+  #if defined(_WIN32)
+  SSC::String FormatError(DWORD error, SSC::String source) {
+    SSC::StringStream message;
+    LPVOID lpMsgBuf;
+    FormatMessage(
+    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+    FORMAT_MESSAGE_FROM_SYSTEM |
+    FORMAT_MESSAGE_IGNORE_INSERTS,
+    NULL,
+    error,
+    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+    (LPTSTR) &lpMsgBuf,
+    0, NULL );
 
+    message << "Error " << error << " in " << source << ": " <<  (LPTSTR)lpMsgBuf;
+    LocalFree(lpMsgBuf);
+
+    return message.str();
+  }
+  #endif
+}
 namespace SSC::IPC {
   Message::Message (const Message& message) {
     this->buffer.bytes = message.buffer.bytes;

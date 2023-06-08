@@ -8,10 +8,10 @@
 
 namespace SSC {
 
+#if defined(SSC_CLI)
 SSC::String FormatError(DWORD error, SSC::String source) {
   SSC::StringStream message;
   LPVOID lpMsgBuf;
-  LPVOID lpDisplayBuf;
   FormatMessage(
   FORMAT_MESSAGE_ALLOCATE_BUFFER | 
   FORMAT_MESSAGE_FROM_SYSTEM |
@@ -24,10 +24,10 @@ SSC::String FormatError(DWORD error, SSC::String source) {
 
   message << "Error " << error << " in " << source << ": " <<  (LPTSTR)lpMsgBuf;
   LocalFree(lpMsgBuf);
-  LocalFree(lpDisplayBuf);
 
   return message.str();
 }
+#endif
 
 const static SSC::StringStream initial;
 

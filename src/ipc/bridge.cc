@@ -289,12 +289,16 @@ void initRouterTable (Router *router) {
     auto name = message.get("name");
 
     if (!Extension::load(name)) {
-      return reply(Result::Err { message, JSON::Object::Entries {
       #if defined(_WIN32)
-        {"message", "Failed to load extension: '" + name + "'."}
+      auto error = FormatError(GetLastError(), "bridge");
       #else
-        {"message", "Failed to load extension: '" + name + "'. " + String(dlerror())}
+      auto error = String(dlerror());
       #endif
+
+      std::cout << "Load extension error: " << error << std::endl;
+
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Failed to load extension: '" + name + "': " + error}
       }});
     }
 
