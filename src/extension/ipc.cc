@@ -150,16 +150,11 @@ bool sapi_ipc_send_json (
   const char* seq,
   sapi_json_any_t* json
 ) {
-  if (
-    ctx == nullptr ||
-    ctx->router == nullptr ||
-    seq == nullptr ||
-    json == nullptr
-  ) {
+  SSC::JSON::Any value = nullptr;
+
+  if (ctx == nullptr || ctx->router == nullptr || json == nullptr) {
     return false;
   }
-
-  SSC::JSON::Any value = nullptr;
 
   if (json == nullptr) {
     value = nullptr;
@@ -179,6 +174,9 @@ bool sapi_ipc_send_json (
     } else if (json->isNumber()) {
       auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
       value = SSC::JSON::Number(number->data);
+    } else if (json->isRaw()) {
+      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
+      value = SSC::JSON::Raw(raw->data);
     }
   }
 
