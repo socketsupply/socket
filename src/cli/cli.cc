@@ -2648,29 +2648,29 @@ int main (const int argc, const char* argv[]) {
           auto compilerFlags = (
             settings["build_extensions_compiler_flags"] + " " +
             settings["build_extensions_android_compiler_flags"] + " " +
-            settings[key + "_compiler_flags"] + " " +
-            settings[key + "_android_compiler_flags"] +  " "
+            settings["build_extensions_" + extension + "_compiler_flags"] + " " +
+            settings["build_extensions_" + extension + "_android_compiler_flags"] +  " "
           );
 
           auto compilerDebugFlags = (
             settings["build_extensions_compiler_debug_flags"] + " " +
             settings["build_extensions_android_compiler_debug_flags"] + " " +
-            settings[key + "_compiler_debug_flags"] + " " +
-            settings[key + "_android_compiler_debug_flags"] +  " "
+            settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_android_compiler_debug_flags"] +  " "
           );
 
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] + " " +
             settings["build_extensions_android_linker_flags"] + " " +
-            settings[key + "_linker_flags"] + " " +
-            settings[key + "_android_linker_flags"] +  " "
+            settings["build_extensions_" + extension + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_android_linker_flags"] +  " "
           );
 
           auto linkerDebugFlags = (
             settings["build_extensions_linker_debug_flags"] + " " +
             settings["build_extensions_android_linker_debug_flags"] + " " +
-            settings[key + "_linker_debug_flags"] + " " +
-            settings[key + "_android_linker_debug_flags"] + " "
+            settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " "
           );
 
           auto sources = StringStream();
@@ -3034,11 +3034,12 @@ int main (const int argc, const char* argv[]) {
 
           for (const auto& source : parseStringList(tuple.second, ' ')) {
             String compiler;
+            log("source: " + source);
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] +
               settings["build_extensions_ios_compiler_flags"] +
-              settings[key + "_compiler_flags"] +
-              settings[key + "_ios_compiler_flags"] +
+              settings["build_extensions_" + extension + "_compiler_flags"] +
+              settings["build_extensions_" + extension + "_ios_compiler_flags"] +
               " -framework UniformTypeIdentifiers" +
               " -framework CoreBluetooth" +
               " -framework Network" +
@@ -3051,8 +3052,8 @@ int main (const int argc, const char* argv[]) {
             auto compilerDebugFlags = (
               settings["build_extensions_compiler_debug_flags"] + " " +
               settings["build_extensions_ios_compiler_debug_flags"] + " " +
-              settings[key + "_compiler_debug_flags"] + " " +
-              settings[key + "_ios_compiler_debug_flags"] + " "
+              settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
 
             if (source.ends_with(".hh") || source.ends_with(".h")) {
@@ -3115,15 +3116,15 @@ int main (const int argc, const char* argv[]) {
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] + " " +
             settings["build_extensions_ios_linker_flags"] + " " +
-            settings[key + "_linker_flags"] + " " +
-            settings[key + "_ios_linker_flags"] + " "
+            settings["build_extensions_" + extension + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_ios_linker_flags"] + " "
           );
 
           auto linkerDebugFlags = (
             settings["build_extensions_linker_debug_flags"] + " " +
             settings["build_extensions_ios_linker_debug_flags"] + " " +
-            settings[key + "_linker_debug_flags"] + " " +
-            settings[key + "_ios_linker_debug_flags"] + " "
+            settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_ios_linker_debug_flags"] + " "
           );
 
           auto compileExtensionLibraryCommand = StringStream();
@@ -4084,15 +4085,15 @@ int main (const int argc, const char* argv[]) {
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] + " " +
               settings["build_extensions_" + os + "_compiler_flags"] + " " +
-              settings[key + "_compiler_flags"] + " " +
-              settings[key + "_" + os + "_compiler_flags"] + " "
+              settings["build_extensions_" + extension + "_compiler_flags"] + " " +
+              settings["build_extensions_" + extension + "_" + os + "_compiler_flags"] + " "
             );
 
             auto compilerDebugFlags = (
               settings["build_extensions_compiler_debug_flags"] + " " +
               settings["build_extensions_" + os + "_compiler_debug_flags"] + " " +
-              settings[key + "_compiler_debug_flags"] + " " +
-              settings[key + "_" + os + "_compiler_debug_flags"] + " "
+              settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_" + os + "_compiler_debug_flags"] + " "
             );
 
             if (platform.mac) {
@@ -4233,15 +4234,15 @@ int main (const int argc, const char* argv[]) {
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] +
             settings["build_extensions_" + os + "_linker_flags"] +
-            settings[key + "_linker_flags"] +
-            settings[key + "_" + os + "_linker_flags"]
+            settings["build_extensions_" + extension + "_linker_flags"] +
+            settings["build_extensions_" + extension + "_" + os + "_linker_flags"]
           );
 
           auto linkerDebugFlags = (
             settings["build_extensions_linker_debug_flags"] +
             settings["build_extensions_" + platform.os + "_linker_debug_flags"] +
-            settings[key + "_linker_debug_flags"] +
-            settings[key + "_" + os + "_linker_debug_flags"]
+            settings["build_extensions_" + extension + "_linker_debug_flags"] +
+            settings["build_extensions_" + extension + "_" + os + "_linker_debug_flags"]
           );
 
           if (platform.win && debugBuild) {
