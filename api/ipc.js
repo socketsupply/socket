@@ -1418,7 +1418,9 @@ export function createBinding (domain, ctx) {
 export const primordials = sendSync('platform.primordials')?.data || {}
 
 // remove trailing slash on windows
-primordials.cwd = primordials.cwd.replace(/\\$/, '')
+if (primordials.cwd) {
+  primordials.cwd = primordials.cwd.replace(/\\$/, '')
+}
 Object.freeze(primordials)
 initializeXHRIntercept()
 
