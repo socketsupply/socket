@@ -6,9 +6,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const VERSION = `v${fs.readFileSync('./VERSION.txt', 'utf8').trim()}`
-const tagExistsOnRemote = execSync(`git ls-remote --tags origin ${VERSION}`).toString().length > 0
+const isCurrentTag = execSync('git describe --tags --always').toString().trim() === VERSION
+const tagNotPresentOnRemote = execSync(`git ls-remote --tags origin ${VERSION}`).toString().length === 0
 
-const gitTagOrBranch = tagExistsOnRemote ? 'master' : VERSION
+const gitTagOrBranch = (isCurrentTag || tagNotPresentOnRemote) ? VERSION : 'master'
 
 const JS_INTERFACE_DIR = 'api'
 const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
