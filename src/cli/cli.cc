@@ -2607,6 +2607,8 @@ int main (const int argc, const char* argv[]) {
         makefileContext["android_native_abis"] = "all";
       }
 
+      makefileContext["__android_native_extensions_context"] = "";
+
       // custom native sources
       for (
         auto const &file :
