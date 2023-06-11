@@ -3034,7 +3034,7 @@ int main (const int argc, const char* argv[]) {
 
           for (const auto& source : parseStringList(tuple.second, ' ')) {
             String compiler;
-            log("source: " + source);
+
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] +
               settings["build_extensions_ios_compiler_flags"] +
