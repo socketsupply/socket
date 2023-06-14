@@ -2600,14 +2600,13 @@ int main (const int argc, const char* argv[]) {
 
       makefileContext["cflags"] = cflags + " " + pp.str();
       makefileContext["cflags"] += " " + settings["android_native_cflags"];
+      makefileContext["__android_native_extensions_context"] = "";
 
       if (settings["android_native_abis"].size() > 0) {
         makefileContext["android_native_abis"] = settings["android_native_abis"];
       } else {
         makefileContext["android_native_abis"] = "all";
       }
-
-      makefileContext["__android_native_extensions_context"] = "";
 
       // custom native sources
       for (
@@ -3517,13 +3516,18 @@ int main (const int argc, const char* argv[]) {
         fs::create_directories(dst.parent_path());
       }
 
-      auto mappedSourceFile = (
+      auto mappedSourceFile = fs::absolute(
         pathResourcesRelativeToUserBuild /
         fs::relative(src, targetPath)
       );
 
-      if (fs::exists(fs::status(mappedSourceFile))) {
-        fs::remove_all(mappedSourceFile);
+      if (
+        !mappedSourceFile.string().ends_with(".") &&
+        pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+      ) {
+        if (fs::exists(fs::status(mappedSourceFile))) {
+          fs::remove_all(mappedSourceFile);
+        }
       }
 
       fs::copy(
@@ -3666,8 +3670,13 @@ int main (const int argc, const char* argv[]) {
             fs::relative(src, copyMapFileDirectory)
           );
 
-          if (fs::exists(fs::status(mappedSourceFile))) {
-            fs::remove_all(mappedSourceFile);
+          if (
+           !mappedSourceFile.string().ends_with(".") &&
+           pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+          ) {
+            if (fs::exists(fs::status(mappedSourceFile))) {
+              fs::remove_all(mappedSourceFile);
+            }
           }
 
           fs::copy(
