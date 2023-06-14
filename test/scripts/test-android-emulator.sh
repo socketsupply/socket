@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 root="$(CDPATH='' cd -- "$(dirname "$(dirname -- "$0")")" && pwd)"
 
 if [[ -n $1 ]]; then
