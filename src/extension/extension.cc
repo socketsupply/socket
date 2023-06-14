@@ -245,18 +245,21 @@ namespace SSC {
   }
 
   bool Extension::setHandle (const String& name, void* handle) {
-    if (!extensions.contains(name))
-    {
+    if (!extensions.contains(name)) {
       std::cout << "WARN - extensions does not contain " << name << std::endl;
       return false;
     }
-    
+
     std::cout << "Registering extension handle " << name << std::endl;
     extensions.at(name)->handle = handle;
     return true;
   }
 
-  void Extension::setRouterContext (const String& name, IPC::Router* router, Context* context) {
+  void Extension::setRouterContext (
+    const String& name,
+    IPC::Router* router,
+    Context* context
+  ) {
     if (!extensions.contains(name)) return;
     auto extension = extensions.at(name);
     extension->contexts[router] = context;
