@@ -2068,7 +2068,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (testFile.size() > 0) {
-      argvForward += " --test";
+      argvForward += " --test=" + testFile;
     }
 
     if (flagHeadless) {
@@ -4944,7 +4944,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (testFile.size() > 0) {
-      argvForward += " --test";
+      argvForward += " --test=" + testFile;
     }
 
     if (flagHeadless) {
