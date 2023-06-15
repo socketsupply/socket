@@ -17,7 +17,7 @@ if test -f "$sqlite3_zip_file"; then
   cd "$sqlite3_build_dir"
   pwd
   rm -f *.c *.h
-  unzip "$sqlite3_zip_file"
+  unzip -q "$sqlite3_zip_file"
   mv sqlite-*/*.{c,h} .
   rm -rf sqlite-*
   popd >/dev/null
