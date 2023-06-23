@@ -25,3 +25,24 @@ const char* sapi_process_exec_get_output (
 ) {
   return process != nullptr ? process->output.c_str() : nullptr;
 }
+
+sapi_process_spawn_t* sapi_process_spawn (
+  sapi_context_t* context,
+  const char* command,
+  const char* argv,
+  sapi_process_spawn_stderr_callback_t onstdout,
+  sapi_process_spawn_stderr_callback_t onstderr,
+  sapi_process_spawn_exit_callback_t onexit
+) {
+  return context->memory.alloc<sapi_process_spawn_t>(
+    command,
+    argv
+  );
+}
+
+const bool sapi_process_kill (
+  sapi_process_spawn_t* process,
+  const int code
+) {
+  return false;
+}
