@@ -1092,6 +1092,34 @@ extern "C" {
   typedef struct sapi_process_exec sapi_process_exec_t;
 
   /**
+   * An opaque pointer for a spawned child process.
+   */
+  typedef struct sapi_process_spawn sapi_process_spawn_t;
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_stdout_callback_t)(
+    const sapi_process_spawn_t* process,
+    const char* output
+  );
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_stderr_callback_t)(
+    const sapi_process_spawn_t* process,
+    const char* output
+  );
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_exit_callback_t)(
+    const sapi_process_spawn_t* process
+  );
+
+  /**
    * Execute `command` as a child process. stdout and stderr are both captured
    * as interleaved output.
    * @param context - An extension context
@@ -1122,6 +1150,32 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_process_exec_get_output (const sapi_process_exec_t* process);
 
+  /**
+   * Spawn a child process with `command`, a `NULL` terminated list of
+   * arguments, and callbacks for stdout and stderr
+   * @param TODO
+   * @return TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_process_spawn_t* sapi_process_spawn (
+    sapi_context_t* context,
+    const char* command,
+    const char* argv,
+    sapi_process_spawn_stderr_callback_t onstdout,
+    sapi_process_spawn_stderr_callback_t onstderr,
+    sapi_process_spawn_exit_callback_t onexit
+  );
+
+  /**
+   * TODO
+   * @param TODO
+   * @return TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const bool sapi_process_kill (
+    sapi_process_spawn_t* process,
+    const int code
+  );
 
   /**
    * Config API

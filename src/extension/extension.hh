@@ -176,6 +176,8 @@ extern "C" {
     {}
   };
 
+  struct sapi_process_spawn : public SSC::Process {};
+
   struct sapi_ipc_router : public SSC::IPC::Router {};
   struct sapi_ipc_message : public SSC::IPC::Message {};
 
