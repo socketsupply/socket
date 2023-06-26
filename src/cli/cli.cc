@@ -2141,7 +2141,7 @@ int main (const int argc, const char* argv[]) {
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
       getEnv("DEBUG").size() > 0
-    );    
+    );
     auto debugBuild = debugEnv;
 
     const bool verboseEnv = (
@@ -3236,7 +3236,9 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = "";
       }
 
-      auto deviceType = platform.arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
+      // --platform=ios should always build for arm64 even on Darwin x86_64
+      auto arch = flagBuildForSimulator ? platform.arch : "arm64";
+      auto deviceType = arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
 
       auto deviceLibs = Path(prefixFile()) / "lib" / deviceType;
       auto deviceObjects = Path(prefixFile()) / "objects" / deviceType;
@@ -3348,6 +3350,11 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
 
+            // --platform=ios should always build for arm64 even on Darwin x86_64
+            if (!flagBuildForSimulator) {
+              compilerFlags += " -arch arm64 ";
+            }
+
             if (source.ends_with(".hh") || source.ends_with(".h")) {
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
@@ -3418,6 +3425,11 @@ int main (const int argc, const char* argv[]) {
             settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
             settings["build_extensions_" + extension + "_ios_linker_debug_flags"] + " "
           );
+
+          // --platform=ios should always build for arm64 even on Darwin x86_64
+          if (!flagBuildForSimulator) {
+            linkerFlags += " -arch arm64 ";
+          }
 
           auto compileExtensionLibraryCommand = StringStream();
           compileExtensionLibraryCommand
@@ -5014,7 +5026,7 @@ int main (const int argc, const char* argv[]) {
     AndroidCliState androidState;
     androidState.androidHome = getAndroidHome();
     androidState.verbose = debugEnv || verboseEnv;
-    androidState.devNull = devNull;    
+    androidState.devNull = devNull;
     androidState.targetPlatform = targetPlatform;
     androidState.platform = androidPlatform;
     androidState.appPath = paths.platformSpecificOutputPath / "app";
