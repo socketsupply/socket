@@ -1116,7 +1116,8 @@ extern "C" {
    * TODO
    */
   typedef void (*sapi_process_spawn_exit_callback_t)(
-    const sapi_process_spawn_t* process
+    const sapi_process_spawn_t* process,
+    const int exit_code
   );
 
   /**
@@ -1161,9 +1162,42 @@ extern "C" {
     sapi_context_t* context,
     const char* command,
     const char* argv,
+    const char* path,
     sapi_process_spawn_stderr_callback_t onstdout,
     sapi_process_spawn_stderr_callback_t onstderr,
     sapi_process_spawn_exit_callback_t onexit
+  );
+
+  /**
+   * Get the exit code of a spawned process.
+   * @param process - The spawned process result
+   * @return The exit code of the process
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const int sapi_process_spawn_get_exit_code (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const unsigned long sapi_process_spawn_get_pid (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const int sapi_process_spawn_wait (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const bool sapi_process_spawn_write (
+    const sapi_process_spawn_t* process,
+    const char* bytes,
+    const unsigned long size
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const bool sapi_process_spawn_close_stdin (
+    const sapi_process_spawn_t* process
   );
 
   /**
