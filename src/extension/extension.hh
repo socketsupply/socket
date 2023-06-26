@@ -176,7 +176,27 @@ extern "C" {
     {}
   };
 
-  struct sapi_process_spawn : public SSC::Process {};
+  struct sapi_process_spawn : public SSC::Process {
+    public:
+      sapi_context_t* context = nullptr;
+
+      sapi_process_spawn (
+        const char* command,
+        const char* argv,
+        const char* path,
+        sapi_process_spawn_stderr_callback_t onstdout,
+        sapi_process_spawn_stderr_callback_t onstderr,
+        sapi_process_spawn_exit_callback_t onexit
+      ) : SSC::Process(
+        command,
+        argv,
+        path,
+        [this, onstdout] (auto output) { if (onstdout) { onstdout(this, output.c_str()); }},
+        [this, onstderr] (auto output) { if (onstderr) { onstderr(this, output.c_str()); }},
+        [this, onexit] (auto code) { if (onexit) { onexit(this, std::stoi(code)); }}
+      )
+      {}
+  };
 
   struct sapi_ipc_router : public SSC::IPC::Router {};
   struct sapi_ipc_message : public SSC::IPC::Message {};
