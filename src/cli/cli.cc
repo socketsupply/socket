@@ -2107,6 +2107,8 @@ int main (const int argc, const char* argv[]) {
     } else {
       targetPlatform = platform.os;
     }
+
+    argvForward +=  " --platform=" + targetPlatform;
     auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
     platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
 
@@ -2927,6 +2929,7 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_mac_")) continue;
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
@@ -2971,11 +2974,32 @@ int main (const int argc, const char* argv[]) {
             settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " "
           );
 
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto sources = StringStream();
           auto make = StringStream();
           auto cwd = targetPath;
           std::unordered_set<String> cflags;
           std::unordered_set<String> cppflags;
+
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+                  log("configure: " + source);
+                }
+
+                auto destination= (
+                  Path(source).parent_path() /
+                  Path(source).filename().string()
+                ).string();
+
+                fs::create_directories(jni / Path(destination).parent_path());
+                fs::copy(cwd / source, jni / destination, fs::copy_options::overwrite_existing);
+                sources << source << " ";
+              }
+            }
+          }
 
           for (auto source : parseStringList(tuple.second, ' ')) {
             auto destination= (
@@ -3304,6 +3328,7 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_mac_")) continue;
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
@@ -3316,6 +3341,8 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto sources = parseStringList(tuple.second, ' ');
           auto objects = StringStream();
           auto libdir = platform.arch == "arm64"
             ? prefixFile(String("lib/arm64-") + (flagBuildForSimulator ? "iPhoneSimulator" : "iPhoneOS"))
@@ -3326,7 +3353,20 @@ int main (const int argc, const char* argv[]) {
             extensions.push_back(extension);
           }
 
-          for (const auto& source : parseStringList(tuple.second, ' ')) {
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+                  log("configure: " + source);
+                }
+
+                sources.push_back(source);
+              }
+            }
+          }
+
+          for (const auto& source : sources) {
             String compiler;
 
             auto compilerFlags = (
@@ -3360,10 +3400,14 @@ int main (const int argc, const char* argv[]) {
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
               compiler = "clang++";
               compilerFlags += " -std=c++2a -ObjC++ -v ";
+            } else if (source.ends_with(".o") || source.ends_with(".a")) {
+              objects << source << " ";
+              continue;
             } else {
               compiler = "clang";
               compilerFlags += " -ObjC -v ";
             }
+
 
             auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
             auto object = (
@@ -4066,6 +4110,7 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
 
@@ -4074,16 +4119,30 @@ int main (const int argc, const char* argv[]) {
           if (!platform.linux && key.starts_with("build_extensions_linux_")) continue;
 
           String extension;
-          auto os = replace(platform.os, "win32", "win");
+          auto os = replace(replace(platform.os, "win32", "win"), "macos", "mac");;
           if (key.starts_with("build_extensions_" + os)) {
             extension = replace(key, "build_extensions_" + os + "_", "");
           } else {
             extension = replace(key, "build_extensions_", "");
           }
 
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto sources = parseStringList(tuple.second, ' ');
           auto objects = StringStream();
           auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
+
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+                  log("configure: " + source);
+                }
+
+                sources.push_back(source);
+              }
+            }
+          }
 
           if (sources.size() == 0) {
             continue;
@@ -4144,6 +4203,9 @@ int main (const int argc, const char* argv[]) {
               } else if (platform.win) {
                 compilerFlags += " -stdlib=libstdc++";
               }
+            } else if (source.ends_with(".o") || source.ends_with(".a")) {
+              objects << source << " ";
+              continue;
             } else {
               if (CC.size() > 0) {
                 compiler = CC;
