@@ -1163,7 +1163,7 @@ extern "C" {
     const char* command,
     const char* argv,
     const char* path,
-    sapi_process_spawn_stderr_callback_t onstdout,
+    sapi_process_spawn_stdout_callback_t onstdout,
     sapi_process_spawn_stderr_callback_t onstderr,
     sapi_process_spawn_exit_callback_t onexit
   );
