@@ -35,7 +35,7 @@ sapi_process_spawn_t* sapi_process_spawn (
   sapi_process_spawn_stderr_callback_t onstderr,
   sapi_process_spawn_exit_callback_t onexit
 ) {
-  return ctx->memory.alloc<sapi_process_spawn_t>(
+  auto process = ctx->memory.alloc<sapi_process_spawn_t>(
     ctx,
     command,
     argv,
@@ -44,6 +44,8 @@ sapi_process_spawn_t* sapi_process_spawn (
     onstderr,
     onexit
   );
+  process->open();
+  return process;
 }
 
 const int sapi_process_spawn_get_exit_code (
@@ -56,6 +58,12 @@ const unsigned long sapi_process_spawn_get_pid (
   const sapi_process_spawn_t* process
 ) {
   return process != nullptr ? process->id : 0;
+}
+
+sapi_context_t* sapi_process_spawn_get_context (
+  const sapi_process_spawn_t* process
+) {
+  return process != nullptr ? process->context : nullptr;
 }
 
 const int sapi_process_spawn_wait (

@@ -136,12 +136,18 @@ bool sapi_ipc_send_bytes (
   sapi_context_t* ctx,
   const char* seq,
   const unsigned int size,
-  const unsigned char* bytes
+  const unsigned char* bytes,
+  const char* headers
 ) {
+  if (ctx == nullptr || ctx->router == nullptr || bytes == nullptr || size == 0) {
+    return false;
+  }
+  auto body = new char[size]{0};
+  memcpy(body, bytes, size);
   return ctx->router->send(
     seq == nullptr || SSC::String(seq) == "" ? "-1" : seq,
-    nullptr,
-    SSC::Post { 0, 0, (char*) bytes, size }
+    "",
+    SSC::Post { 0, 0, body, size, headers ? headers : "" },
   );
 }
 

@@ -663,11 +663,11 @@ extern "C" {
    * @param format - Format string for formatted output
    * @param ...    - `format` argument values
    */
-  #define sapi_printf(ctx, format, ...) ({                                     \
-    char buffer[BUFSIZ] = {0};                                                 \
-    auto size = snprintf(nullptr, 0, format, ##__VA_ARGS__) + 1;               \
-    snprintf(buffer, size, format, ##__VA_ARGS__);                             \
-    sapi_log(ctx, buffer);                                                     \
+  #define sapi_printf(ctx, format, ...) ({                                      \
+    char _buffer[BUFSIZ] = {0};                                                 \
+    int _size = snprintf(nullptr, 0, format, ##__VA_ARGS__) + 1;                \
+    snprintf(_buffer, _size, format, ##__VA_ARGS__);                            \
+    sapi_log(ctx, _buffer);                                                     \
   })
 
   /**
@@ -1101,7 +1101,8 @@ extern "C" {
    */
   typedef void (*sapi_process_spawn_stdout_callback_t)(
     const sapi_process_spawn_t* process,
-    const char* output
+    const char* output,
+    const unsigned int size
   );
 
   /**
@@ -1109,7 +1110,8 @@ extern "C" {
    */
   typedef void (*sapi_process_spawn_stderr_callback_t)(
     const sapi_process_spawn_t* process,
-    const char* output
+    const char* output,
+    const unsigned int size
   );
 
   /**
@@ -1180,6 +1182,11 @@ extern "C" {
 
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const unsigned long sapi_process_spawn_get_pid (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_context_t* sapi_process_spawn_get_context (
     const sapi_process_spawn_t* process
   );
 
