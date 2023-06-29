@@ -191,8 +191,8 @@ extern "C" {
         command,
         argv,
         path,
-        [this, onstdout] (auto output) { if (onstdout) { onstdout(this, output.c_str()); }},
-        [this, onstderr] (auto output) { if (onstderr) { onstderr(this, output.c_str()); }},
+        [this, onstdout] (auto output) { if (onstdout) { onstdout(this, output.c_str(), output.size()); }},
+        [this, onstderr] (auto output) { if (onstderr) { onstderr(this, output.c_str(), output.size()); }},
         [this, onexit] (auto code) { if (onexit) { onexit(this, std::stoi(code)); }}
       )
       {}
