@@ -203,10 +203,9 @@ extern "C" {
 
   struct sapi_ipc_result : public SSC::IPC::Result {
     sapi_context_t* context = nullptr;
-    sapi_ipc_result () = default;
-    sapi_ipc_result (sapi_context_t* ctx)
-      : context(ctx)
-    {}
+    sapi_ipc_result () {
+      this->id = SSC::rand64();
+    }
   };
 
   struct sapi_json_any : public SSC::JSON::Any {

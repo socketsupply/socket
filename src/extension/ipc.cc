@@ -147,7 +147,7 @@ bool sapi_ipc_send_bytes (
   return ctx->router->send(
     seq == nullptr || SSC::String(seq) == "" ? "-1" : seq,
     "",
-    SSC::Post { 0, 0, body, size, headers ? headers : "" },
+    SSC::Post { 0, 0, body, size, headers ? headers : "" }
   );
 }
 

@@ -123,6 +123,7 @@ namespace SSC::IPC {
 
       Message message;
       Message::Seq seq;
+      uint64_t id = 0;
       String source = "";
       JSON::Any value = nullptr;
       JSON::Any data = nullptr;
