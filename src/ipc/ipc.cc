@@ -170,7 +170,7 @@ namespace SSC::IPC {
 
     auto entries = JSON::Object::Entries {
       {"source", this->source},
-      {"result_id", this->id}
+      {"result_id", std::to_string(this->id)}
     };
 
     if (!this->err.isNull()) {
