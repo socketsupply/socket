@@ -6,7 +6,7 @@ namespace SSC {
     SSC::StringStream message;
     LPVOID lpMsgBuf;
     FormatMessage(
-    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+    FORMAT_MESSAGE_ALLOCATE_BUFFER |
     FORMAT_MESSAGE_FROM_SYSTEM |
     FORMAT_MESSAGE_IGNORE_INSERTS,
     NULL,
@@ -121,6 +121,7 @@ namespace SSC::IPC {
     const Message::Seq& seq,
     const Message& message
   ) {
+    this->id = rand64();
     this->message = message;
     this->source = message.name;
     this->seq = seq;
@@ -146,12 +147,12 @@ namespace SSC::IPC {
     }
   }
 
-  Result::Result (const Err error) {
+  Result::Result (const Err error): Result(error.message.seq, error.message) {
     this->err = error.value;
     this->source = error.message.name;
   }
 
-  Result::Result (const Data data) {
+  Result::Result (const Data data): Result(data.message.seq, data.message) {
     this->data = data.value;
     this->source = data.message.name;
   }
@@ -168,7 +169,8 @@ namespace SSC::IPC {
     }
 
     auto entries = JSON::Object::Entries {
-      {"source", this->source}
+      {"source", this->source},
+      {"result_id", this->id}
     };
 
     if (!this->err.isNull()) {

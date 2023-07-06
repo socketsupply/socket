@@ -1013,7 +1013,8 @@ extern "C" {
     sapi_context_t* context,
     const char* seq,
     const unsigned int size,
-    const unsigned char* bytes
+    const unsigned char* bytes,
+    const char* headers
   );
 
   /**
