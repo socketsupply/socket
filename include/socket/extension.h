@@ -194,6 +194,26 @@ extern "C" {
   );
 
   /**
+   * Get user data from context.
+   * @param context - An extension context
+   * @return An opaque pointer to user data
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const void * sapi_context_get_data (
+    const sapi_context_t* context
+  );
+
+  /**
+   * Get parent context for this context
+   * @param context - An extension context
+   * @return A pointer to the parent context. This value may be `NULL`.
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const sapi_context_t* sapi_context_get_parent (
+    const sapi_context_t* context
+  );
+
+  /**
    * Set a context error code.
    * @param context - An extension context
    * @param code    - The code of the error
@@ -665,7 +685,7 @@ extern "C" {
    */
   #define sapi_printf(ctx, format, ...) ({                                      \
     char _buffer[BUFSIZ] = {0};                                                 \
-    int _size = snprintf(nullptr, 0, format, ##__VA_ARGS__) + 1;                \
+    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                   \
     snprintf(_buffer, _size, format, ##__VA_ARGS__);                            \
     sapi_log(ctx, _buffer);                                                     \
   })
@@ -821,6 +841,16 @@ extern "C" {
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_result_get_seq (
+    const sapi_ipc_result_t* result
+  );
+
+  /**
+   * Get context from IPC result.
+   * @param result - An IPC request result
+   * @return An extension context
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_context_t* sapi_ipc_result_get_context (
     const sapi_ipc_result_t* result
   );
 

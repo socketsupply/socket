@@ -2942,6 +2942,44 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          extension = split(extension, '_')[0];
+
+          auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target;
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  settings["build_extensions_" + key] = value;
+                }
+              }
+            }
+          }
+
           auto compilerFlags = replace(
             settings["build_extensions_compiler_flags"] + " " +
             settings["build_extensions_android_compiler_flags"] + " " +
@@ -2975,20 +3013,32 @@ int main (const int argc, const char* argv[]) {
           );
 
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto path = settings["build_extensions_" + extension + "_path"];
+
           auto sources = StringStream();
           auto make = StringStream();
           auto cwd = targetPath;
           std::unordered_set<String> cflags;
           std::unordered_set<String> cppflags;
 
+          if (path.size() > 0) {
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
+          }
+
           if (configure.size() > 0) {
             auto output = replace(exec(configure + argvForward).output, "\n", " ");
             if (output.size() > 0) {
               for (const auto& source : parseStringList(output, ' ')) {
-                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
-                  log("configure: " + source);
-                }
-
                 auto destination= (
                   Path(source).parent_path() /
                   Path(source).filename().string()
@@ -3006,6 +3056,10 @@ int main (const int argc, const char* argv[]) {
               Path(source).parent_path() /
               Path(source).filename().string()
             ).string();
+
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("source: " + source);
+            }
 
             fs::create_directories(jni / Path(destination).parent_path());
             fs::copy(cwd / source, jni / destination, fs::copy_options::overwrite_existing);
@@ -3341,7 +3395,47 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target;
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  settings["build_extensions_" + key] = value;
+                }
+              }
+            }
+          }
+
+
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto path = settings["build_extensions_" + extension + "_path"];
+
           auto sources = parseStringList(tuple.second, ' ');
           auto objects = StringStream();
           auto libdir = platform.arch == "arm64"
@@ -3351,6 +3445,13 @@ int main (const int argc, const char* argv[]) {
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
             log("Building extension: " + extension + " (" + (flagBuildForSimulator ? "x86_64-iPhoneSimulator" : "arm64-iPhoneOS") + ")");
             extensions.push_back(extension);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
           }
 
           if (configure.size() > 0) {
@@ -4126,19 +4227,75 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          extension = split(extension, '_')[0];
+
+          auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target;
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  settings["build_extensions_" + key] = value;
+                }
+              }
+            }
+          }
+
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
-          auto sources = parseStringList(tuple.second, ' ');
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto path = settings["build_extensions_" + extension + "_path"];
+
+          auto sources = parseStringList(
+            trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_" + os]),
+            ' '
+          );
+
           auto objects = StringStream();
           auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
+
+          fs::create_directories(lib.parent_path());
+
+          if (path.size() > 0) {
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
+          }
 
           if (configure.size() > 0) {
             auto output = replace(exec(configure + argvForward).output, "\n", " ");
             if (output.size() > 0) {
               for (const auto& source : parseStringList(output, ' ')) {
-                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
-                  log("configure: " + source);
-                }
-
                 sources.push_back(source);
               }
             }
@@ -4158,8 +4315,6 @@ int main (const int argc, const char* argv[]) {
           );
 
           for (auto source : sources) {
-            source = fs::absolute(Path(targetPath) / source).string();
-
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] + " " +
               settings["build_extensions_" + os + "_compiler_flags"] + " " +
@@ -4203,13 +4358,8 @@ int main (const int argc, const char* argv[]) {
               } else if (platform.win) {
                 compilerFlags += " -stdlib=libstdc++";
               }
-            } else if (source.ends_with(".o") || source.ends_with(".a")) {
-              objects << source << " ";
-              continue;
-            } else {
-              if (CC.size() > 0) {
-                compiler = CC;
-              } else if (CXX.ends_with("clang++")) {
+
+              if (CXX.ends_with("clang++")) {
                 compiler = CXX.substr(0, CXX.size() - 2);
               } else if (CXX.ends_with("clang++.exe")) {
                 compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
@@ -4218,22 +4368,26 @@ int main (const int argc, const char* argv[]) {
               } else if (CXX.ends_with("g++.exe")) {
                 compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
               }
+            } else if (source.ends_with(".o") || source.ends_with(".a")) {
+              objects << source << " ";
+              continue;
+            } else if (source.ends_with(".c") ){
+              if (CC.size() > 0) {
+                compiler = CC;
+              }
 
               if (platform.mac) {
                 compilerFlags += " -ObjC -v";
               }
+            } else {
+              continue;
             }
 
-            auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
-            auto object = (
-              paths.pathResourcesRelativeToUserBuild /
-              "socket" /
-              "extensions" /
-              extension /
-              filename
-            );
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("source: " + source);
+            }
 
-            fs::create_directories(object.parent_path());
+            auto object = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o"));
 
             objects << (quote + object.string() + quote) << " ";
             auto compileExtensionObjectCommand = StringStream();
