@@ -45,9 +45,7 @@ bool sapi_context_dispatch (
   }
 
   return ctx->router->dispatch([=]() {
-    ctx->router->bridge->core->dispatchEventLoop([ctx, data, callback] () {
-      callback(ctx, data);
-    });
+    callback(ctx, data);
   });
 }
 
@@ -97,6 +95,14 @@ const sapi_ipc_router_t* sapi_context_get_router (const sapi_context_t* ctx) {
     return nullptr;
   }
   return reinterpret_cast<const sapi_ipc_router_t*>(ctx->router);
+}
+
+const void * sapi_context_get_data (const sapi_context_t* context) {
+  return context != nullptr ? context->data : nullptr;
+}
+
+const sapi_context_t* sapi_context_get_parent (const sapi_context_t* context) {
+  return context != nullptr ? reinterpret_cast<sapi_context_t*>(context->context) : nullptr;
 }
 
 void sapi_context_error_reset (sapi_context_t* context) {

@@ -20,12 +20,15 @@ void sapi_ipc_router_map (
   }
 
   sapi_context_t context(ctx);
+  auto router = ctx->router;
   ctx->router->map(name, [data, callback, context](
     auto& message,
     auto router,
     auto reply
   ) {
-    auto ctx = new sapi_context_t(context);
+    router->dispatch([=]() mutable {
+    auto ctx = sapi_context_create(&context, true);
+    ctx->data = data;
     auto msg = SSC::IPC::Message(
       message.uri,
       true, // decode parameter values AOT in `message.uri`
@@ -38,6 +41,7 @@ void sapi_ipc_router_map (
       (sapi_ipc_message_t*) &msg,
       reinterpret_cast<const sapi_ipc_router_t*>(&router)
     );
+          });
   });
 }
 
@@ -315,6 +319,12 @@ const sapi_ipc_message_t* sapi_ipc_result_get_message (
     : nullptr;
 }
 
+sapi_context_t* sapi_ipc_result_get_context (
+  const sapi_ipc_result_t* result
+) {
+  return result ? result->context : nullptr;
+}
+
 void sapi_ipc_result_set_json (
   sapi_ipc_result_t* result,
   const sapi_json_any_t* json
@@ -338,6 +348,9 @@ void sapi_ipc_result_set_json (
     } else if (json->isNumber()) {
       auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
       result->value = SSC::JSON::Number(number->data);
+    } else if (json->isRaw()) {
+      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
+      result->value = SSC::JSON::Raw(raw->data);
     }
   }
 }
@@ -373,6 +386,9 @@ void sapi_ipc_result_set_json_data (
     } else if (json->isNumber()) {
       auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
       result->data = SSC::JSON::Number(number->data);
+    } else if (json->isRaw()) {
+      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
+      result->data = SSC::JSON::Raw(raw->data);
     }
   }
 }
@@ -408,6 +424,9 @@ void sapi_ipc_result_set_json_error (
     } else if (json->isNumber()) {
       auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
       result->err = SSC::JSON::Number(number->data);
+    } else if (json->isRaw()) {
+      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
+      result->err  = SSC::JSON::Raw(raw->data);
     }
   }
 }
