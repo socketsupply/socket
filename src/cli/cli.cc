@@ -3504,11 +3504,12 @@ int main (const int argc, const char* argv[]) {
             } else if (source.ends_with(".o") || source.ends_with(".a")) {
               objects << source << " ";
               continue;
-            } else {
+            } else if (source.ends_with(".c")) {
               compiler = "clang";
               compilerFlags += " -ObjC -v ";
+            } else {
+              continue;
             }
-
 
             auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
             auto object = (
@@ -4371,11 +4372,8 @@ int main (const int argc, const char* argv[]) {
             } else if (source.ends_with(".o") || source.ends_with(".a")) {
               objects << source << " ";
               continue;
-            } else if (source.ends_with(".c") ){
-              if (CC.size() > 0) {
-                compiler = CC;
-              }
-
+            } else if (source.ends_with(".c")) {
+              compiler = CC.size() > 0 ? CC : "clang";
               if (platform.mac) {
                 compilerFlags += " -ObjC -v";
               }
