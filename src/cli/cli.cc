@@ -2966,7 +2966,7 @@ int main (const int argc, const char* argv[]) {
             if (fs::exists(target)) {
               auto configFile = target / "socket.ini";
               auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
-              settings["build_extensions_" + extension + "_path"] = target;
+              settings["build_extensions_" + extension + "_path"] = target.string();
 
               for (const auto& entry : config) {
                 if (entry.first.starts_with("extension_sources")) {
@@ -3417,7 +3417,7 @@ int main (const int argc, const char* argv[]) {
             if (fs::exists(target)) {
               auto configFile = target / "socket.ini";
               auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
-              settings["build_extensions_" + extension + "_path"] = target;
+              settings["build_extensions_" + extension + "_path"] = target.string();
 
               for (const auto& entry : config) {
                 if (entry.first.starts_with("extension_sources")) {
@@ -4251,7 +4251,7 @@ int main (const int argc, const char* argv[]) {
             if (fs::exists(target)) {
               auto configFile = target / "socket.ini";
               auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
-              settings["build_extensions_" + extension + "_path"] = target;
+              settings["build_extensions_" + extension + "_path"] = target.string();
 
               for (const auto& entry : config) {
                 if (entry.first.starts_with("extension_sources")) {
