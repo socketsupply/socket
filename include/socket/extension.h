@@ -1244,7 +1244,7 @@ extern "C" {
    * @return TODO
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const bool sapi_process_kill (
+  const bool sapi_process_spawn_kill (
     sapi_process_spawn_t* process,
     const int code
   );
