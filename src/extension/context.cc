@@ -2,7 +2,7 @@
 
 sapi_context_t* sapi_context_create (
   sapi_context_t* parent,
-  const bool retained
+  bool retained
 ) {
   if (parent && !parent->isAllowed("context_create")) {
     sapi_debug(parent, "'context_create' is not allowed.");
@@ -115,14 +115,14 @@ void sapi_context_error_reset (sapi_context_t* context) {
 
 void sapi_context_error_set_code (
   sapi_context_t* context,
-  const int code
+  int code
 ) {
   if (context == nullptr) return;
   context->error.code = code;
   context->state = SSC::Extension::Context::State::Error;
 }
 
-const int sapi_context_error_get_code (const sapi_context_t* context) {
+int sapi_context_error_get_code (const sapi_context_t* context) {
   if (context == nullptr) return -1;
   return context->error.code;
 }
