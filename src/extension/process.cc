@@ -20,12 +20,12 @@ const sapi_process_exec_t* sapi_process_exec (
   return ctx->memory.alloc<sapi_process_exec_t>(ctx, process);
 }
 
-const int sapi_process_exec_get_exit_code (
+int sapi_process_exec_get_exit_code (
   const sapi_process_exec_t* process
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
   debug("sapi_process_exec_get_exit_code is not supported on this platform");
-  return -1
+  return -1;
 #endif
 
   return process != nullptr ? process->exitCode : -1;
@@ -69,7 +69,7 @@ sapi_process_spawn_t* sapi_process_spawn (
   return process;
 }
 
-const int sapi_process_spawn_get_exit_code (
+int sapi_process_spawn_get_exit_code (
   const sapi_process_spawn_t* process
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -79,7 +79,7 @@ const int sapi_process_spawn_get_exit_code (
   return process != nullptr ? process->status.load() : -1;
 }
 
-const unsigned long sapi_process_spawn_get_pid (
+unsigned long sapi_process_spawn_get_pid (
   const sapi_process_spawn_t* process
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -99,7 +99,7 @@ sapi_context_t* sapi_process_spawn_get_context (
   return process != nullptr ? process->context : nullptr;
 }
 
-const int sapi_process_spawn_wait (
+int sapi_process_spawn_wait (
   sapi_process_spawn_t* process
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -109,7 +109,7 @@ const int sapi_process_spawn_wait (
   return process != nullptr ? process->wait() : -1;
 }
 
-const bool sapi_process_spawn_write (
+bool sapi_process_spawn_write (
   sapi_process_spawn_t* process,
   const char* data,
   const size_t size
@@ -123,7 +123,7 @@ const bool sapi_process_spawn_write (
   return true;
 }
 
-const bool sapi_process_spawn_close_stdin (
+bool sapi_process_spawn_close_stdin (
   sapi_process_spawn_t* process
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -135,9 +135,9 @@ const bool sapi_process_spawn_close_stdin (
   return true;
 }
 
-const bool sapi_process_spawn_kill (
+bool sapi_process_spawn_kill (
   sapi_process_spawn_t* process,
-  const int code
+  int code
 ) {
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
   debug("sapi_process_spawn_kill is not supported on this platform");

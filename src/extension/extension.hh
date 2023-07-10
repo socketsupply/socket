@@ -227,10 +227,10 @@ extern "C" {
   struct sapi_json_boolean : public SSC::JSON::Boolean {
     sapi_context_t* context = nullptr;
     sapi_json_boolean () = default;
-    sapi_json_boolean (const bool boolean)
+    sapi_json_boolean (bool boolean)
       : SSC::JSON::Boolean(boolean)
     {}
-    sapi_json_boolean (sapi_context_t* ctx, const bool boolean)
+    sapi_json_boolean (sapi_context_t* ctx, bool boolean)
       : context(ctx), SSC::JSON::Boolean(boolean)
     {}
   };
