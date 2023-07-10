@@ -50,6 +50,7 @@ cflags+=(
   $CFLAG
   $CXXFLAGS
   -std=c++2a
+  -fvisibility=hidden
   -I"$root/include"
   -I"$root/build/uv/include"
   -I"$root/build/include"
