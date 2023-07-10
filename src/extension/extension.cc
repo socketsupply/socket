@@ -73,7 +73,7 @@ namespace SSC {
   template sapi_json_boolean_t*
   SSC::Extension::Context::Memory::alloc<sapi_json_boolean_t> (
     sapi_context_t*,
-    const bool
+    bool
   );
 
   template sapi_json_number_t*
