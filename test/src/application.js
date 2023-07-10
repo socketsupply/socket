@@ -52,12 +52,17 @@ if (!['android', 'ios'].includes(process.platform)) {
     const config = []
     for (let line of lines) {
       line = line.trim()
-      if (line.length === 0 || line.startsWith(';')) continue
+      let [key, value] = line.split('=')
+
+      if (line.length === 0 || line.startsWith(';') || line.startsWith('#')) {
+        continue
+      }
+
       if (line.startsWith('[') && line.endsWith(']')) {
         prefix = line.slice(1, -1)
         continue
       }
-      let [key, value] = line.split('=')
+
       key = key.trim()
       value = value.trim().replace(/^"/, '').replace(/"$/, '').replace('.')
       config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
