@@ -15,14 +15,14 @@ void onping (
 }
 
 bool initialize (sapi_context_t* context, const void *data) {
-  if (sapi_extension_is_allowed(context, "ipc,ipc_router,ipc_router_map")) {
+  if (sapi_extension_is_allowed(context, "ipc_router_map")) {
     sapi_ipc_router_map(context, "simple.ping", onping, data);
   }
   return true;
 }
 
 bool deinitialize (sapi_context_t* context, const void *data) {
-  if (sapi_extension_is_allowed(context, "ipc,ipc_router,ipc_router_unmap")) {
+  if (sapi_extension_is_allowed(context, "ipc_router_unmap")) {
     sapi_ipc_router_unmap(context, "simple.ping");
   }
   return true;
