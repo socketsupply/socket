@@ -2934,6 +2934,7 @@ int main (const int argc, const char* argv[]) {
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
+          if (key.ends_with("_path")) continue;
 
           String extension;
           if (key.starts_with("build_extensions_android")) {
@@ -2945,6 +2946,13 @@ int main (const int argc, const char* argv[]) {
           extension = split(extension, '_')[0];
 
           auto source = settings["build_extensions_" + extension + "_source"];
+          auto oldCwd = fs::current_path();
+          fs::current_path(targetPath);
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
 
           if (source.size() > 0) {
             Path target;
@@ -3023,6 +3031,7 @@ int main (const int argc, const char* argv[]) {
           std::unordered_set<String> cppflags;
 
           if (path.size() > 0) {
+            fs::current_path(targetPath);
             fs::current_path(path);
           } else {
             fs::current_path(targetPath);
@@ -3051,18 +3060,27 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          for (auto source : parseStringList(tuple.second, ' ')) {
+          for (
+            auto source : parseStringList(
+              trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_android"]),
+              ' '
+            )
+          ) {
+            if (!fs::is_regular_file(source)) {
+              continue;
+            }
+
             auto destination= (
               Path(source).parent_path() /
               Path(source).filename().string()
             ).string();
 
             if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
-              log("source: " + source);
+              log("extension source: " + source);
             }
 
             fs::create_directories(jni / Path(destination).parent_path());
-            fs::copy(cwd / source, jni / destination, fs::copy_options::overwrite_existing);
+            fs::copy(source, jni / destination, fs::copy_options::overwrite_existing);
 
             if (destination.ends_with(".hh") || destination.ends_with(".h")) {
               continue;
@@ -3075,6 +3093,8 @@ int main (const int argc, const char* argv[]) {
 
             sources << destination << " ";
           }
+
+          fs::current_path(oldCwd);
 
           make << "## socket/extensions/" << extension << SHARED_OBJ_EXT << std::endl;
           make << "include $(CLEAR_VARS)" << std::endl;
@@ -3387,6 +3407,7 @@ int main (const int argc, const char* argv[]) {
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
+          if (key.ends_with("_path")) continue;
 
           String extension;
           if (key.starts_with("build_extensions_ios")) {
@@ -3396,6 +3417,11 @@ int main (const int argc, const char* argv[]) {
           }
 
           auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
 
           if (source.size() > 0) {
             Path target;
@@ -3431,12 +3457,15 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto build = settings["build_extensions_" + extension + "_build_script"];
           auto path = settings["build_extensions_" + extension + "_path"];
 
-          auto sources = parseStringList(tuple.second, ' ');
+          auto sources = parseStringList(
+            trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_ios"]),
+            ' '
+          );
+
           auto objects = StringStream();
           auto libdir = platform.arch == "arm64"
             ? prefixFile(String("lib/arm64-") + (flagBuildForSimulator ? "iPhoneSimulator" : "iPhoneOS"))
@@ -3445,6 +3474,13 @@ int main (const int argc, const char* argv[]) {
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
             log("Building extension: " + extension + " (" + (flagBuildForSimulator ? "x86_64-iPhoneSimulator" : "arm64-iPhoneOS") + ")");
             extensions.push_back(extension);
+          }
+
+          if (path.size() > 0) {
+            fs::current_path(targetPath);
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
           }
 
           if (build.size() > 0) {
@@ -3468,6 +3504,10 @@ int main (const int argc, const char* argv[]) {
           }
 
           for (const auto& source : sources) {
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
+
             String compiler;
 
             auto compilerFlags = (
@@ -3577,6 +3617,8 @@ int main (const int argc, const char* argv[]) {
             linkerFlags += " -arch arm64 ";
           }
 
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
+          fs::create_directories(lib.parent_path());
           auto compileExtensionLibraryCommand = StringStream();
           compileExtensionLibraryCommand
             << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
@@ -3605,7 +3647,7 @@ int main (const int argc, const char* argv[]) {
             << " -shared"
             << " -v"
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
-            << " -o " << (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT))
+            << " -o " << lib
           ;
 
           if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
@@ -3629,7 +3671,6 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
           // mostly random build IDs and refs
           auto id = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
           auto ref = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
@@ -4215,6 +4256,7 @@ int main (const int argc, const char* argv[]) {
           if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
+          if (key.ends_with("_path")) continue;
 
           if (!platform.win && key.starts_with("build_extensions_win_")) continue;
           if (!platform.mac && key.starts_with("build_extensions_mac_")) continue;
@@ -4231,6 +4273,11 @@ int main (const int argc, const char* argv[]) {
           extension = split(extension, '_')[0];
 
           auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
 
           if (source.size() > 0) {
             Path target;
@@ -4281,6 +4328,7 @@ int main (const int argc, const char* argv[]) {
           fs::create_directories(lib.parent_path());
 
           if (path.size() > 0) {
+            fs::current_path(targetPath);
             fs::current_path(path);
           } else {
             fs::current_path(targetPath);
@@ -4307,7 +4355,7 @@ int main (const int argc, const char* argv[]) {
           }
 
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
-            log("Building extension: " + extension + " ((" + platform.os +  ") desktop-" + platform.arch + ")");
+            log("Building extension: " + extension + " (" + platform.os +  "-" + platform.arch + ")");
             extensions.push_back(extension);
           }
 
@@ -4316,6 +4364,10 @@ int main (const int argc, const char* argv[]) {
           );
 
           for (auto source : sources) {
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
+
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] + " " +
               settings["build_extensions_" + os + "_compiler_flags"] + " " +
@@ -4382,7 +4434,7 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
-              log("source: " + source);
+              log("extension source: " + source);
             }
 
             auto object = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o"));
@@ -4507,7 +4559,6 @@ int main (const int argc, const char* argv[]) {
         #endif
 
           auto compileExtensionLibraryCommand = StringStream();
-
           compileExtensionLibraryCommand
             << quote // win32 - quote the entire command
             << quote // win32 - quote the binary path
@@ -4527,8 +4578,6 @@ int main (const int argc, const char* argv[]) {
           #else
             << " " << flags
             << " " << extraFlags
-            << " -lsocket-runtime"
-            << " -luv"
             << " -fvisibility=hidden"
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
@@ -4556,6 +4605,7 @@ int main (const int argc, const char* argv[]) {
             log(compileExtensionLibraryCommand.str());
           }
 
+          fs::create_directories(lib.parent_path());
           do {
             auto r = exec(compileExtensionLibraryCommand.str());
 
