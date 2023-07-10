@@ -998,7 +998,9 @@ namespace SSC {
     auto list = Vector<String>();
     for (const auto& separator : separators) {
       for (const auto& part: split(string, separator)) {
-        list.push_back(part);
+        if (std::find(list.begin(), list.end(), part) == list.end()) {
+          list.push_back(part);
+        }
       }
     }
 
