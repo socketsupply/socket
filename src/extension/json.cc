@@ -29,7 +29,7 @@ sapi_json_string_t* sapi_json_string_create (
 
 sapi_json_boolean_t* sapi_json_boolean_create (
   sapi_context_t* ctx,
-  const bool boolean
+  bool boolean
 ) {
   return ctx->memory.alloc<sapi_json_boolean_t>(ctx, boolean);
 }
@@ -142,7 +142,7 @@ sapi_json_any_t* sapi_json_object_get (
 
 void sapi_json_array_set (
   sapi_json_array_t* json,
-  const unsigned int index,
+  unsigned int index,
   sapi_json_any_t* any
 ) {
   if (json == nullptr || any == nullptr) return;
@@ -205,7 +205,7 @@ void sapi_json_array_push (
 
 sapi_json_any_t* sapi_json_array_get (
   const sapi_json_array_t* json,
-  const unsigned int index
+  unsigned int index
 ) {
   if (json->has(index)) {
     auto pointer = json->data.at(index).pointer.get();
