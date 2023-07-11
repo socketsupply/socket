@@ -1712,7 +1712,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         // only validate if config exists and we didn't exit early above
-        if (configExists) {
+        if (configExists && !equal(subcommand, "init") && !equal(subcommand, "env")) {
           // Check if build_name is set
           if (settings.count("build_name") == 0) {
             log("ERROR: 'name' value is required in socket.ini in the [build] section");
@@ -2408,7 +2408,7 @@ int main (const int argc, const char* argv[]) {
 
     if (
       targetPlatform.starts_with("android") &&
-      settings.count("build_ios_copy_map") != 0
+      settings.count("build_android_copy_map") != 0
     ) {
       auto copyMapFile = Path{settings["build_android_copy_map"]}.make_preferred();
 
@@ -2419,10 +2419,7 @@ int main (const int argc, const char* argv[]) {
       copyMapFiles.push_back(copyMapFile);
     }
 
-    if (
-      settings.count("build_" + platform.os +  "_copy_map") != 0 &&
-      settings.count("build_ios_copy_map") != 0
-    ) {
+    if (settings.count("build_" + platform.os +  "_copy_map") != 0) {
       auto copyMapFile = Path{settings["build_" + platform.os +  "_copy_map"]}.make_preferred();
 
       if (copyMapFile.is_relative()) {
@@ -2902,13 +2899,13 @@ int main (const int argc, const char* argv[]) {
       if (settings["android_native_abis"].size() > 0) {
         makefileContext["android_native_abis"] = settings["android_native_abis"];
       } else {
-        makefileContext["android_native_abis"] = "all";
+        makefileContext["android_native_abis"] = "arm64-v8a x86_64";
       }
 
       // custom native sources
       for (
         auto const &file :
-        parseStringList(settings["android_native_sources"])
+        parseStringList(settings["android_native_sources"], ' ')
       ) {
         auto filename = Path(file).filename();
         writeFile(
@@ -2982,7 +2979,12 @@ int main (const int argc, const char* argv[]) {
                 } else if (entry.first.starts_with("extension_")) {
                   auto key = replace(entry.first, "extension_", extension + "_");
                   auto value = entry.second;
-                  settings["build_extensions_" + key] = value;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
                 }
               }
             }
@@ -3006,22 +3008,27 @@ int main (const int argc, const char* argv[]) {
             "-I$(LOCAL_PATH)/"
           );
 
-          auto linkerFlags = (
+          auto linkerFlags = replace(
             settings["build_extensions_linker_flags"] + " " +
             settings["build_extensions_android_linker_flags"] + " " +
             settings["build_extensions_" + extension + "_linker_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_linker_flags"] +  " "
+            settings["build_extensions_" + extension + "_android_linker_flags"] +  " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
 
-          auto linkerDebugFlags = (
+          auto linkerDebugFlags = replace(
             settings["build_extensions_linker_debug_flags"] + " " +
             settings["build_extensions_android_linker_debug_flags"] + " " +
             settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " "
+            settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
 
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
 
           auto sources = StringStream();
@@ -3048,15 +3055,24 @@ int main (const int argc, const char* argv[]) {
             auto output = replace(exec(configure + argvForward).output, "\n", " ");
             if (output.size() > 0) {
               for (const auto& source : parseStringList(output, ' ')) {
-                auto destination= (
-                  Path(source).parent_path() /
-                  Path(source).filename().string()
-                ).string();
-
-                fs::create_directories(jni / Path(destination).parent_path());
-                fs::copy(cwd / source, jni / destination, fs::copy_options::overwrite_existing);
-                sources << source << " ";
+                auto destination = fs::absolute(targetPath / source);
+                sources << destination.string() << " ";
               }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.pathResourcesRelativeToUserBuild;
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::create_directories(destination.parent_path());
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
             }
           }
 
@@ -3066,11 +3082,20 @@ int main (const int argc, const char* argv[]) {
               ' '
             )
           ) {
-            if (!fs::is_regular_file(source)) {
+            if (fs::is_directory(source)) {
+              auto target = Path(source).filename();
+              fs::create_directories(jni / target);
+              fs::copy(
+                source,
+                jni / target,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
+              continue;
+            } else if (!fs::is_regular_file(source)) {
               continue;
             }
 
-            auto destination= (
+            auto destination = (
               Path(source).parent_path() /
               Path(source).filename().string()
             ).string();
@@ -3095,6 +3120,34 @@ int main (const int argc, const char* argv[]) {
           }
 
           fs::current_path(oldCwd);
+
+          Vector<String> libs;
+          auto archs = settings["android_native_abis"];
+
+          if (archs.size() == 0) {
+            archs = "arm64-v8a x86_64";
+          }
+
+          for (const auto& source : parseStringList(sources.str(), ' ')) {
+            if (source.ends_with(".a")) {
+              auto name = replace(Path(source).filename().string(), ".a", "");
+              for (const auto& arch : parseStringList(archs, ' ')) {
+                if (source.find(arch) != -1) {
+                  fs::create_directories(jni / ".." / "libs" / arch);
+                  fs::copy(source, jni / ".." / "libs" / arch / Path(source).filename(), fs::copy_options::overwrite_existing);
+                }
+              }
+
+              if (std::find(libs.begin(), libs.end(), name) == libs.end()) {
+                libs.push_back(name);
+                make << "## " << Path(source).filename().string() << std::endl;
+                make << "include $(CLEAR_VARS)" << std::endl;
+                make << "LOCAL_MODULE := " << name << std::endl;
+                make << "LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/" << Path(source).filename().string() << std::endl;
+                make << "include $(PREBUILT_STATIC_LIBRARY)" << std::endl;
+              }
+            }
+          }
 
           make << "## socket/extensions/" << extension << SHARED_OBJ_EXT << std::endl;
           make << "include $(CLEAR_VARS)" << std::endl;
@@ -3159,9 +3212,24 @@ int main (const int argc, const char* argv[]) {
           }
           make << std::endl;
 
-          make << "LOCAL_LDLIBS := -landroid -llog" << std::endl;
-          make << "LOCAL_WHOLE_STATIC_LIBRARIES := libuv libsocket-runtime-static" << std::endl;
-          make << "LOCAL_SRC_FILES = init.cc " << sources.str() << std::endl;
+          make << "LOCAL_LDLIBS += -landroid -llog" << std::endl;
+
+          for (const auto& lib : libs) {
+            make << "LOCAL_STATIC_LIBRARIES += " << lib << std::endl;
+          }
+          make << std::endl;
+
+          make << "LOCAL_STATIC_LIBRARIES += libuv libsocket-runtime-static" << std::endl;
+          make << "LOCAL_SRC_FILES = init.cc" <<  std::endl;
+
+          for (const auto& source : parseStringList(sources.str(), ' ')) {
+            if (source.ends_with(".c") || source.ends_with(".cc") || source.ends_with(".mm") || source.ends_with(".m")) {
+              make << "LOCAL_SRC_FILES += " << source <<  std::endl;
+            }
+          }
+
+          make << std::endl;
+
           make << "include $(BUILD_SHARED_LIBRARY)" << std::endl;
           make << std::endl;
 
@@ -3416,6 +3484,8 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
+          extension = split(extension, '_')[0];
+
           auto source = settings["build_extensions_" + extension + "_source"];
 
           if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
@@ -3451,7 +3521,12 @@ int main (const int argc, const char* argv[]) {
                 } else if (entry.first.starts_with("extension_")) {
                   auto key = replace(entry.first, "extension_", extension + "_");
                   auto value = entry.second;
-                  settings["build_extensions_" + key] = value;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
                 }
               }
             }
@@ -3459,6 +3534,7 @@ int main (const int argc, const char* argv[]) {
 
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
 
           auto sources = parseStringList(
@@ -3494,12 +3570,22 @@ int main (const int argc, const char* argv[]) {
             auto output = replace(exec(configure + argvForward).output, "\n", " ");
             if (output.size() > 0) {
               for (const auto& source : parseStringList(output, ' ')) {
-                if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
-                  log("configure: " + source);
-                }
-
                 sources.push_back(source);
               }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.platformSpecificOutputPath / "ui";
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
             }
           }
 
@@ -3577,8 +3663,11 @@ int main (const int argc, const char* argv[]) {
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
+              << " -fembed-bitcode"
               << " -fPIC"
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
               << " -c " << source
               << " -o " << object.string()
             ;
@@ -3642,10 +3731,13 @@ int main (const int argc, const char* argv[]) {
             << " -framework UserNotifications"
             << " -framework WebKit"
             << " -framework UIKit"
+            << " -fembed-bitcode"
             << " -std=c++2a"
             << " -ObjC++"
             << " -shared"
             << " -v"
+            << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
+            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
             << " -o " << lib
           ;
@@ -4054,10 +4146,15 @@ int main (const int argc, const char* argv[]) {
       sdkmanager
         << packages.str();
 
-      if (debugEnv || verboseEnv) log(sdkmanager.str());
-      if (std::system(sdkmanager.str().c_str()) != 0) {
-        log("ERROR: failed to initialize Android SDK (sdkmanager)");
-        exit(1);
+      if (getEnv("SSC_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
+        if (debugEnv || verboseEnv) {
+          log(sdkmanager.str());
+        }
+
+        if (std::system(sdkmanager.str().c_str()) != 0) {
+          log("ERROR: failed to initialize Android SDK (sdkmanager)");
+          exit(1);
+        }
       }
 
       if (!androidEnableStandardNdkBuild) {
@@ -4307,7 +4404,12 @@ int main (const int argc, const char* argv[]) {
                 } else if (entry.first.starts_with("extension_")) {
                   auto key = replace(entry.first, "extension_", extension + "_");
                   auto value = entry.second;
-                  settings["build_extensions_" + key] = value;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
                 }
               }
             }
@@ -4315,6 +4417,7 @@ int main (const int argc, const char* argv[]) {
 
           auto configure = settings["build_extensions_" + extension + "_configure_script"];
           auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
 
           auto sources = parseStringList(
@@ -4347,6 +4450,20 @@ int main (const int argc, const char* argv[]) {
               for (const auto& source : parseStringList(output, ' ')) {
                 sources.push_back(source);
               }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.pathResourcesRelativeToUserBuild;
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
             }
           }
 
@@ -4517,17 +4634,17 @@ int main (const int argc, const char* argv[]) {
           }
 
           auto linkerFlags = (
-            settings["build_extensions_linker_flags"] +
-            settings["build_extensions_" + os + "_linker_flags"] +
-            settings["build_extensions_" + extension + "_linker_flags"] +
-            settings["build_extensions_" + extension + "_" + os + "_linker_flags"]
+            settings["build_extensions_linker_flags"] + " " +
+            settings["build_extensions_" + os + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_" + os + "_linker_flags"] + " "
           );
 
           auto linkerDebugFlags = (
-            settings["build_extensions_linker_debug_flags"] +
-            settings["build_extensions_" + platform.os + "_linker_debug_flags"] +
-            settings["build_extensions_" + extension + "_linker_debug_flags"] +
-            settings["build_extensions_" + extension + "_" + os + "_linker_debug_flags"]
+            settings["build_extensions_linker_debug_flags"] + " " +
+            settings["build_extensions_" + platform.os + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_" + os + "_linker_debug_flags"] + " "
           );
 
           if (platform.win && debugBuild) {
