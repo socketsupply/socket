@@ -1186,8 +1186,6 @@ LOCAL_SRC_FILES =         \
   android/window.cc       \
   init.cc
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
-
 LOCAL_STATIC_LIBRARIES := \
   libuv                   \
   libsocket-runtime-static
