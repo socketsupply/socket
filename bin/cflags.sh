@@ -40,6 +40,7 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
   fi
 else
   source "$root/bin/android-functions.sh"
+  android_fte > /dev/null
   cflags+=("-stdlib=libstdc++")
   cflags+=("-DANDROID -pthreads -fexceptions -fPIC -frtti -fsigned-char -D_FILE_OFFSET_BITS=64 -Wno-invalid-command-line-argument -Wno-unused-command-line-argument")
   cflags+=("-I$(dirname $NDK_BUILD)/sources/cxx-stl/llvm-libc++/include")
