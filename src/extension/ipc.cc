@@ -26,9 +26,9 @@ bool sapi_ipc_router_map (
     return false;
   }
 
-  ctx->data = data;
+  context->data = data;
   ctx->router->map(name, [context, data, callback](
-    auto message,
+    auto& message,
     auto router,
     auto reply
   ) mutable {
