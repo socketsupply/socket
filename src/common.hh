@@ -608,6 +608,15 @@ namespace SSC {
     return getEnv(variableName.c_str());
   }
 
+  inline String getEnv (const String& variableName, const String& defaultValue) {
+    const auto value = getEnv(variableName);
+    if (value.size() == 0) {
+      return defaultValue;
+    }
+
+    return value;
+  }
+
   inline auto setEnv (const String& k, const String& v) {
   #if _WIN32
     return _putenv((k + "=" + v).c_str());
