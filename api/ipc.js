@@ -850,8 +850,8 @@ export class Result {
 
     const err = maybeMakeError(result?.err || maybeError || null, Result.from)
     const data = !err && result?.data !== null && result?.data !== undefined
-      ? result.data
-      : (!err ? result : null)
+      ? result.data?.data ?? result.data
+      : (!err ? result?.err ?? result : null)
 
     const source = result?.source || maybeSource || null
     const headers = result?.headers || maybeHeaders || null
@@ -1399,7 +1399,16 @@ export function createBinding (domain, ctx) {
     get (target, key, ...args) {
       const value = Reflect.get(target, key, ...args)
       if (value !== undefined) return value
-      if (key === 'inspect' || key === '__proto__' || key === 'constructor' || key in Function.prototype) return
+      if (
+        key === 'inspect' ||
+        key === '__proto__' ||
+        key === 'constructor' ||
+        key in Promise.prototype ||
+        key in Function.prototype
+      ) {
+        return
+      }
+
       ctx.chain.add(key)
       return new Proxy(ctx, this)
     }
