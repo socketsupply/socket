@@ -144,31 +144,48 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
 
 bool sapi_ipc_send_bytes (
   sapi_context_t* ctx,
-  const char* seq,
+  sapi_ipc_message_t* message,
   unsigned int size,
   unsigned char* bytes,
   const char* headers
 ) {
-  if (ctx == nullptr || ctx->router == nullptr || bytes == nullptr || size == 0) {
+  if (!ctx || !ctx->router || !bytes || !size) {
     return false;
   }
-  auto body = new char[size]{0};
-  memcpy(body, bytes, size);
-  return ctx->router->send(
-    seq == nullptr || SSC::String(seq) == "" ? "-1" : seq,
-    "",
-    SSC::Post { 0, 0, body, size, headers ? headers : "" }
-  );
+
+  auto post = SSC::Post {
+    .id = 0,
+    .ttl = 0,
+    .body = new char[size]{0},
+    .length = size,
+    .headers =headers ? headers : ""
+  };
+
+  memcpy(post.body, bytes, size);
+
+  if (message) {
+    auto result = SSC::IPC::Result(
+      message->seq,
+      *message,
+      SSC::JSON::null,
+      post
+    );
+
+    return ctx->router->send(result.seq, result.str(), result.post);
+  }
+
+  auto result = SSC::IPC::Result(SSC::JSON::null);
+  return ctx->router->send(result.seq, result.str(), post);
 }
 
 bool sapi_ipc_send_json (
   sapi_context_t* ctx,
-  const char* seq,
+  sapi_ipc_message_t* message,
   sapi_json_any_t* json
 ) {
   SSC::JSON::Any value = nullptr;
 
-  if (ctx == nullptr || ctx->router == nullptr || json == nullptr) {
+  if (!ctx || !ctx->router || !json) {
     return false;
   }
 
@@ -196,11 +213,18 @@ bool sapi_ipc_send_json (
     }
   }
 
-  return ctx->router->send(
-    seq == nullptr || SSC::String(seq) == "" ? "-1" : seq,
-    value.str(),
-    SSC::Post {}
-  );
+  if (message) {
+    auto result = SSC::IPC::Result(
+      message->seq,
+      *message,
+      value
+    );
+
+    return ctx->router->send(result.seq, result.str(), result.post);
+  }
+
+  auto result = SSC::IPC::Result(value);
+  return ctx->router->send(result.seq, result.str(), result.post);
 }
 
 bool sapi_ipc_emit (
