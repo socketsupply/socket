@@ -1019,21 +1019,21 @@ extern "C" {
   /**
    * Send JSON to the bridge to propagate to the WebView.
    * @param context - An extension context
-   * @param seq     - An IPC sequence value
+   * @param message - The IPC message this send request sources from
    * @param json    - The result JSON
    * @return `true` if successful, otherwise `false`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_json (
     sapi_context_t* context,
-    const char* seq,
+    sapi_ipc_message_t* message,
     sapi_json_any_t* json
   );
 
   /**
    * Send bytes to the bridge to propagate to the WebView.
    * @param context - An extension context
-   * @param seq     - An IPC sequence value
+   * @param message - The IPC message this send request sources from
    * @param size    - The size of the bytes
    * @param bytes   - The bytes
    * @return `true` if successful, otherwise `false`
@@ -1041,7 +1041,7 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_bytes (
     sapi_context_t* context,
-    const char* seq,
+    sapi_ipc_message_t* message,
     unsigned int size,
     unsigned char* bytes,
     const char* headers
