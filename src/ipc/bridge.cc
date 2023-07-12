@@ -1754,6 +1754,21 @@ namespace SSC::IPC {
     this->core = core;
     this->router.core = core;
     this->router.bridge = this;
+
+    this->bluetooth.sendFunction = [this](
+      const String& seq,
+      const JSON::Any value,
+      const SSC::Post post
+    ) {
+      this->router.send(seq, value.str(), post);
+    };
+
+    this->bluetooth.emitFunction = [this](
+      const String& seq,
+      const JSON::Any value
+    ) {
+      this->router.emit(seq, value.str());
+    };
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
