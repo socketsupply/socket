@@ -2000,10 +2000,25 @@ int main (const int argc, const char* argv[]) {
   });
 
  Options printBuildDirOptions = {
-    { { "--platform" }, true },
-    { { "--prod" }, true }
+    { { "--platform" }, true }, { { "--root" }, true}
   };
   createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
+    bool flagRoot = optionsWithoutValue.find("--root") != optionsWithoutValue.end();
+
+    if (flagRoot) {
+      auto targetPlatform = optionsWithValue["--platform"];
+
+      if (targetPlatform.size() > 0) {
+        Path path = getPaths(targetPlatform).platformSpecificOutputPath;
+        std::cout << path.string() << std::endl;
+      } else {
+        Path path = getPaths(platform.os).platformSpecificOutputPath;
+        std::cout << path.string() << std::endl;
+      }
+
+      exit(0);
+    }
+
     // if --platform is specified, use the build path for the specified platform
     auto targetPlatform = optionsWithValue["--platform"];
     if (targetPlatform.size() > 0) {
