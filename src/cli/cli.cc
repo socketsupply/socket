@@ -2000,7 +2000,7 @@ int main (const int argc, const char* argv[]) {
   });
 
  Options printBuildDirOptions = {
-    { { "--platform" }, true }, { { "--root" }, true}
+    { { "--platform" }, true, true }, { { "--root" }, true, false}
   };
 
   createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
