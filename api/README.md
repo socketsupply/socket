@@ -1191,19 +1191,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  import { send } from 'socket:ipc'
  ```
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L796)
-
-The unique ID for this result.
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L802)
-
-An optional error in the result.
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L822)
-
-Result headers, if given.
-
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1043)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1046)
 
 Emit event to be dispatched on `window` object.
 
@@ -1215,7 +1203,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1102)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1105)
 
 Sends an async IPC command request with parameters.
 

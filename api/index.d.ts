@@ -2924,11 +2924,13 @@ declare module "socket:ipc" {
         /**
          * The unique ID for this result.
          * @type {string}
+         * @ignore
          */
         id: string;
         /**
          * An optional error in the result.
          * @type {Error?}
+         * @ignore
          */
         err: Error | null;
         /**
@@ -2946,6 +2948,7 @@ declare module "socket:ipc" {
         /**
          * Result headers, if given.
          * @type {Headers?}
+         * @ignore
          */
         headers: Headers | null;
         /**

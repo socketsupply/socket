@@ -792,12 +792,14 @@ export class Result {
   /**
    * The unique ID for this result.
    * @type {string}
+   * @ignore
    */
   id = String(rand64())
 
   /**
    * An optional error in the result.
    * @type {Error?}
+   * @ignore
    */
   err = null
 
@@ -818,6 +820,7 @@ export class Result {
   /**
    * Result headers, if given.
    * @type {Headers?}
+   * @ignore
    */
   headers = new Headers()
 
