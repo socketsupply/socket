@@ -29,6 +29,15 @@ sapi_context_t* sapi_context_create (
   return context;
 }
 
+bool sapi_context_set_data (
+  sapi_context_t* ctx,
+  const void* data
+) {
+  if (ctx == nullptr) return false;
+  ctx->data = data;
+  return true;
+}
+
 bool sapi_context_dispatch (
   sapi_context_t* ctx,
   const void* data,

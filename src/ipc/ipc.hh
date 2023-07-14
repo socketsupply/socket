@@ -132,6 +132,7 @@ namespace SSC::IPC {
       Post post;
 
       Result () = default;
+      Result (const Result&) = default;
       Result (const JSON::Any);
       Result (const Err error);
       Result (const Data data);

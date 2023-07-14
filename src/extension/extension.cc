@@ -88,6 +88,11 @@ namespace SSC {
     const char*
   );
 
+  template sapi_ipc_message_t*
+  SSC::Extension::Context::Memory::alloc<sapi_ipc_message_t> (
+    sapi_ipc_message_t
+  );
+
   Extension::Context::Context (const Extension* extension) {
     this->extension = extension;
     this->router = extension->context.router;

@@ -864,7 +864,7 @@ export class Result {
     const err = maybeMakeError(result?.err || maybeError || null, Result.from)
     const data = !err && result?.data !== null && result?.data !== undefined
       ? result.data?.data ?? result.data
-      : (!err ? result?.err ?? result : null)
+      : (!err && !id && !result?.source ? result?.err ?? result : null)
 
     const source = result?.source || maybeSource || null
     const headers = result?.headers || maybeHeaders || null

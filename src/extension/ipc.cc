@@ -178,6 +178,30 @@ bool sapi_ipc_send_bytes (
   return ctx->router->send(result.seq, result.str(), post);
 }
 
+bool sapi_ipc_send_bytes_with_result (
+  sapi_context_t* ctx,
+  sapi_ipc_result_t* result,
+  unsigned int size,
+  unsigned char* bytes,
+  const char* headers
+) {
+  if (!ctx || !ctx->router || !bytes || !size || !result) {
+    return false;
+  }
+
+  auto post = SSC::Post {
+    .id = 0,
+    .ttl = 0,
+    .body = new char[size]{0},
+    .length = size,
+    .headers =headers ? headers : ""
+  };
+
+  memcpy(post.body, bytes, size);
+
+  return ctx->router->send(result->seq, result->str(), post);
+}
+
 bool sapi_ipc_send_json (
   sapi_context_t* ctx,
   sapi_ipc_message_t* message,
@@ -322,6 +346,26 @@ const char* sapi_ipc_message_get (
   return value.c_str();
 }
 
+sapi_ipc_message_t* sapi_ipc_message_clone (
+  sapi_context_t* context,
+  const sapi_ipc_message_t* message
+) {
+  if (message == nullptr) return nullptr;
+  if (context == nullptr) return nullptr;
+
+  return context->memory.alloc<sapi_ipc_message_t>(*message);
+}
+
+sapi_ipc_result_t* sapi_ipc_result_clone (
+  sapi_context_t* context,
+  const sapi_ipc_result_t* result
+) {
+  if (result == nullptr) return nullptr;
+  if (context == nullptr) return nullptr;
+
+  return context->memory.alloc<sapi_ipc_result_t>(context, *result);
+}
+
 void sapi_ipc_result_set_seq (sapi_ipc_result_t* result, const char* seq) {
   if (result && seq) {
     result->seq = seq;
@@ -338,6 +382,8 @@ void sapi_ipc_result_set_message (
 ) {
   if (result && message) {
     result->message = *message;
+    result->source = message->name;
+    result->seq = message->seq;
   }
 }
 

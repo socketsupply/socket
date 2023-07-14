@@ -265,7 +265,6 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
       params = {}
     }
 
-    params = { ...params, id }
     const options = { responseType: 'arraybuffer' }
     const result = await ipc.request('post', { id }, options)
 
