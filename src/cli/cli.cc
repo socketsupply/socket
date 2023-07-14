@@ -2002,32 +2002,19 @@ int main (const int argc, const char* argv[]) {
  Options printBuildDirOptions = {
     { { "--platform" }, true }, { { "--root" }, true}
   };
+
   createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     bool flagRoot = optionsWithoutValue.find("--root") != optionsWithoutValue.end();
-
-    if (flagRoot) {
-      auto targetPlatform = optionsWithValue["--platform"];
-
-      if (targetPlatform.size() > 0) {
-        Path path = getPaths(targetPlatform).platformSpecificOutputPath;
-        std::cout << path.string() << std::endl;
-      } else {
-        Path path = getPaths(platform.os).platformSpecificOutputPath;
-        std::cout << path.string() << std::endl;
-      }
-
-      exit(0);
-    }
-
     // if --platform is specified, use the build path for the specified platform
     auto targetPlatform = optionsWithValue["--platform"];
-    if (targetPlatform.size() > 0) {
-      Path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
-      std::cout << path.string() << std::endl;
+    Paths paths = getPaths(targetPlatform.size() > 0 ? targetPlatform : platform.os);
+
+    if (flagRoot) {
+      std::cout << paths.platformSpecificOutputPath.string() << std::endl;
       exit(0);
     }
-    // if no --platform option is provided, print the current platform build path
-    std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
+
+    std::cout << paths.pathResourcesRelativeToUserBuild.string() << std::endl;
     exit(0);
   });
 
