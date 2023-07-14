@@ -131,6 +131,22 @@ extern "C" {
   );
 
   /**
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_context_set_data (
+    sapi_context_t* context,
+    const void* data
+  );
+
+  /**
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_message (
+    sapi_context_t* context,
+    const void* data
+  );
+
+  /**
    * Queues `callback` to be called sometime in the future for a `context`.
    * @param context  - An extension context
    * @param data     - User data to be given to `callback` when called
@@ -1047,6 +1063,15 @@ extern "C" {
     const char* headers
   );
 
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_bytes_with_result (
+    sapi_context_t* ctx,
+    sapi_ipc_result_t* result,
+    unsigned int size,
+    unsigned char* bytes,
+    const char* headers
+  );
+
   /**
    * Map a named route to a callback with optional use data for a given
    * extension context. Routes must "reply" with a result to respond to an
@@ -1319,6 +1344,24 @@ extern "C" {
   const sapi_extension_registration_t* sapi_extension_get (
     const sapi_context_t* context,
     const char *name
+  );
+
+  /**
+   * TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_ipc_message_t* sapi_ipc_message_clone (
+    sapi_context_t* context,
+    const sapi_ipc_message_t* message
+  );
+
+  /**
+   * TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_ipc_result_t* sapi_ipc_result_clone (
+    sapi_context_t* context,
+    const sapi_ipc_result_t* result
   );
 
 #if defined(__cplusplus)
