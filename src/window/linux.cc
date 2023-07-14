@@ -1168,7 +1168,7 @@ namespace SSC {
 
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
     if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {
-      this->resolvePromise(seq, "0", "null");
+      this->resolvePromise(seq, "0", SSC::JSON::null);
       gtk_widget_destroy(dialog);
       return;
     }
