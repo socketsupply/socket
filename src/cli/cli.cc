@@ -4697,6 +4697,8 @@ int main (const int argc, const char* argv[]) {
           #else
             << " " << flags
             << " " << extraFlags
+            << " -lsocket-runtime"
+            << " -luv"
             << " -fvisibility=hidden"
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
