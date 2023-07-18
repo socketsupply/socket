@@ -131,17 +131,13 @@ extern "C" {
   );
 
   /**
+   * Set user data on a context.
+   * @param context - An extension context
+   * @param data    - User data
+   * @return `true` if the user data was set, `false` otherwise
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_context_set_data (
-    sapi_context_t* context,
-    const void* data
-  );
-
-  /**
-   */
-  SOCKET_RUNTIME_EXTENSION_EXPORT
-  bool sapi_message (
     sapi_context_t* context,
     const void* data
   );
@@ -1052,6 +1048,7 @@ extern "C" {
    * @param message - The IPC message this send request sources from
    * @param size    - The size of the bytes
    * @param bytes   - The bytes
+   * @param headers - The response headers
    * @return `true` if successful, otherwise `false`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
@@ -1063,6 +1060,15 @@ extern "C" {
     const char* headers
   );
 
+  /**
+   * Send bytes to the bridge to propagate to the WebView with a result.
+   * @param context - An extension context
+   * @param result  - The IPC request result
+   * @param size    - The size of the bytes
+   * @param bytes   - The bytes
+   * @param headers - The response headers
+   * @return `true` if successful, otherwise `false`
+   */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_bytes_with_result (
     sapi_context_t* ctx,
@@ -1347,7 +1353,10 @@ extern "C" {
   );
 
   /**
-   * TODO
+   * Clone an IPC message
+   * @param context - An extension context
+   * @param message - The message to clone
+   * @return The cloned message
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_ipc_message_t* sapi_ipc_message_clone (
@@ -1356,7 +1365,9 @@ extern "C" {
   );
 
   /**
-   * TODO
+   * Clone an IPC result
+   * @param context - An extension context
+   * @param result  - The IPC request result to clone
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_ipc_result_t* sapi_ipc_result_clone (
