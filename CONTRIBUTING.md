@@ -1,5 +1,6 @@
 ## Contribution Guide Overview
-This guide provides steps on how to make contributions and become a part of the ongoing development of `Socket Runtime`.  
+This guide provides steps on how to make contributions, reporting bugs and become a part of the ongoing development of `Socket Runtime`.  
+If you are just started learning about Socket Runtime, you can start from [here](https://socketsupply.co/guides/).  
 
 ### Requirements
 
@@ -13,13 +14,11 @@ git clone git@github.com:socketsupply/socket.git
 cd socket
 ```
 ### Installing dependencies  
-## MacOS and Linux
+#### MacOS and Linux
 (I'm not sure about this yet)  
 
-## Windows
+#### Windows
 (need to add deps here too)
-
-Please follow the instructions in the terminal to install prerequisites and add `ssc` to your path.
 
 ### Project structure
 
@@ -28,7 +27,8 @@ The project is structured as follows:
 - [`bin`](bin/): contains the useful scripts for building and maintaining the project
 - [`npm`](npm/): contains the source code for the npm packages
 - [`src`](src/): contains the source code for the native part of the project
-- [`test`](test/): contains the tests for the project
+- [`test`](test/): contains the tests for the project  
+Source: https://github.com/socketsupply/socket
 
 #### `api`
 
