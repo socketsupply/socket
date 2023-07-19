@@ -3,21 +3,19 @@ This guide provides steps on how to make contributions and become a part of the 
 
 ### Requirements
 
-To contribute to the project you need to clone the repository and install the dependencies. You can do this by running the following commands:
+To contribute to the project you need to clone the repository and install the dependencies. 
 
-macOS or Linux:
+### Cloning the repository  
+First, clone the main repository.
+
 ```bash
 git clone git@github.com:socketsupply/socket.git
 cd socket
-./scripts/install.sh
 ```
+### Installing dependencies  
+## MacOS and Linux
+(I'm not sure about this yet)
 
-Windows:
-```powershell
-git clone git@github.com:socketsupply/socket.git
-cd socket
-.\scripts\install.ps1
-```
 
 Please follow the instructions in the terminal to install prerequisites and add `ssc` to your path.
 
