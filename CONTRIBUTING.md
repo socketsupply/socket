@@ -14,8 +14,10 @@ cd socket
 ```
 ### Installing dependencies  
 ## MacOS and Linux
-(I'm not sure about this yet)
+(I'm not sure about this yet)  
 
+## Windows
+(need to add deps here too)
 
 Please follow the instructions in the terminal to install prerequisites and add `ssc` to your path.
 
