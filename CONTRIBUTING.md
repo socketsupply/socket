@@ -2,25 +2,26 @@
 This guide provides steps on how to make contributions, reporting bugs and become a part of the ongoing development of `Socket Runtime`.  
 If you are just started learning about Socket Runtime, you can start from [here](https://socketsupply.co/guides/).  
 
-### Requirements
+### Setup and build the framework
 
-To contribute to the project you need to clone the repository and install the dependencies. 
+To contribute to the project you need to clone the main repository first and install the dependencies. 
 
-### Cloning the repository  
-First, clone the main repository.
+#### MacOS and Linux
 
 ```bash
 git clone git@github.com:socketsupply/socket.git
-cd socket
+cd socket 
+./bin/install.sh
 ```
-### Installing dependencies  
-#### MacOS and Linux
-(I'm not sure about this yet)  
 
 #### Windows
-(need to add deps here too)
+```bash
+git clone git@github.com:socketsupply/socket.git
+cd socket 
+.\bin\install.ps1
+```
 
-### Project structure
+### Project directory structure
 
 The project is structured as follows:
 - [`api`](api/): contains the JavaScript API for Socket Runtime
