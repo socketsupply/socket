@@ -1777,21 +1777,21 @@ int main (const int argc, const char* argv[]) {
     { { "--config" }, true, false }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    auto configOnly = optionsWithValue.find("--config") != optionsWithValue.end();
+    auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
+    auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
-      exit(0);
     } else {
       SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }
     if (!configOnly) {
-      if (fs::exists(targetPath / "src")) {
-        log("src directory already exists in " + targetPath.string());
-      } else {
+      if (isCurrentPathEmpty) {
         fs::create_directories(targetPath / "src");
         SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
         log("src/index.html created in " + targetPath.string());
+      } else {
+        log("Current directory was not empty. Assuming index.html is already in place.");
       }
       if (fs::exists(targetPath / ".gitignore")) {
         log(".gitignore already exists in " + targetPath.string());
