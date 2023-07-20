@@ -213,9 +213,7 @@ bool sapi_ipc_send_json (
     return false;
   }
 
-  if (json == nullptr) {
-    value = nullptr;
-  } else if (json->type > SSC::JSON::Type::Any) {
+  if (json->type > SSC::JSON::Type::Any) {
     if (json->isObject()) {
       auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
       value = SSC::JSON::Object(object->data);
@@ -235,6 +233,8 @@ bool sapi_ipc_send_json (
       auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
       value = SSC::JSON::Raw(raw->data);
     }
+  } else {
+    value = nullptr;
   }
 
   if (message) {
@@ -249,6 +249,45 @@ bool sapi_ipc_send_json (
 
   auto result = SSC::IPC::Result(value);
   return ctx->router->send(result.seq, result.str(), result.post);
+}
+
+bool sapi_ipc_send_json_with_result (
+  sapi_context_t* ctx,
+  sapi_ipc_result_t* result,
+  sapi_json_any_t* json
+) {
+  SSC::JSON::Any value = nullptr;
+
+  if (!ctx || !ctx->router || !result || !json) {
+    return false;
+  }
+
+  if (json->type > SSC::JSON::Type::Any) {
+    if (json->isObject()) {
+      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
+      value = SSC::JSON::Object(object->data);
+    } else if (json->isArray()) {
+      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
+      value = SSC::JSON::Array(array->data);
+    } else if (json->isString()) {
+      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
+      value = SSC::JSON::String(string->data);
+    } else if (json->isBoolean()) {
+      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
+      value = SSC::JSON::Boolean(boolean->data);
+    } else if (json->isNumber()) {
+      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
+      value = SSC::JSON::Number(number->data);
+    } else if (json->isRaw()) {
+      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
+      value = SSC::JSON::Raw(raw->data);
+    }
+  } else {
+    value = nullptr;
+  }
+
+  auto res = SSC::IPC::Result(result->seq, result->message, value);
+  return ctx->router->send(res.seq, res.str(), res.post);
 }
 
 bool sapi_ipc_emit (
