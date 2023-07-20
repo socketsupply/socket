@@ -1,5 +1,5 @@
 ## Contribution Guide Overview
-This guide provides steps on how to make contributions, reporting bugs and become a part of the ongoing development of `Socket Runtime`.  
+This guide provides steps on how to make contributions, report bugs, and become a part of the ongoing development of `Socket Runtime`.  
 If you are just started learning about Socket Runtime, you can start from [here](https://socketsupply.co/guides/).  
 
 ### Setup and build the framework
@@ -29,6 +29,7 @@ The project is structured as follows:
 - [`npm`](npm/): contains the source code for the npm packages
 - [`src`](src/): contains the source code for the native part of the project
 - [`test`](test/): contains the tests for the project  
+
 Source: https://github.com/socketsupply/socket
 
 #### `api`
@@ -44,7 +45,7 @@ generating documentation, publishing npm packages, etc.
 
 #### `npm`
 
-This directory consists of the JavaScrip wrappers for the native code, build scripts, and the package directories.
+This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 You can also find the official Socket Runtime Node.js backend in the
 [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.
 
