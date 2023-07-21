@@ -1773,25 +1773,25 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options initOptions = {
+  Options initOptions = {
     { { "--config" }, true, false }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    auto configOnly = optionsWithValue.find("--config") != optionsWithValue.end();
+    auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
+    auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
-      exit(0);
     } else {
       SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }
     if (!configOnly) {
-      if (fs::exists(targetPath / "src")) {
-        log("src directory already exists in " + targetPath.string());
-      } else {
+      if (isCurrentPathEmpty) {
         fs::create_directories(targetPath / "src");
         SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
         log("src/index.html created in " + targetPath.string());
+      } else {
+        log("Current directory was not empty. Assuming index.html is already in place.");
       }
       if (fs::exists(targetPath / ".gitignore")) {
         log(".gitignore already exists in " + targetPath.string());
@@ -1805,7 +1805,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options listDevicesOptions = {
+  Options listDevicesOptions = {
     { { "--platform" }, false, true },
     { { "--ecid" }, true, false },
     { { "--udid" }, true, false },
@@ -1911,7 +1911,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options installAppOptions = {
+  Options installAppOptions = {
     { { "--platform" }, false, true },
     { { "--device" }, true, true }
   };
@@ -1999,7 +1999,9 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
- Options printBuildDirOptions = {
+  // first flag indicating whether option is optional
+  // second flag indicating whether option should be followed by a value
+  Options printBuildDirOptions = {
     { { "--platform" }, true, true }, { { "--root" }, true, false}
   };
 
@@ -2020,7 +2022,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options runOptions = {
+  Options runOptions = {
     { { "--platform" }, true, true },
     { { "--host" }, true, true },
     { { "--port" }, true, true },
@@ -2029,7 +2031,7 @@ int main (const int argc, const char* argv[]) {
     { { "--headless" }, true, false }
   };
 
- Options buildOptions = {
+  Options buildOptions = {
     { { "--quiet" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
@@ -5423,7 +5425,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options setupOptions = {
+  Options setupOptions = {
     { { "--platform" }, true, true },
     { { "--yes", "-y" }, true, false }
   };
