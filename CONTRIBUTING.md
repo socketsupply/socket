@@ -1,34 +1,36 @@
 ## Contribution Guide Overview
-This guide provides steps on how to make contributions and become a part of the ongoing development of `Socket Runtime`.  
+This guide provides steps on how to make contributions, report bugs, and become a part of the ongoing development of `Socket Runtime`.  
+If you are just started learning about Socket Runtime, you can start from [here](https://socketsupply.co/guides/).  
 
-### Requirements
+### Setup and build the framework
 
-To contribute to the project you need to clone the repository and install the dependencies. You can do this by running the following commands:
+To contribute to the project you need to clone the main repository first and install the dependencies. 
 
-macOS or Linux:
+#### MacOS and Linux
+
 ```bash
 git clone git@github.com:socketsupply/socket.git
-cd socket
-./scripts/install.sh
+cd socket 
+./bin/install.sh
 ```
 
-Windows:
-```powershell
+#### Windows
+```bash
 git clone git@github.com:socketsupply/socket.git
-cd socket
-.\scripts\install.ps1
+cd socket 
+.\bin\install.ps1
 ```
 
-Please follow the instructions in the terminal to install prerequisites and add `ssc` to your path.
-
-### Project structure
+### Project directory structure
 
 The project is structured as follows:
 - [`api`](api/): contains the JavaScript API for Socket Runtime
 - [`bin`](bin/): contains the useful scripts for building and maintaining the project
 - [`npm`](npm/): contains the source code for the npm packages
 - [`src`](src/): contains the source code for the native part of the project
-- [`test`](test/): contains the tests for the project
+- [`test`](test/): contains the tests for the project  
+
+Source: https://github.com/socketsupply/socket
 
 #### `api`
 
@@ -43,7 +45,7 @@ generating documentation, publishing npm packages, etc.
 
 #### `npm`
 
-This directory consists of the JavaScrip wrappers for the native code, build scripts, and the package directories.
+This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 You can also find the official Socket Runtime Node.js backend in the
 [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.
 
