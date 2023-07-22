@@ -2240,66 +2240,6 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
 
-    if (settings.count("build_script") != 0) {
-      do {
-        char prefix[4096] = {0};
-        std::memcpy(
-          prefix,
-          pathResourcesRelativeToUserBuild.string().c_str(),
-          pathResourcesRelativeToUserBuild.string().size()
-        );
-
-        // @TODO(jwerle): use `setEnv()` if #148 is closed
-        #if _WIN32
-          String prefix_ = "PREFIX=";
-          prefix_ += prefix;
-          setEnv(prefix_.c_str());
-        #else
-          setenv("PREFIX", prefix, 1);
-        #endif
-      } while (0);
-
-      StringStream buildArgs;
-      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-
-      if (flagDebugMode) {
-        buildArgs << " --debug=true";
-      }
-
-      if (flagBuildTest) {
-        buildArgs << " --test=true";
-      }
-
-      auto scriptArgs = buildArgs.str();
-      auto buildScript = settings["build_script"];
-
-      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
-      // cmd.exe can handle this translation
-      if (platform.win) {
-        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
-        buildScript = "cmd.exe";
-      }
-
-      auto process = new SSC::Process(
-        buildScript,
-        scriptArgs,
-        (oldCwd / targetPath).string(),
-        [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); }
-      );
-
-      process->open();
-      process->wait();
-
-      if (process->status != 0) {
-        // TODO(trevnorris): Force non-windows to exit the process.
-        log("build failed, exiting with code " + std::to_string(process->status));
-        exit(process->status);
-      }
-
-      log("ran user build command");
-    }
-
     if (settings.count("build_copy") != 0) {
       Path pathInput = settings["build_copy"].size() > 0
         ? settings["build_copy"]
@@ -2529,6 +2469,66 @@ int main (const int argc, const char* argv[]) {
           );
         }
       }
+    }
+
+    if (settings.count("build_script") != 0) {
+      do {
+        char prefix[4096] = {0};
+        std::memcpy(
+          prefix,
+          pathResourcesRelativeToUserBuild.string().c_str(),
+          pathResourcesRelativeToUserBuild.string().size()
+        );
+
+        // @TODO(jwerle): use `setEnv()` if #148 is closed
+        #if _WIN32
+          String prefix_ = "PREFIX=";
+          prefix_ += prefix;
+          setEnv(prefix_.c_str());
+        #else
+          setenv("PREFIX", prefix, 1);
+        #endif
+      } while (0);
+
+      StringStream buildArgs;
+      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+
+      if (flagDebugMode) {
+        buildArgs << " --debug=true";
+      }
+
+      if (flagBuildTest) {
+        buildArgs << " --test=true";
+      }
+
+      auto scriptArgs = buildArgs.str();
+      auto buildScript = settings["build_script"];
+
+      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+      // cmd.exe can handle this translation
+      if (platform.win) {
+        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+        buildScript = "cmd.exe";
+      }
+
+      auto process = new SSC::Process(
+        buildScript,
+        scriptArgs,
+        (oldCwd / targetPath).string(),
+        [](SSC::String const &out) { stdWrite(out, false); },
+        [](SSC::String const &out) { stdWrite(out, true); }
+      );
+
+      process->open();
+      process->wait();
+
+      if (process->status != 0) {
+        // TODO(trevnorris): Force non-windows to exit the process.
+        log("build failed, exiting with code " + std::to_string(process->status));
+        exit(process->status);
+      }
+
+      log("ran user build command");
     }
 
     String flags;
