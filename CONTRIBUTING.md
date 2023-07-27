@@ -35,7 +35,7 @@ generating documentation, publishing npm packages, etc.
 3- [`npm`](npm/): This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 You can also find the official Socket Runtime Node.js backend in the [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.  
 
-4- [`src`](src/): The `src` directory contains the native code for the Socket Runtime:
+4- [`src`](src/): This directory contains the native code for the Socket Runtime:
 - [`cli`](src/cli/): contains the source code for the Socket Runtime CLI
 - [`core`](src/core/): contains the source code for the Socket Runtime core, such as Bluetooth support,
 File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
