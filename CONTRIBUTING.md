@@ -25,7 +25,8 @@ cd socket
 
 The project is structured as follows:  
 
-1- [`api`](api/): The `api` folder contains the JavaScript API for Socket Runtime. It consists of the built-in modules that are available in the runtime and the `socket` package that is published to npm (i.e. `socket:fs`, `socket:crypto`, etc.).
+1- [`api`](api/): The `api` folder contains the JavaScript API for Socket Runtime. It consists of the built-in modules that are available in the runtime and the `socket` package that is published to npm (i.e. `socket:fs`, `socket:crypto`, etc.).  
+
 These modules have native bindings to the underlying C++/Objective-C/Kotlin code and libuv to expose the platform
 capabilities to the JavaScript code.  
 
