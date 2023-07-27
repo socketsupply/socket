@@ -21,7 +21,7 @@ cd socket
 .\bin\install.ps1
 ```
 
-### Project directory structure
+## Project directory structure
 
 The project is structured as follows:  
 
