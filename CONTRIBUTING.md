@@ -14,8 +14,9 @@ cd socket
 ./bin/install.sh
 ```
 
-### Windows
-```bash
+### Windows  
+
+```powershell
 git clone git@github.com:socketsupply/socket.git
 cd socket 
 .\bin\install.ps1
