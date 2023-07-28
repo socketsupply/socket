@@ -59,7 +59,7 @@ Source: https://github.com/socketsupply/socket
 - [Tapzero](https://github.com/socketsupply/tapzero): Is a Zero dependency test framework, the implementation is less then 250 loc and less then 500 with comments  
  (https://github.com/Raynos/tapzero/blob/master/index.js ) and very readable.   
 
-There are so many other repositories that you might want to check [here](https://github.com/orgs/socketsupply/repositories)
+There are so many other repositories that you might want to check. You can take a look at the full list of Socket repositories  [here](https://github.com/orgs/socketsupply/repositories)
 
 ## Creating an issue
 Issues for all Socket Runtime components are on [GitHub](https://github.com/socketsupply/socket). When reporting issues, please follow these guidelines:
