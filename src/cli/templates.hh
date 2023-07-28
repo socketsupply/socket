@@ -1590,4 +1590,7 @@ build/
 # Provisioning profile
 *.mobileprovision
 
+# extension build artifacts
+*.o
+
 )GITIGNORE";
