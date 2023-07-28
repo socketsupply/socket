@@ -56,7 +56,7 @@ Source: https://github.com/socketsupply/socket
 - [Socket-Examples](https://github.com/socketsupply/socket-examples): This repository contains example projects powered by Socket which helps you build cross-platform apps for desktop and mobile.  
 - [Create-socket-app](https://github.com/socketsupply/create-socket-app):This repository will help you build native apps for mobile and desktop with Svelte, Reactjs, Vuejs and others, by providing a few basic boilerplates and some strong opinions so you can get coding on a production quality app as quickly as possible.  
 - [Tonic](https://github.com/socketsupply/tonic): is a low profile component framework for the web. It's one file, less than 3kb gzipped and has no dependencies. It's designed to be used with modern Javascript and is compatible with all modern browsers and built on top of the Web Components.  
-- [Tapzero](https://github.com/socketsupply/tapzero): Is a Zero dependency test framework, the implementation is <250 loc, (<500 with comments) ( https://github.com/Raynos/tapzero/blob/master/index.js ) and very readable.   
+- [Tapzero](https://github.com/socketsupply/tapzero): Is a Zero dependency test framework, the implementation is less then 250 loc and less then 500 with comments( https://github.com/Raynos/tapzero/blob/master/index.js ) and very readable.   
 
 There are so many other repositories that you might want to check [here](https://github.com/orgs/socketsupply/repositories)
 
@@ -64,8 +64,8 @@ There are so many other repositories that you might want to check [here](https:/
 Issues for all Socket Runtime components are on [GitHub](https://github.com/socketsupply/socket). When reporting issues, please follow these guidelines:
 - If you think you have found a bug, Please [open an issue](https://github.com/socketsupply/socket/issues/new) and make sure that you select the correct template and follow the given instructions while creating an issue.
 - You can search through existing issues to see if there is a similar one [reported](https://github.com/socketsupply/socket/issues). You can also search through closed issues as they may have been closed with a solution.
-- Please detail all the steps necessary to reproduce the issue you are running into, so we can easily diagnose and fix your issue.
-- If you can't find something in this guide or you have any questions, please feel free to join our [Discord](https://discord.com/invite/YPV32gKCsH)  
+- Please detail all the steps necessary to reproduce the issue you are running into, so we can easily diagnose and fix your issue.  
+If you can't find something in this guide or you have any questions, please feel free to join our [Discord](https://discord.com/invite/YPV32gKCsH)  
 
 ## Making Pull requests
 Before submitting a pull request, please follow these steps:  
