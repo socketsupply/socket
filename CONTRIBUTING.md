@@ -52,11 +52,11 @@ File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
 Source: https://github.com/socketsupply/socket
 
 ## Repositories
-- [Socket](https://github.com/socketsupply/socket): Is the main repository where we keep track of bug reports and issues.  
+- [Socket](https://github.com/socketsupply/socket): This the main repository where we keep track of bug reports and issues.  
 - [Socket-Examples](https://github.com/socketsupply/socket-examples): This repository contains example projects powered by Socket which helps you build cross-platform apps for desktop and mobile.  
-- [Create-socket-app](https://github.com/socketsupply/create-socket-app):This repository will help you build native apps for mobile and desktop with Svelte, Reactjs, Vuejs and others, by providing a few basic boilerplates and some strong opinions so you can get coding on a production quality app as quickly as possible.  
-- [Tonic](https://github.com/socketsupply/tonic): is a low profile component framework for the web. It's one file, less than 3kb gzipped and has no dependencies. It's designed to be used with modern Javascript and is compatible with all modern browsers and built on top of the Web Components.  
-- [Tapzero](https://github.com/socketsupply/tapzero): Is a Zero dependency test framework, the implementation is less then 250 loc and less then 500 with comments  
+- [Create-socket-app](https://github.com/socketsupply/create-socket-app): This repository will help you build native apps for mobile and desktop with Svelte, Reactjs, Vuejs, and others, by providing a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
+- [Tonic](https://github.com/socketsupply/tonic): is a low-profile component framework for the web. It's one file, less than 3kb gzipped, and has no dependencies. It's designed to be used with modern Javascript and is compatible with all modern browsers and is built on top of the Web Components.  
+- [Tapzero](https://github.com/socketsupply/tapzero): This a Zero dependency test framework, the implementation is less than 250 loc and less than 500 with comments  
  (https://github.com/Raynos/tapzero/blob/master/index.js ) and very readable.   
 
 There are so many other repositories that you might want to check. You can take a look at the full list of Socket repositories  [here](https://github.com/orgs/socketsupply/repositories)
@@ -68,8 +68,8 @@ Issues for all Socket Runtime components are on [GitHub](https://github.com/sock
 - Please detail all the steps necessary to reproduce the issue you are running into, so we can easily diagnose and fix your issue.  
 If you can't find something in this guide or you have any questions, please feel free to join our [Discord](https://discord.com/invite/YPV32gKCsH)  
 
-## Claimming Issues
-If you find a bug or an issue that you would like to work on, you can ask to claim it, please leave a comment indicating your intention and we will assign it to you. If an issue is not being worked on, feel free to work on it yourself (but please comment first to let us know about your attention to work on it so the assignee know).
+## Claiming Issues
+If you find a bug or an issue that you would like to work on, you can ask to claim it, please leave a comment indicating your intention and we will assign it to you. If an issue is not being worked on, feel free to work on it yourself (but please comment first to let us know about your attention to work on it so the assignee knows).
 
 ## Making Pull requests
 Before submitting a pull request, please follow these steps:  
