@@ -1,10 +1,9 @@
 ## Contribution Guide Overview
 This guide provides steps on how to make contributions, report bugs, and become a part of the ongoing development of `Socket Runtime`.  
-If you are just started learning about Socket Runtime, you can start from [here](https://socketsupply.co/guides/).  
+If you are new to Socket Runtime, the [Guides](https://socketsupply.co/guides/) is a good place to start.    
 
-## Setup and build the framework
-
-To contribute to the project you need to clone the main repository first and install the dependencies. 
+## Requirements
+To contribute to the project you need to clone the repository and install the dependencies. 
 
 ### MacOS and Linux
 
