@@ -1693,6 +1693,26 @@ int main (const int argc, const char* argv[]) {
 
         settings = parseINI(ini);
 
+        if (settings["meta_type"] == "extension" || settings["build_type"] == "extension") {
+          auto extension = settings["build_name"];
+          settings["build_extensions_" + extension + "_path"] = fs::current_path().string();
+
+          for (const auto& entry : settings) {
+            if (entry.first.starts_with("extension_sources")) {
+              settings["build_extensions_" + extension] += entry.second;
+            } else if (entry.first.starts_with("extension_")) {
+              auto key = replace(entry.first, "extension_", extension + "_");
+              auto value = entry.second;
+              auto index = "build_extensions_" + key;
+              if (settings[index].size() > 0) {
+                settings[index] += " " + value;
+              } else {
+                settings[index] = value;
+              }
+            }
+          }
+        }
+
         // allow for local `.sscrc` '[settings] ...' entries to overload the
         // project's settings in `socket.ini`:
         // [settings.ios]
@@ -2543,6 +2563,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
+    auto isForExtensionOnly = settings["meta_type"] == "extension" || settings["build_type"] == "extension";
 
     if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
@@ -4545,7 +4566,7 @@ int main (const int argc, const char* argv[]) {
             } else if (source.ends_with(".o") || source.ends_with(".a")) {
               objects << source << " ";
               continue;
-            } else if (source.ends_with(".c")) {
+            } else if (source.ends_with(".c") || source.ends_with(".m")) {
               compiler = CC.size() > 0 ? CC : "clang";
               if (platform.mac) {
                 compilerFlags += " -ObjC -v";
@@ -4583,6 +4604,7 @@ int main (const int argc, const char* argv[]) {
               << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
               << " -lsocket-runtime"
             #endif
+              << " -fvisibility=hidden"
               << " -DIOS=0"
               // << " -U__CYGWIN__"
               << " -DANDROID=0"
@@ -4701,9 +4723,9 @@ int main (const int argc, const char* argv[]) {
             << " " << extraFlags
             << " -lsocket-runtime"
             << " -luv"
-            << " -fvisibility=hidden"
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
+            << " -fvisibility=hidden"
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
             << (" -I" + quote + trim(prefixFile("include")) + quote)
             << (" -I" + quote + trim(prefixFile("src")) + quote)
@@ -4750,7 +4772,7 @@ int main (const int argc, const char* argv[]) {
       fs::current_path(oldCwd);
     }
 
-    if (flagRunUserBuildOnly == false && isForDesktop) {
+    if (flagRunUserBuildOnly == false && isForDesktop && !isForExtensionOnly) {
       StringStream compileCommand;
 
       // windows / spaces in bin path - https://stackoverflow.com/a/27976653/3739540
@@ -4832,7 +4854,7 @@ int main (const int argc, const char* argv[]) {
     //
     // MacOS Stripping
     //
-    if (platform.mac && isForDesktop) {
+    if (platform.mac && isForDesktop && !isForExtensionOnly) {
       StringStream stripCommand;
 
       stripCommand
