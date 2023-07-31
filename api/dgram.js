@@ -778,6 +778,16 @@ export class Socket extends EventEmitter {
 
       if (!err && info) {
         this.emit('connect', info)
+
+        startReading(this, (err) => {
+          if (err) {
+            cb(err)
+          } else {
+            this.dataListener = createDataListener(this)
+            cb(null)
+            this.emit('listening')
+          }
+        })
       }
     })
   }
