@@ -296,10 +296,17 @@ extern "C" {
   /**
    * Get a context error location.
    * @param context - An extension context
-   * @preturn The location of the error
+   * @return The location of the error
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_context_error_get_location (const sapi_context_t* context);
+
+  /**
+   * @param context - An extension context
+   * @return Allocated memmory for the context
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  void* sapi_context_alloc (sapi_context_t* context, unsigned int size);
 
 
   /**
@@ -315,7 +322,7 @@ extern "C" {
    * @param source  - The source of the script to evaluate
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_evaluate_javascript (
+  void sapi_javascript_evaluate (
     sapi_context_t* context,
     const char* name,
     const char* source
@@ -779,6 +786,26 @@ extern "C" {
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_message_get_value (
+    const sapi_ipc_message_t* message
+  );
+
+  /**
+   * Get the buffer bytes associated with the IPC message.
+   * @param message The IPC message
+   * @return The IPC message va (possibly `NULL`)
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const unsigned char* sapi_ipc_message_get_bytes (
+    const sapi_ipc_message_t* message
+  );
+
+  /**
+   * Get the buffer bytes size associated with the IPC message.
+   * @param message The IPC message
+   * @return The IPC message va (possibly `NULL`)
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  unsigned int sapi_ipc_message_get_bytes_size (
     const sapi_ipc_message_t* message
   );
 
