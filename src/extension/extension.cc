@@ -428,7 +428,7 @@ namespace SSC {
 
     if (std::count(initializedExtensions.begin(), initializedExtensions.end(), name) > 0) {
       debug("Extension '%s' already loaded", name.c_str());
-      // already initializedExtensions
+      // already initialized
       return true;
     }
 
