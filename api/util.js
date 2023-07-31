@@ -771,6 +771,10 @@ export function parseJSON (string) {
 }
 
 export function parseHeaders (headers) {
+  if (Array.isArray(headers)) {
+    headers = headers.map((h) => h.trim()).join('\n')
+  }
+
   if (typeof headers !== 'string') {
     return []
   }

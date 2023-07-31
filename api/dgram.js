@@ -630,7 +630,7 @@ export class Socket extends EventEmitter {
   constructor (options, callback) {
     super()
 
-    this.id = rand64()
+    this.id = options?.id || rand64()
 
     if (typeof options === 'string') {
       options = { type: options }
@@ -778,6 +778,16 @@ export class Socket extends EventEmitter {
 
       if (!err && info) {
         this.emit('connect', info)
+
+        startReading(this, (err) => {
+          if (err) {
+            cb(err)
+          } else {
+            this.dataListener = createDataListener(this)
+            cb(null)
+            this.emit('listening')
+          }
+        })
       }
     })
   }
