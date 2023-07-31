@@ -9,21 +9,13 @@ sapi_context_t* sapi_context_create (
     return nullptr;
   }
 
-  auto context = retained || parent == nullptr
+  retained = retained || parent == nullptr;
+  auto context = retained
     ? new sapi_context_t(parent)
-    : parent->memory.alloc<sapi_context_t>();
+    : parent->memory.alloc<sapi_context_t>(parent, parent);
 
   if (retained || parent == nullptr) {
     context->retained = true;
-  }
-
-  if (parent != nullptr) {
-    context->context = parent;
-    context->extension = parent->extension;
-    context->router = parent->router;
-    context->config = parent->config;
-    context->data = parent->data;
-    context->policies = parent->policies;
   }
 
   return context;
@@ -194,4 +186,12 @@ void sapi_context_config_set (
 ) {
   if (context == nullptr || key == nullptr) return;
   context->config[key] = value;
+}
+
+void* sapi_context_alloc (sapi_context_t* context, unsigned int size) {
+  if (context == nullptr || size == 0) {
+    return nullptr;
+  }
+
+  return reinterpret_cast<void*>(context->memory.alloc<unsigned char>(size));
 }
