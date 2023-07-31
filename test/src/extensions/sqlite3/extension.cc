@@ -283,6 +283,6 @@ bool deinitialize (sapi_context_t* context, const void *data) {
 SOCKET_RUNTIME_REGISTER_EXTENSION(
   "sqlite3", // name
   initialize, // initializer
-  nullptr,
+  deinitialize,
   "a simple sqlite3 binding", // description
 );
