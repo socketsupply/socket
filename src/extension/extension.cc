@@ -2,6 +2,7 @@
 
 namespace SSC {
   static Extension::Map extensions = {};
+  static Vector<String> initialized;
   static Mutex mutex;
 
   static String getcwd () {
@@ -107,6 +108,7 @@ namespace SSC {
     this->config = context.config;
     this->data = context.data;
     this->policies = context.policies;
+    this->internal = context.internal;
   }
 
   Extension::Context::Context (const Context* context) {
@@ -116,6 +118,7 @@ namespace SSC {
       this->config = context->config;
       this->data = context->data;
       this->policies = context->policies;
+      this->internal = context->internal;
     }
   }
 
@@ -128,6 +131,7 @@ namespace SSC {
       this->config = context.config;
       this->data = context.data;
       this->policies = context.policies;
+      this->internal = context.internal;
     }
 
   Extension::Context::Context (IPC::Router* router) : Context() {
@@ -421,11 +425,20 @@ namespace SSC {
       return false;
     }
 
+    if (std::find(initialized.begin(), initialized.end(), name) != initialized.end()) {
+      // already initialized
+      return true;
+    }
+
     auto extension = extensions.at(name);
     if (extension != nullptr && extension->initializer != nullptr) {
       debug("Initializing loaded extension: %s", name.c_str());
       extension->context.data = data;
-      return extension->initializer(ctx, data);
+      auto didInitialize = extension->initializer(ctx, data);
+      if (didInitialize) {
+        initialized.push_back(name);
+      }
+      return didInitialize;
     }
 
     return false;
