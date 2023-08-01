@@ -1,6 +1,8 @@
 #include "ipc.hh"
 #include "../extension/extension.hh"
 
+#include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
 #define IPC_JSON_CONTENT_TYPE "text/json"
@@ -1517,6 +1519,9 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
   auto request = task.request;
   auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message {url};
@@ -1545,14 +1550,17 @@ static void registerSchemeHandler (Router *router) {
   }
 
   if (String(request.URL.scheme.UTF8String) == "socket") {
+    auto host = request.URL.host;
     auto headers = [NSMutableDictionary dictionary];
     auto components = [NSURLComponents
             componentsWithURL: request.URL
       resolvingAgainstBaseURL: YES
     ];
 
+    String moduleSource = "";
+
     components.scheme = @"file";
-    components.host = @"";
+    components.host = request.URL.host;
 
     auto path = String(components.path.UTF8String);
     auto ext = String(
@@ -1561,34 +1569,83 @@ static void registerSchemeHandler (Router *router) {
         : ".js"
     );
 
-  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-    components.path = [[[NSBundle mainBundle] resourcePath]
-      stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
-      ]
-    ];
-  #else
-    components.path = [[[NSBundle mainBundle] resourcePath]
-      stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
-      ]
-    ];
-  #endif
+    if (
+      host.UTF8String != nullptr &&
+      String(host.UTF8String) == bundleIdentifier
+    ) {
+      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+        components.path = [[[NSBundle mainBundle] resourcePath]
+          stringByAppendingPathComponent: [NSString
+            stringWithFormat: @"/ui/%s", request.URL.path.UTF8String
+          ]
+        ];
+      #else
+        components.path = [[[NSBundle mainBundle] resourcePath]
+          stringByAppendingPathComponent: [NSString
+            stringWithFormat: @"/%s", request.URL.path.UTF8String
+          ]
+        ];
+      #endif
+
+    } else {
+    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+      components.path = [[[NSBundle mainBundle] resourcePath]
+        stringByAppendingPathComponent: [NSString
+          stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
+        ]
+      ];
+    #else
+      components.path = [[[NSBundle mainBundle] resourcePath]
+        stringByAppendingPathComponent: [NSString
+          stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
+        ]
+      ];
+    #endif
+
+      moduleSource = trim(tmpl(
+        moduleTemplate,
+        Map { {"url", String(components.URL.absoluteString.UTF8String)} }
+      ));
+    }
 
     auto data = [NSData dataWithContentsOfURL: components.URL];
-
-    auto moduleSource = trim(tmpl(
-      moduleTemplate,
-      Map { {"url", String(components.URL.absoluteString.UTF8String)} }
-    ));
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
 
-    headers[@"content-location"] = components.URL.absoluteString;
-    headers[@"content-length"] = [@(moduleSource.size()) stringValue];
-    headers[@"content-type"] = @"text/javascript";
+    headers[@"content-location"] = request.URL.absoluteString;
+
+    if (moduleSource.size() > 0 && data.length > 0) {
+      headers[@"content-length"] = [@(moduleSource.size()) stringValue];
+      headers[@"content-type"] = @"text/javascript";
+      components.host = @(userConfig["meta_bundle_identifier"].c_str());
+    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+      components.path = [NSString
+        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
+      ];
+    #else
+      components.path = [NSString
+        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
+      ];
+    #endif
+    } else {
+      auto types = [UTType
+            typesWithTag: request.URL.pathExtension
+                tagClass: UTTagClassFilenameExtension
+        conformingToType: nullptr
+      ];
+
+      headers[@"content-length"] = [@(data.length) stringValue];
+
+      if (types.count > 0 && types.firstObject.preferredMIMEType) {
+        headers[@"content-type"] = types.firstObject.preferredMIMEType;
+      }
+
+      components.path = request.URL.path;
+    }
+
+    components.scheme = @("socket");
 
     auto response = [[NSHTTPURLResponse alloc]
       initWithURL: components.URL
@@ -1599,11 +1656,8 @@ static void registerSchemeHandler (Router *router) {
 
     [task didReceiveResponse: response];
 
-    if (data != nullptr) {
-      [task didReceiveData: [NSData
-        dataWithBytes: moduleSource.data()
-               length: moduleSource.size()
-      ]];
+    if (data.length > 0) {
+      [task didReceiveData: data];
     }
 
     [task didFinish];
