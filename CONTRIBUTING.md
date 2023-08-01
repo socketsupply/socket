@@ -66,7 +66,7 @@ Issues for all Socket Runtime components are on [GitHub](https://github.com/sock
 - If you think you have found a bug, Please [open an issue](https://github.com/socketsupply/socket/issues/new) and make sure that you select the correct template and follow the given instructions while creating an issue.
 - You can search through existing issues to see if there is a similar one [reported](https://github.com/socketsupply/socket/issues). You can also search through closed issues as they may have been closed with a solution.
 - Please detail all the steps necessary to reproduce the issue you are running into, so we can easily diagnose and fix your issue. 
-- If you have found a potential security issue, we provide a process to responsibly disclose potential vulnerability.  
+- If you have found a potential security issue, please use the GitHub Security Advisory [Report a Vulnerability](https://github.com/socketsupply/socket/security/advisories/new) tab to report the issue. We will work with you the the entire lifecycle of the issue from the time you report it, to the time it has remediation, and is ready for an announcement.
  
 If you can't find something in this guide or you have any questions, please feel free to join our [Discord](https://discord.com/invite/YPV32gKCsH)  
 
