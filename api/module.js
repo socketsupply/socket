@@ -8,6 +8,7 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
+import { config } from './application.js'
 import { Stats } from './fs/stats.js'
 
 import * as exports from './module.js'
@@ -76,7 +77,7 @@ function request (url) {
     ANDROID_ASSET_HTTP_PROTOCOL_PREFIX
   )
 
-  if (/^https?:/.test(globalThis.location?.href || '') && (url.startsWith('/') || url.startsWith('\\'))) {
+  if (/^(https?|socket):/.test(globalThis.location?.href || '') && (url.startsWith('/') || url.startsWith('\\'))) {
     const base = globalThis.location?.href
     if (path.extname(base)) {
       url = new URL(url, path.dirname(base))
@@ -90,10 +91,11 @@ function request (url) {
   const isAndroidAssetRequest = String(url)
     .includes(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
 
-  if (!isAndroidAssetRequest && !exists(url)) {
-    return {}
-  }
+  //if (!isAndroidAssetRequest && !exists(url)) {
+    //return {}
+  //}
 
+  console.log('GET %s', url)
   request.open('GET', url, false)
   request.send(null)
 
@@ -186,7 +188,10 @@ export const COMMONJS_WRAPPER = CommonJSModuleScope
  * @type {string}
  */
 export const MAIN_SOURCE_URL = (
-  globalThis.location?.href || `file://${process.cwd() || ''}`
+  globalThis.location?.href?.includes?.(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
+    ? globalThis.location.href
+    : `socket://${config.meta_bundle_identifier}/index.html`
+  //globalThis.location?.href || `file://${process.cwd() || ''}`
 )
 
 /**
@@ -424,11 +429,7 @@ export class Module extends EventTarget {
    * @type {URL}
    */
   get url () {
-    return String(
-      this.sourceURL?.startsWith('.')
-        ? new URL(this.id, Module.main.sourceURL)
-        : new URL(this.sourceURL, Module.main.sourceURL)
-    )
+    return String(new URL(this.sourceURL, Module.main.sourceURL))
   }
 
   /**
@@ -464,6 +465,7 @@ export class Module extends EventTarget {
       }
     }
 
+    console.log({ queries })
     for (const query of queries) {
       const result = request(query)
       if (result.response) {
@@ -473,6 +475,7 @@ export class Module extends EventTarget {
     }
 
     if (!this.loaded) {
+    console.log({ url })
       loadPackage(this, url)
     }
 
@@ -497,12 +500,15 @@ export class Module extends EventTarget {
         }
 
         while (dirname !== root && --max > 0) {
+          console.log('JOIN', path.join(dirname, prefix, this.sourceURL))
           paths.add(path.join(dirname, prefix, this.sourceURL))
           dirname = path.dirname(dirname)
         }
 
+        console.log({ paths })
         for (const prefixed of paths) {
           const url = String(new URL(prefixed, Module.main.id))
+          console.log({ url })
           if (loadPackage(this, url)) {
             break
           }

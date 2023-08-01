@@ -993,7 +993,11 @@ MAIN {
       ";"
     ));
   } else {
-    defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
+    //defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
+    defaultWindow->navigate(
+      EMPTY_SEQ,
+      "socket://" + (fs::path(app.appData["meta_bundle_identifier"])  / "index.html").string()
+    );
   }
 
   //

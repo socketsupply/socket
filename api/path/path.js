@@ -86,8 +86,8 @@ export class Path extends URL {
   static relative (options, from, to) {
     const { sep } = options
     if (from === to) return ''
-    from = this.resolve(options, from).replace('file:', '')
-    to = this.resolve(options, to).replace('file:', '')
+    from = this.resolve(options, from).replace('socket:', '')
+    to = this.resolve(options, to).replace('socket:', '')
 
     const components = {
       output: [],
@@ -115,7 +115,7 @@ export class Path extends URL {
         .filter(Boolean)
     )
 
-    const relative = components.output.join(sep).replace(/^file:/g, '')
+    const relative = components.output.join(sep).replace(/^socket:/g, '')
 
     if (windowsDriveRegex.test(from) || windowsDriveRegex.test(to)) {
       return relative.replace(windowsDriveRegex, '')
@@ -137,7 +137,7 @@ export class Path extends URL {
 
     while (components.length) {
       const component = String(components.shift() || '')
-      const parts = component.split(sep)
+      const parts = component.split(sep).filter(Boolean)
       while (parts.length) {
         queries.push(parts.shift())
       }
@@ -147,7 +147,13 @@ export class Path extends URL {
       if (query === '..' && joined.length > 1 && joined[0] !== '..') {
         joined.pop()
       } else if (query !== '.') {
-        joined.push(query)
+        if (query.startsWith(sep)) {
+          joined.push(query.slice(1))
+        } else if (query.endsWith(sep)) {
+          joined.push(query.slice(0, query.length - 1))
+        } else {
+          joined.push(query)
+        }
       }
     }
 
@@ -162,11 +168,11 @@ export class Path extends URL {
    */
   static dirname (options, path) {
     const { sep } = options
-    const protocol = path.startsWith('file://')
-      ? 'file://'
-      : path.startsWith('file:') ? 'file:' : ''
+    const protocol = path.startsWith('socket://')
+      ? 'socket://'
+      : path.startsWith('socket:') ? 'socket:' : ''
 
-    path = path.replace('file://', '')
+    path = path.replace('socket://', '')
 
     if (isWin32 && windowsDriveInPathRegex.test(path)) {
       path = path.slice(1)
@@ -283,8 +289,8 @@ export class Path extends URL {
 
       if (!drive) {
         if (
-          url.protocol !== 'file:' ||
-          (url.protocol === 'file:' && path.startsWith('file:'))
+          url.protocol !== 'socket:' ||
+          (url.protocol === 'socket:' && path.startsWith('socket:'))
         ) {
           if (protocolStrictSlashesRegex.test(path)) {
             output = url.protocol + '//' + url.hostname + output
@@ -376,14 +382,14 @@ export class Path extends URL {
     pathname = String(pathname || '.').trim()
 
     if (cwd) {
-      cwd = new URL(`file://${cwd.replace('file://', '')}`)
+      cwd = new URL(`socket://${cwd.replace('socket://', '')}`)
     } else if (pathname.startsWith('..')) {
       pathname = pathname.slice(2)
-      cwd = 'file://..'
+      cwd = 'socket://..'
     } else if (isRelative) {
-      cwd = new URL('file://.')
+      cwd = new URL('socket://.')
     } else {
-      cwd = new URL(`file://${Path.cwd()}`)
+      cwd = new URL(`socket://${Path.cwd()}`)
     }
 
     super(pathname, cwd)
