@@ -176,7 +176,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>DTSDKBuild</key>
   <string>10.13</string>
   <key>CFBundleVersion</key>
-  <string>v{{meta_version}}</string>
+  <string>{{meta_version}}</string>
   <key>BuildMachineOSBuild</key>
   <string>17D102</string>
   <key>NSCameraUsageDescription</key>
