@@ -411,7 +411,7 @@ namespace SSC {
       return;
     }
 
-    auto extension = std::shared_ptr<Extension>(new Extension(name, initializer));
+    auto extension = std::make_shared<Extension>(name, initializer);
     extensions.insert_or_assign(name, extension);
   }
 
