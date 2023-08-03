@@ -1569,6 +1569,12 @@ static void registerSchemeHandler (Router *router) {
         : ".js"
     );
 
+    if (path == "/" || path.size() == 0) {
+      path = "/index.html";
+    } else if (path.ends_with("/")) {
+      path += "index.html";
+    }
+
     if (
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
@@ -1576,13 +1582,13 @@ static void registerSchemeHandler (Router *router) {
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
         components.path = [[[NSBundle mainBundle] resourcePath]
           stringByAppendingPathComponent: [NSString
-            stringWithFormat: @"/ui/%s", request.URL.path.UTF8String
+            stringWithFormat: @"/ui/%s", path.c_str()
           ]
         ];
       #else
         components.path = [[[NSBundle mainBundle] resourcePath]
           stringByAppendingPathComponent: [NSString
-            stringWithFormat: @"/%s", request.URL.path.UTF8String
+            stringWithFormat: @"/%s", path.c_str()
           ]
         ];
       #endif
@@ -1614,8 +1620,6 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
 
-    headers[@"content-location"] = request.URL.absoluteString;
-
     if (moduleSource.size() > 0 && data.length > 0) {
       headers[@"content-length"] = [@(moduleSource.size()) stringValue];
       headers[@"content-type"] = @"text/javascript";
@@ -1629,9 +1633,10 @@ static void registerSchemeHandler (Router *router) {
         stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
       ];
     #endif
+      headers[@"content-location"] = components.URL.absoluteString;
     } else {
       auto types = [UTType
-            typesWithTag: request.URL.pathExtension
+            typesWithTag: components.URL.pathExtension
                 tagClass: UTTagClassFilenameExtension
         conformingToType: nullptr
       ];
@@ -1642,7 +1647,8 @@ static void registerSchemeHandler (Router *router) {
         headers[@"content-type"] = types.firstObject.preferredMIMEType;
       }
 
-      components.path = request.URL.path;
+      headers[@"content-location"] = components.URL.absoluteString;
+      components.path = @(path.c_str());
     }
 
     components.scheme = @("socket");
