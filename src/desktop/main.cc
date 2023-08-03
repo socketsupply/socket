@@ -1019,10 +1019,17 @@ MAIN {
     ));
   } else {
     //defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
-    defaultWindow->navigate(
-      EMPTY_SEQ,
-      "socket://" + (fs::path(app.appData["meta_bundle_identifier"])  / "index.html").string()
-    );
+    if (app.appData["webview_index"].size() != 0) {
+      defaultWindow->navigate(
+        EMPTY_SEQ,
+        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_index"]
+      );
+    } else {
+      defaultWindow->navigate(
+        EMPTY_SEQ,
+        "socket://" + (fs::path(app.appData["meta_bundle_identifier"])  / "index.html").string()
+      );
+    }
   }
 
   //
