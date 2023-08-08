@@ -35,8 +35,8 @@ void signalHandler (int signal) {
 }
 
 SSC::String getNavigationError (const String &cwd, const String &value) {
-  if (!value.starts_with("file://")) {
-    return SSC::String("only file:// protocol is allowed for the file navigation. Got url ") + value;
+  if (!value.starts_with("socket://") &&  !value.starts_with("socket://")) {
+    return SSC::String("only socket:// protocol is allowed for the file navigation. Got url ") + value;
   }
   auto url = value.substr(7);
   if (url.empty()) {
@@ -1019,7 +1019,6 @@ MAIN {
       ";"
     ));
   } else {
-    //defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
     if (app.appData["webview_index"].size() != 0) {
       defaultWindow->navigate(
         EMPTY_SEQ,

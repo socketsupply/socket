@@ -1391,6 +1391,8 @@ static void registerSchemeHandler (Router *router) {
   // prevent this function from registering the `ipc://`
   // URI scheme handler twice
   static std::atomic<bool> registered = false;
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   if (registered) return;
   registered = true;
 
@@ -1483,20 +1485,48 @@ static void registerSchemeHandler (Router *router) {
     }
 
     auto ext = uri.ends_with(".js") ? "" : ".js";
-    auto path = fs::path(cwd) / "socket" / (uri + ext);
+    auto path = uri.starts_with(bundleIdentifier)
+      ? uri.substr(bundleIdentifier.size()j)
+      : "socket/" + (uri + ext);
 
-    uri = "file://" + path.string();
-    auto moduleSource = trim(tmpl(
-      moduleTemplate,
-      Map { {"url", String(uri)} }
-    ));
+    if (path == "/" || path.size() == 0) {
+      path = "/index.html";
+    } else if (path.ends_with("/")) {
+      path += "index.html";
+    }
 
-    auto size = moduleSource.size();
-    auto bytes = moduleSource.data();
-    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-    auto response = webkit_uri_scheme_response_new(stream, size);
+    path = fs::absolute(fs:path(cwd) / path);
 
-    webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+    if (!fs::exists(path)) {
+      auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
+      auto response = webkit_uri_scheme_response_new(stream, 0);
+
+      webkit_uri_scheme_response_set_status(response, 404, "Not found");
+      webkit_uri_scheme_request_finish_with_response(request, response);
+      g_object_unref(stream);
+      return;
+    }
+
+    GError* error = nullptr;
+
+    auto stream = g_resources_open_stream(path.string().c_str(), 0, &error);
+
+    if (!stream) {
+      webkit_uri_scheme_request_finish_error(request, error);
+      g_error_free(error);
+      return;
+    }
+
+    auto size = fs::file_size(path);
+    auto mimeType = g_content_type_get_mime_type(ext.c_str());
+    auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+
+    if (mimeType) {
+      webkit_uri_scheme_response_set_content_type(response, mimeType);
+    } else {
+      webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+    }
+
     webkit_uri_scheme_request_finish_with_response(request, response);
     g_object_unref(stream);
   },

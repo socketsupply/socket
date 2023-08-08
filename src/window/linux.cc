@@ -205,7 +205,7 @@ namespace SSC {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0 && uri.find("socket:") != 0) {
+        if (uri.find("http://localhost") != 0 && uri.find("socket:") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }
