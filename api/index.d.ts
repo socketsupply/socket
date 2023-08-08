@@ -3609,7 +3609,7 @@ declare module "socket:dgram" {
      */
     export class Socket extends EventEmitter {
         constructor(options: any, callback: any);
-        id: bigint;
+        id: any;
         type: any;
         signal: any;
         state: {
@@ -3871,7 +3871,7 @@ declare module "socket:extension" {
         /**
          * Load an extension by name.
          * @param {string} name
-         * @param {{ features: string[] | string ?} [options]
+         * @param {{ allow: string[] | string ?} [options]
          * @return {Promise<Extension>}
          */
         static load(name: string, options: any): Promise<Extension>;
