@@ -472,7 +472,7 @@ bool sapi_extension_register (
       auto deinitializer = registration->deinitializer;
       if (deinitializer != nullptr) {
         debug("Unloading extension: %s", registration->name);
-        auto initializedExtensionsCursor=  std::find(
+        auto initializedExtensionsCursor = std::find(
           SSC::initializedExtensions.begin(),
           SSC::initializedExtensions.end(),
           SSC::String(registration->name)
