@@ -1402,6 +1402,12 @@ output = "build"
 ; The build script
 ; script = "npm run build"
 
+
+[webview]
+; Make root open index.html
+index = "/"
+
+
 [debug]
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 flags = "-g"
@@ -1456,6 +1462,7 @@ native_cflags = ""
 native_sources = ""
 native_makefile = ""
 sources = ""
+
 
 [ios]
 
@@ -1530,6 +1537,7 @@ pfx = "certs/cert.pfx"
 
 ; The signing information needed by the appx api.
 publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+
 
 [window]
 
