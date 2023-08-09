@@ -573,7 +573,7 @@ MAIN {
       }
 
       auto screen = currentWindow->getScreenSize();
-      
+
       options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
       options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
 
@@ -953,20 +953,46 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-  String defaultWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
-  String defaultHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
-  String defaultMinWidth = app.appData["window_min_width"].size() > 0 ? app.appData["window_min_width"] : "0";
-  String defaultMinHeight = app.appData["window_min_height"].size() > 0 ? app.appData["window_min_height"] : "0";
-  String defaultMaxWidth = app.appData["window_max_width"].size() > 0 ? app.appData["window_max_width"] : "100%";
-  String defaultMaxHeight = app.appData["window_max_height"].size() > 0 ? app.appData["window_max_height"] : "100%";
+  Vector<String> properties = {
+    "window_width", "window_height",
+    "window_min_width", "window_min_height",
+    "window_max_width", "window_max_height"
+  };
+
+  auto setDefaultValue = [&](String property) {
+    // for min values set 0
+    if (property.find("min") != -1) {
+      return "0";
+    // for other values set 100%
+    } else {
+      return "100%";
+    }
+  };
+
+  // Regular expression to match a float number or a percentage
+  std::regex validPattern("^\\d*\\.?\\d+%?$");
+
+  for (const auto& property : properties) {
+    if (app.appData[property].size() > 0) {
+      auto value = app.appData[property];
+      if (!std::regex_match(value, validPattern)) {
+        stdWrite("Invalid value for " + property + ": " + value, true);
+        app.appData[property] = setDefaultValue(property);
+        stdWrite("Setting default value: " + app.appData[property], true);
+      }
+    // set default value if it's not set in socket.ini
+    } else {
+      app.appData[property] = setDefaultValue(property);
+    }
+  }
 
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight =  defaultHeight,
-    .defaultWidth = defaultWidth,
-    .defaultMinWidth = defaultMinWidth,
-    .defaultMinHeight = defaultMinHeight,
-    .defaultMaxWidth = defaultMaxWidth,
-    .defaultMaxHeight = defaultMaxHeight,
+    .defaultHeight = app.appData["window_height"],
+    .defaultWidth = app.appData["window_width"],
+    .defaultMinWidth = app.appData["window_min_width"],
+    .defaultMinHeight = app.appData["window_min_height"],
+    .defaultMaxWidth = app.appData["window_max_width"],
+    .defaultMaxHeight = app.appData["window_max_height"],
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
