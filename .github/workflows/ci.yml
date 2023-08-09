@@ -27,7 +27,7 @@ jobs:
   linux:
     name: Linux
     runs-on: ubuntu-22.04
-    timeout-minutes: 6
+    timeout-minutes: 9
     needs: lint
 
     steps:
