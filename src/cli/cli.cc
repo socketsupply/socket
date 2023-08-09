@@ -2050,7 +2050,7 @@ int main (const int argc, const char* argv[]) {
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
     bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
-    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true");
+    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true") || settings["build_headless"] == "true";
     bool flagShouldRun = optionsWithoutValue.find("--run") != optionsWithoutValue.end() || equal(rc["build_run"], "true");
     bool flagEntitlements = optionsWithoutValue.find("-e") != optionsWithoutValue.end() || equal(rc["build_entitlements"], "true");
     bool flagShouldNotarize = optionsWithoutValue.find("-n") != optionsWithoutValue.end() || equal(rc["build_notarize"], "true");
