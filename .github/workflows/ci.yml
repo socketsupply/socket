@@ -27,7 +27,7 @@ jobs:
   linux:
     name: Linux
     runs-on: ubuntu-22.04
-    timeout-minutes: 9
+    timeout-minutes: 8
     needs: lint
 
     steps:
@@ -65,7 +65,7 @@ jobs:
   mac:
     name: macOS
     runs-on: macOS-12
-    timeout-minutes: 9
+    timeout-minutes: 10
     needs: lint
 
     steps:
