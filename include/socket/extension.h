@@ -64,7 +64,7 @@
     };                                                                         \
                                                                                \
     SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
-    const unsigned int __sapi_extension_abi () {                               \
+    unsigned int __sapi_extension_abi () {                               \
       return __sapi_extension__.abi;                                           \
     }                                                                          \
                                                                                \
@@ -127,7 +127,19 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_context_t* sapi_context_create (
     sapi_context_t* parent,
-    const bool retained
+    bool retained
+  );
+
+  /**
+   * Set user data on a context.
+   * @param context - An extension context
+   * @param data    - User data
+   * @return `true` if the user data was set, `false` otherwise
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_context_set_data (
+    sapi_context_t* context,
+    const void* data
   );
 
   /**
@@ -194,6 +206,26 @@ extern "C" {
   );
 
   /**
+   * Get user data from context.
+   * @param context - An extension context
+   * @return An opaque pointer to user data
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const void * sapi_context_get_data (
+    const sapi_context_t* context
+  );
+
+  /**
+   * Get parent context for this context
+   * @param context - An extension context
+   * @return A pointer to the parent context. This value may be `NULL`.
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const sapi_context_t* sapi_context_get_parent (
+    const sapi_context_t* context
+  );
+
+  /**
    * Set a context error code.
    * @param context - An extension context
    * @param code    - The code of the error
@@ -201,7 +233,7 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_context_error_set_code (
     sapi_context_t* context,
-    const int code
+    int code
   );
 
   /**
@@ -210,7 +242,7 @@ extern "C" {
    * @return The code of the error
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const int sapi_context_error_get_code (const sapi_context_t* context);
+  int sapi_context_error_get_code (const sapi_context_t* context);
 
   /**
    * Set a context error name.
@@ -468,7 +500,7 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_boolean_t* sapi_json_boolean_create (
     sapi_context_t* context,
-    const bool boolean
+    bool boolean
   );
 
   /**
@@ -529,7 +561,7 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_json_array_set (
     sapi_json_array_t* array,
-    const unsigned int index,
+    unsigned int index,
     sapi_json_any_t* value
   );
 
@@ -542,7 +574,7 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   sapi_json_any_t* sapi_json_array_get (
     const sapi_json_array_t* array,
-    const unsigned int index
+    unsigned int index
   );
 
   /**
@@ -663,11 +695,11 @@ extern "C" {
    * @param format - Format string for formatted output
    * @param ...    - `format` argument values
    */
-  #define sapi_printf(ctx, format, ...) ({                                     \
-    char buffer[BUFSIZ] = {0};                                                 \
-    auto size = snprintf(nullptr, 0, format, ##__VA_ARGS__) + 1;               \
-    snprintf(buffer, size, format, ##__VA_ARGS__);                             \
-    sapi_log(ctx, buffer);                                                     \
+  #define sapi_printf(ctx, format, ...) ({                                      \
+    char _buffer[BUFSIZ] = {0};                                                 \
+    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                   \
+    snprintf(_buffer, _size, format, ##__VA_ARGS__);                            \
+    sapi_log(ctx, _buffer);                                                     \
   })
 
   /**
@@ -736,7 +768,7 @@ extern "C" {
    * @return The window index the IPC message was initiated from or intended for
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const int sapi_ipc_message_get_index (
+  int sapi_ipc_message_get_index (
     const sapi_ipc_message_t* message
   );
 
@@ -821,6 +853,16 @@ extern "C" {
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_ipc_result_get_seq (
+    const sapi_ipc_result_t* result
+  );
+
+  /**
+   * Get context from IPC result.
+   * @param result - An IPC request result
+   * @return An extension context
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_context_t* sapi_ipc_result_get_context (
     const sapi_ipc_result_t* result
   );
 
@@ -917,8 +959,8 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   void sapi_ipc_result_set_bytes (
     sapi_ipc_result_t* result,
-    const unsigned int size,
-    const unsigned char* bytes
+    unsigned int size,
+    unsigned char* bytes
   );
 
   /**
@@ -927,7 +969,7 @@ extern "C" {
    * @return THe IPC result bytes
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const unsigned char* sapi_ipc_result_get_bytes (
+  unsigned char* sapi_ipc_result_get_bytes (
     const sapi_ipc_result_t* result
   );
 
@@ -937,7 +979,7 @@ extern "C" {
    * @return The size of the IPC result bytes
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const unsigned int sapi_ipc_result_get_bytes_size (
+  unsigned int sapi_ipc_result_get_bytes_size (
     const sapi_ipc_result_t* result
   );
 
@@ -989,31 +1031,65 @@ extern "C" {
   /**
    * Send JSON to the bridge to propagate to the WebView.
    * @param context - An extension context
-   * @param seq     - An IPC sequence value
+   * @param message - The IPC message this send request sources from
    * @param json    - The result JSON
    * @return `true` if successful, otherwise `false`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_json (
     sapi_context_t* context,
-    const char* seq,
+    sapi_ipc_message_t* message,
+    sapi_json_any_t* json
+  );
+
+  /**
+   * Send JSON to the bridge to propagate to the WebView with a result.
+   * @param context - An extension context
+   * @param result  - The IPC request result
+   * @param json    - The result JSON
+   * @return `true` if successful, otherwise `false`
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_json_with_result (
+    sapi_context_t* context,
+    sapi_ipc_result_t* result,
     sapi_json_any_t* json
   );
 
   /**
    * Send bytes to the bridge to propagate to the WebView.
    * @param context - An extension context
-   * @param seq     - An IPC sequence value
+   * @param message - The IPC message this send request sources from
    * @param size    - The size of the bytes
    * @param bytes   - The bytes
+   * @param headers - The response headers
    * @return `true` if successful, otherwise `false`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_bytes (
     sapi_context_t* context,
-    const char* seq,
-    const unsigned int size,
-    const unsigned char* bytes
+    sapi_ipc_message_t* message,
+    unsigned int size,
+    unsigned char* bytes,
+    const char* headers
+  );
+
+  /**
+   * Send bytes to the bridge to propagate to the WebView with a result.
+   * @param context - An extension context
+   * @param result  - The IPC request result
+   * @param size    - The size of the bytes
+   * @param bytes   - The bytes
+   * @param headers - The response headers
+   * @return `true` if successful, otherwise `false`
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_bytes_with_result (
+    sapi_context_t* context,
+    sapi_ipc_result_t* result,
+    unsigned int size,
+    unsigned char* bytes,
+    const char* headers
   );
 
   /**
@@ -1026,7 +1102,7 @@ extern "C" {
    * @param data     - User data propagated to `callback`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_ipc_router_map (
+  bool sapi_ipc_router_map (
     sapi_context_t* context,
     const char* route,
     sapi_ipc_router_message_callback_t callback,
@@ -1040,7 +1116,7 @@ extern "C" {
    * @param route    - The route name to map
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_ipc_router_unmap (
+  bool sapi_ipc_router_unmap (
     sapi_context_t* context,
     const char* route
   );
@@ -1092,6 +1168,37 @@ extern "C" {
   typedef struct sapi_process_exec sapi_process_exec_t;
 
   /**
+   * An opaque pointer for a spawned child process.
+   */
+  typedef struct sapi_process_spawn sapi_process_spawn_t;
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_stdout_callback_t)(
+    const sapi_process_spawn_t* process,
+    const char* output,
+    unsigned int size
+  );
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_stderr_callback_t)(
+    const sapi_process_spawn_t* process,
+    const char* output,
+    unsigned int size
+  );
+
+  /**
+   * TODO
+   */
+  typedef void (*sapi_process_spawn_exit_callback_t)(
+    const sapi_process_spawn_t* process,
+    int exit_code
+  );
+
+  /**
    * Execute `command` as a child process. stdout and stderr are both captured
    * as interleaved output.
    * @param context - An extension context
@@ -1110,7 +1217,7 @@ extern "C" {
    * @return The exit code of the process
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const int sapi_process_exec_get_exit_code (
+  int sapi_process_exec_get_exit_code (
     const sapi_process_exec_t* process
   );
 
@@ -1122,6 +1229,70 @@ extern "C" {
   SOCKET_RUNTIME_EXTENSION_EXPORT
   const char* sapi_process_exec_get_output (const sapi_process_exec_t* process);
 
+  /**
+   * Spawn a child process with `command`, a `NULL` terminated list of
+   * arguments, and callbacks for stdout and stderr
+   * @param TODO
+   * @return TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_process_spawn_t* sapi_process_spawn (
+    sapi_context_t* context,
+    const char* command,
+    const char* argv,
+    const char* path,
+    sapi_process_spawn_stdout_callback_t onstdout,
+    sapi_process_spawn_stderr_callback_t onstderr,
+    sapi_process_spawn_exit_callback_t onexit
+  );
+
+  /**
+   * Get the exit code of a spawned process.
+   * @param process - The spawned process result
+   * @return The exit code of the process
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  int sapi_process_spawn_get_exit_code (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  unsigned long sapi_process_spawn_get_pid (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_context_t* sapi_process_spawn_get_context (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  int sapi_process_spawn_wait (
+    const sapi_process_spawn_t* process
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_process_spawn_write (
+    const sapi_process_spawn_t* process,
+    const char* bytes,
+    unsigned long size
+  );
+
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_process_spawn_close_stdin (
+    const sapi_process_spawn_t* process
+  );
+
+  /**
+   * TODO
+   * @param TODO
+   * @return TODO
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_process_spawn_kill (
+    sapi_process_spawn_t* process,
+    int code
+  );
 
   /**
    * Config API
@@ -1193,6 +1364,29 @@ extern "C" {
   const sapi_extension_registration_t* sapi_extension_get (
     const sapi_context_t* context,
     const char *name
+  );
+
+  /**
+   * Clone an IPC message
+   * @param context - An extension context
+   * @param message - The message to clone
+   * @return The cloned message
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_ipc_message_t* sapi_ipc_message_clone (
+    sapi_context_t* context,
+    const sapi_ipc_message_t* message
+  );
+
+  /**
+   * Clone an IPC result
+   * @param context - An extension context
+   * @param result  - The IPC request result to clone
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  sapi_ipc_result_t* sapi_ipc_result_clone (
+    sapi_context_t* context,
+    const sapi_ipc_result_t* result
   );
 
 #if defined(__cplusplus)

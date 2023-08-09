@@ -139,6 +139,15 @@ namespace SSC {
         this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
 
+      void resolvePromise (
+        const String& seq,
+        const String& state,
+        const JSON::Any& json
+      ) {
+        auto result = SSC::IPC::Result(json);
+        return resolvePromise(seq, state, result.str());
+      }
+
       static float getSizeInPixels (String sizeInPercent, int screenSize) {
         if (sizeInPercent.size() > 0) {
           if (sizeInPercent.back() == '%') {

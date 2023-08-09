@@ -6,7 +6,7 @@ namespace SSC {
     SSC::StringStream message;
     LPVOID lpMsgBuf;
     FormatMessage(
-    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+    FORMAT_MESSAGE_ALLOCATE_BUFFER |
     FORMAT_MESSAGE_FROM_SYSTEM |
     FORMAT_MESSAGE_IGNORE_INSERTS,
     NULL,
@@ -121,6 +121,7 @@ namespace SSC::IPC {
     const Message::Seq& seq,
     const Message& message
   ) {
+    this->id = rand64();
     this->message = message;
     this->source = message.name;
     this->seq = seq;
@@ -146,12 +147,17 @@ namespace SSC::IPC {
     }
   }
 
-  Result::Result (const Err error) {
+  Result::Result (const JSON::Any value) {
+    this->id = rand64();
+    this->value = value;
+  }
+
+  Result::Result (const Err error): Result(error.message.seq, error.message) {
     this->err = error.value;
     this->source = error.message.name;
   }
 
-  Result::Result (const Data data) {
+  Result::Result (const Data data): Result(data.message.seq, data.message) {
     this->data = data.value;
     this->source = data.message.name;
   }
@@ -160,7 +166,12 @@ namespace SSC::IPC {
     if (!this->value.isNull()) {
       if (this->value.isObject()) {
         auto object = this->value.as<JSON::Object>();
-        object["source"] = this->source;
+
+        if (object.has("data") || object.has("err")) {
+          object["source"] = this->source;
+          object["id"] = std::to_string(this->id);
+        }
+
         return object;
       }
 
@@ -168,13 +179,24 @@ namespace SSC::IPC {
     }
 
     auto entries = JSON::Object::Entries {
-      {"source", this->source}
+      {"source", this->source},
+      {"id", std::to_string(this->id)}
     };
 
     if (!this->err.isNull()) {
       entries["err"] = this->err;
-    } else {
+      if (this->err.isObject()) {
+        if (this->err.as<JSON::Object>().has("id")) {
+          entries["id"] = this->err.as<JSON::Object>().get("id");
+        }
+      }
+    } else if (!this->data.isNull()) {
       entries["data"] = this->data;
+      if (this->data.isObject()) {
+        if (this->data.as<JSON::Object>().has("id")) {
+          entries["id"] = this->data.as<JSON::Object>().get("id");
+        }
+      }
     }
 
     return JSON::Object(entries);

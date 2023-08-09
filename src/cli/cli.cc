@@ -1712,7 +1712,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         // only validate if config exists and we didn't exit early above
-        if (configExists) {
+        if (configExists && !equal(subcommand, "init") && !equal(subcommand, "env")) {
           // Check if build_name is set
           if (settings.count("build_name") == 0) {
             log("ERROR: 'name' value is required in socket.ini in the [build] section");
@@ -1773,25 +1773,25 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options initOptions = {
+  Options initOptions = {
     { { "--config" }, true, false }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    auto configOnly = optionsWithValue.find("--config") != optionsWithValue.end();
+    auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
+    auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
-      exit(0);
     } else {
       SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }
     if (!configOnly) {
-      if (fs::exists(targetPath / "src")) {
-        log("src directory already exists in " + targetPath.string());
-      } else {
+      if (isCurrentPathEmpty) {
         fs::create_directories(targetPath / "src");
         SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
         log("src/index.html created in " + targetPath.string());
+      } else {
+        log("Current directory was not empty. Assuming index.html is already in place.");
       }
       if (fs::exists(targetPath / ".gitignore")) {
         log(".gitignore already exists in " + targetPath.string());
@@ -1805,7 +1805,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options listDevicesOptions = {
+  Options listDevicesOptions = {
     { { "--platform" }, false, true },
     { { "--ecid" }, true, false },
     { { "--udid" }, true, false },
@@ -1911,7 +1911,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options installAppOptions = {
+  Options installAppOptions = {
     { { "--platform" }, false, true },
     { { "--device" }, true, true }
   };
@@ -1999,26 +1999,30 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
- Options printBuildDirOptions = {
-    { { "--platform" }, true },
-    { { "--prod" }, true }
+  // first flag indicating whether option is optional
+  // second flag indicating whether option should be followed by a value
+  Options printBuildDirOptions = {
+    { { "--platform" }, true, true }, { { "--root" }, true, false}
   };
+
   createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
+    bool flagRoot = optionsWithoutValue.find("--root") != optionsWithoutValue.end();
     // if --platform is specified, use the build path for the specified platform
     auto targetPlatform = optionsWithValue["--platform"];
-    if (targetPlatform.size() > 0) {
-      Path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
-      std::cout << path.string() << std::endl;
+    Paths paths = getPaths(targetPlatform.size() > 0 ? targetPlatform : platform.os);
+
+    if (flagRoot) {
+      std::cout << paths.platformSpecificOutputPath.string() << std::endl;
       exit(0);
     }
-    // if no --platform option is provided, print the current platform build path
-    std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
+
+    std::cout << paths.pathResourcesRelativeToUserBuild.string() << std::endl;
     exit(0);
   });
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options runOptions = {
+  Options runOptions = {
     { { "--platform" }, true, true },
     { { "--host" }, true, true },
     { { "--port" }, true, true },
@@ -2027,7 +2031,7 @@ int main (const int argc, const char* argv[]) {
     { { "--headless" }, true, false }
   };
 
- Options buildOptions = {
+  Options buildOptions = {
     { { "--quiet" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
@@ -2046,7 +2050,7 @@ int main (const int argc, const char* argv[]) {
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
     bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
-    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true");
+    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "false"));
     bool flagShouldRun = optionsWithoutValue.find("--run") != optionsWithoutValue.end() || equal(rc["build_run"], "true");
     bool flagEntitlements = optionsWithoutValue.find("-e") != optionsWithoutValue.end() || equal(rc["build_entitlements"], "true");
     bool flagShouldNotarize = optionsWithoutValue.find("-n") != optionsWithoutValue.end() || equal(rc["build_notarize"], "true");
@@ -2068,7 +2072,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (testFile.size() > 0) {
-      argvForward += " --test";
+      argvForward += " --test=" + testFile;
     }
 
     if (flagHeadless) {
@@ -2107,6 +2111,8 @@ int main (const int argc, const char* argv[]) {
     } else {
       targetPlatform = platform.os;
     }
+
+    argvForward +=  " --platform=" + targetPlatform;
     auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
     platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
 
@@ -2141,7 +2147,7 @@ int main (const int argc, const char* argv[]) {
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
       getEnv("DEBUG").size() > 0
-    );    
+    );
     auto debugBuild = debugEnv;
 
     const bool verboseEnv = (
@@ -2210,8 +2216,9 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto removePath = paths.platformSpecificOutputPath;
-    if (targetPlatform == "android")
-        removePath = settings["build_output"] + "/android/app/src";
+    if (targetPlatform == "android") {
+      removePath = settings["build_output"] + "/android/app/src";
+    }
 
     if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
       auto p = fs::current_path() / Path(removePath);
@@ -2229,6 +2236,299 @@ int main (const int argc, const char* argv[]) {
 
         exit(1);
       }
+    }
+
+    auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
+
+    if (settings.count("build_copy") != 0) {
+      Path pathInput = settings["build_copy"].size() > 0
+        ? settings["build_copy"]
+        : "src";
+
+      auto paths = split(pathInput.string(), ';');
+      for (const auto& p : paths) {
+        auto mapping = split(p, '=');
+        auto src = targetPath / trim(mapping[0]);
+        auto dst = mapping.size() == 2
+          ? pathResourcesRelativeToUserBuild / trim(mapping[1])
+          : pathResourcesRelativeToUserBuild;
+
+        if (!fs::exists(fs::status(src))) {
+          log("WARNING: [build] copy entry '" + src.string() +  "' does not exist");
+          continue;
+        }
+
+        if (!fs::exists(fs::status(dst.parent_path()))) {
+          fs::create_directories(dst.parent_path());
+        }
+
+        fs::copy(
+          src,
+          dst,
+          fs::copy_options::update_existing | fs::copy_options::recursive
+        );
+      }
+    }
+
+    for (const auto& tuple : settings) {
+      if (!tuple.first.starts_with("build_copy-map_")) {
+        continue;
+      }
+
+      auto key = replace(tuple.first, "build_copy-map_", "");
+      auto value = tuple.second;
+
+      auto src = Path { key };
+      auto dst = tuple.second.size() > 0
+        ? pathResourcesRelativeToUserBuild / value
+        : pathResourcesRelativeToUserBuild;
+
+      src = src.make_preferred();
+      dst = dst.make_preferred();
+
+      if (src.is_relative()) {
+        src = targetPath / src;
+      }
+
+      src = fs::absolute(src);
+      dst = fs::absolute(dst);
+
+      if (!fs::exists(fs::status(src))) {
+        log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
+        continue;
+      }
+
+      if (!fs::exists(fs::status(dst.parent_path()))) {
+        fs::create_directories(dst.parent_path());
+      }
+
+      auto mappedSourceFile = fs::absolute(
+        pathResourcesRelativeToUserBuild /
+        fs::relative(src, targetPath)
+      );
+
+      if (
+        !mappedSourceFile.string().ends_with(".") &&
+        pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+      ) {
+        if (fs::exists(fs::status(mappedSourceFile))) {
+          fs::remove_all(mappedSourceFile);
+        }
+      }
+
+      fs::copy(
+        src,
+        dst,
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
+
+    std::vector<Path> copyMapFiles;
+
+    // copy map file for all platforms
+    if (settings.count("build_copy_map") != 0) {
+      auto copyMapFile = Path{settings["build_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    // copy map file for target platform
+    if (
+      targetPlatform.starts_with("ios") &&
+      settings.count("build_ios_copy_map") != 0
+    ) {
+      auto copyMapFile = Path{settings["build_ios_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    if (
+      targetPlatform.starts_with("android") &&
+      settings.count("build_android_copy_map") != 0
+    ) {
+      auto copyMapFile = Path{settings["build_android_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    if (settings.count("build_" + platform.os +  "_copy_map") != 0) {
+      auto copyMapFile = Path{settings["build_" + platform.os +  "_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
+      copyMapFiles.push_back(copyMapFile);
+    }
+
+    for (const auto& copyMapFile : copyMapFiles) {
+      if (!fs::exists(fs::status(copyMapFile)) || !fs::is_regular_file(copyMapFile)) {
+        log("WARNING: file specified in [build] copy_map does not exist");
+      } else {
+        auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
+        auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
+
+        for (const auto& tuple : copyMap) {
+          auto key = tuple.first;
+          auto& value = tuple.second;
+
+          if (key.starts_with("win_")) {
+            if (!platform.win) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("mac_")) {
+            if (!platform.mac) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("ios_")) {
+            if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
+            key = key.substr(4, key.size() - 4);
+          }
+
+          if (key.starts_with("linux_")) {
+            if (!platform.linux) continue;
+            key = key.substr(6, key.size() - 6);
+          }
+
+          if (key.starts_with("android_")) {
+            if (!targetPlatform.starts_with("android")) continue;
+            key = key.substr(8, key.size() - 8);
+          }
+
+          if (key.starts_with("debug_")) {
+            if (!flagDebugMode) continue;
+            key = key.substr(6, key.size() - 6);
+          }
+
+          if (key.starts_with("prod_")) {
+            if (flagDebugMode) continue;
+            key = key.substr(5, key.size() - 5);
+          }
+
+          if (key.starts_with("production_")) {
+            if (flagDebugMode) continue;
+            key = key.substr(11, key.size() - 11);
+          }
+
+          auto src = Path { key };
+          auto dst = tuple.second.size() > 0
+            ? pathResourcesRelativeToUserBuild / value
+            : pathResourcesRelativeToUserBuild;
+
+          src = src.make_preferred();
+          dst = dst.make_preferred();
+
+          if (src.is_relative()) {
+            src = copyMapFileDirectory / src;
+          }
+
+          src = fs::absolute(src);
+          dst = fs::absolute(dst);
+
+          if (!fs::exists(fs::status(src))) {
+            log("WARNING: [build] copy_map entry '" + src.string() +  "' does not exist");
+            continue;
+          }
+
+          if (!fs::exists(fs::status(dst.parent_path()))) {
+            fs::create_directories(dst.parent_path());
+          }
+
+          auto mappedSourceFile = (
+            pathResourcesRelativeToUserBuild /
+            fs::relative(src, copyMapFileDirectory)
+          );
+
+          if (
+           !mappedSourceFile.string().ends_with(".") &&
+           pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+          ) {
+            if (fs::exists(fs::status(mappedSourceFile))) {
+              fs::remove_all(mappedSourceFile);
+            }
+          }
+
+          fs::copy(
+            src,
+            dst,
+            fs::copy_options::update_existing | fs::copy_options::recursive
+          );
+        }
+      }
+    }
+
+    if (settings.count("build_script") != 0) {
+      do {
+        char prefix[4096] = {0};
+        std::memcpy(
+          prefix,
+          pathResourcesRelativeToUserBuild.string().c_str(),
+          pathResourcesRelativeToUserBuild.string().size()
+        );
+
+        // @TODO(jwerle): use `setEnv()` if #148 is closed
+        #if _WIN32
+          String prefix_ = "PREFIX=";
+          prefix_ += prefix;
+          setEnv(prefix_.c_str());
+        #else
+          setenv("PREFIX", prefix, 1);
+        #endif
+      } while (0);
+
+      StringStream buildArgs;
+      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+
+      if (flagDebugMode) {
+        buildArgs << " --debug=true";
+      }
+
+      if (flagBuildTest) {
+        buildArgs << " --test=true";
+      }
+
+      auto scriptArgs = buildArgs.str();
+      auto buildScript = settings["build_script"];
+
+      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+      // cmd.exe can handle this translation
+      if (platform.win) {
+        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+        buildScript = "cmd.exe";
+      }
+
+      auto process = new SSC::Process(
+        buildScript,
+        scriptArgs,
+        (oldCwd / targetPath).string(),
+        [](SSC::String const &out) { stdWrite(out, false); },
+        [](SSC::String const &out) { stdWrite(out, true); }
+      );
+
+      process->open();
+      process->wait();
+
+      if (process->status != 0) {
+        // TODO(trevnorris): Force non-windows to exit the process.
+        log("build failed, exiting with code " + std::to_string(process->status));
+        exit(process->status);
+      }
+
+      log("ran user build command");
     }
 
     String flags;
@@ -2402,8 +2702,6 @@ int main (const int argc, const char* argv[]) {
          );
         exit(1);
       }
-
-      //writeFile();
 
       // Core
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
@@ -2600,19 +2898,18 @@ int main (const int argc, const char* argv[]) {
 
       makefileContext["cflags"] = cflags + " " + pp.str();
       makefileContext["cflags"] += " " + settings["android_native_cflags"];
+      makefileContext["__android_native_extensions_context"] = "";
 
       if (settings["android_native_abis"].size() > 0) {
         makefileContext["android_native_abis"] = settings["android_native_abis"];
       } else {
-        makefileContext["android_native_abis"] = "all";
+        makefileContext["android_native_abis"] = "arm64-v8a x86_64";
       }
-
-      makefileContext["__android_native_extensions_context"] = "";
 
       // custom native sources
       for (
         auto const &file :
-        parseStringList(settings["android_native_sources"])
+        parseStringList(settings["android_native_sources"], ' ')
       ) {
         auto filename = Path(file).filename();
         writeFile(
@@ -2633,10 +2930,12 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_mac_")) continue;
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
+          if (key.ends_with("_path")) continue;
 
           String extension;
           if (key.starts_with("build_extensions_android")) {
@@ -2645,33 +2944,96 @@ int main (const int argc, const char* argv[]) {
             extension = replace(key, "build_extensions_", "");
           }
 
-          auto compilerFlags = (
+          extension = split(extension, '_')[0];
+
+          auto source = settings["build_extensions_" + extension + "_source"];
+          auto oldCwd = fs::current_path();
+          fs::current_path(targetPath);
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target.string();
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
+                }
+              }
+            }
+          }
+
+          auto compilerFlags = replace(
             settings["build_extensions_compiler_flags"] + " " +
             settings["build_extensions_android_compiler_flags"] + " " +
             settings["build_extensions_" + extension + "_compiler_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_compiler_flags"] +  " "
+            settings["build_extensions_" + extension + "_android_compiler_flags"] +  " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
 
-          auto compilerDebugFlags = (
+          auto compilerDebugFlags = replace(
             settings["build_extensions_compiler_debug_flags"] + " " +
             settings["build_extensions_android_compiler_debug_flags"] + " " +
             settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_compiler_debug_flags"] +  " "
+            settings["build_extensions_" + extension + "_android_compiler_debug_flags"] +  " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
 
-          auto linkerFlags = (
+          auto linkerFlags = replace(
             settings["build_extensions_linker_flags"] + " " +
             settings["build_extensions_android_linker_flags"] + " " +
             settings["build_extensions_" + extension + "_linker_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_linker_flags"] +  " "
+            settings["build_extensions_" + extension + "_android_linker_flags"] +  " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
 
-          auto linkerDebugFlags = (
+          auto linkerDebugFlags = replace(
             settings["build_extensions_linker_debug_flags"] + " " +
             settings["build_extensions_android_linker_debug_flags"] + " " +
             settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
-            settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " "
+            settings["build_extensions_" + extension + "_android_linker_debug_flags"] + " ",
+            "-I",
+            "-I$(LOCAL_PATH)/"
           );
+
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
+          auto path = settings["build_extensions_" + extension + "_path"];
 
           auto sources = StringStream();
           auto make = StringStream();
@@ -2679,14 +3041,75 @@ int main (const int argc, const char* argv[]) {
           std::unordered_set<String> cflags;
           std::unordered_set<String> cppflags;
 
-          for (auto source : parseStringList(tuple.second, ' ')) {
-            auto destination= (
+          if (path.size() > 0) {
+            fs::current_path(targetPath);
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
+          }
+
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                auto destination = fs::absolute(targetPath / source);
+                sources << destination.string() << " ";
+              }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.pathResourcesRelativeToUserBuild;
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::create_directories(destination.parent_path());
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
+            }
+          }
+
+          for (
+            auto source : parseStringList(
+              trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_android"]),
+              ' '
+            )
+          ) {
+            if (fs::is_directory(source)) {
+              auto target = Path(source).filename();
+              fs::create_directories(jni / target);
+              fs::copy(
+                source,
+                jni / target,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
+              continue;
+            } else if (!fs::is_regular_file(source)) {
+              continue;
+            }
+
+            auto destination = (
               Path(source).parent_path() /
               Path(source).filename().string()
             ).string();
 
-            fs::create_directories(jni / "src" / Path(destination).parent_path());
-            fs::copy(cwd / source, jni / "src" / destination, fs::copy_options::overwrite_existing);
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
+
+            fs::create_directories(jni / Path(destination).parent_path());
+            fs::copy(source, jni / destination, fs::copy_options::overwrite_existing);
 
             if (destination.ends_with(".hh") || destination.ends_with(".h")) {
               continue;
@@ -2697,10 +3120,36 @@ int main (const int argc, const char* argv[]) {
               cppflags.insert("-fsigned-char");
             }
 
-            if (platform.win) {
-              sources << "src\\" << destination << " ";
-            } else {
-              sources << "src/" << destination << " ";
+            sources << destination << " ";
+          }
+
+          fs::current_path(oldCwd);
+
+          Vector<String> libs;
+          auto archs = settings["android_native_abis"];
+
+          if (archs.size() == 0) {
+            archs = "arm64-v8a x86_64";
+          }
+
+          for (const auto& source : parseStringList(sources.str(), ' ')) {
+            if (source.ends_with(".a")) {
+              auto name = replace(Path(source).filename().string(), ".a", "");
+              for (const auto& arch : parseStringList(archs, ' ')) {
+                if (source.find(arch) != -1) {
+                  fs::create_directories(jni / ".." / "libs" / arch);
+                  fs::copy(source, jni / ".." / "libs" / arch / Path(source).filename(), fs::copy_options::overwrite_existing);
+                }
+              }
+
+              if (std::find(libs.begin(), libs.end(), name) == libs.end()) {
+                libs.push_back(name);
+                make << "## " << Path(source).filename().string() << std::endl;
+                make << "include $(CLEAR_VARS)" << std::endl;
+                make << "LOCAL_MODULE := " << name << std::endl;
+                make << "LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/" << Path(source).filename().string() << std::endl;
+                make << "include $(PREBUILT_STATIC_LIBRARY)" << std::endl;
+              }
             }
           }
 
@@ -2767,9 +3216,24 @@ int main (const int argc, const char* argv[]) {
           }
           make << std::endl;
 
-          make << "LOCAL_LDLIBS := -landroid -llog" << std::endl;
-          make << "LOCAL_WHOLE_STATIC_LIBRARIES := libuv libsocket-runtime-static" << std::endl;
-          make << "LOCAL_SRC_FILES = init.cc " << sources.str() << std::endl;
+          make << "LOCAL_LDLIBS += -landroid -llog" << std::endl;
+
+          for (const auto& lib : libs) {
+            make << "LOCAL_STATIC_LIBRARIES += " << lib << std::endl;
+          }
+          make << std::endl;
+
+          make << "LOCAL_STATIC_LIBRARIES += libuv libsocket-runtime-static" << std::endl;
+          make << "LOCAL_SRC_FILES = init.cc" <<  std::endl;
+
+          for (const auto& source : parseStringList(sources.str(), ' ')) {
+            if (source.ends_with(".c") || source.ends_with(".cc") || source.ends_with(".mm") || source.ends_with(".m")) {
+              make << "LOCAL_SRC_FILES += " << source <<  std::endl;
+            }
+          }
+
+          make << std::endl;
+
           make << "include $(BUILD_SHARED_LIBRARY)" << std::endl;
           make << std::endl;
 
@@ -2869,8 +3333,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (platform.mac && flagBuildForIOS) {
-      fs::remove_all(paths.platformSpecificOutputPath);
-
       auto projectName = (settings["build_name"] + ".xcodeproj");
       auto schemeName = (settings["build_name"] + ".xcscheme");
       auto pathToProject = paths.platformSpecificOutputPath / projectName;
@@ -2944,7 +3406,9 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = "";
       }
 
-      auto deviceType = platform.arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
+      // --platform=ios should always build for arm64 even on Darwin x86_64
+      auto arch = flagBuildForSimulator ? platform.arch : "arm64";
+      auto deviceType = arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
 
       auto deviceLibs = Path(prefixFile()) / "lib" / deviceType;
       auto deviceObjects = Path(prefixFile()) / "objects" / deviceType;
@@ -3010,10 +3474,12 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_mac_")) continue;
           if (key.starts_with("build_extensions_linux_")) continue;
           if (key.starts_with("build_extensions_win_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
+          if (key.ends_with("_path")) continue;
 
           String extension;
           if (key.starts_with("build_extensions_ios")) {
@@ -3021,6 +3487,64 @@ int main (const int argc, const char* argv[]) {
           } else {
             extension = replace(key, "build_extensions_", "");
           }
+
+          extension = split(extension, '_')[0];
+
+          auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target.string();
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
+                }
+              }
+            }
+          }
+
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
+          auto path = settings["build_extensions_" + extension + "_path"];
+
+          auto sources = parseStringList(
+            trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_ios"]),
+            ' '
+          );
 
           auto objects = StringStream();
           auto libdir = platform.arch == "arm64"
@@ -3032,7 +3556,48 @@ int main (const int argc, const char* argv[]) {
             extensions.push_back(extension);
           }
 
-          for (const auto& source : parseStringList(tuple.second, ' ')) {
+          if (path.size() > 0) {
+            fs::current_path(targetPath);
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
+          }
+
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                sources.push_back(source);
+              }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.platformSpecificOutputPath / "ui";
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
+            }
+          }
+
+          for (const auto& source : sources) {
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
+
             String compiler;
 
             auto compilerFlags = (
@@ -3056,14 +3621,24 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
 
+            // --platform=ios should always build for arm64 even on Darwin x86_64
+            if (!flagBuildForSimulator) {
+              compilerFlags += " -arch arm64 ";
+            }
+
             if (source.ends_with(".hh") || source.ends_with(".h")) {
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
               compiler = "clang++";
               compilerFlags += " -std=c++2a -ObjC++ -v ";
-            } else {
+            } else if (source.ends_with(".o") || source.ends_with(".a")) {
+              objects << source << " ";
+              continue;
+            } else if (source.ends_with(".c")) {
               compiler = "clang";
               compilerFlags += " -ObjC -v ";
+            } else {
+              continue;
             }
 
             auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
@@ -3092,8 +3667,11 @@ int main (const int argc, const char* argv[]) {
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
+              << " -fembed-bitcode"
               << " -fPIC"
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
               << " -c " << source
               << " -o " << object.string()
             ;
@@ -3127,6 +3705,13 @@ int main (const int argc, const char* argv[]) {
             settings["build_extensions_" + extension + "_ios_linker_debug_flags"] + " "
           );
 
+          // --platform=ios should always build for arm64 even on Darwin x86_64
+          if (!flagBuildForSimulator) {
+            linkerFlags += " -arch arm64 ";
+          }
+
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
+          fs::create_directories(lib.parent_path());
           auto compileExtensionLibraryCommand = StringStream();
           compileExtensionLibraryCommand
             << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
@@ -3150,12 +3735,15 @@ int main (const int argc, const char* argv[]) {
             << " -framework UserNotifications"
             << " -framework WebKit"
             << " -framework UIKit"
+            << " -fembed-bitcode"
             << " -std=c++2a"
             << " -ObjC++"
             << " -shared"
             << " -v"
+            << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
+            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
-            << " -o " << (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT))
+            << " -o " << lib
           ;
 
           if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
@@ -3179,7 +3767,6 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
           // mostly random build IDs and refs
           auto id = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
           auto ref = String("17D835592A262D7900") + std::to_string(rand64()).substr(0, 6);
@@ -3394,291 +3981,6 @@ int main (const int argc, const char* argv[]) {
 
     log("package prepared");
 
-    auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
-    if (settings.count("build_script") != 0) {
-      {
-        char prefix[4096] = {0};
-        std::memcpy(
-          prefix,
-          pathResourcesRelativeToUserBuild.string().c_str(),
-          pathResourcesRelativeToUserBuild.string().size()
-        );
-
-        // @TODO(jwerle): use `setEnv()` if #148 is closed
-        #if _WIN32
-          String prefix_ = "PREFIX=";
-          prefix_ += prefix;
-          setEnv(prefix_.c_str());
-        #else
-          setenv("PREFIX", prefix, 1);
-        #endif
-      }
-
-      StringStream buildArgs;
-      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-
-      if (flagDebugMode) {
-        buildArgs << " --debug=true";
-      }
-
-      if (flagBuildTest) {
-        buildArgs << " --test=true";
-      }
-
-      auto scriptArgs = buildArgs.str();
-      auto buildScript = settings["build_script"];
-
-      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
-      // cmd.exe can handle this translation
-      if (platform.win) {
-        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
-        buildScript = "cmd.exe";
-      }
-
-      auto process = new SSC::Process(
-        buildScript,
-        scriptArgs,
-        (oldCwd / targetPath).string(),
-        [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); }
-      );
-
-      process->open();
-      process->wait();
-
-      if (process->status != 0) {
-        // TODO(trevnorris): Force non-windows to exit the process.
-        log("build failed, exiting with code " + std::to_string(process->status));
-        exit(process->status);
-      }
-
-      log("ran user build command");
-    }
-
-    if (settings.count("build_copy") != 0) {
-      Path pathInput = settings["build_copy"].size() > 0
-        ? settings["build_copy"]
-        : "src";
-
-      auto paths = split(pathInput.string(), ';');
-      for (const auto& p : paths) {
-        auto mapping = split(p, '=');
-        auto src = targetPath / trim(mapping[0]);
-        auto dst = mapping.size() == 2
-          ? pathResourcesRelativeToUserBuild / trim(mapping[1])
-          : pathResourcesRelativeToUserBuild;
-
-        if (!fs::exists(fs::status(src))) {
-          log("WARNING: [build] copy entry '" + src.string() +  "' does not exist");
-          continue;
-        }
-
-        if (!fs::exists(fs::status(dst.parent_path()))) {
-          fs::create_directories(dst.parent_path());
-        }
-
-        fs::copy(
-          src,
-          dst,
-          fs::copy_options::update_existing | fs::copy_options::recursive
-        );
-      }
-    }
-
-    for (const auto& tuple : settings) {
-      if (!tuple.first.starts_with("build_copy-map_")) {
-        continue;
-      }
-
-      auto key = replace(tuple.first, "build_copy-map_", "");
-      auto value = tuple.second;
-
-      auto src = Path { key };
-      auto dst = tuple.second.size() > 0
-        ? pathResourcesRelativeToUserBuild / value
-        : pathResourcesRelativeToUserBuild;
-
-      src = src.make_preferred();
-      dst = dst.make_preferred();
-
-      if (src.is_relative()) {
-        src = targetPath / src;
-      }
-
-      src = fs::absolute(src);
-      dst = fs::absolute(dst);
-
-      if (!fs::exists(fs::status(src))) {
-        log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
-        continue;
-      }
-
-      if (!fs::exists(fs::status(dst.parent_path()))) {
-        fs::create_directories(dst.parent_path());
-      }
-
-      auto mappedSourceFile = (
-        pathResourcesRelativeToUserBuild /
-        fs::relative(src, targetPath)
-      );
-
-      if (fs::exists(fs::status(mappedSourceFile))) {
-        fs::remove_all(mappedSourceFile);
-      }
-
-      fs::copy(
-        src,
-        dst,
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
-    }
-
-    std::vector<Path> copyMapFiles;
-
-    // copy map file for all platforms
-    if (settings.count("build_copy_map") != 0) {
-      auto copyMapFile = Path{settings["build_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    // copy map file for target platform
-    if (
-      targetPlatform.starts_with("ios") &&
-      settings.count("build_ios_copy_map") != 0
-    ) {
-      auto copyMapFile = Path{settings["build_ios_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    if (
-      targetPlatform.starts_with("android") &&
-      settings.count("build_ios_copy_map") != 0
-    ) {
-      auto copyMapFile = Path{settings["build_android_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    if (
-      settings.count("build_" + platform.os +  "_copy_map") != 0 &&
-      settings.count("build_ios_copy_map") != 0
-    ) {
-      auto copyMapFile = Path{settings["build_" + platform.os +  "_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    for (const auto& copyMapFile : copyMapFiles) {
-      if (!fs::exists(fs::status(copyMapFile)) || !fs::is_regular_file(copyMapFile)) {
-        log("WARNING: file specified in [build] copy_map does not exist");
-      } else {
-        auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
-        auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
-
-        for (const auto& tuple : copyMap) {
-          auto key = tuple.first;
-          auto& value = tuple.second;
-
-          if (key.starts_with("win_")) {
-            if (!platform.win) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("mac_")) {
-            if (!platform.mac) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("ios_")) {
-            if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("linux_")) {
-            if (!platform.linux) continue;
-            key = key.substr(6, key.size() - 6);
-          }
-
-          if (key.starts_with("android_")) {
-            if (!targetPlatform.starts_with("android")) continue;
-            key = key.substr(8, key.size() - 8);
-          }
-
-          if (key.starts_with("debug_")) {
-            if (!flagDebugMode) continue;
-            key = key.substr(6, key.size() - 6);
-          }
-
-          if (key.starts_with("prod_")) {
-            if (flagDebugMode) continue;
-            key = key.substr(5, key.size() - 5);
-          }
-
-          if (key.starts_with("production_")) {
-            if (flagDebugMode) continue;
-            key = key.substr(11, key.size() - 11);
-          }
-
-          auto src = Path { key };
-          auto dst = tuple.second.size() > 0
-            ? pathResourcesRelativeToUserBuild / value
-            : pathResourcesRelativeToUserBuild;
-
-          src = src.make_preferred();
-          dst = dst.make_preferred();
-
-          if (src.is_relative()) {
-            src = copyMapFileDirectory / src;
-          }
-
-          src = fs::absolute(src);
-          dst = fs::absolute(dst);
-
-          if (!fs::exists(fs::status(src))) {
-            log("WARNING: [build] copy_map entry '" + src.string() +  "' does not exist");
-            continue;
-          }
-
-          if (!fs::exists(fs::status(dst.parent_path()))) {
-            fs::create_directories(dst.parent_path());
-          }
-
-          auto mappedSourceFile = (
-            pathResourcesRelativeToUserBuild /
-            fs::relative(src, copyMapFileDirectory)
-          );
-
-          if (fs::exists(fs::status(mappedSourceFile))) {
-            fs::remove_all(mappedSourceFile);
-          }
-
-          fs::copy(
-            src,
-            dst,
-            fs::copy_options::update_existing | fs::copy_options::recursive
-          );
-        }
-      }
-    }
-
     auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
 
     if (SOCKET_HOME_API.size() == 0) {
@@ -3848,10 +4150,15 @@ int main (const int argc, const char* argv[]) {
       sdkmanager
         << packages.str();
 
-      if (debugEnv || verboseEnv) log(sdkmanager.str());
-      if (std::system(sdkmanager.str().c_str()) != 0) {
-        log("ERROR: failed to initialize Android SDK (sdkmanager)");
-        exit(1);
+      if (getEnv("SSC_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
+        if (debugEnv || verboseEnv) {
+          log(sdkmanager.str());
+        }
+
+        if (std::system(sdkmanager.str().c_str()) != 0) {
+          log("ERROR: failed to initialize Android SDK (sdkmanager)");
+          exit(1);
+        }
       }
 
       if (!androidEnableStandardNdkBuild) {
@@ -4047,31 +4354,129 @@ int main (const int argc, const char* argv[]) {
           if (key.find("compiler_debug_flags") != String::npos) continue;
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
+          if (key.find("configure_script") != String::npos) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
+          if (key.ends_with("_path")) continue;
 
           if (!platform.win && key.starts_with("build_extensions_win_")) continue;
           if (!platform.mac && key.starts_with("build_extensions_mac_")) continue;
           if (!platform.linux && key.starts_with("build_extensions_linux_")) continue;
 
           String extension;
-          auto os = replace(platform.os, "win32", "win");
+          auto os = replace(replace(platform.os, "win32", "win"), "macos", "mac");;
           if (key.starts_with("build_extensions_" + os)) {
             extension = replace(key, "build_extensions_" + os + "_", "");
           } else {
             extension = replace(key, "build_extensions_", "");
           }
 
-          auto sources = parseStringList(tuple.second, ' ');
+          extension = split(extension, '_')[0];
+
+          auto source = settings["build_extensions_" + extension + "_source"];
+
+          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+            source = settings["build_extensions_" + extension];
+            settings["build_extensions_" + extension] = "";
+          }
+
+          if (source.size() > 0) {
+            Path target;
+            if (fs::exists(source)) {
+              target = source;
+            } else if (source.ends_with(".git")) {
+              auto path = Path { source };
+              target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
+
+              if (!fs::exists(target)) {
+                auto exitCode = std::system(("git clone " + source + " " + target.string()).c_str());
+
+                if (exitCode) {
+                  exit(exitCode);
+                }
+              }
+            }
+
+            if (fs::exists(target)) {
+              auto configFile = target / "socket.ini";
+              auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
+              settings["build_extensions_" + extension + "_path"] = target.string();
+
+              for (const auto& entry : config) {
+                if (entry.first.starts_with("extension_sources")) {
+                  settings["build_extensions_" + extension] += entry.second;
+                } else if (entry.first.starts_with("extension_")) {
+                  auto key = replace(entry.first, "extension_", extension + "_");
+                  auto value = entry.second;
+                  auto index = "build_extensions_" + key;
+                  if (settings[index].size() > 0) {
+                    settings[index] += " " + value;
+                  } else {
+                    settings[index] = value;
+                  }
+                }
+              }
+            }
+          }
+
+          auto configure = settings["build_extensions_" + extension + "_configure_script"];
+          auto build = settings["build_extensions_" + extension + "_build_script"];
+          auto copy = settings["build_extensions_" + extension + "_build_copy"];
+          auto path = settings["build_extensions_" + extension + "_path"];
+
+          auto sources = parseStringList(
+            trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_" + os]),
+            ' '
+          );
+
           auto objects = StringStream();
           auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT));
+
+          fs::create_directories(lib.parent_path());
+
+          if (path.size() > 0) {
+            fs::current_path(targetPath);
+            fs::current_path(path);
+          } else {
+            fs::current_path(targetPath);
+          }
+
+          if (build.size() > 0) {
+            auto exitCode = std::system((build + argvForward).c_str());
+            if (exitCode) {
+              exit(exitCode);
+            }
+          }
+
+          if (configure.size() > 0) {
+            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            if (output.size() > 0) {
+              for (const auto& source : parseStringList(output, ' ')) {
+                sources.push_back(source);
+              }
+            }
+          }
+
+          if (copy.size() > 0) {
+            auto pathResources = paths.pathResourcesRelativeToUserBuild;
+            for (const auto& file : parseStringList(copy, ' ')) {
+              auto parts = split(file, ':');
+              auto target = parts[0];
+              auto destination = parts.size() == 2 ? pathResources / parts[1] : pathResources;
+              fs::copy(
+                target,
+                destination,
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
+            }
+          }
 
           if (sources.size() == 0) {
             continue;
           }
 
           if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) {
-            log("Building extension: " + extension + " ((" + platform.os +  ") desktop-" + platform.arch + ")");
+            log("Building extension: " + extension + " (" + platform.os +  "-" + platform.arch + ")");
             extensions.push_back(extension);
           }
 
@@ -4080,7 +4485,9 @@ int main (const int argc, const char* argv[]) {
           );
 
           for (auto source : sources) {
-            source = fs::absolute(Path(targetPath) / source).string();
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
 
             auto compilerFlags = (
               settings["build_extensions_compiler_flags"] + " " +
@@ -4125,10 +4532,8 @@ int main (const int argc, const char* argv[]) {
               } else if (platform.win) {
                 compilerFlags += " -stdlib=libstdc++";
               }
-            } else {
-              if (CC.size() > 0) {
-                compiler = CC;
-              } else if (CXX.ends_with("clang++")) {
+
+              if (CXX.ends_with("clang++")) {
                 compiler = CXX.substr(0, CXX.size() - 2);
               } else if (CXX.ends_with("clang++.exe")) {
                 compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
@@ -4137,22 +4542,23 @@ int main (const int argc, const char* argv[]) {
               } else if (CXX.ends_with("g++.exe")) {
                 compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
               }
-
+            } else if (source.ends_with(".o") || source.ends_with(".a")) {
+              objects << source << " ";
+              continue;
+            } else if (source.ends_with(".c")) {
+              compiler = CC.size() > 0 ? CC : "clang";
               if (platform.mac) {
                 compilerFlags += " -ObjC -v";
               }
+            } else {
+              continue;
             }
 
-            auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
-            auto object = (
-              paths.pathResourcesRelativeToUserBuild /
-              "socket" /
-              "extensions" /
-              extension /
-              filename
-            );
+            if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+              log("extension source: " + source);
+            }
 
-            fs::create_directories(object.parent_path());
+            auto object = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o"));
 
             objects << (quote + object.string() + quote) << " ";
             auto compileExtensionObjectCommand = StringStream();
@@ -4232,17 +4638,17 @@ int main (const int argc, const char* argv[]) {
           }
 
           auto linkerFlags = (
-            settings["build_extensions_linker_flags"] +
-            settings["build_extensions_" + os + "_linker_flags"] +
-            settings["build_extensions_" + extension + "_linker_flags"] +
-            settings["build_extensions_" + extension + "_" + os + "_linker_flags"]
+            settings["build_extensions_linker_flags"] + " " +
+            settings["build_extensions_" + os + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_linker_flags"] + " " +
+            settings["build_extensions_" + extension + "_" + os + "_linker_flags"] + " "
           );
 
           auto linkerDebugFlags = (
-            settings["build_extensions_linker_debug_flags"] +
-            settings["build_extensions_" + platform.os + "_linker_debug_flags"] +
-            settings["build_extensions_" + extension + "_linker_debug_flags"] +
-            settings["build_extensions_" + extension + "_" + os + "_linker_debug_flags"]
+            settings["build_extensions_linker_debug_flags"] + " " +
+            settings["build_extensions_" + platform.os + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_linker_debug_flags"] + " " +
+            settings["build_extensions_" + extension + "_" + os + "_linker_debug_flags"] + " "
           );
 
           if (platform.win && debugBuild) {
@@ -4274,7 +4680,6 @@ int main (const int argc, const char* argv[]) {
         #endif
 
           auto compileExtensionLibraryCommand = StringStream();
-
           compileExtensionLibraryCommand
             << quote // win32 - quote the entire command
             << quote // win32 - quote the binary path
@@ -4323,6 +4728,7 @@ int main (const int argc, const char* argv[]) {
             log(compileExtensionLibraryCommand.str());
           }
 
+          fs::create_directories(lib.parent_path());
           do {
             auto r = exec(compileExtensionLibraryCommand.str());
 
@@ -4944,7 +5350,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (testFile.size() > 0) {
-      argvForward += " --test";
+      argvForward += " --test=" + testFile;
     }
 
     if (flagHeadless) {
@@ -5007,7 +5413,7 @@ int main (const int argc, const char* argv[]) {
     AndroidCliState androidState;
     androidState.androidHome = getAndroidHome();
     androidState.verbose = debugEnv || verboseEnv;
-    androidState.devNull = devNull;    
+    androidState.devNull = devNull;
     androidState.targetPlatform = targetPlatform;
     androidState.platform = androidPlatform;
     androidState.appPath = paths.platformSpecificOutputPath / "app";
@@ -5019,7 +5425,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
- Options setupOptions = {
+  Options setupOptions = {
     { { "--platform" }, true, true },
     { { "--yes", "-y" }, true, false }
   };

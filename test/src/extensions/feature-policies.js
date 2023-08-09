@@ -30,7 +30,7 @@ test('extension.load(name) - feature policies', async (t) => {
   await simple.unload()
 
   try {
-    simple = await extension.load('simple-ipc-ping', { allow: ['ipc'] })
+    simple = await extension.load('simple-ipc-ping', { allow: ['context', 'ipc'] })
   } catch (err) {
     return t.ifError(err)
   }

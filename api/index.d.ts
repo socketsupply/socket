@@ -519,385 +519,6 @@ declare module "socket:console" {
     const _default: Console;
     export default _default;
 }
-declare module "socket:ipc" {
-    /**
-     * Parses `seq` as integer value
-     * @param {string|number} seq
-     * @param {object=} [options]
-     * @param {boolean} [options.bigint = false]
-     * @ignore
-     */
-    export function parseSeq(seq: string | number, options?: object | undefined): number | bigint;
-    /**
-     * If `debug.enabled === true`, then debug output will be printed to console.
-     * @param {(boolean)} [enable]
-     * @return {boolean}
-     * @ignore
-     */
-    export function debug(enable?: (boolean)): boolean;
-    export namespace debug {
-        function log(): any;
-        let enabled: any;
-    }
-    /**
-     * @ignore
-     */
-    export function postMessage(message: any, ...args: any[]): Promise<any>;
-    /**
-     * Waits for the native IPC layer to be ready and exposed on the
-     * global window object.
-     * @ignore
-     */
-    export function ready(): Promise<any>;
-    /**
-     * Sends a synchronous IPC command over XHR returning a `Result`
-     * upon success or error.
-     * @param {string} command
-     * @param {object|string?} [params]
-     * @param {object?} [options]
-     * @return {Result}
-     * @ignore
-     */
-    export function sendSync(command: string, params?: object | (string | null), options?: object | null): Result;
-    /**
-     * Emit event to be dispatched on `window` object.
-     * @param {string} name
-     * @param {any} value
-     * @param {EventTarget=} [target = window]
-     * @param {Object=} options
-     */
-    export function emit(name: string, value: any, target?: EventTarget | undefined, options?: any | undefined): Promise<void>;
-    /**
-     * Resolves a request by `seq` with possible value.
-     * @param {string} seq
-     * @param {any} value
-     * @ignore
-     */
-    export function resolve(seq: string, value: any): Promise<void>;
-    /**
-     * Sends an async IPC command request with parameters.
-     * @param {string} command
-     * @param {any=} value
-     * @param {object=} [options]
-     * @param {boolean=} [options.cache=false]
-     * @param {boolean=} [options.bytes=false]
-     * @return {Promise<Result>}
-     */
-    export function send(command: string, value?: any | undefined, options?: object | undefined): Promise<Result>;
-    /**
-     * Sends an async IPC command request with parameters and buffered bytes.
-     * @param {string} command
-     * @param {object=} params
-     * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
-     * @param {object=} options
-     * @ignore
-     */
-    export function write(command: string, params?: object | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
-    /**
-     * Sends an async IPC command request with parameters requesting a response
-     * with buffered bytes.
-     * @param {string} command
-     * @param {object=} params
-     * @param {object=} options
-     * @ignore
-     */
-    export function request(command: string, params?: object | undefined, options?: object | undefined): Promise<any>;
-    /**
-     * Factory for creating a proxy based IPC API.
-     * @param {string} domain
-     * @param {(function|object)=} ctx
-     * @param {string=} [ctx.default]
-     * @return {Proxy}
-     * @ignore
-     */
-    export function createBinding(domain: string, ctx?: (Function | object) | undefined): ProxyConstructor;
-    /**
-     * Represents an OK IPC status.
-     * @ignore
-     */
-    export const OK: 0;
-    /**
-     * Represents an ERROR IPC status.
-     * @ignore
-     */
-    export const ERROR: 1;
-    /**
-     * Timeout in milliseconds for IPC requests.
-     * @ignore
-     */
-    export const TIMEOUT: number;
-    /**
-     * Symbol for the `ipc.debug.enabled` property
-     * @ignore
-     */
-    export const kDebugEnabled: unique symbol;
-    /**
-     * @ignore
-     */
-    export class Headers extends globalThis.Headers {
-        /**
-         * @ignore
-         */
-        static from(input: any): any;
-        /**
-         * @ignore
-         */
-        get length(): number;
-        /**
-         * @ignore
-         */
-        toJSON(): {
-            [k: string]: any;
-        };
-    }
-    /**
-     * A container for a IPC message based on a `ipc://` URI scheme.
-     * @ignore
-     */
-    export class Message extends URL {
-        /**
-         * The expected protocol for an IPC message.
-         * @ignore
-         */
-        static get PROTOCOL(): string;
-        /**
-         * Creates a `Message` instance from a variety of input.
-         * @param {string|URL|Message|Buffer|object} input
-         * @param {(object|string|URLSearchParams)=} [params]
-         * @param {(ArrayBuffer|Uint8Array|string)?} [bytes]
-         * @return {Message}
-         * @ignore
-         */
-        static from(input: string | URL | Message | Buffer | object, params?: (object | string | URLSearchParams) | undefined, bytes?: (ArrayBuffer | Uint8Array | string) | null): Message;
-        /**
-         * Predicate to determine if `input` is valid for constructing
-         * a new `Message` instance.
-         * @param {string|URL|Message|Buffer|object} input
-         * @return {boolean}
-         * @ignore
-         */
-        static isValidInput(input: string | URL | Message | Buffer | object): boolean;
-        /**
-         * `Message` class constructor.
-         * @protected
-         * @param {string|URL} input
-         * @param {object|Uint8Array?} [bytes]
-         * @ignore
-         */
-        protected constructor();
-        /**
-         *  @type {Uint8Array?}
-         *  @ignore
-         */
-        bytes: Uint8Array | null;
-        /**
-         * Computed IPC message name.
-         * @ignore
-         */
-        get command(): string;
-        /**
-         * Computed IPC message name.
-         * @ignore
-         */
-        get name(): string;
-        /**
-         * Computed `id` value for the command.
-         * @ignore
-         */
-        get id(): string;
-        /**
-         * Computed `seq` (sequence) value for the command.
-         * @ignore
-         */
-        get seq(): any;
-        /**
-         * Computed message value potentially given in message parameters.
-         * This value is automatically decoded, but not treated as JSON.
-         * @ignore
-         */
-        get value(): any;
-        /**
-         * Computed `index` value for the command potentially referring to
-         * the window index the command is scoped to or originating from. If not
-         * specified in the message parameters, then this value defaults to `-1`.
-         * @ignore
-         */
-        get index(): number;
-        /**
-         * Computed value parsed as JSON. This value is `null` if the value is not present
-         * or it is invalid JSON.
-         * @ignore
-         */
-        get json(): any;
-        /**
-         * Computed readonly object of message parameters.
-         * @ignore
-         */
-        get params(): any;
-        /**
-         * Gets unparsed message parameters.
-         * @ignore
-         */
-        get rawParams(): {
-            [k: string]: any;
-        };
-        /**
-         * Returns computed parameters as entries
-         * @return {Array<Array<any>>}
-         * @ignore
-         */
-        entries(): Array<Array<any>>;
-        /**
-         * Set a parameter `value` by `key`.
-         * @param {string} key
-         * @param {any} value
-         * @ignore
-         */
-        set(key: string, value: any): void;
-        /**
-         * Get a parameter value by `key`.
-         * @param {string} key
-         * @param {any} defaultValue
-         * @return {any}
-         * @ignore
-         */
-        get(key: string, defaultValue: any): any;
-        /**
-         * Delete a parameter by `key`.
-         * @param {string} key
-         * @return {boolean}
-         * @ignore
-         */
-        delete(key: string): boolean;
-        /**
-         * Computed parameter keys.
-         * @return {Array<string>}
-         * @ignore
-         */
-        keys(): Array<string>;
-        /**
-         * Computed parameter values.
-         * @return {Array<any>}
-         * @ignore
-         */
-        values(): Array<any>;
-        /**
-         * Predicate to determine if parameter `key` is present in parameters.
-         * @param {string} key
-         * @return {boolean}
-         * @ignore
-         */
-        has(key: string): boolean;
-    }
-    /**
-     * A result type used internally for handling
-     * IPC result values from the native layer that are in the form
-     * of `{ err?, data? }`. The `data` and `err` properties on this
-     * type of object are in tuple form and be accessed at `[data?,err?]`
-     * @ignore
-     */
-    export class Result {
-        /**
-         * Creates a `Result` instance from input that may be an object
-         * like `{ err?, data? }`, an `Error` instance, or just `data`.
-         * @param {object|Error|any?} result
-         * @param {Error|object} [maybeError]
-         * @param {string} [maybeSource]
-         * @param {object|string|Headers} [maybeHeaders]
-         * @return {Result}
-         * @ignore
-         */
-        static from(result: object | Error | (any | null), maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
-        /**
-         * `Result` class constructor.
-         * @private
-         * @param {Error?} [err = null]
-         * @param {object?} [data = null]
-         * @param {string?} [source = null]
-         * @param {object|string|Headers?} [headers = null]
-         * @ignore
-         */
-        private constructor();
-        /**
-         * @type {Error?}
-         * @ignore
-         */
-        err: Error | null;
-        /**
-         * @type {string|object|Uint8Array}
-         * @ignore
-         */
-        data: string | object | Uint8Array;
-        /**
-         * @type {string?}
-         * @ignore
-         */
-        source: string | null;
-        /**
-         * @type {Headers?}
-         * @ignore
-         */
-        headers: Headers | null;
-        /**
-         * Computed result length.
-         * @ignore
-         */
-        get length(): any;
-        /**
-         * @ignore
-         */
-        toJSON(): {
-            headers: Headers;
-            source: string;
-            data: any;
-            err: {
-                name: string;
-                message: string;
-                stack?: string;
-                cause?: unknown;
-                type: any;
-                code: any;
-            };
-        };
-        /**
-         * Generator for an `Iterable` interface over this instance.
-         * @ignore
-         */
-        [Symbol.iterator](): Generator<any, void, unknown>;
-    }
-    /**
-     * @ignore
-     */
-    export const primordials: any;
-    export default exports;
-    import { Buffer } from "socket:buffer";
-    import * as exports from "socket:ipc";
-    
-}
-declare module "socket:polyfills" {
-    export function applyPolyfills(): void;
-    export default exports;
-    import * as exports from "socket:polyfills";
-    
-}
-declare module "socket:window/constants" {
-    export const WINDOW_ERROR: -1;
-    export const WINDOW_NONE: 0;
-    export const WINDOW_CREATING: 10;
-    export const WINDOW_CREATED: 11;
-    export const WINDOW_HIDING: 20;
-    export const WINDOW_HIDDEN: 21;
-    export const WINDOW_SHOWING: 30;
-    export const WINDOW_SHOWN: 31;
-    export const WINDOW_CLOSING: 40;
-    export const WINDOW_CLOSED: 41;
-    export const WINDOW_EXITING: 50;
-    export const WINDOW_EXITED: 51;
-    export const WINDOW_KILLING: 60;
-    export const WINDOW_KILLED: 61;
-    export * as _default from "socket:window/constants";
-    
-}
 declare module "socket:events" {
     export const Event: {
         new (type: string, eventInitDict?: EventInit): Event;
@@ -1019,770 +640,6 @@ declare module "socket:process" {
     }
     export default process;
     const process: any;
-}
-declare module "socket:window" {
-    /**
-     * @param {string} url
-     * @return {string}
-     * @ignore
-     */
-    export function formatFileUrl(url: string): string;
-    /**
-     * @class ApplicationWindow
-     * Represents a window in the application
-     */
-    export class ApplicationWindow {
-        static constants: typeof statuses;
-        constructor({ index, ...options }: {
-            [x: string]: any;
-            index: any;
-        });
-        /**
-         * Get the index of the window
-         * @return {number} - the index of the window
-         */
-        get index(): number;
-        /**
-         * Get the size of the window
-         * @return {{ width: number, height: number }} - the size of the window
-         */
-        getSize(): {
-            width: number;
-            height: number;
-        };
-        /**
-         * Get the title of the window
-         * @return {string} - the title of the window
-         */
-        getTitle(): string;
-        /**
-         * Get the status of the window
-         * @return {string} - the status of the window
-         */
-        getStatus(): string;
-        /**
-         * Close the window
-         * @return {Promise<object>} - the options of the window
-         */
-        close(): Promise<object>;
-        /**
-         * Shows the window
-         * @return {Promise<ipc.Result>}
-         */
-        show(): Promise<ipc.Result>;
-        /**
-         * Hides the window
-         * @return {Promise<ipc.Result>}
-         */
-        hide(): Promise<ipc.Result>;
-        /**
-         * Sets the title of the window
-         * @param {string} title - the title of the window
-         * @return {Promise<ipc.Result>}
-         */
-        setTitle(title: string): Promise<ipc.Result>;
-        /**
-         * Sets the size of the window
-         * @param {object} opts - an options object
-         * @param {(number|string)=} opts.width - the width of the window
-         * @param {(number|string)=} opts.height - the height of the window
-         * @return {Promise<ipc.Result>}
-         * @throws {Error} - if the width or height is invalid
-         */
-        setSize(opts: {
-            width?: (number | string) | undefined;
-            height?: (number | string) | undefined;
-        }): Promise<ipc.Result>;
-        /**
-         * Navigate the window to a given path
-         * @param {object} path - file path
-         * @return {Promise<ipc.Result>}
-         */
-        navigate(path: object): Promise<ipc.Result>;
-        /**
-         * Opens the Web Inspector for the window
-         * @return {Promise<object>}
-         */
-        showInspector(): Promise<object>;
-        /**
-         * Sets the background color of the window
-         * @param {object} opts - an options object
-         * @param {number} opts.red - the red value
-         * @param {number} opts.green - the green value
-         * @param {number} opts.blue - the blue value
-         * @param {number} opts.alpha - the alpha value
-         * @return {Promise<object>}
-         */
-        setBackgroundColor(opts: {
-            red: number;
-            green: number;
-            blue: number;
-            alpha: number;
-        }): Promise<object>;
-        /**
-         * Opens a native context menu.
-         * @param {object} options - an options object
-         * @return {Promise<object>}
-         */
-        setContextMenu(options: object): Promise<object>;
-        /**
-         * Shows a native open file dialog.
-         * @param {object} options - an options object
-         * @return {Promise<string[]>} - an array of file paths
-         */
-        showOpenFilePicker(options: object): Promise<string[]>;
-        /**
-         * Shows a native save file dialog.
-         * @param {object} options - an options object
-         * @return {Promise<string[]>} - an array of file paths
-         */
-        showSaveFilePicker(options: object): Promise<string[]>;
-        /**
-         * Shows a native directory dialog.
-         * @param {object} options - an options object
-         * @return {Promise<string[]>} - an array of file paths
-         */
-        showDirectoryFilePicker(options: object): Promise<string[]>;
-        /**
-         * Sends an IPC message to the window or to qthe backend.
-         * @param {object} options - an options object
-         * @param {number=} options.window - the window to send the message to
-         * @param {boolean=} [options.backend = false] - whether to send the message to the backend
-         * @param {string} options.event - the event to send
-         * @param {(string|object)=} options.value - the value to send
-         * @returns
-         */
-        send(options: {
-            window?: number | undefined;
-            backend?: boolean | undefined;
-            event: string;
-            value?: (string | object) | undefined;
-        }): Promise<ipc.Result>;
-        /**
-         * Opens an URL in the default browser.
-         * @param {object} options
-         * @returns {Promise<ipc.Result>}
-         */
-        openExternal(options: object): Promise<ipc.Result>;
-        /**
-         * Adds a listener to the window.
-         * @param {string} event - the event to listen to
-         * @param {function(*): void} cb - the callback to call
-         * @returns {void}
-         */
-        addListener(event: string, cb: (arg0: any) => void): void;
-        /**
-         * Adds a listener to the window. An alias for `addListener`.
-         * @param {string} event - the event to listen to
-         * @param {function(*): void} cb - the callback to call
-         * @returns {void}
-         * @see addListener
-         */
-        on(event: string, cb: (arg0: any) => void): void;
-        /**
-         * Adds a listener to the window. The listener is removed after the first call.
-         * @param {string} event - the event to listen to
-         * @param {function(*): void} cb - the callback to call
-         * @returns {void}
-         */
-        once(event: string, cb: (arg0: any) => void): void;
-        /**
-         * Removes a listener from the window.
-         * @param {string} event - the event to remove the listener from
-         * @param {function(*): void} cb - the callback to remove
-         * @returns {void}
-         */
-        removeListener(event: string, cb: (arg0: any) => void): void;
-        /**
-         * Removes all listeners from the window.
-         * @param {string} event - the event to remove the listeners from
-         * @returns {void}
-         */
-        removeAllListeners(event: string): void;
-        /**
-         * Removes a listener from the window. An alias for `removeListener`.
-         * @param {string} event - the event to remove the listener from
-         * @param {function(*): void} cb - the callback to remove
-         * @returns {void}
-         * @see removeListener
-         */
-        off(event: string, cb: (arg0: any) => void): void;
-        #private;
-    }
-    export default ApplicationWindow;
-    export const constants: typeof statuses;
-    import ipc from "socket:ipc";
-    import * as statuses from "socket:window/constants";
-}
-declare module "socket:application" {
-    /**
-     * Creates a new window and returns an instance of ApplicationWindow.
-     * @param {object} opts - an options object
-     * @param {number} opts.index - the index of the window
-     * @param {string} opts.path - the path to the HTML file to load into the window
-     * @param {string=} opts.title - the title of the window
-     * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
-     * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
-     * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
-     * @param {(number|string)=} [opts.minHeight = 0] - the minimum height of the window
-     * @param {(number|string)=} [opts.maxWidth = '100%'] - the maximum width of the window
-     * @param {(number|string)=} [opts.maxHeight = '100%'] - the maximum height of the window
-     * @param {boolean=} [opts.resizable=true] - whether the window is resizable
-     * @param {boolean=} [opts.frameless=false] - whether the window is frameless
-     * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
-     * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
-     * @return {Promise<ApplicationWindow>}
-     */
-    export function createWindow(opts: {
-        index: number;
-        path: string;
-        title?: string | undefined;
-        width?: (number | string) | undefined;
-        height?: (number | string) | undefined;
-        minWidth?: (number | string) | undefined;
-        minHeight?: (number | string) | undefined;
-        maxWidth?: (number | string) | undefined;
-        maxHeight?: (number | string) | undefined;
-        resizable?: boolean | undefined;
-        frameless?: boolean | undefined;
-        utility?: boolean | undefined;
-        canExit?: boolean | undefined;
-    }): Promise<ApplicationWindow>;
-    /**
-     * Returns the current screen size.
-     * @returns {Promise<ipc.Result>}
-     */
-    export function getScreenSize(): Promise<ipc.Result>;
-    /**
-     * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
-     * @param {number[]|undefined} indices - the indices of the windows
-     * @return {Promise<Object.<number, ApplicationWindow>>}
-     * @throws {Error} - if indices is not an array of integer numbers
-     */
-    export function getWindows(indices: number[] | undefined): Promise<{
-        [x: number]: ApplicationWindow;
-    }>;
-    /**
-     * Returns the ApplicationWindow instance for the given index
-     * @param {number} index - the index of the window
-     * @throws {Error} - if index is not a valid integer number
-     * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
-     */
-    export function getWindow(index: number): Promise<ApplicationWindow>;
-    /**
-     * Returns the ApplicationWindow instance for the current window.
-     * @return {Promise<ApplicationWindow>}
-     */
-    export function getCurrentWindow(): Promise<ApplicationWindow>;
-    /**
-     * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-     * @param {object} code - an exit code
-     * @return {Promise<ipc.Result>}
-     */
-    export function exit(code: object): Promise<ipc.Result>;
-    /**
-     * Set the native menu for the app.
-     *
-     * @param {object} options - an options object
-     * @param {string} options.value - the menu layout
-     * @param {number} options.index - the window to target (if applicable)
-     * @return {Promise<ipc.Result>}
-     *
-     * Socket Runtime provides a minimalist DSL that makes it easy to create
-     * cross platform native system and context menus.
-     *
-     * Menus are created at run time. They can be created from either the Main or
-     * Render process. The can be recreated instantly by calling the `setSystemMenu` method.
-     *
-     * The method takes a string. Here's an example of a menu. The semi colon is
-     * significant indicates the end of the menu. Use an underscore when there is no
-     * accelerator key. Modifiers are optional. And well known OS menu options like
-     * the edit menu will automatically get accelerators you dont need to specify them.
-     *
-     *
-     * ```js
-     * socket.application.setSystemMenu({ index: 0, value: `
-     *   App:
-     *     Foo: f;
-     *
-     *   Edit:
-     *     Cut: x
-     *     Copy: c
-     *     Paste: v
-     *     Delete: _
-     *     Select All: a;
-     *
-     *   Other:
-     *     Apple: _
-     *     Another Test: T
-     *     !Im Disabled: I
-     *     Some Thing: S + Meta
-     *     ---
-     *     Bazz: s + Meta, Control, Alt;
-     * `)
-     * ```
-     *
-     * Separators
-     *
-     * To create a separator, use three dashes `---`.
-     *
-     *
-     * Accelerator Modifiers
-     *
-     * Accelerator modifiers are used as visual indicators but don't have a
-     * material impact as the actual key binding is done in the event listener.
-     *
-     * A capital letter implies that the accelerator is modified by the `Shift` key.
-     *
-     * Additional accelerators are `Meta`, `Control`, `Option`, each separated
-     * by commas. If one is not applicable for a platform, it will just be ignored.
-     *
-     * On MacOS `Meta` is the same as `Command`.
-     *
-     *
-     * Disabled Items
-     *
-     * If you want to disable a menu item just prefix the item with the `!` character.
-     * This will cause the item to appear disabled when the system menu renders.
-     *
-     *
-     * Submenus
-     *
-     * We feel like nested menus are an anti-pattern. We don't use them. If you have a
-     * strong argument for them and a very simple pull request that makes them work we
-     * may consider them.
-     *
-     *
-     * Event Handling
-     *
-     * When a menu item is activated, it raises the `menuItemSelected` event in
-     * the front end code, you can then communicate with your backend code if you
-     * want from there.
-     *
-     * For example, if the `Apple` item is selected from the `Other` menu...
-     *
-     * ```js
-     * window.addEventListener('menuItemSelected', event => {
-     *   assert(event.detail.parent === 'Other')
-     *   assert(event.detail.title === 'Apple')
-     * })
-     * ```
-     *
-     */
-    export function setSystemMenu(o: any): Promise<ipc.Result>;
-    /**
-     * Set the enabled state of the system menu.
-     * @param {object} value - an options object
-     * @return {Promise<ipc.Result>}
-     */
-    export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
-    /**
-     * Socket Runtime version.
-     * @type {object} - an object containing the version information
-     */
-    export const runtimeVersion: object;
-    /**
-     * Runtime debug flag.
-     * @type {boolean}
-     */
-    export const debug: boolean;
-    /**
-     * Application configuration.
-     * @type {object}
-     */
-    export const config: object;
-    export namespace backend {
-        /**
-         * @param {object} opts - an options object
-         * @param {boolean} [opts.force = false] - whether to force the existing process to close
-         * @return {Promise<ipc.Result>}
-         */
-        function open(opts?: {
-            force?: boolean;
-        }): Promise<ipc.Result>;
-        /**
-         * @return {Promise<ipc.Result>}
-         */
-        function close(): Promise<ipc.Result>;
-    }
-    export default exports;
-    import ApplicationWindow from "socket:window";
-    import ipc from "socket:ipc";
-    import * as exports from "socket:application";
-    
-}
-declare module "socket:diagnostics/channels" {
-    /**
-     * Normalizes a channel name to lower case replacing white space,
-     * hyphens (-), underscores (_), with dots (.).
-     * @ignore
-     */
-    export function normalizeName(group: any, name: any): string;
-    /**
-     * Used to preallocate a minimum sized array of subscribers for
-     * a channel.
-     * @ignore
-     */
-    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
-    /**
-     * A general interface for diagnostic channels that can be subscribed to.
-     */
-    export class Channel {
-        constructor(name: any);
-        subscribers: any[];
-        name: any;
-        group: any;
-        /**
-         * Accessor for determining if channel has subscribers. This
-         * is always `false` for `Channel instances and `true` for `ActiveChannel`
-         * instances.
-         */
-        get hasSubscribers(): boolean;
-        /**
-         * Computed number of subscribers for this channel.
-         */
-        get length(): number;
-        /**
-         * Resets channel state.
-         * @param {(boolean)} [shouldOrphan = false]
-         */
-        reset(shouldOrphan?: (boolean)): void;
-        channel(name: any): Channel;
-        /**
-         * Adds an `onMessage` subscription callback to the channel.
-         * @return {boolean}
-         */
-        subscribe(onMessage: any): boolean;
-        /**
-         * Removes an `onMessage` subscription callback from the channel.
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(onMessage: Function): boolean;
-        /**
-         * A no-op for `Channel` instances. This function always returns `false`.
-         * @param {string} name
-         * @param {object} message
-         * @return Promise<boolean>
-         */
-        publish(name: string, message: object): Promise<boolean>;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): string;
-        /**
-         * Iterator interface
-         * @ignore
-         */
-        get [Symbol.iterator](): any[];
-        /**
-         * The `Channel` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-        #private;
-    }
-    /**
-     * An `ActiveChannel` is a prototype implementation for a `Channel`
-     * that provides an interface what is considered an "active" channel. The
-     * `hasSubscribers` accessor always returns `true` for this class.
-     */
-    export class ActiveChannel extends Channel {
-        unsubscribe(onMessage: any): boolean;
-        /**
-         * @param {object|any} message
-         * @return Promise<boolean>
-         */
-        publish(message: object | any): Promise<boolean>;
-    }
-    /**
-     * A container for a grouping of channels that are named and owned
-     * by this group. A `ChannelGroup` can also be a regular channel.
-     */
-    export class ChannelGroup extends Channel {
-        /**
-         * @param {Array<Channel>} channels
-         * @param {string} name
-         */
-        constructor(name: string, channels: Array<Channel>);
-        channels: Channel[];
-        /**
-         * Computed subscribers for all channels in this group.
-         */
-        get subscribers(): any[];
-        /**
-         * Subscribe to a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: any): boolean;
-        /**
-         * Unsubscribe from a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: any): boolean;
-        /**
-         * Gets or creates a channel for this group.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Select a test of channels from this group.
-         * The following syntax is supported:
-         *   - One Channel: `group.channel`
-         *   - All Channels: `*`
-         *   - Many Channel: `group.*`
-         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
-         * @param {string|Array<string>} keys
-         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
-         * @return {Array<{name: string, channel: Channel}>}
-         */
-        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
-            name: string;
-            channel: Channel;
-        }>;
-        /**
-         * Iterator iterface.
-         * @ignore
-         */
-        get [Symbol.iterator](): Channel[];
-    }
-    /**
-     * An object mapping of named channels to `WeakRef<Channel>` instances.
-     */
-    export const registry: {
-        /**
-         * Subscribes callback `onMessage` to channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Unsubscribes callback `onMessage` from channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Predicate to determine if a named channel has subscribers.
-         * @param {string} name
-         */
-        hasSubscribers(name: string): boolean;
-        /**
-         * Get or set a channel by `name`.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Creates a `ChannelGroup` for a set of channels
-         * @param {string} name
-         * @param {Array<string>} [channels]
-         * @return {ChannelGroup}
-         */
-        group(name: string, channels?: Array<string>): ChannelGroup;
-        /**
-         * Get a channel by name. The name is normalized.
-         * @param {string} name
-         * @return {Channel?}
-         */
-        get(name: string): Channel | null;
-        /**
-         * Checks if a channel is known by  name. The name is normalized.
-         * @param {string} name
-         * @return {boolean}
-         */
-        has(name: string): boolean;
-        /**
-         * Set a channel by name. The name is normalized.
-         * @param {string} name
-         * @param {Channel} channel
-         * @return {Channel?}
-         */
-        set(name: string, channel: Channel): Channel | null;
-        /**
-         * Removes a channel by `name`
-         * @return {boolean}
-         */
-        remove(name: any): boolean;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): string;
-        /**
-         * Returns a JSON representation of the `ChannelRegistry`.
-         * @return {object}
-         */
-        toJSON(): object;
-        /**
-         * The `ChannelRegistry` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-    };
-    export default registry;
-}
-declare module "socket:worker" {
-    /**
-     * @type {import('dom').Worker}
-     */
-    export const Worker: any;
-    export default Worker;
-}
-declare module "socket:diagnostics/metric" {
-    export class Metric {
-        init(): void;
-        update(): void;
-        destroy(): void;
-        toJSON(): {};
-        toString(): string;
-        [Symbol.iterator](): any;
-        [Symbol.toStringTag](): string;
-    }
-    export default Metric;
-}
-declare module "socket:diagnostics/window" {
-    export class RequestAnimationFrameMetric extends Metric {
-        constructor(options: any);
-        originalRequestAnimationFrame: typeof requestAnimationFrame;
-        requestAnimationFrame(callback: any): any;
-        sampleSize: any;
-        sampleTick: number;
-        channel: import("socket:diagnostics/channels").Channel;
-        value: {
-            rate: number;
-            samples: number;
-        };
-        now: number;
-        samples: Uint8Array;
-        update(value: any): void;
-        toJSON(): {
-            sampleSize: any;
-            sampleTick: number;
-            samples: number[];
-            rate: number;
-            now: number;
-        };
-    }
-    export class FetchMetric extends Metric {
-        constructor(options: any);
-        originalFetch: typeof fetch;
-        channel: import("socket:diagnostics/channels").Channel;
-        fetch(resource: any, options: any, extra: any): Promise<any>;
-    }
-    export class XMLHttpRequestMetric extends Metric {
-        constructor(options: any);
-        channel: import("socket:diagnostics/channels").Channel;
-        patched: {
-            open: {
-                (method: string, url: string | URL): void;
-                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
-            };
-            send: (body?: Document | XMLHttpRequestBodyInit) => void;
-        };
-    }
-    export class WorkerMetric extends Metric {
-        /**
-         * @type {Worker}
-         */
-        static GlobalWorker: Worker;
-        constructor(options: any);
-        channel: import("socket:diagnostics/channels").Channel;
-        Worker: {
-            new (url: any, options: any, ...args: any[]): {};
-        };
-    }
-    export const metrics: {
-        requestAnimationFrame: RequestAnimationFrameMetric;
-        XMLHttpRequest: XMLHttpRequestMetric;
-        Worker: WorkerMetric;
-        fetch: FetchMetric;
-        channel: import("socket:diagnostics/channels").ChannelGroup;
-        subscribe(...args: any[]): boolean;
-        unsubscribe(...args: any[]): boolean;
-        start(which: any): void;
-        stop(which: any): void;
-    };
-    namespace _default {
-        export { metrics };
-    }
-    export default _default;
-    import { Metric } from "socket:diagnostics/metric";
-    import { Worker } from "socket:worker";
-}
-declare module "socket:diagnostics/index" {
-    /**
-     * @param {string} name
-     * @return {import('./channels.js').Channel}
-     */
-    export function channel(name: string): import("socket:diagnostics/channels").Channel;
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-    import channels from "socket:diagnostics/channels";
-    import window from "socket:diagnostics/window";
-    
-    export { channels, window };
-}
-declare module "socket:diagnostics" {
-    export * from "socket:diagnostics/index";
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-}
-declare module "socket:bluetooth" {
-    export default exports;
-    /**
-     * Create an instance of a Bluetooth service.
-     */
-    export class Bluetooth extends EventEmitter {
-        static isInitalized: boolean;
-        /**
-         * constructor is an example property that is set to `true`
-         * Creates a new service with key-value pairs
-         * @param {string} serviceId - Given a default value to determine the type
-         */
-        constructor(serviceId?: string);
-        serviceId: string;
-        /**
-         * Start the Bluetooth service.
-         * @return {Promise<ipc.Result>}
-         *
-         */
-        start(): Promise<ipc.Result>;
-        /**
-         * Start scanning for published values that correspond to a well-known UUID.
-         * Once subscribed to a UUID, events that correspond to that UUID will be
-         * emitted. To receive these events you can add an event listener, for example...
-         *
-         * ```js
-         * const ble = new Bluetooth(id)
-         * ble.subscribe(uuid)
-         * ble.on(uuid, (data, details) => {
-         *   // ...do something interesting
-         * })
-         * ```
-         *
-         * @param {string} [id = ''] - A well-known UUID
-         * @return {Promise<ipc.Result>}
-         */
-        subscribe(id?: string): Promise<ipc.Result>;
-        /**
-         * Start advertising a new value for a well-known UUID
-         * @param {string} [id=''] - A well-known UUID
-         * @param {string} [value='']
-         * @return {Promise<void>}
-         */
-        publish(id?: string, value?: string): Promise<void>;
-    }
-    import * as exports from "socket:bluetooth";
-    import { EventEmitter } from "socket:events";
-    import ipc from "socket:ipc";
-    
 }
 declare module "socket:path/path" {
     /**
@@ -2137,69 +994,6 @@ declare module "socket:path" {
     import { win32 } from "socket:path/index";
     export { Path, posix, win32 };
 }
-declare module "socket:fs" {
-    export * from "socket:fs/index";
-    export default exports;
-    import * as exports from "socket:fs/index";
-}
-declare module "socket:external/libsodium/index" {
-    export {};
-}
-declare module "socket:crypto/sodium" {
-    const _default: any;
-    export default _default;
-}
-declare module "socket:crypto" {
-    /**
-     * Generate cryptographically strong random values into the `buffer`
-     * @param {TypedArray} buffer
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues}
-     * @return {TypedArray}
-     */
-    export function getRandomValues(buffer: TypedArray, ...args: any[]): TypedArray;
-    export function rand64(): bigint;
-    /**
-     * Generate `size` random bytes.
-     * @param {number} size - The number of bytes to generate. The size must not be larger than 2**31 - 1.
-     * @returns {Buffer} - A promise that resolves with an instance of socket.Buffer with random bytes.
-     */
-    export function randomBytes(size: number): Buffer;
-    /**
-     * @param {string} algorithm - `SHA-1` | `SHA-256` | `SHA-384` | `SHA-512`
-     * @param {Buffer | TypedArray | DataView} message - An instance of socket.Buffer, TypedArray or Dataview.
-     * @returns {Promise<Buffer>} - A promise that resolves with an instance of socket.Buffer with the hash.
-     */
-    export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
-    /**
-     * WebCrypto API
-     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
-     */
-    export let webcrypto: any;
-    /**
-     * A promise that resolves when all internals to be loaded/ready.
-     * @type {Promise}
-     */
-    export const ready: Promise<any>;
-    /**
-     * Maximum total size of random bytes per page
-     */
-    export const RANDOM_BYTES_QUOTA: number;
-    /**
-     * Maximum total size for random bytes.
-     */
-    export const MAX_RANDOM_BYTES: 281474976710655;
-    /**
-     * Maximum total amount of allocated per page of bytes (max/quota)
-     */
-    export const MAX_RANDOM_BYTES_PAGES: number;
-    export default exports;
-    import { Buffer } from "socket:buffer";
-    export namespace sodium {
-        let ready: Promise<any>;
-    }
-    import * as exports from "socket:crypto";
-    
-}
 declare module "socket:stream" {
     export function pipelinePromise(...streams: any[]): Promise<any>;
     export function pipeline(stream: any, ...streams: any[]): any;
@@ -2517,6 +1311,329 @@ declare module "socket:fs/flags" {
     export default exports;
     import * as exports from "socket:fs/flags";
     
+}
+declare module "socket:diagnostics/channels" {
+    /**
+     * Normalizes a channel name to lower case replacing white space,
+     * hyphens (-), underscores (_), with dots (.).
+     * @ignore
+     */
+    export function normalizeName(group: any, name: any): string;
+    /**
+     * Used to preallocate a minimum sized array of subscribers for
+     * a channel.
+     * @ignore
+     */
+    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
+    /**
+     * A general interface for diagnostic channels that can be subscribed to.
+     */
+    export class Channel {
+        constructor(name: any);
+        subscribers: any[];
+        name: any;
+        group: any;
+        /**
+         * Accessor for determining if channel has subscribers. This
+         * is always `false` for `Channel instances and `true` for `ActiveChannel`
+         * instances.
+         */
+        get hasSubscribers(): boolean;
+        /**
+         * Computed number of subscribers for this channel.
+         */
+        get length(): number;
+        /**
+         * Resets channel state.
+         * @param {(boolean)} [shouldOrphan = false]
+         */
+        reset(shouldOrphan?: (boolean)): void;
+        channel(name: any): Channel;
+        /**
+         * Adds an `onMessage` subscription callback to the channel.
+         * @return {boolean}
+         */
+        subscribe(onMessage: any): boolean;
+        /**
+         * Removes an `onMessage` subscription callback from the channel.
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(onMessage: Function): boolean;
+        /**
+         * A no-op for `Channel` instances. This function always returns `false`.
+         * @param {string} name
+         * @param {object} message
+         * @return Promise<boolean>
+         */
+        publish(name: string, message: object): Promise<boolean>;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): string;
+        /**
+         * Iterator interface
+         * @ignore
+         */
+        get [Symbol.iterator](): any[];
+        /**
+         * The `Channel` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An `ActiveChannel` is a prototype implementation for a `Channel`
+     * that provides an interface what is considered an "active" channel. The
+     * `hasSubscribers` accessor always returns `true` for this class.
+     */
+    export class ActiveChannel extends Channel {
+        unsubscribe(onMessage: any): boolean;
+        /**
+         * @param {object|any} message
+         * @return Promise<boolean>
+         */
+        publish(message: object | any): Promise<boolean>;
+    }
+    /**
+     * A container for a grouping of channels that are named and owned
+     * by this group. A `ChannelGroup` can also be a regular channel.
+     */
+    export class ChannelGroup extends Channel {
+        /**
+         * @param {Array<Channel>} channels
+         * @param {string} name
+         */
+        constructor(name: string, channels: Array<Channel>);
+        channels: Channel[];
+        /**
+         * Computed subscribers for all channels in this group.
+         */
+        get subscribers(): any[];
+        /**
+         * Subscribe to a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: any): boolean;
+        /**
+         * Unsubscribe from a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: any): boolean;
+        /**
+         * Gets or creates a channel for this group.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Select a test of channels from this group.
+         * The following syntax is supported:
+         *   - One Channel: `group.channel`
+         *   - All Channels: `*`
+         *   - Many Channel: `group.*`
+         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
+         * @param {string|Array<string>} keys
+         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
+         * @return {Array<{name: string, channel: Channel}>}
+         */
+        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
+            name: string;
+            channel: Channel;
+        }>;
+        /**
+         * Iterator iterface.
+         * @ignore
+         */
+        get [Symbol.iterator](): Channel[];
+    }
+    /**
+     * An object mapping of named channels to `WeakRef<Channel>` instances.
+     */
+    export const registry: {
+        /**
+         * Subscribes callback `onMessage` to channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Unsubscribes callback `onMessage` from channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Predicate to determine if a named channel has subscribers.
+         * @param {string} name
+         */
+        hasSubscribers(name: string): boolean;
+        /**
+         * Get or set a channel by `name`.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Creates a `ChannelGroup` for a set of channels
+         * @param {string} name
+         * @param {Array<string>} [channels]
+         * @return {ChannelGroup}
+         */
+        group(name: string, channels?: Array<string>): ChannelGroup;
+        /**
+         * Get a channel by name. The name is normalized.
+         * @param {string} name
+         * @return {Channel?}
+         */
+        get(name: string): Channel | null;
+        /**
+         * Checks if a channel is known by  name. The name is normalized.
+         * @param {string} name
+         * @return {boolean}
+         */
+        has(name: string): boolean;
+        /**
+         * Set a channel by name. The name is normalized.
+         * @param {string} name
+         * @param {Channel} channel
+         * @return {Channel?}
+         */
+        set(name: string, channel: Channel): Channel | null;
+        /**
+         * Removes a channel by `name`
+         * @return {boolean}
+         */
+        remove(name: any): boolean;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): string;
+        /**
+         * Returns a JSON representation of the `ChannelRegistry`.
+         * @return {object}
+         */
+        toJSON(): object;
+        /**
+         * The `ChannelRegistry` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+    };
+    export default registry;
+}
+declare module "socket:worker" {
+    /**
+     * @type {import('dom').Worker}
+     */
+    export const Worker: any;
+    export default Worker;
+}
+declare module "socket:diagnostics/metric" {
+    export class Metric {
+        init(): void;
+        update(): void;
+        destroy(): void;
+        toJSON(): {};
+        toString(): string;
+        [Symbol.iterator](): any;
+        [Symbol.toStringTag](): string;
+    }
+    export default Metric;
+}
+declare module "socket:diagnostics/window" {
+    export class RequestAnimationFrameMetric extends Metric {
+        constructor(options: any);
+        originalRequestAnimationFrame: typeof requestAnimationFrame;
+        requestAnimationFrame(callback: any): any;
+        sampleSize: any;
+        sampleTick: number;
+        channel: import("socket:diagnostics/channels").Channel;
+        value: {
+            rate: number;
+            samples: number;
+        };
+        now: number;
+        samples: Uint8Array;
+        update(value: any): void;
+        toJSON(): {
+            sampleSize: any;
+            sampleTick: number;
+            samples: number[];
+            rate: number;
+            now: number;
+        };
+    }
+    export class FetchMetric extends Metric {
+        constructor(options: any);
+        originalFetch: typeof fetch;
+        channel: import("socket:diagnostics/channels").Channel;
+        fetch(resource: any, options: any, extra: any): Promise<any>;
+    }
+    export class XMLHttpRequestMetric extends Metric {
+        constructor(options: any);
+        channel: import("socket:diagnostics/channels").Channel;
+        patched: {
+            open: {
+                (method: string, url: string | URL): void;
+                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
+            };
+            send: (body?: Document | XMLHttpRequestBodyInit) => void;
+        };
+    }
+    export class WorkerMetric extends Metric {
+        /**
+         * @type {Worker}
+         */
+        static GlobalWorker: Worker;
+        constructor(options: any);
+        channel: import("socket:diagnostics/channels").Channel;
+        Worker: {
+            new (url: any, options: any, ...args: any[]): {};
+        };
+    }
+    export const metrics: {
+        requestAnimationFrame: RequestAnimationFrameMetric;
+        XMLHttpRequest: XMLHttpRequestMetric;
+        Worker: WorkerMetric;
+        fetch: FetchMetric;
+        channel: import("socket:diagnostics/channels").ChannelGroup;
+        subscribe(...args: any[]): boolean;
+        unsubscribe(...args: any[]): boolean;
+        start(which: any): void;
+        stop(which: any): void;
+    };
+    namespace _default {
+        export { metrics };
+    }
+    export default _default;
+    import { Metric } from "socket:diagnostics/metric";
+    import { Worker } from "socket:worker";
+}
+declare module "socket:diagnostics/index" {
+    /**
+     * @param {string} name
+     * @return {import('./channels.js').Channel}
+     */
+    export function channel(name: string): import("socket:diagnostics/channels").Channel;
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
+    import channels from "socket:diagnostics/channels";
+    import window from "socket:diagnostics/window";
+    
+    export { channels, window };
+}
+declare module "socket:diagnostics" {
+    export * from "socket:diagnostics/index";
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
 }
 declare module "socket:fs/stats" {
     /**
@@ -3440,6 +2557,900 @@ declare module "socket:fs/index" {
     import * as exports from "socket:fs/index";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, WriteStream };
+}
+declare module "socket:fs" {
+    export * from "socket:fs/index";
+    export default exports;
+    import * as exports from "socket:fs/index";
+}
+declare module "socket:external/libsodium/index" {
+    export {};
+}
+declare module "socket:crypto/sodium" {
+    const _default: any;
+    export default _default;
+}
+declare module "socket:crypto" {
+    /**
+     * Generate cryptographically strong random values into the `buffer`
+     * @param {TypedArray} buffer
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues}
+     * @return {TypedArray}
+     */
+    export function getRandomValues(buffer: TypedArray, ...args: any[]): TypedArray;
+    export function rand64(): bigint;
+    /**
+     * Generate `size` random bytes.
+     * @param {number} size - The number of bytes to generate. The size must not be larger than 2**31 - 1.
+     * @returns {Buffer} - A promise that resolves with an instance of socket.Buffer with random bytes.
+     */
+    export function randomBytes(size: number): Buffer;
+    /**
+     * @param {string} algorithm - `SHA-1` | `SHA-256` | `SHA-384` | `SHA-512`
+     * @param {Buffer | TypedArray | DataView} message - An instance of socket.Buffer, TypedArray or Dataview.
+     * @returns {Promise<Buffer>} - A promise that resolves with an instance of socket.Buffer with the hash.
+     */
+    export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
+    /**
+     * WebCrypto API
+     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+     */
+    export let webcrypto: any;
+    /**
+     * A promise that resolves when all internals to be loaded/ready.
+     * @type {Promise}
+     */
+    export const ready: Promise<any>;
+    /**
+     * Maximum total size of random bytes per page
+     */
+    export const RANDOM_BYTES_QUOTA: number;
+    /**
+     * Maximum total size for random bytes.
+     */
+    export const MAX_RANDOM_BYTES: 281474976710655;
+    /**
+     * Maximum total amount of allocated per page of bytes (max/quota)
+     */
+    export const MAX_RANDOM_BYTES_PAGES: number;
+    export default exports;
+    import { Buffer } from "socket:buffer";
+    export namespace sodium {
+        let ready: Promise<any>;
+    }
+    import * as exports from "socket:crypto";
+    
+}
+declare module "socket:ipc" {
+    /**
+     * Parses `seq` as integer value
+     * @param {string|number} seq
+     * @param {object=} [options]
+     * @param {boolean} [options.bigint = false]
+     * @ignore
+     */
+    export function parseSeq(seq: string | number, options?: object | undefined): number | bigint;
+    /**
+     * If `debug.enabled === true`, then debug output will be printed to console.
+     * @param {(boolean)} [enable]
+     * @return {boolean}
+     * @ignore
+     */
+    export function debug(enable?: (boolean)): boolean;
+    export namespace debug {
+        function log(): any;
+        let enabled: any;
+    }
+    /**
+     * @ignore
+     */
+    export function postMessage(message: any, ...args: any[]): Promise<any>;
+    /**
+     * Waits for the native IPC layer to be ready and exposed on the
+     * global window object.
+     * @ignore
+     */
+    export function ready(): Promise<any>;
+    /**
+     * Sends a synchronous IPC command over XHR returning a `Result`
+     * upon success or error.
+     * @param {string} command
+     * @param {object|string?} [params]
+     * @param {object?} [options]
+     * @return {Result}
+     * @ignore
+     */
+    export function sendSync(command: string, params?: object | (string | null), options?: object | null): Result;
+    /**
+     * Emit event to be dispatched on `window` object.
+     * @param {string} name
+     * @param {any} value
+     * @param {EventTarget=} [target = window]
+     * @param {Object=} options
+     */
+    export function emit(name: string, value: any, target?: EventTarget | undefined, options?: any | undefined): Promise<void>;
+    /**
+     * Resolves a request by `seq` with possible value.
+     * @param {string} seq
+     * @param {any} value
+     * @ignore
+     */
+    export function resolve(seq: string, value: any): Promise<void>;
+    /**
+     * Sends an async IPC command request with parameters.
+     * @param {string} command
+     * @param {any=} value
+     * @param {object=} [options]
+     * @param {boolean=} [options.cache=false]
+     * @param {boolean=} [options.bytes=false]
+     * @return {Promise<Result>}
+     */
+    export function send(command: string, value?: any | undefined, options?: object | undefined): Promise<Result>;
+    /**
+     * Sends an async IPC command request with parameters and buffered bytes.
+     * @param {string} command
+     * @param {object=} params
+     * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
+     * @param {object=} options
+     * @ignore
+     */
+    export function write(command: string, params?: object | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
+    /**
+     * Sends an async IPC command request with parameters requesting a response
+     * with buffered bytes.
+     * @param {string} command
+     * @param {object=} params
+     * @param {object=} options
+     * @ignore
+     */
+    export function request(command: string, params?: object | undefined, options?: object | undefined): Promise<any>;
+    /**
+     * Factory for creating a proxy based IPC API.
+     * @param {string} domain
+     * @param {(function|object)=} ctx
+     * @param {string=} [ctx.default]
+     * @return {Proxy}
+     * @ignore
+     */
+    export function createBinding(domain: string, ctx?: (Function | object) | undefined): ProxyConstructor;
+    /**
+     * Represents an OK IPC status.
+     * @ignore
+     */
+    export const OK: 0;
+    /**
+     * Represents an ERROR IPC status.
+     * @ignore
+     */
+    export const ERROR: 1;
+    /**
+     * Timeout in milliseconds for IPC requests.
+     * @ignore
+     */
+    export const TIMEOUT: number;
+    /**
+     * Symbol for the `ipc.debug.enabled` property
+     * @ignore
+     */
+    export const kDebugEnabled: unique symbol;
+    /**
+     * @ignore
+     */
+    export class Headers extends globalThis.Headers {
+        /**
+         * @ignore
+         */
+        static from(input: any): any;
+        /**
+         * @ignore
+         */
+        get length(): number;
+        /**
+         * @ignore
+         */
+        toJSON(): {
+            [k: string]: any;
+        };
+    }
+    /**
+     * A container for a IPC message based on a `ipc://` URI scheme.
+     * @ignore
+     */
+    export class Message extends URL {
+        /**
+         * The expected protocol for an IPC message.
+         * @ignore
+         */
+        static get PROTOCOL(): string;
+        /**
+         * Creates a `Message` instance from a variety of input.
+         * @param {string|URL|Message|Buffer|object} input
+         * @param {(object|string|URLSearchParams)=} [params]
+         * @param {(ArrayBuffer|Uint8Array|string)?} [bytes]
+         * @return {Message}
+         * @ignore
+         */
+        static from(input: string | URL | Message | Buffer | object, params?: (object | string | URLSearchParams) | undefined, bytes?: (ArrayBuffer | Uint8Array | string) | null): Message;
+        /**
+         * Predicate to determine if `input` is valid for constructing
+         * a new `Message` instance.
+         * @param {string|URL|Message|Buffer|object} input
+         * @return {boolean}
+         * @ignore
+         */
+        static isValidInput(input: string | URL | Message | Buffer | object): boolean;
+        /**
+         * `Message` class constructor.
+         * @protected
+         * @param {string|URL} input
+         * @param {object|Uint8Array?} [bytes]
+         * @ignore
+         */
+        protected constructor();
+        /**
+         *  @type {Uint8Array?}
+         *  @ignore
+         */
+        bytes: Uint8Array | null;
+        /**
+         * Computed IPC message name.
+         * @ignore
+         */
+        get command(): string;
+        /**
+         * Computed IPC message name.
+         * @ignore
+         */
+        get name(): string;
+        /**
+         * Computed `id` value for the command.
+         * @ignore
+         */
+        get id(): string;
+        /**
+         * Computed `seq` (sequence) value for the command.
+         * @ignore
+         */
+        get seq(): any;
+        /**
+         * Computed message value potentially given in message parameters.
+         * This value is automatically decoded, but not treated as JSON.
+         * @ignore
+         */
+        get value(): any;
+        /**
+         * Computed `index` value for the command potentially referring to
+         * the window index the command is scoped to or originating from. If not
+         * specified in the message parameters, then this value defaults to `-1`.
+         * @ignore
+         */
+        get index(): number;
+        /**
+         * Computed value parsed as JSON. This value is `null` if the value is not present
+         * or it is invalid JSON.
+         * @ignore
+         */
+        get json(): any;
+        /**
+         * Computed readonly object of message parameters.
+         * @ignore
+         */
+        get params(): any;
+        /**
+         * Gets unparsed message parameters.
+         * @ignore
+         */
+        get rawParams(): {
+            [k: string]: any;
+        };
+        /**
+         * Returns computed parameters as entries
+         * @return {Array<Array<any>>}
+         * @ignore
+         */
+        entries(): Array<Array<any>>;
+        /**
+         * Set a parameter `value` by `key`.
+         * @param {string} key
+         * @param {any} value
+         * @ignore
+         */
+        set(key: string, value: any): void;
+        /**
+         * Get a parameter value by `key`.
+         * @param {string} key
+         * @param {any} defaultValue
+         * @return {any}
+         * @ignore
+         */
+        get(key: string, defaultValue: any): any;
+        /**
+         * Delete a parameter by `key`.
+         * @param {string} key
+         * @return {boolean}
+         * @ignore
+         */
+        delete(key: string): boolean;
+        /**
+         * Computed parameter keys.
+         * @return {Array<string>}
+         * @ignore
+         */
+        keys(): Array<string>;
+        /**
+         * Computed parameter values.
+         * @return {Array<any>}
+         * @ignore
+         */
+        values(): Array<any>;
+        /**
+         * Predicate to determine if parameter `key` is present in parameters.
+         * @param {string} key
+         * @return {boolean}
+         * @ignore
+         */
+        has(key: string): boolean;
+    }
+    /**
+     * A result type used internally for handling
+     * IPC result values from the native layer that are in the form
+     * of `{ err?, data? }`. The `data` and `err` properties on this
+     * type of object are in tuple form and be accessed at `[data?,err?]`
+     * @ignore
+     */
+    export class Result {
+        /**
+         * Creates a `Result` instance from input that may be an object
+         * like `{ err?, data? }`, an `Error` instance, or just `data`.
+         * @param {object|Error|any?} result
+         * @param {Error|object} [maybeError]
+         * @param {string} [maybeSource]
+         * @param {object|string|Headers} [maybeHeaders]
+         * @return {Result}
+         * @ignore
+         */
+        static from(result: object | Error | (any | null), maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
+        /**
+         * `Result` class constructor.
+         * @private
+         * @param {string?} [id = null]
+         * @param {Error?} [err = null]
+         * @param {object?} [data = null]
+         * @param {string?} [source = null]
+         * @param {object|string|Headers?} [headers = null]
+         * @ignore
+         */
+        private constructor();
+        /**
+         * The unique ID for this result.
+         * @type {string}
+         * @ignore
+         */
+        id: string;
+        /**
+         * An optional error in the result.
+         * @type {Error?}
+         * @ignore
+         */
+        err: Error | null;
+        /**
+         * Result data if given.
+         * @type {string|object|Uint8Array?}
+         * @ignore
+         */
+        data: string | object | (Uint8Array | null);
+        /**
+         * The source of this result.
+         * @type {string?}
+         * @ignore
+         */
+        source: string | null;
+        /**
+         * Result headers, if given.
+         * @type {Headers?}
+         * @ignore
+         */
+        headers: Headers | null;
+        /**
+         * Computed result length.
+         * @ignore
+         */
+        get length(): any;
+        /**
+         * @ignore
+         */
+        toJSON(): {
+            headers: Headers;
+            source: string;
+            data: any;
+            err: {
+                name: string;
+                message: string;
+                stack?: string;
+                cause?: unknown;
+                type: any;
+                code: any;
+            };
+        };
+        /**
+         * Generator for an `Iterable` interface over this instance.
+         * @ignore
+         */
+        [Symbol.iterator](): Generator<any, void, unknown>;
+    }
+    /**
+     * @ignore
+     */
+    export const primordials: any;
+    export default exports;
+    import { Buffer } from "socket:buffer";
+    import * as exports from "socket:ipc";
+    
+}
+declare module "socket:polyfills" {
+    export function applyPolyfills(): void;
+    export default exports;
+    import * as exports from "socket:polyfills";
+    
+}
+declare module "socket:window/constants" {
+    export const WINDOW_ERROR: -1;
+    export const WINDOW_NONE: 0;
+    export const WINDOW_CREATING: 10;
+    export const WINDOW_CREATED: 11;
+    export const WINDOW_HIDING: 20;
+    export const WINDOW_HIDDEN: 21;
+    export const WINDOW_SHOWING: 30;
+    export const WINDOW_SHOWN: 31;
+    export const WINDOW_CLOSING: 40;
+    export const WINDOW_CLOSED: 41;
+    export const WINDOW_EXITING: 50;
+    export const WINDOW_EXITED: 51;
+    export const WINDOW_KILLING: 60;
+    export const WINDOW_KILLED: 61;
+    export * as _default from "socket:window/constants";
+    
+}
+declare module "socket:window" {
+    /**
+     * @param {string} url
+     * @return {string}
+     * @ignore
+     */
+    export function formatFileUrl(url: string): string;
+    /**
+     * @class ApplicationWindow
+     * Represents a window in the application
+     */
+    export class ApplicationWindow {
+        static constants: typeof statuses;
+        constructor({ index, ...options }: {
+            [x: string]: any;
+            index: any;
+        });
+        /**
+         * Get the index of the window
+         * @return {number} - the index of the window
+         */
+        get index(): number;
+        /**
+         * Get the size of the window
+         * @return {{ width: number, height: number }} - the size of the window
+         */
+        getSize(): {
+            width: number;
+            height: number;
+        };
+        /**
+         * Get the title of the window
+         * @return {string} - the title of the window
+         */
+        getTitle(): string;
+        /**
+         * Get the status of the window
+         * @return {string} - the status of the window
+         */
+        getStatus(): string;
+        /**
+         * Close the window
+         * @return {Promise<object>} - the options of the window
+         */
+        close(): Promise<object>;
+        /**
+         * Shows the window
+         * @return {Promise<ipc.Result>}
+         */
+        show(): Promise<ipc.Result>;
+        /**
+         * Hides the window
+         * @return {Promise<ipc.Result>}
+         */
+        hide(): Promise<ipc.Result>;
+        /**
+         * Sets the title of the window
+         * @param {string} title - the title of the window
+         * @return {Promise<ipc.Result>}
+         */
+        setTitle(title: string): Promise<ipc.Result>;
+        /**
+         * Sets the size of the window
+         * @param {object} opts - an options object
+         * @param {(number|string)=} opts.width - the width of the window
+         * @param {(number|string)=} opts.height - the height of the window
+         * @return {Promise<ipc.Result>}
+         * @throws {Error} - if the width or height is invalid
+         */
+        setSize(opts: {
+            width?: (number | string) | undefined;
+            height?: (number | string) | undefined;
+        }): Promise<ipc.Result>;
+        /**
+         * Navigate the window to a given path
+         * @param {object} path - file path
+         * @return {Promise<ipc.Result>}
+         */
+        navigate(path: object): Promise<ipc.Result>;
+        /**
+         * Opens the Web Inspector for the window
+         * @return {Promise<object>}
+         */
+        showInspector(): Promise<object>;
+        /**
+         * Sets the background color of the window
+         * @param {object} opts - an options object
+         * @param {number} opts.red - the red value
+         * @param {number} opts.green - the green value
+         * @param {number} opts.blue - the blue value
+         * @param {number} opts.alpha - the alpha value
+         * @return {Promise<object>}
+         */
+        setBackgroundColor(opts: {
+            red: number;
+            green: number;
+            blue: number;
+            alpha: number;
+        }): Promise<object>;
+        /**
+         * Opens a native context menu.
+         * @param {object} options - an options object
+         * @return {Promise<object>}
+         */
+        setContextMenu(options: object): Promise<object>;
+        /**
+         * Shows a native open file dialog.
+         * @param {object} options - an options object
+         * @return {Promise<string[]>} - an array of file paths
+         */
+        showOpenFilePicker(options: object): Promise<string[]>;
+        /**
+         * Shows a native save file dialog.
+         * @param {object} options - an options object
+         * @return {Promise<string[]>} - an array of file paths
+         */
+        showSaveFilePicker(options: object): Promise<string[]>;
+        /**
+         * Shows a native directory dialog.
+         * @param {object} options - an options object
+         * @return {Promise<string[]>} - an array of file paths
+         */
+        showDirectoryFilePicker(options: object): Promise<string[]>;
+        /**
+         * Sends an IPC message to the window or to qthe backend.
+         * @param {object} options - an options object
+         * @param {number=} options.window - the window to send the message to
+         * @param {boolean=} [options.backend = false] - whether to send the message to the backend
+         * @param {string} options.event - the event to send
+         * @param {(string|object)=} options.value - the value to send
+         * @returns
+         */
+        send(options: {
+            window?: number | undefined;
+            backend?: boolean | undefined;
+            event: string;
+            value?: (string | object) | undefined;
+        }): Promise<ipc.Result>;
+        /**
+         * Opens an URL in the default browser.
+         * @param {object} options
+         * @returns {Promise<ipc.Result>}
+         */
+        openExternal(options: object): Promise<ipc.Result>;
+        /**
+         * Adds a listener to the window.
+         * @param {string} event - the event to listen to
+         * @param {function(*): void} cb - the callback to call
+         * @returns {void}
+         */
+        addListener(event: string, cb: (arg0: any) => void): void;
+        /**
+         * Adds a listener to the window. An alias for `addListener`.
+         * @param {string} event - the event to listen to
+         * @param {function(*): void} cb - the callback to call
+         * @returns {void}
+         * @see addListener
+         */
+        on(event: string, cb: (arg0: any) => void): void;
+        /**
+         * Adds a listener to the window. The listener is removed after the first call.
+         * @param {string} event - the event to listen to
+         * @param {function(*): void} cb - the callback to call
+         * @returns {void}
+         */
+        once(event: string, cb: (arg0: any) => void): void;
+        /**
+         * Removes a listener from the window.
+         * @param {string} event - the event to remove the listener from
+         * @param {function(*): void} cb - the callback to remove
+         * @returns {void}
+         */
+        removeListener(event: string, cb: (arg0: any) => void): void;
+        /**
+         * Removes all listeners from the window.
+         * @param {string} event - the event to remove the listeners from
+         * @returns {void}
+         */
+        removeAllListeners(event: string): void;
+        /**
+         * Removes a listener from the window. An alias for `removeListener`.
+         * @param {string} event - the event to remove the listener from
+         * @param {function(*): void} cb - the callback to remove
+         * @returns {void}
+         * @see removeListener
+         */
+        off(event: string, cb: (arg0: any) => void): void;
+        #private;
+    }
+    export default ApplicationWindow;
+    export const constants: typeof statuses;
+    import ipc from "socket:ipc";
+    import * as statuses from "socket:window/constants";
+}
+declare module "socket:application" {
+    /**
+     * Creates a new window and returns an instance of ApplicationWindow.
+     * @param {object} opts - an options object
+     * @param {number} opts.index - the index of the window
+     * @param {string} opts.path - the path to the HTML file to load into the window
+     * @param {string=} opts.title - the title of the window
+     * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
+     * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
+     * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
+     * @param {(number|string)=} [opts.minHeight = 0] - the minimum height of the window
+     * @param {(number|string)=} [opts.maxWidth = '100%'] - the maximum width of the window
+     * @param {(number|string)=} [opts.maxHeight = '100%'] - the maximum height of the window
+     * @param {boolean=} [opts.resizable=true] - whether the window is resizable
+     * @param {boolean=} [opts.frameless=false] - whether the window is frameless
+     * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
+     * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+     * @return {Promise<ApplicationWindow>}
+     */
+    export function createWindow(opts: {
+        index: number;
+        path: string;
+        title?: string | undefined;
+        width?: (number | string) | undefined;
+        height?: (number | string) | undefined;
+        minWidth?: (number | string) | undefined;
+        minHeight?: (number | string) | undefined;
+        maxWidth?: (number | string) | undefined;
+        maxHeight?: (number | string) | undefined;
+        resizable?: boolean | undefined;
+        frameless?: boolean | undefined;
+        utility?: boolean | undefined;
+        canExit?: boolean | undefined;
+    }): Promise<ApplicationWindow>;
+    /**
+     * Returns the current screen size.
+     * @returns {Promise<ipc.Result>}
+     */
+    export function getScreenSize(): Promise<ipc.Result>;
+    /**
+     * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
+     * @param {number[]|undefined} indices - the indices of the windows
+     * @return {Promise<Object.<number, ApplicationWindow>>}
+     * @throws {Error} - if indices is not an array of integer numbers
+     */
+    export function getWindows(indices: number[] | undefined): Promise<{
+        [x: number]: ApplicationWindow;
+    }>;
+    /**
+     * Returns the ApplicationWindow instance for the given index
+     * @param {number} index - the index of the window
+     * @throws {Error} - if index is not a valid integer number
+     * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
+     */
+    export function getWindow(index: number): Promise<ApplicationWindow>;
+    /**
+     * Returns the ApplicationWindow instance for the current window.
+     * @return {Promise<ApplicationWindow>}
+     */
+    export function getCurrentWindow(): Promise<ApplicationWindow>;
+    /**
+     * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
+     * @param {object} code - an exit code
+     * @return {Promise<ipc.Result>}
+     */
+    export function exit(code: object): Promise<ipc.Result>;
+    /**
+     * Set the native menu for the app.
+     *
+     * @param {object} options - an options object
+     * @param {string} options.value - the menu layout
+     * @param {number} options.index - the window to target (if applicable)
+     * @return {Promise<ipc.Result>}
+     *
+     * Socket Runtime provides a minimalist DSL that makes it easy to create
+     * cross platform native system and context menus.
+     *
+     * Menus are created at run time. They can be created from either the Main or
+     * Render process. The can be recreated instantly by calling the `setSystemMenu` method.
+     *
+     * The method takes a string. Here's an example of a menu. The semi colon is
+     * significant indicates the end of the menu. Use an underscore when there is no
+     * accelerator key. Modifiers are optional. And well known OS menu options like
+     * the edit menu will automatically get accelerators you dont need to specify them.
+     *
+     *
+     * ```js
+     * socket.application.setSystemMenu({ index: 0, value: `
+     *   App:
+     *     Foo: f;
+     *
+     *   Edit:
+     *     Cut: x
+     *     Copy: c
+     *     Paste: v
+     *     Delete: _
+     *     Select All: a;
+     *
+     *   Other:
+     *     Apple: _
+     *     Another Test: T
+     *     !Im Disabled: I
+     *     Some Thing: S + Meta
+     *     ---
+     *     Bazz: s + Meta, Control, Alt;
+     * `)
+     * ```
+     *
+     * Separators
+     *
+     * To create a separator, use three dashes `---`.
+     *
+     *
+     * Accelerator Modifiers
+     *
+     * Accelerator modifiers are used as visual indicators but don't have a
+     * material impact as the actual key binding is done in the event listener.
+     *
+     * A capital letter implies that the accelerator is modified by the `Shift` key.
+     *
+     * Additional accelerators are `Meta`, `Control`, `Option`, each separated
+     * by commas. If one is not applicable for a platform, it will just be ignored.
+     *
+     * On MacOS `Meta` is the same as `Command`.
+     *
+     *
+     * Disabled Items
+     *
+     * If you want to disable a menu item just prefix the item with the `!` character.
+     * This will cause the item to appear disabled when the system menu renders.
+     *
+     *
+     * Submenus
+     *
+     * We feel like nested menus are an anti-pattern. We don't use them. If you have a
+     * strong argument for them and a very simple pull request that makes them work we
+     * may consider them.
+     *
+     *
+     * Event Handling
+     *
+     * When a menu item is activated, it raises the `menuItemSelected` event in
+     * the front end code, you can then communicate with your backend code if you
+     * want from there.
+     *
+     * For example, if the `Apple` item is selected from the `Other` menu...
+     *
+     * ```js
+     * window.addEventListener('menuItemSelected', event => {
+     *   assert(event.detail.parent === 'Other')
+     *   assert(event.detail.title === 'Apple')
+     * })
+     * ```
+     *
+     */
+    export function setSystemMenu(o: any): Promise<ipc.Result>;
+    /**
+     * Set the enabled state of the system menu.
+     * @param {object} value - an options object
+     * @return {Promise<ipc.Result>}
+     */
+    export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
+    /**
+     * Socket Runtime version.
+     * @type {object} - an object containing the version information
+     */
+    export const runtimeVersion: object;
+    /**
+     * Runtime debug flag.
+     * @type {boolean}
+     */
+    export const debug: boolean;
+    /**
+     * Application configuration.
+     * @type {object}
+     */
+    export const config: object;
+    export namespace backend {
+        /**
+         * @param {object} opts - an options object
+         * @param {boolean} [opts.force = false] - whether to force the existing process to close
+         * @return {Promise<ipc.Result>}
+         */
+        function open(opts?: {
+            force?: boolean;
+        }): Promise<ipc.Result>;
+        /**
+         * @return {Promise<ipc.Result>}
+         */
+        function close(): Promise<ipc.Result>;
+    }
+    export default exports;
+    import ApplicationWindow from "socket:window";
+    import ipc from "socket:ipc";
+    import * as exports from "socket:application";
+    
+}
+declare module "socket:bluetooth" {
+    export default exports;
+    /**
+     * Create an instance of a Bluetooth service.
+     */
+    export class Bluetooth extends EventEmitter {
+        static isInitalized: boolean;
+        /**
+         * constructor is an example property that is set to `true`
+         * Creates a new service with key-value pairs
+         * @param {string} serviceId - Given a default value to determine the type
+         */
+        constructor(serviceId?: string);
+        serviceId: string;
+        /**
+         * Start the Bluetooth service.
+         * @return {Promise<ipc.Result>}
+         *
+         */
+        start(): Promise<ipc.Result>;
+        /**
+         * Start scanning for published values that correspond to a well-known UUID.
+         * Once subscribed to a UUID, events that correspond to that UUID will be
+         * emitted. To receive these events you can add an event listener, for example...
+         *
+         * ```js
+         * const ble = new Bluetooth(id)
+         * ble.subscribe(uuid)
+         * ble.on(uuid, (data, details) => {
+         *   // ...do something interesting
+         * })
+         * ```
+         *
+         * @param {string} [id = ''] - A well-known UUID
+         * @return {Promise<ipc.Result>}
+         */
+        subscribe(id?: string): Promise<ipc.Result>;
+        /**
+         * Start advertising a new value for a well-known UUID
+         * @param {string} [id=''] - A well-known UUID
+         * @param {string} [value='']
+         * @return {Promise<void>}
+         */
+        publish(id?: string, value?: string): Promise<void>;
+    }
+    import * as exports from "socket:bluetooth";
+    import { EventEmitter } from "socket:events";
+    import ipc from "socket:ipc";
+    
 }
 declare module "socket:bootstrap" {
     /**

@@ -122,7 +122,8 @@ namespace SSC::IPC {
       };
 
       Message message;
-      Message::Seq seq;
+      Message::Seq seq = "-1";
+      uint64_t id = 0;
       String source = "";
       JSON::Any value = nullptr;
       JSON::Any data = nullptr;
@@ -131,6 +132,8 @@ namespace SSC::IPC {
       Post post;
 
       Result () = default;
+      Result (const Result&) = default;
+      Result (const JSON::Any);
       Result (const Err error);
       Result (const Data data);
       Result (const Message::Seq&, const Message&);

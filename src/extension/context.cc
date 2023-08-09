@@ -2,7 +2,7 @@
 
 sapi_context_t* sapi_context_create (
   sapi_context_t* parent,
-  const bool retained
+  bool retained
 ) {
   if (parent && !parent->isAllowed("context_create")) {
     sapi_debug(parent, "'context_create' is not allowed.");
@@ -29,6 +29,15 @@ sapi_context_t* sapi_context_create (
   return context;
 }
 
+bool sapi_context_set_data (
+  sapi_context_t* ctx,
+  const void* data
+) {
+  if (ctx == nullptr) return false;
+  ctx->data = data;
+  return true;
+}
+
 bool sapi_context_dispatch (
   sapi_context_t* ctx,
   const void* data,
@@ -44,10 +53,8 @@ bool sapi_context_dispatch (
     return false;
   }
 
-  return ctx->router->dispatch([&]() {
-    ctx->router->bridge->core->dispatchEventLoop([ctx, data, callback] () {
-      callback(ctx, data);
-    });
+  return ctx->router->dispatch([=]() {
+    callback(ctx, data);
   });
 }
 
@@ -99,6 +106,14 @@ const sapi_ipc_router_t* sapi_context_get_router (const sapi_context_t* ctx) {
   return reinterpret_cast<const sapi_ipc_router_t*>(ctx->router);
 }
 
+const void * sapi_context_get_data (const sapi_context_t* context) {
+  return context != nullptr ? context->data : nullptr;
+}
+
+const sapi_context_t* sapi_context_get_parent (const sapi_context_t* context) {
+  return context != nullptr ? reinterpret_cast<sapi_context_t*>(context->context) : nullptr;
+}
+
 void sapi_context_error_reset (sapi_context_t* context) {
   if (context == nullptr) return;
   context->error.code = 0;
@@ -109,14 +124,14 @@ void sapi_context_error_reset (sapi_context_t* context) {
 
 void sapi_context_error_set_code (
   sapi_context_t* context,
-  const int code
+  int code
 ) {
   if (context == nullptr) return;
   context->error.code = code;
   context->state = SSC::Extension::Context::State::Error;
 }
 
-const int sapi_context_error_get_code (const sapi_context_t* context) {
+int sapi_context_error_get_code (const sapi_context_t* context) {
   if (context == nullptr) return -1;
   return context->error.code;
 }

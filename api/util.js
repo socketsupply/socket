@@ -313,7 +313,6 @@ export function inspect (value, options) {
         const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect]).call(
           value,
           depth,
-          ctx,
           ctx.options,
           inspect
         )

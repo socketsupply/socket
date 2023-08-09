@@ -47,6 +47,7 @@ import {
 
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
+import { rand64 } from './crypto.js'
 import console from './console.js'
 
 let nextSeq = 1
@@ -789,28 +790,39 @@ export class Message extends URL {
  */
 export class Result {
   /**
+   * The unique ID for this result.
+   * @type {string}
+   * @ignore
+   */
+  id = String(rand64())
+
+  /**
+   * An optional error in the result.
    * @type {Error?}
    * @ignore
    */
-  err
+  err = null
 
   /**
-   * @type {string|object|Uint8Array}
+   * Result data if given.
+   * @type {string|object|Uint8Array?}
    * @ignore
    */
-  data
+  data = null
 
   /**
+   * The source of this result.
    * @type {string?}
    * @ignore
    */
-  source
+  source = null
 
   /**
+   * Result headers, if given.
    * @type {Headers?}
    * @ignore
    */
-  headers
+  headers = new Headers()
 
   /**
    * Creates a `Result` instance from input that may be an object
@@ -848,32 +860,35 @@ export class Result {
       maybeError = null
     }
 
+    const id = result?.id || null
     const err = maybeMakeError(result?.err || maybeError || null, Result.from)
     const data = !err && result?.data !== null && result?.data !== undefined
-      ? result.data
-      : (!err ? result : null)
+      ? result.data?.data ?? result.data
+      : (!err && !id && !result?.source ? result?.err ?? result : null)
 
     const source = result?.source || maybeSource || null
     const headers = result?.headers || maybeHeaders || null
 
-    return new this(err, data, source, headers)
+    return new this(id, err, data, source, headers)
   }
 
   /**
    * `Result` class constructor.
    * @private
+   * @param {string?} [id = null]
    * @param {Error?} [err = null]
    * @param {object?} [data = null]
    * @param {string?} [source = null]
    * @param {object|string|Headers?} [headers = null]
    * @ignore
    */
-  constructor (err, data, source, headers) {
-    this.err = typeof err !== 'undefined' ? err : null
-    this.data = typeof data !== 'undefined' ? data : null
+  constructor (id, err, data, source, headers) {
+    this.id = typeof id !== 'undefined' ? id : this.id
+    this.err = typeof err !== 'undefined' ? err : this.err
+    this.data = typeof data !== 'undefined' ? data : this.data
     this.source = typeof source === 'string' && source.length > 0
       ? source
-      : null
+      : this.source
 
     this.headers = headers ? Headers.from(headers) : null
 
@@ -1399,7 +1414,16 @@ export function createBinding (domain, ctx) {
     get (target, key, ...args) {
       const value = Reflect.get(target, key, ...args)
       if (value !== undefined) return value
-      if (key === 'inspect' || key === '__proto__' || key === 'constructor' || key in Function.prototype) return
+      if (
+        key === 'inspect' ||
+        key === '__proto__' ||
+        key === 'constructor' ||
+        key in Promise.prototype ||
+        key in Function.prototype
+      ) {
+        return
+      }
+
       ctx.chain.add(key)
       return new Proxy(ctx, this)
     }

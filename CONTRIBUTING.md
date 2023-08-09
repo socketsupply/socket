@@ -5,14 +5,13 @@ If you are new to Socket Runtime, the [Guides](https://socketsupply.co/guides/) 
 ## Requirements
 To contribute to the project you need to clone the repository and install the dependencies. 
 
-### MacOS and Linux
+#### MacOS and Linux
 
 ```bash
 git clone git@github.com:socketsupply/socket.git
 cd socket 
 ./bin/install.sh
 ```
-
 ### Windows  
 
 ```powershell
@@ -21,32 +20,29 @@ cd socket
 .\bin\install.ps1
 ```
 
-## Project directory structure
+### Project directory structure
 
-The project is structured as follows:  
-
-1- [`api`](api/): The `api` folder contains the JavaScript API for Socket Runtime. It consists of the built-in modules that are available in the runtime and the `socket` package that is published to npm (i.e. `socket:fs`, `socket:crypto`, etc.).  
-
-These modules have native bindings to the underlying C++/Objective-C/Kotlin code and libuv to expose the platform
-capabilities to the JavaScript code.  
-
+The project is structured as follows:
+1- [`api`](api/): The `api` folder contains the JavaScript API for Socket Runtime. 
+   It consists of the built-in modules that are available in the runtime and the `socket` package that is published to npm (i.e. `socket:fs`, `socket:crypto`, etc.).  
+   These modules have native bindings to the underlying C++/Objective-C/Kotlin code and libuv to expose the platform
+   capabilities to the JavaScript code.  
 2- [`bin`](bin/): This directory contains useful scripts for building the project on different platforms, managing versions,
-generating documentation, publishing npm packages, etc.  
-
+   generating documentation, publishing npm packages, etc.  
 3- [`npm`](npm/): This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
-You can also find the official Socket Runtime Node.js backend in the [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.  
-
+   This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
+   You can also find the official Socket Runtime Node.js backend in the
+   [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.
 4- [`src`](src/): This directory contains the native code for the Socket Runtime:
-- [`cli`](src/cli/): contains the source code for the Socket Runtime CLI
-- [`core`](src/core/): contains the source code for the Socket Runtime core, such as Bluetooth support,
-File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
-- [`desktop`](src/desktop/): contains the source code for the Socket Runtime library for desktop platforms
-- [`android`](src/android/): contains the source code for the Socket Runtime library for Android
-- [`ios`](src/ios/): contains the source code for the Socket Runtime library for iOS
-- [`ipc`](src/ipc/): contains the source code for the Socket Runtime IPC library
-- [`process`](src/process/): contains the source code for the process management
-- [`window`](src/window/): contains the source code for the window management on desktop platforms  
-
+  - [`cli`](src/cli/): contains the source code for the Socket Runtime CLI
+  - [`core`](src/core/): contains the source code for the Socket Runtime core, such as Bluetooth support,
+    File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
+  - [`desktop`](src/desktop/): contains the source code for the Socket Runtime library for desktop platforms
+  - [`android`](src/android/): contains the source code for the Socket Runtime library for Android
+  - [`ios`](src/ios/): contains the source code for the Socket Runtime library for iOS
+  - [`ipc`](src/ipc/): contains the source code for the Socket Runtime IPC library
+  - [`process`](src/process/): contains the source code for the process management
+  - [`window`](src/window/): contains the source code for the window management on desktop platforms  
 5- [`test`](test/): This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API. 
 
 Source: https://github.com/socketsupply/socket

@@ -176,15 +176,36 @@ extern "C" {
     {}
   };
 
+  struct sapi_process_spawn : public SSC::Process {
+    public:
+      sapi_context_t* context = nullptr;
+
+      sapi_process_spawn (
+        const char* command,
+        const char* argv,
+        const char* path,
+        sapi_process_spawn_stderr_callback_t onstdout,
+        sapi_process_spawn_stderr_callback_t onstderr,
+        sapi_process_spawn_exit_callback_t onexit
+      ) : SSC::Process(
+        command,
+        argv,
+        path,
+        [this, onstdout] (auto output) { if (onstdout) { onstdout(this, output.c_str(), output.size()); }},
+        [this, onstderr] (auto output) { if (onstderr) { onstderr(this, output.c_str(), output.size()); }},
+        [this, onexit] (auto code) { if (onexit) { onexit(this, std::stoi(code)); }}
+      )
+      {}
+  };
+
   struct sapi_ipc_router : public SSC::IPC::Router {};
   struct sapi_ipc_message : public SSC::IPC::Message {};
 
   struct sapi_ipc_result : public SSC::IPC::Result {
     sapi_context_t* context = nullptr;
-    sapi_ipc_result () = default;
-    sapi_ipc_result (sapi_context_t* ctx)
-      : context(ctx)
-    {}
+    sapi_ipc_result () {
+      this->id = SSC::rand64();
+    }
   };
 
   struct sapi_json_any : public SSC::JSON::Any {
@@ -206,10 +227,10 @@ extern "C" {
   struct sapi_json_boolean : public SSC::JSON::Boolean {
     sapi_context_t* context = nullptr;
     sapi_json_boolean () = default;
-    sapi_json_boolean (const bool boolean)
+    sapi_json_boolean (bool boolean)
       : SSC::JSON::Boolean(boolean)
     {}
-    sapi_json_boolean (sapi_context_t* ctx, const bool boolean)
+    sapi_json_boolean (sapi_context_t* ctx, bool boolean)
       : context(ctx), SSC::JSON::Boolean(boolean)
     {}
   };

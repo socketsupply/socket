@@ -73,7 +73,7 @@ namespace SSC {
   template sapi_json_boolean_t*
   SSC::Extension::Context::Memory::alloc<sapi_json_boolean_t> (
     sapi_context_t*,
-    const bool
+    bool
   );
 
   template sapi_json_number_t*
@@ -86,6 +86,11 @@ namespace SSC {
   SSC::Extension::Context::Memory::alloc<sapi_json_raw_t> (
     sapi_context_t*,
     const char*
+  );
+
+  template sapi_ipc_message_t*
+  SSC::Extension::Context::Memory::alloc<sapi_ipc_message_t> (
+    sapi_ipc_message_t
   );
 
   Extension::Context::Context (const Extension* extension) {
@@ -245,18 +250,21 @@ namespace SSC {
   }
 
   bool Extension::setHandle (const String& name, void* handle) {
-    if (!extensions.contains(name))
-    {
+    if (!extensions.contains(name)) {
       std::cout << "WARN - extensions does not contain " << name << std::endl;
       return false;
     }
-    
+
     std::cout << "Registering extension handle " << name << std::endl;
     extensions.at(name)->handle = handle;
     return true;
   }
 
-  void Extension::setRouterContext (const String& name, IPC::Router* router, Context* context) {
+  void Extension::setRouterContext (
+    const String& name,
+    IPC::Router* router,
+    Context* context
+  ) {
     if (!extensions.contains(name)) return;
     auto extension = extensions.at(name);
     extension->contexts[router] = context;

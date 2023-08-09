@@ -103,8 +103,8 @@ usage:
   ssc print-build-dir [--platform=<platform>] [--prod] [<project-dir>]
 
 options:
-  --platform  ios; if not specified, runs on the current platform
-  --prod      use a production build directory
+  --platform  android|android-emulator|ios|ios-simulator; if not specified, runs on the current platform
+  --root      print root build directory
 )TEXT";
 
 constexpr auto gHelpTextRun = R"TEXT(
@@ -114,7 +114,7 @@ usage:
   ssc run [options] [<project-dir>]
 
 options:
-  --platform     ios-simulator; if not specified, runs on the current platform
+  --platform     android|ios|ios-simulator; if not specified, runs on the current platform
   --prod         run production build
   --test=path    indicate test mode
 )TEXT";
@@ -1186,8 +1186,6 @@ LOCAL_SRC_FILES =         \
   android/window.cc       \
   init.cc
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
-
 LOCAL_STATIC_LIBRARIES := \
   libuv                   \
   libsocket-runtime-static
@@ -1591,5 +1589,8 @@ build/
 
 # Provisioning profile
 *.mobileprovision
+
+# extension build artifacts
+*.o
 
 )GITIGNORE";

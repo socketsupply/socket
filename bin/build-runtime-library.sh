@@ -118,6 +118,7 @@ if [[ "$platform" = "android" ]]; then
 
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
   clang_target="$(android_clang_target "$arch")"
+  sources+=("$root/src/process/unix.cc")
 elif [[ "$host" = "Darwin" ]]; then
   sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)) || (( TARGET_IPHONE_SIMULATOR )); then

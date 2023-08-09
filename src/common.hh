@@ -224,12 +224,11 @@ namespace SSC {
   inline const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
   inline const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
 
-  const Map getUserConfig ();
-
-  bool isDebugEnabled ();
-
-  const char* getDevHost ();
-  int getDevPort ();
+  // from init.cc
+  extern const Map getUserConfig ();
+  extern bool isDebugEnabled ();
+  extern const char* getDevHost ();
+  extern int getDevPort ();
 
   inline String encodeURIComponent (const String& sSrc);
   inline String decodeURIComponent (const String& sSrc);
@@ -254,7 +253,7 @@ namespace SSC {
   inline String WStringToString (const String& s) {
     return s;
   }
-  
+
   #if defined(_WIN32)
   SSC::String FormatError(DWORD error, SSC::String source);
   #endif
@@ -581,7 +580,7 @@ namespace SSC {
       return appData[String("env_") + variableName];
     }
 
-    #if _WIN32
+    #if defined(_WIN32)
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
       auto query = _dupenv_s(&variableValue, &valueSize, variableName);
@@ -608,8 +607,17 @@ namespace SSC {
     return getEnv(variableName.c_str());
   }
 
+  inline String getEnv (const String& variableName, const String& defaultValue) {
+    const auto value = getEnv(variableName);
+    if (value.size() == 0) {
+      return defaultValue;
+    }
+
+    return value;
+  }
+
   inline auto setEnv (const String& k, const String& v) {
-  #if _WIN32
+  #if defined(_WIN32)
     return _putenv((k + "=" + v).c_str());
   #else
     setenv(k.c_str(), v.c_str(), 1);
@@ -617,7 +625,7 @@ namespace SSC {
   }
 
   inline auto setEnv (const char* s) {
-  #if _WIN32
+  #if defined(_WIN32)
     return _putenv(s);
   #else
     auto parts = split(String(s), '=');
@@ -998,7 +1006,9 @@ namespace SSC {
     auto list = Vector<String>();
     for (const auto& separator : separators) {
       for (const auto& part: split(string, separator)) {
-        list.push_back(part);
+        if (std::find(list.begin(), list.end(), part) == list.end()) {
+          list.push_back(part);
+        }
       }
     }
 

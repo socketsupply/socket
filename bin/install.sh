@@ -853,7 +853,7 @@ function _compile_libuv {
 }
 
 function _check_compiler_features {
-  if [[ -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     return
   fi
 

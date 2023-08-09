@@ -354,7 +354,8 @@ MAIN {
 
       if (message.name == "heartbeat") {
         if (seq.size() > 0) {
-          window->resolvePromise(seq, OK_STATE, "\"heartbeat\"");
+          auto result = SSC::IPC::Result(message.seq, message, "heartbeat");
+          window->resolvePromise(seq, OK_STATE, result.str());
         }
 
         return;
@@ -375,7 +376,7 @@ MAIN {
         for (auto w : windowManager.windows) {
           if (w != nullptr) {
             auto window = windowManager.getWindow(w->opts.index);
-            window->eval(getEmitToRenderProcessJavaScript("process.exit", value));
+            window->resolvePromise(message.seq, OK_STATE, value);
           }
         }
         return;
@@ -431,22 +432,22 @@ MAIN {
           createProcess(force);
           process->open();
         }
-#ifdef _WIN32
+      #ifdef _WIN32
         size_t last_pos = 0;
         while ((last_pos = process->path.find('\\', last_pos)) != std::string::npos) {
           process->path.replace(last_pos, 1, "\\\\\\\\");
           last_pos += 4;
         }
-#endif
+      #endif
         const JSON::Object json = JSON::Object::Entries {
           { "cmd", cmd },
           { "argv", process->argv },
           { "path", process->path }
         };
-        window->resolvePromise(seq, OK_STATE, encodeURIComponent(json.str()));
+        window->resolvePromise(seq, OK_STATE, json);
         return;
       }
-      window->resolvePromise(seq, ERROR_STATE, "null");
+      window->resolvePromise(seq, ERROR_STATE, SSC::JSON::null);
       return;
     }
 
@@ -457,7 +458,7 @@ MAIN {
         killProcess(process);
       }
 
-      window->resolvePromise(seq, OK_STATE, "null");
+      window->resolvePromise(seq, OK_STATE, SSC::JSON::null);
       return;
     }
 
@@ -466,7 +467,7 @@ MAIN {
       if (cmd.size() > 0 && process != nullptr) {
         process->write(out);
       }
-      window->resolvePromise(seq, OK_STATE, "null");
+      window->resolvePromise(seq, OK_STATE, SSC::JSON::null);
       return;
     }
 
@@ -480,7 +481,7 @@ MAIN {
         targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
       }
       const auto seq = message.get("seq");
-      currentWindow->resolvePromise(seq, OK_STATE, "null");
+      currentWindow->resolvePromise(seq, OK_STATE, SSC::JSON::null);
       return;
     }
 
@@ -510,7 +511,7 @@ MAIN {
           { "width", screenSize.width },
           { "height", screenSize.height }
         };
-        window->resolvePromise(seq, OK_STATE, json.str());
+        window->resolvePromise(seq, OK_STATE, json);
       }
       return;
     }
@@ -546,7 +547,7 @@ MAIN {
         const JSON::Object json = JSON::Object::Entries {
           { "err", "Window with index " + std::to_string(targetWindowIndex) + " already exists" }
         };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+        currentWindow->resolvePromise(seq, ERROR_STATE, json);
         return;
       }
 
@@ -557,7 +558,7 @@ MAIN {
             {"message", error}
           }}
         };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+        currentWindow->resolvePromise(seq, ERROR_STATE, json);
         return;
       }
 
@@ -599,7 +600,12 @@ MAIN {
         { "data", targetWindow->json() },
       };
 
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
       return;
     }
 
@@ -614,7 +620,13 @@ MAIN {
         JSON::Object json = JSON::Object::Entries {
           { "data", targetWindow->json()},
         };
-        window->resolvePromise(message.seq, OK_STATE, json.str());
+
+        auto result = SSC::IPC::Result(message.seq, message, json);
+        window->resolvePromise(
+          message.seq,
+          OK_STATE,
+          result.json()
+        );
       }
       return;
     }
@@ -631,7 +643,13 @@ MAIN {
         JSON::Object json = JSON::Object::Entries {
           { "err", targetWindowStatus }
         };
-        resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+
+        auto result = SSC::IPC::Result(message.seq, message, json);
+        resolveWindow->resolvePromise(
+          message.seq,
+          ERROR_STATE,
+          result.json()
+        );
         return;
       }
 
@@ -640,7 +658,13 @@ MAIN {
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() }
       };
-      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      resolveWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
       return;
     }
 
@@ -656,7 +680,13 @@ MAIN {
         JSON::Object json = JSON::Object::Entries {
           { "err", targetWindowStatus }
         };
-        resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+
+        auto result = SSC::IPC::Result(message.seq, message, json);
+        resolveWindow->resolvePromise(
+          message.seq,
+          ERROR_STATE,
+          result.json()
+        );
         return;
       }
 
@@ -665,7 +695,14 @@ MAIN {
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() }
       };
-      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      resolveWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+
       return;
     }
 
@@ -681,7 +718,14 @@ MAIN {
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+
       return;
     }
 
@@ -698,7 +742,13 @@ MAIN {
         JSON::Object json = JSON::Object::Entries {
           { "err", error }
         };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+
+        currentWindow->resolvePromise(
+          message.seq,
+          ERROR_STATE,
+          json.str()
+        );
+
         return;
       }
 
@@ -708,7 +758,13 @@ MAIN {
         { "data", targetWindow->json() },
       };
 
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+
       return;
     }
 
@@ -718,14 +774,20 @@ MAIN {
       const auto currentWindow = windowManager.getWindow(currentIndex);
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      
+
       targetWindow->showInspector();
 
       JSON::Object json = JSON::Object::Entries {
         { "data", true },
       };
-      
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+
       return;
     }
 
@@ -754,7 +816,13 @@ MAIN {
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
       return;
     }
 
@@ -776,7 +844,12 @@ MAIN {
         { "data", targetWindow->json() },
       };
 
-      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
       return;
     }
 
@@ -796,12 +869,20 @@ MAIN {
         indexMain = std::stoi(message.get("indexMain"));
         indexSub = std::stoi(message.get("indexSub"));
       } catch (...) {
-        window->resolvePromise(seq, OK_STATE, "null");
+        window->resolvePromise(
+          message.seq,
+          OK_STATE,
+          SSC::JSON::null
+        );
         return;
       }
 
       window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      window->resolvePromise(seq, OK_STATE, "null");
+      window->resolvePromise(
+        message.seq,
+        OK_STATE,
+        SSC::JSON::null
+      );
       return;
     }
 
@@ -821,7 +902,11 @@ MAIN {
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
-      window->resolvePromise(seq, OK_STATE, "null");
+      window->resolvePromise(
+        message.seq,
+        OK_STATE,
+        SSC::JSON::null
+      );
       return;
     }
 
@@ -842,10 +927,11 @@ MAIN {
       }}
     };
 
+    auto result = SSC::IPC::Result(message.seq, message, err);
     window->resolvePromise(
-      message.get("seq"),
+      message.seq,
       ERROR_STATE,
-      encodeURIComponent(JSON::Object(err).str())
+      result.json()
     );
   };
 
