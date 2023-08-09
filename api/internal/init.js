@@ -155,12 +155,12 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   let queue = null
 
   globalThis.XMLHttpRequest.prototype.open = function (...args) {
-    const [,, async] = args
+    const [,, asyncValue] = args
     Object.defineProperty(this, isAsync, {
       configurable: false,
       enumerable: false,
       writable: false,
-      value: async !== false
+      value: asyncValue !== false
     })
 
     return open.call(this, ...args)
