@@ -2,6 +2,7 @@
 
 namespace SSC {
   static Extension::Map extensions = {};
+  static Vector<String> initializedExtensions;
   static Mutex mutex;
 
   static String getcwd () {
@@ -107,6 +108,7 @@ namespace SSC {
     this->config = context.config;
     this->data = context.data;
     this->policies = context.policies;
+    this->internal = context.internal;
   }
 
   Extension::Context::Context (const Context* context) {
@@ -116,6 +118,7 @@ namespace SSC {
       this->config = context->config;
       this->data = context->data;
       this->policies = context->policies;
+      this->internal = context->internal;
     }
   }
 
@@ -128,6 +131,7 @@ namespace SSC {
       this->config = context.config;
       this->data = context.data;
       this->policies = context.policies;
+      this->internal = context.internal;
     }
 
   Extension::Context::Context (IPC::Router* router) : Context() {
@@ -148,6 +152,7 @@ namespace SSC {
   }
 
   void Extension::Context::setPolicy (const String& name, bool allowed) {
+    if (name.size() == 0) return;
     if (this->hasPolicy(name)) {
       auto policy = this->getPolicy(name);
       policy.allowed = allowed;
@@ -406,7 +411,7 @@ namespace SSC {
       return;
     }
 
-    auto extension = std::shared_ptr<Extension>(new Extension(name, initializer));
+    auto extension = std::make_shared<Extension>(name, initializer);
     extensions.insert_or_assign(name, extension);
   }
 
@@ -421,11 +426,21 @@ namespace SSC {
       return false;
     }
 
+    if (std::count(initializedExtensions.begin(), initializedExtensions.end(), name) > 0) {
+      debug("Extension '%s' already loaded", name.c_str());
+      // already initializedExtensions
+      return true;
+    }
+
     auto extension = extensions.at(name);
     if (extension != nullptr && extension->initializer != nullptr) {
       debug("Initializing loaded extension: %s", name.c_str());
       extension->context.data = data;
-      return extension->initializer(ctx, data);
+      auto didInitialize = extension->initializer(ctx, data);
+      if (didInitialize) {
+        initializedExtensions.push_back(name);
+      }
+      return didInitialize;
     }
 
     return false;
@@ -457,6 +472,16 @@ bool sapi_extension_register (
       auto deinitializer = registration->deinitializer;
       if (deinitializer != nullptr) {
         debug("Unloading extension: %s", registration->name);
+        auto initializedExtensionsCursor = std::find(
+          SSC::initializedExtensions.begin(),
+          SSC::initializedExtensions.end(),
+          SSC::String(registration->name)
+         );
+
+        if (initializedExtensionsCursor != SSC::initializedExtensions.end()) {
+          SSC::initializedExtensions.erase(initializedExtensionsCursor);
+        }
+
         return deinitializer(reinterpret_cast<sapi_context_t*>(ctx), data);
       }
 

@@ -630,7 +630,7 @@ export class Socket extends EventEmitter {
   constructor (options, callback) {
     super()
 
-    this.id = rand64()
+    this.id = options?.id || rand64()
 
     if (typeof options === 'string') {
       options = { type: options }

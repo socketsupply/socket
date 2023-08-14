@@ -292,7 +292,8 @@ void initRouterTable (Router *router) {
       #if defined(_WIN32)
       auto error = FormatError(GetLastError(), "bridge");
       #else
-      auto error = String(dlerror());
+      auto err = dlerror();
+      auto error = String(err ? err : "Unknown error");
       #endif
 
       std::cout << "Load extension error: " << error << std::endl;

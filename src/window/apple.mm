@@ -547,6 +547,21 @@ namespace SSC {
         forKey: @"allowFileAccessFromFileURLs"
     ];
 
+    [webview.configuration.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"socket"
+    ];
+
+    [webview.configuration.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"ipc"
+    ];
+
+    [webview.configuration.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"file"
+    ];
+
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
         forKey: @"drawsTransparentBackground"

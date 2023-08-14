@@ -38,7 +38,7 @@ bool sapi_ipc_router_map (
       message.buffer.bytes,
       message.buffer.size
     );
-    context->internal = context->memory.alloc<SSC::IPC::Router::ReplyCallback>(reply);
+    context->internal = new SSC::IPC::Router::ReplyCallback(reply);
     callback(
       context,
       (sapi_ipc_message_t*) &msg,
@@ -127,10 +127,9 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   auto fn = reinterpret_cast<SSC::IPC::Router::ReplyCallback*>(internal);
 
   if (fn != nullptr) {
-    if (fn != nullptr && result != nullptr) {
-      (*fn)(*result);
-      success = true;
-    }
+    (*fn)(*result);
+    success = true;
+    delete fn;
   }
 
   // if retained, then then caller must eventually call `sapi_context_release()`
@@ -158,7 +157,7 @@ bool sapi_ipc_send_bytes (
     .ttl = 0,
     .body = new char[size]{0},
     .length = size,
-    .headers =headers ? headers : ""
+    .headers = headers ? headers : ""
   };
 
   memcpy(post.body, bytes, size);
@@ -403,6 +402,20 @@ sapi_ipc_result_t* sapi_ipc_result_clone (
   if (context == nullptr) return nullptr;
 
   return context->memory.alloc<sapi_ipc_result_t>(context, *result);
+}
+
+const unsigned char* sapi_ipc_message_get_bytes (
+  const sapi_ipc_message_t* message
+) {
+  if (!message) return nullptr;
+  return reinterpret_cast<const unsigned char*>(message->buffer.bytes);
+}
+
+unsigned int sapi_ipc_message_get_bytes_size (
+  const sapi_ipc_message_t* message
+) {
+  if (!message || !message->buffer.bytes) return 0;
+  return static_cast<unsigned int>(message->buffer.size);
 }
 
 void sapi_ipc_result_set_seq (sapi_ipc_result_t* result, const char* seq) {

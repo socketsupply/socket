@@ -26,14 +26,14 @@ export class Extension extends EventTarget {
   /**
    * Load an extension by name.
    * @param {string} name
-   * @param {{ features: string[] | string ?} [options]
+   * @param {{ allow: string[] | string ?} [options]
    * @return {Promise<Extension>}
    */
   static async load (name, options) {
     options = { name, ...options }
 
-    if (Array.isArray(options.features)) {
-      options.features = options.features.join(',')
+    if (Array.isArray(options.allow)) {
+      options.allow = options.allow.join(',')
     }
 
     const result = await ipc.request('extension.load', options)
