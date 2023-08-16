@@ -12,6 +12,13 @@ Please specify your operating system version and architecture (i686/amd64 etc).
 If you're running Windows - please also provide your IE version.
 -->
 
+### What version Socket Runtime are you using?
+
+<!--
+Please provide an output of `ssc -v`
+-->
+
+
 ### What programming language are you using (C/C++/Go/Rust)?
 
 <!--
