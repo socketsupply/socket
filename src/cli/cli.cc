@@ -1833,13 +1833,13 @@ int main (const int argc, const char* argv[]) {
   };
   createSubcommand("list-devices", listDevicesOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     bool isUdid =
-      optionsWithValue.find("--udid") != optionsWithValue.end() ||
+      optionsWithoutValue.find("--udid") != optionsWithoutValue.end() ||
       equal(rc["list-devices_udid"], "true");
     bool isEcid =
-      optionsWithValue.find("--ecid") != optionsWithValue.end() ||
+      optionsWithoutValue.find("--ecid") != optionsWithoutValue.end() ||
       equal(rc["list-devices_ecid"], "true");
     bool isOnly =
-      optionsWithValue.find("--only") != optionsWithValue.end() ||
+      optionsWithoutValue.find("--only") != optionsWithoutValue.end() ||
       equal(rc["list-devices_only"], "true");
 
     auto targetPlatform = optionsWithValue["--platform"];
