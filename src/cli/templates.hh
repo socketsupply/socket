@@ -1390,7 +1390,7 @@ env = USER, TMPDIR, PWD
 ; Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 flags = -O3
 
-; If false, the window will never be displayed.
+; If true, the window will never be displayed.
 headless = false
 
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
