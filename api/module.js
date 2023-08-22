@@ -8,8 +8,8 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
-import { config } from './application.js'
-import { Stats } from './fs/stats.js'
+import { URL } from './url.js'
+import location from './location.js'
 
 import * as exports from './module.js'
 export default exports
@@ -35,80 +35,81 @@ import util from './util.js'
  * @typedef {(specifier: string, ctx: Module, next: function} => undefined} ModuleResolver
  */
 
-function normalizePathname (pathname) {
-  if (os.platform() === 'win32') {
-    return path.win32.normalize(pathname).replace(/^\\/, '')
+const cache = new Map()
+
+class ModuleRequest {
+  id = null
+  url = null
+
+  static load (pathname, parent) {
+    const request = new this(pathname, parent)
+    return request.load()
   }
 
-  return path.normalize(pathname)
+  constructor (pathname, parent) {
+    this.url = new URL(pathname, parent || location.origin || '/')
+    this.id = String(this.url)
+  }
+
+  status () {
+    const { url } = this
+    const request = new XMLHttpRequest()
+    request.open('HEAD', url, false)
+    request.send(null)
+    return request.status
+  }
+
+  load () {
+    const { id, url } = this
+
+    if (cache.has(id)) {
+      return cache.get(id)
+    }
+
+    if (this.status() >= 400) {
+      return new ModuleResponse(this)
+    }
+
+    const request = new XMLHttpRequest()
+
+    request.open('GET', url, false)
+    request.send(null)
+
+    const headers = Headers.from(request)
+    let responseText = null
+
+    try {
+      // @ts-ignore
+      responseText = request.responseText // can throw `InvalidStateError` error
+    } catch {
+      responseText = request.response
+    }
+
+    const response = new ModuleResponse(this, headers, responseText)
+
+    if (request.status < 400 && responseText) {
+      cache.set(id, response)
+    }
+
+    return response
+  }
 }
 
-function exists (url) {
-  if (os.platform() === 'win32') {
-    url = url.replace(/file:\/\/\/([a-z]):/i, '$1:')
+class ModuleResponse {
+  request = null
+  headers = null
+  data = null
+
+  constructor (request, headers, data) {
+    this.request = request
+    this.headers = headers ?? null
+    this.data = data ?? null
   }
-
-  const pathname = path.Path.from(url).value.replace(/^\/?([a-z]):/i, '$1:')
-  const result = ipc.sendSync('fs.stat', {
-    path: normalizePathname(pathname)
-  })
-
-  if (result.err) {
-    return false
-  }
-
-  const stats = Stats.from(result.data)
-
-  return stats.isFile() || stats.isSymbolicLink()
 }
-
-const ANDROID_ASSET_FILE_PROTCOL_PREFIX =
-  'file://android_asset'
-const ANDROID_ASSET_HTTP_PROTOCOL_PREFIX =
-  'https://appassets.androidplatform.net/assets'
 
 // sync request for files
-function request (url) {
-  const request = new XMLHttpRequest()
-  let response = null
-
-  url = url.replace(
-    ANDROID_ASSET_FILE_PROTCOL_PREFIX,
-    ANDROID_ASSET_HTTP_PROTOCOL_PREFIX
-  )
-
-  if (/^(https?|socket):/.test(globalThis.location?.href || '') && (url.startsWith('/') || url.startsWith('\\'))) {
-    const base = globalThis.location?.href
-    if (path.extname(base)) {
-      url = new URL(url, path.dirname(base))
-    } else {
-      url = new URL(url, base)
-    }
-  } else if (!url.startsWith('file:')) {
-    url = new URL(url, 'file:///')
-  }
-
-  const isAndroidAssetRequest = String(url)
-    .includes(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
-
-  //if (!isAndroidAssetRequest && !exists(url)) {
-    //return {}
-  //}
-
-  console.log('GET %s', url)
-  request.open('GET', url, false)
-  request.send(null)
-
-  const headers = Headers.from(request)
-
-  try {
-    // @ts-ignore
-    response = request.responseText // can throw `InvalidStateError` error
-  } catch {
-    response = request.response
-  }
-
-  return { headers, response }
+function request (pathname, parent) {
+  return ModuleRequest.load(pathname, parent)
 }
 
 /**
@@ -152,6 +153,20 @@ function CommonJSModuleScope (
 }
 
 /**
+ * TODO
+ */
+export function getSourcePathName () {
+  const pathname = location.pathname || '/'
+  const extname = path.extname(pathname)
+
+  if (extname) {
+    return path.dirname(pathname)
+  }
+
+  return pathname
+}
+
+/**
  * A limited set of builtins exposed to CommonJS modules.
  */
 export const builtins = {
@@ -175,6 +190,19 @@ export const builtins = {
   util
 }
 
+// alias
+export const builtinModules = builtins
+
+export function isBuiltin (name) {
+  name = name.replace(/^socket:/, '')
+
+  if (name in builtins) {
+    return true
+  }
+
+  return false
+}
+
 /**
  * CommonJS module scope source wrapper.
  * @type {string}
@@ -184,23 +212,18 @@ export const COMMONJS_WRAPPER = CommonJSModuleScope
   .split(/'module code'/)
 
 /**
- * The main entry source URL.
+ * The main entry source pathname
  * @type {string}
  */
-export const MAIN_SOURCE_URL = (
-  globalThis.location?.href?.includes?.(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
-    ? globalThis.location.href
-    : `socket://${config.meta_bundle_identifier}/index.html`
-  //globalThis.location?.href || `file://${process.cwd() || ''}`
-)
+export const MAIN_SOURCE_PATHNAME = getSourcePathName()
 
 /**
  * Creates a `require` function from a source URL.
- * @param {URL|string} sourceURL
+ * @param {URL|string} sourcePath
  * @return {function}
  */
-export function createRequire (sourceURL) {
-  return Module.createRequire(sourceURL)
+export function createRequire (sourcePath) {
+  return Module.createRequire(sourcePath)
 }
 
 export const scope = {
@@ -247,15 +270,15 @@ export class Module extends EventTarget {
 
   /**
    * Creates a `require` function from a source URL.
-   * @param {URL|string} sourceURL
+   * @param {URL|string} sourcePath
    * @return {function}
    */
-  static createRequire (sourceURL) {
-    if (!sourceURL) {
+  static createRequire (sourcePath) {
+    if (!sourcePath) {
       return this.main.createRequire()
     }
 
-    return this.from(sourceURL).createRequire()
+    return this.from(sourcePath).createRequire()
   }
 
   /**
@@ -263,11 +286,11 @@ export class Module extends EventTarget {
    * @type {Module}
    */
   static get main () {
-    if (MAIN_SOURCE_URL in this.cache) {
-      return this.cache[MAIN_SOURCE_URL]
+    if (MAIN_SOURCE_PATHNAME in this.cache) {
+      return this.cache[MAIN_SOURCE_PATHNAME]
     }
 
-    const main = this.cache[MAIN_SOURCE_URL] = new Module(MAIN_SOURCE_URL)
+    const main = this.cache[MAIN_SOURCE_PATHNAME] = new Module(MAIN_SOURCE_PATHNAME)
     main.filename = main.id
     main.loaded = true
     main.path = main.id
@@ -287,39 +310,34 @@ export class Module extends EventTarget {
 
   /**
    * Creates a `Module` from source URL and optionally a parent module.
-   * @param {string|URL|Module} [sourceURL]
+   * @param {string|URL|Module} [sourcePath]
    * @param {string|URL|Module} [parent]
    */
-  static from (sourceURL, parent = null) {
-    if (!sourceURL) {
+  static from (sourcePath, parent = null) {
+    if (!sourcePath) {
       return Module.main
-    } else if (sourceURL?.id) {
-      return this.from(sourceURL.id, parent)
-    } else if (sourceURL instanceof URL) {
-      return this.from(String(sourceURL), parent)
+    } else if (sourcePath?.id) {
+      return this.from(sourcePath.id, parent)
+    } else if (sourcePath instanceof URL) {
+      return this.from(String(sourcePath), parent)
     }
 
-    if (!sourceURL.startsWith('.')) {
+    if (!parent && !sourcePath.startsWith('.')) {
       parent = Module.main
     }
 
-    // @ts-ignore
-    let parentURL = parent?.id
-
-    if (parentURL) {
-      try {
-        parentURL = String(new URL(parentURL, 'file:///'))
-      } catch {}
-    }
-
-    const url = new URL(sourceURL, parentURL)
-    const id = String(url)
+    const root = new URL(MAIN_SOURCE_PATHNAME, location.origin)
+    const id = String(
+      parent
+        ? new URL(sourcePath, new URL(parent.id, location.origin))
+        : new URL(sourcePath, String(root))
+    )
 
     if (id in this.cache) {
       return this.cache[id]
     }
 
-    const module = new Module(id, parent, sourceURL)
+    const module = new Module(id, parent, sourcePath)
     this.cache[module.id] = module
     return module
   }
@@ -371,20 +389,20 @@ export class Module extends EventTarget {
    * The original source URL to load this module.
    * @type {string}
    */
-  sourceURL = ''
+  sourcePath = ''
 
   /**
    * `Module` class constructor.
    * @ignore
    */
-  constructor (id, parent = null, sourceURL = null) {
+  constructor (id, parent = null, sourcePath = null) {
     super()
 
     this.id = id || ''
     this.parent = parent || null
-    this.sourceURL = sourceURL || id
+    this.sourcePath = sourcePath || id
 
-    if (!scope.previous && id !== MAIN_SOURCE_URL) {
+    if (!scope.previous && id !== MAIN_SOURCE_PATHNAME) {
       scope.previous = Module.main
     }
 
@@ -413,7 +431,7 @@ export class Module extends EventTarget {
    * @type {boolean}
    */
   get isMain () {
-    return this.id === MAIN_SOURCE_URL
+    return this.id === MAIN_SOURCE_PATHNAME
   }
 
   /**
@@ -421,15 +439,11 @@ export class Module extends EventTarget {
    * @type {boolean}
    */
   get isNamed () {
-    return !this.sourceURL?.startsWith('.')
+    return !this.isMain && !this.sourcePath?.startsWith('.')
   }
 
-  /**
-   * The `URL` for this module.
-   * @type {URL}
-   */
-  get url () {
-    return String(new URL(this.sourceURL, Module.main.sourceURL))
+  get pathname () {
+    return new URL(this.id, location.origin).pathname
   }
 
   /**
@@ -438,81 +452,32 @@ export class Module extends EventTarget {
    * @return {boolean}
    */
   load () {
-    const url = this.url.replace(/\/$/, '')
-    const extname = path.extname(url)
+    const { isNamed, pathname, sourcePath } = this
+
+    const pathnames = []
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
-    const queries = []
+
+    const maybeTrailingSlash = sourcePath.endsWith('/') ? '/' : ''
 
     Module.previous = Module.current
     Module.current = this
 
-    if (!this.isNamed) {
-      if (extname) {
-        // @ts-ignore
-        queries.push(url)
-      } else if (this.sourceURL.endsWith('/')) {
-        queries.push(
-          // @ts-ignore
-          url + '/index.js'
-        )
-      } else {
-        queries.push(
-          // @ts-ignore
-          url + '.js',
-          url + '.json',
-          url + '/index.js'
-        )
-      }
-    }
-
-    console.log({ queries })
-    for (const query of queries) {
-      const result = request(query)
-      if (result.response) {
-        evaluate(this, query, result)
-        break
-      }
-    }
-
-    if (!this.loaded) {
-    console.log({ url })
-      loadPackage(this, url)
-    }
-
-    if (!this.loaded) {
-      const previousDir = path.dirname(
-        Module.previous?.id?.replace(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX + '/', '')
-      )
-
+    if (isNamed) {
+      const root = path.dirname(this.parent.pathname)
       for (const prefix of prefixes) {
-        const paths = new Set([
-          path.join(previousDir, prefix, this.sourceURL)
-        ])
-
-        let dirname = path.dirname(Array.from(paths.values())[0])
-        let root = MAIN_SOURCE_URL.includes(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
-          ? path.dirname(MAIN_SOURCE_URL)
-          : MAIN_SOURCE_URL
-        let max = 32 // max paths/depth
-
-        if (path.extname(root) && !root.endsWith('/')) {
-          root = path.dirname(root)
+        let current = root
+        while (current !== '/' && current !== '.') {
+          pathnames.push(path.join(current, prefix, sourcePath))
+          current = path.dirname(current)
         }
+      }
+    } else {
+      pathnames.push(pathname + maybeTrailingSlash)
+    }
 
-        while (dirname !== root && --max > 0) {
-          console.log('JOIN', path.join(dirname, prefix, this.sourceURL))
-          paths.add(path.join(dirname, prefix, this.sourceURL))
-          dirname = path.dirname(dirname)
-        }
-
-        console.log({ paths })
-        for (const prefixed of paths) {
-          const url = String(new URL(prefixed, Module.main.id))
-          console.log({ url })
-          if (loadPackage(this, url)) {
-            break
-          }
-        }
+    for (const pathname of pathnames) {
+      if (loadPackage(this, pathname)) {
+        break
       }
     }
 
@@ -523,22 +488,36 @@ export class Module extends EventTarget {
 
     return this.loaded
 
-    function loadPackage (module, url) {
-      url = url.replace(/\/$/, '')
-      const urls = [
-        url,
-        url + '.js',
-        url + '.json',
-        path.join(url, 'index.js'),
-        path.join(url, 'index.json')
-      ]
+    function loadPackage (module, pathname) {
+      const hasTrailingSlash = pathname.endsWith('/')
+      const pathnames = []
+      const extname = path.extname(pathname)
 
-      while (urls.length) {
-        const filename = urls.shift()
-        const result = request(filename)
-        if (result.response) {
+      if (extname && !hasTrailingSlash) {
+        pathnames.push(pathname)
+      } else {
+        if (hasTrailingSlash) {
+          pathnames.push(
+            path.join(pathname, 'index.js'),
+            path.join(pathname, 'index.json')
+          )
+        } else {
+          pathnames.push(
+            pathname + '.js',
+            pathname + '.json',
+            path.join(pathname, 'index.js'),
+            path.join(pathname, 'index.json')
+          )
+        }
+      }
+
+      while (pathnames.length) {
+        const filename = pathnames.shift()
+        const response = request(filename)
+
+        if (response.data) {
           try {
-            evaluate(module, filename, request(filename))
+            evaluate(module, filename, response.data)
           } catch (error) {
             error.module = module
             module.dispatchEvent(new ErrorEvent('error', { error }))
@@ -551,20 +530,20 @@ export class Module extends EventTarget {
         }
       }
 
-      const result = request(path.join(url, 'package.json'))
-      if (result.response) {
+      const response = request(path.join(pathname, 'package.json'))
+      if (response.data) {
         try {
           // @ts-ignore
-          const packageJSON = JSON.parse(String(result.response))
+          const packageJSON = JSON.parse(response.data)
           const filename = !packageJSON.exports
-            ? path.resolve(url, packageJSON.browser || packageJSON.main)
+            ? path.resolve('/', pathname, packageJSON.browser || packageJSON.main)
             : (
                 packageJSON.exports?.['.'] ||
                 packageJSON.exports?.['./index.js'] ||
                 packageJSON.exports?.['index.js']
               )
 
-          evaluate(module, filename, request(filename))
+          evaluate(module, filename, request(filename).data)
         } catch (error) {
           error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
@@ -574,7 +553,7 @@ export class Module extends EventTarget {
       return module.loaded
     }
 
-    function evaluate (module, filename, result) {
+    function evaluate (module, filename, moduleSource) {
       const { protocol } = path.Path.from(filename)
       let dirname = path.dirname(filename)
 
@@ -588,7 +567,7 @@ export class Module extends EventTarget {
         module.filename = filename
 
         try {
-          module.exports = JSON.parse(result.response)
+          module.exports = JSON.parse(moduleSource)
         } catch (error) {
           error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
@@ -608,7 +587,7 @@ export class Module extends EventTarget {
       }
 
       try {
-        const source = Module.wrap(result.response)
+        const source = Module.wrap(moduleSource)
         // eslint-disable-next-line no-new-func
         const define = new Function(`return ${source}`)()
 
