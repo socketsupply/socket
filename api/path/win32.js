@@ -1,5 +1,7 @@
+import location from '../location.js'
 import { Path } from './path.js'
 import posix from './posix.js'
+import url from '../url.js'
 
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
@@ -15,7 +17,7 @@ export const delimiter = ';'
  * @param {string}
  */
 export function cwd () {
-  return Path.cwd().replace(/\//g, '\\')
+  return url.resolve(location.pathname, '.')
 }
 
 /**
@@ -24,7 +26,7 @@ export function cwd () {
  * @return {string}
  */
 export function resolve (...components) {
-  return Path.resolve({ sep }, cwd(), ...components).replace(/\//g, '\\')
+  return Path.resolve({ sep }, ...components)
 }
 
 /**
@@ -33,7 +35,7 @@ export function resolve (...components) {
  * @return {string}
  */
 export function join (...components) {
-  return Path.join({ sep }, ...components).replace(/\//g, '\\')
+  return Path.join({ sep }, ...components)
 }
 
 /**
@@ -42,7 +44,7 @@ export function join (...components) {
  * @return {string}
  */
 export function dirname (path) {
-  return Path.dirname({ sep }, path).replace(/\//g, '\\')
+  return Path.dirname({ sep }, path)
 }
 
 /**
@@ -88,7 +90,7 @@ export function parse (path) {
  * @return {string}
  */
 export function format (path) {
-  return Path.format({ sep: path.sep || sep }, path).replace(/\//g, '\\')
+  return Path.format({ sep: path.sep || sep }, path)
 }
 
 /**
@@ -97,7 +99,7 @@ export function format (path) {
  * @param {string} path
  */
 export function normalize (path) {
-  return Path.normalize({ sep }, path).replace(/\//g, '\\')
+  return Path.normalize({ sep }, path)
 }
 
 /**
@@ -107,5 +109,5 @@ export function normalize (path) {
  * @return {string}
  */
 export function relative (from, to) {
-  return Path.relative({ sep }, from, to).replace(/\//g, '\\')
+  return Path.relative({ sep }, from, to)
 }
