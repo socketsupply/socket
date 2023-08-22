@@ -145,48 +145,6 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
-  test('application.createWindow with invalid path', async (t) => {
-    let err
-    let dummyWindow
-    try {
-      dummyWindow = await application.createWindow({ index: 1, path: 'invalid.path' })
-    } catch (e) {
-      err = e
-    }
-    t.ok(err instanceof Error, 'throws error when path is invalid')
-    t.ok(err?.message?.startsWith('only .html files are allowed. Got url file://'), 'error message is correct')
-    t.ok(err?.message?.endsWith('invalid.path'), 'error shows correct path')
-    t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
-  })
-
-  test('application.createWindow with non-existent path', async (t) => {
-    let err
-    let dummyWindow
-    try {
-      dummyWindow = await application.createWindow({ index: 1, path: 'invalid.html' })
-    } catch (e) {
-      err = e
-    }
-    t.ok(err instanceof Error, 'throws error when file does not exist')
-    t.ok(err?.message?.startsWith('file does not exist. Got url file://'), 'error message is correct')
-    t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
-    t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
-  })
-
-  test('application.createWindow with relative path', async (t) => {
-    let err
-    let dummyWindow
-    try {
-      dummyWindow = await application.createWindow({ index: 1, path: '../invalid.html' })
-    } catch (e) {
-      err = e
-    }
-    t.ok(err instanceof Error, 'throws error when file does not exist')
-    t.ok(err?.message?.startsWith('relative urls are not allowed. Got url file://'), 'error message is correct')
-    t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
-    t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
-  })
-
   test('application.createWindow with existing index', async (t) => {
     let err
     let dummyWindow

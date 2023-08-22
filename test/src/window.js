@@ -1,6 +1,5 @@
 import { test } from 'socket:test'
-import ApplicationWindow, { constants, formatFileUrl } from 'socket:window'
-import process from 'socket:process'
+import ApplicationWindow, { constants, formatURL } from 'socket:window'
 
 test('window constants', (t) => {
   t.equal(ApplicationWindow.constants.WINDOW_ERROR, -1, 'ApplicationWindow.constants.WINDOW_ERROR is -1')
@@ -34,6 +33,9 @@ test('window constants', (t) => {
   t.equal(constants.WINDOW_KILLED, ApplicationWindow.constants.WINDOW_KILLED)
 })
 
-test('formatFileUrl', (t) => {
-  t.equal(formatFileUrl('index.html'), `file://${process.cwd()}/index.html`)
+test('formatURL', (t) => {
+  t.equal(
+    formatURL('index.html'),
+    'socket://co.socketsupply.socket.tests/index.html'
+  )
 })

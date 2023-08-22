@@ -1,4 +1,5 @@
 import { test } from 'socket:test'
+import process from 'socket:process'
 import dns from 'socket:dns'
 import os from 'socket:os'
 
