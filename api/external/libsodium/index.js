@@ -12,6 +12,11 @@ if (globalThis?.process?.versions?.node) {
 
   process = require('process')
   __filename = import.meta.url.replace('file://', '')
+
+  if (globalThis.location) {
+    __filename = __filename.replace(globalThis.location.origin, '')
+  }
+
   __dirname = require('path').dirname(__filename)
 }
 
