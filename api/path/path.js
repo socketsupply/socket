@@ -6,20 +6,320 @@
  * import { Path } from 'socket:path'
  * ```
  */
-import { primordials } from '../ipc.js'
+import location from '../location.js'
+import {
+  resolve as resolveURL,
+  URL,
+  URLPattern
+} from '../url.js'
 
-const isWin32 = primordials.platform === 'win32'
-const protocolRegex = /(^[a-z]+:(\/\/)?)/i
-const protocolStrictSlashesRegex = /(^[a-z]+:\/\/)/i
 const windowsDriveRegex = /^[a-z]:/i
+const windowsDriveAndSlashesRegex = /^([a-z]:(\\|\/\/))/i
 const windowsDriveInPathRegex = /^\/[a-z]:/i
 
-function maybeURL (...args) {
+function maybeURL (uri, baseURL) {
+  let url = null
+
   try {
-    return new URL(...args)
-  } catch (_) {
-    return null
+    baseURL = new URL(baseURL)
+  } catch {}
+
+  try {
+    url = new URL(uri, baseURL)
+  } catch (_) {}
+
+  return url
+}
+
+export function resolve (options, ...components) {
+  const { sep } = options
+  let resolved = ''
+  while (components.length) {
+    const component = components.shift()
+      .replace(/\\/g, '/')
+      .replace(/\/$/g, '')
+    resolved = resolveURL(resolved + '/', component)
   }
+
+  if (sep === '\\') {
+    resolved = resolved.replace(/\//g, sep)
+  }
+
+  if (resolved.length > 1) {
+    resolved = resolved.replace(new RegExp(`\\${sep}$`, 'g'), '')
+  }
+
+  return resolved
+}
+
+/**
+ * Computes current working directory for a path
+ * @param {object=} [opts]
+ * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
+ * @return {string}
+ */
+export function cwd (opts) {
+  let cwd = '.'
+
+  cwd = location.pathname
+
+  if (cwd && !cwd.endsWith('/')) {
+    cwd = maybeURL('..', location)?.pathname
+  }
+
+  if (!cwd) {
+    cwd = '.'
+  }
+
+  if (cwd && opts?.posix === true) {
+    cwd = cwd.replace(/\\/g, '/')
+  }
+
+  return cwd
+}
+
+/**
+ * Computed location origin. Defaults to `socket:///` if not available.
+ * @return {string}
+ */
+export function origin () {
+  return location.origin
+}
+
+/**
+ * Computes the relative path from `from` to `to`.
+ * @param {object} options
+ * @param {PathComponent} from
+ * @param {PathComponent} to
+ * @return {string}
+ */
+export function relative (options, from, to) {
+  const { sep } = options
+  if (from === to) return ''
+  from = resolve(options, from)
+  to = resolve(options, to)
+
+  const components = {
+    output: [],
+    from: from.split(sep).filter(Boolean),
+    to: to.split(sep).filter(Boolean)
+  }
+
+  for (let i = components.from.length - 1; i > -1; --i) {
+    const a = components.from[i]
+    const b = components.to[i]
+    if (a !== b) {
+      components.output.push('..')
+    }
+  }
+
+  for (let i = 0; i < components.output.length; ++i) {
+    components.from.pop()
+  }
+
+  components.output.push(
+    ...components.to
+      .join(sep)
+      .replace(components.from.join(sep), '')
+      .split(sep)
+      .filter(Boolean)
+  )
+
+  const relative = components.output.join(sep)
+
+  if (windowsDriveRegex.test(from) || windowsDriveRegex.test(to)) {
+    return relative.replace(windowsDriveRegex, '')
+  }
+
+  return relative
+}
+
+/**
+ * Joins path components. This function may not return an absolute path.
+ * @param {object} options
+ * @param {...PathComponent} components
+ * @return {string}
+ */
+export function join (options, ...components) {
+  const { sep } = options
+  const queries = []
+  const joined = []
+
+  while (components.length) {
+    const component = String(components.shift() || '')
+    const parts = component.split(sep).filter(Boolean)
+    while (parts.length) {
+      queries.push(parts.shift())
+    }
+  }
+
+  for (const query of queries) {
+    if (query === '..' && joined.length > 1 && joined[0] !== '..') {
+      joined.pop()
+    } else if (query !== '.') {
+      if (query.startsWith(sep)) {
+        joined.push(query.slice(1))
+      } else if (query.endsWith(sep)) {
+        joined.push(query.slice(0, query.length - 1))
+      } else {
+        joined.push(query)
+      }
+    }
+  }
+
+  return joined.join(sep)
+}
+
+/**
+ * Computes directory name of path.
+ * @param {object} options
+ * @param {...PathComponent} components
+ * @return {string}
+ */
+export function dirname (options, path) {
+  if (windowsDriveInPathRegex.test(path)) {
+    path = path.slice(1)
+  }
+
+  const { sep } = options
+  const [drive] = path.match(windowsDriveRegex) || []
+
+  const pathWithoutDrive = path.replace(windowsDriveAndSlashesRegex, '')
+  let resolved = resolve(options, pathWithoutDrive, '..')
+
+  if (!pathWithoutDrive.startsWith(sep)) {
+    if (resolved.startsWith(sep)) {
+      if (resolved === sep && !drive) {
+        resolved = '.'
+      } else if (pathWithoutDrive.startsWith('.')) {
+        resolved = '.' + resolved
+      } else {
+        resolved = resolved.slice(1)
+      }
+    }
+  }
+
+  if (drive) {
+    return `${drive}${sep}${resolved}`
+  }
+
+  return resolved
+}
+
+/**
+ * Computes base name of path.
+ * @param {object} options
+ * @param {...PathComponent} components
+ * @return {string}
+ */
+export function basename (options, path) {
+  const { sep } = options
+  const components = path.split(sep)
+  return components.pop()
+}
+
+/**
+ * Computes extension name of path.
+ * @param {object} options
+ * @param {PathComponent} path
+ * @return {string}
+ */
+export function extname (options, path) {
+  const { sep } = options
+  return Path.from(path, sep).ext
+}
+
+/**
+ * Computes normalized path
+ * @param {object} options
+ * @param {PathComponent} path
+ * @return {string}
+ */
+export function normalize (options, path) {
+  const { sep } = options
+  path = String(path)
+  const [drive] = path.match(windowsDriveRegex) || []
+  path = path
+    .replace(windowsDriveAndSlashesRegex, '')
+    .replace(new RegExp(`(${sep + sep})+`, 'g'), sep)
+
+  const url = maybeURL(path)
+  const pathWithoutDrive = url?.pathname || path
+  let resolved = resolve(options, pathWithoutDrive)
+
+  if (url?.protocol) {
+    if (!pathWithoutDrive.startsWith(sep) && resolved.startsWith(sep)) {
+      resolved = resolved.slice(1)
+      resolved = `${url?.protocol}${url?.hostname || ''}${resolved}`
+    } else {
+      resolved = `${url?.protocol}/${url?.hostname || ''}${resolved}`
+    }
+  }
+
+  if (!pathWithoutDrive.startsWith(sep)) {
+    if (resolved.startsWith(sep)) {
+      if (resolved === sep && !drive) {
+        resolved = '.'
+      } else if (pathWithoutDrive.startsWith('.')) {
+        resolved = '.' + resolved
+      } else {
+        resolved = resolved.slice(1)
+      }
+    }
+  }
+
+  const normalized = resolved
+    .replace(/(\/)+/g, '/')
+    .replace(/\//g, sep) + (path.endsWith(sep) ? sep : '')
+
+  if (drive) {
+    return `${drive}${sep}${normalized}`
+  }
+
+  return normalized
+}
+
+/**
+ * Formats `Path` object into a string.
+ * @param {object} options
+ * @param {object|Path} path
+ * @return {string}
+ */
+export function format (options, path) {
+  const { root, dir, base, ext, name } = path
+  const { sep } = options
+  const output = []
+  if (dir) output.push(dir, sep)
+  else if (root) output.push(root)
+  if (base) output.push(base)
+  else if (name) output.push(name + (ext || ''))
+  return output.join('').replace(/\//g, sep)
+}
+
+/**
+ * Parses input `path` into a `Path` instance.
+ * @param {PathComponent} path
+ * @return {object}
+ */
+export function parse (path) {
+  const sep = /\\/.test(path) ? '\\' : '/'
+  const [drive] = path.match(windowsDriveRegex) || []
+  const parsed = { root: '', dir: '', base: '', ext: '', name: '' }
+  const parts = path.replace(windowsDriveRegex, '').split(sep)
+
+  parsed.root = !parts[0] ? parts[0] || sep : ''
+  parsed.dir = !parts[0] || parts[0].startsWith('.')
+    ? parts.slice(0, -1).join(sep)
+    : [parsed.root].concat(parts.slice(1).slice(0, -1)).join(sep)
+  parsed.ext = extname({ sep }, path)
+  parsed.base = basename({ sep }, path)
+  parsed.name = parsed.base.replace(parsed.ext, '')
+
+  if (!parsed.dir) parsed.dir = parsed.root
+  if (drive && parsed.root) parsed.root = drive + parsed.root
+  if (drive && parsed.dir) parsed.dir = drive + parsed.dir
+
+  return parsed
 }
 
 /**
@@ -29,326 +329,21 @@ function maybeURL (...args) {
 /**
  * A container for a parsed Path.
  */
-export class Path extends URL {
-  /**
-   * Computes current working directory for a path
-   * @param {object=} [opts]
-   * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
-   * @return {string}
-   */
-  static cwd (opts) {
-    let cwd = primordials.cwd
-    if (isWin32) {
-      cwd = cwd.replace(windowsDriveRegex, '')
-      if (opts?.posix === true) {
-        cwd = cwd.replace(/\\/g, '/')
-        cwd = cwd.slice(cwd.indexOf('/'))
-      }
-    }
-
-    return cwd.replace(/[/|\\]$/, '')
-  }
-
-  /**
-   * Resolves path components to an absolute path.
-   * @param {object} options
-   * @param {...PathComponent} components
-   * @return {string}
-   */
-  static resolve (options, ...components) {
-    const { sep } = options
-    let cwd = Path.cwd()
-    while (components.length) {
-      const path = Path.from(components.shift(), cwd + sep)
-      cwd = path.value
-        .replace(/\//g, sep)
-        .replace(new RegExp(`/${sep}$/`, 'g'), '')
-
-      if (!path.drive) {
-        cwd = cwd.replace(windowsDriveRegex, '')
-      }
-    }
-
-    if (cwd.endsWith(sep)) {
-      cwd = cwd.slice(0, -1)
-    }
-
-    return cwd
-  }
-
-  /**
-   * Computes the relative path from `from` to `to`.
-   * @param {object} options
-   * @param {PathComponent} from
-   * @param {PathComponent} to
-   * @return {string}
-   */
-  static relative (options, from, to) {
-    const { sep } = options
-    if (from === to) return ''
-    from = this.resolve(options, from).replace('socket:', '')
-    to = this.resolve(options, to).replace('socket:', '')
-
-    const components = {
-      output: [],
-      from: from.split(sep).filter(Boolean),
-      to: to.split(sep).filter(Boolean)
-    }
-
-    for (let i = components.from.length - 1; i > -1; --i) {
-      const a = components.from[i]
-      const b = components.to[i]
-      if (a !== b) {
-        components.output.push('..')
-      }
-    }
-
-    for (let i = 0; i < components.output.length; ++i) {
-      components.from.pop()
-    }
-
-    components.output.push(
-      ...components.to
-        .join(sep)
-        .replace(components.from.join(sep), '')
-        .split(sep)
-        .filter(Boolean)
-    )
-
-    const relative = components.output.join(sep).replace(/^socket:/g, '')
-
-    if (windowsDriveRegex.test(from) || windowsDriveRegex.test(to)) {
-      return relative.replace(windowsDriveRegex, '')
-    }
-
-    return relative
-  }
-
-  /**
-   * Joins path components. This function may not return an absolute path.
-   * @param {object} options
-   * @param {...PathComponent} components
-   * @return {string}
-   */
-  static join (options, ...components) {
-    const { sep } = options
-    const queries = []
-    const joined = []
-
-    while (components.length) {
-      const component = String(components.shift() || '')
-      const parts = component.split(sep).filter(Boolean)
-      while (parts.length) {
-        queries.push(parts.shift())
-      }
-    }
-
-    for (const query of queries) {
-      if (query === '..' && joined.length > 1 && joined[0] !== '..') {
-        joined.pop()
-      } else if (query !== '.') {
-        if (query.startsWith(sep)) {
-          joined.push(query.slice(1))
-        } else if (query.endsWith(sep)) {
-          joined.push(query.slice(0, query.length - 1))
-        } else {
-          joined.push(query)
-        }
-      }
-    }
-
-    return joined.join(sep)
-  }
-
-  /**
-   * Computes directory name of path.
-   * @param {object} options
-   * @param {...PathComponent} components
-   * @return {string}
-   */
-  static dirname (options, path) {
-    const { sep } = options
-    const protocol = path.startsWith('socket://')
-      ? 'socket://'
-      : path.startsWith('socket:') ? 'socket:' : ''
-
-    path = path.replace('socket://', '')
-
-    if (isWin32 && windowsDriveInPathRegex.test(path)) {
-      path = path.slice(1)
-    }
-
-    const pathWithoutDrive = path.replace(/^[a-z]:\\/i, '')
-    const p = Path.from(path, sep)
-    let dirname = decodeURIComponent(
-      p.parent
-        .replace(/\//g, sep)
-        .replace(windowsDriveRegex, '')
-        .replace(windowsDriveInPathRegex, '')
-    )
-
-    if (String(pathWithoutDrive).startsWith('.')) {
-      let tmp = ''
-      tmp += p.drive ? p.drive + sep : ''
-      if (!dirname.startsWith(sep)) tmp += sep
-      if (!dirname.startsWith(sep + '.')) tmp += '.'
-      dirname = dirname.replace(/^[a-z]:\\/i, '').replace(/^(\/|\\)/, '')
-      if (tmp.endsWith('.') && !dirname.startsWith(sep)) {
-        tmp += sep
-      }
-      tmp += dirname
-      dirname = tmp
-    } else if (
-      !windowsDriveRegex.test(dirname) &&
-      !protocolRegex.test(path) &&
-      !path.startsWith(sep)
-    ) {
-      dirname = dirname.slice(1)
-    }
-
-    const dirnameWithoutDrive = dirname.replace(windowsDriveRegex, '')
-    if (
-      !path.endsWith(sep) &&
-      dirname.endsWith(sep) &&
-      dirnameWithoutDrive.length > 1
-    ) {
-      dirname = dirname.slice(0, -1)
-    }
-
-    if (p.drive) {
-      if (!windowsDriveRegex.test(dirname) && !windowsDriveInPathRegex.test(dirname)) {
-        if (dirname.startsWith(sep)) {
-          dirname = p.drive + dirname
-        } else {
-          dirname = p.drive + sep + dirname
-        }
-      }
-    }
-
-    if (protocol && p.drive) {
-      dirname = '/' + dirname
-    }
-
-    return protocol + dirname || '.'
-  }
-
-  /**
-   * Computes base name of path.
-   * @param {object} options
-   * @param {...PathComponent} components
-   * @return {string}
-   */
-  static basename (options, path) {
-    const { sep } = options
-    const basename = decodeURIComponent(
-      Path.from(path, sep).base.replace(/\//g, sep)
-    )
-
-    return basename
-  }
-
-  /**
-   * Computes extension name of path.
-   * @param {object} options
-   * @param {PathComponent} path
-   * @return {string}
-   */
-  static extname (options, path) {
-    const { sep } = options
-    return Path.from(path, sep).ext
-  }
-
-  /**
-   * Computes normalized path
-   * @param {object} options
-   * @param {PathComponent} path
-   * @return {string}
-   */
-  static normalize (options, path) {
-    path = String(path)
-
-    const { drive, source, pathname } = Path.from(path, '.')
-    const url = maybeURL(source) || {}
-    const href = url.href ? url.href.replace(protocolRegex, '') : ''
-    const { sep } = options
-    const prefix = drive || url.protocol || ''
-    const p = Path.from(pathname)
-    let output = prefix + p.value
-      .replace(protocolRegex, '')
-      .replace(/\//g, sep)
-
-    if (drive && !windowsDriveRegex.test(output)) {
-      output = drive + sep + output
-    }
-
-    if (url.protocol && href && !href.startsWith(sep)) {
-      output = output.replace(url.protocol, '')
-      if (output.startsWith(sep) && !protocolStrictSlashesRegex.test(path)) {
-        output = output.slice(1)
-      }
-
-      if (!drive) {
-        if (
-          url.protocol !== 'socket:' ||
-          (url.protocol === 'socket:' && path.startsWith('socket:'))
-        ) {
-          if (protocolStrictSlashesRegex.test(path)) {
-            output = url.protocol + '//' + url.hostname + output
-          } else {
-            output = url.protocol + url.hostname + output
-          }
-        }
-      }
-    }
-
-    if (path.endsWith(sep) && !output.endsWith(sep)) {
-      output = output + sep
-    }
-
-    return output
-  }
-
-  /**
-   * Formats `Path` object into a string.
-   * @param {object} options
-   * @param {object|Path} path
-   * @return {string}
-   */
-  static format (options, path) {
-    const { root, dir, base, ext, name } = path
-    const { sep } = options
-    const output = []
-    if (dir) output.push(dir, sep)
-    else if (root) output.push(root)
-    if (base) output.push(base)
-    else if (name) output.push(name + (ext || ''))
-    return output.join('').replace(/\//g, sep)
-  }
-
-  /**
-   * Parses input `path` into a `Path` instance.
-   * @param {PathComponent} path
-   * @return {object}
-   */
-  static parse (path) {
-    const sep = /\\/.test(path) ? '\\' : '/'
-    const [drive] = path.match(windowsDriveRegex) || []
-    const parsed = { root: '', dir: '', base: '', ext: '', name: '' }
-    const parts = path.replace(windowsDriveRegex, '').split(sep)
-
-    parsed.root = !parts[0] ? parts[0] || sep : ''
-    parsed.dir = !parts[0] || parts[0].startsWith('.')
-      ? parts.slice(0, -1).join(sep)
-      : [parsed.root].concat(parts.slice(1).slice(0, -1)).join(sep)
-    parsed.ext = this.extname({ sep }, path)
-    parsed.base = this.basename({ sep }, path)
-    parsed.name = parsed.base.replace(parsed.ext, '')
-
-    if (!parsed.dir) parsed.dir = parsed.root
-    if (drive && parsed.root) parsed.root = drive + parsed.root
-    if (drive && parsed.dir) parsed.dir = drive + parsed.dir
-
-    return parsed
+export class Path {
+  static {
+    Object.assign(this, {
+      basename,
+      cwd,
+      dirname,
+      extname,
+      format,
+      join,
+      normalize,
+      origin,
+      parse,
+      relative,
+      resolve
+    })
   }
 
   /**
@@ -366,8 +361,10 @@ export class Path extends URL {
     return new this(String(input || '.'), cwd ? String(cwd) : null)
   }
 
-  #forwardSlashesDetected = false
+  #backSlashesDetected = false
+  #leadingDot = false
   #isRelative = false
+  #hasProtocol = false
   #source = null
   #drive = null
 
@@ -382,17 +379,31 @@ export class Path extends URL {
     pathname = String(pathname || '.').trim()
 
     if (cwd) {
-      cwd = new URL(`socket://${cwd.replace('socket://', '')}`)
+      cwd = cwd.replace(/\\/g, '/')
+      cwd = new URL(`file://${cwd.replace('file://', '')}`)
     } else if (pathname.startsWith('..')) {
       pathname = pathname.slice(2)
-      cwd = 'socket://..'
+      cwd = 'file:///..'
     } else if (isRelative) {
-      cwd = new URL('socket://.')
+      cwd = new URL('file:///.')
     } else {
-      cwd = new URL(`socket://${Path.cwd()}`)
+      cwd = new URL(`file://${Path.cwd()}`)
     }
 
-    super(pathname, cwd)
+    if (cwd === 'socket:/') {
+      cwd = Path.origin()
+    }
+
+    if (pathname.startsWith('.')) {
+      this.#leadingDot = true
+    }
+
+    try {
+      this.pattern = new URLPattern(pathname)
+      this.#hasProtocol = Boolean(this.pattern.protocol)
+    } catch {}
+
+    this.url = new URL(pathname, cwd)
 
     const [drive] = (
       pathname.match(windowsDriveRegex) ||
@@ -400,10 +411,32 @@ export class Path extends URL {
       []
     )
 
-    this.#forwardSlashesDetected = /\\/.test(pathname)
+    this.#backSlashesDetected = /\\/.test(pathname)
     this.#isRelative = isRelative
     this.#source = pathname
     this.#drive = drive ? drive.replace(/(\\|\/)/g, '') : null
+  }
+
+  get pathname () {
+    let { pathname } = this.url
+
+    if (this.#leadingDot || this.isRelative) {
+      pathname = pathname.replace(/^\//g, '')
+    }
+
+    if (this.#backSlashesDetected) {
+      pathname = pathname.replace(/\//g, '\\')
+    }
+
+    return pathname
+  }
+
+  get protocol () {
+    return this.url.protocol
+  }
+
+  get href () {
+    return this.url.href
   }
 
   /**
@@ -420,8 +453,31 @@ export class Path extends URL {
   get value () {
     const { protocol, drive } = this
     const regex = new RegExp(`^${protocol}(//)?(.[\\|/])?`, 'i')
-    const href = this.href.replace(regex, '')
-    return !drive ? href.replace(windowsDriveInPathRegex, '') : href
+    let { href } = this
+
+    if (!this.#hasProtocol) {
+      href = href.replace(regex, '')
+      if (this.isRelative) {
+        // eslint-disable-next-line
+        href = href.replace(/^[\/|\\]/g, '')
+      }
+    }
+
+    if (this.#backSlashesDetected) {
+      const prefix = this.#hasProtocol ? href.slice(0, protocol.length) : ''
+      href = href.slice(prefix.length)
+      if (prefix.length) {
+        href = prefix + '//' + href.slice(2).replace(/\//g, '\\')
+      } else {
+        href = href.replace(/\//g, '\\')
+      }
+    }
+
+    if (!drive) {
+      href = href.replace(windowsDriveInPathRegex, '')
+    }
+
+    return href
   }
 
   /**
@@ -439,6 +495,7 @@ export class Path extends URL {
   get parent () {
     let pathname = this.value
     let i = pathname.lastIndexOf('/')
+
     if (i === -1) i = pathname.lastIndexOf('\\')
     if (i >= 0) pathname = pathname.slice(0, i + 1)
     else pathname = ''
@@ -459,7 +516,7 @@ export class Path extends URL {
     const drive = (dir.match(windowsDriveRegex) || [])[0] || this.drive
 
     if (!this.isRelative) {
-      if (this.value.includes('\\') || this.#forwardSlashesDetected) {
+      if (this.value.includes('\\') || this.#backSlashesDetected) {
         return `${drive || ''}\\`
       } else if (this.value.startsWith('/')) {
         return '/'
@@ -479,7 +536,7 @@ export class Path extends URL {
     const { isRelative } = this
     let { parent } = this
 
-    if (this.#forwardSlashesDetected) {
+    if (this.#backSlashesDetected) {
       parent = parent.replace(/\//g, '\\')
     } else {
       if (parent.endsWith('/') && parent.length > 1) {
