@@ -1,5 +1,6 @@
 import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
+import { URL } from './url.js'
 
 import * as exports from './util.js'
 
