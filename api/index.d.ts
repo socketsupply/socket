@@ -434,6 +434,120 @@ declare module "socket:buffer" {
     export const kMaxLength: 2147483647;
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
+declare module "socket:url/urlpattern/urlpattern" {
+    export { me as URLPattern };
+    var me: {
+        new (t: {}, r: any, n: any): {
+            "__#2@#i": any;
+            "__#2@#n": {};
+            "__#2@#t": {};
+            "__#2@#e": {};
+            "__#2@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+}
+declare module "socket:url/url" {
+    export const URL: {
+        new (url: string | URL, base?: string | URL): URL;
+        prototype: URL;
+        createObjectURL(obj: Blob | MediaSource): string;
+        revokeObjectURL(url: string): void;
+    };
+    export default URL;
+}
+declare module "socket:url/index" {
+    export function toString(url: any): string;
+    export function toObject(url: any): {
+        protocol: any;
+        username: any;
+        password: any;
+        hostname: any;
+        port: any;
+        pathname: any;
+        search: any;
+        hash: any;
+    };
+    /**
+     * @param {string|object|URL|URLPattern}
+     * @return {URLObject}
+     */
+    export function parse(url: any): URLObject;
+    /**
+     * @param {string|URL|URLPattern} url
+     * @param {string|URL|URLPattern} base
+     * @return {string}
+     */
+    export function resolve(url: string | URL | {
+        "__#2@#i": any;
+        "__#2@#n": {};
+        "__#2@#t": {};
+        "__#2@#e": {};
+        "__#2@#s": {};
+        test(t: {}, r: any): boolean;
+        exec(t: {}, r: any): {
+            inputs: any[] | {}[];
+        };
+        readonly protocol: any;
+        readonly username: any;
+        readonly password: any;
+        readonly hostname: any;
+        readonly port: any;
+        readonly pathname: any;
+        readonly search: any;
+        readonly hash: any;
+    }, base: string | URL | {
+        "__#2@#i": any;
+        "__#2@#n": {};
+        "__#2@#t": {};
+        "__#2@#e": {};
+        "__#2@#s": {};
+        test(t: {}, r: any): boolean;
+        exec(t: {}, r: any): {
+            inputs: any[] | {}[];
+        };
+        readonly protocol: any;
+        readonly username: any;
+        readonly password: any;
+        readonly hostname: any;
+        readonly port: any;
+        readonly pathname: any;
+        readonly search: any;
+        readonly hash: any;
+    }): string;
+    export default URL;
+    export class URLObject {
+        constructor(object: any);
+        protocol: string;
+        username: string;
+        password: string;
+        hostname: string;
+        port: string;
+        pathname: string;
+        search: string;
+        hash: string;
+    }
+    import { URL } from "socket:url/url";
+    import { URLPattern } from "socket:url/urlpattern/urlpattern";
+    export { URLPattern, URL };
+}
+declare module "socket:url" {
+    export * from "socket:url/index";
+    export default exports;
+    import * as exports from "socket:url/index";
+}
 declare module "socket:util" {
     export function hasOwnProperty(object: any, property: any): any;
     export function isTypedArray(object: any): boolean;
@@ -535,7 +649,7 @@ declare module "socket:events" {
         prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#1@#detail": any;
+            "__#3@#detail": any;
             readonly detail: any;
         };
     };
@@ -544,8 +658,8 @@ declare module "socket:events" {
         prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#2@#detail": any;
-            "__#2@#data": any;
+            "__#4@#detail": any;
+            "__#4@#data": any;
             readonly detail: any;
             readonly data: any;
         };
@@ -555,8 +669,8 @@ declare module "socket:events" {
         prototype: ErrorEvent;
     } | {
         new (type: any, options: any): {
-            "__#3@#detail": any;
-            "__#3@#error": any;
+            "__#5@#detail": any;
+            "__#5@#error": any;
             readonly detail: any;
             readonly error: any;
         };
@@ -641,84 +755,112 @@ declare module "socket:process" {
     export default process;
     const process: any;
 }
+declare module "socket:location" {
+    export function toString(): string;
+    export const globalLocation: Location | {
+        origin: string;
+        host: string;
+        hostname: string;
+        pathname: string;
+        href: string;
+    };
+    export const href: string;
+    export const protocol: "socket:";
+    export const hostname: string;
+    export const host: string;
+    export const search: string;
+    export const hash: string;
+    export const pathname: string;
+    export const origin: string;
+    namespace _default {
+        export { origin };
+        export { href };
+        export { protocol };
+        export { hostname };
+        export { host };
+        export { search };
+        export { pathname };
+        export { toString };
+    }
+    export default _default;
+}
 declare module "socket:path/path" {
+    export function resolve(options: any, ...components: any[]): string;
+    /**
+     * Computes current working directory for a path
+     * @param {object=} [opts]
+     * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
+     * @return {string}
+     */
+    export function cwd(opts?: object | undefined): string;
+    /**
+     * Computed location origin. Defaults to `socket:///` if not available.
+     * @return {string}
+     */
+    export function origin(): string;
+    /**
+     * Computes the relative path from `from` to `to`.
+     * @param {object} options
+     * @param {PathComponent} from
+     * @param {PathComponent} to
+     * @return {string}
+     */
+    export function relative(options: object, from: PathComponent, to: PathComponent): string;
+    /**
+     * Joins path components. This function may not return an absolute path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function join(options: object, ...components: PathComponent[]): string;
+    /**
+     * Computes directory name of path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function dirname(options: object, path: any): string;
+    /**
+     * Computes base name of path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function basename(options: object, path: any): string;
+    /**
+     * Computes extension name of path.
+     * @param {object} options
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function extname(options: object, path: PathComponent): string;
+    /**
+     * Computes normalized path
+     * @param {object} options
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function normalize(options: object, path: PathComponent): string;
+    /**
+     * Formats `Path` object into a string.
+     * @param {object} options
+     * @param {object|Path} path
+     * @return {string}
+     */
+    export function format(options: object, path: object | Path): string;
+    /**
+     * Parses input `path` into a `Path` instance.
+     * @param {PathComponent} path
+     * @return {object}
+     */
+    export function parse(path: PathComponent): object;
     /**
      * @typedef {(string|Path|URL|{ pathname: string }|{ url: string)} PathComponent
      */
     /**
      * A container for a parsed Path.
      */
-    export class Path extends URL {
-        /**
-         * Computes current working directory for a path
-         * @param {object=} [opts]
-         * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
-         * @return {string}
-         */
-        static cwd(opts?: object | undefined): string;
-        /**
-         * Resolves path components to an absolute path.
-         * @param {object} options
-         * @param {...PathComponent} components
-         * @return {string}
-         */
-        static resolve(options: object, ...components: PathComponent[]): string;
-        /**
-         * Computes the relative path from `from` to `to`.
-         * @param {object} options
-         * @param {PathComponent} from
-         * @param {PathComponent} to
-         * @return {string}
-         */
-        static relative(options: object, from: PathComponent, to: PathComponent): string;
-        /**
-         * Joins path components. This function may not return an absolute path.
-         * @param {object} options
-         * @param {...PathComponent} components
-         * @return {string}
-         */
-        static join(options: object, ...components: PathComponent[]): string;
-        /**
-         * Computes directory name of path.
-         * @param {object} options
-         * @param {...PathComponent} components
-         * @return {string}
-         */
-        static dirname(options: object, path: any): string;
-        /**
-         * Computes base name of path.
-         * @param {object} options
-         * @param {...PathComponent} components
-         * @return {string}
-         */
-        static basename(options: object, path: any): string;
-        /**
-         * Computes extension name of path.
-         * @param {object} options
-         * @param {PathComponent} path
-         * @return {string}
-         */
-        static extname(options: object, path: PathComponent): string;
-        /**
-         * Computes normalized path
-         * @param {object} options
-         * @param {PathComponent} path
-         * @return {string}
-         */
-        static normalize(options: object, path: PathComponent): string;
-        /**
-         * Formats `Path` object into a string.
-         * @param {object} options
-         * @param {object|Path} path
-         * @return {string}
-         */
-        static format(options: object, path: object | Path): string;
-        /**
-         * Parses input `path` into a `Path` instance.
-         * @param {PathComponent} path
-         * @return {object}
-         */
-        static parse(path: PathComponent): object;
+    export class Path {
         /**
          * Creates a `Path` instance from `input` and optional `cwd`.
          * @param {PathComponent} input
@@ -732,6 +874,29 @@ declare module "socket:path/path" {
          * @param {string} [cwd = Path.cwd()]
          */
         protected constructor();
+        pattern: {
+            "__#2@#i": any;
+            "__#2@#n": {};
+            "__#2@#t": {};
+            "__#2@#e": {};
+            "__#2@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        url: URL;
+        get pathname(): string;
+        get protocol(): string;
+        get href(): string;
         /**
          * `true` if the path is relative, otherwise `false.
          * @type {boolean}
@@ -786,6 +951,11 @@ declare module "socket:path/path" {
          */
         toURL(): URL;
         /**
+         * Converts this `Path` instance to a string.
+         * @return {string}
+         */
+        toString(): string;
+        /**
          * @ignore
          */
         inspect(): {
@@ -807,6 +977,7 @@ declare module "socket:path/path" {
     } | {
         url: string;
     });
+    import { URL as URL_1 } from "socket:url/index";
 }
 declare module "socket:path/win32" {
     /**
@@ -868,7 +1039,7 @@ declare module "socket:path/win32" {
      * slashes.
      * @param {string} path
      */
-    export function normalize(path: string): string;
+    export function normalize(path: string): any;
     /**
      * Computes the relative path from `from` to `to`.
      * @param {string} from
@@ -947,7 +1118,7 @@ declare module "socket:path/posix" {
      * slashes.
      * @param {string} path
      */
-    export function normalize(path: string): string;
+    export function normalize(path: string): any;
     /**
      * Computes the relative path from `from` to `to`.
      * @param {string} from
@@ -3017,7 +3188,7 @@ declare module "socket:window" {
      * @return {string}
      * @ignore
      */
-    export function formatFileUrl(url: string): string;
+    export function formatURL(url: string): string;
     /**
      * @class ApplicationWindow
      * Represents a window in the application
@@ -4291,16 +4462,44 @@ declare module "socket:test" {
 }
 declare module "socket:module" {
     /**
+     * TODO
+     */
+    export function getSourcePathName(): string;
+    export function isBuiltin(name: any): boolean;
+    /**
      * Creates a `require` function from a source URL.
-     * @param {URL|string} sourceURL
+     * @param {URL|string} sourcePath
      * @return {function}
      */
-    export function createRequire(sourceURL: URL | string): Function;
+    export function createRequire(sourcePath: URL | string): Function;
     export default exports;
     /**
      * A limited set of builtins exposed to CommonJS modules.
      */
     export const builtins: {
+        buffer: typeof buffer;
+        console: import("socket:console").Console;
+        dgram: typeof dgram;
+        dns: typeof dns;
+        'dns/promises': typeof dns.promises;
+        events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
+        fs: typeof fs;
+        'fs/promises': typeof fs.promises;
+        gc: any;
+        ipc: typeof ipc;
+        module: typeof exports;
+        os: typeof os;
+        path: typeof path;
+        process: any;
+        stream: typeof stream;
+        test: typeof test;
+        util: typeof util;
+    };
+    export const builtinModules: {
         buffer: typeof buffer;
         console: import("socket:console").Console;
         dgram: typeof dgram;
@@ -4329,10 +4528,10 @@ declare module "socket:module" {
      */
     export const COMMONJS_WRAPPER: string;
     /**
-     * The main entry source URL.
+     * The main entry source pathname
      * @type {string}
      */
-    export const MAIN_SOURCE_URL: string;
+    export const MAIN_SOURCE_PATHNAME: string;
     export namespace scope {
         let current: any;
         let previous: any;
@@ -4371,10 +4570,10 @@ declare module "socket:module" {
         static wrapper: string;
         /**
          * Creates a `require` function from a source URL.
-         * @param {URL|string} sourceURL
+         * @param {URL|string} sourcePath
          * @return {function}
          */
-        static createRequire(sourceURL: URL | string): Function;
+        static createRequire(sourcePath: URL | string): Function;
         /**
          * The main entry module, lazily created.
          * @type {Module}
@@ -4386,15 +4585,15 @@ declare module "socket:module" {
         static wrap(source: any): string;
         /**
          * Creates a `Module` from source URL and optionally a parent module.
-         * @param {string|URL|Module} [sourceURL]
+         * @param {string|URL|Module} [sourcePath]
          * @param {string|URL|Module} [parent]
          */
-        static from(sourceURL?: string | URL | Module, parent?: string | URL | Module): any;
+        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
         /**
          * `Module` class constructor.
          * @ignore
          */
-        constructor(id: any, parent?: any, sourceURL?: any);
+        constructor(id: any, parent?: any, sourcePath?: any);
         /**
          * The module id, most likely a file name.
          * @type {string}
@@ -4435,7 +4634,7 @@ declare module "socket:module" {
          * The original source URL to load this module.
          * @type {string}
          */
-        sourceURL: string;
+        sourcePath: string;
         /**
          * `true` if the module is the main module.
          * @type {boolean}
@@ -4446,11 +4645,7 @@ declare module "socket:module" {
          * @type {boolean}
          */
         get isNamed(): boolean;
-        /**
-         * The `URL` for this module.
-         * @type {URL}
-         */
-        get url(): URL;
+        get pathname(): string;
         /**
          * Loads the module, synchronously returning `true` upon success,
          * otherwise `false`.
@@ -4475,6 +4670,7 @@ declare module "socket:module" {
          */
         [Symbol.toStringTag](): string;
     }
+    import { URL } from "socket:url/index";
     import * as exports from "socket:module";
     import buffer from "socket:buffer";
     import dgram from "socket:dgram";
