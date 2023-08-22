@@ -94,11 +94,20 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     // should be set in window loader
     assert(rootDirectory.length > 0)
 
-    if (url.host == "__BUNDLE_IDENTIFIER__") {
+    if (url.scheme == "socket" && url.host == "__BUNDLE_IDENTIFIER__") {
+      var path = url.path
+      if (!"(.[a-zA-Z|0-9|_|-]+)$".toRegex() matches path) {
+        if (path.endsWith("/")) {
+          path += "/index.html"
+        } else {
+          path += ".html"
+        }
+      }
+
       url = android.net.Uri.Builder()
         .scheme("https")
         .authority("appassets.androidplatform.net")
-        .path("/assets/${url.path}")
+        .path("/assets/${path}")
         .build()
     }
 
