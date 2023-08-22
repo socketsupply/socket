@@ -94,6 +94,14 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     // should be set in window loader
     assert(rootDirectory.length > 0)
 
+    if (url.host == "__BUNDLE_IDENTIFIER__") {
+      url = android.net.Uri.Builder()
+        .scheme("https")
+        .authority("appassets.androidplatform.net")
+        .path("/assets/${url.path}")
+        .build()
+    }
+
     // look for updated resources in ${pwd}/files
     // live update systems can write to /files (/assets is read only)
     if (url.host == "appassets.androidplatform.net" && url.pathSegments.get(0) == "assets") {
@@ -134,9 +142,9 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       }
 
       url = android.net.Uri.Builder()
-        .scheme("https")
-        .authority("appassets.androidplatform.net")
-        .path("/assets/socket/${path}")
+        .scheme("socket")
+        .authority("__BUNDLE_IDENTIFIER__")
+        .path("/socket/${path}")
         .build()
 
       val moduleTemplate = """
@@ -163,13 +171,14 @@ export default module
         stream.write(moduleTemplate.toByteArray(), 0, moduleTemplate.length)
         stream.close()
       }
+
       return response
     }
 
     val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
     if (assetLoaderResponse != null) {
       assetLoaderResponse.responseHeaders = mapOf(
-        "Content-Location" to url.toString(),
+        "Origin" to "${url.scheme}://${url.host}",
         "Access-Control-Allow-Origin" to "*",
         "Access-Control-Allow-Headers" to "*",
         "Access-Control-Allow-Methods" to "*"

@@ -31,6 +31,15 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
     val rootDirectory = this.getRootDirectory()
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
+      activity.applicationContext
+        .getSharedPreferences("WebViewSettings", android.app.Activity.MODE_PRIVATE)
+        .edit()
+        .apply {
+          putString("scheme", "socket")
+          putString("hostname", "__BUNDLE_IDENTIFIER__")
+          apply()
+        }
+
       activity.runOnUiThread {
         // enable/disable debug module in webview
         android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
@@ -40,12 +49,11 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           // allow list
           settings.allowFileAccess = true
           settings.allowContentAccess = true
-          settings.allowFileAccessFromFileURLs = true // deprecated
           activity.client.putRootDirectory(rootDirectory)
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")
-          loadUrl("https://appassets.androidplatform.net/assets/$filename")
+          loadUrl("socket://__BUNDLE_IDENTIFIER__/$filename")
         }
       }
     })
