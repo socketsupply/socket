@@ -286,13 +286,14 @@ static dispatch_queue_t queue = dispatch_queue_create(
       [self.webview loadRequest: [NSURLRequest requestWithURL: url]];
     }
   } else {
-    url = [NSURL
-      fileURLWithPath: [allowed stringByAppendingPathComponent:@"ui/index.html"]
-    ];
+    if (appData["webview_root"].size() != 0) {
+      url = [NSURL URLWithString: @(("socket://" + appData["meta_bundle_identifier"] + appData["webview_root"]).c_str())];
+    } else {
+      url = [NSURL URLWithString: @(("socket://" + appData["meta_bundle_identifier"] + "/index.html").c_str())];
+    }
 
-    [self.webview loadFileURL: url
-      allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
-    ];
+    auto request = [NSMutableURLRequest requestWithURL: url];
+    [self.webview loadRequest: request];
   }
 
   self.webview.scrollView.delegate = self;
