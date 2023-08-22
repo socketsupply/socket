@@ -74,19 +74,20 @@ namespace SSC {
         public:
           String string;
           Value () = default;
-          Value (String value) { this->string = value; }
-          Value (const char* value) { this->string = value; }
-          Value (Value& value) { this->string = value.string; }
-          Value (bool value) { this->string = value ? "true" : "false"; }
-          Value (int value) { this->string = std::to_string(value); }
-          Value (float value) { this->string = std::to_string(value); }
-          Value (int64_t value) { this->string = std::to_string(value); }
-          Value (uint64_t value) { this->string = std::to_string(value); }
-          Value (double_t value) { this->string = std::to_string(value); }
+          Value (const String& value);
+          Value (const char* value);
+          Value (const Value& value);
+          Value (bool value);
+          Value (int value);
+          Value (float value);
+          Value (int64_t value);
+          Value (uint64_t value);
+          Value (double_t value);
         #if defined(__APPLE__)
-          Value (ssize_t value) { this->string = std::to_string(value); }
+          Value (ssize_t value);
         #endif
-          String str () const { return this->string; }
+          const String& str () const;
+          const char * c_str() const;
 
           template <typename T> void set (T value) {
             auto v = Value(value);
@@ -107,47 +108,16 @@ namespace SSC {
       Entries entries;
       Headers () = default;
       Headers (const Headers& headers);
+      Headers (const String& source);
       Headers (const Vector<std::map<String, Value>>& entries);
       Headers (const Entries& entries);
       size_t size () const;
       String str () const;
 
-      void set (const String& key, const String& value) {
-        set(Header{ key, value });
-      }
-
-      void set (const Header& header) {
-        for (auto& entry : entries) {
-          if (header.key == entry.key) {
-            entry.value = header.value;
-            return;
-          }
-        }
-
-        entries.push_back(header);
-      }
-
-      bool has (const String& name) const {
-        for (const auto& header : entries) {
-          if (header.key == name) {
-            return true;
-          }
-        }
-
-        return false;
-      }
-
-      const Header& get (const String& name) const {
-        static const auto empty = Header();
-
-        for (const auto& header : entries) {
-          if (header.key == name) {
-            return header;
-          }
-        }
-
-        return empty;
-      }
+      void set (const String& key, const String& value);
+      void set (const Header& header);
+      bool has (const String& name) const;
+      const Header& get (const String& name) const;
   };
 
   struct Post {
