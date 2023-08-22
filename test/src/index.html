@@ -5,9 +5,8 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src http://* https://* ipc://* file://* socket:* data://*;
-        child-src 'none';
-        img-src https: data: file:;
+        default-src http://* https://* ipc://* file://* socket://* data://*;
+        script-src socket: 'unsafe-eval';
       "
     >
     <title>Socket Runtime JavaScript Tests</title>
