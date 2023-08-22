@@ -10,7 +10,6 @@
 
 import { isValidPercentageValue } from './util.js'
 import * as statuses from './window/constants.js'
-import process from './process.js'
 import ipc from './ipc.js'
 
 /**
@@ -18,8 +17,9 @@ import ipc from './ipc.js'
  * @return {string}
  * @ignore
  */
-export function formatFileUrl (url) {
-  return `file://${process.cwd()}/${url}`
+export function formatURL (url) {
+  const location = globalThis.location?.href ?? 'socket:///'
+  return String(new URL(url, location))
 }
 
 /**
@@ -177,7 +177,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async navigate (path) {
-    const response = await ipc.send('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatFileUrl(path) })
+    const response = await ipc.send('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatURL(path) })
     return this.#updateOptions(response)
   }
 
