@@ -14,6 +14,8 @@ console.assert(
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { Event, CustomEvent, ErrorEvent } from '../events.js'
+import location from '../location.js'
+import { URL } from '../url.js'
 
 const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
@@ -71,7 +73,7 @@ class RuntimeWorker extends GlobalWorker {
 
   static get [Symbol.species] () { return GlobalWorker }
   constructor (filename, options, ...args) {
-    const url = new URL(filename, globalThis.location?.href || '/')
+    const url = new URL(filename, location.href || '/')
     const preload = `import 'socket:internal/worker?source=${url}'`
     const blob = new Blob([preload.trim()], { type: 'application/javascript' })
     const uri = URL.createObjectURL(blob)
