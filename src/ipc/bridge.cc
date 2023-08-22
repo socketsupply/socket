@@ -1415,15 +1415,18 @@ static void registerSchemeHandler (Router *router) {
       }
 
       auto stream = g_memory_input_stream_new_from_data(data, size, nullptr);
+      auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, size);
+
+      for (const auto& header : result.headers.entries) {
+        soup_message_headers_append(headers, header.key.c_str(), header.value.c_str());
+      }
 
       if (result.post.body) {
         webkit_uri_scheme_response_set_content_type(response, IPC_BINARY_CONTENT_TYPE);
       } else {
         webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
       }
-
-      // TODO(@jwerle): send HTTP response headers (result.headers, result.post.headers)
 
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_input_stream_close_async(stream, 0, nullptr, +[](
@@ -1473,6 +1476,7 @@ static void registerSchemeHandler (Router *router) {
   0);
 
   webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
+    bool isModule = false;
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
 
@@ -1484,15 +1488,48 @@ static void registerSchemeHandler (Router *router) {
       uri = uri.substr(7);
     }
 
-    auto ext = uri.ends_with(".js") ? "" : ".js";
-    auto path = uri.starts_with(bundleIdentifier)
-      ? uri.substr(bundleIdentifier.size()j)
-      : "socket/" + (uri + ext);
+    auto path = String(
+      uri.starts_with(bundleIdentifier)
+        ? uri.substr(bundleIdentifier.size())
+        : "socket/" + uri
+    );
+
+    auto ext = fs::path(path).extension();
 
     if (path == "/" || path.size() == 0) {
       path = "/index.html";
+      ext = ".html";
     } else if (path.ends_with("/")) {
       path += "index.html";
+      ext = ".html";
+    } else if (ext.size() > 0) {
+      ext = "." + ext;
+    }
+
+    if (!uri.starts_with(bundleIdentifier)) {
+      if (ext.size() == 0) {
+        path += ".js";
+      }
+
+      uri = "socket://" + bundleIdentifier + "/socket" + path;
+      auto moduleSource = trim(tmpl(
+        moduleTemplate,
+        Map { {"url", String(uri)} }
+      ));
+
+      auto size = moduleSource.size();
+      auto bytes = moduleSource.data();
+      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+      auto response = webkit_uri_scheme_response_new(stream, size);
+
+      webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+      webkit_uri_scheme_request_finish_with_response(request, response);
+      g_object_unref(stream);
+      return;
+    }
+
+    if (ext.size() == 0) {
+      path += ".html";
     }
 
     path = fs::absolute(fs:path(cwd) / path);
@@ -1518,8 +1555,15 @@ static void registerSchemeHandler (Router *router) {
     }
 
     auto size = fs::file_size(path);
+    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
     auto mimeType = g_content_type_get_mime_type(ext.c_str());
     auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+
+    soup_message_headers_append(headers, "access-control-allow-origin", "*");
+    soup_message_headers_append(headers, "access-control-allow-methods", "*");
+    soup_message_headers_append(headers, "access-control-allow-headers", "*");
+
+    webkit_uri_scheme_response_set_http_headers(response, headers);
 
     if (mimeType) {
       webkit_uri_scheme_response_set_content_type(response, mimeType);
@@ -1551,6 +1595,7 @@ static void registerSchemeHandler (Router *router) {
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static auto fileManager = [[NSFileManager alloc] init];
 
   auto request = task.request;
   auto url = String(request.URL.absoluteString.UTF8String);
@@ -1587,28 +1632,39 @@ static void registerSchemeHandler (Router *router) {
       resolvingAgainstBaseURL: YES
     ];
 
-    String moduleSource = "";
-
     components.scheme = @"file";
     components.host = request.URL.host;
 
+    NSData* data = nullptr;
+    bool isModule = false;
     auto path = String(components.path.UTF8String);
+
     auto ext = String(
-      path.ends_with(".js")
-        ? ""
-        : ".js"
+      components.URL.pathExtension.length > 0
+        ? components.URL.pathExtension.UTF8String
+        : ""
     );
 
     if (path == "/" || path.size() == 0) {
       path = "/index.html";
+      ext = ".html";
     } else if (path.ends_with("/")) {
       path += "index.html";
+      ext = ".html";
+    } else if (ext.size() > 0) {
+      ext = "." + ext;
     }
 
     if (
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
+      if (ext.size() == 0) {
+        path += ".html";
+      }
+
+      components.host = @("");
+
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
         components.path = [[[NSBundle mainBundle] resourcePath]
           stringByAppendingPathComponent: [NSString
@@ -1623,76 +1679,90 @@ static void registerSchemeHandler (Router *router) {
         ];
       #endif
 
+      if (String(request.HTTPMethod.UTF8String) == "GET") {
+        data = [NSData dataWithContentsOfURL: components.URL];
+      }
+
+      components.host = request.URL.host;
     } else {
+      isModule = true;
+      if (ext.size() == 0) {
+        path += ".js";
+      }
+
+      auto prefix = String(
+        path.starts_with(bundleIdentifier)
+          ? ""
+          : "socket/"
+      );
+
+      path = replace(path, bundleIdentifier + "/", "");
+
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
       components.path = [[[NSBundle mainBundle] resourcePath]
         stringByAppendingPathComponent: [NSString
-          stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
+          stringWithFormat: @"/ui/%s%s", prefix.c_str(), path.c_str()
         ]
       ];
     #else
       components.path = [[[NSBundle mainBundle] resourcePath]
         stringByAppendingPathComponent: [NSString
-          stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
+          stringWithFormat: @"/%s%s", prefix.c_str(), path.c_str()
         ]
       ];
     #endif
-
-      moduleSource = trim(tmpl(
+      auto moduleUri = "socket://" + bundleIdentifier + "/" + prefix + path;
+      auto moduleSource = trim(tmpl(
         moduleTemplate,
-        Map { {"url", String(components.URL.absoluteString.UTF8String)} }
+        Map { {"url", String(moduleUri)} }
       ));
+
+      if (String(request.HTTPMethod.UTF8String) == "GET") {
+        data = [@(moduleSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+      }
     }
 
-    auto data = [NSData dataWithContentsOfURL: components.URL];
+    auto exists = [fileManager
+      fileExistsAtPath: components.path
+           isDirectory: NULL];
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
 
-    if (moduleSource.size() > 0 && data.length > 0) {
-      headers[@"content-length"] = [@(moduleSource.size()) stringValue];
-      headers[@"content-type"] = @"text/javascript";
-      components.host = @(userConfig["meta_bundle_identifier"].c_str());
-    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-      components.path = [NSString
-        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
-      ];
-    #else
-      components.path = [NSString
-        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
-      ];
-    #endif
-      headers[@"content-location"] = components.URL.absoluteString;
-    } else {
-      auto types = [UTType
-            typesWithTag: components.URL.pathExtension
-                tagClass: UTTagClassFilenameExtension
-        conformingToType: nullptr
-      ];
-
+    if (exists && data) {
       headers[@"content-length"] = [@(data.length) stringValue];
+      if (isModule && data.length > 0) {
+        headers[@"content-type"] = @"text/javascript";
+      } else {
+        auto types = [UTType
+              typesWithTag: components.URL.pathExtension
+                  tagClass: UTTagClassFilenameExtension
+          conformingToType: nullptr
+        ];
 
-      if (types.count > 0 && types.firstObject.preferredMIMEType) {
-        headers[@"content-type"] = types.firstObject.preferredMIMEType;
+        if (types.count > 0 && types.firstObject.preferredMIMEType) {
+          headers[@"content-type"] = types.firstObject.preferredMIMEType;
+        }
+
+        headers[@"content-location"] = components.URL.absoluteString;
+        components.path = @(path.c_str());
       }
-
-      headers[@"content-location"] = components.URL.absoluteString;
-      components.path = @(path.c_str());
     }
 
     components.scheme = @("socket");
 
+    auto statusCode = exists ? 200 : 404;
     auto response = [[NSHTTPURLResponse alloc]
       initWithURL: components.URL
-       statusCode: data.length > 0 ? 200 : 404
+       statusCode: statusCode
       HTTPVersion: @"HTTP/1.1"
      headerFields: headers
     ];
 
     [task didReceiveResponse: response];
 
-    if (data.length > 0) {
+    if (data && data.length > 0) {
       [task didReceiveData: data];
     }
 
@@ -1772,15 +1842,8 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"content-length"] = [@(size) stringValue];
 
-    if (result.post.headers.size() > 0) {
-      auto lines = SSC::split(SSC::trim(result.post.headers), '\n');
-
-      for (auto& line : lines) {
-        auto pair = split(trim(line), ':');
-        auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-        auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
-        headers[key] = value;
-      }
+    for (const auto& header : result.headers.entries) {
+      headers[@(header.key.c_str())] = @(header.value.c_str());
     }
 
     for (const auto& header : result.headers.entries) {
