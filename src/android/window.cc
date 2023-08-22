@@ -124,7 +124,7 @@ extern "C" {
       return nullptr;
     }
 
-    auto filename = window->config["android_index_html"];
+    auto filename = window->config["webview_root"];
 
     if (filename.size() > 0) {
       return env->NewStringUTF(filename.c_str());
