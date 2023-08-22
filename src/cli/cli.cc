@@ -4177,8 +4177,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         if (std::system(sdkmanager.str().c_str()) != 0) {
-          log("ERROR: failed to initialize Android SDK (sdkmanager)");
-          exit(1);
+          log("WARN: failed to initialize Android SDK (sdkmanager)");
         }
       }
 
