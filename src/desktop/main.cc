@@ -35,25 +35,16 @@ void signalHandler (int signal) {
 }
 
 SSC::String getNavigationError (const String &cwd, const String &value) {
+  auto url = value.substr(7);
+
   if (!value.starts_with("socket://") &&  !value.starts_with("socket://")) {
     return SSC::String("only socket:// protocol is allowed for the file navigation. Got url ") + value;
   }
-  auto url = value.substr(7);
+
   if (url.empty()) {
     return SSC::String("empty url");
   }
-  if (!url.starts_with(cwd)) {
-    return SSC::String("only files in the current working directory and its subfolders are allowed. Got url ") + value;
-  }
-  if (!url.ends_with(".html")) {
-    return SSC::String("only .html files are allowed. Got url ") + value;
-  }
-  if (url.find("/../") != std::string::npos) {
-    return SSC::String("relative urls are not allowed. Got url ") + value;
-  }
-  if (!fs::exists(url)) {
-    return SSC::String("file does not exist. Got url ") + value;
-  }
+
   return SSC::String("");
 }
 
@@ -1018,10 +1009,10 @@ MAIN {
       ";"
     ));
   } else {
-    if (app.appData["webview_index"].size() != 0) {
+    if (app.appData["webview_root"].size() != 0) {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_index"]
+        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_root"]
       );
     } else {
       defaultWindow->navigate(
