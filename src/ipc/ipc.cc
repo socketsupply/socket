@@ -141,6 +141,7 @@ namespace SSC::IPC {
     Post post
   ) : Result(seq, message) {
     this->post = post;
+    this->headers = Headers(post.headers);
 
     if (value.type != JSON::Type::Any) {
       this->value = value;
@@ -159,7 +160,9 @@ namespace SSC::IPC {
 
   Result::Result (const Data data): Result(data.message.seq, data.message) {
     this->data = data.value;
+    this->post = data.post;
     this->source = data.message.name;
+    this->headers = Headers(data.post.headers);
   }
 
   JSON::Any Result::json () const {
