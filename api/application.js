@@ -12,7 +12,7 @@
 
 import { applyPolyfills } from './polyfills.js'
 import ipc, { primordials } from './ipc.js'
-import ApplicationWindow, { formatFileUrl } from './window.js'
+import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
 
 import * as exports from './application.js'
@@ -45,7 +45,7 @@ export async function createWindow (opts) {
   // default values
   const options = {
     targetWindowIndex: opts.index,
-    url: formatFileUrl(opts.path),
+    url: formatURL(opts.path),
     index: globalThis.__args.index,
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
