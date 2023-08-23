@@ -976,9 +976,8 @@ MAIN {
     if (app.appData[property].size() > 0) {
       auto value = app.appData[property];
       if (!std::regex_match(value, validPattern)) {
-        stdWrite("Invalid value for " + property + ": " + value, true);
         app.appData[property] = setDefaultValue(property);
-        stdWrite("Setting default value: " + app.appData[property], true);
+        debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.appData[property].c_str());
       }
     // set default value if it's not set in socket.ini
     } else {
