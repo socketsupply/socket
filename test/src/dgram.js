@@ -121,10 +121,10 @@ test('udp bind, send, remoteAddress', async (t) => {
 
   const server = dgram.createSocket({
     type: 'udp4',
-    reuseAddr: false
+    reuseAddr: true
   })
 
-  const client = dgram.createSocket('udp4')
+  const client = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 
   const msg = new Promise((resolve, reject) => {
     server.on('message', (data, addr) => {
