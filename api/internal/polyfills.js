@@ -1,12 +1,26 @@
 /* global MutationObserver */
-import ipc from './ipc.js'
-
-import * as exports from './polyfills.js'
+import { fetch, Headers, Request, Response, } from '../fetch.js'
+import { URL, URLPattern, URLSearchParams } from '../url.js'
+import ipc from '../ipc.js'
 
 let applied = false
 
 export function applyPolyfills () {
   if (applied || !globalThis.window) return
+
+  Object.assign(globalThis, {
+    // url
+    URL,
+    URLPattern,
+    URLSearchParams,
+
+    // fetch
+    fetch,
+    Headers,
+    Request,
+    Response
+  })
+
   applied = true
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
@@ -40,4 +54,4 @@ export function applyPolyfills () {
   }
 }
 
-export default exports
+export default applyPolyfills
