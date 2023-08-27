@@ -10,14 +10,11 @@
  * ```
  */
 
-import { applyPolyfills } from './polyfills.js'
 import ipc, { primordials } from './ipc.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
 
 import * as exports from './application.js'
-
-applyPolyfills()
 
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
