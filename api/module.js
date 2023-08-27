@@ -452,8 +452,6 @@ export class Module extends EventTarget {
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
     const urls = []
 
-    const maybeTrailingSlash = sourcePath.endsWith('/') ? '/' : ''
-
     Module.previous = Module.current
     Module.current = this
 
