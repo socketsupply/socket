@@ -1,5 +1,5 @@
 /* global MutationObserver */
-import { fetch, Headers, Request, Response, } from '../fetch.js'
+import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
 import ipc from '../ipc.js'
 
