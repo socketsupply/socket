@@ -14,11 +14,14 @@ console.assert(
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { Event, CustomEvent, ErrorEvent } from '../events.js'
+import applyPolyfills from './polyfills.js'
 import location from '../location.js'
 import { URL } from '../url.js'
 
 const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
+
+applyPolyfills()
 
 // only patch a webview or worker context
 if ((globalThis.window || globalThis.self) === globalThis) {
@@ -156,16 +159,23 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   const isAsync = Symbol('isAsync')
   let queue = null
 
-  globalThis.XMLHttpRequest.prototype.open = function (...args) {
-    const [,, async] = args
+  globalThis.XMLHttpRequest.prototype.open = function (method, url, isAsyncRequest, ...args) {
     Object.defineProperty(this, isAsync, {
       configurable: false,
       enumerable: false,
       writable: false,
-      value: async !== false
+      value: isAsyncRequest !== false
     })
 
-    return open.call(this, ...args)
+    if (typeof url === 'string') {
+      if (url.startsWith('/') || url.startsWith('.')) {
+        try {
+          url = new URL(url, location.origin).toString()
+        } catch {}
+      }
+    }
+
+    return open.call(this, method, url, isAsyncRequest !== false, ...args)
   }
 
   globalThis.XMLHttpRequest.prototype.send = async function (...args) {
@@ -197,7 +207,6 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   }
 }
 
-import { applyPolyfills } from '../polyfills.js'
 import { config } from '../application.js'
 import globals from './globals.js'
 import hooks from '../hooks.js'
@@ -310,4 +319,4 @@ globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
 
-export default applyPolyfills()
+export default null
