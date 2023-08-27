@@ -8,8 +8,8 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
-import { URL } from './url.js'
 import location from './location.js'
+import { URL } from './url.js'
 
 import * as exports from './module.js'
 export default exports
@@ -29,6 +29,7 @@ import { posix as path } from './path.js'
 import process from './process.js'
 import stream from './stream.js'
 import test from './test.js'
+import url from './url.js'
 import util from './util.js'
 
 /**
@@ -48,19 +49,19 @@ class ModuleRequest {
 
   constructor (pathname, parent) {
     this.url = new URL(pathname, parent || location.origin || '/')
-    this.id = String(this.url)
+    this.id = this.url.toString()
   }
 
   status () {
-    const { url } = this
+    const { id } = this
     const request = new XMLHttpRequest()
-    request.open('HEAD', url, false)
+    request.open('HEAD', id, false)
     request.send(null)
     return request.status
   }
 
   load () {
-    const { id, url } = this
+    const { id } = this
 
     if (cache.has(id)) {
       return cache.get(id)
@@ -72,7 +73,7 @@ class ModuleRequest {
 
     const request = new XMLHttpRequest()
 
-    request.open('GET', url, false)
+    request.open('GET', id, false)
     request.send(null)
 
     const headers = Headers.from(request)
@@ -153,20 +154,6 @@ function CommonJSModuleScope (
 }
 
 /**
- * TODO
- */
-export function getSourcePathName () {
-  const pathname = location.pathname || '/'
-  const extname = path.extname(pathname)
-
-  if (extname) {
-    return path.dirname(pathname)
-  }
-
-  return pathname
-}
-
-/**
  * A limited set of builtins exposed to CommonJS modules.
  */
 export const builtins = {
@@ -187,7 +174,8 @@ export const builtins = {
   process,
   stream,
   test,
-  util
+  util,
+  url
 }
 
 // alias
@@ -212,10 +200,10 @@ export const COMMONJS_WRAPPER = CommonJSModuleScope
   .split(/'module code'/)
 
 /**
- * The main entry source pathname
+ * The main entry source origin.
  * @type {string}
  */
-export const MAIN_SOURCE_PATHNAME = getSourcePathName()
+export const MAIN_SOURCE_ORIGIN = location.href
 
 /**
  * Creates a `require` function from a source URL.
@@ -286,14 +274,13 @@ export class Module extends EventTarget {
    * @type {Module}
    */
   static get main () {
-    if (MAIN_SOURCE_PATHNAME in this.cache) {
-      return this.cache[MAIN_SOURCE_PATHNAME]
+    if (MAIN_SOURCE_ORIGIN in this.cache) {
+      return this.cache[MAIN_SOURCE_ORIGIN]
     }
 
-    const main = this.cache[MAIN_SOURCE_PATHNAME] = new Module(MAIN_SOURCE_PATHNAME)
+    const main = this.cache[MAIN_SOURCE_ORIGIN] = new Module(MAIN_SOURCE_ORIGIN)
     main.filename = main.id
     main.loaded = true
-    main.path = main.id
     Object.freeze(main)
     Object.seal(main)
     return main
@@ -322,15 +309,13 @@ export class Module extends EventTarget {
       return this.from(String(sourcePath), parent)
     }
 
-    if (!parent && !sourcePath.startsWith('.')) {
-      parent = Module.main
+    if (!parent) {
+      parent = Module.current
     }
 
-    const root = new URL(MAIN_SOURCE_PATHNAME, location.origin)
-    const id = String(
-      parent
-        ? new URL(sourcePath, new URL(parent.id, location.origin))
-        : new URL(sourcePath, String(root))
+    const id = String(parent
+      ? new URL(sourcePath, parent.id)
+      : new URL(sourcePath, MAIN_SOURCE_ORIGIN)
     )
 
     if (id in this.cache) {
@@ -347,12 +332,6 @@ export class Module extends EventTarget {
    * @type {string}
    */
   id = ''
-
-  /**
-   * The path to the module.
-   * @type {string}
-   */
-  path = ''
 
   /**
    * The parent module, if given.
@@ -398,11 +377,11 @@ export class Module extends EventTarget {
   constructor (id, parent = null, sourcePath = null) {
     super()
 
-    this.id = id || ''
+    this.id = new URL(id || '', parent?.id || MAIN_SOURCE_ORIGIN).toString()
     this.parent = parent || null
     this.sourcePath = sourcePath || id
 
-    if (!scope.previous && id !== MAIN_SOURCE_PATHNAME) {
+    if (!scope.previous && id !== MAIN_SOURCE_ORIGIN) {
       scope.previous = Module.main
     }
 
@@ -431,7 +410,7 @@ export class Module extends EventTarget {
    * @type {boolean}
    */
   get isMain () {
-    return this.id === MAIN_SOURCE_PATHNAME
+    return this.id === MAIN_SOURCE_ORIGIN
   }
 
   /**
@@ -442,8 +421,25 @@ export class Module extends EventTarget {
     return !this.isMain && !this.sourcePath?.startsWith('.')
   }
 
+  /**
+   * @type {URL}
+   */
+  get url () {
+    return new URL(this.id)
+  }
+
+  /**
+   * @type {string}
+   */
   get pathname () {
-    return new URL(this.id, location.origin).pathname
+    return new URL(this.id).pathname
+  }
+
+  /**
+   * @type {string}
+   */
+  get path () {
+    return path.dirname(this.pathname)
   }
 
   /**
@@ -452,31 +448,34 @@ export class Module extends EventTarget {
    * @return {boolean}
    */
   load () {
-    const { isNamed, pathname, sourcePath } = this
-
-    const pathnames = []
+    const { isNamed, sourcePath } = this
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
+    const urls = []
 
     const maybeTrailingSlash = sourcePath.endsWith('/') ? '/' : ''
 
     Module.previous = Module.current
     Module.current = this
 
+    // if module is named, and `prefixes` contains entries then
+    // build possible search paths of `<prefix>/<name>` starting
+    // from `.` up until `/` of the origin
     if (isNamed) {
-      const root = path.dirname(this.parent.pathname)
+      const name = sourcePath
       for (const prefix of prefixes) {
-        let current = root
-        while (current !== '/' && current !== '.') {
-          pathnames.push(path.join(current, prefix, sourcePath))
-          current = path.dirname(current)
-        }
+        let current = new URL('.', this.id).toString()
+        do {
+          const prefixURL = new URL(prefix, current)
+          urls.push(new URL(name, prefixURL + '/').toString())
+          current = new URL('..', current).toString()
+        } while (new URL(current).pathname !== '/')
       }
     } else {
-      pathnames.push(pathname + maybeTrailingSlash)
+      urls.push(this.id)
     }
 
-    for (const pathname of pathnames) {
-      if (loadPackage(this, pathname)) {
+    for (const url of urls) {
+      if (loadPackage(this, url)) {
         break
       }
     }
@@ -488,31 +487,31 @@ export class Module extends EventTarget {
 
     return this.loaded
 
-    function loadPackage (module, pathname) {
-      const hasTrailingSlash = pathname.endsWith('/')
-      const pathnames = []
-      const extname = path.extname(pathname)
+    function loadPackage (module, url) {
+      const hasTrailingSlash = url.endsWith('/')
+      const urls = []
+      const extname = path.extname(url)
 
       if (extname && !hasTrailingSlash) {
-        pathnames.push(pathname)
+        urls.push(url)
       } else {
         if (hasTrailingSlash) {
-          pathnames.push(
-            path.join(pathname, 'index.js'),
-            path.join(pathname, 'index.json')
+          urls.push(
+            new URL('./index.js', url).toString(),
+            new URL('./index.json', url).toString()
           )
         } else {
-          pathnames.push(
-            pathname + '.js',
-            pathname + '.json',
-            path.join(pathname, 'index.js'),
-            path.join(pathname, 'index.json')
+          urls.push(
+            url + '.js',
+            url + '.json',
+            new URL('./index.js', url + '/').toString(),
+            new URL('./index.json', url + '/').toString()
           )
         }
       }
 
-      while (pathnames.length) {
-        const filename = pathnames.shift()
+      while (urls.length) {
+        const filename = urls.shift()
         const response = request(filename)
 
         if (response.data) {
@@ -530,13 +529,13 @@ export class Module extends EventTarget {
         }
       }
 
-      const response = request(path.join(pathname, 'package.json'))
+      const response = request(path.join(url, 'package.json'))
       if (response.data) {
         try {
           // @ts-ignore
           const packageJSON = JSON.parse(response.data)
           const filename = !packageJSON.exports
-            ? path.resolve('/', pathname, packageJSON.browser || packageJSON.main)
+            ? path.resolve('/', url, packageJSON.browser || packageJSON.main)
             : (
                 packageJSON.exports?.['.'] ||
                 packageJSON.exports?.['./index.js'] ||
@@ -562,8 +561,7 @@ export class Module extends EventTarget {
       }
 
       if (path.extname(filename) === '.json') {
-        module.id = filename
-        module.path = dirname
+        module.id = new URL(filename, module.parent.id).toString()
         module.filename = filename
 
         try {
@@ -591,8 +589,7 @@ export class Module extends EventTarget {
         // eslint-disable-next-line no-new-func
         const define = new Function(`return ${source}`)()
 
-        module.id = filename
-        module.path = dirname
+        module.id = new URL(filename, module.parent.id).toString()
         module.filename = filename
 
         // eslint-disable-next-line no-useless-call
