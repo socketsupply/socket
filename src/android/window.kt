@@ -32,7 +32,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val rootDirectory = this.getRootDirectory()
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
       activity.applicationContext
-        .getSharedPreferences("WebViewSettings", android.app.Activity.MODE_PRIVATE)
+        .getSharedPreferences("WebSettings", android.app.Activity.MODE_PRIVATE)
         .edit()
         .apply {
           putString("scheme", "socket")
@@ -45,15 +45,22 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
 
         activity.webview?.apply {
+          // features
           settings.javaScriptEnabled = true
+          settings.domStorageEnabled = true
+
           // allow list
           settings.allowFileAccess = true
           settings.allowContentAccess = true
+
+          // allow mixed content
+          settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
           activity.client.putRootDirectory(rootDirectory)
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")
-          loadUrl("socket://__BUNDLE_IDENTIFIER__/$filename")
+          loadUrl("https://__BUNDLE_IDENTIFIER__/$filename")
         }
       }
     })
