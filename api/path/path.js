@@ -9,6 +9,7 @@
 import location from '../location.js'
 import {
   resolve as resolveURL,
+  parse as parseURL,
   URL,
   URLPattern
 } from '../url.js'
@@ -35,9 +36,12 @@ export function resolve (options, ...components) {
   const { sep } = options
   let resolved = ''
   while (components.length) {
-    const component = components.shift()
-      .replace(/\\/g, '/')
-      .replace(/\/$/g, '')
+    let component = components.shift().replace(/\\/g, '/')
+
+    if (component.length > 1) {
+      component = component.replace(/\/$/g, '')
+    }
+
     resolved = resolveURL(resolved + '/', component)
   }
 
@@ -144,9 +148,20 @@ export function join (options, ...components) {
   const { sep } = options
   const queries = []
   const joined = []
+  let protocol = null
 
   while (components.length) {
-    const component = String(components.shift() || '')
+    let component = String(components.shift() || '')
+    const url = parseURL(component) || component
+
+    if (url.protocol) {
+      if (!protocol) {
+        protocol = url.protocol
+      }
+
+      component = url.pathname
+    }
+
     const parts = component.split(sep).filter(Boolean)
     while (parts.length) {
       queries.push(parts.shift())
