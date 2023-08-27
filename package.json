@@ -24,7 +24,9 @@
     "esbuild": "^0.17.19",
     "standard": "^17.1.0",
     "typescript": "^5.1.3",
-    "urlpattern-polyfill": "^9.0.0"
+    "urlpattern-polyfill": "^9.0.0",
+    "whatwg-fetch": "^3.6.17",
+    "whatwg-url": "^13.0.0"
   },
   "optionalDependencies": {
     "@socketsupply/stream-relay": "^1.0.23-0"
@@ -35,11 +37,14 @@
       "/api/test/fast-deep-equal.js",
       "/api/crypto/sodium.js",
       "/api/url/urlpattern/urlpattern.js",
+      "/api/url/url/url.js",
+      "/api/fetch/fetch.js",
       "/npm/packages/@socketsupply/socket-node/index.cjs"
     ]
   },
   "workspaces": [
     "npm/packages/@socketsupply/socket-node"
   ],
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "dependencies": {}
 }
