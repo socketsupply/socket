@@ -2193,8 +2193,6 @@ var require_url_state_machine = __commonJS({
         case "https":
         case "ws":
         case "wss":
-        case "socket":
-        case "ipc":
           return serializeOrigin({
             scheme: url.scheme,
             host: url.host,
