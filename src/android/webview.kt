@@ -94,9 +94,13 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     // should be set in window loader
     assert(rootDirectory.length > 0)
 
-    if (url.scheme == "socket" && url.host == "__BUNDLE_IDENTIFIER__") {
+    if (
+      (url.scheme == "socket" && url.host == "__BUNDLE_IDENTIFIER__") ||
+      (url.scheme == "https" && url.host == "__BUNDLE_IDENTIFIER__")
+    ) {
       var path = url.path
-      if (!"(.[a-zA-Z|0-9|_|-]+)$".toRegex() matches path) {
+      val regex = Regex(".[a-z|A-Z|0-9|_|-]+$")
+      if (path != null && !regex.containsMatchIn(path)) {
         if (path.endsWith("/")) {
           path += "/index.html"
         } else {
