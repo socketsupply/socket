@@ -10,6 +10,8 @@
 
 import { isValidPercentageValue } from './util.js'
 import * as statuses from './window/constants.js'
+import location from './location.js'
+import { URL } from './url.js'
 import ipc from './ipc.js'
 
 /**
@@ -18,8 +20,8 @@ import ipc from './ipc.js'
  * @ignore
  */
 export function formatURL (url) {
-  const location = globalThis.location?.href ?? 'socket:///'
-  return String(new URL(url, location))
+  const href = location?.href ?? 'socket:///'
+  return String(new URL(url, href))
 }
 
 /**
