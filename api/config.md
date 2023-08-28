@@ -7,7 +7,7 @@ Key | Default Value | Description
 copy | "src" |  ssc will copy everything in this directory to the build output directory. This is useful when you want to avoid bundling or want to use tools like vite, webpack, rollup, etc. to build your project and then copy output to the Socket bundle resources directory.
 env |  |  An list of environment variables, separated by commas.
 flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-headless |  |  If false, the window will never be displayed.
+headless |  |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 output |  |  The binary output path. It's recommended to add this path to .gitignore.
 
