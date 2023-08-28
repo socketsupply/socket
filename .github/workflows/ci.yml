@@ -26,7 +26,7 @@ jobs:
 
   linux:
     name: Linux
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-m
     timeout-minutes: 6
     needs: lint
 
@@ -64,7 +64,7 @@ jobs:
 
   mac:
     name: macOS
-    runs-on: macOS-12
+    runs-on: macOS-13
     timeout-minutes: 9
     needs: lint
 
@@ -100,7 +100,7 @@ jobs:
 
   windows:
     name: Windows
-    runs-on: windows-2022
+    runs-on: windows-latest-l
     timeout-minutes: 10
     needs: lint
 
@@ -150,7 +150,7 @@ jobs:
 
   ios:
     name: iOS (macOS)
-    runs-on: macOS-12
+    runs-on: macOS-13
     timeout-minutes: 25
     needs: lint
 
@@ -186,7 +186,7 @@ jobs:
 
   android_macos:
     name: Android (macOS)
-    runs-on: macos-latest
+    runs-on: macos-13
     timeout-minutes: 60
     needs: lint
 
@@ -248,7 +248,7 @@ jobs:
 
   android_linux:
     name: Android (Linux)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-m
     timeout-minutes: 60
     needs: lint
 
@@ -308,7 +308,7 @@ jobs:
 
   socket_node:
     name: socket-node tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-m
     timeout-minutes: 2
     steps:
     - uses: actions/checkout@v3
