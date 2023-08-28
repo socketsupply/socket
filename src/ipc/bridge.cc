@@ -1,7 +1,9 @@
 #include "ipc.hh"
 #include "../extension/extension.hh"
 
+#if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#endif
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
