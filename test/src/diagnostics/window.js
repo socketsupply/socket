@@ -44,7 +44,7 @@ test('diagnostics - window - metrics', async (t) => {
       .then((response) => response.text())
       .then((text) => t.ok(typeof text === 'string', 'response.text()'))
       .then(() => t.ok(diagnosticsReceived, 'fetch diagnostics received'))
-      .catch((err) => t.ifError(err || true))
+      .catch((err) => t.ifError(err))
       .then(resolve)
   })
 

@@ -1013,7 +1013,7 @@ namespace SSC {
                               auto rootPath = this->modulePath.parent_path();
 
                               if (ext.size() == 0) {
-                                path += ".html";
+                                path += "/index.html";
                               }
 
                               path = fs::absolute(rootPath / path.substr(1)).string();

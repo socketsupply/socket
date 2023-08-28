@@ -1531,11 +1531,6 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    if (ext.size() == 0) {
-      path += ".html";
-      ext = ".html";
-    }
-
     path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
 
     if (!fs::exists(path)) {
@@ -1668,10 +1663,6 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
-      if (ext.size() == 0) {
-        path += ".html";
-      }
-
       components.host = @("");
 
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR

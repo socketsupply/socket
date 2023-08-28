@@ -100,11 +100,12 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     ) {
       var path = url.path
       val regex = Regex(".[a-z|A-Z|0-9|_|-]+$")
+
       if (path != null && !regex.containsMatchIn(path)) {
         if (path.endsWith("/")) {
-          path += "/index.html"
+          path += "index.html"
         } else {
-          path += ".html"
+          path += "/index.html"
         }
       }
 
