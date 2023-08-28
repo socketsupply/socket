@@ -56,11 +56,6 @@ Source: https://github.com/socketsupply/socket
 - [Socket](https://github.com/socketsupply/socket): This the main repository where we keep track of bug reports and issues.  
 - [Socket-Examples](https://github.com/socketsupply/socket-examples): This repository contains example projects powered by Socket which helps you build cross-platform apps for desktop and mobile.  
 - [Create-socket-app](https://github.com/socketsupply/create-socket-app): This repository will help you build native apps for mobile and desktop with Svelte, Reactjs, Vuejs, and others, by providing a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
-- [Tonic](https://github.com/socketsupply/tonic): is a low-profile component framework for the web. It's one file, less than 3kb gzipped, and has no dependencies. It's designed to be used with modern Javascript and is compatible with all modern browsers and is built on top of the Web Components.  
-- [Tapzero](https://github.com/socketsupply/tapzero): This a Zero dependency test framework, the implementation is less than 250 loc and less than 500 with comments  
- (https://github.com/Raynos/tapzero/blob/master/index.js ) and very readable.   
-
-There are so many other repositories that you might want to check. You can take a look at the full list of Socket repositories  [here](https://github.com/orgs/socketsupply/repositories)
 
 ## Creating an issue
 Issues for all Socket Runtime components are on [GitHub](https://github.com/socketsupply/socket). When reporting issues, please follow these guidelines:
