@@ -459,89 +459,19 @@ declare module "socket:url/urlpattern/urlpattern" {
         compareComponent(t: any, r: any, n: any): number;
     };
 }
-declare module "socket:url/url" {
-    export const URL: {
-        new (url: string | URL, base?: string | URL): URL;
-        prototype: URL;
-        createObjectURL(obj: Blob | MediaSource): string;
-        revokeObjectURL(url: string): void;
-    };
-    export default URL;
+declare module "socket:url/url/url" {
+    const _default: any;
+    export default _default;
 }
 declare module "socket:url/index" {
-    export function toString(url: any): string;
-    export function toObject(url: any): {
-        protocol: any;
-        username: any;
-        password: any;
-        hostname: any;
-        port: any;
-        pathname: any;
-        search: any;
-        hash: any;
-    };
-    /**
-     * @param {string|object|URL|URLPattern}
-     * @return {URLObject}
-     */
-    export function parse(url: any): URLObject;
-    /**
-     * @param {string|URL|URLPattern} url
-     * @param {string|URL|URLPattern} base
-     * @return {string}
-     */
-    export function resolve(url: string | URL | {
-        "__#2@#i": any;
-        "__#2@#n": {};
-        "__#2@#t": {};
-        "__#2@#e": {};
-        "__#2@#s": {};
-        test(t: {}, r: any): boolean;
-        exec(t: {}, r: any): {
-            inputs: any[] | {}[];
-        };
-        readonly protocol: any;
-        readonly username: any;
-        readonly password: any;
-        readonly hostname: any;
-        readonly port: any;
-        readonly pathname: any;
-        readonly search: any;
-        readonly hash: any;
-    }, base: string | URL | {
-        "__#2@#i": any;
-        "__#2@#n": {};
-        "__#2@#t": {};
-        "__#2@#e": {};
-        "__#2@#s": {};
-        test(t: {}, r: any): boolean;
-        exec(t: {}, r: any): {
-            inputs: any[] | {}[];
-        };
-        readonly protocol: any;
-        readonly username: any;
-        readonly password: any;
-        readonly hostname: any;
-        readonly port: any;
-        readonly pathname: any;
-        readonly search: any;
-        readonly hash: any;
-    }): string;
+    export function resolve(from: any, to: any): any;
     export default URL;
-    export class URLObject {
-        constructor(object: any);
-        protocol: string;
-        username: string;
-        password: string;
-        hostname: string;
-        port: string;
-        pathname: string;
-        search: string;
-        hash: string;
-    }
-    import { URL } from "socket:url/url";
+    export const parse: any;
+    export const URL: any;
     import { URLPattern } from "socket:url/urlpattern/urlpattern";
-    export { URLPattern, URL };
+    export const URLSearchParams: any;
+    export const parseURL: any;
+    export { URLPattern };
 }
 declare module "socket:url" {
     export * from "socket:url/index";
@@ -893,10 +823,10 @@ declare module "socket:path/path" {
             readonly search: any;
             readonly hash: any;
         };
-        url: URL;
-        get pathname(): string;
-        get protocol(): string;
-        get href(): string;
+        url: any;
+        get pathname(): any;
+        get protocol(): any;
+        get href(): any;
         /**
          * `true` if the path is relative, otherwise `false.
          * @type {boolean}
@@ -905,7 +835,7 @@ declare module "socket:path/path" {
         /**
          * The working value of this path.
          */
-        get value(): string;
+        get value(): any;
         /**
          * The original source, unresolved.
          * @type {string}
@@ -977,14 +907,14 @@ declare module "socket:path/path" {
     } | {
         url: string;
     });
-    import { URL as URL_1 } from "socket:url/index";
+    import { URL } from "socket:url/index";
 }
 declare module "socket:path/win32" {
     /**
      * Computes current working directory for a path
      * @param {string}
      */
-    export function cwd(): string;
+    export function cwd(): any;
     /**
      * Resolves path components to an absolute path.
      * @param {...PathComponent} components
@@ -1145,7 +1075,7 @@ declare module "socket:path/index" {
     export { posix, win32, Path };
 }
 declare module "socket:path" {
-    export const sep: "\\" | "/";
+    export const sep: "/" | "\\";
     export const delimiter: ";";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
@@ -2923,11 +2853,13 @@ declare module "socket:ipc" {
             [k: string]: any;
         };
     }
+    const Message_base: any;
     /**
      * A container for a IPC message based on a `ipc://` URI scheme.
      * @ignore
      */
-    export class Message extends URL {
+    export class Message extends Message_base {
+        [x: string]: any;
         /**
          * The expected protocol for an IPC message.
          * @ignore
@@ -2965,55 +2897,62 @@ declare module "socket:ipc" {
         bytes: Uint8Array | null;
         /**
          * Computed IPC message name.
+         * @type {string}
          * @ignore
          */
         get command(): string;
         /**
          * Computed IPC message name.
+         * @type {string}
          * @ignore
          */
         get name(): string;
         /**
          * Computed `id` value for the command.
+         * @type {string}
          * @ignore
          */
         get id(): string;
         /**
          * Computed `seq` (sequence) value for the command.
+         * @type {string}
          * @ignore
          */
-        get seq(): any;
+        get seq(): string;
         /**
          * Computed message value potentially given in message parameters.
          * This value is automatically decoded, but not treated as JSON.
+         * @type {string}
          * @ignore
          */
-        get value(): any;
+        get value(): string;
         /**
          * Computed `index` value for the command potentially referring to
          * the window index the command is scoped to or originating from. If not
          * specified in the message parameters, then this value defaults to `-1`.
+         * @type {number}
          * @ignore
          */
         get index(): number;
         /**
          * Computed value parsed as JSON. This value is `null` if the value is not present
          * or it is invalid JSON.
+         * @type {object?}
          * @ignore
          */
         get json(): any;
         /**
          * Computed readonly object of message parameters.
+         * @type {object}
          * @ignore
          */
         get params(): any;
         /**
          * Gets unparsed message parameters.
+         * @type {Array<Array<string>>}
          * @ignore
          */
-        get rawParams(): {
-            [k: string]: any;
-        };
+        get rawParams(): string[][];
         /**
          * Returns computed parameters as entries
          * @return {Array<Array<any>>}
@@ -3026,7 +2965,7 @@ declare module "socket:ipc" {
          * @param {any} value
          * @ignore
          */
-        set(key: string, value: any): void;
+        set(key: string, value: any): any;
         /**
          * Get a parameter value by `key`.
          * @param {string} key
@@ -3155,13 +3094,8 @@ declare module "socket:ipc" {
     export const primordials: any;
     export default exports;
     import { Buffer } from "socket:buffer";
+    import { URL } from "socket:url/index";
     import * as exports from "socket:ipc";
-    
-}
-declare module "socket:polyfills" {
-    export function applyPolyfills(): void;
-    export default exports;
-    import * as exports from "socket:polyfills";
     
 }
 declare module "socket:window/constants" {
@@ -4114,6 +4048,81 @@ declare module "socket:extension" {
     };
     const $loaded: unique symbol;
 }
+declare module "socket:fetch/fetch" {
+    export class DOMException {
+        private constructor();
+    }
+    export function Headers(headers: any): void;
+    export class Headers {
+        constructor(headers: any);
+        map: {};
+        append(name: any, value: any): void;
+        delete(name: any): void;
+        get(name: any): any;
+        has(name: any): boolean;
+        set(name: any, value: any): void;
+        forEach(callback: any, thisArg: any): void;
+        keys(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+        values(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+        entries(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+    }
+    export function Request(input: any, options: any): void;
+    export class Request {
+        constructor(input: any, options: any);
+        url: string;
+        credentials: any;
+        headers: Headers;
+        method: any;
+        mode: any;
+        signal: any;
+        referrer: any;
+        clone(): Request;
+    }
+    export function Response(bodyInit: any, options: any): void;
+    export class Response {
+        constructor(bodyInit: any, options: any);
+        type: string;
+        status: any;
+        ok: boolean;
+        statusText: string;
+        headers: Headers;
+        url: any;
+        clone(): Response;
+    }
+    export namespace Response {
+        function error(): Response;
+        function redirect(url: any, status: any): Response;
+    }
+    export function fetch(input: any, init: any): Promise<any>;
+    export namespace fetch {
+        let polyfill: boolean;
+    }
+}
+declare module "socket:fetch/index" {
+    export * from "socket:fetch/fetch";
+    export default fetch;
+    import { fetch } from "socket:fetch/fetch";
+}
+declare module "socket:fetch" {
+    export * from "socket:fetch/index";
+    export default fetch;
+    import fetch from "socket:fetch/index";
+}
 declare module "socket:hooks" {
     /**
      * An event dispatched when the runtime has been initialized.
@@ -4461,10 +4470,6 @@ declare module "socket:test" {
     import test from "socket:test/index";
 }
 declare module "socket:module" {
-    /**
-     * TODO
-     */
-    export function getSourcePathName(): string;
     export function isBuiltin(name: any): boolean;
     /**
      * Creates a `require` function from a source URL.
@@ -4498,6 +4503,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
+        url: typeof url;
     };
     export const builtinModules: {
         buffer: typeof buffer;
@@ -4521,6 +4527,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
+        url: typeof url;
     };
     /**
      * CommonJS module scope source wrapper.
@@ -4528,10 +4535,10 @@ declare module "socket:module" {
      */
     export const COMMONJS_WRAPPER: string;
     /**
-     * The main entry source pathname
+     * The main entry source origin.
      * @type {string}
      */
-    export const MAIN_SOURCE_PATHNAME: string;
+    export const MAIN_SOURCE_ORIGIN: string;
     export namespace scope {
         let current: any;
         let previous: any;
@@ -4600,11 +4607,6 @@ declare module "socket:module" {
          */
         id: string;
         /**
-         * The path to the module.
-         * @type {string}
-         */
-        path: string;
-        /**
          * The parent module, if given.
          * @type {Module?}
          */
@@ -4645,7 +4647,18 @@ declare module "socket:module" {
          * @type {boolean}
          */
         get isNamed(): boolean;
+        /**
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * @type {string}
+         */
         get pathname(): string;
+        /**
+         * @type {string}
+         */
+        get path(): string;
         /**
          * Loads the module, synchronously returning `true` upon success,
          * otherwise `false`.
@@ -4683,6 +4696,7 @@ declare module "socket:module" {
     import stream from "socket:stream";
     import test from "socket:test";
     import util from "socket:util";
+    import url from "socket:url";
     
 }
 declare module "socket:node-esm-loader" {
@@ -5544,8 +5558,12 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
+declare module "socket:internal/polyfills" {
+    export function applyPolyfills(): void;
+    export default applyPolyfills;
+}
 declare module "socket:internal/init" {
-    const _default: void;
+    const _default: any;
     export default _default;
 }
 declare module "socket:internal/worker" {
