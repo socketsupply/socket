@@ -1,15 +1,16 @@
-#include <Shlwapi.h>
+#include <shlwapi.h>
 #include <objidl.h>
 #include <wrl.h>
 #include <shellapi.h>
+#include <fileapi.h>
+#include <urlmon.h>
 #include "window.hh"
 
 #include "WebView2.h"
 #include "WebView2EnvironmentOptions.h"
-#include "WebView2Experimental.h"
-#include "WebView2ExperimentalEnvironmentOptions.h"
 
 #pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "urlmon.lib")
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
@@ -660,34 +661,32 @@ namespace SSC {
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
-    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> optionsExperimental;
-    HRESULT oeResult = options.As(&optionsExperimental);
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
+    HRESULT oeResult = options.As(&options4);
     if (oeResult != S_OK) {
       // UNREACHABLE - cannot continue
     }
 
-    // TODO(@mribbons): Get Socket scheme working
-    const WCHAR* customSchemes[2] = { L"ipc", L"socket" };
-    const WCHAR* allowedSchemeOrigins[3] = { L"http://*", L"https://*", L"file://*" };
+    const WCHAR* allowedSchemeOrigins[5] = { L"about://*", L"http://*", L"https://*", L"file://*", L"socket://*" };
 
     auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
-    ipcSchemeRegistration->put_TreatAsSecure(TRUE);
     ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
-    ipcSchemeRegistration->SetAllowedOrigins(3, allowedSchemeOrigins);
+    ipcSchemeRegistration->put_TreatAsSecure(TRUE);
+    ipcSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
 
     auto socketSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"socket");
-    socketSchemeRegistration->put_TreatAsSecure(TRUE);
     socketSchemeRegistration->put_HasAuthorityComponent(TRUE);
-    socketSchemeRegistration->SetAllowedOrigins(3, allowedSchemeOrigins);
+    socketSchemeRegistration->put_TreatAsSecure(TRUE);
+    socketSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
 
     // If someone can figure out how to allocate this so we can do it in a loop that'd be great, but even Ms is doing it like this:
     // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions4?view=webview2-1.0.1587.40
     ICoreWebView2CustomSchemeRegistration* registrations[2] = {
-      ipcSchemeRegistration.Get(), 
+      ipcSchemeRegistration.Get(),
       socketSchemeRegistration.Get()
     };
 
-    optionsExperimental->SetCustomSchemeRegistrations(2, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
+    options4->SetCustomSchemeRegistrations(2, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
 
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
@@ -783,41 +782,48 @@ namespace SSC {
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
+                        static auto userConfig = SSC::getUserConfig();
+                        static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-                        ICoreWebView2_2* webview2 = nullptr;
-                        ICoreWebView2Environment* env = nullptr;
-                        ICoreWebView2WebResourceResponse* res = nullptr;
+
                         ICoreWebView2WebResourceRequest* req = nullptr;
-                        String method_s;
-                        String uri_s;
+                        ICoreWebView2Environment* env = nullptr;
+                        ICoreWebView2_2* webview2 = nullptr;
+
                         LPWSTR req_uri;
-                        LPWSTR method;
+                        LPWSTR req_method;
+
+                        String method;
+                        String uri;
 
                         webview->QueryInterface(IID_PPV_ARGS(&webview2));
                         webview2->get_Environment(&env);
                         args->get_Request(&req);
+
                         req->get_Uri(&req_uri);
-                        uri_s = WStringToString(req_uri);
+                        uri = WStringToString(req_uri);
                         CoTaskMemFree(req_uri);
+
+                        req->get_Method(&req_method);
+                        method = WStringToString(req_method);
+                        CoTaskMemFree(req_method);
 
                         bool ipc_scheme = false;
                         bool socket_scheme = false;
                         bool handled = false;
 
-                        if (uri_s.compare(0, 4, "ipc:") == 0) {
+                        if (uri.compare(0, 4, "ipc:") == 0) {
                           ipc_scheme = true;
-                        } else if (uri_s.compare(0, 7, "socket:") == 0) {
+                        } else if (uri.compare(0, 7, "socket:") == 0) {
                           socket_scheme = true;
                         } else {
                           return S_OK;
                         }
 
-                        req->get_Method(&method);
-                        method_s = WStringToString(method);                        
-                        CoTaskMemFree(method);
-
                         // Handle CORS preflight request.
-                        if (method_s.compare("OPTIONS") == 0) {
+                        if (method.compare("OPTIONS") == 0) {
+                          ICoreWebView2WebResourceResponse* res = nullptr;
                           env->CreateWebResourceResponse(
                             nullptr,
                             204,
@@ -825,7 +831,7 @@ namespace SSC {
                             L"Connection: keep-alive\n"
                             L"Access-Control-Allow-Headers: *\n"
                             L"Access-Control-Allow-Origin: *\n"
-                            L"Access-Control-Allow-Methods: GET, POST, PUT\n",
+                            L"Access-Control-Allow-Methods: GET, POST, PUT, HEAD\n",
                             &res
                           );
                           args->put_Response(res);
@@ -833,8 +839,6 @@ namespace SSC {
                           return S_OK;
                         }
 
-                        // WebView2 doesn't handle the trailing slash well. Remove it.
-                        if (uri_s.ends_with("/")) uri_s = uri_s.substr(0, uri_s.size()-1);
 
                         ICoreWebView2Deferral* deferral;
                         HRESULT hr = args->GetDeferral(&deferral);
@@ -843,15 +847,15 @@ namespace SSC {
                         size_t body_length = 0;
 
                         if (ipc_scheme) {
-                          if (method_s.compare("POST") == 0 || method_s.compare("PUT") == 0) {
+                          if (method.compare("POST") == 0 || method.compare("PUT") == 0) {
                             IStream* body_data;
                             DWORD actual;
                             HRESULT r;
-                            auto msg = IPC::Message{uri_s};
+                            auto msg = IPC::Message(uri);
                             // TODO(trevnorris): Make sure index and seq are set.
                             if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
                               IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
-                              ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
+                              ICoreWebView2SharedBuffer* shared_buf = buf.shared_buf;
                               size_t size = buf.size;
                               char* data = new char[size];
                               w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
@@ -865,11 +869,9 @@ namespace SSC {
                               }
                               shared_buf->Close();
                             }
-                          } else if (method_s.compare("GET") != 0) {
-                            // UNREACHABLE
                           }
 
-                          handled = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
+                          handled = w->bridge->route(uri, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
                             String headers;
                             char* body;
                             size_t length;
@@ -919,47 +921,54 @@ namespace SSC {
                         }
 
                         if (socket_scheme) {
-                          if (method_s.compare("GET") == 0) {
-                            if (uri_s.starts_with("socket:///")) {
-                              uri_s = uri_s.substr(10);
-                            } else if (uri_s.starts_with("socket://")) {
-                              uri_s = uri_s.substr(9);
-                            } else if (uri_s.starts_with("socket:")) {
-                              uri_s = uri_s.substr(7);
+                          if (method.compare("GET") == 0 || method.compare("HEAD") == 0) {
+                            if (uri.starts_with("socket:///")) {
+                              uri = uri.substr(10);
+                            } else if (uri.starts_with("socket://")) {
+                              uri = uri.substr(9);
+                            } else if (uri.starts_with("socket:")) {
+                              uri = uri.substr(7);
                             }
 
-                            if (uri_s.ends_with("/")) {
-                              uri_s = uri_s.substr(0, uri_s.size() - 1);
+                            if (uri.ends_with("/")) {
+                              uri = uri.substr(0, uri.size() - 1);
                             }
 
+                            auto path = String(
+                              uri.starts_with(bundleIdentifier)
+                                ? uri.substr(bundleIdentifier.size())
+                                : "socket/" + uri
+                            );
 
-                            auto ext = uri_s.ends_with(".js") ? "" : ".js";
+                            auto ext = fs::path(path).extension().string();
 
-                            // look for socket lib in initial app folder
-                            auto rootPath = this->modulePath.parent_path();
-                            auto path = rootPath / "socket" / (uri_s + ext);
-
-                            if (!fs::exists(path)) {
-                              auto path = fs::path(fs::current_path()) / (uri_s + ext);
+                            if (path == "/" || path.size() == 0) {
+                              path = "/index.html";
+                              ext = ".html";
+                            } else if (path.ends_with("/")) {
+                              path += "index.html";
+                              ext = ".html";
+                            } else if (ext.size() > 0) {
+                              ext = "." + ext;
                             }
 
-                            if (!fs::exists(path)) {
-                              path = fs::path(fs::current_path()) / "socket" / (uri_s + ext);
-                            }
+                            if (!uri.starts_with(bundleIdentifier)) {
+                              if (ext.size() == 0) {
+                                path += ".js";
+                              }
 
-                            if (fs::exists(path)) {
+                              uri = "socket://" + bundleIdentifier + "/" + path;
+
                               String headers;
-                              char* body;
 
-                              auto moduleUri = "file://" + replace(path.string(), "\\\\", "/");
+                              auto moduleUri = replace(uri, "\\\\", "/");
                               auto moduleSource = trim(tmpl(
                                 moduleTemplate,
                                 Map { {"url", String(moduleUri)} }
                               ));
 
-                              size_t length = moduleSource.size();
-                              body = new char[length];
-                              memcpy(body, moduleSource.c_str(), length);
+                              auto length = moduleSource.size();
+
                               headers = "Content-Type: text/javascript\n";
                               headers += "Connection: keep-alive\n";
                               headers += "Access-Control-Allow-Headers: *\n";
@@ -968,11 +977,12 @@ namespace SSC {
                               headers += std::to_string(length);
                               headers += "\n";
 
-                              app.dispatch([&, body, length, headers, args, deferral, env] {
+                              handled = true;
+
+                              if (method.compare("HEAD") == 0) {
                                 ICoreWebView2WebResourceResponse* res = nullptr;
-                                IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
                                 env->CreateWebResourceResponse(
-                                  bytes,
+                                  nullptr,
                                   200,
                                   L"OK",
                                   StringToWString(headers).c_str(),
@@ -980,9 +990,81 @@ namespace SSC {
                                 );
                                 args->put_Response(res);
                                 deferral->Complete();
-                                delete[] body;
-                              });
-                              handled = true;
+                              } else {
+                                auto body = new char[length];
+                                memcpy(body, moduleSource.c_str(), length);
+
+                                app.dispatch([&, body, length, headers, args, deferral, env] {
+                                  ICoreWebView2WebResourceResponse* res = nullptr;
+                                  IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
+                                  env->CreateWebResourceResponse(
+                                    bytes,
+                                    200,
+                                    L"OK",
+                                    StringToWString(headers).c_str(),
+                                    &res
+                                  );
+                                  args->put_Response(res);
+                                  deferral->Complete();
+                                  delete[] body;
+                                });
+                              }
+                            } else {
+                              auto rootPath = this->modulePath.parent_path();
+
+                              if (ext.size() == 0) {
+                                path += ".html";
+                              }
+
+                              path = fs::absolute(rootPath / path.substr(1)).string();
+                              LARGE_INTEGER fileSize;
+                              auto handle = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+                              auto getSizeResult = GetFileSizeEx(handle, &fileSize);
+
+                              if (handle) {
+                                CloseHandle(handle);
+                              }
+
+                              if (getSizeResult) {
+                                handled = true;
+                                app.dispatch([&, path, args, deferral, env] {
+                                  ICoreWebView2WebResourceResponse* res = nullptr;
+                                  LPWSTR mimeType = (wchar_t*) L"application/octet-stream";
+                                  IStream* stream = nullptr;
+                                  String headers = "";
+
+                                  FindMimeFromData(0, StringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
+
+                                  headers = "Content-Type: ";
+                                  headers += WStringToString(mimeType) + "\n";
+                                  headers += "Connection: keep-alive\n";
+                                  headers += "Access-Control-Allow-Headers: *\n";
+                                  headers += "Access-Control-Allow-Origin: *\n";
+                                  headers += "Content-Length: ";
+                                  headers += std::to_string(fileSize.QuadPart);
+                                  headers += "\n";
+
+                                  if (SHCreateStreamOnFileA(path.c_str(), STGM_READ, &stream) == S_OK) {
+                                    env->CreateWebResourceResponse(
+                                      stream,
+                                      200,
+                                      L"OK",
+                                      StringToWString(headers).c_str(),
+                                      &res
+                                    );
+                                  } else {
+                                    env->CreateWebResourceResponse(
+                                      nullptr,
+                                      404,
+                                      L"Not Found",
+                                      L"Access-Control-Allow-Origin: *",
+                                      &res
+                                    );
+                                  }
+                                  args->put_Response(res);
+                                  deferral->Complete();
+                                });
+                              }
                             }
                           }
                         }
@@ -1047,8 +1129,8 @@ namespace SSC {
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         ICoreWebView2_2* webview2 = nullptr;
                         ICoreWebView2Environment* env = nullptr;
-                        ICoreWebView2Experimental18* webView18 = nullptr;
-                        ICoreWebView2ExperimentalEnvironment10* environment = nullptr;
+                        ICoreWebView2_18* webView18 = nullptr;
+                        ICoreWebView2Environment12* environment = nullptr;
 
                         webview->QueryInterface(IID_PPV_ARGS(&webview2));
                         webview2->get_Environment(&env);
@@ -1061,7 +1143,7 @@ namespace SSC {
                           auto seq = msg.seq;
                           auto size = std::stoull(msg.get("size", "0"));
                           auto index = msg.index;
-                          ICoreWebView2ExperimentalSharedBuffer* sharedBuffer = nullptr;
+                          ICoreWebView2SharedBuffer* sharedBuffer = nullptr;
                           // TODO(trevnorris): What to do if creation fails, or size == 0?
                           HRESULT cshr = environment->CreateSharedBuffer(size, &sharedBuffer);
                           String additionalData = "{\"seq\":\"";
