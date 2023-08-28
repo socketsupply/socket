@@ -608,6 +608,7 @@ export class Message extends URL {
 
   /**
    * Computed IPC message name.
+   * @type {string}
    * @ignore
    */
   get command () {
@@ -617,6 +618,7 @@ export class Message extends URL {
 
   /**
    * Computed IPC message name.
+   * @type {string}
    * @ignore
    */
   get name () {
@@ -625,6 +627,7 @@ export class Message extends URL {
 
   /**
    * Computed `id` value for the command.
+   * @type {string}
    * @ignore
    */
   get id () {
@@ -633,6 +636,7 @@ export class Message extends URL {
 
   /**
    * Computed `seq` (sequence) value for the command.
+   * @type {string}
    * @ignore
    */
   get seq () {
@@ -642,6 +646,7 @@ export class Message extends URL {
   /**
    * Computed message value potentially given in message parameters.
    * This value is automatically decoded, but not treated as JSON.
+   * @type {string}
    * @ignore
    */
   get value () {
@@ -652,6 +657,7 @@ export class Message extends URL {
    * Computed `index` value for the command potentially referring to
    * the window index the command is scoped to or originating from. If not
    * specified in the message parameters, then this value defaults to `-1`.
+   * @type {number}
    * @ignore
    */
   get index () {
@@ -670,6 +676,7 @@ export class Message extends URL {
   /**
    * Computed value parsed as JSON. This value is `null` if the value is not present
    * or it is invalid JSON.
+   * @type {object?}
    * @ignore
    */
   get json () {
@@ -678,6 +685,7 @@ export class Message extends URL {
 
   /**
    * Computed readonly object of message parameters.
+   * @type {object}
    * @ignore
    */
   get params () {
@@ -686,6 +694,7 @@ export class Message extends URL {
 
   /**
    * Gets unparsed message parameters.
+   * @type {Array<Array<string>>}
    * @ignore
    */
   get rawParams () {
