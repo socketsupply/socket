@@ -1496,7 +1496,7 @@ static void registerSchemeHandler (Router *router) {
         : "socket/" + uri
     );
 
-    auto ext = fs::path(path).extension();
+    auto ext = fs::path(path).extension().string();
 
     if (path == "/" || path.size() == 0) {
       path = "/index.html";
@@ -1504,16 +1504,17 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.ends_with("/")) {
       path += "index.html";
       ext = ".html";
-    } else if (ext.size() > 0) {
+    } else if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
 
     if (!uri.starts_with(bundleIdentifier)) {
       if (ext.size() == 0) {
         path += ".js";
+        ext = ".js";
       }
 
-      uri = "socket://" + bundleIdentifier + "/socket" + path;
+      uri = "socket://" + bundleIdentifier + "/" + path;
       auto moduleSource = trim(tmpl(
         moduleTemplate,
         Map { {"url", String(uri)} }
@@ -1532,9 +1533,10 @@ static void registerSchemeHandler (Router *router) {
 
     if (ext.size() == 0) {
       path += ".html";
+      ext = ".html";
     }
 
-    path = fs::absolute(fs:path(cwd) / path);
+    path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
 
     if (!fs::exists(path)) {
       auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
@@ -1548,7 +1550,8 @@ static void registerSchemeHandler (Router *router) {
 
     GError* error = nullptr;
 
-    auto stream = g_resources_open_stream(path.string().c_str(), 0, &error);
+    auto file = g_file_new_for_path(path.c_str());
+    auto stream = (GInputStream*) g_file_read(file, nullptr, &error);
 
     if (!stream) {
       webkit_uri_scheme_request_finish_error(request, error);
@@ -1558,7 +1561,7 @@ static void registerSchemeHandler (Router *router) {
 
     auto size = fs::file_size(path);
     auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-    auto mimeType = g_content_type_get_mime_type(ext.c_str());
+    auto mimeType = g_content_type_guess(path.c_str(), nullptr, 0, nullptr);
     auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
 
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
@@ -1575,6 +1578,10 @@ static void registerSchemeHandler (Router *router) {
 
     webkit_uri_scheme_request_finish_with_response(request, response);
     g_object_unref(stream);
+
+    if (mimeType) {
+      g_free(mimeType);
+    }
   },
   router,
   0);
