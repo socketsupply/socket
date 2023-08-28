@@ -61,8 +61,8 @@ namespace SSC::IPC {
     MessageBuffer(char* bytes, size_t size)
         : size(size), bytes(bytes) { }
   #ifdef _WIN32
-    ICoreWebView2ExperimentalSharedBuffer* shared_buf = nullptr;
-    MessageBuffer(ICoreWebView2ExperimentalSharedBuffer* buf, size_t size)
+    ICoreWebView2SharedBuffer* shared_buf = nullptr;
+    MessageBuffer(ICoreWebView2SharedBuffer* buf, size_t size)
         : size(size), shared_buf(buf) {
       BYTE* b = reinterpret_cast<BYTE*>(bytes);
       HRESULT r = buf->get_Buffer(&b);
