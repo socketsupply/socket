@@ -948,7 +948,9 @@ namespace SSC {
                             } else if (path.ends_with("/")) {
                               path += "index.html";
                               ext = ".html";
-                            } else if (ext.size() > 0) {
+                            }
+
+                            if (ext.size() > 0 && !ext.starts_with(".")) {
                               ext = "." + ext;
                             }
 
@@ -1013,7 +1015,23 @@ namespace SSC {
                               auto rootPath = this->modulePath.parent_path();
 
                               if (ext.size() == 0) {
-                                path += "/index.html";
+                                uri += "/";
+                                app.dispatch([&, uri, path, args, deferral, env] {
+                                  ICoreWebView2WebResourceResponse* res = nullptr;
+                                  env->CreateWebResourceResponse(
+                                    nullptr,
+                                    301,
+                                    L"Moved Permanently",
+                                    (
+                                      StringToWString("Location: ") + StringToWString(uri) + L"\n"
+                                      StringToWString("Content-Location: ") + StringToWString(uri) + L"\n"
+                                    ),
+                                    &res
+                                  );
+                                  args->put_Response(res);
+                                  deferral->Complete();
+                                });
+                                return S_OK;
                               }
 
                               path = fs::absolute(rootPath / path.substr(1)).string();
