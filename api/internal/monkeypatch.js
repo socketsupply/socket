@@ -5,7 +5,7 @@ import ipc from '../ipc.js'
 
 let applied = false
 
-export function applyPolyfills () {
+export function init () {
   if (applied || !globalThis.window) return
 
   Object.assign(globalThis, {
@@ -54,4 +54,6 @@ export function applyPolyfills () {
   }
 }
 
-export default applyPolyfills
+export default {
+  init
+}
