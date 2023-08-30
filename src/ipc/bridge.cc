@@ -1504,7 +1504,9 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.ends_with("/")) {
       path += "index.html";
       ext = ".html";
-    } else if (ext.size() > 0 && !ext.starts_with(".")) {
+    }
+
+    if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
 
@@ -1527,6 +1529,20 @@ static void registerSchemeHandler (Router *router) {
 
       webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
       webkit_uri_scheme_request_finish_with_response(request, response);
+      g_object_unref(stream);
+      return;
+    }
+
+    if (ext.size() == 0) {
+      auto redirectURL = uri + "/";
+      auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+
+      soup_message_headers_append(headers, "location", redirectURL.c_str());
+      soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+
+      webkit_uri_scheme_response_set_http_headers(response, headers);
+      webkit_uri_scheme_request_finish_with_response(request, response);
+
       g_object_unref(stream);
       return;
     }
@@ -1655,7 +1671,9 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.ends_with("/")) {
       path += "index.html";
       ext = ".html";
-    } else if (ext.size() > 0) {
+    }
+
+    if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
 
@@ -1663,6 +1681,31 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
+      if (ext.size() == 0) {
+        auto redirectURL = String(request.URL.absoluteString.UTF8String) + "/";
+        auto redirectSource = String(
+          "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+        );
+
+        data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+
+        auto response = [[NSHTTPURLResponse alloc]
+          initWithURL: [NSURL URLWithString: @(redirectURL.c_str())]
+           statusCode: 200
+          HTTPVersion: @"HTTP/1.1"
+         headerFields: headers
+        ];
+
+        [task didReceiveResponse: response];
+        [task didReceiveData: data];
+
+        [task didFinish];
+        #if !__has_feature(objc_arc)
+        [response release];
+        #endif
+        return;
+      }
+
       components.host = @("");
 
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
@@ -1741,12 +1784,13 @@ static void registerSchemeHandler (Router *router) {
           conformingToType: nullptr
         ];
 
+        components.path = @(path.c_str());
+
         if (types.count > 0 && types.firstObject.preferredMIMEType) {
           headers[@"content-type"] = types.firstObject.preferredMIMEType;
         }
 
         headers[@"content-location"] = components.URL.absoluteString;
-        components.path = @(path.c_str());
       }
     }
 
