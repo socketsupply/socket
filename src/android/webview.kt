@@ -99,14 +99,44 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       (url.scheme == "https" && url.host == "__BUNDLE_IDENTIFIER__")
     ) {
       var path = url.path
-      val regex = Regex(".[a-z|A-Z|0-9|_|-]+$")
+      val regex = Regex("(\\.[a-z|A-Z|0-9|_|-]+)$")
+      var redirect = false
 
       if (path != null && !regex.containsMatchIn(path)) {
         if (path.endsWith("/")) {
           path += "index.html"
         } else {
-          path += "/index.html"
+          path += "/"
+          redirect = true
         }
+      }
+
+      if (redirect) {
+        val redirectURL = "${url.scheme}://${url.host}${path}"
+        val redirectSource = """
+          <meta http-equiv="refresh" content="0; url='${redirectURL}'" />"
+        """
+
+        val stream = java.io.PipedOutputStream()
+        val response = android.webkit.WebResourceResponse(
+          "text/html",
+          "utf-8",
+          java.io.PipedInputStream(stream)
+        )
+
+        response.responseHeaders = mapOf(
+          "Location" to redirectURL,
+          "Content-Location" to redirectURL
+        )
+
+        response.setStatusCodeAndReasonPhrase(200, "OK")
+        // prevent piped streams blocking each other, have to write on a separate thread if data > 1024 bytes
+        kotlin.concurrent.thread {
+          stream.write(redirectSource.toByteArray(), 0, redirectSource.length)
+          stream.close()
+        }
+
+        return response
       }
 
       url = android.net.Uri.Builder()
