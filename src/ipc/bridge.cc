@@ -1535,12 +1535,21 @@ static void registerSchemeHandler (Router *router) {
 
     if (ext.size() == 0) {
       auto redirectURL = uri + "/";
+      auto redirectSource = String(
+        "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+      );
+
+      auto size = redirectSource.size();
+      auto bytes = redirectSource.data();
+      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+      auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
 
       soup_message_headers_append(headers, "location", redirectURL.c_str());
       soup_message_headers_append(headers, "content-location", redirectURL.c_str());
 
       webkit_uri_scheme_response_set_http_headers(response, headers);
+      webkit_uri_scheme_response_set_content_type(response, "text/html");
       webkit_uri_scheme_request_finish_with_response(request, response);
 
       g_object_unref(stream);
