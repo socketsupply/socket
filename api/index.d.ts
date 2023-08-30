@@ -5558,9 +5558,12 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
-declare module "socket:internal/polyfills" {
-    export function applyPolyfills(): void;
-    export default applyPolyfills;
+declare module "socket:internal/monkeypatch" {
+    export function init(): void;
+    namespace _default {
+        export { init };
+    }
+    export default _default;
 }
 declare module "socket:internal/init" {
     const _default: any;
