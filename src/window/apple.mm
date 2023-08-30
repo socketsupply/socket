@@ -4,14 +4,20 @@
 -                    (void) webView: (WKWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
-  SSC::String base = webview.URL.absoluteString.UTF8String;
-  SSC::String request = navigationAction.request.URL.absoluteString.UTF8String;
+  if (
+    webview.URL.absoluteString.UTF8String != nullptr &&
+    navigationAction.request.URL.absoluteString.UTF8String != nullptr
+  ) {
+    auto base = SSC::String(webview.URL.absoluteString.UTF8String);
+    auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
 
-  if (request.find("socket:") == 0 && request.find("http://localhost") == 0) {
-    decisionHandler(WKNavigationActionPolicyCancel);
-  } else {
-    decisionHandler(WKNavigationActionPolicyAllow);
+    if (request.find("socket:") == 0 && request.find("http://localhost") == 0) {
+      decisionHandler(WKNavigationActionPolicyCancel);
+      return;
+    }
   }
+
+  decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 -                    (void) webView: (WKWebView*) webView
