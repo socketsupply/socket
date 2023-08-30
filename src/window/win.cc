@@ -1022,10 +1022,10 @@ namespace SSC {
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
-                                    (
-                                      StringToWString("Location: ") + StringToWString(uri) + L"\n"
+                                    WString(
+                                      StringToWString("Location: ") + StringToWString(uri) + L"\n" +
                                       StringToWString("Content-Location: ") + StringToWString(uri) + L"\n"
-                                    ),
+                                    ).c_str(),
                                     &res
                                   );
                                   args->put_Response(res);
