@@ -26,9 +26,13 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 #endif
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
--                  (void) webview: (SSCBridgedWebView*) webview
+-                  (void) webView: (WKWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
+
+-                    (void) webView: (WKWebView*) webView
+  decidePolicyForNavigationResponse: (WKNavigationResponse*) navigationResponse
+                    decisionHandler: (void (^)(WKNavigationResponsePolicy)) decisionHandler;
 @end
 #endif
 
