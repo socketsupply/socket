@@ -1,10 +1,9 @@
 #include "window.hh"
 
 @implementation SSCNavigationDelegate
-- (void) webview: (SSCBridgedWebView*) webview
+-                    (void) webView: (WKWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
-
+                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
   SSC::String base = webview.URL.absoluteString.UTF8String;
   SSC::String request = navigationAction.request.URL.absoluteString.UTF8String;
 
@@ -13,6 +12,12 @@
   } else {
     decisionHandler(WKNavigationActionPolicyAllow);
   }
+}
+
+-                    (void) webView: (WKWebView*) webView
+  decidePolicyForNavigationResponse: (WKNavigationResponse*) navigationResponse
+                    decisionHandler: (void (^)(WKNavigationResponsePolicy)) decisionHandler {
+  decisionHandler(WKNavigationResponsePolicyAllow);
 }
 @end
 
