@@ -147,6 +147,7 @@ jobs:
         CI: true
         VERBOSE: 1
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+        GITHUB_ACTIONS_CI: 1
 
   ios:
     name: iOS (macOS)
