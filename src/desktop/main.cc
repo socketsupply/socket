@@ -937,7 +937,16 @@ MAIN {
       auto pid = process->getPID();
       process->kill(pid);
     }
+
     windowManager.destroy();
+
+  #if defined(__APPLE__)
+    if (app_ptr->fromSSC) {
+      debug("__EXIT_SIGNAL__=%d", 0);
+      notifyCli();
+    }
+  #endif
+
     app_ptr->kill();
     exit(code);
   };
