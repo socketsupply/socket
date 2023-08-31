@@ -320,6 +320,12 @@ Start advertising a new value for a well-known UUID
 | Not specified | Promise<void> |  |
 
 
+# [Buffer](https://github.com/socketsupply/socket/blob/master/api/buffer.js)
+
+Buffer module is a [third party](https://github.com/feross/buffer) vendor module provided by Feross Aboukhadijeh and other contributors (MIT License),
+
+External docs: https://nodejs.org/api/buffer.html
+
 # [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L14)
 
 
