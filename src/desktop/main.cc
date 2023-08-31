@@ -179,6 +179,11 @@ MAIN {
   SSC::StringStream env;
   for (auto const &envKey : parseStringList(app.appData["build_env"])) {
     auto cleanKey = trim(envKey);
+
+    if (!hasEnv(cleanKey)) {
+      continue;
+    }
+
     auto envValue = getEnv(cleanKey.c_str());
 
     env << SSC::String(

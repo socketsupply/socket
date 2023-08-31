@@ -21,6 +21,11 @@ namespace SSC::android {
 
     for (auto const &var : parseStringList(this->config["build_env"])) {
       auto key = trim(var);
+
+      if (!hasEnv(key)) {
+        continue;
+      }
+
       auto value = getEnv(key.c_str());
 
       if (value.size() > 0) {

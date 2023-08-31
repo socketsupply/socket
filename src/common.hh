@@ -573,6 +573,43 @@ namespace SSC {
     return r;
   }
 
+  inline bool hasEnv (const char* variableName) {
+    static auto appData = getUserConfig();
+
+    if (appData[String("env_") + variableName].size() > 0) {
+      return true;
+    }
+
+  #if defined(_WIN32)
+    char* value = nullptr;
+    size_t size = 0;
+    auto result = _dupenv_s(&value, &size, variableName);
+
+    if (value && value[0] == '\0') {
+      free(value);
+      return false;
+    }
+
+    free(value);
+
+    if (size == 0 || result != 0) {
+      return false;
+    }
+  #else
+    auto value = getenv(variableName);
+
+    if (value == nullptr || value[0] == '\0') {
+      return false;
+    }
+  #endif
+
+    return true;
+  }
+
+  inline bool hasEnv (const String& variableName) {
+    return hasEnv(variableName.c_str());
+  }
+
   inline String getEnv (const char* variableName) {
     static auto appData = getUserConfig();
 
