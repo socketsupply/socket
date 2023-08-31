@@ -655,12 +655,12 @@ namespace SSC {
     auto& stream = isError ? std::cerr : std::cout;
     stream << str;
 
+  #if defined(_WIN32)
     if (IN_GITHUB_ACTIONS_CI) {
-    #if defined(_WIN32)
       notifyCli();
       return;
-    #endif
     }
+  #endif
 
     stream << std::endl;
     notifyCli();
