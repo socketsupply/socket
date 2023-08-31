@@ -355,9 +355,7 @@ function _get_web_view2() {
   mkdir -p "$BUILD_DIR/$arch-$platform/lib$d"/
 
   cp -pf build/native/include/WebView2.h "$BUILD_DIR/include/WebView2.h"
-  cp -pf build/native/include/WebView2Experimental.h "$BUILD_DIR/include/WebView2Experimental.h"
   cp -pf build/native/include/WebView2EnvironmentOptions.h "$BUILD_DIR/include/WebView2EnvironmentOptions.h"
-  cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h"
   cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"
 
   cd "$pwd"
