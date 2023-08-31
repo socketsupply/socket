@@ -686,7 +686,18 @@ namespace SSC {
   }
 
   inline void stdWrite (const String &str, bool isError) {
-    (isError ? std::cerr : std::cout) << str << std::endl;
+    static const auto IN_GITHUB_ACTIONS_CI = getEnv("GITHUB_ACTIONS_CI").size() == 0;
+    auto& stream = isError ? std::cerr : std::cout;
+    stream << str;
+
+    if (IN_GITHUB_ACTIONS_CI) {
+    #if defined(_WIN32)
+      notifyCli();
+      return;
+    #endif
+    }
+
+    stream << std::endl;
     notifyCli();
   }
 
