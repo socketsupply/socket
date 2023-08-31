@@ -122,7 +122,6 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #include <unistd.h>
 #endif
 
-#include <any>
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -456,40 +455,6 @@ namespace SSC {
     }
 
     return size;
-  }
-
-  template <typename ...Args> String format (const String& s, Args ...args) {
-    auto copy = s;
-    StringStream res;
-    Vector<std::any> vec;
-    using unpack = int[];
-
-    (void) unpack { 0, (vec.push_back(args), 0)... };
-
-    std::regex re("\\$[^$\\s]");
-    std::smatch match;
-    auto first = std::regex_constants::format_first_only;
-    int index = 0;
-
-    while (std::regex_search(copy, match, re) != 0) {
-      if (match.str() == "$S") {
-        auto value = std::any_cast<String>(vec[index++]);
-        copy = std::regex_replace(copy, re, value, first);
-      } else if (match.str() == "$i") {
-        auto value = std::any_cast<int>(vec[index++]);
-        copy = std::regex_replace(copy, re, std::to_string(value), first);
-      } else if (match.str() == "$C") {
-        auto value = std::any_cast<char*>(vec[index++]);
-        copy = std::regex_replace(copy, re, String(value), first);
-      } else if (match.str() == "$c") {
-        auto value = std::any_cast<char>(vec[index++]);
-        copy = std::regex_replace(copy, re, String(1, value), first);
-      } else {
-        copy = std::regex_replace(copy, re, match.str(), first);
-      }
-    }
-
-    return copy;
   }
 
   inline String replace (const String& src, const String& re, const String& val) {
