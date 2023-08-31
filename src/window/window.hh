@@ -445,6 +445,11 @@ namespace SSC {
         if (opts.appData.size() > 0) {
           for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
             auto cleanKey = trim(envKey);
+
+            if (!hasEnv(cleanKey)) {
+              continue;
+            }
+
             auto envValue = getEnv(cleanKey.c_str());
 
             env << String(
@@ -454,6 +459,11 @@ namespace SSC {
         } else {
           for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
             auto cleanKey = trim(envKey);
+
+            if (!hasEnv(cleanKey)) {
+              continue;
+            }
+
             auto envValue = getEnv(cleanKey.c_str());
 
             env << String(

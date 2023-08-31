@@ -1655,8 +1655,8 @@ int main (const int argc, const char* argv[]) {
             auto parts = split(value, '=');
             if (parts.size() == 2) {
               stream << parts[0] << " = " << parts[1] << "\n";
-            } else if (parts.size() == 1) {
-              stream << parts[0] << " = " << getEnv(parts[0].c_str()) << "\n";
+            } else if (parts.size() == 1 && hasEnv(parts[0])) {
+              stream << parts[0] << " = " << getEnv(parts[0]) << "\n";
             }
           }
 
@@ -4553,14 +4553,16 @@ int main (const int argc, const char* argv[]) {
                 compilerFlags += " -stdlib=libstdc++";
               }
 
-              if (CXX.ends_with("clang++")) {
-                compiler = CXX.substr(0, CXX.size() - 2);
-              } else if (CXX.ends_with("clang++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 6) + ".exe";
-              } else if (CXX.ends_with("g++")) {
-                compiler = CXX.substr(0, CXX.size() - 2) + "cc";
-              } else if (CXX.ends_with("g++.exe")) {
-                compiler = CXX.substr(0, CXX.size() - 6) + "cc.exe";
+              if (CXX.size() == 0) {
+                if (compiler.ends_with("clang++")) {
+                  compiler = compiler.substr(0, compiler.size() - 2);
+                } else if (compiler.ends_with("clang++.exe")) {
+                  compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
+                } else if (compiler.ends_with("g++")) {
+                  compiler = compiler.substr(0, compiler.size() - 2) + "cc";
+                } else if (compiler.ends_with("g++.exe")) {
+                  compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
+                }
               }
             } else if (source.ends_with(".o") || source.ends_with(".a")) {
               objects << source << " ";

@@ -201,6 +201,11 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   for (auto const &envKey : parseStringList(appData["build_env"])) {
     auto cleanKey = trim(envKey);
+
+    if (!hasEnv(cleanKey)) {
+      continue;
+    }
+
     auto envValue = getEnv(cleanKey.c_str());
 
     env << String(
