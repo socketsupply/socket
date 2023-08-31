@@ -2,6 +2,10 @@ name: Socket CI
 
 on: [push]
 
+env:
+  node-version: lts/*
+  FORCE_COLOR: 1
+
 jobs:
   lint:
     name: Lint
@@ -12,12 +16,12 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+      uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{env.node-version}}
 
-    - name: Lint
-      run: npm install && npm run test:lint
+    - run: npm i
+    - run: npm run test:lint
 
     - name: Check docs and TS definitions
       run: |
@@ -34,12 +38,12 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+      uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{env.node-version}}
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
+      uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -54,13 +58,13 @@ jobs:
         VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
-    - name: test a socket api example app
-      run: |
-        npm install && npm test
+    - run: npm i
       env:
-        CI: true
-        VERBOSE: 1
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - run: npm test
+      env:
+        VERBOSE: 1
 
   mac:
     name: macOS
@@ -72,12 +76,12 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+      uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{env.node-version}}
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
+      uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -90,13 +94,13 @@ jobs:
         VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
-    - name: test a socket api example app
-      run: |
-        npm install && npm test
+    - run: npm i
       env:
-        CI: true
-        VERBOSE: 1
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - run: npm test
+      env:
+        VERBOSE: 1
 
   windows:
     name: Windows
@@ -111,6 +115,8 @@ jobs:
     # The webfactory/ssh-agent module does not work on Windows anymore
     # I do not recommend touching this SSH stuff, i spend two days
     # tweaking it just to get it to work on windows -.-
+
+    # TODO: Do we need to setup node?
 
     - name: Configure SSH
       run: Set-Service ssh-agent -StartupType Manual
@@ -140,14 +146,13 @@ jobs:
       run: |
         ./bin/ci_version_check.ps1
 
-    - name: install an example app
-      run: |
-        npm install && npm test
+    - run: npm i
       env:
-        CI: true
-        VERBOSE: 1
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-        GITHUB_ACTIONS_CI: 1
+
+    - run: npm test
+      env:
+        VERBOSE: 1
 
   ios:
     name: iOS (macOS)
@@ -159,12 +164,12 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+      uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{env.node-version}}
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
+      uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -177,13 +182,13 @@ jobs:
         VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
-    - name: test a socket api example app
-      run: |
-        npm install && npm run test:ios-simulator
+    - run: npm i
       env:
-        CI: true
-        VERBOSE: 1
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - run: npm run test:ios-simulator
+      env:
+        VERBOSE: 1
 
   android_macos:
     name: Android (macOS)
@@ -194,8 +199,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
+    - uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -210,7 +214,6 @@ jobs:
         VERBOSE: 1
         DEBUG: 1
         NO_IOS: 1
-        CI: true
         SSC_ANDROID_CI: true
         # Clear variables because CI supplied installs are out of date
         ANDROID_HOME:
@@ -225,17 +228,16 @@ jobs:
       env:
         VERBOSE: 1
         NO_IOS: true
-        CI: true
         SSC_ANDROID_CI: true
         # Clear variables because CI supplied installs are out of date
         ANDROID_HOME:
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
+    - run: npm install
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
     - name: Run emulator tests
-      run: |
-          npm install
-          npm run test:android-emulator
+      run: npm run test:android-emulator
       env:
         VERBOSE: 1
         NO_IOS: 1
@@ -266,14 +268,14 @@ jobs:
       uses: android-actions/setup-android@v2
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
+      uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{env.node-version}}
 
     - name: install Socket Runtime deps
       run: |
@@ -282,7 +284,7 @@ jobs:
         sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
 
     - name: Gradle cache
-      uses: gradle/gradle-build-action@v2.4.2
+      uses: gradle/gradle-build-action@v2
       with:
         gradle-version: 7.6.1
 
@@ -293,7 +295,6 @@ jobs:
         VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
       env:
-        CI: true
         VERBOSE: 1
         SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -302,7 +303,6 @@ jobs:
       run: |
         cd test && ssc build --prod --headless --platform=android
       env:
-        CI: true
         CXX: clang++
         SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -316,9 +316,8 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18
-    - name: npm test
-      run: |
-        cd npm/packages/@socketsupply/socket-node
-        npm i
-        npm test
+        node-version: ${{env.node-version}}
+    - run: npm i
+      working-directory: ./npm/packages/@socketsupply/socket-node
+    - run: npm test
+      working-directory: ./npm/packages/@socketsupply/socket-node
