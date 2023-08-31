@@ -4553,6 +4553,10 @@ int main (const int argc, const char* argv[]) {
                 compilerFlags += " -stdlib=libstdc++";
               }
 
+              if (platform.win || platform.linux) {
+                compilerFlags += " -Wno-unused-command-line-argument";
+              }
+
               if (CXX.size() == 0) {
                 if (compiler.ends_with("clang++")) {
                   compiler = compiler.substr(0, compiler.size() - 2);
