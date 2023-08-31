@@ -96,7 +96,6 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #include <tchar.h>
 #include <wingdi.h>
 
-#include <future>
 #include <signal.h>
 #include <shlobj_core.h>
 #include <shobjidl.h>
