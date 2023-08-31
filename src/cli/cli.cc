@@ -4358,6 +4358,7 @@ int main (const int argc, const char* argv[]) {
 
     // build desktop extension
     if (isForDesktop) {
+      static const auto IN_GITHUB_ACTIONS_CI = getEnv("GITHUB_ACTIONS_CI").size() == 0;
       auto oldCwd = fs::current_path();
       fs::current_path(targetPath);
 
@@ -4544,7 +4545,7 @@ int main (const int argc, const char* argv[]) {
             if (source.ends_with(".hh") || source.ends_with(".h")) {
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
-              compiler = CXX.size() > 0 ? CXX : "clang++";
+              compiler = CXX.size() > 0 && !IN_GITHUB_ACTIONS_CI ? CXX : "clang++";
               compilerFlags += " -v";
               compilerFlags += " -std=c++2a -v";
               if (platform.mac) {
@@ -4557,16 +4558,14 @@ int main (const int argc, const char* argv[]) {
                 compilerFlags += " -Wno-unused-command-line-argument";
               }
 
-              if (CXX.size() == 0) {
-                if (compiler.ends_with("clang++")) {
-                  compiler = compiler.substr(0, compiler.size() - 2);
-                } else if (compiler.ends_with("clang++.exe")) {
-                  compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
-                } else if (compiler.ends_with("g++")) {
-                  compiler = compiler.substr(0, compiler.size() - 2) + "cc";
-                } else if (compiler.ends_with("g++.exe")) {
-                  compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
-                }
+              if (compiler.ends_with("clang++")) {
+                compiler = compiler.substr(0, compiler.size() - 2);
+              } else if (compiler.ends_with("clang++.exe")) {
+                compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
+              } else if (compiler.ends_with("g++")) {
+                compiler = compiler.substr(0, compiler.size() - 2) + "cc";
+              } else if (compiler.ends_with("g++.exe")) {
+                compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
               }
             } else if (source.ends_with(".o") || source.ends_with(".a")) {
               objects << source << " ";
