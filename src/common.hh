@@ -1009,7 +1009,7 @@ namespace SSC {
     return bytes;
   }
 
-  inline auto msleep (auto n) {
+  inline auto msleep (uint64_t n) {
     std::this_thread::yield();
     std::this_thread::sleep_for(std::chrono::milliseconds(n));
   }
