@@ -2665,11 +2665,11 @@ declare module "socket:fs" {
     import * as exports from "socket:fs/index";
 }
 declare module "socket:external/libsodium/index" {
-    export {};
-}
-declare module "socket:crypto/sodium" {
     const _default: any;
     export default _default;
+}
+declare module "socket:crypto/sodium" {
+    export {};
 }
 declare module "socket:crypto" {
     /**
