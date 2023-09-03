@@ -1,6 +1,6 @@
 import { Path } from './path.js'
-import posix from './posix.js'
-import win32 from './win32.js'
+import * as posix from './posix.js'
+import * as win32 from './win32.js'
 
 export * as default from './index.js'
 

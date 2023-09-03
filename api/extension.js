@@ -147,7 +147,7 @@ export class Extension extends EventTarget {
 /**
  * Load an extension by name.
  * @param {string} name
- * @param {objects?} [options]
+ * @param {object?} [options]
  * @return {Promise<Extension>}
  */
 export async function load (name, options = {}) {

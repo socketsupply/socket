@@ -29,6 +29,12 @@ import ipc from '../ipc.js'
 
 import * as exports from './promises.js'
 
+/**
+ * @typedef {import('../buffer.js').Buffer} Buffer
+ * @typedef {import('.stats.js').Stats} Stats
+ * @typedef {Uint8Array|Int8Array} TypedArray
+ */
+
 async function visit (path, options, callback) {
   if (typeof options === 'function') {
     callback = options
@@ -56,8 +62,8 @@ async function visit (path, options, callback) {
  * Asynchronously check access a file.
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode}
  * @param {string | Buffer | URL} path
- * @param {string=} [mode]
- * @param {object=} [options]
+ * @param {string?} [mode]
+ * @param {object?} [options]
  */
 export async function access (path, mode, options) {
   return await FileHandle.access(path, mode, options)
@@ -143,7 +149,7 @@ export async function lstat (path, options) {
  *
  * @param {String} path - The path to create
  * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
- * @return {Primise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
+ * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
  */
 export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
@@ -176,10 +182,10 @@ export async function open (path, flags, mode) {
 /**
  * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
  * @param {string | Buffer | URL} path
- * @param {object=} [options]
- * @param {string=} [options.encoding = 'utf8']
- * @param {number=} [options.bufferSize = 32]
- * @return {Promise<FileSystem,Dir>}
+ * @param {object?} [options]
+ * @param {string?} [options.encoding = 'utf8']
+ * @param {number?} [options.bufferSize = 32]
+ * @return {Promise<Dir>}
  */
 export async function opendir (path, options) {
   const handle = await DirectoryHandle.open(path, options)
@@ -189,9 +195,9 @@ export async function opendir (path, options) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options}
  * @param {string | Buffer | URL} path
- * @param {object=} options
- * @param {string=} [options.encoding = 'utf8']
- * @param {boolean=} [options.withFileTypes = false]
+ * @param {object?} options
+ * @param {string?} [options.encoding = 'utf8']
+ * @param {boolean?} [options.withFileTypes = false]
  */
 export async function readdir (path, options) {
   options = { entries: DirectoryHandle.MAX_ENTRIES, ...options }
@@ -220,10 +226,10 @@ export async function readdir (path, options) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options}
  * @param {string} path
- * @param {object=} [options]
- * @param {(string|null)=} [options.encoding = null]
- * @param {string=} [options.flag = 'r']
- * @param {AbortSignal=} [options.signal]
+ * @param {object?} [options]
+ * @param {(string|null)?} [options.encoding = null]
+ * @param {string?} [options.flag = 'r']
+ * @param {AbortSignal?} [options.signal]
  * @return {Promise<Buffer | string>}
  */
 export async function readFile (path, options) {
@@ -277,8 +283,8 @@ export async function rm (path, options) {
 /**
  * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
  * @param {string | Buffer | URL} path
- * @param {object=} [options]
- * @param {boolean=} [options.bigint = false]
+ * @param {object?} [options]
+ * @param {boolean?} [options.bigint = false]
  * @return {Promise<Stats>}
  */
 export async function stat (path, options) {
@@ -325,12 +331,12 @@ export async function watch (path, options) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
  * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
- * @param {string|Buffer|Array|DataView|TypedArray|Stream} data
- * @param {object=} [options]
+ * @param {string|Buffer|Array|DataView|TypedArray} data
+ * @param {object?} [options]
  * @param {string|null} [options.encoding = 'utf8']
  * @param {number} [options.mode = 0o666]
  * @param {string} [options.flag = 'w']
- * @param {AbortSignal=} [options.signal]
+ * @param {AbortSignal?} [options.signal]
  * @return {Promise<void>}
  */
 // FIXME: truncate file by default (support flags). Currently it fails if file exists

@@ -37,8 +37,10 @@ import gc from '../gc.js'
 
 import * as exports from './index.js'
 
-// export * from './stream.js'
-export { default as binding } from './binding.js'
+/**
+ * @typedef {import('../buffer.js').Buffer} Buffer
+ * @typedef {Uint8Array|Int8Array} TypedArray
+ */
 
 function defaultCallback (err) {
   if (err) throw err
@@ -75,8 +77,8 @@ async function visit (path, options, callback) {
  * upon success or error.
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
- * @param {string=} [mode = F_OK(0)]
- * @param {function(err, fd)} callback
+ * @param {string?|function(Error?)?} [mode = F_OK(0)]
+ * @param {function(Error?)?} [callback]
  */
 export function access (path, mode, callback) {
   if (typeof mode === 'function') {
@@ -109,7 +111,7 @@ export function appendFile (path, data, options, callback) {
  *
  * @param {string | Buffer | URL} path
  * @param {number} mode
- * @param {function(err)} callback
+ * @param {function(Error?)} callback
  */
 export function chmod (path, mode, callback) {
   if (typeof mode !== 'number') {
@@ -139,7 +141,7 @@ export function chown (path, uid, gid, callback) {
  * Asynchronously close a file descriptor calling `callback` upon success or error.
  * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsclosefd-callback}
  * @param {number} fd
- * @param {function(err)=} callback
+ * @param {function(Error?)?} [callback]
  */
 export function close (fd, callback) {
   if (typeof callback !== 'function') {
@@ -163,8 +165,8 @@ export function copyFile (src, dst, mode, callback) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
- * @param {object=} options
- * @returns {fs.ReadStream}
+ * @param {object?} [options]
+ * @returns {ReadStream}
  */
 export function createReadStream (path, options) {
   if (path?.fd) {
@@ -203,8 +205,8 @@ export function createReadStream (path, options) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
- * @param {object=} options
- * @returns {fs.WriteStream}
+ * @param {object?} [options]
+ * @returns {WriteStream}
  */
 export function createWriteStream (path, options) {
   if (path?.fd) {
@@ -247,8 +249,8 @@ export function createWriteStream (path, options) {
  * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback}
  *
  * @param {number} fd - A file descriptor.
- * @param {Object=} options - An options object.
- * @param {function} callback - The function to call after completion.
+ * @param {object?|function?} [options] - An options object.
+ * @param {function?} [callback] - The function to call after completion.
  */
 export function fstat (fd, options, callback) {
   if (typeof options === 'function') {
@@ -329,11 +331,12 @@ export function mkdir (path, options, callback) {
  * Asynchronously open a file calling `callback` upon success or error.
  * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
- * @param {string=} [flags = 'r']
- * @param {string=} [mode = 0o666]
- * @param {function(err, fd)} callback
+ * @param {string?} [flags = 'r']
+ * @param {string?} [mode = 0o666]
+ * @param {object?|function?} [options]
+ * @param {function(Error?, number?)?} [callback]
  */
-export function open (path, flags, mode, options, callback) {
+export function open (path, flags = 'r', mode = 0o666, options = null, callback) {
   if (typeof flags === 'object') {
     callback = mode
     options = flags
@@ -381,12 +384,12 @@ export function open (path, flags, mode, options, callback) {
  * Asynchronously open a directory calling `callback` upon success or error.
  * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL} path
- * @param {Object=} options
- * @param {string=} [options.encoding = 'utf8']
- * @param {boolean=} [options.withFileTypes = false]
- * @param {function(err, fd)} callback
+ * @param {object?|function(Error?, Dir?)} [options]
+ * @param {string?} [options.encoding = 'utf8']
+ * @param {boolean?} [options.withFileTypes = false]
+ * @param {function(Error?, Dir?)?} callback
  */
-export function opendir (path, options, callback) {
+export function opendir (path, options = {}, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
@@ -410,7 +413,7 @@ export function opendir (path, options, callback) {
  * @param {number} offset - The position in buffer to write the data to.
  * @param {number} length - The number of bytes to read.
  * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
- * @param {function(err, bytesRead, buffer)} callback
+ * @param {function(Error?, number?, Buffer?)} callback
  */
 export function read (fd, buffer, offset, length, position, options, callback) {
   if (typeof options === 'function') {
@@ -441,12 +444,12 @@ export function read (fd, buffer, offset, length, position, options, callback) {
  * Asynchronously read all entries in a directory.
  * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL } path
- * @param {object=} [options]
- * @param {string=} [options.encoding = 'utf8']
- * @param {boolean=} [options.withFileTypes = false]
- * @param {function(err, buffer)} callback
+ * @param {object?|function(Error?, object[])} [options]
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {boolean?} [options.withFileTypes ? false]
+ * @param {function(Error?, object[])} callback
  */
-export function readdir (path, options, callback) {
+export function readdir (path, options = {}, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
@@ -491,13 +494,13 @@ export function readdir (path, options, callback) {
 
 /**
  * @param {string | Buffer | URL | number } path
- * @param {object=} [options]
- * @param {string=} [options.encoding = 'utf8']
- * @param {string=} [options.flag = 'r']
- * @param {AbortSignal=} [options.signal]
- * @param {function(err, buffer)} callback
+ * @param {object?|function(Error?, Buffer?)} [options]
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ * @param {function(Error?, Buffer?)} callback
  */
-export function readFile (path, options, callback) {
+export function readFile (path, options = {}, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
@@ -564,11 +567,11 @@ export function rm (path, options, callback) {
 /**
  *
  * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {object=} options
- * @param {string=} [options.encoding = 'utf8']
- * @param {string=} [options.flag = 'r']
- * @param {AbortSignal=} [options.signal]
- * @param {function(err, data)} callback
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ * @param {function(Error?, Stats?)} callback
  */
 export function stat (path, options, callback) {
   if (typeof options === 'function') {
@@ -633,12 +636,12 @@ export function write (fd, buffer, offset, length, position, callback) {
  * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {string | Buffer | TypedArray | DataView | object } data
- * @param {object=} options
- * @param {string=} [options.encoding = 'utf8']
- * @param {string=} [options.mode = 0o666]
- * @param {string=} [options.flag = 'w']
- * @param {AbortSignal=} [options.signal]
- * @param {function(err)} callback
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.mode ? 0o666]
+ * @param {string?} [options.flag ? 'w']
+ * @param {AbortSignal?} [options.signal]
+ * @param {function(Error?)} callback
  */
 export function writeFile (path, data, options, callback) {
   if (typeof options === 'function') {

@@ -137,8 +137,14 @@ declare module "socket:errors" {
          */
         constructor(message: string, code?: number, ...args: any[]);
         get name(): string;
-        set code(arg: number | "INTERNAL_ERR");
-        get code(): number | "INTERNAL_ERR";
+        /**
+         * @param {number|string}
+         */
+        set code(arg: string | number);
+        /**
+         * @type {number|string}
+         */
+        get code(): string | number;
         [exports.kInternalErrorCode]: number;
     }
     /**
@@ -615,16 +621,16 @@ declare module "socket:events" {
         getMaxListeners(): any;
         emit(type: any, ...args: any[]): boolean;
         addListener(type: any, listener: any): any;
-        on: any;
+        on(arg0: any, arg1: any): any;
         prependListener(type: any, listener: any): any;
         once(type: any, listener: any): this;
         prependOnceListener(type: any, listener: any): this;
         removeListener(type: any, listener: any): this;
-        off: any;
+        off(type: any, listener: any): this;
         removeAllListeners(type: any, ...args: any[]): this;
         listeners(type: any): any[];
         rawListeners(type: any): any[];
-        listenerCount: typeof listenerCount;
+        listenerCount(type: any): any;
         eventNames(): any;
     }
     export namespace EventEmitter {
@@ -636,7 +642,6 @@ declare module "socket:events" {
     }
     export function once(emitter: any, name: any): Promise<any>;
     import * as exports from "socket:events";
-    function listenerCount(type: any): any;
     
 }
 declare module "socket:os" {
@@ -977,13 +982,15 @@ declare module "socket:path/win32" {
      * @return {string}
      */
     export function relative(from: string, to: string): string;
-    export * as _default from "socket:path/win32";
-    export * as win32 from "socket:path/win32";
-    export const sep: "\\";
-    export const delimiter: ";";
+    export default exports;
+    export namespace win32 {
+        let sep: "\\";
+        let delimiter: ";";
+    }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import posix from "socket:path/posix";
+    import * as posix from "socket:path/posix";
     import { Path } from "socket:path/path";
+    import * as exports from "socket:path/win32";
     
     export { posix, Path };
 }
@@ -1056,21 +1063,23 @@ declare module "socket:path/posix" {
      * @return {string}
      */
     export function relative(from: string, to: string): string;
-    export * as _default from "socket:path/posix";
-    export * as posix from "socket:path/posix";
-    export const sep: "/";
-    export const delimiter: ":";
+    export default exports;
+    export namespace posix {
+        let sep: "/";
+        let delimiter: ":";
+    }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import win32 from "socket:path/win32";
+    import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import * as exports from "socket:path/posix";
     
     export { win32, Path };
 }
 declare module "socket:path/index" {
     export * as _default from "socket:path/index";
     
-    import posix from "socket:path/posix";
-    import win32 from "socket:path/win32";
+    import * as posix from "socket:path/posix";
+    import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
     export { posix, win32, Path };
 }
@@ -1431,9 +1440,13 @@ declare module "socket:diagnostics/channels" {
      */
     export class Channel {
         constructor(name: any);
-        subscribers: any[];
         name: any;
         group: any;
+        /**
+         * Computed subscribers for all channels in this group.
+         * @type {Array<function>}
+         */
+        get subscribers(): Function[];
         /**
          * Accessor for determining if channel has subscribers. This
          * is always `false` for `Channel instances and `true` for `ActiveChannel`
@@ -1454,13 +1467,13 @@ declare module "socket:diagnostics/channels" {
          * Adds an `onMessage` subscription callback to the channel.
          * @return {boolean}
          */
-        subscribe(onMessage: any): boolean;
+        subscribe(_: any, onMessage: any): boolean;
         /**
          * Removes an `onMessage` subscription callback from the channel.
          * @param {function} onMessage
          * @return {boolean}
          */
-        unsubscribe(onMessage: Function): boolean;
+        unsubscribe(_: any, onMessage: Function): boolean;
         /**
          * A no-op for `Channel` instances. This function always returns `false`.
          * @param {string} name
@@ -1510,10 +1523,6 @@ declare module "socket:diagnostics/channels" {
         constructor(name: string, channels: Array<Channel>);
         channels: Channel[];
         /**
-         * Computed subscribers for all channels in this group.
-         */
-        get subscribers(): any[];
-        /**
          * Subscribe to a channel or selection of channels in this group.
          * @param {string} name
          * @return {boolean}
@@ -1546,11 +1555,6 @@ declare module "socket:diagnostics/channels" {
             name: string;
             channel: Channel;
         }>;
-        /**
-         * Iterator iterface.
-         * @ignore
-         */
-        get [Symbol.iterator](): Channel[];
     }
     /**
      * An object mapping of named channels to `WeakRef<Channel>` instances.
@@ -1640,7 +1644,7 @@ declare module "socket:worker" {
 declare module "socket:diagnostics/metric" {
     export class Metric {
         init(): void;
-        update(): void;
+        update(value: any): void;
         destroy(): void;
         toJSON(): {};
         toString(): string;
@@ -1663,7 +1667,6 @@ declare module "socket:diagnostics/window" {
         };
         now: number;
         samples: Uint8Array;
-        update(value: any): void;
         toJSON(): {
             sampleSize: any;
             sampleTick: number;
@@ -2136,10 +2139,11 @@ declare module "socket:fs/handle" {
         [exports.kClosed]: boolean;
     }
     export default exports;
+    export type TypedArray = Uint8Array | Int8Array;
     import { EventEmitter } from "socket:events";
     import { Buffer } from "socket:buffer";
-    import { Stats } from "socket:fs/stats";
     import * as exports from "socket:fs/handle";
+    import { Stats } from "socket:fs/stats";
     
 }
 declare module "socket:fs/dir" {
@@ -2262,10 +2266,10 @@ declare module "socket:fs/promises" {
      * Asynchronously check access a file.
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode}
      * @param {string | Buffer | URL} path
-     * @param {string=} [mode]
-     * @param {object=} [options]
+     * @param {string?} [mode]
+     * @param {object?} [options]
      */
-    export function access(path: string | Buffer | URL, mode?: string | undefined, options?: object | undefined): Promise<boolean>;
+    export function access(path: string | Buffer | URL, mode?: string | null, options?: object | null): Promise<boolean>;
     /**
      * @TODO
      * @ignore
@@ -2319,9 +2323,9 @@ declare module "socket:fs/promises" {
      *
      * @param {String} path - The path to create
      * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
-     * @return {Primise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
+     * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
      */
-    export function mkdir(path: string, options?: any): Primise<any>;
+    export function mkdir(path: string, options?: any): Promise<any>;
     /**
      * Asynchronously open a file.
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
@@ -2335,30 +2339,30 @@ declare module "socket:fs/promises" {
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object=} [options]
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {number=} [options.bufferSize = 32]
-     * @return {Promise<FileSystem,Dir>}
+     * @param {object?} [options]
+     * @param {string?} [options.encoding = 'utf8']
+     * @param {number?} [options.bufferSize = 32]
+     * @return {Promise<Dir>}
      */
-    export function opendir(path: string | Buffer | URL, options?: object | undefined): Promise<FileSystem, Dir>;
+    export function opendir(path: string | Buffer | URL, options?: object | null): Promise<Dir>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object=} options
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {boolean=} [options.withFileTypes = false]
+     * @param {object?} options
+     * @param {string?} [options.encoding = 'utf8']
+     * @param {boolean?} [options.withFileTypes = false]
      */
-    export function readdir(path: string | Buffer | URL, options?: object | undefined): Promise<any[]>;
+    export function readdir(path: string | Buffer | URL, options: object | null): Promise<any[]>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options}
      * @param {string} path
-     * @param {object=} [options]
-     * @param {(string|null)=} [options.encoding = null]
-     * @param {string=} [options.flag = 'r']
-     * @param {AbortSignal=} [options.signal]
+     * @param {object?} [options]
+     * @param {(string|null)?} [options.encoding = null]
+     * @param {string?} [options.flag = 'r']
+     * @param {AbortSignal?} [options.signal]
      * @return {Promise<Buffer | string>}
      */
-    export function readFile(path: string, options?: object | undefined): Promise<Buffer | string>;
+    export function readFile(path: string, options?: object | null): Promise<Buffer | string>;
     /**
      * @TODO
      * @ignore
@@ -2387,11 +2391,11 @@ declare module "socket:fs/promises" {
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object=} [options]
-     * @param {boolean=} [options.bigint = false]
+     * @param {object?} [options]
+     * @param {boolean?} [options.bigint = false]
      * @return {Promise<Stats>}
      */
-    export function stat(path: string | Buffer | URL, options?: object | undefined): Promise<Stats>;
+    export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
      * @TODO
      * @ignore
@@ -2420,25 +2424,24 @@ declare module "socket:fs/promises" {
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
-     * @param {string|Buffer|Array|DataView|TypedArray|Stream} data
-     * @param {object=} [options]
+     * @param {string|Buffer|Array|DataView|TypedArray} data
+     * @param {object?} [options]
      * @param {string|null} [options.encoding = 'utf8']
      * @param {number} [options.mode = 0o666]
      * @param {string} [options.flag = 'w']
-     * @param {AbortSignal=} [options.signal]
+     * @param {AbortSignal?} [options.signal]
      * @return {Promise<void>}
      */
-    export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray | Stream, options?: object | undefined): Promise<void>;
+    export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray, options?: object | null): Promise<void>;
     export * as constants from "socket:fs/constants";
     export default exports;
+    export type Buffer = import("socket:buffer").Buffer;
+    export type Stats = any;
+    export type TypedArray = Uint8Array | Int8Array;
+    import * as exports from "socket:fs/promises";
     import { FileHandle } from "socket:fs/handle";
     import { Dir } from "socket:fs/dir";
-    import * as exports from "socket:fs/promises";
     
-}
-declare module "socket:fs/binding" {
-    const _default: ProxyConstructor;
-    export default _default;
 }
 declare module "socket:fs/index" {
     /**
@@ -2446,10 +2449,10 @@ declare module "socket:fs/index" {
      * upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
-     * @param {string=} [mode = F_OK(0)]
-     * @param {function(err, fd)} callback
+     * @param {string?|function(Error?)?} [mode = F_OK(0)]
+     * @param {function(Error?)?} [callback]
      */
-    export function access(path: string | Buffer | URL, mode?: string | undefined, callback: (arg0: err, arg1: fd) => any): void;
+    export function access(path: string | Buffer | URL, mode: any, callback?: ((arg0: Error | null) => any) | null): void;
     /**
      * @ignore
      */
@@ -2463,9 +2466,9 @@ declare module "socket:fs/index" {
      *
      * @param {string | Buffer | URL} path
      * @param {number} mode
-     * @param {function(err)} callback
+     * @param {function(Error?)} callback
      */
-    export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: err) => any): void;
+    export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
     /**
      * @ignore
      */
@@ -2474,24 +2477,24 @@ declare module "socket:fs/index" {
      * Asynchronously close a file descriptor calling `callback` upon success or error.
      * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsclosefd-callback}
      * @param {number} fd
-     * @param {function(err)=} callback
+     * @param {function(Error?)?} [callback]
      */
-    export function close(fd: number, callback?: ((arg0: err) => any) | undefined): void;
+    export function close(fd: number, callback?: ((arg0: Error | null) => any) | null): void;
     export function copyFile(src: any, dst: any, mode: any, callback: any): void;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
-     * @param {object=} options
-     * @returns {fs.ReadStream}
+     * @param {object?} [options]
+     * @returns {ReadStream}
      */
-    export function createReadStream(path: string | Buffer | URL, options?: object | undefined): fs.ReadStream;
+    export function createReadStream(path: string | Buffer | URL, options?: object | null): ReadStream;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
-     * @param {object=} options
-     * @returns {fs.WriteStream}
+     * @param {object?} [options]
+     * @returns {WriteStream}
      */
-    export function createWriteStream(path: string | Buffer | URL, options?: object | undefined): fs.WriteStream;
+    export function createWriteStream(path: string | Buffer | URL, options?: object | null): WriteStream;
     /**
      * Invokes the callback with the <fs.Stats> for the file descriptor. See
      * the POSIX fstat(2) documentation for more detail.
@@ -2499,10 +2502,10 @@ declare module "socket:fs/index" {
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback}
      *
      * @param {number} fd - A file descriptor.
-     * @param {Object=} options - An options object.
-     * @param {function} callback - The function to call after completion.
+     * @param {object?|function?} [options] - An options object.
+     * @param {function?} [callback] - The function to call after completion.
      */
-    export function fstat(fd: number, options?: any | undefined, callback: Function): void;
+    export function fstat(fd: number, options: any, callback?: Function | null): void;
     /**
      * @ignore
      */
@@ -2531,21 +2534,22 @@ declare module "socket:fs/index" {
      * Asynchronously open a file calling `callback` upon success or error.
      * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
-     * @param {string=} [flags = 'r']
-     * @param {string=} [mode = 0o666]
-     * @param {function(err, fd)} callback
+     * @param {string?} [flags = 'r']
+     * @param {string?} [mode = 0o666]
+     * @param {object?|function?} [options]
+     * @param {function(Error?, number?)?} [callback]
      */
-    export function open(path: string | Buffer | URL, flags?: string | undefined, mode?: string | undefined, options: any, callback: (arg0: err, arg1: fd) => any): void;
+    export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
     /**
      * Asynchronously open a directory calling `callback` upon success or error.
      * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
-     * @param {Object=} options
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {boolean=} [options.withFileTypes = false]
-     * @param {function(err, fd)} callback
+     * @param {object?|function(Error?, Dir?)} [options]
+     * @param {string?} [options.encoding = 'utf8']
+     * @param {boolean?} [options.withFileTypes = false]
+     * @param {function(Error?, Dir?)?} callback
      */
-    export function opendir(path: string | Buffer | URL, options?: any | undefined, callback: (arg0: err, arg1: fd) => any): void;
+    export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
     /**
      * Asynchronously read from an open file descriptor.
      * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
@@ -2554,28 +2558,28 @@ declare module "socket:fs/index" {
      * @param {number} offset - The position in buffer to write the data to.
      * @param {number} length - The number of bytes to read.
      * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
-     * @param {function(err, bytesRead, buffer)} callback
+     * @param {function(Error?, number?, Buffer?)} callback
      */
-    export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: err, arg1: bytesRead, arg2: any) => any): void;
+    export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
     /**
      * Asynchronously read all entries in a directory.
      * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL } path
-     * @param {object=} [options]
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {boolean=} [options.withFileTypes = false]
-     * @param {function(err, buffer)} callback
+     * @param {object?|function(Error?, object[])} [options]
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {boolean?} [options.withFileTypes ? false]
+     * @param {function(Error?, object[])} callback
      */
-    export function readdir(path: string | Buffer | URL, options?: object | undefined, callback: (arg0: err, arg1: buffer) => any): void;
+    export function readdir(path: string | Buffer | URL, options: {}, callback: (arg0: Error | null, arg1: object[]) => any): void;
     /**
      * @param {string | Buffer | URL | number } path
-     * @param {object=} [options]
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {string=} [options.flag = 'r']
-     * @param {AbortSignal=} [options.signal]
-     * @param {function(err, buffer)} callback
+     * @param {object?|function(Error?, Buffer?)} [options]
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     * @param {function(Error?, Buffer?)} callback
      */
-    export function readFile(path: string | Buffer | URL | number, options?: object | undefined, callback: (arg0: err, arg1: buffer) => any): void;
+    export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
      * @ignore
      */
@@ -2599,13 +2603,13 @@ declare module "socket:fs/index" {
     /**
      *
      * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {object=} options
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {string=} [options.flag = 'r']
-     * @param {AbortSignal=} [options.signal]
-     * @param {function(err, data)} callback
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     * @param {function(Error?, Stats?)} callback
      */
-    export function stat(path: string | Buffer | URL | number, options?: object | undefined, callback: (arg0: err, arg1: data) => any): void;
+    export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
     /**
      * @ignore
      */
@@ -2634,28 +2638,29 @@ declare module "socket:fs/index" {
      * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {string | Buffer | TypedArray | DataView | object } data
-     * @param {object=} options
-     * @param {string=} [options.encoding = 'utf8']
-     * @param {string=} [options.mode = 0o666]
-     * @param {string=} [options.flag = 'w']
-     * @param {AbortSignal=} [options.signal]
-     * @param {function(err)} callback
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.mode ? 0o666]
+     * @param {string?} [options.flag ? 'w']
+     * @param {AbortSignal?} [options.signal]
+     * @param {function(Error?)} callback
      */
-    export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options?: object | undefined, callback: (arg0: err) => any): void;
+    export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
     export function writev(fd: any, buffers: any, position: any, callback: any): void;
-    export { default as binding } from "socket:./binding.js";
     export default exports;
-    import * as constants from "socket:fs/constants";
+    export type Buffer = import("socket:buffer").Buffer;
+    export type TypedArray = Uint8Array | Int8Array;
+    import * as exports from "socket:fs/index";
+    import { ReadStream } from "socket:fs/stream";
+    import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
+    import { Stats } from "socket:fs/stats";
+    import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
     import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
     import * as promises from "socket:fs/promises";
-    import { ReadStream } from "socket:fs/stream";
-    import { Stats } from "socket:fs/stats";
-    import { WriteStream } from "socket:fs/stream";
-    import * as exports from "socket:fs/index";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, WriteStream };
 }
@@ -2693,6 +2698,9 @@ declare module "socket:crypto" {
      */
     export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
     /**
+     * @typedef {Uint8Array|Int8Array} TypedArray
+     */
+    /**
      * WebCrypto API
      * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
      */
@@ -2715,11 +2723,12 @@ declare module "socket:crypto" {
      */
     export const MAX_RANDOM_BYTES_PAGES: number;
     export default exports;
+    export type TypedArray = Uint8Array | Int8Array;
+    import * as exports from "socket:crypto";
     import { Buffer } from "socket:buffer";
     export namespace sodium {
         let ready: Promise<any>;
     }
-    import * as exports from "socket:crypto";
     
 }
 declare module "socket:ipc" {
@@ -3689,12 +3698,12 @@ declare module "socket:dns/index" {
      *
      * @see {@link https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback}
      * @param {string} hostname - The host name to resolve.
-     * @param {Object=} opts - An options object.
-     * @param {number|string} [opts.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
+     * @param {object?|function} [options] - An options object.
+     * @param {number|string} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
      * @param {function} cb - The function to call after the method is complete.
      * @returns {void}
      */
-    export function lookup(hostname: string, opts?: any | undefined, cb: Function): void;
+    export function lookup(hostname: string, options: {}, cb: Function): void;
     export { promises };
     export default exports;
     import * as promises from "socket:dns/promises";
@@ -3893,6 +3902,9 @@ declare module "socket:dgram" {
      * @ignore
      */
     export class SocketError extends InternalError {
+        /**
+         * @type {string}
+         */
         get code(): string;
     }
     /**
@@ -3954,10 +3966,10 @@ declare module "socket:extension" {
     /**
      * Load an extension by name.
      * @param {string} name
-     * @param {objects?} [options]
+     * @param {object?} [options]
      * @return {Promise<Extension>}
      */
-    export function load(name: string, options?: objects): Promise<Extension>;
+    export function load(name: string, options?: object | null): Promise<Extension>;
     /**
      * Provides current stats about the loaded extensions.
      * @return {Promise<ExtensionStats>}
@@ -4149,9 +4161,9 @@ declare module "socket:hooks" {
     export class Hooks extends EventTarget {
         /**
          * Reference to global object
-         * @type {Global}
+         * @type {object}
          */
-        get global(): Global;
+        get global(): any;
         /**
          * Returns `document` in global.
          * @type {Document}
@@ -4683,6 +4695,7 @@ declare module "socket:module" {
          */
         [Symbol.toStringTag](): string;
     }
+    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
     import * as exports from "socket:module";
     import buffer from "socket:buffer";
@@ -5532,6 +5545,7 @@ declare module "socket:peer" {
         #private;
     }
     export default Peer;
+    export type Buffer = import("socket:buffer").Buffer;
     import { EventEmitter } from "socket:events";
     import { Encryption } from "socket:stream-relay/index";
 }

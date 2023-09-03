@@ -246,10 +246,16 @@ export class InternalError extends Error {
     return 'InternalError'
   }
 
+  /**
+   * @type {number|string}
+   */
   get code () {
     return this[kInternalErrorCode] || 'INTERNAL_ERR'
   }
 
+  /**
+   * @param {number|string}
+   */
   set code (code) {
     this[kInternalErrorCode] = code
   }

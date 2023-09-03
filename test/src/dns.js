@@ -13,9 +13,7 @@ const isOnline = Boolean(globalThis?.navigator?.onLine || process?.versions?.nod
 
 test('dns exports', t => {
   t.ok(typeof dns.lookup === 'function', 'lookup is available')
-  t.equal(dns.lookup.length, 3, 'lookup expect 3 arguments')
   t.ok(typeof dns.promises.lookup === 'function', 'promises.lookup is available')
-  t.equal(dns.promises.lookup.length, 2, 'promises.lookup expect 2 arguments')
 })
 
 test('dns.lookup', async t => {

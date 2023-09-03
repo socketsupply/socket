@@ -18,6 +18,10 @@ import { isBufferLike } from './util.js'
 
 import dgram from './dgram.js'
 
+/**
+ * @typedef {import('./buffer.js').Buffer} Buffer
+ */
+
 const PeerFactory = createPeer(dgram)
 const textDecoder = new TextDecoder()
 
