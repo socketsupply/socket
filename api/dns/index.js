@@ -52,20 +52,20 @@ const dc = diagnostics.channels.group('dns', [
  *
  * @see {@link https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback}
  * @param {string} hostname - The host name to resolve.
- * @param {Object=} opts - An options object.
- * @param {number|string} [opts.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
+ * @param {object?|function} [options] - An options object.
+ * @param {number|string} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
  * @param {function} cb - The function to call after the method is complete.
  * @returns {void}
  */
-export function lookup (hostname, opts, cb) {
+export function lookup (hostname, options = {}, cb) {
   if (typeof hostname !== 'string') {
     const err = new TypeError(`The "hostname" argument must be of type string. Received type ${typeof hostname} (${hostname})`)
     err.code = 'ERR_INVALID_ARG_TYPE'
     throw err
   }
 
-  if (typeof opts === 'function') {
-    cb = opts
+  if (typeof options === 'function') {
+    cb = options
   }
 
   if (typeof cb !== 'function') {
@@ -74,16 +74,16 @@ export function lookup (hostname, opts, cb) {
     throw err
   }
 
-  if (typeof opts === 'number') {
-    opts = { family: opts }
+  if (typeof options === 'number') {
+    options = { family: options }
   }
 
-  if (typeof opts !== 'object') {
-    opts = {}
+  if (typeof options !== 'object') {
+    options = {}
   }
 
-  dc.channel('lookup.start').publish({ hostname, family: opts.family, sync: true })
-  const { err, data } = ipc.sendSync('dns.lookup', { ...opts, id: rand64(), hostname })
+  dc.channel('lookup.start').publish({ hostname, family: options.family, sync: true })
+  const { err, data } = ipc.sendSync('dns.lookup', { ...options, id: rand64(), hostname })
 
   if (err) {
     const e = new Error(`getaddrinfo EAI_AGAIN ${hostname}`)
@@ -96,8 +96,8 @@ export function lookup (hostname, opts, cb) {
     return
   }
 
-  dc.channel('lookup.end').publish({ hostname, family: opts.family, sync: true })
-  dc.channel('lookup').publish({ hostname, family: opts.family, sync: true })
+  dc.channel('lookup.end').publish({ hostname, family: options.family, sync: true })
+  dc.channel('lookup').publish({ hostname, family: options.family, sync: true })
   cb(null, data?.address ?? null, data?.family ?? null)
 }
 

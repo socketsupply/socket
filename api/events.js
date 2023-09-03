@@ -216,7 +216,15 @@ EventEmitter.prototype.addListener = function addListener (type, listener) {
   return _addListener(this, type, listener, false)
 }
 
-EventEmitter.prototype.on = EventEmitter.prototype.addListener
+/**
+ * @instance
+ * @method on
+ * @memberOf EventEmitter
+ * @type {function(any, any): any}
+ */
+EventEmitter.prototype.on = function on (type, listener) {
+  return this.addListener(type, listener)
+}
 
 EventEmitter.prototype.prependListener =
     function prependListener (type, listener) {
@@ -296,7 +304,9 @@ EventEmitter.prototype.removeListener =
       return this
     }
 
-EventEmitter.prototype.off = EventEmitter.prototype.removeListener
+EventEmitter.prototype.off = function off (type, listener) {
+  return this.removeListener(type, listener)
+}
 
 EventEmitter.prototype.removeAllListeners =
     function removeAllListeners (type) {
@@ -376,7 +386,10 @@ EventEmitter.listenerCount = function (emitter, type) {
   }
 }
 
-EventEmitter.prototype.listenerCount = listenerCount
+EventEmitter.prototype.listenerCount = function (type) {
+  return listenerCount.call(this, type)
+}
+
 function listenerCount (type) {
   const events = this._events
 

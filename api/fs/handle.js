@@ -24,6 +24,10 @@ import gc from '../gc.js'
 
 import * as exports from './handle.js'
 
+/**
+ * @typedef {Uint8Array|Int8Array} TypedArray
+ */
+
 const dc = diagnostics.channels.group('fs', [
   'handle',
   'handle.open',

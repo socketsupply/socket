@@ -2,7 +2,7 @@ import { isArrayLike, format } from '../util.js'
 
 export class Metric {
   init () {}
-  update () {}
+  update (value) {}
   destroy () {}
 
   toJSON () {

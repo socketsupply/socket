@@ -17,6 +17,10 @@ import { Buffer } from './buffer.js'
 import * as exports from './crypto.js'
 
 /**
+ * @typedef {Uint8Array|Int8Array} TypedArray
+ */
+
+/**
  * WebCrypto API
  * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
  */

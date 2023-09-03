@@ -337,15 +337,15 @@ External docs: https://nodejs.org/api/buffer.html
  import { randomBytes } from 'socket:crypto'
  ```
 
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L23)
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L27)
 
 WebCrypto API
 
-## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L52)
+## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L56)
 
 A promise that resolves when all internals to be loaded/ready.
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L67)
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L71)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 
@@ -361,24 +361,24 @@ Generate cryptographically strong random values into the `buffer`
 | Not specified | TypedArray |  |
 
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L86)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L90)
 
 This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
 
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L94)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L99)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L103)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L104)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L108)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L112)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L116)
 
 Generate `size` random bytes.
 
@@ -392,7 +392,7 @@ Generate `size` random bytes.
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L139)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L143)
 
 
 
@@ -639,27 +639,31 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1172)
+### [`code()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1169)
+
+
+
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1175)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1189)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1192)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1196)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1199)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1204)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1207)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1211)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1214)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1221)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1224)
 
 Thrown when a bad port is given.
 
@@ -678,7 +682,7 @@ Thrown when a bad port is given.
  import { lookup } from 'socket:dns'
  ```
 
-## [`lookup(hostname, opts, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L60)
+## [`lookup(hostname, options, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L60)
 
 External docs: https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback
 
@@ -707,8 +711,8 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | hostname | string |  | false | The host name to resolve. |
-| opts | Object |  | true | An options object. |
-| opts.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
+| options | object? \| function |  | false | An options object. |
+| options.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
 | cb | function |  | false | The function to call after the method is complete. |
 
 
@@ -745,22 +749,42 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 | Not specified | Promise |  |
 
 
-## [Event](https://github.com/socketsupply/socket/blob/master/api/events.js#L472)
+### [EventEmitter](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+
+
+
+## [Event](https://github.com/socketsupply/socket/blob/master/api/events.js#L485)
 
 This is a `VariableDeclaration` named `Event` in `api/events.js`, it's exported but undocumented.
 
 
-## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L474)
+## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L487)
 
 This is a `VariableDeclaration` named `CustomEvent` in `api/events.js`, it's exported but undocumented.
 
 
-## [MessageEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L489)
+## [MessageEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L502)
 
 This is a `VariableDeclaration` named `MessageEvent` in `api/events.js`, it's exported but undocumented.
 
 
-## [ErrorEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L513)
+## [ErrorEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L526)
 
 This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's exported but undocumented.
 
@@ -789,7 +813,11 @@ This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's expo
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L81)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L45)
+
+
+
+## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L83)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 
@@ -799,11 +827,11 @@ Asynchronously check access a file for a given mode calling `callback`
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string | F_OK(0) | true |  |
-| callback | function(err, fd) |  | false |  |
+| mode | string? \| function(Error?)? | F_OK(0) | false |  |
+| callback | function(Error?)? |  | false |  |
 
 
-## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L114)
+## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L116)
 
 External docs: https://nodejs.org/api/fs.html#fschmodpath-mode-callback
 
@@ -816,25 +844,25 @@ Asynchronously changes the permissions of a file.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
 | mode | number |  | false |  |
-| callback | function(err) |  | false |  |
+| callback | function(Error?) |  | false |  |
 
 
-## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L144)
+## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L146)
 
 Asynchronously close a file descriptor calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false |  |
-| callback | function(err) |  | true |  |
+| callback | function(Error?)? |  | false |  |
 
 
-## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L160)
+## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L162)
 
 This is a `FunctionDeclaration` named `copyFile` in `api/fs/index.js`, it's exported but undocumented.
 
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L169)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L171)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -843,15 +871,15 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object |  | true |  |
+| options | object? |  | false |  |
 
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | fs.ReadStream |  |
+| Not specified | ReadStream |  |
 
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L209)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L211)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -860,15 +888,15 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object |  | true |  |
+| options | object? |  | false |  |
 
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | fs.WriteStream |  |
+| Not specified | WriteStream |  |
 
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L253)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L255)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback
 
@@ -880,36 +908,37 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false | A file descriptor. |
-| options | Object |  | true | An options object. |
-| callback | function |  | false | The function to call after completion. |
+| options | object? \| function? |  | false | An options object. |
+| callback | function? |  | false | The function to call after completion. |
 
 
-## [`open(path, flags , mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L336)
+## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L339)
 
 Asynchronously open a file calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| flags | string | r | true |  |
-| mode | string | 0o666 | true |  |
-| callback | function(err, fd) |  | false |  |
+| flags | string? | r | false |  |
+| mode | string? | 0o666 | false |  |
+| options | object? \| function? |  | false |  |
+| callback | function(Error?, number?)? |  | false |  |
 
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L389)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L392)
 
 Asynchronously open a directory calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | Object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.withFileTypes | boolean | false | true |  |
-| callback | function(err, fd) |  | false |  |
+| options | object? \| function(Error?, Dir?) |  | false |  |
+| options.encoding | string? | utf8 | false |  |
+| options.withFileTypes | boolean? | false | false |  |
+| callback | function(Error?, Dir?)? |  | false |  |
 
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L415)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L418)
 
 Asynchronously read from an open file descriptor.
 
@@ -920,51 +949,51 @@ Asynchronously read from an open file descriptor.
 | offset | number |  | false | The position in buffer to write the data to. |
 | length | number |  | false | The number of bytes to read. |
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
-| callback | function(err, bytesRead, buffer) |  | false |  |
+| callback | function(Error?, number?, Buffer?) |  | false |  |
 
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L449)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L452)
 
 Asynchronously read all entries in a directory.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL  |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.withFileTypes | boolean | false | true |  |
-| callback | function(err, buffer) |  | false |  |
+| options | object? \| function(Error?, object) |  | false |  |
+| options.encoding ? utf8 | string? |  | false |  |
+| options.withFileTypes ? false | boolean? |  | false |  |
+| callback | function(Error?, object) |  | false |  |
 
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L500)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L503)
 
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number  |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.flag | string | r | true |  |
-| options.signal | AbortSignal |  | true |  |
-| callback | function(err, buffer) |  | false |  |
+| options | object? \| function(Error?, Buffer?) |  | false |  |
+| options.encoding ? utf8 | string? |  | false |  |
+| options.flag ? r | string? |  | false |  |
+| options.signal | AbortSignal? |  | false |  |
+| callback | function(Error?, Buffer?) |  | false |  |
 
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L573)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L576)
 
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.flag | string | r | true |  |
-| options.signal | AbortSignal |  | true |  |
-| callback | function(err, data) |  | false |  |
+| options | object? |  | false |  |
+| options.encoding ? utf8 | string? |  | false |  |
+| options.flag ? r | string? |  | false |  |
+| options.signal | AbortSignal? |  | false |  |
+| callback | function(Error?, Stats?) |  | false |  |
 
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L643)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L646)
 
 
 
@@ -972,15 +1001,15 @@ Asynchronously read all entries in a directory.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
 | data | string \| Buffer \| TypedArray \| DataView \| object  |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.mode | string | 0o666 | true |  |
-| options.flag | string | w | true |  |
-| options.signal | AbortSignal |  | true |  |
-| callback | function(err) |  | false |  |
+| options | object? |  | false |  |
+| options.encoding ? utf8 | string? |  | false |  |
+| options.mode ? 0o666 | string? |  | false |  |
+| options.flag ? w | string? |  | false |  |
+| options.signal | AbortSignal? |  | false |  |
+| callback | function(Error?) |  | false |  |
 
 
-## [`writev()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L680)
+## [`writev()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L683)
 
 This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's exported but undocumented.
 
@@ -1009,7 +1038,11 @@ This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's export
  import fs from 'socket:fs/promises'
  ```
 
-## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L62)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L38)
+
+
+
+## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L68)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode
 
@@ -1018,11 +1051,11 @@ Asynchronously check access a file.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string |  | true |  |
-| options | object |  | true |  |
+| mode | string? |  | false |  |
+| options | object? |  | false |  |
 
 
-## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L79)
+## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L85)
 
 External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 
@@ -1039,7 +1072,7 @@ External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 | Not specified | Promise<void> |  |
 
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L148)
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L154)
 
 Asynchronously creates a directory.
 
@@ -1052,10 +1085,10 @@ Asynchronously creates a directory.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Primise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
+| Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L172)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L178)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 
@@ -1074,7 +1107,7 @@ Asynchronously open a file.
 | Not specified | Promise<FileHandle> |  |
 
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L184)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L190)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -1083,17 +1116,17 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.bufferSize | number | 32 | true |  |
+| options | object? |  | false |  |
+| options.encoding | string? | utf8 | false |  |
+| options.bufferSize | number? | 32 | false |  |
 
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<FileSystem,Dir> |  |
+| Not specified | Promise<Dir> |  |
 
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L196)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L202)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1102,12 +1135,12 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string | utf8 | true |  |
-| options.withFileTypes | boolean | false | true |  |
+| options | object? |  | false |  |
+| options.encoding | string? | utf8 | false |  |
+| options.withFileTypes | boolean? | false | false |  |
 
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L229)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L235)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1116,10 +1149,10 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| options | object |  | true |  |
-| options.encoding | string \| null | null | true |  |
-| options.flag | string | r | true |  |
-| options.signal | AbortSignal |  | true |  |
+| options | object? |  | false |  |
+| options.encoding | (string \| null)? | null | false |  |
+| options.flag | string? | r | false |  |
+| options.signal | AbortSignal? |  | false |  |
 
 
 | Return Value | Type | Description |
@@ -1127,7 +1160,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | Not specified | Promise<Buffer \| string> |  |
 
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L284)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L290)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1136,8 +1169,8 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object |  | true |  |
-| options.bigint | boolean | false | true |  |
+| options | object? |  | false |  |
+| options.bigint | boolean? | false | false |  |
 
 
 | Return Value | Type | Description |
@@ -1145,7 +1178,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | Not specified | Promise<Stats> |  |
 
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L337)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L343)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1154,12 +1187,12 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| FileHandle |  | false | filename or FileHandle |
-| data | string \| Buffer \| Array \| DataView \| TypedArray \| Stream |  | false |  |
-| options | object |  | true |  |
+| data | string \| Buffer \| Array \| DataView \| TypedArray |  | false |  |
+| options | object? |  | false |  |
 | options.encoding | string \| null | utf8 | false |  |
 | options.mode | number | 0o666 | false |  |
 | options.flag | string | w | false |  |
-| options.signal | AbortSignal |  | true |  |
+| options.signal | AbortSignal? |  | false |  |
 
 
 | Return Value | Type | Description |
@@ -1316,7 +1349,11 @@ External docs: https://socketsupply.co/guides/#p2p-guide
  ```
 
 
-## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L52)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/peer.js#L25)
+
+
+
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L56)
 
 
 The Peer class is an EventEmitter. It emits events when new network events
@@ -1340,7 +1377,7 @@ window.onload = () => {
 }
 ```
 
-### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L62)
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L66)
 
 `Peer` class constructor.
 
@@ -1354,7 +1391,7 @@ window.onload = () => {
 | options.peers | Array |  | false | An array of RemotePeer |
 
 
-### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L82)
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L86)
 
 A method that will generate a public and private key pair.
  The ed25519 pair can be stored by an app with a secure API.
@@ -1365,7 +1402,7 @@ A method that will generate a public and private key pair.
 | pair | Object<Pair> | A pair of keys |
 
 
-### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L96)
+### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L100)
 
 Create a clusterId from random bytes
 
@@ -1374,7 +1411,7 @@ Create a clusterId from random bytes
 | id | string | a hex encoded sha256 hash |
 
 
-### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L107)
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L111)
 
 Emits a message to the network
 
@@ -1390,7 +1427,7 @@ Emits a message to the network
 | Not specified | Object<Packet> | The packet that will be sent when possible |
 
 
-### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L130)
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L134)
 
 Starts the process of connecting to the network.
 

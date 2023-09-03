@@ -1163,6 +1163,9 @@ export class Socket extends EventEmitter {
  * @ignore
  */
 export class SocketError extends InternalError {
+  /**
+   * @type {string}
+   */
   get code () { return this.constructor.name }
 }
 

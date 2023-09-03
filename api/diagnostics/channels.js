@@ -39,12 +39,20 @@ export function normalizeName (group, name) {
  * A general interface for diagnostic channels that can be subscribed to.
  */
 export class Channel {
-  subscribers = new Array(MIN_CHANNEL_SUBSCRIBER_SIZE)
+  #subscribers = new Array(MIN_CHANNEL_SUBSCRIBER_SIZE)
   #subscribed = 0
 
   constructor (name) {
     this.name = name
     this.group = null
+  }
+
+  /**
+   * Computed subscribers for all channels in this group.
+   * @type {Array<function>}
+   */
+  get subscribers () {
+    return this.#subscribers
   }
 
   /**
@@ -67,8 +75,9 @@ export class Channel {
    * Iterator interface
    * @ignore
    */
+  // @ts-ignore
   get [Symbol.iterator] () {
-    return this.subscribers
+    return /** @type {Array} */(this.subscribers)
   }
 
   /**
@@ -94,7 +103,11 @@ export class Channel {
    * Adds an `onMessage` subscription callback to the channel.
    * @return {boolean}
    */
-  subscribe (onMessage) {
+  subscribe (_, onMessage) {
+    if (typeof _ === 'function') {
+      onMessage = _
+    }
+
     if (typeof onMessage !== 'function') {
       throw new TypeError(
         `Expecting 'onMessage' to be a function. Got: ${typeof onMessage}`
@@ -120,7 +133,11 @@ export class Channel {
    * @param {function} onMessage
    * @return {boolean}
    */
-  unsubscribe (onMessage) {
+  unsubscribe (_, onMessage) {
+    if (typeof _ === 'function') {
+      onMessage = _
+    }
+
     if (typeof onMessage !== 'function') {
       throw new TypeError(
         `Expecting 'onMessage' to be a function. Got: ${typeof onMessage}`
@@ -255,6 +272,7 @@ export class ChannelGroup extends Channel {
 
   /**
    * Computed subscribers for all channels in this group.
+   * @type {Array<function>}
    */
   get subscribers () {
     return this.channels
@@ -280,8 +298,9 @@ export class ChannelGroup extends Channel {
    * Iterator iterface.
    * @ignore
    */
+  // @ts-ignore
   get [Symbol.iterator] () {
-    return this.channels
+    return /** @type {Array} */(this.channels)
   }
 
   /**

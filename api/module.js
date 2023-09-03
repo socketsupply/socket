@@ -33,7 +33,7 @@ import url from './url.js'
 import util from './util.js'
 
 /**
- * @typedef {(specifier: string, ctx: Module, next: function} => undefined} ModuleResolver
+ * @typedef {function(string, Module, function): undefined} ModuleResolver
  */
 
 const cache = new Map()

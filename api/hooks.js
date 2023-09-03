@@ -143,7 +143,7 @@ export class Hooks extends EventTarget {
 
   /**
    * Reference to global object
-   * @type {Global}
+   * @type {object}
    */
   get global () {
     return globalThis || new EventTarget()

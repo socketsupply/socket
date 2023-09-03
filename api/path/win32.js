@@ -1,14 +1,17 @@
+import * as posix from './posix.js'
 import location from '../location.js'
 import { Path } from './path.js'
-import posix from './posix.js'
 import url from '../url.js'
+
+import * as exports from './win32.js'
 
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
 export { posix, Path }
-export * as default from './win32.js'
-export * as win32 from './win32.js'
 
+export default exports
+
+export const win32 = exports
 export const sep = '\\'
 export const delimiter = ';'
 
