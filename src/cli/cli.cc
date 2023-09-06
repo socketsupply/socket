@@ -2086,10 +2086,6 @@ int main (const int argc, const char* argv[]) {
       log("ERROR: --test value is required.");
       exit(1);
     }
-    if (flagBuildTest && fs::exists(testFile) == false) {
-      log("ERROR: file " + testFile + " does not exist.");
-      exit(1);
-    }
 
     if (testFile.size() > 0) {
       argvForward += " --test=" + testFile;
@@ -5368,10 +5364,6 @@ int main (const int argc, const char* argv[]) {
 
     if (flagTest && testFile.size() == 0) {
       log("ERROR: --test value is required.");
-      exit(1);
-    }
-    if (flagTest && fs::exists(testFile) == false) {
-      log("ERROR: file " + testFile + " does not exist.");
       exit(1);
     }
 
