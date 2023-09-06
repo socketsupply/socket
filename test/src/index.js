@@ -1,6 +1,3 @@
-/* eslint-disable import/first */
-import 'socket:test/context' // this should be first
-
 import './webview.js'
 import './hooks.js'
 import './diagnostics.js'

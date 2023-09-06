@@ -18,6 +18,7 @@ import { format } from '../util.js'
 import deepEqual from './fast-deep-equal.js'
 import process from '../process.js'
 import os from '../os.js'
+import initContext from './context.js'
 
 const {
   SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
@@ -492,6 +493,8 @@ function printLine (line) {
 }
 
 export const GLOBAL_TEST_RUNNER = new TestRunner()
+
+initContext(GLOBAL_TEST_RUNNER)
 
 /**
  * @param {string} name
