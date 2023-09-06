@@ -4271,6 +4271,9 @@ declare module "socket:hooks" {
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
 }
+declare module "socket:test/context" {
+    export default function _default(GLOBAL_TEST_RUNNER: any): void;
+}
 declare module "socket:test/index" {
     export function getDefaultTestRunnerTimeout(): number;
     /**
@@ -5587,10 +5590,6 @@ declare module "socket:internal/worker" {
     export function onWorkerMessage(event: any): any;
     const undefined: any;
     export default undefined;
-}
-declare module "socket:test/context" {
-    const _default: any;
-    export default _default;
 }
 declare module "socket:test/harness" {
     /**
