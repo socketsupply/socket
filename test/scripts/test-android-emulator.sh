@@ -68,7 +68,7 @@ bootstrap_exit_code=""
 echo > "$temp"
 
 # Start building, OK to fail on install.
-# ssc build --headless --platform=android -r -o & build_pid=$?
+# ssc build --headless --platform=android -r -o --test=./index.js & build_pid=$?
 
 echo "info: Waiting for Android Emulator to boot"
 
@@ -108,7 +108,7 @@ else
   "$COMSPEC" "/k $adb push $fixtures_path /data/local/tmp/ssc-socket-test-fixtures && exit "
 fi
 
-ssc build --headless --platform=android -r -o || {
+ssc build --headless --platform=android -r -o --test=./index.js || {
   rc=$?
   echo "info: Shutting Android Emulator due to failed build."
   "$adb" devices | grep emulator | cut -f1 | while read -r line; do
