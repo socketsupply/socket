@@ -955,7 +955,7 @@ namespace SSC {
                             }
 
                             if (!uri.starts_with(bundleIdentifier)) {
-                              if (ext.size() == 0) {
+                              if (ext.size() == 0 && !path.ends_with(".js")) {
                                 path += ".js";
                               }
 
