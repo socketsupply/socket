@@ -1511,7 +1511,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     if (!uri.starts_with(bundleIdentifier)) {
-      if (ext.size() == 0) {
+      if (ext.size() == 0 && !path.ends_with(".js")) {
         path += ".js";
         ext = ".js";
       }
@@ -1738,7 +1738,7 @@ static void registerSchemeHandler (Router *router) {
       components.host = request.URL.host;
     } else {
       isModule = true;
-      if (ext.size() == 0) {
+      if (ext.size() == 0 && !path.ends_with(".js")) {
         path += ".js";
       }
 
