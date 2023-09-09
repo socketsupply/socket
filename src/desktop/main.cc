@@ -83,7 +83,7 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isHeadless = false;
+  bool isHeadless = isBakedHeadless() || false;
   bool isTest = false;
 
   int exitCode = 0;

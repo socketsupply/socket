@@ -2564,6 +2564,9 @@ int main (const int argc, const char* argv[]) {
     if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+
+      auto baked = String("const bool __headless = ") + (flagHeadless ? "true" : "false") + ";\n";
+      writeFile(paths.platformSpecificOutputPath / "include" / "baked-vars.hh", baked);
     }
 
     //
