@@ -5355,7 +5355,7 @@ int main (const int argc, const char* argv[]) {
 
   createSubcommand("run", runOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     String argvForward = "";
-    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["run_headless"], "true");
+    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "true"));
     bool flagTest = optionsWithoutValue.find("--test") != optionsWithoutValue.end() || optionsWithValue["--test"].size() > 0;
     String targetPlatform = optionsWithValue["--platform"];
     String testFile = optionsWithValue["--test"];
