@@ -1,4 +1,5 @@
 #include "common.hh"
+#include "baked-vars.hh" // NOLINT
 
 // These rely on project-specific, compile-time variables.
 namespace SSC {
@@ -12,6 +13,10 @@ namespace SSC {
       (const char*) __ssc_config_bytes,
       sizeof(__ssc_config_bytes)
     ));
+  }
+
+  const bool isBakedHeadless () {
+    return __headless;
   }
 
   const char* getDevHost () {
