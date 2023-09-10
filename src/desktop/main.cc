@@ -67,7 +67,8 @@ MAIN {
   static App* app_ptr = &app;
 
   app.setWindowManager(&windowManager);
-  constexpr auto _port = PORT;
+  const String _host = getDevHost();
+  const auto _port = getDevPort();
 
   const SSC::String OK_STATE = "0";
   const SSC::String ERROR_STATE = "1";
@@ -1015,7 +1016,7 @@ MAIN {
   defaultWindow->show(EMPTY_SEQ);
 
   if (_port > 0) {
-    defaultWindow->navigate(EMPTY_SEQ, "http://localhost:" + std::to_string(_port));
+    defaultWindow->navigate(EMPTY_SEQ, "http://" + _host + ":" + std::to_string(_port));
     defaultWindow->setSystemMenu(EMPTY_SEQ, String(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
