@@ -2133,7 +2133,7 @@ int main (const int argc, const char* argv[]) {
     platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
 
     String devHost = "localhost";
-    if (optionsWithValue.count("host") > 0) {
+    if (optionsWithValue.count("--host") > 0) {
       devHost = optionsWithValue["--host"];
     } else {
       if (flagBuildForIOS || flagBuildForAndroid) {
@@ -2150,7 +2150,7 @@ int main (const int argc, const char* argv[]) {
     settings.insert(std::make_pair("host", devHost));
 
     String devPort = "0";
-    if (optionsWithValue.count("port") > 0) {
+    if (optionsWithValue.count("--port") > 0) {
       devPort = optionsWithValue["--port"];
     }
     settings.insert(std::make_pair("port", devPort));
