@@ -1298,7 +1298,7 @@ bool isSetupComplete (SSC::String platform) {
   return funcs[platform]();
 }
 
-void run (const String& targetPlatform, Map& settings, const Paths& paths, const bool& flagDebugMode, const bool& flagHeadless, const String& argvForward, AndroidCliState& androidState) {
+void run (const String& targetPlatform, Map& settings, const Paths& paths, const bool& flagDebugMode, const bool& flagRunHeadless, const String& argvForward, AndroidCliState& androidState) {
   if (targetPlatform == "ios-simulator") {
     String app = (settings["build_name"] + ".app");
     auto pathToApp = paths.platformSpecificOutputPath / app;
@@ -1321,7 +1321,7 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
     exit(0);
   } else {
     auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
-    auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
+    auto exitCode = runApp(paths.pathBin / executable, argvForward, flagRunHeadless);
     return exit(exitCode);
   }
 
@@ -2070,7 +2070,8 @@ int main (const int argc, const char* argv[]) {
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
     bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
-    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "true"));
+    bool flagBuildHeadless = equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "true"));
+    bool flagRunHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end();
     bool flagShouldRun = optionsWithoutValue.find("--run") != optionsWithoutValue.end() || equal(rc["build_run"], "true");
     bool flagEntitlements = optionsWithoutValue.find("-e") != optionsWithoutValue.end() || equal(rc["build_entitlements"], "true");
     bool flagShouldNotarize = optionsWithoutValue.find("-n") != optionsWithoutValue.end() || equal(rc["build_notarize"], "true");
@@ -2091,7 +2092,7 @@ int main (const int argc, const char* argv[]) {
       argvForward += " --test=" + testFile;
     }
 
-    if (flagHeadless) {
+    if (flagBuildHeadless || flagRunHeadless) {
       argvForward += " --headless";
     }
 
@@ -2565,7 +2566,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
 
-      auto baked = String("const bool __headless = ") + (flagHeadless ? "true" : "false") + ";\n";
+      auto baked = String("const bool __headless = ") + (flagBuildHeadless ? "true" : "false") + ";\n";
       writeFile(paths.platformSpecificOutputPath / "include" / "baked-vars.hh", baked);
     }
 
@@ -5350,7 +5351,7 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      run(targetPlatform, settings, paths, flagDebugMode, flagHeadless, argvForward, androidState);
+      run(targetPlatform, settings, paths, flagDebugMode, flagRunHeadless, argvForward, androidState);
     }
 
     exit(exitCode);
@@ -5358,7 +5359,7 @@ int main (const int argc, const char* argv[]) {
 
   createSubcommand("run", runOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     String argvForward = "";
-    bool flagHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end() || equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "true"));
+    bool flagRunHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end();
     bool flagTest = optionsWithoutValue.find("--test") != optionsWithoutValue.end() || optionsWithValue["--test"].size() > 0;
     String targetPlatform = optionsWithValue["--platform"];
     String testFile = optionsWithValue["--test"];
@@ -5374,7 +5375,7 @@ int main (const int argc, const char* argv[]) {
       argvForward += " --test=" + testFile;
     }
 
-    if (flagHeadless) {
+    if (flagRunHeadless) {
       argvForward += " --headless";
     }
 
@@ -5441,7 +5442,7 @@ int main (const int argc, const char* argv[]) {
     androidState.quote = quote;
     androidState.slash = slash;
 
-    run(targetPlatform, settings, paths, false, flagHeadless, argvForward, androidState);
+    run(targetPlatform, settings, paths, false, flagRunHeadless, argvForward, androidState);
   });
 
   // first flag indicating whether option is optional
