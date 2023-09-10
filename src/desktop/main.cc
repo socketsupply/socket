@@ -84,7 +84,7 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isHeadless = isBakedHeadless() || false;
+  bool isHeadless = app.appData["build_headless"] == "true" ? true : false;
   bool isTest = false;
 
   int exitCode = 0;

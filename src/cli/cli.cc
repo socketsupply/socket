@@ -2070,7 +2070,7 @@ int main (const int argc, const char* argv[]) {
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
     bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
-    bool flagBuildHeadless = equal(rc["build_headless"], "true") || (settings["build_headless"] == "true" && !equal(rc["build_headless"], "true"));
+    bool flagBuildHeadless = settings["build_headless"] == "true";
     bool flagRunHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end();
     bool flagShouldRun = optionsWithoutValue.find("--run") != optionsWithoutValue.end() || equal(rc["build_run"], "true");
     bool flagEntitlements = optionsWithoutValue.find("-e") != optionsWithoutValue.end() || equal(rc["build_entitlements"], "true");
@@ -2565,9 +2565,6 @@ int main (const int argc, const char* argv[]) {
     if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
-
-      auto baked = String("const bool __headless = ") + (flagBuildHeadless ? "true" : "false") + ";\n";
-      writeFile(paths.platformSpecificOutputPath / "include" / "baked-vars.hh", baked);
     }
 
     //
