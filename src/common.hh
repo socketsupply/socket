@@ -227,7 +227,6 @@ namespace SSC {
   extern bool isDebugEnabled ();
   extern const char* getDevHost ();
   extern int getDevPort ();
-  extern const bool isBakedHeadless ();
 
   inline String encodeURIComponent (const String& sSrc);
   inline String decodeURIComponent (const String& sSrc);
