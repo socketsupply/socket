@@ -4274,6 +4274,89 @@ declare module "socket:test/fast-deep-equal" {
 declare module "socket:test/context" {
     export default function _default(GLOBAL_TEST_RUNNER: any): void;
 }
+declare module "socket:test/dom-helpers" {
+    /**
+     * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
+     *
+     * @export
+     * @param {string|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+     * @returns {Element} The HTMLElement, Element, or Window that corresponds to the selector.
+     * @throws {Error} Throws an error if the `selector` is not a string that resolves to an HTMLElement or not an instance of HTMLElement, Element, or Window.
+     *
+     */
+    export function toElement(selector: string | Element): Element;
+    /**
+     * Waits for an element to appear in the DOM and resolves the promise when it does.
+     *
+     * @export
+     * @param {Object} args - Configuration arguments.
+     * @param {string} [args.selector] - The CSS selector to look for.
+     * @param {boolean} [args.visible=true] - Whether the element should be visible.
+     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
+     * @param {() => HTMLElement | Element | null | undefined} [lambda] - An optional function that returns the element. Used if the `selector` is not provided.
+     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element.
+     *
+     * @throws {Error} - Throws an error if neither `lambda` nor `selector` is provided.
+     * @throws {Error} - Throws an error if the element is not found within the timeout.
+     *
+     * @example
+     * waitFor({ selector: '#my-element', visible: true, timeout: 5000 })
+     *   .then(el => console.log('Element found:', el))
+     *   .catch(err => console.log('Element not found:', err));
+     */
+    export function waitFor(args: {
+        selector?: string;
+        visible?: boolean;
+        timeout?: number;
+    }, lambda?: () => HTMLElement | Element | null | undefined): Promise<Element | HTMLElement | void>;
+    /**
+     * Waits for an element's text content to match a given string or regular expression.
+     *
+     * @export
+     * @param {Object} args - Configuration arguments.
+     * @param {Element} args.element - The root element from which to begin searching.
+     * @param {string} [args.text] - The text to search for within elements.
+     * @param {RegExp} [args.regex] - A regular expression to match against element text content.
+     * @param {boolean} [args.multipleTags=false] - Whether to look for text across multiple sibling elements.
+     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
+     * @returns {Promise<Element|HTMLElement|null|undefined>} - A promise that resolves to the found element or null.
+     *
+     * @example
+     * waitForText({ element: document.body, text: 'Hello', timeout: 5000 })
+     *   .then(el => console.log('Element found:', el))
+     *   .catch(err => console.log('Element not found:', err));
+     */
+    export function waitForText(args: {
+        element: Element;
+        text?: string;
+        regex?: RegExp;
+        multipleTags?: boolean;
+        timeout?: number;
+    }): Promise<Element | HTMLElement | null | undefined>;
+    /**
+     * @export
+     * @param {{
+     *   event: string | Event,
+     *   element?: HTMLElement | Element | window
+     * }} args
+     *
+     * @returns {void}
+     *
+     * @throws {Error} Throws an error if the `event` is not a string that can be converted to a CustomEvent or not an instance of Event.
+     */
+    export function event(args: {
+        event: string | Event;
+        element?: HTMLElement | Element | (Window & typeof globalThis);
+    }): void;
+    /**
+     * @export
+     * Copy pasted from https://raw.githubusercontent.com/testing-library/jest-dom/master/src/to-be-visible.js
+     * @param {Element | HTMLElement} element
+     * @param {Element | HTMLElement} [previousElement]
+     * @returns {boolean}
+     */
+    export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
+}
 declare module "socket:test/index" {
     export function getDefaultTestRunnerTimeout(): number;
     /**
@@ -4403,6 +4486,238 @@ declare module "socket:test/index" {
          * @returns {void}
          */
         throws(fn: Function, expected?: RegExp | any, message?: string): void;
+        /**
+         * Sleep for ms with an optional msg
+         *
+         * @param {number} ms
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.sleep(100)
+         */
+        sleep(ms: number, msg?: string): Promise<void>;
+        /**
+         * Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
+         * tests are run headlessly.
+         *
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.requestAnimationFrame()
+         */
+        requestAnimationFrame(msg?: string): Promise<void>;
+        /**
+         * Dispatch the `click`` method on an element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.click('.class button', 'Click a button')
+         */
+        click(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Dispatch the click window.MouseEvent on an element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.eventClick('.class button', 'Click a button with an event')
+         */
+        eventClick(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Dispatch an event on the target.
+         *
+         * @param {string | Event} event - The event name or Event instance to dispatch.
+         * @param {string|HTMLElement|Element} target - A CSS selector string, or an instance of HTMLElement, or Element to dispatch the event on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
+         */
+        dispatchEvent(event: string | Event, target: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Call the focus method on element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.focus('#my-div')
+         */
+        focus(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Call the blur method on element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.blur('#my-div')
+         */
+        blur(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Consecutively set the str value of the element specified by selector to simulate typing.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} str - The string to type into the :focus element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
+         */
+        type(selector: string | HTMLElement | Element, str: string, msg?: string): Promise<void>;
+        /**
+         * appendChild an element el to a parent selector element.
+         *
+         * @param {string|HTMLElement|Element} parentSelector - A CSS selector string, or an instance of HTMLElement, or Element to appendChild on.
+         * @param {HTMLElement|Element} el - A element to append to the parent element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * const myElement = createElement('div')
+         * await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
+         */
+        appendChild(parentSelector: string | HTMLElement | Element, el: HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Remove an element from the DOM.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to remove from the DOM.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.removeElement('#dom-selector', 'Remove #dom-selector')
+         */
+        removeElement(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is visible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.elementVisible('#dom-selector','Element is visible')
+         */
+        elementVisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * await t.elementInvisible('#dom-selector','Element is invisible')
+         */
+        elementInvisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|(() => HTMLElement|Element|null|undefined)} querySelectorOrFn - A query string or a function that returns an element.
+         * @param {Object} [opts]
+         * @param {boolean} [opts.visible] - The element needs to be visible.
+         * @param {number} [opts.timeout] - The maximum amount of time to wait.
+         * @param {string} [msg]
+         * @returns {Promise<HTMLElement|Element|void>}
+         *
+         * @example
+         * await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
+         */
+        waitFor(querySelectorOrFn: string | (() => HTMLElement | Element | null | undefined), opts?: {
+            visible?: boolean;
+            timeout?: number;
+        }, msg?: string): Promise<HTMLElement | Element | void>;
+        /**
+         * @typedef {Object} WaitForTextOpts
+         * @property {string} [text] - The text to wait for
+         * @property {number} [timeout]
+         * @property {Boolean} [multipleTags]
+         * @property {RegExp} [regex] The regex to wait for
+         */
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {WaitForTextOpts | string | RegExp} [opts]
+         * @param {string} [msg]
+         * @returns {Promise<HTMLElement|Element|void>}
+         *
+         * @example
+         * await t.waitForText('#dom-selector', 'Text to wait for')
+         *
+         * @example
+         * await t.waitForText('#dom-selector', /hello/i)
+         *
+         * @example
+         * await t.waitForText('#dom-selector', {
+         *   text: 'Text to wait for',
+         *   multipleTags: true
+         * })
+         */
+        waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
+            /**
+             * - The text to wait for
+             */
+            text?: string;
+            timeout?: number;
+            multipleTags?: boolean;
+            /**
+             * The regex to wait for
+             */
+            regex?: RegExp;
+        }, msg?: string): Promise<HTMLElement | Element | void>;
+        /**
+         * Run a querySelector as an assert and also get the results
+         *
+         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
+         * @param {string} [msg]
+         * @returns {HTMLElement | Element}
+         *
+         * @example
+         * const element = await t.querySelector('#dom-selector')
+         */
+        querySelector(selector: string, msg?: string): HTMLElement | Element;
+        /**
+         * Run a querySelectorAll as an assert and also get the results
+         *
+         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
+         * @param {string} [msg]
+         @returns {Array<HTMLElement | Element>}
+         *
+         * @example
+         * const elements = await t.querySelectorAll('#dom-selector', '')
+         */
+        querySelectorAll(selector: string, msg?: string): Array<HTMLElement | Element>;
+        /**
+         * Retrieves the computed styles for a given element.
+         *
+         * @param {string|Element} selector - The CSS selector or the Element object for which to get the computed styles.
+         * @param {string} [msg] - An optional message to display when the operation is successful. Default message will be generated based on the type of selector.
+         * @returns {CSSStyleDeclaration} - The computed styles of the element.
+         * @throws {Error} - Throws an error if the element has no `ownerDocument` or if `ownerDocument.defaultView` is not available.
+         *
+         * @example
+         * // Using CSS selector
+         * const style = getComputedStyle('.my-element', 'Custom success message');
+         *
+         * @example
+         * // Using Element object
+         * const el = document.querySelector('.my-element');
+         * const style = getComputedStyle(el);
+         */
+        getComputedStyle(selector: string | Element, msg?: string): CSSStyleDeclaration;
         /**
          * @param {boolean} pass
          * @param {unknown} actual
