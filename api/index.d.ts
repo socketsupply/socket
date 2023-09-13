@@ -4715,59 +4715,6 @@ declare module "socket:module" {
     import url from "socket:url";
     
 }
-declare module "socket:node-esm-loader" {
-    export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
-    export default resolve;
-}
-declare module "socket:stream-relay/encryption" {
-    export class Encryption {
-        constructor(config?: {});
-        keys: {};
-        publicKey: any;
-        privateKey: any;
-        add(publicKey: any, privateKey: any): void;
-        get(to: any): any;
-        has(to: any): boolean;
-        /**
-         * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
-         * ciphertext `message` for a `receiver` identity. Receivers who open the
-         * `message` ciphertext can be guaranteed non-repudiation without relying on
-         * the packet chain integrity.
-         *
-         * let m = Open(in, pk, sk)
-         * let sig = Slice(m, 0, 64)
-         * let ct = Slice(m, 64)
-         * if (verify(sig, ct, pk)) {
-         *   let out = open(ct, pk, sk)
-         * }
-         */
-        open(message: any, to: any): any;
-        /**
-         * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
-         * a plaintext `message` for a `receiver` identity. This prevents repudiation
-         * attacks and doesn't rely on packet chain guarantees.
-         *
-         * let ct = Seal(sender | pt, receiver)
-         * let sig = Sign(ct, sk)
-         * let out = Seal(sig | ct)
-         *
-         * Essentially, in an setup between Alice & Bob, this means:
-         * - Only Bob sees the plaintext
-         * - Alice wrote the plaintext and the ciphertext
-         * - Only Bob can see that Alice wrote the plaintext and ciphertext
-         * - Bob cannot forward the message without invalidating Alice's signature.
-         * - The outer encryption serves to prevent an attacker from replacing Alice's
-         *   signature. As with _sign-encrypt-sign (SES), ESE is a variant of
-         *   including the recipient's name inside the plaintext, which is then signed
-         *   and encrypted Alice signs her plaintext along with her ciphertext, so as
-         *   to protect herself from a laintext-substitution attack. At the same time,
-         *   Alice's signed plaintext gives Bob non-repudiation.
-         *
-         * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
-         */
-        seal(message: any, to: any): any;
-    }
-}
 declare module "socket:stream-relay/packets" {
     export function trim(buf: Buffer): any;
     /**
@@ -4779,7 +4726,7 @@ declare module "socket:stream-relay/packets" {
     /**
      * The version of the protocol.
      */
-    export const VERSION: 2;
+    export const VERSION: 3;
     /**
      * The size in bytes of the prefix magic bytes.
      */
@@ -4795,7 +4742,7 @@ declare module "socket:stream-relay/packets" {
     /**
      * The size in bytes of the `gops` field.
      */
-    export const HOPS_BYTES: 4;
+    export const HOPS_BYTES: 1;
     /**
      * The size in bytes of the `clock` field.
      */
@@ -4809,9 +4756,13 @@ declare module "socket:stream-relay/packets" {
      */
     export const MESSAGE_ID_BYTES: 32;
     /**
-     * The size in bytes of the `cluster_id` field.
+     * The size in bytes of the `clusterId` field.
      */
     export const CLUSTER_ID_BYTES: 32;
+    /**
+     * The size in bytes of the `cluster_id` field.
+     */
+    export const SUBCLUSTER_ID_BYTES: 32;
     /**
      * The size in bytes of the `previous_id` field.
      */
@@ -4821,17 +4772,29 @@ declare module "socket:stream-relay/packets" {
      */
     export const NEXT_ID_BYTES: 32;
     /**
-     * The size in bytes of the `to` field.
-     */
-    export const TO_BYTES: 32;
-    /**
      * The size in bytes of the `usr1` field.
      */
     export const USR1_BYTES: 32;
     /**
+     * The size in bytes of the `usr2` field.
+     */
+    export const USR2_BYTES: 32;
+    /**
+     * The size in bytes of the `stream_to` field.
+     */
+    export const STREAM_TO_BYTES: 32;
+    /**
+     * The size in bytes of the `stream_from` field.
+     */
+    export const STREAM_FROM_BYTES: 32;
+    /**
      * The size in bytes of the `message_length` field.
      */
     export const MESSAGE_LENGTH_BYTES: 2;
+    /**
+     * The size in bytes of the `message_length` field.
+     */
+    export const MESSAGE_SIG_BYTES: 64;
     /**
      * The size in bytes of the `message` field.
      */
@@ -4848,7 +4811,7 @@ declare module "socket:stream-relay/packets" {
      * The cache TTL in milliseconds.
      */
     export const CACHE_TTL: number;
-    export function validatePacket(message: object, constraints: {
+    export function validatePacket(o: any, constraints: {
         [key: string]: {
             required: boolean;
             type: string;
@@ -4881,7 +4844,7 @@ declare module "socket:stream-relay/packets" {
          */
         static isPacket(packet: Buffer | Uint8Array | number[] | object | Packet): boolean;
         /**
-         */
+        */
         static encode(p: any): Promise<Uint8Array>;
         static decode(buf: any): Packet;
         /**
@@ -4892,14 +4855,19 @@ declare module "socket:stream-relay/packets" {
         type: number;
         version: number;
         clock: number;
+        hops: number;
         index: number;
-        clusterId: string;
         previousId: string;
         packetId: string;
         nextId: string;
-        to: string;
+        clusterId: string;
+        subclusterId: string;
+        streamTo: string;
+        streamFrom: string;
         usr1: string;
+        usr2: string;
         message: string;
+        sig: any;
         #private;
     }
     export class PacketPing extends Packet {
@@ -4923,42 +4891,124 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketJoin extends Packet {
         static type: number;
-        constructor({ clock, message }: {
+        constructor({ clock, clusterId, message }: {
             clock: any;
+            clusterId: any;
             message: any;
         });
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, packetId, clusterId, nextId, clock, to, usr1, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, previousId }: {
             message: any;
+            sig: any;
             packetId: any;
             clusterId: any;
+            subclusterId: any;
             nextId: any;
             clock: any;
             to: any;
             usr1: any;
+            usr2: any;
+            previousId: any;
+        });
+    }
+    export class PacketStream extends Packet {
+        static type: number;
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, streamTo, streamFrom, previousId }: {
+            message: any;
+            sig: any;
+            packetId: any;
+            clusterId: any;
+            subclusterId: any;
+            nextId: any;
+            clock: any;
+            usr1: any;
+            usr2: any;
+            streamTo: any;
+            streamFrom: any;
             previousId: any;
         });
     }
     export class PacketSync extends Packet {
         static type: number;
-        constructor({ packetId, clusterId, message }: {
+        constructor({ packetId, message }: {
             packetId: any;
-            clusterId: any;
             message?: string;
         });
     }
     export class PacketQuery extends Packet {
         static type: number;
-        constructor({ packetId, clusterId, message }: {
+        constructor({ packetId, subclusterId, message }: {
             packetId: any;
-            clusterId: any;
+            subclusterId: any;
             message?: {};
         });
     }
     export default Packet;
     import { Buffer } from "socket:buffer";
+}
+declare module "socket:stream-relay/encryption" {
+    export class Encryption {
+        static createSharedKey(seed: any): Promise<any>;
+        static createClusterId(sharedKey: any): Promise<any>;
+        static createKeyPair(seed: any): Promise<any>;
+        static createId(str?: Buffer): Promise<string>;
+        static createSubclusterId(value: any): Promise<any>;
+        /**
+         * @param {Buffer} b - The message to sign
+         * @param {Uint8Array} sk - The secret key to use
+         */
+        static sign(b: Buffer, sk: Uint8Array): any;
+        /**
+         * @param {Buffer} b - The message to verify
+         * @param {Uint8Array} pk - The public key to use
+         * @return {number} - Returns non zero if the buffer could not be verified
+         */
+        static verify(b: Buffer, sig: any, pk: Uint8Array): number;
+        keys: {};
+        add(publicKey: any, privateKey: any): void;
+        has(to: any): boolean;
+        /**
+         * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
+         * ciphertext `message` for a `receiver` identity. Receivers who open the
+         * `message` ciphertext can be guaranteed non-repudiation without relying on
+         * the packet chain integrity.
+         *
+         * let m = Open(in, pk, sk)
+         * let sig = Slice(m, 0, 64)
+         * let ct = Slice(m, 64)
+         * if (verify(sig, ct, pk)) {
+         *   let out = open(ct, pk, sk)
+         * }
+         */
+        open(message: any, v: any): any;
+        /**
+         * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
+         * a plaintext `message` for a `receiver` identity. This prevents repudiation
+         * attacks and doesn't rely on packet chain guarantees.
+         *
+         * let ct = Seal(sender | pt, receiver)
+         * let sig = Sign(ct, sk)
+         * let out = Seal(sig | ct)
+         *
+         * In an setup between Alice & Bob, this means:
+         * - Only Bob sees the plaintext
+         * - Alice wrote the plaintext and the ciphertext
+         * - Only Bob can see that Alice wrote the plaintext and ciphertext
+         * - Bob cannot forward the message without invalidating Alice's signature.
+         * - The outer encryption serves to prevent an attacker from replacing Alice's
+         *   signature. As with _sign-encrypt-sign (SES), ESE is a variant of
+         *   including the recipient's name inside the plaintext, which is then signed
+         *   and encrypted Alice signs her plaintext along with her ciphertext, so as
+         *   to protect herself from a laintext-substitution attack. At the same time,
+         *   Alice's signed plaintext gives Bob non-repudiation.
+         *
+         * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
+         */
+        seal(message: any, v: any): any;
+    }
+    import Buffer from "socket:buffer";
 }
 declare module "socket:stream-relay/cache" {
     /**
@@ -5019,25 +5069,24 @@ declare module "socket:stream-relay/cache" {
          * @type {number}
          */
         get size(): number;
-        toJSON(): [any, any][];
         /**
          * Inserts a `CacheEntry` value `v` into the cache at key `k`.
          * @param {string} k
          * @param {CacheEntry} v
-         * @return {Promise<boolean>}
+         * @return {boolean}
          */
-        insert(k: string, v: CacheEntry): Promise<boolean>;
+        insert(k: string, v: CacheEntry): boolean;
         /**
          * Gets a `CacheEntry` value at key `k`.
          * @param {string} k
-         * @return {Promise<CacheEntry?>}
+         * @return {CacheEntry?}
          */
-        get(k: string): Promise<CacheEntry | null>;
+        get(k: string): CacheEntry | null;
         /**
          * @param {string} k
-         * @return {Promise<boolean>}
+         * @return {boolean}
          */
-        delete(k: string): Promise<boolean>;
+        delete(k: string): boolean;
         /**
          * Predicate to determine if cache contains an entry at key `k`.
          * @param {string} k
@@ -5048,7 +5097,7 @@ declare module "socket:stream-relay/cache" {
          * Composes an indexed packet into a new `Packet`
          * @param {Packet} packet
          */
-        compose(packet: Packet): Promise<Packet>;
+        compose(packet: Packet, source?: CacheData): Promise<Packet>;
         sha1(value: any, toHex: any): Promise<any>;
         /**
          * summarize returns a terse yet comparable summary of the cache contents.
@@ -5098,74 +5147,103 @@ declare module "socket:stream-relay/cache" {
     import { Buffer } from "socket:buffer";
     import { Packet } from "socket:stream-relay/packets";
 }
-declare module "socket:stream-relay/scheme-ptp" {
-    export function formatPeerId(forPubKey: any): any;
-    export function generateNetworkIdentity(): {
-        publicKey: any;
-        privateKey: any;
-        encPublicKey: any;
-        encPrivateKey: any;
-    };
-    export function registerNetworkIdentity(keyInfo: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: boolean;
-        err?: undefined;
-    };
-    export function lookupNetworkIdentities(forPubKey?: any): {
-        privateKey: any;
-        encPrivateKey: any;
-        label: any;
-        publicKey: any;
-        encPublicKey: any;
-    }[];
-    export function readNetworkMessage(message: any, forPubKey?: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: any;
-        err?: undefined;
-    };
-    export function buildIdentityGroupMessage(groupPubKey: any, label?: string): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: any;
-        err?: undefined;
-    };
-    export function verifyIdentityGroupMessage(groupMsg: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: any;
-        err?: undefined;
-    };
-    export function registerRemoteIdentityGroup(groupMsg: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: boolean;
-        err?: undefined;
-    };
-    export function _clearRegistry(confirmStr: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: boolean;
-        err?: undefined;
-    };
-    export class PacketIdentityGroup extends Packet {
-        static type: number;
-    }
-    export class PTP {
-        static init(peer: any, config: any, peerType?: string): void;
-    }
-    namespace _default {
-        export { PTP };
-    }
-    export default _default;
-    import { Packet } from "socket:stream-relay/packets";
+declare module "socket:stream-relay/nat" {
+    /**
+     * The NAT type is encoded using 5 bits:
+     *
+     * 0b00001 : the lsb indicates if endpoint dependence information is included
+     * 0b00010 : the second bit indicates the endpoint dependence value
+     *
+     * 0b00100 : the third bit indicates if firewall information is included
+     * 0b01000 : the fourth bit describes which requests can pass the firewall, only known IPs (0) or any IP (1)
+     * 0b10000 : the fifth bit describes which requests can pass the firewall, only known ports (0) or any port (1)
+     */
+    /**
+     * Every remote will see the same IP:PORT mapping for this peer.
+     *
+     *                        :3333 ┌──────┐
+     *   :1111                ┌───▶ │  R1  │
+     * ┌──────┐    ┌───────┐  │     └──────┘
+     * │  P1  ├───▶│  NAT  ├──┤
+     * └──────┘    └───────┘  │     ┌──────┐
+     *                        └───▶ │  R2  │
+     *                        :3333 └──────┘
+     */
+    export const MAPPING_ENDPOINT_INDEPENDENT: 3;
+    /**
+     * Every remote will see a different IP:PORT mapping for this peer.
+     *
+     *                        :4444 ┌──────┐
+     *   :1111                ┌───▶ │  R1  │
+     * ┌──────┐    ┌───────┐  │     └──────┘
+     * │  P1  ├───▶│  NAT  ├──┤
+     * └──────┘    └───────┘  │     ┌──────┐
+     *                        └───▶ │  R2  │
+     *                        :5555 └──────┘
+     */
+    export const MAPPING_ENDPOINT_DEPENDENT: 1;
+    /**
+     * The firewall allows the port mapping to be accessed by:
+     * - Any IP:PORT combination (FIREWALL_ALLOW_ANY)
+     * - Any PORT on a previously connected IP (FIREWALL_ALLOW_KNOWN_IP)
+     * - Only from previously connected IP:PORT combinations (FIREWALL_ALLOW_KNOWN_IP_AND_PORT)
+     */
+    export const FIREWALL_ALLOW_ANY: 28;
+    export const FIREWALL_ALLOW_KNOWN_IP: 12;
+    export const FIREWALL_ALLOW_KNOWN_IP_AND_PORT: 4;
+    /**
+     * The initial state of the nat is unknown and its value is 0
+     */
+    export const UNKNOWN: 0;
+    /**
+     * Full-cone NAT, also known as one-to-one NAT
+     *
+     * Any external host can send packets to iAddr:iPort by sending packets to eAddr:ePort.
+     *
+     * @summary its a packet party at this mapping and everyone's invited
+     */
+    export const UNRESTRICTED: number;
+    /**
+     * (Address)-restricted-cone NAT
+     *
+     * An external host (hAddr:any) can send packets to iAddr:iPort by sending packets to eAddr:ePort only
+     * if iAddr:iPort has previously sent a packet to hAddr:any. "Any" means the port number doesn't matter.
+     *
+     * @summary The NAT will drop your packets unless a peer within its network has previously messaged you from *any* port.
+     */
+    export const ADDR_RESTRICTED: number;
+    /**
+     * Port-restricted cone NAT
+     *
+     * An external host (hAddr:hPort) can send packets to iAddr:iPort by sending
+     * packets to eAddr:ePort only if iAddr:iPort has previously sent a packet to
+     * hAddr:hPort.
+     *
+     * @summary The NAT will drop your packets unless a peer within its network
+     * has previously messaged you from this *specific* port.
+     */
+    export const PORT_RESTRICTED: number;
+    /**
+     * Symmetric NAT
+     *
+     * Only an external host that receives a packet from an internal host can send
+     * a packet back.
+     *
+     * @summary The NAT will only accept replies to a correspondence initialized
+     * by itself, the mapping it created is only valid for you.
+     */
+    export const ENDPOINT_RESTRICTED: number;
+    export function isEndpointDependenceDefined(nat: any): boolean;
+    export function isFirewallDefined(nat: any): boolean;
+    export function isValid(nat: any): boolean;
+    export function toString(n: any): "UNRESTRICTED" | "ADDR_RESTRICTED" | "PORT_RESTRICTED" | "ENDPOINT_RESTRICTED" | "UNKNOWN";
+    export function toStringStrategy(n: any): "STRATEGY_DEFER" | "STRATEGY_DIRECT_CONNECT" | "STRATEGY_TRAVERSAL_OPEN" | "STRATEGY_TRAVERSAL_CONNECT" | "STRATEGY_PROXY" | "STRATEGY_UNKNOWN";
+    export const STRATEGY_DEFER: 0;
+    export const STRATEGY_DIRECT_CONNECT: 1;
+    export const STRATEGY_TRAVERSAL_OPEN: 2;
+    export const STRATEGY_TRAVERSAL_CONNECT: 3;
+    export const STRATEGY_PROXY: 4;
+    export function connectionStrategy(a: any, b: any): 0 | 1 | 2 | 3 | 4;
 }
 declare module "socket:stream-relay/index" {
     /**
@@ -5175,25 +5253,20 @@ declare module "socket:stream-relay/index" {
      * @param {number} type
      * @param {number} port
      * @param {string} address
-     * @param {number?} [threshold = DEFAULT_RATE_LIMIT_THRESHOLD]
      * @return {boolean}
      */
-    export function rateLimit(rates: Map<any, any>, type: number, port: number, address: string, threshold?: number | null): boolean;
+    export function rateLimit(rates: Map<any, any>, type: number, port: number, address: string, subclusterIdQuota: any): boolean;
+    export function debug(...args: any[]): void;
     /**
      * Retry delay in milliseconds for ping.
      * @type {number}
      */
     export const PING_RETRY: number;
     /**
-     * Default port to bind peer UDP socket port to.
+     * Probe wait timeout in milliseconds.
      * @type {number}
      */
-    export const DEFAULT_PORT: number;
-    /**
-     * Default static test port to bind peer UDP socket port to.
-     * @type {number}
-     */
-    export const DEFAULT_TEST_PORT: number;
+    export const PROBE_WAIT: number;
     /**
      * Default keep alive timeout.
      * @type {number}
@@ -5216,9 +5289,9 @@ declare module "socket:stream-relay/index" {
          *   peerId?: string,
          *   address?: string,
          *   port?: number,
-         *   natType?: string,
-         *   clusterId?: string,
-         *   pingId?: string,
+         *   natType?: number,
+         *   clusters: object,
+         *   reflectionId?: string,
          *   distance?: number,
          *   publicKey?: string,
          *   privateKey?: string,
@@ -5231,89 +5304,274 @@ declare module "socket:stream-relay/index" {
             peerId?: string;
             address?: string;
             port?: number;
-            natType?: string;
-            clusterId?: string;
-            pingId?: string;
+            natType?: number;
+            clusters: object;
+            reflectionId?: string;
             distance?: number;
             publicKey?: string;
             privateKey?: string;
             clock?: number;
             lastUpdate?: number;
             lastRequest?: number;
-        });
+        }, peer: any);
         peerId: any;
         address: any;
         port: number;
         natType: any;
-        clusterId: any;
+        clusters: {};
         pingId: any;
         distance: number;
-        publicKey: any;
-        privateKey: any;
+        connected: boolean;
+        probed: boolean;
+        proxy: any;
         clock: number;
-        syncing: boolean;
+        uptime: number;
         lastUpdate: number;
         lastRequest: number;
+        localPeer: any;
+        write(sharedKey: any, args: any): Promise<void>;
     }
-    export function createPeer(options: {
-        createSocket: (arg0: 'udp4', arg1: null, arg2: object | null) => object;
-    }): {
+    export function wrap(dgram: any): {
         new (persistedState?: object | null): {
             port: any;
             address: any;
-            natType: any;
-            clusterId: any;
+            natType: number;
+            nextNatType: number;
+            clusters: {};
             reflectionId: any;
+            reflectionTimeout: any;
+            reflectionStage: number;
             reflectionFirstResponder: any;
             peerId: string;
-            pingStart: number;
+            isListening: boolean;
             ctime: number;
             lastUpdate: number;
             closing: boolean;
-            listening: boolean;
             unpublished: {};
             cache: any;
-            queries: {};
-            controlPackets: {};
             uptime: number;
             maxHops: number;
             bdpCache: number[];
             onListening: any;
             onDelete: any;
             firewall: any;
+            rates: Map<any, any>;
+            streamBuffer: Map<any, any>;
+            controlPackets: Map<any, any>;
             peers: any;
             encryption: Encryption;
             config: any;
-            onError: (err: Error) => void;
+            _onError: (err: any) => any;
             socket: any;
-            testSocket: any;
-            init(): Promise<any>;
-            connecting: number;
-            send(data: any, ...args: any[]): Promise<boolean>;
-            getState(): {
-                config: any;
-                data: any[];
-                unpublished: {};
-            };
-            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): any;
-            mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
-            timer(delay: any, repeat: any, fn: any): Promise<boolean>;
-            requestReflection(reflectionId: any): Promise<boolean>;
-            ping(peer: any, props?: {}): Promise<PacketPing>;
-            setPeer(peerId: any, packet: any, port: any, address: any): any;
-            join(): Promise<void>;
-            publish(args: any): Promise<void | PacketPublish[]>;
-            sync(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onSync(packet: any, port: any, address: any): Promise<void>;
-            onQuery(packet: any, port: any, address: any): Promise<void>;
+            probeSocket: any;
+            /**
+             * An implementation for clearning an interval that can be overridden by the test suite
+             * @param Number the number that identifies the timer
+             * @return {undefined}
+             * @ignore
+             */
+            _clearInterval(tid: any): undefined;
+            /**
+             * An implementation for clearning a timeout that can be overridden by the test suite
+             * @param Number the number that identifies the timer
+             * @return {undefined}
+             * @ignore
+             */
+            _clearTimeout(tid: any): undefined;
+            /**
+             * An implementation of an internal timer that can be overridden by the test suite
+             * @return {Number}
+             * @ignore
+             */
+            _setInterval(fn: any, t: any): number;
+            /**
+             * An implementation of an timeout timer that can be overridden by the test suite
+             * @return {Number}
+             * @ignore
+             */
+            _setTimeout(fn: any, t: any): number;
+            /**
+             * A method that encapsulates the listing procedure
+             * @return {undefined}
+             * @ignore
+             */
+            _listen(): undefined;
+            init(cb: any): Promise<any>;
+            onReady: any;
+            mainLoopTimer: number;
+            /**
+             * Continuously evaluate the state of the peer and its network
+             * @return {undefined}
+             * @ignore
+             */
+            _mainLoop(ts: any): undefined;
+            /**
+             * Continuously evaluate the state of the peer and its network
+             * @param {Buffer} data - An encoded packet
+             * @param {number} port - The desination port of the remote host
+             * @param {string} address - The destination address of the remote host
+             * @param {Socket=this.socket} socket - The socket to send on
+             * @return {undefined}
+             * @ignore
+             */
+            send(data: Buffer, port: number, address: string, socket?: any): undefined;
+            /**
+             * Send any unpublished packets
+             * @return {undefined}
+             * @ignore
+             */
+            sendUnpublished(): undefined;
+            /**
+             * Get the serializable state of the peer (can be passed to the constructor or create method)
+             * @return {undefined}
+             */
+            getState(): undefined;
+            /**
+             * Get a selection of known peers
+             * @return {Array<RemotePeer>}
+             * @ignore
+             */
+            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): Array<RemotePeer>;
+            /**
+             * Send an eventually consistent packet to a selection of peers (fanout)
+             * @return {undefined}
+             * @ignore
+             */
+            mcast(packet: any, packetId: any, isTaxed: any, ignorelist?: any[]): undefined;
+            /**
+             * The process of determining this peer's NAT behavior (firewall and dependentness)
+             * @return {undefined}
+             * @ignore
+             */
+            requestReflection(): undefined;
+            probeReflectionTimeout: number;
+            /**
+             * Ping another peer
+             * @return {PacketPing}
+             * @ignore
+             */
+            ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
+            /**
+             * Add a peer to this peer's known peers list
+             * @return {RemotePeer}
+             * @ignore
+             */
+            addPeer(args: any): RemotePeer;
+            /**
+             * @return {RemotePeer}
+             * @ignore
+             */
+            getPeer(id: any): RemotePeer;
+            /**
+             * @return {RemotePeer}
+             * @ignore
+             */
+            updatePeer(args: any): RemotePeer;
+            /**
+             * This should be called at least once when an app starts to multicast
+             * this peer, and starts querying the network to discover peers.
+             * @param {object} keys - Created by `Encryption.createKeyPair()`.
+             * @param {object=} opts - Options
+             * @param {number=MAX_BANDWIDTH} opts.rateLimit - How many requests per second to allow for this subclusterId.
+             * @return {RemotePeer}
+             */
+            join(sharedKey: any, opts?: object | undefined): RemotePeer;
+            /**
+             * @param {Packet} T - The constructor to be used to create packets.
+             * @param {Any} message - The message to be split and packaged.
+             * @return {Array<Packet<T>>}
+             * @ignore
+             */
+            _message2packets(T: Packet, message: Any, args: any): Array<Packet<Packet>>;
+            /**
+             * Sends a packet into the network that will be replicated and buffered.
+             * Each peer that receives it will buffer it until TTL and then replicate
+             * it provided it has has not exceeded their maximum number of allowed hops.
+             *
+             * @param {object} keys - the public and private key pair created by `Encryption.createKeyPair()`.
+             * @param {object} args - The arguments to be applied.
+             * @param {Buffer} args.message - The message to be encrypted by keys and sent.
+             * @param {Packet<T>=} args.packet - The previous packet in the packet chain.
+             * @param {Buffer} args.usr1 - 32 bytes of arbitrary clusterId in the protocol framing.
+             * @param {Buffer} args.usr2 - 32 bytes of arbitrary clusterId in the protocol framing.
+             * @return {Array<PacketPublish>}
+             */
+            publish(sharedKey: any, args: {
+                message: Buffer;
+                packet?: Packet<T> | undefined;
+                usr1: Buffer;
+                usr2: Buffer;
+            }): Array<PacketPublish>;
+            /**
+             * @return {undefined}
+             * @ignore
+             */
+            sync(peer: any, packet: any, port: any, address: any): undefined;
             close(): void;
-            onConnection(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onPing(packet: any, port: any, address: any): Promise<void>;
-            onPong(packet: any, port: any, address: any): Promise<void>;
-            onIntro(packet: any, port: any, address: any): Promise<void>;
-            onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
-            onPublish(packet: any, port: any, address: any, data: any): Promise<void>;
-            rateLimit(data: any, port: any, address: any): boolean;
+            /**
+             * A connection was made, call the onConnection if it is defined by the user.
+             * @return {undefined}
+             * @ignore
+             */
+            _onConnection(packet: any, peer: any, port: any, address: any): undefined;
+            /**
+             * Received a Sync Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onSync(packet: any, port: any, address: any): undefined;
+            /**
+             * Received a Query Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onQuery(packet: any, port: any, address: any): undefined;
+            /**
+             * Received a Ping Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onPing(packet: any, port: any, address: any): undefined;
+            /**
+             * Received a Pong Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onPong(packet: any, port: any, address: any): undefined;
+            /**
+             * Received an Intro Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onIntro(packet: any, port: any, address: any): undefined;
+            /**
+             * Received an Join Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onJoin(packet: any, port: any, address: any, data: any): undefined;
+            /**
+             * Received an Publish Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onPublish(packet: any, port: any, address: any, data: any): undefined;
+            /**
+             * Received an Stream Packet
+             * @return {undefined}
+             * @ignore
+             */
+            _onStream(packet: any, port: any, address: any, data: any): undefined;
+            /**
+             * Received any packet on the probe port to determine the firewall:
+             * are you port restricted, host restricted, or unrestricted.
+             * @return {undefined}
+             * @ignore
+             */
+            _onProbeMessage(data: any, { port, address }: {
+                port: any;
+                address: any;
+            }): undefined;
             /**
              * When a packet is received it is decoded, the packet contains the type
              * of the message. Based on the message type it is routed to a function.
@@ -5322,235 +5580,39 @@ declare module "socket:stream-relay/index" {
              * @param {Buffer|Uint8Array} data
              * @param {{ port: number, address: string }} info
              */
-            onMessage(data: Buffer | Uint8Array, { port, address }: {
+            _onMessage(data: Buffer | Uint8Array, { port, address }: {
                 port: number;
                 address: string;
-            }): any;
+            }): undefined;
         };
-        /**
-         * Factory for creating a `Peer` instances. This function ensures all
-         * internal dependencies are loaded and ready.
-         * @param {object?} [options]
-         * @return {Promise<Peer>}
-         */
-        create(options?: object | null): Promise<{
-            port: any;
-            address: any;
-            natType: any;
-            clusterId: any;
-            reflectionId: any;
-            reflectionFirstResponder: any;
-            peerId: string;
-            pingStart: number;
-            ctime: number;
-            lastUpdate: number;
-            closing: boolean;
-            listening: boolean;
-            unpublished: {};
-            cache: any;
-            queries: {};
-            controlPackets: {};
-            uptime: number;
-            maxHops: number;
-            bdpCache: number[];
-            onListening: any;
-            onDelete: any;
-            firewall: any;
-            peers: any;
-            encryption: Encryption;
-            config: any;
-            onError: (err: Error) => void;
-            socket: any;
-            testSocket: any;
-            init(): Promise<any>;
-            connecting: number;
-            send(data: any, ...args: any[]): Promise<boolean>;
-            getState(): {
-                config: any;
-                data: any[];
-                unpublished: {};
-            };
-            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): any;
-            mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
-            timer(delay: any, repeat: any, fn: any): Promise<boolean>;
-            requestReflection(reflectionId: any): Promise<boolean>;
-            ping(peer: any, props?: {}): Promise<PacketPing>;
-            setPeer(peerId: any, packet: any, port: any, address: any): any;
-            join(): Promise<void>;
-            publish(args: any): Promise<void | PacketPublish[]>;
-            sync(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onSync(packet: any, port: any, address: any): Promise<void>;
-            onQuery(packet: any, port: any, address: any): Promise<void>;
-            close(): void;
-            onConnection(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onPing(packet: any, port: any, address: any): Promise<void>;
-            onPong(packet: any, port: any, address: any): Promise<void>;
-            onIntro(packet: any, port: any, address: any): Promise<void>;
-            onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
-            onPublish(packet: any, port: any, address: any, data: any): Promise<void>;
-            rateLimit(data: any, port: any, address: any): boolean;
-            /**
-             * When a packet is received it is decoded, the packet contains the type
-             * of the message. Based on the message type it is routed to a function.
-             * like WebSockets, don't answer queries unless we know its another SRP peer.
-             *
-             * @param {Buffer|Uint8Array} data
-             * @param {{ port: number, address: string }} info
-             */
-            onMessage(data: Buffer | Uint8Array, { port, address }: {
-                port: number;
-                address: string;
-            }): any;
-        }>;
     };
-    export default createPeer;
+    export default wrap;
     import { sha256 } from "socket:stream-relay/packets";
     import { Cache } from "socket:stream-relay/cache";
     import { Encryption } from "socket:stream-relay/encryption";
-    import { PacketPing } from "socket:stream-relay/packets";
-    import { PacketPublish } from "socket:stream-relay/packets";
+    import * as NAT from "socket:stream-relay/nat";
     import { Buffer } from "socket:buffer";
-    export { sha256, Cache, Encryption };
+    import { PacketPing } from "socket:stream-relay/packets";
+    import { Packet } from "socket:stream-relay/packets";
+    import { PacketPublish } from "socket:stream-relay/packets";
+    export { sha256, Cache, Encryption, NAT };
 }
-declare module "socket:peer" {
-    /**
-     *
-     * @class
-     * @public
-     *
-     *The Peer class is an EventEmitter. It emits events when new network events
-     *are received (.on), it can also emit new events to the network (.emit).
-     *
-     *```js
-     *import { Peer } from 'socket:peer'
-     *
-     *const pair = await Peer.createKeys()
-     *const clusterId = await Peer.createClusterId()
-     *
-     *const peer = new Peer({ ...pair, clusterId })
-     *
-     *peer.on('greeting', (value, peer, address, port) => {
-     *  console.log(value)
-     *})
-     *
-     *window.onload = () => {
-     *  const value = { english: 'hello, world' }
-     *  const packet = await peer.emit('greeting', value)
-     *}
-     *```
-     *
-     */
-    export class Peer extends EventEmitter {
-        /**
-         * A method that will generate a public and private key pair.
-         * The ed25519 pair can be stored by an app with a secure API.
-         *
-         * @static
-         * @return {Object<Pair>} pair - A pair of keys
-         *
-         */
-        static createKeys(): any;
-        /**
-         * Create a clusterId from random bytes
-         * @return {string} id - a hex encoded sha256 hash
-         */
-        static createClusterId(): string;
-        /**
-         * `Peer` class constructor.
-         * @param {Object} options - All options for the Peer constructor
-         * @param {string} options.publicKey - The public key required to sign and read
-         * @param {string} options.privateKey - The private key required to sign and read
-         * @param {string} options.clusterId - A unique appliction identity
-         * @param {string} options.scheme - Specify which encryption scheme to use (ie, 'PTP')
-         * @param {Array} options.peers - An array of RemotePeer
-         */
-        constructor(opts?: {});
-        peer: {
-            port: any;
-            address: any;
-            natType: any;
-            clusterId: any;
-            reflectionId: any;
-            reflectionFirstResponder: any;
-            peerId: string;
-            pingStart: number;
-            ctime: number;
-            lastUpdate: number;
-            closing: boolean;
-            listening: boolean;
-            unpublished: {};
-            cache: any;
-            queries: {};
-            controlPackets: {};
-            uptime: number;
-            maxHops: number;
-            bdpCache: number[];
-            onListening: any;
-            onDelete: any;
-            firewall: any;
-            peers: any;
-            encryption: Encryption;
-            config: any;
-            onError: (err: Error) => void;
-            socket: any;
-            testSocket: any;
-            init(): Promise<any>;
-            connecting: number;
-            send(data: any, ...args: any[]): Promise<boolean>;
-            getState(): {
-                config: any;
-                data: any[];
-                unpublished: {};
-            };
-            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): any;
-            mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
-            timer(delay: any, repeat: any, fn: any): Promise<boolean>;
-            requestReflection(reflectionId: any): Promise<boolean>;
-            ping(peer: any, props?: {}): Promise<import("socket:stream-relay/packets").PacketPing>;
-            setPeer(peerId: any, packet: any, port: any, address: any): any;
-            join(): Promise<void>;
-            publish(args: any): Promise<void | import("socket:stream-relay/packets").PacketPublish[]>;
-            sync(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onSync(packet: any, port: any, address: any): Promise<void>;
-            onQuery(packet: any, port: any, address: any): Promise<void>;
-            close(): void;
-            onConnection(peer: any, packet: any, port: any, address: any): Promise<void>;
-            onPing(packet: any, port: any, address: any): Promise<void>;
-            onPong(packet: any, port: any, address: any): Promise<void>;
-            onIntro(packet: any, port: any, address: any): Promise<void>;
-            onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
-            onPublish(packet: any, port: any, address: any, data: any): Promise<void>;
-            rateLimit(data: any, port: any, address: any): boolean;
-            onMessage(data: Uint8Array | import("socket:buffer").default, { port, address }: {
-                port: number;
-                address: string;
-            }): any;
-        };
-        _emit: (type: any, ...args: any[]) => boolean;
-        opts: {};
-        /**
-         * Emits a message to the network
-         *
-         * @param {string} event - The name of the event to emit to the network
-         * @param {Buffer} message - The data to emit to the network
-         * @return {Object<Packet>} The packet that will be sent when possible
-         */
-        emit(eventName: any, message: Buffer, ...args: any[]): any;
-        query(): Promise<void>;
-        /**
-         * Starts the process of connecting to the network.
-         *
-         * @return {Peer} Returns an instance of the underlying network peer
-         */
-        join(): Peer;
-        getPeerId(): string;
-        close(): void;
-        #private;
-    }
-    export default Peer;
-    export type Buffer = import("socket:buffer").Buffer;
-    import { EventEmitter } from "socket:events";
+declare module "socket:stream-relay/sugar" {
+    function _default(dgram: any, events: any): (options: any) => Promise<any>;
+    export default _default;
+}
+declare module "socket:network" {
+    export default network;
+    export const network: (options: any) => Promise<any>;
+    import { Cache } from "socket:stream-relay/index";
+    import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
+    import { NAT } from "socket:stream-relay/index";
+    export { Cache, sha256, Encryption, NAT };
+}
+declare module "socket:node-esm-loader" {
+    export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
+    export default resolve;
 }
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
