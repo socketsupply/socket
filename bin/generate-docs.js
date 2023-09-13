@@ -309,7 +309,7 @@ External docs: https://nodejs.org/api/buffer.html
   'fs/promises.js',
   'ipc.js',
   'os.js',
-  'peer.js',
+  'network.js',
   'path/path.js',
   'process.js',
   'window.js'
