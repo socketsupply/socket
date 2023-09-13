@@ -19,9 +19,9 @@ export default (dgram, events) => {
    * @example
    *
    *```js
-   * import { socket } from '../network.js'
+   * import { network } from '../network.js'
    *
-   * const network = await socket()
+   * const socket = network()
    *```
    */
   return async options => {
@@ -75,7 +75,6 @@ export default (dgram, events) => {
      * @example
      *
      *```js
-     *
      *    import fs from '../fs.js'
      *    import { network, Encryption } from '../network.js'
      *
@@ -103,7 +102,6 @@ export default (dgram, events) => {
      *    })
      *
      *    fs.writeFile('state.json', stringify(socket.getState()))
-     *
      *```
      */
     bus.subcluster = async (options = {}) => {
@@ -278,7 +276,7 @@ export default (dgram, events) => {
       })
 
       bus.on('#ready', () => {
-        peer.join(options.sharedKey, bus.clusterId, subclusterId, options)
+        peer.join(options.sharedKey, { subclusterId, ...options })
       })
 
       return selfEvents
