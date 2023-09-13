@@ -82,19 +82,15 @@ export class Cache {
     return this.data.size
   }
 
-  toJSON () {
-    return [...this.data.entries()]
-  }
-
   /**
    * Inserts a `CacheEntry` value `v` into the cache at key `k`.
    * @param {string} k
    * @param {CacheEntry} v
-   * @return {Promise<boolean>}
+   * @return {boolean}
    */
-  async insert (k, v) {
+  insert (k, v) {
     if (v.type !== PacketPublish.type) return false
-    if (this.has(k)) return true
+    if (this.has(k)) return false
 
     if (this.data.size === this.maxSize) {
       const oldest = [...this.data.values()].sort(this.siblingResolver).pop()
@@ -104,23 +100,24 @@ export class Cache {
     v.timestamp = Date.now()
 
     this.data.set(k, v)
+    if (this.onInsert) this.onInsert(k, v)
     return true
   }
 
   /**
    * Gets a `CacheEntry` value at key `k`.
    * @param {string} k
-   * @return {Promise<CacheEntry?>}
+   * @return {CacheEntry?}
    */
-  async get (k) {
+  get (k) {
     return this.data.get(k)
   }
 
   /**
    * @param {string} k
-   * @return {Promise<boolean>}
+   * @return {boolean}
    */
-  async delete (k) {
+  delete (k) {
     if (!this.has(k)) return false
     this.data.delete(k)
     return true
@@ -139,20 +136,20 @@ export class Cache {
    * Composes an indexed packet into a new `Packet`
    * @param {Packet} packet
    */
-  async compose (packet) {
-    if (packet.previousId && packet?.index > 0) packet = await this.get(packet.previousId)
-    if (!packet) return null
+  async compose (packet, source = this.data) {
+    let previous = packet
 
-    const { meta, size, indexes } = packet.message
+    if (packet?.index > 0) previous = source.get(packet.previousId)
+    if (!previous) return null
+
+    const { meta, size, indexes } = previous.message
 
     // follow the chain to get the buffers in order
-    const bufs = [...this.data.values()]
-      .filter(p => p.previousId === packet.packetId)
+    const bufs = [...source.values()]
+      .filter(p => p.previousId === previous.packetId)
       .sort((a, b) => a.index - b.index)
 
-    if (!indexes || bufs.length < indexes) {
-      return null
-    }
+    if (!indexes || bufs.length < indexes) return null
 
     // sort by index, concat and then hash, the original should match
     const messages = bufs.map(p => p.message)
@@ -220,6 +217,7 @@ export class Cache {
 
     // partition the cache into children
     for (const key of this.data.keys()) {
+      if (!key || !key.slice) continue
       if (prefix.length && !key.startsWith(prefix)) continue
       const hex = key.slice(prefix.length, prefix.length + 1)
       children[parseInt(hex, 16)].push(key)

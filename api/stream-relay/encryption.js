@@ -1,18 +1,35 @@
-import { sodium } from '../crypto.js'
+import { sodium, randomBytes } from '../crypto.js'
 import Buffer from '../buffer.js'
+import { sha256 } from './packets.js'
 import { isArrayLike, isBufferLike } from '../util.js'
 
 export class Encryption {
   keys = {}
-  publicKey = null
-  privateKey = null
 
-  constructor (config = {}) {
-    if (!config.publicKey && !config.privateKey) {
-      Object.assign(config, sodium.crypto_sign_keypair())
-    }
+  static async createSharedKey (seed) {
+    await sodium.ready
 
-    Object.assign(this, config)
+    if (seed) return sodium.crypto_generichash(32, seed)
+    return sodium.randombytes_buf(32)
+  }
+
+  static async createClusterId (sharedKey) {
+    const key = sharedKey || await Encryption.createSharedKey()
+    return Buffer.from(key || '').toString('base64')
+  }
+
+  static async createKeyPair (seed) {
+    await sodium.ready
+    seed = seed || await Encryption.createSharedKey()
+    return sodium.crypto_sign_seed_keypair(seed)
+  }
+
+  static async createId (str = randomBytes(32)) {
+    return (await sha256(str)).toString('hex')
+  }
+
+  static async createSubclusterId (value) {
+    return Buffer.from(value).toString('base64')
   }
 
   add (publicKey, privateKey) {
@@ -20,23 +37,33 @@ export class Encryption {
     this.keys[to] = { publicKey, privateKey, ts: Date.now() }
   }
 
-  get (to) {
-    const publicKey = Buffer.from(to, 'base64')
-    const id = publicKey.toString('base64')
-
-    if (publicKey.compare(this.publicKey) === 0) {
-      return { publicKey: this.publicKey, privateKey: this.privateKey }
+  has (to) {
+    if (to.constructor.name === 'Uint8Array') {
+      to = Buffer.from(to).toString('base64')
     }
 
-    if (this.keys[id]) {
-      return this.keys[id]
-    }
-
-    return null
+    return !!this.keys[to]
   }
 
-  has (to) {
-    return this.get(to) !== null
+  /**
+   * @param {Buffer} b - The message to sign
+   * @param {Uint8Array} sk - The secret key to use
+   */
+  static sign (b, sk) {
+    const ct = b.subarray(sodium.crypto_sign_BYTES)
+    const sig = sodium.crypto_sign_detached(ct, sk)
+    return sig
+  }
+
+  /**
+   * @param {Buffer} b - The message to verify
+   * @param {Uint8Array} pk - The public key to use
+   * @return {number} - Returns non zero if the buffer could not be verified
+   */
+  static verify (b, sig, pk) {
+    if (sig.length !== sodium.crypto_sign_BYTES) return false
+    const ct = b.subarray(sodium.crypto_sign_BYTES)
+    return sodium.crypto_sign_verify_detached(sig, ct, pk)
   }
 
   /**
@@ -52,16 +79,13 @@ export class Encryption {
    *   let out = open(ct, pk, sk)
    * }
    */
-  open (message, to) {
-    const pair = this.get(to)
+  open (message, v) {
+    if (typeof v === 'string') v = this.keys[v]
+    if (!v) throw new Error(`ENOKEY (key=${v})`)
 
-    if (!pair) {
-      throw new Error('ENOKEYS')
-    }
-
-    const pk = toPK(pair.publicKey)
-    const sk = toSK(pair.privateKey)
-    const buf = sodium.crypto_box_seal_open(toUint8Array(message), pk, sk)
+    const pk = toPK(v.publicKey)
+    const sk = toSK(v.privateKey)
+    const buf = sodium.crypto_box_seal_open(message, pk, sk)
 
     if (buf.byteLength <= sodium.crypto_sign_BYTES) {
       throw new Error('EMALFORMED')
@@ -70,7 +94,7 @@ export class Encryption {
     const sig = buf.subarray(0, sodium.crypto_sign_BYTES)
     const ct = buf.subarray(sodium.crypto_sign_BYTES)
 
-    if (!sodium.crypto_sign_verify_detached(sig, ct, pair.publicKey)) {
+    if (!sodium.crypto_sign_verify_detached(sig, ct, v.publicKey)) {
       throw new Error('ENOTVERIFIED')
     }
 
@@ -86,7 +110,7 @@ export class Encryption {
    * let sig = Sign(ct, sk)
    * let out = Seal(sig | ct)
    *
-   * Essentially, in an setup between Alice & Bob, this means:
+   * In an setup between Alice & Bob, this means:
    * - Only Bob sees the plaintext
    * - Alice wrote the plaintext and the ciphertext
    * - Only Bob can see that Alice wrote the plaintext and ciphertext
@@ -100,17 +124,16 @@ export class Encryption {
    *
    * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
    */
-  seal (message, to) {
-    const pair = this.get(to)
+  seal (message, v) {
+    if (typeof v === 'string') v = this.keys[v]
+    if (!v) throw new Error(`ENOKEY (key=${v})`)
 
-    if (!pair) {
-      throw new Error('ENOKEYS')
-    }
+    this.add(v.publicKey, v.privateKey)
 
-    const pk = toPK(pair.publicKey)
+    const pk = toPK(v.publicKey)
     const pt = toUint8Array(message)
     const ct = sodium.crypto_box_seal(pt, pk)
-    const sig = sodium.crypto_sign_detached(ct, pair.privateKey)
+    const sig = sodium.crypto_sign_detached(ct, v.privateKey)
     return sodium.crypto_box_seal(toUint8Array(Buffer.concat([sig, ct])), pk)
   }
 }
