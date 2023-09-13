@@ -496,10 +496,10 @@ function determine_cxx () {
       {
         dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do
         # Convert clang++ paths to path#version strings
-        bin_version="$("$clang" --version|head -n1)#$clang"
-        echo $bin_version;
+        bin_version="#$("$clang" --version|head -n1)#$clang"
+        echo "$bin_version";
       done
-      } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
+      } | sort -r | sed '/^##/d' | cut -d"#" -f 3 | head -n1 > "$tmp" # sort by version, remove lines without version, then cut out bin out to get the highest installed clang version
       CXX="$(cat "$tmp")"
       rm -f "$tmp"
 
