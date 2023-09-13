@@ -459,9 +459,9 @@ export const wrap = dgram => {
 
       // if this peer has previously tried to join any clusters, multicast a
       // join messages for each into the network so we are always searching.
-      for (const [publicKey, cluster] of Object.entries(this.clusters)) {
-        for (const subclusterId in cluster) {
-          this.join({ publicKey }, { type: 'subclusterId', value: subclusterId }, cluster[subclusterId])
+      for (const cluster of Object.values(this.clusters)) {
+        for (const subcluster of Object.values(cluster)) {
+          this.join(subcluster.sharedKey, subcluster)
         }
       }
     }
@@ -789,7 +789,9 @@ export const wrap = dgram => {
 
       if (!this.port || !this.natType || this.indexed) return
 
-      const clusterId = this.config.clusterId
+      opts.sharedKey = sharedKey
+
+      const clusterId = opts.clusterId || this.config.clusterId
       const subclusterId = Buffer.from(keys.publicKey).toString('base64')
 
       this.clusters[clusterId] ??= {}
