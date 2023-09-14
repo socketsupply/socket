@@ -4,7 +4,6 @@
 
 using namespace SSC;
 
-constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
 
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
@@ -218,11 +217,14 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
   NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
+  const auto argv = appData["ssc_argv"];
 
   uv_chdir(cwd.UTF8String);
 
   WindowOptions opts {
-    .debug = _debug,
+    .debug = isDebugEnabled(),
+    .isTest = argv.find("--test") != -1,
+    .argv = argv,
     .env = env.str(),
     .appData = appData
   };

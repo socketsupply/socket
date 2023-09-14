@@ -60,7 +60,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")
-          loadUrl("https://__BUNDLE_IDENTIFIER__/$filename")
+          loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
         }
       }
     })
