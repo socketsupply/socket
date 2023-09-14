@@ -15,7 +15,7 @@ output |  |  The binary output path. It's recommended to add this path to .gitig
 
 Key | Default Value | Description
 :--- | :--- | :---
-index |  |  Make root open index.html
+root |  |  Make root open index.html
 
 ## Section `debug`
 
