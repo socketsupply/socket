@@ -41,11 +41,15 @@ namespace SSC::android {
       "()Ljava/lang/String;"
     ));
 
+    const auto argv = this->config["ssc_argv"];
+
     options.headless = this->config["build_headless"] == "true";
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();
     options.appData = this->config;
+    options.argv = argv;
+    options.isTest = argv.find("--test") != -1;
 
     preloadSource = createPreload(options, PreloadOptions {
       .module = false
@@ -135,7 +139,7 @@ extern "C" {
       return env->NewStringUTF(filename.c_str());
     }
 
-    return env->NewStringUTF("index.html");
+    return env->NewStringUTF("/index.html");
   }
 
   jstring external(Window, getJavaScriptPreloadSource)(
