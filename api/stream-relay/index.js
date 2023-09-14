@@ -503,7 +503,7 @@ export const wrap = dgram => {
     getState () {
       return {
         config: this.config,
-        data: [...this.cache.data.values()],
+        data: [...this.cache.data.entries()],
         unpublished: this.unpublished
       }
     }
@@ -813,7 +813,7 @@ export const wrap = dgram => {
 
       if (this.onState) await this.onState(this.getState())
       this.mcast(packet, packet.packetId, true)
-      // this.controlPackets.set(packet.packetId, 1)
+      this.controlPackets.set(packet.packetId, 1)
     }
 
     /**
