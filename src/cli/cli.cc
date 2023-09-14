@@ -2689,6 +2689,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(res);
       fs::create_directories(res / "layout");
       fs::create_directories(res / "values");
+      fs::create_directories(res / "mipmap");
 
       pathResources = { src / "main" / "assets" };
 
@@ -2943,6 +2944,25 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
+
+      auto androidResources = settings["android_resources"];
+      auto androidIcon = settings["android_icon"];
+
+      if (androidIcon.size() > 0) {
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher.png", fs::copy_options::overwrite_existing);
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
+      } else {
+        // create empty icons
+        std::ofstream icon((targetPath / androidIcon, res / "mipmap" / "icon.png").string());
+        std::ofstream ic_launcher((targetPath / androidIcon, res / "mipmap" / "ic_launcher.png").string());
+        std::ofstream ic_launcher_round((targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png").string());
+      }
+
+      // allow user space to override all `res/` files
+      if (fs::exists(androidResources)) {
+        fs::copy(androidResources, res, fs::copy_options::overwrite_existing);
+      }
 
       auto cflags = flagDebugMode
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
