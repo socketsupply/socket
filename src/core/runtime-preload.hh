@@ -130,11 +130,13 @@ namespace SSC {
       "})();                                                                 \n"
     );
 
-    if (preloadOptions.module) {
-      preload += "import 'socket:internal/init'\n";
-    } else {
-      preload += "import('socket:internal/init');\n";
-    }
+    preload += (
+      "document.addEventListener('readystatechange', () => {                 \n"
+      "  if (document.readyState === 'interactive') {                        \n"
+      "    import('socket:internal/init');                                   \n"
+      "  }                                                                   \n"
+      "});                                                                   \n"
+    );
 
     return preload;
   }
