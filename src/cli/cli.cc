@@ -1,7 +1,9 @@
 #include "../common.hh"
-#include "../process/process.hh"
-#include "templates.hh"
 #include "../core/core.hh"
+#include "../core/file_system_watcher.hh"
+#include "../process/process.hh"
+
+#include "templates.hh"
 
 #include <filesystem>
 #include <unordered_set>
@@ -442,6 +444,335 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
   appMutex.unlock();
 }
 #endif
+
+void handleBuildPhaseForUserScript (
+  const Map settings,
+  const String& targetPlatform,
+  const Path pathResourcesRelativeToUserBuild,
+  const String& cwd,
+  const String& additionalArgs
+) {
+  do {
+    char prefix[4096] = {0};
+    std::memcpy(
+    prefix,
+    pathResourcesRelativeToUserBuild.string().c_str(),
+    pathResourcesRelativeToUserBuild.string().size()
+    );
+
+    // @TODO(jwerle): use `setEnv()` if #148 is closed
+#if _WIN32
+    String prefix_ = "PREFIX=";
+    prefix_ += prefix;
+    setEnv(prefix_.c_str());
+#else
+    setenv("PREFIX", prefix, 1);
+#endif
+  } while (0);
+
+  StringStream buildArgs;
+  buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+  buildArgs << " " << additionalArgs;
+
+  if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
+    auto scriptArgs = buildArgs.str();
+    auto buildScript = settings.at("build_script");
+
+    // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+    // cmd.exe can handle this translation
+    if (platform.win) {
+      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      buildScript = "cmd.exe";
+    }
+
+    auto process = new SSC::Process(
+      buildScript,
+      scriptArgs,
+      (cwd / targetPath).string(),
+      [](SSC::String const &out) { stdWrite(out, false); },
+      [](SSC::String const &out) { stdWrite(out, true); }
+    );
+
+    process->open();
+    process->wait();
+
+    if (process->status != 0) {
+      // TODO(trevnorris): Force non-windows to exit the process.
+      log("build failed, exiting with code " + std::to_string(process->status));
+      exit(process->status);
+    }
+
+    log("ran user build command");
+  }
+
+  // runs async, does not block
+  if (settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
+    auto scriptArgs = buildArgs.str();
+    auto buildScript = settings.at("build_script_after");
+
+    // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+    // cmd.exe can handle this translation
+    if (platform.win) {
+      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      buildScript = "cmd.exe";
+    }
+
+    SSC::Process* process = new SSC::Process(
+      buildScript,
+      scriptArgs,
+      (cwd / targetPath).string(),
+      [](SSC::String const &out) { stdWrite(out, false); },
+      [](SSC::String const &out) { stdWrite(out, true); },
+      [process](const auto status) {
+        const auto exitCode = std::atoi(status.c_str());
+        if (exitCode != 0) {
+          log("build after script failed with code: " + status);
+        }
+      }
+    );
+
+    process->open();
+  }
+}
+
+Vector<Path> handleBuildPhaseForCopyMappedFiles (
+  const Map settings,
+  const String& targetPlatform,
+  const Path pathResourcesRelativeToUserBuild
+) {
+  Vector<Path> copyMapFiles;
+
+  if (settings.contains("build_copy")) {
+    const Path pathInput = settings.contains("build_copy") && settings.at("build_copy").size() > 0
+      ? settings.at("build_copy")
+      : "src";
+
+    auto paths = split(pathInput.string(), ';');
+    for (const auto& p : paths) {
+      auto mapping = split(p, '=');
+      auto src = targetPath / trim(mapping[0]);
+      auto dst = mapping.size() == 2
+        ? pathResourcesRelativeToUserBuild / trim(mapping[1])
+        : pathResourcesRelativeToUserBuild;
+
+      if (!fs::exists(fs::status(src))) {
+        log("WARNING: [build] copy entry '" + src.string() +  "' does not exist");
+        continue;
+      }
+
+      if (!fs::exists(fs::status(dst.parent_path()))) {
+        fs::create_directories(dst.parent_path());
+      }
+
+      fs::copy(
+        src,
+        dst,
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
+  }
+
+  for (const auto& tuple : settings) {
+    if (!tuple.first.starts_with("build_copy-map_")) {
+      continue;
+    }
+
+    auto key = replace(tuple.first, "build_copy-map_", "");
+    auto value = tuple.second;
+
+    auto src = Path { key };
+    auto dst = tuple.second.size() > 0
+      ? pathResourcesRelativeToUserBuild / value
+      : pathResourcesRelativeToUserBuild;
+
+    src = src.make_preferred();
+    dst = dst.make_preferred();
+
+    if (src.is_relative()) {
+      src = targetPath / src;
+    }
+
+    src = fs::absolute(src);
+    dst = fs::absolute(dst);
+
+    if (!fs::exists(fs::status(src))) {
+      log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
+      continue;
+    }
+
+    if (!fs::exists(fs::status(dst.parent_path()))) {
+      fs::create_directories(dst.parent_path());
+    }
+
+    auto mappedSourceFile = fs::absolute(
+      pathResourcesRelativeToUserBuild /
+      fs::relative(src, targetPath)
+    );
+
+    if (
+      !mappedSourceFile.string().ends_with(".") &&
+      pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+     ) {
+      if (fs::exists(fs::status(mappedSourceFile))) {
+        fs::remove_all(mappedSourceFile);
+      }
+    }
+
+    fs::copy(
+      src,
+      dst,
+      fs::copy_options::update_existing | fs::copy_options::recursive
+    );
+  }
+
+  // copy map file for all platforms
+  if (settings.contains("build_copy_map")) {
+    auto copyMapFile = Path(settings.at("build_copy_map")).make_preferred();
+
+    if (copyMapFile.is_relative()) {
+      copyMapFile = targetPath / copyMapFile;
+    }
+
+    copyMapFiles.push_back(copyMapFile);
+  }
+
+  // copy map file for target platform
+  if (
+    targetPlatform.starts_with("ios") &&
+    settings.contains("build_ios_copy_map")
+   ) {
+    auto copyMapFile = Path(settings.at("build_ios_copy_map")).make_preferred();
+
+    if (copyMapFile.is_relative()) {
+      copyMapFile = targetPath / copyMapFile;
+    }
+
+    copyMapFiles.push_back(copyMapFile);
+  }
+
+  if (
+    targetPlatform.starts_with("android") &&
+    settings.contains("build_android_copy_map")
+   ) {
+    auto copyMapFile = Path(settings.at("build_android_copy_map")).make_preferred();
+
+    if (copyMapFile.is_relative()) {
+      copyMapFile = targetPath / copyMapFile;
+    }
+
+    copyMapFiles.push_back(copyMapFile);
+  }
+
+  if (settings.contains("build_" + platform.os +  "_copy_map")) {
+    auto copyMapFile = Path(settings.at("build_" + platform.os +  "_copy_map")).make_preferred();
+
+    if (copyMapFile.is_relative()) {
+      copyMapFile = targetPath / copyMapFile;
+    }
+
+    copyMapFiles.push_back(copyMapFile);
+  }
+
+  for (const auto& copyMapFile : copyMapFiles) {
+    if (!fs::exists(fs::status(copyMapFile)) || !fs::is_regular_file(copyMapFile)) {
+      log("WARNING: file specified in [build] copy_map does not exist");
+    } else {
+      auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
+      auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
+
+      for (const auto& tuple : copyMap) {
+        auto key = tuple.first;
+        auto& value = tuple.second;
+
+        if (key.starts_with("win_")) {
+          if (!platform.win) continue;
+          key = key.substr(4, key.size() - 4);
+        }
+
+        if (key.starts_with("mac_")) {
+          if (!platform.mac) continue;
+          key = key.substr(4, key.size() - 4);
+        }
+
+        if (key.starts_with("ios_")) {
+          if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
+          key = key.substr(4, key.size() - 4);
+        }
+
+        if (key.starts_with("linux_")) {
+          if (!platform.linux) continue;
+          key = key.substr(6, key.size() - 6);
+        }
+
+        if (key.starts_with("android_")) {
+          if (!targetPlatform.starts_with("android")) continue;
+          key = key.substr(8, key.size() - 8);
+        }
+
+        if (key.starts_with("debug_")) {
+          if (!flagDebugMode) continue;
+          key = key.substr(6, key.size() - 6);
+        }
+
+        if (key.starts_with("prod_")) {
+          if (flagDebugMode) continue;
+          key = key.substr(5, key.size() - 5);
+        }
+
+        if (key.starts_with("production_")) {
+          if (flagDebugMode) continue;
+          key = key.substr(11, key.size() - 11);
+        }
+
+        auto src = Path { key };
+        auto dst = tuple.second.size() > 0
+          ? pathResourcesRelativeToUserBuild / value
+          : pathResourcesRelativeToUserBuild;
+
+        src = src.make_preferred();
+        dst = dst.make_preferred();
+
+        if (src.is_relative()) {
+          src = copyMapFileDirectory / src;
+        }
+
+        src = fs::absolute(src);
+        dst = fs::absolute(dst);
+
+        if (!fs::exists(fs::status(src))) {
+          log("WARNING: [build] copy_map entry '" + src.string() +  "' does not exist");
+          continue;
+        }
+
+        if (!fs::exists(fs::status(dst.parent_path()))) {
+          fs::create_directories(dst.parent_path());
+        }
+
+        auto mappedSourceFile = (
+          pathResourcesRelativeToUserBuild /
+          fs::relative(src, copyMapFileDirectory)
+        );
+
+        if (
+          !mappedSourceFile.string().ends_with(".") &&
+          pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
+         ) {
+          if (fs::exists(fs::status(mappedSourceFile))) {
+            fs::remove_all(mappedSourceFile);
+          }
+        }
+
+        fs::copy(
+          src,
+          dst,
+          fs::copy_options::update_existing | fs::copy_options::recursive
+        );
+      }
+    }
+  }
+
+  return copyMapFiles;
+}
 
 void signalHandler (int signal) {
   if (appPid == 0 && signal == SIGTERM) {
@@ -2072,6 +2403,7 @@ int main (const int argc, const char* argv[]) {
     { { "--quiet" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
+    { { "--watch", "-w" }, true, false },
     { { "-p" }, true, false },
     { { "-c" }, true, false },
     { { "-s" }, true, false },
@@ -2084,6 +2416,8 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("build", buildOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     String argvForward = "";
     String targetPlatform = optionsWithValue["--platform"];
+    String additionalBuildArgs = "";
+
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
     bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
@@ -2098,6 +2432,7 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
     bool flagBuildTest = optionsWithoutValue.find("--test") != optionsWithoutValue.end() || optionsWithValue["--test"].size() > 0;
+    bool flagShouldWatch = optionsWithoutValue.find("--watch") != optionsWithoutValue.end() || equal(rc["build_watch"], "true");
     String testFile = optionsWithValue["--test"];
 
     if (flagBuildTest && testFile.size() == 0) {
@@ -2274,325 +2609,27 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
 
-    if (settings.count("build_copy") != 0) {
-      Path pathInput = settings["build_copy"].size() > 0
-        ? settings["build_copy"]
-        : "src";
-
-      auto paths = split(pathInput.string(), ';');
-      for (const auto& p : paths) {
-        auto mapping = split(p, '=');
-        auto src = targetPath / trim(mapping[0]);
-        auto dst = mapping.size() == 2
-          ? pathResourcesRelativeToUserBuild / trim(mapping[1])
-          : pathResourcesRelativeToUserBuild;
-
-        if (!fs::exists(fs::status(src))) {
-          log("WARNING: [build] copy entry '" + src.string() +  "' does not exist");
-          continue;
-        }
-
-        if (!fs::exists(fs::status(dst.parent_path()))) {
-          fs::create_directories(dst.parent_path());
-        }
-
-        fs::copy(
-          src,
-          dst,
-          fs::copy_options::update_existing | fs::copy_options::recursive
-        );
-      }
-    }
-
-    for (const auto& tuple : settings) {
-      if (!tuple.first.starts_with("build_copy-map_")) {
-        continue;
-      }
-
-      auto key = replace(tuple.first, "build_copy-map_", "");
-      auto value = tuple.second;
-
-      auto src = Path { key };
-      auto dst = tuple.second.size() > 0
-        ? pathResourcesRelativeToUserBuild / value
-        : pathResourcesRelativeToUserBuild;
-
-      src = src.make_preferred();
-      dst = dst.make_preferred();
-
-      if (src.is_relative()) {
-        src = targetPath / src;
-      }
-
-      src = fs::absolute(src);
-      dst = fs::absolute(dst);
-
-      if (!fs::exists(fs::status(src))) {
-        log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
-        continue;
-      }
-
-      if (!fs::exists(fs::status(dst.parent_path()))) {
-        fs::create_directories(dst.parent_path());
-      }
-
-      auto mappedSourceFile = fs::absolute(
-        pathResourcesRelativeToUserBuild /
-        fs::relative(src, targetPath)
-      );
-
-      if (
-        !mappedSourceFile.string().ends_with(".") &&
-        pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
-      ) {
-        if (fs::exists(fs::status(mappedSourceFile))) {
-          fs::remove_all(mappedSourceFile);
-        }
-      }
-
-      fs::copy(
-        src,
-        dst,
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
-    }
-
-    std::vector<Path> copyMapFiles;
-
-    // copy map file for all platforms
-    if (settings.count("build_copy_map") != 0) {
-      auto copyMapFile = Path{settings["build_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    // copy map file for target platform
-    if (
-      targetPlatform.starts_with("ios") &&
-      settings.count("build_ios_copy_map") != 0
-    ) {
-      auto copyMapFile = Path{settings["build_ios_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    if (
-      targetPlatform.starts_with("android") &&
-      settings.count("build_android_copy_map") != 0
-    ) {
-      auto copyMapFile = Path{settings["build_android_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    if (settings.count("build_" + platform.os +  "_copy_map") != 0) {
-      auto copyMapFile = Path{settings["build_" + platform.os +  "_copy_map"]}.make_preferred();
-
-      if (copyMapFile.is_relative()) {
-        copyMapFile = targetPath / copyMapFile;
-      }
-
-      copyMapFiles.push_back(copyMapFile);
-    }
-
-    for (const auto& copyMapFile : copyMapFiles) {
-      if (!fs::exists(fs::status(copyMapFile)) || !fs::is_regular_file(copyMapFile)) {
-        log("WARNING: file specified in [build] copy_map does not exist");
-      } else {
-        auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
-        auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
-
-        for (const auto& tuple : copyMap) {
-          auto key = tuple.first;
-          auto& value = tuple.second;
-
-          if (key.starts_with("win_")) {
-            if (!platform.win) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("mac_")) {
-            if (!platform.mac) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("ios_")) {
-            if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
-            key = key.substr(4, key.size() - 4);
-          }
-
-          if (key.starts_with("linux_")) {
-            if (!platform.linux) continue;
-            key = key.substr(6, key.size() - 6);
-          }
-
-          if (key.starts_with("android_")) {
-            if (!targetPlatform.starts_with("android")) continue;
-            key = key.substr(8, key.size() - 8);
-          }
-
-          if (key.starts_with("debug_")) {
-            if (!flagDebugMode) continue;
-            key = key.substr(6, key.size() - 6);
-          }
-
-          if (key.starts_with("prod_")) {
-            if (flagDebugMode) continue;
-            key = key.substr(5, key.size() - 5);
-          }
-
-          if (key.starts_with("production_")) {
-            if (flagDebugMode) continue;
-            key = key.substr(11, key.size() - 11);
-          }
-
-          auto src = Path { key };
-          auto dst = tuple.second.size() > 0
-            ? pathResourcesRelativeToUserBuild / value
-            : pathResourcesRelativeToUserBuild;
-
-          src = src.make_preferred();
-          dst = dst.make_preferred();
-
-          if (src.is_relative()) {
-            src = copyMapFileDirectory / src;
-          }
-
-          src = fs::absolute(src);
-          dst = fs::absolute(dst);
-
-          if (!fs::exists(fs::status(src))) {
-            log("WARNING: [build] copy_map entry '" + src.string() +  "' does not exist");
-            continue;
-          }
-
-          if (!fs::exists(fs::status(dst.parent_path()))) {
-            fs::create_directories(dst.parent_path());
-          }
-
-          auto mappedSourceFile = (
-            pathResourcesRelativeToUserBuild /
-            fs::relative(src, copyMapFileDirectory)
-          );
-
-          if (
-           !mappedSourceFile.string().ends_with(".") &&
-           pathResourcesRelativeToUserBuild.compare(mappedSourceFile) != 0
-          ) {
-            if (fs::exists(fs::status(mappedSourceFile))) {
-              fs::remove_all(mappedSourceFile);
-            }
-          }
-
-          fs::copy(
-            src,
-            dst,
-            fs::copy_options::update_existing | fs::copy_options::recursive
-          );
-        }
-      }
-    }
-
-    do {
-      char prefix[4096] = {0};
-      std::memcpy(
-        prefix,
-        pathResourcesRelativeToUserBuild.string().c_str(),
-        pathResourcesRelativeToUserBuild.string().size()
-      );
-
-      // @TODO(jwerle): use `setEnv()` if #148 is closed
-      #if _WIN32
-        String prefix_ = "PREFIX=";
-        prefix_ += prefix;
-        setEnv(prefix_.c_str());
-      #else
-        setenv("PREFIX", prefix, 1);
-      #endif
-    } while (0);
-
-    StringStream buildArgs;
-    buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-
     if (flagDebugMode) {
-      buildArgs << " --debug=true";
+      additionalBuildArgs += " --debug=true";
     }
 
     if (flagBuildTest) {
-      buildArgs << " --test=true";
+      additionalBuildArgs += " --test=true";
     }
 
-    if (settings.count("build_script") != 0) {
-      auto scriptArgs = buildArgs.str();
-      auto buildScript = settings["build_script"];
+    auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
+      settings,
+      targetPlatform,
+      pathResourcesRelativeToUserBuild
+    );
 
-      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
-      // cmd.exe can handle this translation
-      if (platform.win) {
-        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
-        buildScript = "cmd.exe";
-      }
-
-      auto process = new SSC::Process(
-        buildScript,
-        scriptArgs,
-        (oldCwd / targetPath).string(),
-        [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); }
-      );
-
-      process->open();
-      process->wait();
-
-      if (process->status != 0) {
-        // TODO(trevnorris): Force non-windows to exit the process.
-        log("build failed, exiting with code " + std::to_string(process->status));
-        exit(process->status);
-      }
-
-      log("ran user build command");
-    }
-
-    // runs async, does not block
-    if (settings.count("build_script_after") != 0) {
-      auto scriptArgs = buildArgs.str();
-      auto buildScript = settings["build_script_after"];
-
-      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
-      // cmd.exe can handle this translation
-      if (platform.win) {
-        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
-        buildScript = "cmd.exe";
-      }
-
-      SSC::Process* process = new SSC::Process(
-        buildScript,
-        scriptArgs,
-        (oldCwd / targetPath).string(),
-        [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); },
-        [process](const auto status) {
-          const auto exitCode = std::atoi(status.c_str());
-          if (exitCode != 0) {
-            log("build after script failed with code: " + status);
-          }
-        }
-      );
-
-      process->open();
-    }
+    handleBuildPhaseForUserScript(
+      settings,
+      targetPlatform,
+      pathResourcesRelativeToUserBuild,
+      oldCwd,
+      additionalBuildArgs
+    );
 
     String flags;
     String files;
@@ -5403,6 +5440,48 @@ int main (const int argc, const char* argv[]) {
         log(r.output);
         exit(r.exitCode);
       }
+    }
+
+    if (flagShouldWatch) {
+      Vector<String> sources;
+
+      if (settings.contains("build_watch_sources")) {
+        sources = parseStringList(trim(settings["build_watch_sources"]));
+      } else if (copyMapFiles.size() > 0) {
+        for (const auto& file : copyMapFiles) {
+          sources.push_back(file.string());
+        }
+      }
+
+      auto watcher = new FileSystemWatcher(sources);
+      auto watching = watcher->start([=](
+        const auto& path,
+        const auto& events,
+        const auto& context
+      ) mutable {
+        handleBuildPhaseForCopyMappedFiles(
+          settings,
+          targetPlatform,
+          pathResourcesRelativeToUserBuild
+        );
+
+        handleBuildPhaseForUserScript(
+          settings,
+          targetPlatform,
+          pathResourcesRelativeToUserBuild,
+          targetPath,
+          additionalBuildArgs
+        );
+
+        log("file '" + path +"' did change");
+      });
+
+      if (!watching) {
+        log("Unable to start watching");
+        exit(1);
+      }
+
+      log("Watching for changes in: " + settings["build_watch_sources"]);
     }
 
     int exitCode = 0;
