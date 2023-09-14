@@ -296,15 +296,13 @@ constexpr auto gAndroidManifest = R"XML(
 
   {{android_manifest_xml_permissions}}
 
-    <!-- @TODO(jwerle)
-    android:roundIcon="@mipmap/ic_launcher_round"
-    android:icon="@mipmap/ic_launcher"
-    -->
   <application
     android:allowBackup="true"
     android:label="{{meta_title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:icon="@mipmap/ic_launcher"
     {{android_allow_cleartext}}
   >
     <activity
