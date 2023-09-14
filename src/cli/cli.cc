@@ -4029,13 +4029,8 @@ int main (const int argc, const char* argv[]) {
       );
 
       // XXX(@jwerle): 'node_modules/' sometimes can be found in the
-      // SOCKET_HOME_API directory if distributed with npm. Handle all
-      // `NODE_PATH` entries too (pedantic)
-      auto nodePaths = parseStringList(getEnv("NODE_PATH"), { ':', ';' });
-      nodePaths.push_back("node_modules");
-      for (const auto& path : nodePaths) {
-        fs::remove_all(pathResources / "socket" / path);
-      }
+      // SOCKET_HOME_API directory if distributed with npm
+      fs::remove_all(pathResources / "socket" / "node_modules");
     }
 
     if (flagBuildForIOS) {
