@@ -2505,36 +2505,36 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
+    do {
+      char prefix[4096] = {0};
+      std::memcpy(
+        prefix,
+        pathResourcesRelativeToUserBuild.string().c_str(),
+        pathResourcesRelativeToUserBuild.string().size()
+      );
+
+      // @TODO(jwerle): use `setEnv()` if #148 is closed
+      #if _WIN32
+        String prefix_ = "PREFIX=";
+        prefix_ += prefix;
+        setEnv(prefix_.c_str());
+      #else
+        setenv("PREFIX", prefix, 1);
+      #endif
+    } while (0);
+
+    StringStream buildArgs;
+    buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+
+    if (flagDebugMode) {
+      buildArgs << " --debug=true";
+    }
+
+    if (flagBuildTest) {
+      buildArgs << " --test=true";
+    }
+
     if (settings.count("build_script") != 0) {
-      do {
-        char prefix[4096] = {0};
-        std::memcpy(
-          prefix,
-          pathResourcesRelativeToUserBuild.string().c_str(),
-          pathResourcesRelativeToUserBuild.string().size()
-        );
-
-        // @TODO(jwerle): use `setEnv()` if #148 is closed
-        #if _WIN32
-          String prefix_ = "PREFIX=";
-          prefix_ += prefix;
-          setEnv(prefix_.c_str());
-        #else
-          setenv("PREFIX", prefix, 1);
-        #endif
-      } while (0);
-
-      StringStream buildArgs;
-      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-
-      if (flagDebugMode) {
-        buildArgs << " --debug=true";
-      }
-
-      if (flagBuildTest) {
-        buildArgs << " --test=true";
-      }
-
       auto scriptArgs = buildArgs.str();
       auto buildScript = settings["build_script"];
 
@@ -2563,6 +2563,35 @@ int main (const int argc, const char* argv[]) {
       }
 
       log("ran user build command");
+    }
+
+    // runs async, does not block
+    if (settings.count("build_script_after") != 0) {
+      auto scriptArgs = buildArgs.str();
+      auto buildScript = settings["build_script_after"];
+
+      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+      // cmd.exe can handle this translation
+      if (platform.win) {
+        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+        buildScript = "cmd.exe";
+      }
+
+      SSC::Process* process = new SSC::Process(
+        buildScript,
+        scriptArgs,
+        (oldCwd / targetPath).string(),
+        [](SSC::String const &out) { stdWrite(out, false); },
+        [](SSC::String const &out) { stdWrite(out, true); },
+        [process](const auto status) {
+          const auto exitCode = std::atoi(status.c_str());
+          if (exitCode != 0) {
+            log("build after script failed with code: " + status);
+          }
+        }
+      );
+
+      process->open();
     }
 
     String flags;
