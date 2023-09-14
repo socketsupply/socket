@@ -1407,7 +1407,7 @@ output = "build"
 
 [webview]
 ; Make root open index.html
-index = "/"
+root = "/"
 
 
 [debug]
