@@ -1051,7 +1051,35 @@ namespace SSC {
                                   IStream* stream = nullptr;
                                   String headers = "";
 
-                                  FindMimeFromData(0, StringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
+                                  if (path.ends_with(".js")) {
+                                    mimeType = (wchar_t*) L"text/javascript";
+                                  } else if (path.ends_with(".html")) {
+                                    mimeType = (wchar_t*) L"text/html";
+                                  } else if (path.ends_with(".css")) {
+                                    mimeType = (wchar_t*) L"text/css";
+                                  } else if (path.ends_with(".png")) {
+                                    mimeType = (wchar_t*) L"image/png";
+                                  } else if (path.ends_with(".jpg") || path.ends_with(".jpeg")) {
+                                    mimeType = (wchar_t*) L"image/jpeg";
+                                  } else if (path.ends_with(".json")) {
+                                    mimeType = (wchar_t*) L"application/json";
+                                  } else if (path.ends_with(".jsonld")) {
+                                    mimeType = (wchar_t*) L"application/ld+json";
+                                  } else if (path.ends_with(".opus")) {
+                                    mimeType = (wchar_t*) L"audio/opus";
+                                  } else if (path.ends_with(".oga")) {
+                                    mimeType = (wchar_t*) L"audio/ogg";
+                                  } else if (path.ends_with(".mp3")) {
+                                    mimeType = (wchar_t*) L"audio/mp3";
+                                  } else if (path.ends_with(".mp4")) {
+                                    mimeType = (wchar_t*) L"video/mp4";
+                                  } else if (path.ends_with(".mpeg")) {
+                                    mimeType = (wchar_t*) L"video/mpeg";
+                                  } else if (path.ends_with(".ogv")) {
+                                    mimeType = (wchar_t*) L"video/ogg";
+                                  } else {
+                                    FindMimeFromData(0, StringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
+                                  }
 
                                   headers = "Content-Type: ";
                                   headers += WStringToString(mimeType) + "\n";
