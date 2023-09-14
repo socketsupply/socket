@@ -1,5 +1,6 @@
 #include "ipc.hh"
 #include "../extension/extension.hh"
+#include "../core/file_system_watcher.hh"
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -10,6 +11,7 @@
 #define IPC_JSON_CONTENT_TYPE "text/json"
 
 extern const SSC::Map SSC::getUserConfig ();
+extern bool SSC::isDebugEnabled ();
 
 using namespace SSC;
 using namespace SSC::IPC;
@@ -1958,6 +1960,8 @@ static void registerSchemeHandler (Router *router) {
 
 namespace SSC::IPC {
   Bridge::Bridge (Core *core) : router() {
+    static auto userConfig = SSC::getUserConfig();
+
     this->core = core;
     this->router.core = core;
     this->router.bridge = this;
@@ -1976,6 +1980,22 @@ namespace SSC::IPC {
     ) {
       this->router.emit(seq, value.str());
     };
+
+    if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
+      auto watcher = new FileSystemWatcher(getcwd());
+      auto watching = watcher->start([=](
+        const auto& path,
+        const auto& events,
+        const auto& context
+      ) mutable {
+        auto json = JSON::Object::Entries {
+          {"path", std::filesystem::relative(path, getcwd()).string()}
+        };
+
+        auto result = SSC::IPC::Result(json);
+        this->router.emit("filedidchange", result.json().str());
+      });
+    }
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
