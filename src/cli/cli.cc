@@ -1663,6 +1663,23 @@ int main (const int argc, const char* argv[]) {
           ini += stream.str();
         }
 
+        String arguments = "";
+        const auto args = std::span(argv, argc).subspan(2);
+        int i = 0;
+        for (const auto& arg : args) {
+          const auto value = String(arg);
+          arguments += "'" + trim(value) + "'";
+          if (++i < args.size()) {
+            arguments += ", ";
+          }
+        }
+
+        ini += "\n";
+        ini += "[ssc]\n";
+        ini += "argv = " + arguments;
+        ini += "\n";
+        ini += "\n";
+
         if (configExists) {
           auto hex = stringToHex(ini);
           auto bytes = StringStream();
@@ -2628,8 +2645,6 @@ int main (const int argc, const char* argv[]) {
         settings["android_main_activity"] = String(DEFAULT_ANDROID_ACTIVITY_NAME);
       }
 
-      // clean and create output directories
-      //fs::remove_all(output);
       fs::create_directories(output);
       fs::create_directories(src);
       fs::create_directories(pkg);
