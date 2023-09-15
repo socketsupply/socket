@@ -37,6 +37,7 @@ options:
   --port=<port>         load "index.html" from "http://localhost:<port>"
   -o, --only-build      only run build step,
   -r, --run             run after building
+  -w, --watch           watch for changes to rerun build step
   --headless            run headlessly
   --stdin               read from stdin (emitted in window 0)
   --test[=path]         indicate test mode, optionally importing a test file
@@ -1404,10 +1405,14 @@ output = "build"
 ; The build script
 ; script = "npm run build"
 
+[build.watch]
+sources = "src"
+
 
 [webview]
 ; Make root open index.html
 root = "/"
+watch = false
 
 
 [debug]
