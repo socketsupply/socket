@@ -2000,10 +2000,12 @@ namespace SSC::IPC {
   }
 
   Bridge::~Bridge () {
+  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (this->fileSystemWatcher) {
       this->fileSystemWatcher->stop();
       delete this->fileSystemWatcher;
     }
+  #endif
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
