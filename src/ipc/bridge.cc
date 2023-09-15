@@ -1,6 +1,5 @@
 #include "ipc.hh"
 #include "../extension/extension.hh"
-#include "../core/file_system_watcher.hh"
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -1983,8 +1982,8 @@ namespace SSC::IPC {
 
   #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
-      auto watcher = new FileSystemWatcher(getcwd());
-      auto watching = watcher->start([=](
+      this->fileSystemWatcher = new FileSystemWatcher(getcwd());
+      this->fileSystemWatcher->start([=](
         const auto& path,
         const auto& events,
         const auto& context
@@ -1998,6 +1997,13 @@ namespace SSC::IPC {
       });
     }
   #endif
+  }
+
+  Bridge::~Bridge () {
+    if (this->fileSystemWatcher) {
+      this->fileSystemWatcher->stop();
+      delete this->fileSystemWatcher;
+    }
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
