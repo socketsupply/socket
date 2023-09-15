@@ -975,10 +975,6 @@ void runIOSSimulator (const Path& path, Map& settings) {
     log("ERROR: [ios] simulator_device option is empty");
     exit(1);
   }
-  if (settings["meta_bundle_identifier"].size() == 0) {
-    log("ERROR: [meta] bundle_identifier option is empty");
-    exit(1);
-  }
   String deviceType;
   StringStream listDeviceTypesCommand;
   listDeviceTypesCommand
@@ -2415,6 +2411,11 @@ int main (const int argc, const char* argv[]) {
   // Insert the elements of runOptions into buildOptions
   buildOptions.insert(buildOptions.end(), runOptions.begin(), runOptions.end());
   createSubcommand("build", buildOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
+    if (settings["meta_bundle_identifier"].size() == 0) {
+      log("ERROR: [meta] bundle_identifier option is empty");
+      exit(1);
+    }
+
     String argvForward = "";
     String targetPlatform = optionsWithValue["--platform"];
     String additionalBuildArgs = "";
