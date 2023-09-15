@@ -2,6 +2,7 @@
 #define SSC_IPC_H
 
 #include "../core/core.hh"
+#include "../core/file_system_watcher.hh"
 
 namespace SSC::IPC {
   class Router;
@@ -219,8 +220,10 @@ namespace SSC::IPC {
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
+      FileSystemWatcher* fileSystemWatcher = nullptr;
 
       Bridge (Core *core);
+      ~Bridge ();
       bool route (const String& msg, const char *bytes, size_t size);
       bool route (
         const String& msg,
