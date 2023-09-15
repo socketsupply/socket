@@ -364,6 +364,18 @@ namespace SSC {
     return vec;
   }
 
+  inline const String join (
+    const Vector<String>& vector,
+    const String& separator
+  ) {
+    StringStream joined;
+    for (const auto& item : vector) {
+      joined << item << separator << " ";
+    }
+
+    return trim(joined.str());
+  }
+
   inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
     unsigned char cp = 0; // code point
     unsigned char lower = 0x80;
