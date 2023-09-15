@@ -108,7 +108,7 @@ namespace SSC {
         context->isDirectory = std::filesystem::is_directory(path);
         context->lastUpdated = Clock::now();
         context->watcher = this;
-        context->name = std::filesystem::absolute(path);
+        context->name = std::filesystem::absolute(path).string();
 
         // init uv fs event handle
         uv_fs_event_init(this->loop, handle);
