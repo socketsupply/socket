@@ -1981,6 +1981,7 @@ namespace SSC::IPC {
       this->router.emit(seq, value.str());
     };
 
+  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
       auto watcher = new FileSystemWatcher(getcwd());
       auto watching = watcher->start([=](
@@ -1996,6 +1997,7 @@ namespace SSC::IPC {
         this->router.emit("filedidchange", result.json().str());
       });
     }
+  #endif
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
