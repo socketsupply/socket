@@ -2,7 +2,11 @@
 #define SSC_IPC_H
 
 #include "../core/core.hh"
+
+// only available on desktop
+#if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
 #include "../core/file_system_watcher.hh"
+#endif
 
 namespace SSC::IPC {
   class Router;
@@ -220,7 +224,9 @@ namespace SSC::IPC {
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
+    #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
       FileSystemWatcher* fileSystemWatcher = nullptr;
+    #endif
 
       Bridge (Core *core);
       ~Bridge ();
