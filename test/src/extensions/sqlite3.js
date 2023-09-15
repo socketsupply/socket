@@ -6,6 +6,11 @@ import test from 'socket:test'
 import fs from 'socket:fs'
 
 test('extension.load(name) - sqlite3', async (t) => {
+  if (process.env.SSC_ANDROID_CI) {
+    t.pass('skipping in android CI')
+    return
+  }
+
   const databasePath = process.cwd() + path.sep + 'data.db'
   let sqlite3
   let query

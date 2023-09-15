@@ -108,7 +108,8 @@ else
   "$COMSPEC" "/k $adb push $fixtures_path /data/local/tmp/ssc-socket-test-fixtures && exit "
 fi
 
-ssc build --headless --platform=android -r -o --test=./index.js || {
+node "$root/scripts/test-android.js" || {
+#ssc build --headless --platform=android -r -o --test=./index.js || {
   rc=$?
   echo "info: Shutting Android Emulator due to failed build."
   "$adb" devices | grep emulator | cut -f1 | while read -r line; do
@@ -116,10 +117,6 @@ ssc build --headless --platform=android -r -o --test=./index.js || {
   done
   exit "$rc"
 }
-
-${SHELL:-sh} "$root/scripts/poll-adb-logcat.sh"
-rc=$?
-echo "logcat rc: $rc"
 
 echo "info: Shutting Android Emulator due to poll-adb-logcat.sh finishing."
 "$adb" devices | grep emulator | cut -f1 | while read -r line; do
