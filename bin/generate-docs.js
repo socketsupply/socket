@@ -372,10 +372,44 @@ const parseIni = (iniText) => {
 }
 
 const createConfigMd = (sections) => {
-  let md = '# Configuration\n'
+  let md = '# Configuration basics\n'
+  md += `
+The configuration file is a simple INI \`socket.ini\` file in the root of the project.
+The file is read on startup and the values are used to configure the project.
+Sometimes it's useful to overide the values in \`socket.ini\` or keep some of the values local (e.g. \`[ios] simulator_device\`)
+or secret (e.g. \`[ios] codesign_identity\`, \`[ios] provisioning_profile\`, etc.)
+This can be done by creating a file called \`.ssrc\` in the root of the project.
+
+Example:
+
+\`socket.ini\`:
+\`\`\`ini
+; other settings
+
+[build]
+
+headless = false
+
+; other settings
+\`\`\`
+
+\`.ssrc\`:
+\`\`\`ini
+[build]
+
+headless = true
+
+[ios]
+
+codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
+distribution_method = "ad-hoc"
+provisioning_profile = "johndoe.mobileprovision"
+simulator_device = "iPhone 15"
+\`\`\`
+`
   md += '\n'
   Object.entries(sections).forEach(([sectionName, settings]) => {
-    md += `## Section \`${sectionName}\`\n`
+    md += `# Section \`${sectionName}\`\n`
     md += '\n'
     md += 'Key | Default Value | Description\n'
     md += ':--- | :--- | :---\n'
