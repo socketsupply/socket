@@ -220,7 +220,7 @@ jobs:
 
     - name: Build Socket Runtime
       run: |
-        ./bin/install.sh
+        VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
       env:
         VERBOSE: 1
@@ -286,6 +286,20 @@ jobs:
       with:
         gradle-version: 7.6.1
 
+    - name: Android FTE
+      run: |
+        ./bin/android-functions.sh --android-fte --yes-deps
+      env:
+        VERBOSE: 1
+        DEBUG: 1
+        CI: true
+        SSC_ANDROID_CI: true
+        # Clear variables because CI supplied installs are out of date
+        ANDROID_HOME:
+        JAVA_HOME:
+        ANDROID_SUPPORTED_ABIS: x86_64
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
     - name: Build Socket Runtime
       run: |
         yes | sdkmanager --licenses > /dev/null
@@ -298,13 +312,19 @@ jobs:
         SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile socket app
+    - name: Run emulator tests
       run: |
-        cd test && ssc build --prod --headless --platform=android
+          npm install
+          npm run test:android-emulator
       env:
-        CI: true
-        CXX: clang++
+        VERBOSE: 1
+        NO_IOS: 1
+        CI: 1
         SSC_ANDROID_CI: true
+        ANDROID_SUPPORTED_ABIS: x86_64
+        # Clear variables because CI supplied installs are out of date
+        ANDROID_HOME:
+        JAVA_HOME:
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   socket_node:
