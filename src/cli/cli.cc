@@ -449,8 +449,9 @@ void handleBuildPhaseForUserScript (
   const Map settings,
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
-  const String& cwd,
-  const String& additionalArgs
+  const Path& cwd,
+  const String& additionalArgs,
+  bool performAfterLifeCycle
 ) {
   do {
     char prefix[4096] = {0};
@@ -506,7 +507,7 @@ void handleBuildPhaseForUserScript (
   }
 
   // runs async, does not block
-  if (settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
+  if (performAfterLifeCycle && settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
     auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script_after");
 
@@ -2628,7 +2629,8 @@ int main (const int argc, const char* argv[]) {
       targetPlatform,
       pathResourcesRelativeToUserBuild,
       oldCwd,
-      additionalBuildArgs
+      additionalBuildArgs,
+      true
     );
 
     String flags;
@@ -5453,12 +5455,12 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      auto watcher = new FileSystemWatcher(sources);
-      auto watching = watcher->start([=](
-        const auto& path,
-        const auto& events,
-        const auto& context
-      ) mutable {
+      FileSystemWatcher* watcher = new FileSystemWatcher(sources);
+      auto watching = watcher->start([&](
+        const String& path,
+        const Vector<FileSystemWatcher::Event>& events,
+        const FileSystemWatcher::Context& context
+      ) {
         handleBuildPhaseForCopyMappedFiles(
           settings,
           targetPlatform,
@@ -5470,7 +5472,8 @@ int main (const int argc, const char* argv[]) {
           targetPlatform,
           pathResourcesRelativeToUserBuild,
           targetPath,
-          additionalBuildArgs
+          additionalBuildArgs,
+          false
         );
 
         log("file '" + path +"' did change");
@@ -5481,7 +5484,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      log("Watching for changes in: " + settings["build_watch_sources"]);
+      log("Watching for changes in: " + join(sources, ","));
     }
 
     int exitCode = 0;
