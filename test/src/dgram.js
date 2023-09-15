@@ -222,7 +222,7 @@ test('udp bind, connect, send', async (t) => {
     })
   })
 
-  server.bind(41236)
+  server.bind(41236, address)
 
   try {
     const r = Buffer.from(await msg).toString()
