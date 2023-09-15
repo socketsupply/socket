@@ -240,6 +240,8 @@ function _build_cli {
   local newest_mtime=0
   newest_mtime="$(latest_mtime ${test_headers[@]})"
 
+  local win_static_libs=()
+  local static_libs=()
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local sources=()
   local outputs=()
@@ -268,7 +270,7 @@ function _build_cli {
   done
 
   local exe=""
-  local libsocket_win=""
+  local static_libs=""
   local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     declare d=""
@@ -276,8 +278,11 @@ function _build_cli {
       d="d"
     fi
     exe=".exe"
-    libsocket_win="$BUILD_DIR/$arch-$platform/lib$d/libsocket-runtime$d.a"
-    test_sources+=("$libsocket_win")
+    win_static_libs+=("$BUILD_DIR/$arch-$platform/lib$d/libsocket-runtime$d.a")
+    test_sources+=("$static_libs")
+  elif [[ "$(uname -s)" == "Linux" ]]; then
+    static_libs+=("$BUILD_DIR/$arch-$platform/lib/libuv.a")
+    static_libs+=("$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a")
   fi
 
   libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
@@ -293,12 +298,13 @@ function _build_cli {
 
   if (( build_ssc )); then
     #
-    # TODO "$libsocket_win" where it was doesn't work, if windows requires it to
+    # TODO "$static_libs" where it was doesn't work, if windows requires it to
     # be where it was, there should be a separate branch for windows.
     #
-    quiet "$CXX"                                   \
-      "$libsocket_win"                           \
+    quiet "$CXX"                                 \
+      "${win_static_libs[@]}"                    \
       "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
+      "${static_libs[@]}"                        \
       "${cflags[@]}"                             \
       "${ldflags[@]}"                            \
       -o "$ssc_output"
