@@ -1,6 +1,39 @@
-# Configuration
+# Configuration basics
 
-## Section `build`
+The configuration file is a simple INI `socket.ini` file in the root of the project.
+The file is read on startup and the values are used to configure the project.
+Sometimes it's useful to overide the values in `socket.ini` or keep some of the values local (e.g. `[ios] simulator_device`)
+or secret (e.g. `[ios] codesign_identity`, `[ios] provisioning_profile`, etc.)
+This can be done by creating a file called `.ssrc` in the root of the project.
+
+Example:
+
+`socket.ini`:
+```ini
+; other settings
+
+[build]
+
+headless = false
+
+; other settings
+```
+
+`.ssrc`:
+```ini
+[build]
+
+headless = true
+
+[ios]
+
+codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
+distribution_method = "ad-hoc"
+provisioning_profile = "johndoe.mobileprovision"
+simulator_device = "iPhone 15"
+```
+
+# Section `build`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -11,26 +44,26 @@ headless |  |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 output |  |  The binary output path. It's recommended to add this path to .gitignore.
 
-## Section `build.watch`
+# Section `build.watch`
 
 Key | Default Value | Description
 :--- | :--- | :---
 sources |  | 
 
-## Section `webview`
+# Section `webview`
 
 Key | Default Value | Description
 :--- | :--- | :---
 root |  |  Make root open index.html
 watch |  | 
 
-## Section `debug`
+# Section `debug`
 
 Key | Default Value | Description
 :--- | :--- | :---
 flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 
-## Section `meta`
+# Section `meta`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -43,7 +76,7 @@ maintainer |  |  A String used in the about dialog and meta info.
 title |  |  The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
 version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
 
-## Section `android`
+# Section `android`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -57,7 +90,7 @@ native_sources |  |
 native_makefile |  | 
 sources |  | 
 
-## Section `ios`
+# Section `ios`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -66,7 +99,7 @@ distribution_method |  |  Describes how Xcode should export the archive. Availab
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
 simulator_device |  |  which device to target when building for the simulator
 
-## Section `linux`
+# Section `linux`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -74,7 +107,7 @@ categories |  |  Helps to make your app searchable in Linux desktop environments
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app in Linux desktop environments.
 
-## Section `mac`
+# Section `mac`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -86,14 +119,14 @@ sign |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-cert
 codesign_identity |  | 
 sign_paths |  | 
 
-## Section `native`
+# Section `native`
 
 Key | Default Value | Description
 :--- | :--- | :---
 files |  |  Files that should be added to the compile step.
 headers |  |  Extra Headers
 
-## Section `win`
+# Section `win`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -102,14 +135,14 @@ icon |  |  The icon to use for identifying your app on Windows.
 logo |  |  The icon to use for identifying your app on Windows.
 pfx |  |  A relative path to the pfx file used for signing.
 
-## Section `window`
+# Section `window`
 
 Key | Default Value | Description
 :--- | :--- | :---
 height |  |  The initial height of the first window.
 width |  |  The initial width of the first window.
 
-## Section `headless`
+# Section `headless`
 
 Key | Default Value | Description
 :--- | :--- | :---
