@@ -48,6 +48,7 @@ export default (dgram, events) => {
     peer.onQuery = (...args) => setTimeout(() => bus.emit('#query', ...args))
     peer.onNat = (...args) => bus.emit('#network-change', ...args)
     peer.onError = (...args) => bus.emit('#error', ...args)
+    peer.onWarn = (...args) => bus.emit('#warning', ...args)
     peer.onState = (...args) => bus.emit('#state', ...args)
     peer.onConnecting = (...args) => bus.emit('#connecting', ...args)
 

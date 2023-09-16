@@ -151,6 +151,11 @@ export const USR1_BYTES = 32
 export const USR2_BYTES = 32
 
 /**
+ * The size in bytes of the `ttl` field.
+ */
+export const TTL_BYTES = 4
+
+/**
  * The size in bytes of the `stream_to` field.
  */
 export const STREAM_TO_BYTES = 32
@@ -181,7 +186,7 @@ export const MESSAGE_BYTES = 1024
 export const FRAME_BYTES = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
   CLOCK_BYTES + INDEX_BYTES + MESSAGE_ID_BYTES + SUBCLUSTER_ID_BYTES + PREVIOUS_ID_BYTES +
   NEXT_ID_BYTES + CLUSTER_ID_BYTES + STREAM_TO_BYTES + STREAM_FROM_BYTES + USR1_BYTES +
-  USR2_BYTES + MESSAGE_SIG_BYTES + MESSAGE_LENGTH_BYTES
+  USR2_BYTES + TTL_BYTES + MESSAGE_SIG_BYTES + MESSAGE_LENGTH_BYTES
 
 /**
  * The size in bytes of the total packet frame and message.
@@ -243,6 +248,7 @@ export const decode = buf => {
     streamFrom: null,
     usr1: null,
     usr2: null,
+    ttl: 0,
     clusterId: null,
     subclusterId: null,
     message: null,
@@ -282,6 +288,7 @@ export const decode = buf => {
   o.subclusterId = trim(buf.slice(offset, offset += SUBCLUSTER_ID_BYTES)).toString('base64')
   o.usr1 = trim(buf.slice(offset, offset += USR1_BYTES))
   o.usr2 = trim(buf.slice(offset, offset += USR2_BYTES))
+  o.ttl = Math.max(-1, buf.readInt32BE(offset)); offset += TTL_BYTES
 
   // extract the user message length
   const messageLen = Math.min(buf.readUInt16BE(offset), MESSAGE_BYTES); offset += MESSAGE_LENGTH_BYTES
@@ -320,6 +327,7 @@ export class Packet {
   streamFrom = ''
   usr1 = ''
   usr2 = ''
+  ttl = 0
   message = ''
 
   static ttl = CACHE_TTL
@@ -384,6 +392,7 @@ export class Packet {
     this.streamFrom = options?.streamFrom || ''
     this.usr1 = options?.usr1 || ''
     this.usr2 = options?.usr2 || ''
+    this.ttl = options?.ttl || 0
     this.message = options?.message || ''
     this.sig = options?.sig || ''
   }
@@ -433,6 +442,7 @@ export class Packet {
     Buffer.from(p.subclusterId, 'base64').copy(buf, offset); offset += SUBCLUSTER_ID_BYTES
     Buffer.from(p.usr1).copy(buf, offset); offset += USR1_BYTES
     Buffer.from(p.usr2).copy(buf, offset); offset += USR2_BYTES
+    offset = buf.writeInt32BE(p.ttl, offset)
 
     const msgBuf = Buffer.from(p.message)
 
@@ -540,15 +550,15 @@ export class PacketJoin extends Packet {
 
 export class PacketPublish extends Packet {
   static type = 5 // no need to validatePacket, message is whatever you want
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, previousId }) {
-    super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, previousId })
+  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, ttl, previousId }) {
+    super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, previousId })
   }
 }
 
 export class PacketStream extends Packet {
   static type = 6
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, streamTo, streamFrom, previousId }) {
-    super({ type: PacketStream.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, streamTo, streamFrom, previousId })
+  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId }) {
+    super({ type: PacketStream.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId })
   }
 }
 

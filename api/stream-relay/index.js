@@ -35,11 +35,11 @@ import {
 
 let logcount = 0
 
-export const debug = (...args) =>
+export const debug = (pid, ...args) =>
   typeof process !== 'undefined' &&
   process.env.DEBUG &&
   args.some(v => new RegExp(process.env.DEBUG).test(v)) &&
-  console.log(String(logcount++).padStart(4), '│', ...args)
+  console.log(String(logcount++).padStart(4), '│', pid.slice(0, 4), ...args)
 
 export { sha256, Cache, Encryption, NAT }
 
@@ -371,7 +371,7 @@ export const wrap = dgram => {
       if (this.onListening) this.onListening()
       this.isListening = true
 
-      debug(this.peerId.slice(0, 4), `++ INIT (config.internalPort=${this.config.port}, config.probeInternalPort=${this.config.probeInternalPort})`)
+      debug(this.peerId, `++ INIT (config.internalPort=${this.config.port}, config.probeInternalPort=${this.config.probeInternalPort})`)
     }
 
     /*
@@ -423,9 +423,11 @@ export const wrap = dgram => {
       for (const [k, packet] of [...this.cache.data]) {
         const p = Packet.from(packet)
         if (!p) continue
-        const timeOfDeath = (p?.timestamp ?? 0) + Packet.ttl
 
-        if (timeOfDeath <= ts) {
+        const ttl = Math.min(p.ttl, Packet.ttl)
+        const deadline = (p.timestamp ?? 0) + ttl
+
+        if (deadline <= ts) {
           this.mcast(p, p.packetId, true)
           this.cache.delete(k)
           if (this.onDelete) this.onDelete(p)
@@ -480,7 +482,7 @@ export const wrap = dgram => {
         if (err) return this._onError(err)
         const packet = Packet.decode(data)
         if (this.onSend) this.onSend(packet, port, address)
-        debug(`${this.peerId.slice(0, 4)} -> SEND (T=${packet.type})`, port, address)
+        debug(`${this.peerId} -> SEND (T=${packet.type})`, port, address)
       })
     }
 
@@ -579,7 +581,7 @@ export const wrap = dgram => {
       if (this.onConnecting) this.onConnecting({ code: -2 })
       if (this.closing || this.indexed || this.reflectionId) return
       if (this.onConnecting) this.onConnecting({ code: -1 })
-      debug(this.peerId.slice(0, 4), '-- NAT REQ REF')
+      debug(this.peerId, '-- NAT REQ REF')
 
       const peers = [...this.peers]
         .filter(p => p.lastUpdate !== 0)
@@ -587,7 +589,7 @@ export const wrap = dgram => {
 
       if (peers.length < 2) {
         if (this.onConnecting) this.onConnecting({ code: 0 })
-        debug(this.peerId.slice(0, 4), 'XX NOT ENOUGH PINGABLE PEERS - RETRYING')
+        debug(this.peerId, 'XX NOT ENOUGH PINGABLE PEERS - RETRYING')
         return this._setTimeout(() => this.requestReflection(), 256)
       }
 
@@ -608,7 +610,7 @@ export const wrap = dgram => {
         if (this.reflectionTimeout) this._clearTimeout(this.reflectionTimeout)
         this.reflectionStage = 1
 
-        debug(this.peerId.slice(0, 4), '-> NAT REFLECT - STAGE1: A', this.reflectionId)
+        debug(this.peerId, '-> NAT REFLECT - STAGE1: A', this.reflectionId)
         const list = peers.filter(p => p.probed).sort(() => Math.random() - 0.5)
         const peer = list.length ? list[0] : peers[0]
         peer.probed = true // mark this peer as being used to provide port info
@@ -617,14 +619,14 @@ export const wrap = dgram => {
         // we expect onMessageProbe to fire and clear this timer or it will timeout
         this.probeReflectionTimeout = this._setTimeout(() => {
           if (this.reflectionStage !== 1) return
-          debug(this.peerId.slice(0, 4), 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId, this.reflectionTimeout)
+          debug(this.peerId, 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId, this.reflectionTimeout)
 
           this.reflectionStage = 1
           this.reflectionId = null
           this.requestReflection()
         }, 1024)
 
-        debug(this.peerId.slice(0, 4), '-> NAT REFLECT - STAGE1: B', this.reflectionId)
+        debug(this.peerId, '-> NAT REFLECT - STAGE1: B', this.reflectionId)
         return
       }
 
@@ -644,13 +646,13 @@ export const wrap = dgram => {
         const peer2 = list.sort(() => Math.random() - 0.5)[0]
 
         if (!peer2) { // how did it advance?
-          debug(this.peerId.slice(0, 4), 'XX NAT REFLECT - STAGE2: NO PEERS HAVE BEEN PROBED YET - RETRYING', this.peers)
+          debug(this.peerId, 'XX NAT REFLECT - STAGE2: NO PEERS HAVE BEEN PROBED YET - RETRYING', this.peers)
           return this._setTimeout(() => this.requestReflection(), 256)
         }
 
         const peer1 = peers.filter(p => p.peerId !== peer2.peerId).sort(() => Math.random() - 0.5)[0]
 
-        debug(this.peerId.slice(0, 4), '-> NAT REFLECT - STAGE2: START', this.reflectionId)
+        debug(this.peerId, '-> NAT REFLECT - STAGE2: START', this.reflectionId)
 
         // reset reflection variables to defaults
         this.nextNatType = NAT.UNKNOWN
@@ -663,7 +665,7 @@ export const wrap = dgram => {
 
         this.reflectionTimeout = this._setTimeout(ts => {
           if (this.reflectionStage !== 2) return
-          debug(this.peerId.slice(0, 4), 'XX NAT REFLECT - STAGE2: TIMEOUT', this.reflectionId)
+          debug(this.peerId, 'XX NAT REFLECT - STAGE2: TIMEOUT', this.reflectionId)
           this.reflectionStage = 1
           return this.requestReflection()
         }, 2048)
@@ -809,7 +811,7 @@ export const wrap = dgram => {
         }
       })
 
-      debug(this.peerId.slice(0, 4), '-> JOIN', this.clusters)
+      debug(this.peerId, '-> JOIN', this.clusters)
 
       if (this.onState) await this.onState(this.getState())
       this.mcast(packet, packet.packetId, true)
@@ -971,7 +973,7 @@ export const wrap = dgram => {
      */
     async _onConnection (packet, peer, port, address) {
       if (this.closing || this.indexed) return
-      debug(this.peerId.slice(0, 4), '<- CONNECTION', peer.peerId, packet.type)
+      debug(this.peerId, '<- CONNECTION', peer.peerId, packet.type)
       if (!peer.localPeer) peer.localPeer = this
 
       this.sync(peer, packet, port, address)
@@ -986,7 +988,7 @@ export const wrap = dgram => {
     async _onSync (packet, port, address) {
       if (!isBufferLike(packet.message)) return
 
-      debug(this.peerId.slice(0, 4), '<< SYNC', port, address)
+      debug(this.peerId, '<< SYNC', port, address)
 
       const remote = Cache.decodeSummary(packet.message)
 
@@ -1008,7 +1010,14 @@ export const wrap = dgram => {
 
           for (const key of keys) {
             const packet = Packet.from(this.cache.data.get(key))
-            this.send(await Packet.encode(packet), port, address)
+            let data
+            try {
+              data = await Packet.encode(packet)
+            } catch (err) {
+              if (this.onWarn) this.onWarn(err)
+              continue
+            }
+            this.send(data, port, address)
           }
         } else if (remote.buckets[i] !== local.buckets[i]) {
           //
@@ -1030,7 +1039,7 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onQuery (packet, port, address) {
-      debug(this.peerId.slice(0, 4), '<- QUERY', port, address)
+      debug(this.peerId, '<- QUERY', port, address)
       if (this.controlPackets.has(packet.packetId)) return
       this.controlPackets.set(packet.packetId, 1)
 
@@ -1057,14 +1066,14 @@ export const wrap = dgram => {
       this.lastUpdate = Date.now()
       const { reflectionId, isReflection, isConnection, isHeartbeat } = packet.message
       if (packet.message.requesterPeerId === this.peerId) return
-      debug(this.peerId.slice(0, 4), '<- PING', port, address)
+      debug(this.peerId, '<- PING', port, address)
 
       const { probeExternalPort, isProbe } = packet.message
 
       let peer = this.getPeer(packet.message.requesterPeerId)
 
       if (isProbe) {
-        debug(this.peerId.slice(0, 4), 'PING PROBE', port, address)
+        debug(this.peerId, 'PING PROBE', port, address)
       }
 
       if (packet.message.natType) {
@@ -1130,7 +1139,7 @@ export const wrap = dgram => {
       this.lastUpdate = Date.now()
 
       const { reflectionId, pingId, isReflection, responderPeerId } = packet.message
-      debug(this.peerId.slice(0, 4), '<- PONG', port, address, reflectionId)
+      debug(this.peerId, '<- PONG', port, address, reflectionId)
 
       if (packet.message.isConnection) {
         const peer = this.getPeer(responderPeerId)
@@ -1150,9 +1159,9 @@ export const wrap = dgram => {
 
         if (!this.reflectionFirstResponder) {
           this.reflectionFirstResponder = { port, address, responderPeerId, reflectionId, packet }
-          debug(this.peerId.slice(0, 4), '<- NAT REFLECT - STAGE2: FIRST RESPONSE', port, address, this.reflectionId)
+          debug(this.peerId, '<- NAT REFLECT - STAGE2: FIRST RESPONSE', port, address, this.reflectionId)
         } else {
-          debug(this.peerId.slice(0, 4), '<- NAT REFLECT - STAGE2: SECOND RESPONSE', port, address, this.reflectionId)
+          debug(this.peerId, '<- NAT REFLECT - STAGE2: SECOND RESPONSE', port, address, this.reflectionId)
           if (packet.message.address !== this.address) return
 
           this.nextNatType |= (
@@ -1162,7 +1171,7 @@ export const wrap = dgram => {
             : NAT.MAPPING_ENDPOINT_DEPENDENT
 
           debug(
-            this.peerId.slice(0, 4),
+            this.peerId,
             `++ NAT REFLECT - STATE UPDATE (nextType=${this.nextNatType})`,
             packet.message.port,
             this.reflectionFirstResponder.packet.message.port
@@ -1201,7 +1210,7 @@ export const wrap = dgram => {
                 if (this.onNat) this.onNat(this.natType)
                 if (this.onConnecting) this.onConnecting({ code: 3 })
                 this.sendUnpublished()
-                debug(this.peerId.slice(0, 4), `++ NAT (type=${NAT.toString(this.natType)})`)
+                debug(this.peerId, `++ NAT (type=${NAT.toString(this.natType)})`)
 
                 if (this.onReady) this.onReady()
               }
@@ -1214,7 +1223,7 @@ export const wrap = dgram => {
 
         this.address = packet.message.address
         this.port = packet.message.port
-        debug(this.peerId.slice(0, 4), `++ NAT UPDATE STATE (address=${this.address}, port=${this.port})`)
+        debug(this.peerId, `++ NAT UPDATE STATE (address=${this.address}, port=${this.port})`)
       }
 
       const peer = this.getPeer(responderPeerId)
@@ -1267,7 +1276,7 @@ export const wrap = dgram => {
 
       let strategy = NAT.connectionStrategy(this.natType, packet.message.natType)
 
-      debug(this.peerId.slice(0, 4), `++ NAT STRATEGY=${NAT.toStringStrategy(strategy)} (from=${this.address}/${NAT.toString(this.natType)}, to=${packet.message.address}/${NAT.toString(packet.message.natType)})`)
+      debug(this.peerId, `++ NAT STRATEGY=${NAT.toStringStrategy(strategy)} (from=${this.address}/${NAT.toString(this.natType)}, to=${packet.message.address}/${NAT.toString(packet.message.natType)})`)
 
       if (strategy === NAT.STRATEGY_TRAVERSAL_CONNECT) {
         this.send(await makePacket(), port, packet.message.address)
@@ -1335,16 +1344,16 @@ export const wrap = dgram => {
       }
 
       if (strategy === NAT.STRATEGY_PROXY) {
-        debug(this.peerId.slice(0, 4), '++ SET PROXY', peer.peerId)
+        debug(this.peerId, '++ SET PROXY', peer.peerId)
       }
 
       if (strategy === NAT.STRATEGY_DIRECT_CONNECT) {
         peer.connected = true
-        debug(this.peerId.slice(0, 4), '++ NAT STRATEGY_DIRECT_CONNECT')
+        debug(this.peerId, '++ NAT STRATEGY_DIRECT_CONNECT')
       }
 
       if (strategy === NAT.STRATEGY_DEFER) {
-        debug(this.peerId.slice(0, 4), '++ NAT STRATEGY_DEFER')
+        debug(this.peerId, '++ NAT STRATEGY_DEFER')
         peer.connected = true
       }
 
@@ -1358,7 +1367,7 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onJoin (packet, port, address, data) {
-      debug(this.peerId.slice(0, 4), '<- JOIN', packet.hops, port, address)
+      debug(this.peerId, '<- JOIN', packet.hops, port, address)
       if (packet.message.requesterPeerId === this.peerId) return
       if (!packet.clusterId) return
       if (packet.hops > this.maxHops) return
@@ -1407,7 +1416,7 @@ export const wrap = dgram => {
       }
 
       if (packet.message.rendezvousPeerId) {
-        debug(this.peerId.slice(0, 4), '<- RENDEZVOUS')
+        debug(this.peerId, '<- RENDEZVOUS')
         const peer = this.peers.find(p => p.peerId === packet.message.rendezvousPeerId)
         peer.natType = packet.message.rendezvousType
         if (!peer) return
@@ -1452,8 +1461,8 @@ export const wrap = dgram => {
         // Send intro1 to the peer described in the message
         // Send intro2 to the peer in this loop
         //
-        debug(this.peerId.slice(0, 4), `>> INTRO ${peer.address}:${peer.port} -> ${packet.message.address}:${packet.message.port}`)
-        debug(this.peerId.slice(0, 4), `>> INTRO ${packet.message.address}:${packet.message.port} -> ${peer.address}:${peer.port}`)
+        debug(this.peerId, `>> INTRO ${peer.address}:${peer.port} -> ${packet.message.address}:${packet.message.port}`)
+        debug(this.peerId, `>> INTRO ${packet.message.address}:${packet.message.port} -> ${peer.address}:${peer.port}`)
 
         this.send(intro2, peer.port, peer.address)
         this.send(intro1, packet.message.port, packet.message.address)
@@ -1476,7 +1485,7 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onPublish (packet, port, address, data) {
-      debug(this.peerId.slice(0, 4), '<- PUBLISH', port, address)
+      debug(this.peerId, '<- PUBLISH', port, address)
       // const subclusterId = this.clusters[packet.clusterId]
 
       // only cache if this packet if i am part of this subclusterId
@@ -1510,7 +1519,7 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onStream (packet, port, address, data) {
-      debug(this.peerId.slice(0, 4), '<- ON STREAM', address, port)
+      debug(this.peerId, '<- ON STREAM', address, port)
       const { streamTo, streamFrom } = packet
 
       const peerFrom = this.peers.find(p => p.peerId === streamFrom)
@@ -1565,7 +1574,7 @@ export const wrap = dgram => {
       this.controlPackets.set(packet.packetId, 1)
 
       const { reflectionId } = packet.message
-      debug(this.peerId.slice(0, 4), `<- NAT PROBE (from=${address}:${port}, stage=${this.reflectionStage}, id=${reflectionId})`)
+      debug(this.peerId, `<- NAT PROBE (from=${address}:${port}, stage=${this.reflectionStage}, id=${reflectionId})`)
 
       if (this.onProbe) this.onProbe(data, port, address)
       if (this.reflectionId !== reflectionId || !this.reflectionId) return
@@ -1574,7 +1583,7 @@ export const wrap = dgram => {
       // const reflectionStage = reflectionId ? parseInt(reflectionId.slice(-1), 16) : 0
 
       if (this.reflectionStage === 1) {
-        debug(this.peerId.slice(0, 4), '<- NAT REFLECT - STAGE1: probe received', reflectionId)
+        debug(this.peerId, '<- NAT REFLECT - STAGE1: probe received', reflectionId)
         if (!packet.message?.port) return // message must include a port number
 
         // successfully discovered the probe socket external port
@@ -1588,7 +1597,7 @@ export const wrap = dgram => {
       }
 
       if (this.reflectionStage === 2) {
-        debug(this.peerId.slice(0, 4), '<- NAT REFLECT - STAGE2: probe received', reflectionId)
+        debug(this.peerId, '<- NAT REFLECT - STAGE2: probe received', reflectionId)
 
         // find the peer who sent the probe
         const probeFrom = this.peers.find(p => p.peerId === packet.message.responderPeerId)
@@ -1598,10 +1607,10 @@ export const wrap = dgram => {
         // then our NAT will have a mapping for their IP, but not their IP+Port.
         if (probeFrom.probed) {
           this.nextNatType |= NAT.FIREWALL_ALLOW_KNOWN_IP
-          debug(this.peerId.slice(0, 4), `<> PROBE STATUS: NAT.FIREWALL_ALLOW_KNOWN_IP (${packet.message.port} -> ${this.nextNatType})`)
+          debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_KNOWN_IP (${packet.message.port} -> ${this.nextNatType})`)
         } else {
           this.nextNatType |= NAT.FIREWALL_ALLOW_ANY
-          debug(this.peerId.slice(0, 4), `<> PROBE STATUS: NAT.FIREWALL_ALLOW_ANY (${packet.message.port} -> ${this.nextNatType})`)
+          debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_ANY (${packet.message.port} -> ${this.nextNatType})`)
         }
 
         // wait for all messages to arrive
