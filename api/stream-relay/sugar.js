@@ -158,6 +158,7 @@ export default (dgram, events) => {
         }
 
         args.previousId = opts.previousId
+        args.ttl = opts.ttl ?? 0
         return args
       }
 
