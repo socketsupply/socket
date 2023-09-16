@@ -279,6 +279,8 @@ MAIN {
   }
 
   auto onStdErr = [&](auto err) {
+    std::cerr << "\033[31m" + err + "\033[0m";
+
     for (auto w : windowManager.windows) {
       if (w != nullptr) {
         auto window = windowManager.getWindow(w->opts.index);
@@ -374,6 +376,16 @@ MAIN {
             window->resolvePromise(message.seq, OK_STATE, value);
           }
         }
+        return;
+      }
+
+      if (message.name == "stdout") {
+        std::cout << value;
+        return;
+      }
+
+      if (message.name == "stderr") {
+        std::cerr << "\033[31m" + value + "\033[0m";
         return;
       }
     });
