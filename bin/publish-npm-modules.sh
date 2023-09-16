@@ -198,7 +198,7 @@ if (( !only_top_level )); then
     _publish
 
     if (( do_global_link )); then
-      npm link --no-fund --no-audit --offline
+      npm link --no-fund --no-audit --offline --force
     fi
   done
 fi
@@ -212,9 +212,9 @@ if (( !only_platforms || only_top_level )); then
   if (( do_global_link )); then
     for arch in "${archs[@]}"; do
       declare package="@socketsupply/socket-$platform-${arch/x86_64/x64}"
-      npm link --no-fund --no-audit --offline "$package"
+      npm link --no-fund --no-audit --offline --force "$package"
     done
 
-    npm link --no-fund --no-audit --offline
+    npm link --no-fund --no-audit --offline --force
   fi
 fi
