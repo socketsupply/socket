@@ -5095,6 +5095,10 @@ declare module "socket:stream-relay/packets" {
      */
     export const USR2_BYTES: 32;
     /**
+     * The size in bytes of the `ttl` field.
+     */
+    export const TTL_BYTES: 4;
+    /**
      * The size in bytes of the `stream_to` field.
      */
     export const STREAM_TO_BYTES: 32;
@@ -5181,6 +5185,7 @@ declare module "socket:stream-relay/packets" {
         streamFrom: string;
         usr1: string;
         usr2: string;
+        ttl: number;
         message: string;
         sig: any;
         #private;
@@ -5214,7 +5219,7 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, ttl, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5225,12 +5230,13 @@ declare module "socket:stream-relay/packets" {
             to: any;
             usr1: any;
             usr2: any;
+            ttl: any;
             previousId: any;
         });
     }
     export class PacketStream extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, streamTo, streamFrom, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5240,6 +5246,7 @@ declare module "socket:stream-relay/packets" {
             clock: any;
             usr1: any;
             usr2: any;
+            ttl: any;
             streamTo: any;
             streamFrom: any;
             previousId: any;
@@ -5571,7 +5578,7 @@ declare module "socket:stream-relay/index" {
      * @return {boolean}
      */
     export function rateLimit(rates: Map<any, any>, type: number, port: number, address: string, subclusterIdQuota: any): boolean;
-    export function debug(...args: any[]): void;
+    export function debug(pid: any, ...args: any[]): void;
     /**
      * Retry delay in milliseconds for ping.
      * @type {number}
