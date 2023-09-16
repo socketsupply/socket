@@ -558,6 +558,10 @@ function first_time_experience_setup() {
   export BUILD_ANDROID="1"
   local target="$1"
 
+  if [[ -n "$NO_ANDROID" ]]; then
+    unset BUILD_ANDROID
+  fi
+
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
       local package_manager="$(determine_package_manager)"
