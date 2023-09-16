@@ -26,7 +26,7 @@ class API {
       this.#write(`ipc://process.exit?value=${exitCode}`)
     })
     process.on('uncaughtException', (err) => {
-      this.#write(`ipc://stderr?value=${err}`)
+      this.#write(`ipc://stderr?value=${encodeURIComponent(String(err))}`)
     })
 
     // redirect console
