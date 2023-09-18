@@ -40,9 +40,9 @@ Key | Default Value | Description
 copy | "src" |  ssc will copy everything in this directory to the build output directory. This is useful when you want to avoid bundling or want to use tools like vite, webpack, rollup, etc. to build your project and then copy output to the Socket bundle resources directory.
 env |  |  An list of environment variables, separated by commas.
 flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-headless |  |  If true, the window will never be displayed.
+headless | false |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
-output |  |  The binary output path. It's recommended to add this path to .gitignore.
+output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
 
 # Section `build.watch`
 
@@ -54,8 +54,8 @@ sources |  |
 
 Key | Default Value | Description
 :--- | :--- | :---
-root |  |  Make root open index.html
-watch |  | 
+root | "/" |  Make root open index.html
+watch | false |  Enable watch mode
 
 # Section `debug`
 
@@ -67,7 +67,7 @@ flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, e
 
 Key | Default Value | Description
 :--- | :--- | :---
-bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores).
+bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). Required field.
 copyright |  |  A string that gets used in the about dialog and package meta info.
 description |  |  A short description of the app.
 file_limit |  |  Set the limit of files that can be opened by your process.
