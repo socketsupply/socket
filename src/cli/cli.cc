@@ -2413,9 +2413,19 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("build", buildOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto isForExtensionOnly = settings["meta_type"] == "extension" || settings["build_type"] == "extension";
 
-    if (settings["meta_bundle_identifier"].size() == 0 !isForExtensionOnly) {
-      log("ERROR: [meta] bundle_identifier option is empty");
-      exit(1);
+    if (!isForExtensionOnly) {
+      if (settings["meta_bundle_identifier"].size() == 0) {
+        log("ERROR: [meta] bundle_identifier option is empty");
+        exit(1);
+      }
+
+      std::regex reverseDnsPattern(R"(^[a-z0-9]+([-a-z0-9]*[a-z0-9]+)?(\.[a-z0-9]+([-a-z0-9]*[a-z0-9]+)?)*$)", std::regex::icase);
+      if (!std::regex_match(settings["meta_bundle_identifier"], reverseDnsPattern)) {
+          log("ERROR: [meta] bundle_name has invalid format :" + settings["meta_bundle_identifier"]);
+          log("Please use reverse DNS notation (https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion)");
+          exit(1);
+      }
+
     }
 
     String argvForward = "";
