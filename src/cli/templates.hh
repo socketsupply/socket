@@ -1429,7 +1429,7 @@ flags = "-g"
 
 [meta]
 
-; A unique ID that identifies the bundle (used by all app stores). Required field.
+; A unique ID that identifies the bundle (used by all app stores). It's required when `[meta] type` is not `"extension"`.
 bundle_identifier = "com.beepboop"
 
 ; A string that gets used in the about dialog and package meta info.
@@ -1449,6 +1449,9 @@ maintainer = "Beep Boop Corp."
 
 ; The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
 title = "Beep Boop"
+
+; Builds an extension when set to "extension".
+; type = ""
 
 ; A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
 version = 1.0.0
