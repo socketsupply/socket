@@ -1394,16 +1394,19 @@ env = USER, TMPDIR, PWD
 flags = -O3
 
 ; If true, the window will never be displayed.
+; default value: false
 headless = false
 
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 name = "beepboop"
 
 ; The binary output path. It's recommended to add this path to .gitignore.
+; default value: "build"
 output = "build"
 
 ; The build script
 ; script = "npm run build"
+
 
 [build.watch]
 sources = "src"
@@ -1411,7 +1414,11 @@ sources = "src"
 
 [webview]
 ; Make root open index.html
+; default value: "/"
 root = "/"
+
+; Enable watch mode
+; default value: false
 watch = false
 
 
@@ -1422,7 +1429,7 @@ flags = "-g"
 
 [meta]
 
-; A unique ID that identifies the bundle (used by all app stores).
+; A unique ID that identifies the bundle (used by all app stores). Required field.
 bundle_identifier = "com.beepboop"
 
 ; A string that gets used in the about dialog and package meta info.
