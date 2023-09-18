@@ -67,13 +67,14 @@ flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, e
 
 Key | Default Value | Description
 :--- | :--- | :---
-bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). Required field.
+bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). It's required when `[meta] type` is not `"extension"`.
 copyright |  |  A string that gets used in the about dialog and package meta info.
 description |  |  A short description of the app.
 file_limit |  |  Set the limit of files that can be opened by your process.
 lang |  |  Localization
 maintainer |  |  A String used in the about dialog and meta info.
 title |  |  The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
+type |  |  Builds an extension when set to "extension".
 version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
 
 # Section `android`

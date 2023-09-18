@@ -2411,7 +2411,9 @@ int main (const int argc, const char* argv[]) {
   // Insert the elements of runOptions into buildOptions
   buildOptions.insert(buildOptions.end(), runOptions.begin(), runOptions.end());
   createSubcommand("build", buildOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    if (settings["meta_bundle_identifier"].size() == 0) {
+    auto isForExtensionOnly = settings["meta_type"] == "extension" || settings["build_type"] == "extension";
+
+    if (settings["meta_bundle_identifier"].size() == 0 !isForExtensionOnly) {
       log("ERROR: [meta] bundle_identifier option is empty");
       exit(1);
     }
@@ -2646,7 +2648,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
-    auto isForExtensionOnly = settings["meta_type"] == "extension" || settings["build_type"] == "extension";
 
     if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
