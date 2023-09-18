@@ -288,7 +288,7 @@ export class ApplicationWindow {
       return await ipc.send('process.write', {
         index: this.#senderWindowIndex,
         event: options.event,
-        value: value ?? ''
+        value: value !== undefined ? JSON.stringify(value) : null
       })
     }
 
