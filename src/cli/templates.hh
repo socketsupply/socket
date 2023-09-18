@@ -1453,6 +1453,7 @@ maintainer = "Beep Boop Corp."
 title = "Beep Boop"
 
 ; Builds an extension when set to "extension".
+; default value: ""
 ; type = ""
 
 ; A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
