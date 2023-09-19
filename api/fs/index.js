@@ -1,5 +1,5 @@
 /**
- * @module File System
+ * @module FS
  *
  * This module enables interacting with the file system in a way modeled on
  * standard POSIX functions.

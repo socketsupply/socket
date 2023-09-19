@@ -17,7 +17,6 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
 // socket/api/README.md
 {
   const modules = [
-    'window.js',
     'application.js',
     'bluetooth.js',
     // 'bootstrap.js', // don't document this module yet
@@ -28,28 +27,30 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     'fs/index.js',
     'fs/promises.js',
     'ipc.js',
-    'os.js',
+    // 'location.js',
     'network.js',
+    // 'os.js',
     'path/path.js',
     'process.js',
+    // 'test/index.js',
+    // 'url/index.js',
     'window.js'
   ]
 
   const dest = JS_INTERFACE_DIR
   const md = 'README.md'
 
-  const chunks = await Promise.all(modules.map(async module => ({
-    module,
-    content: generateApiModuleDoc({
-      src: await fs.readFile(path.relative(process.cwd(), `${dest}/${module}`)),
-      srcFile: path.relative(process.cwd(), `${dest}/${module}`),
-      gitTagOrBranch
-    })
-  })))
+  const chunks = await Promise.all(modules.map(async module => {
+    const src = await fs.readFile(path.relative(process.cwd(), `${dest}/${module}`))
+    const srcFile = path.relative(process.cwd(), `${dest}/${module}`)
+    const { content, header } = generateApiModuleDoc({ src, srcFile, gitTagOrBranch })
+    return { module, content, header }
+  }))
 
   // modules special with special handling
   chunks.push({
     module: 'buffer.js',
+    header: 'Buffer',
     content: `
 # [Buffer](https://github.com/socketsupply/socket/blob/master/api/buffer.js)
 
@@ -59,6 +60,7 @@ External docs: https://nodejs.org/api/buffer.html
 `
   }, {
     module: 'events.js',
+    header: 'Events',
     content: `
 # [Events](https://github.com/socketsupply/socket/blob/master/api/events.js)
 
@@ -69,8 +71,8 @@ External docs: https://nodejs.org/api/events.html
   })
 
   const result = chunks
-    // sort by module name
-    .sort((a, b) => a.module > b.module ? 1 : -1)
+    // sort by header
+    .sort((a, b) => a.header > b.header ? 1 : -1)
     // get content
     .map(chunk => chunk.content)
     // join
@@ -89,10 +91,10 @@ External docs: https://nodejs.org/api/events.html
   const srcFile = path.relative(process.cwd(), `${dest}/${filename}`)
   const src = await fs.readFile(srcFile)
 
-  const result = generateApiModuleDoc({ src, srcFile })
+  const { content } = generateApiModuleDoc({ src, srcFile })
 
   const destFile = path.relative(process.cwd(), `${dest}/${md}`)
-  fs.writeFile(destFile, result)
+  fs.writeFile(destFile, content)
 }
 
 // socket/api/CONFIG.md

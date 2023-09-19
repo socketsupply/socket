@@ -33,6 +33,7 @@ export function generateApiModuleDoc ({
   }
 
   const docs = []
+  let header = 'Unknown module'
 
   const onNode = node => {
     const item = {
@@ -51,7 +52,10 @@ export function generateApiModuleDoc ({
     if (item.header?.join('').includes('@module')) {
       item.type = 'Module'
       const name = item.header.join('').match(/@module\s*(.*)/)
-      if (name) item.name = name[1]
+      if (name) {
+        item.name = name[1]
+        header = item.name
+      }
     }
 
     if (item.header?.join('').includes('@link')) {
@@ -243,21 +247,21 @@ export function generateApiModuleDoc ({
 
   const gitBase = 'https://github.com/socketsupply/socket/blob/'
 
-  let result = ''
+  let content = ''
 
   for (const doc of docs) {
     let h = doc.export ? '##' : '###'
     if (doc.type === 'Module') h = '#'
 
-    const title = `\n${h} [${doc.name}](${gitBase}${gitTagOrBranch}${doc.location})\n`
+    const title = `${h} [${doc.name}](${gitBase}${gitTagOrBranch}${doc.location})\n`
     const header = `${doc.header.join('\n')}\n`
 
-    result += title ? `${title}\n` : ''
-    result += doc?.url ? `External docs: ${doc.url}\n` : ''
-    result += header ? `${header}\n` : ''
-    result += createTableParams(doc?.params)
-    result += createTableReturn(doc?.returns)
+    content += title ? `${title}\n` : ''
+    content += doc?.url ? `External docs: ${doc.url}\n` : ''
+    content += header ? `${header}\n` : ''
+    content += createTableParams(doc?.params)
+    content += createTableReturn(doc?.returns)
   }
 
-  return result
+  return { content, header }
 }
