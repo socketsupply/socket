@@ -1008,7 +1008,8 @@ fi
 
 _install_cli
 
-# Generate docs and TypeScript definitions
-npm run gen
+if [[ -z $NO_DOC_GEN ]]; then
+  npm run gen
+fi
 
 exit $?
