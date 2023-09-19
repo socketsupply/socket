@@ -1008,4 +1008,7 @@ fi
 
 _install_cli
 
+# Generate docs and TypeScript definitions
+npm run gen
+
 exit $?
