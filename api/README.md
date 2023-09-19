@@ -322,7 +322,7 @@ Start advertising a new value for a well-known UUID
 
 # [Buffer](https://github.com/socketsupply/socket/blob/master/api/buffer.js)
 
-Buffer module is a [third party](https://github.com/feross/buffer) vendor module provided by Feross Aboukhadijeh and other contributors (MIT License),
+Buffer module is a [third party](https://github.com/feross/buffer) vendor module provided by Feross Aboukhadijeh and other contributors (MIT License).
 
 External docs: https://nodejs.org/api/buffer.html
 
@@ -755,54 +755,11 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 
 
 
-### [EventEmitter](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
+# [Events](https://github.com/socketsupply/socket/blob/master/api/events.js)
 
+Events module is a [third party](https://github.com/browserify/events/blob/main/events.js) module provided by Browserify and Node.js contributors (MIT License).
 
-
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
-
-
-
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
-
-
-
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
-
-
-
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/events.js#L225)
-
-
-
-
-## [Event](https://github.com/socketsupply/socket/blob/master/api/events.js#L485)
-
-This is a `VariableDeclaration` named `Event` in `api/events.js`, it's exported but undocumented.
-
-
-
-## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L487)
-
-This is a `VariableDeclaration` named `CustomEvent` in `api/events.js`, it's exported but undocumented.
-
-
-
-## [MessageEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L502)
-
-This is a `VariableDeclaration` named `MessageEvent` in `api/events.js`, it's exported but undocumented.
-
-
-
-## [ErrorEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L526)
-
-This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's exported but undocumented.
-
-
+External docs: https://nodejs.org/api/events.html
 
 
 # [File System](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L26)

@@ -25,7 +25,6 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     'dgram.js',
     'dns/index.js',
     'dns/promises.js',
-    'events.js',
     'fs/index.js',
     'fs/promises.js',
     'ipc.js',
@@ -54,9 +53,18 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     content: `
 # [Buffer](https://github.com/socketsupply/socket/blob/master/api/buffer.js)
 
-Buffer module is a [third party](https://github.com/feross/buffer) vendor module provided by Feross Aboukhadijeh and other contributors (MIT License),
+Buffer module is a [third party](https://github.com/feross/buffer) vendor module provided by Feross Aboukhadijeh and other contributors (MIT License).
 
 External docs: https://nodejs.org/api/buffer.html
+`
+  }, {
+    module: 'events.js',
+    content: `
+# [Events](https://github.com/socketsupply/socket/blob/master/api/events.js)
+
+Events module is a [third party](https://github.com/browserify/events/blob/main/events.js) module provided by Browserify and Node.js contributors (MIT License).
+
+External docs: https://nodejs.org/api/events.html
 `
   })
 
