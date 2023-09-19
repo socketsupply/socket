@@ -38,9 +38,11 @@ namespace SSC {
     const String& target,
     const JSON::Object& options
   ) {
+    SSC::String jsonValue = JSON::Any(SSC::replace(value, "\\\\", "\\\\")).str();
+
     return createJavaScript("emit-to-render-process.js",
       "const name = decodeURIComponent(`" + event + "`);                   \n"
-      "const value = `" + value + "`;                                      \n"
+      "const value = " + jsonValue + ";                                    \n"
       "const target = " + target + ";                                      \n"
       "const options = " + options.str() + ";                              \n"
       "let detail = value;                                                 \n"
