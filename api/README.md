@@ -1132,6 +1132,83 @@ Sends an async IPC command request with parameters.
 | Not specified | Promise<Result> |  |
 
 
+# [OS](https://github.com/socketsupply/socket/blob/master/api/os.js#L13)
+
+
+ This module provides normalized system information from all the major
+ operating systems.
+
+ Example usage:
+ ```js
+ import { arch, platform } from 'socket:os'
+ ```
+
+## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L52)
+
+This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but undocumented.
+
+
+## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L56)
+
+This is a `FunctionDeclaration` named `cpus` in `api/os.js`, it's exported but undocumented.
+
+
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L66)
+
+This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
+
+
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L148)
+
+This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
+
+
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L152)
+
+This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
+
+
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L189)
+
+This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
+
+
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L198)
+
+This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
+
+
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L242)
+
+This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
+
+
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L250)
+
+This is a `FunctionDeclaration` named `rusage` in `api/os.js`, it's exported but undocumented.
+
+
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L256)
+
+This is a `FunctionDeclaration` named `uptime` in `api/os.js`, it's exported but undocumented.
+
+
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L262)
+
+This is a `FunctionDeclaration` named `uname` in `api/os.js`, it's exported but undocumented.
+
+
+## [`hrtime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L272)
+
+This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but undocumented.
+
+
+## [`availableMemory()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L281)
+
+This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
+
+
+
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L9)
 
 

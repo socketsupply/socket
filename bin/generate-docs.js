@@ -29,7 +29,7 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     'ipc.js',
     // 'location.js',
     'network.js',
-    // 'os.js',
+    'os.js',
     'path/path.js',
     'process.js',
     // 'test/index.js',
