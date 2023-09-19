@@ -51,7 +51,7 @@ jobs:
 
     - name: Build Socket Runtime
       run: |
-        VERBOSE=1 ./bin/install.sh
+        VERBOSE=1 NO_DOC_GEN=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
     - name: test a socket api example app
@@ -87,7 +87,7 @@ jobs:
 
     - name: Build Socket Runtime
       run: |
-        VERBOSE=1 ./bin/install.sh
+        VERBOSE=1 NO_DOC_GEN=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
     - name: test a socket api example app
@@ -174,7 +174,7 @@ jobs:
 
     - name: Build Socket Runtime
       run: |
-        VERBOSE=1 ./bin/install.sh
+        VERBOSE=1 NO_DOC_GEN=1 ./bin/install.sh
         ./bin/ci_version_check.sh
 
     - name: test a socket api example app
@@ -220,7 +220,7 @@ jobs:
 
     - name: Build Socket Runtime
       run: |
-        VERBOSE=1 ./bin/install.sh
+        VERBOSE=1 NO_DOC_GEN=1 ./bin/install.sh
         ./bin/ci_version_check.sh
       env:
         VERBOSE: 1
@@ -304,7 +304,7 @@ jobs:
       run: |
         yes | sdkmanager --licenses > /dev/null
         sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
-        VERBOSE=1 ./bin/install.sh
+        VERBOSE=1 NO_DOC_GEN=1 ./bin/install.sh
         ./bin/ci_version_check.sh
       env:
         CI: true
