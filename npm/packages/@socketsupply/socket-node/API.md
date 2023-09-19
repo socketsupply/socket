@@ -10,7 +10,6 @@ Send event to webview via IPC
 | options.event | string |  | false | event name |
 | options.value | any |  | true | data to send |
 
-
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Error \| undefined> |  |
