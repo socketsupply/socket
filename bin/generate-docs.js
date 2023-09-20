@@ -43,13 +43,11 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
   const chunks = await Promise.all(modules.map(async module => {
     const src = await fs.readFile(path.relative(process.cwd(), `${dest}/${module}`))
     const srcFile = path.relative(process.cwd(), `${dest}/${module}`)
-    const { content, header } = generateApiModuleDoc({ src, srcFile, gitTagOrBranch })
-    return { module, content, header }
+    return generateApiModuleDoc({ src, srcFile, gitTagOrBranch })
   }))
 
   // modules special with special handling
   chunks.push({
-    module: 'buffer.js',
     header: 'Buffer',
     content: `
 # [Buffer](https://github.com/socketsupply/socket/blob/master/api/buffer.js)
@@ -59,7 +57,6 @@ Buffer module is a [third party](https://github.com/feross/buffer) vendor module
 External docs: https://nodejs.org/api/buffer.html
 `
   }, {
-    module: 'events.js',
     header: 'Events',
     content: `
 # [Events](https://github.com/socketsupply/socket/blob/master/api/events.js)
