@@ -729,10 +729,6 @@ External docs: https://nodejs.org/api/events.html
  import * as fs from 'socket:fs';
  ```
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L45)
-
-
-
 ## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L83)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
@@ -934,10 +930,6 @@ This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's export
  ```js
  import fs from 'socket:fs/promises'
  ```
-
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L38)
-
-
 
 ## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L68)
 

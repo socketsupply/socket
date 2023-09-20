@@ -40,8 +40,8 @@ import * as exports from './index.js'
 /**
  * @typedef {import('../buffer.js').Buffer} Buffer
  * @typedef {Uint8Array|Int8Array} TypedArray
+ * @ignore
  */
-
 function defaultCallback (err) {
   if (err) throw err
 }

@@ -33,8 +33,8 @@ import * as exports from './promises.js'
  * @typedef {import('../buffer.js').Buffer} Buffer
  * @typedef {import('.stats.js').Stats} Stats
  * @typedef {Uint8Array|Int8Array} TypedArray
+ * @ignore
  */
-
 async function visit (path, options, callback) {
   if (typeof options === 'function') {
     callback = options
