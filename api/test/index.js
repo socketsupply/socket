@@ -393,6 +393,12 @@ export class Test {
     for (const c of str.split('')) {
       await this.requestAnimationFrame()
       el.value = el.value != null ? el.value + c : c
+      el.dispatchEvent(
+        new Event('input', {
+          bubbles: true,
+          cancelable: true
+        })
+      )
     }
     await this.requestAnimationFrame()
     this.pass(msg)
