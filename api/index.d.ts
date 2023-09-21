@@ -645,19 +645,76 @@ declare module "socket:events" {
     
 }
 declare module "socket:os" {
-    export function arch(): any;
-    export function cpus(): any;
-    export function networkInterfaces(): any;
-    export function platform(): any;
+    /**
+     * Returns the operating system CPU architecture for which Socket was compiled.
+     * @returns {string} - 'arm64', 'ia32', 'x64', or 'unknown'
+     */
+    export function arch(): string;
+    /**
+     * Returns an array of objects containing information about each CPU/core.
+     * @returns {Array<object>} cpus - An array of objects containing information about each CPU/core.
+     * The properties of the objects are:
+     * - model `<string>` - CPU model name.
+     * - speed `<number>` - CPU clock speed (in MHz).
+     * - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
+     *   - user `<number>` - Time spent by this CPU or core in user mode.
+     *   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
+     *   - sys `<number>` - Time spent by this CPU or core in system mode.
+     *   - idle `<number>` - Time spent by this CPU or core in idle mode.
+     *   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
+     * @see {@link https://nodejs.org/api/os.html#os_os_cpus}
+     */
+    export function cpus(): Array<object>;
+    /**
+     * Returns an object containing network interfaces that have been assigned a network address.
+     * @returns {object}  - An object containing network interfaces that have been assigned a network address.
+     * Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
+     * The properties available on the assigned network address object include:
+     * - address `<string>` - The assigned IPv4 or IPv6 address.
+     * - netmask `<string>` - The IPv4 or IPv6 network mask.
+     * - family `<string>` - The address family ('IPv4' or 'IPv6').
+     * - mac `<string>` - The MAC address of the network interface.
+     * - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
+     * - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
+     * - cidr `<string>` - The CIDR notation of the interface.
+     * @see {@link https://nodejs.org/api/os.html#os_os_networkinterfaces}
+     */
+    export function networkInterfaces(): object;
+    /**
+     * Returns the operating system platform.
+     * @returns {string} - 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_platform}
+     * The returned value is equivalent to `process.platform`.
+     */
+    export function platform(): string;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_type}
+     */
     export function type(): string;
+    /**
+     * @returns {boolean} - `true` if the operating system is Windows.
+     */
     export function isWindows(): boolean;
+    /**
+     * @returns {string} - The operating system's default directory for temporary files.
+     */
     export function tmpdir(): string;
     export function rusage(): any;
-    export function uptime(): any;
+    /**
+     * Returns the system uptime in seconds.
+     * @returns {number} - The system uptime in seconds.
+     */
+    export function uptime(): number;
     export function uname(): string;
     export function hrtime(): any;
     export function availableMemory(): any;
-    export const EOL: "\n" | "\r\n";
+    /**
+     * @type {string}
+     * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
+     */
+    export const EOL: string;
     export default exports;
     import * as exports from "socket:os";
     
@@ -720,6 +777,12 @@ declare module "socket:location" {
     export default _default;
 }
 declare module "socket:path/path" {
+    /**
+     * The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
+     * @param {strig} ...paths
+     * @returns {string}
+     * @see {@link https://nodejs.org/api/path.html#path_path_resolve_paths}
+     */
     export function resolve(options: any, ...components: any[]): string;
     /**
      * Computes current working directory for a path
@@ -3665,7 +3728,7 @@ declare module "socket:dns/promises" {
      * @see {@link https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options}
      * @param {string} hostname - The host name to resolve.
      * @param {Object=} opts - An options object.
-     * @param {number|string} [opts.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
+     * @param {(number|string)=} [opts.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
      * @returns {Promise}
      */
     export function lookup(hostname: string, opts?: any | undefined): Promise<any>;
@@ -3698,12 +3761,12 @@ declare module "socket:dns/index" {
      *
      * @see {@link https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback}
      * @param {string} hostname - The host name to resolve.
-     * @param {object?|function} [options] - An options object.
-     * @param {number|string} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
+     * @param {(object|intenumberger)=} [options] - An options object or record family.
+     * @param {(number|string)=} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
      * @param {function} cb - The function to call after the method is complete.
      * @returns {void}
      */
-    export function lookup(hostname: string, options: {}, cb: Function): void;
+    export function lookup(hostname: string, options?: (object | intenumberger) | undefined, cb: Function): void;
     export { promises };
     export default exports;
     import * as promises from "socket:dns/promises";

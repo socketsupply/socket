@@ -423,8 +423,8 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | hostname | string |  | false | The host name to resolve. |
-| options | object? \| function |  | false | An options object. |
-| options.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
+| options | object \| intenumberger |  | true | An options object or record family. |
+| options.family | number \| string | 0 | true | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
 | cb | function |  | false | The function to call after the method is complete. |
 
 
@@ -452,7 +452,7 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 | :---     | :--- | :---:   | :---:    | :---        |
 | hostname | string |  | false | The host name to resolve. |
 | opts | Object |  | true | An options object. |
-| opts.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
+| opts.family | number \| string | 0 | true | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1135,67 +1135,113 @@ Sends an async IPC command request with parameters.
  import { arch, platform } from 'socket:os'
  ```
 
-## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L52)
+## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L56)
 
-This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but undocumented.
+Returns the operating system CPU architecture for which Socket was compiled.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string | 'arm64', 'ia32', 'x64', or 'unknown' |
+
+## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L74)
+
+External docs: https://nodejs.org/api/os.html#os_os_cpus
+Returns an array of objects containing information about each CPU/core.
+ The properties of the objects are:
+ - model `<string>` - CPU model name.
+ - speed `<number>` - CPU clock speed (in MHz).
+ - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
+   - user `<number>` - Time spent by this CPU or core in user mode.
+   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
+   - sys `<number>` - Time spent by this CPU or core in system mode.
+   - idle `<number>` - Time spent by this CPU or core in idle mode.
+   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| cpus | Array<object> | An array of objects containing information about each CPU/core. |
+
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L98)
+
+External docs: https://nodejs.org/api/os.html#os_os_networkinterfaces
+Returns an object containing network interfaces that have been assigned a network address.
+ Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
+ The properties available on the assigned network address object include:
+ - address `<string>` - The assigned IPv4 or IPv6 address.
+ - netmask `<string>` - The IPv4 or IPv6 network mask.
+ - family `<string>` - The address family ('IPv4' or 'IPv6').
+ - mac `<string>` - The MAC address of the network interface.
+ - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
+ - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
+ - cidr `<string>` - The CIDR notation of the interface.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | object | An object containing network interfaces that have been assigned a network address. |
+
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L186)
+
+External docs: https://nodejs.org/api/os.html#os_os_platform
+Returns the operating system platform.
+ The returned value is equivalent to `process.platform`.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string | 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown' |
+
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L195)
+
+External docs: https://nodejs.org/api/os.html#os_os_type
+Returns the operating system name.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string | 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown' |
+
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L234)
 
 
-## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L56)
 
-This is a `FunctionDeclaration` named `cpus` in `api/os.js`, it's exported but undocumented.
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | boolean | `true` if the operating system is Windows. |
 
-
-## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L66)
-
-This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L246)
 
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L148)
 
-This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string | The operating system's default directory for temporary files. |
 
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L294)
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L152)
+ The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
 
-This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
-
-
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L189)
-
-This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
-
-
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L198)
-
-This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
-
-
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L242)
-
-This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
-
-
-## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L250)
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L302)
 
 This is a `FunctionDeclaration` named `rusage` in `api/os.js`, it's exported but undocumented.
 
 
-## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L256)
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L312)
 
-This is a `FunctionDeclaration` named `uptime` in `api/os.js`, it's exported but undocumented.
+Returns the system uptime in seconds.
 
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | number | The system uptime in seconds. |
 
-## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L262)
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L318)
 
 This is a `FunctionDeclaration` named `uname` in `api/os.js`, it's exported but undocumented.
 
 
-## [`hrtime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L272)
+## [`hrtime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L328)
 
 This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but undocumented.
 
 
-## [`availableMemory()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L281)
+## [`availableMemory()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L337)
 
 This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
 
@@ -1209,12 +1255,20 @@ This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exp
  import { Path } from 'socket:path'
  ```
 
-## [`resolve()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L35)
+## [`resolve()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L41)
 
-This is a `FunctionDeclaration` named `resolve` in `api/path/path.js`, it's exported but undocumented.
+External docs: https://nodejs.org/api/path.html#path_path_resolve_paths
+The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
 
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| ...paths | strig |  | false |  |
 
-## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L65)
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string |  |
+
+## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L71)
 
 Computes current working directory for a path
 
@@ -1227,7 +1281,7 @@ Computes current working directory for a path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L89)
+## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L95)
 
 Computed location origin. Defaults to `socket:///` if not available.
 
@@ -1235,7 +1289,7 @@ Computed location origin. Defaults to `socket:///` if not available.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L100)
+## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L106)
 
 Computes the relative path from `from` to `to`.
 
@@ -1249,7 +1303,7 @@ Computes the relative path from `from` to `to`.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L147)
+## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L153)
 
 Joins path components. This function may not return an absolute path.
 
@@ -1262,7 +1316,7 @@ Joins path components. This function may not return an absolute path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L194)
+## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L200)
 
 Computes directory name of path.
 
@@ -1275,7 +1329,7 @@ Computes directory name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L230)
+## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L236)
 
 Computes base name of path.
 
@@ -1288,7 +1342,7 @@ Computes base name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L242)
+## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L248)
 
 Computes extension name of path.
 
@@ -1301,7 +1355,7 @@ Computes extension name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L253)
+## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L259)
 
 Computes normalized path
 
@@ -1314,7 +1368,7 @@ Computes normalized path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L303)
+## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L309)
 
 Formats `Path` object into a string.
 
@@ -1327,7 +1381,7 @@ Formats `Path` object into a string.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L319)
+## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L325)
 
 Parses input `path` into a `Path` instance.
 
@@ -1339,11 +1393,11 @@ Parses input `path` into a `Path` instance.
 | :---         | :--- | :---        |
 | Not specified | object |  |
 
-## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L347)
+## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L353)
 
 A container for a parsed Path.
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L369)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L375)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1352,7 +1406,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | input | PathComponent |  | false |  |
 | cwd | string |  | false |  |
 
-### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L392)
+### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L398)
 
 `Path` class constructor.
 
@@ -1361,47 +1415,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | pathname | string |  | false |  |
 | cwd | string | Path.cwd() | false |  |
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L461)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L467)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L468)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L474)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L502)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L508)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L510)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L516)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L529)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L535)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L550)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L556)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L585)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L591)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L597)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L603)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L605)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L611)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L623)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L629)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L630)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L636)
 
 
 
@@ -1409,7 +1463,7 @@ The computed drive, if given in the path.
 | :---         | :--- | :---        |
 | Not specified | URL |  |
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L638)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L644)
 
 Converts this `Path` instance to a string.
 

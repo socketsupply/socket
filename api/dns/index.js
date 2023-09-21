@@ -52,8 +52,8 @@ const dc = diagnostics.channels.group('dns', [
  *
  * @see {@link https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback}
  * @param {string} hostname - The host name to resolve.
- * @param {object?|function} [options] - An options object.
- * @param {number|string} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
+ * @param {(object|intenumberger)=} [options] - An options object or record family.
+ * @param {(number|string)=} [options.family=0] - The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0.
  * @param {function} cb - The function to call after the method is complete.
  * @returns {void}
  */
