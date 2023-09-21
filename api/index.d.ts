@@ -2922,7 +2922,7 @@ declare module "socket:ipc" {
          * @ignore
          */
         toJSON(): {
-            [k: string]: any;
+            [k: string]: string;
         };
     }
     const Message_base: any;
@@ -4363,9 +4363,11 @@ declare module "socket:test/dom-helpers" {
      * @throws {Error} - Throws an error if the element is not found within the timeout.
      *
      * @example
+     * ```js
      * waitFor({ selector: '#my-element', visible: true, timeout: 5000 })
      *   .then(el => console.log('Element found:', el))
      *   .catch(err => console.log('Element not found:', err));
+     * ```
      */
     export function waitFor(args: {
         selector?: string;
@@ -4382,12 +4384,14 @@ declare module "socket:test/dom-helpers" {
      * @param {RegExp} [args.regex] - A regular expression to match against element text content.
      * @param {boolean} [args.multipleTags=false] - Whether to look for text across multiple sibling elements.
      * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
-     * @returns {Promise<Element|HTMLElement|null|undefined>} - A promise that resolves to the found element or null.
+     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element or null.
      *
      * @example
+     * ```js
      * waitForText({ element: document.body, text: 'Hello', timeout: 5000 })
      *   .then(el => console.log('Element found:', el))
      *   .catch(err => console.log('Element not found:', err));
+     * ```
      */
     export function waitForText(args: {
         element: Element;
@@ -4395,14 +4399,12 @@ declare module "socket:test/dom-helpers" {
         regex?: RegExp;
         multipleTags?: boolean;
         timeout?: number;
-    }): Promise<Element | HTMLElement | null | undefined>;
+    }): Promise<Element | HTMLElement | void>;
     /**
      * @export
-     * @param {{
-     *   event: string | Event,
-     *   element?: HTMLElement | Element | window
-     * }} args
-     *
+     * @param {Object} args - Arguments
+     * @param {string | Event} args.event - The event to dispatch.
+     * @param {HTMLElement | Element | window} [args.element=window] - The element to dispatch the event on.
      * @returns {void}
      *
      * @throws {Error} Throws an error if the `event` is not a string that can be converted to a CustomEvent or not an instance of Event.
@@ -4443,12 +4445,15 @@ declare module "socket:test/index" {
      */
     export function setStrict(strict: boolean): void;
     /**
-     * @type {{
+     * @typedef {{
      *    (name: string, fn?: TestFn): void
      *    only(name: string, fn?: TestFn): void
      *    skip(name: string, fn?: TestFn): void
-     * }}
-     *
+     * }} testWithProperties
+     * @ignore
+     */
+    /**
+     * @type {testWithProperties}
      * @param {string} name
      * @param {TestFn} [fn]
      * @returns {void}
@@ -4944,6 +4949,11 @@ declare module "socket:test/index" {
     }
     export const GLOBAL_TEST_RUNNER: TestRunner;
     export default test;
+    export type testWithProperties = {
+        (name: string, fn?: TestFn): void;
+        only(name: string, fn?: TestFn): void;
+        skip(name: string, fn?: TestFn): void;
+    };
     export type TestFn = (t: Test) => (void | Promise<void>);
 }
 declare module "socket:test" {

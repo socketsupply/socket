@@ -1,4 +1,20 @@
+// @ts-check
+/**
+ * @module Test.DOM-helpers
+ *
+ * Provides a test runner for Socket Runtime.
+ *
+ *
+ * Example usage:
+ * ```js
+ * import { test } from 'socket:test/dom-helpers.js'
+ * ```
+ *
+ */
 // Based on @socketsupply/test-dom and vhs-tape.
+
+const SECOND = 1000
+const defaultTimeout = 5 * SECOND
 
 /**
  * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
@@ -18,10 +34,6 @@ export function toElement (selector) {
   return selector
 }
 
-const SECOND = 1000
-
-const defaultTimeout = 5 * SECOND
-
 /**
  * Waits for an element to appear in the DOM and resolves the promise when it does.
  *
@@ -37,9 +49,11 @@ const defaultTimeout = 5 * SECOND
  * @throws {Error} - Throws an error if the element is not found within the timeout.
  *
  * @example
+ * ```js
  * waitFor({ selector: '#my-element', visible: true, timeout: 5000 })
  *   .then(el => console.log('Element found:', el))
  *   .catch(err => console.log('Element not found:', err));
+ * ```
  */
 export function waitFor (args, lambda) {
   return new Promise((resolve, reject) => {
@@ -84,12 +98,14 @@ export function waitFor (args, lambda) {
  * @param {RegExp} [args.regex] - A regular expression to match against element text content.
  * @param {boolean} [args.multipleTags=false] - Whether to look for text across multiple sibling elements.
  * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
- * @returns {Promise<Element|HTMLElement|null|undefined>} - A promise that resolves to the found element or null.
+ * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element or null.
  *
  * @example
+ * ```js
  * waitForText({ element: document.body, text: 'Hello', timeout: 5000 })
  *   .then(el => console.log('Element found:', el))
  *   .catch(err => console.log('Element not found:', err));
+ * ```
  */
 export function waitForText (args) {
   return waitFor({
@@ -159,11 +175,9 @@ export function waitForText (args) {
 
 /**
  * @export
- * @param {{
- *   event: string | Event,
- *   element?: HTMLElement | Element | window
- * }} args
- *
+ * @param {Object} args - Arguments
+ * @param {string | Event} args.event - The event to dispatch.
+ * @param {HTMLElement | Element | window} [args.element=window] - The element to dispatch the event on.
  * @returns {void}
  *
  * @throws {Error} Throws an error if the `event` is not a string that can be converted to a CustomEvent or not an instance of Event.
@@ -203,6 +217,7 @@ export function isElementVisible (element, previousElement) {
 /**
  * @param {Element | HTMLElement} element
  * @returns {boolean}
+ * @ignore
  */
 function isStyleVisible (element) {
   const ownerDocument = element.ownerDocument
@@ -229,6 +244,7 @@ function isStyleVisible (element) {
  * @param {Element | HTMLElement} element
  * @param {Element | HTMLElement} [previousElement]
  * @returns {boolean}
+ * @ignore
  */
 function isAttributeVisible (element, previousElement) {
   return (

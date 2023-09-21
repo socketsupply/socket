@@ -2,9 +2,9 @@
   "include": ["api/*.js", "api/**/*.js"],
   "compilerOptions": {
     "baseUrl": "socket:",
-    "target": "es2022",
+    "target": "ES2022",
     "types": [],
-    "lib": ["es2022", "dom"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
     "strictNullChecks": false,
     "declarationMap": false,
