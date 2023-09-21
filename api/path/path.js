@@ -32,6 +32,12 @@ function maybeURL (uri, baseURL) {
   return url
 }
 
+/**
+ * The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
+ * @param {strig} ...paths
+ * @returns {string}
+ * @see {@link https://nodejs.org/api/path.html#path_path_resolve_paths}
+ */
 export function resolve (options, ...components) {
   const { sep } = options
   let resolved = ''
