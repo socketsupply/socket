@@ -32,7 +32,7 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     'os.js',
     'path/path.js',
     'process.js',
-    // 'test/index.js',
+    'test/index.js',
     // 'url/index.js',
     'window.js'
   ]
