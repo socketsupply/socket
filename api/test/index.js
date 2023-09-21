@@ -1035,12 +1035,16 @@ export function setStrict (strict) {
 }
 
 /**
- * @type {{
+ * @typedef {{
  *    (name: string, fn?: TestFn): void
  *    only(name: string, fn?: TestFn): void
  *    skip(name: string, fn?: TestFn): void
- * }}
- *
+ * }} testWithProperties
+ * @ignore
+ */
+
+/**
+ * @type {testWithProperties}
  * @param {string} name
  * @param {TestFn} [fn]
  * @returns {void}
