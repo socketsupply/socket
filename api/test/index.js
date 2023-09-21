@@ -42,9 +42,15 @@ const AT_REGEX = new RegExp(
     '((?:\\/|[a-zA-Z]:\\\\)[^:\\)]+:(\\d+)(?::(\\d+))?)\\)$'
 )
 
-/** @type {string} */
+/**
+ * @type {string}
+ * @ignore
+ */
 let CACHED_FILE
 
+/**
+ * @returns {number} - The default timeout for tests in milliseconds.
+ */
 export function getDefaultTestRunnerTimeout () {
   if (os.platform() === 'win32') {
     return 2 * 1024
@@ -68,21 +74,39 @@ export class Test {
    * @param {TestRunner} runner
    */
   constructor (name, fn, runner) {
-    /** @type {string} */
+    /**
+     * @type {string}
+     * @ignore
+     */
     this.name = name
-    /** @type {TestFn} */
+    /**
+     * @type {TestFn}
+     * @ignore
+     */
     this.fn = fn
-    /** @type {TestRunner} */
+    /**
+     * @type {TestRunner}
+     * @ignore
+     */
     this.runner = runner
-    /** @type {{ pass: number, fail: number }} */
+    /**
+     * @type{{ pass: number, fail: number }}
+     * @ignore
+     */
     this._result = {
       pass: 0,
       fail: 0
     }
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.done = false
 
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.strict = runner.strict
   }
 
@@ -214,7 +238,10 @@ export class Test {
 
     if (this.strict && !message) throw new Error('tapzero msg required')
 
-    /** @type {Error | null} */
+    /**
+     * @type {Error | null}
+     * @ignore
+     */
     let caught = null
     try {
       fn()
@@ -230,6 +257,9 @@ export class Test {
       throw new Error(`t.throws() not implemented for expected: ${typeof expected}`)
     }
 
+    /**
+     * @ignore
+     */
     this._assert(
       pass, caught, expected, message || 'show throw', 'throws'
     )
@@ -245,7 +275,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.sleep(100)
+   * ```
    */
   async sleep (ms, msg) {
     msg = msg || `Sleep for ${ms}ms`
@@ -261,7 +293,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.requestAnimationFrame()
+   * ```
    */
   async requestAnimationFrame (msg) {
     if (document.hasFocus()) {
@@ -281,7 +315,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.click('.class button', 'Click a button')
+   * ```
    */
   async click (selector, msg) {
     msg = msg || `Clicked on ${typeof selector === 'string' ? selector : 'element'}`
@@ -301,7 +337,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.eventClick('.class button', 'Click a button with an event')
+   * ```
    */
   async eventClick (selector, msg) {
     const element = toElement(selector)
@@ -327,7 +365,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
+   * ```
    */
   async dispatchEvent (event, target, msg) {
     const element = toElement(target)
@@ -345,7 +385,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.focus('#my-div')
+   * ```
    */
   async focus (selector, msg) {
     msg = msg || `Focused on ${typeof selector === 'string' ? selector : 'element'}`
@@ -364,7 +406,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.blur('#my-div')
+   * ```
    */
   async blur (selector, msg) {
     msg = msg || `Blurred from ${typeof selector === 'string' ? selector : 'element'}`
@@ -384,7 +428,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
+   * ```
    */
   async type (selector, str, msg) {
     msg = msg || `Typed by value ${str}${typeof selector === 'string' ? ` to ${selector}` : ''}`
@@ -413,8 +459,10 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * const myElement = createElement('div')
    * await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
+   * ```
    */
   async appendChild (parentSelector, el, msg = 'Appended child element') {
     const parentEl = toElement(parentSelector)
@@ -432,7 +480,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.removeElement('#dom-selector', 'Remove #dom-selector')
+   * ```
    */
   async removeElement (selector, msg = 'Removed element') {
     const el = toElement(selector)
@@ -449,7 +499,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.elementVisible('#dom-selector','Element is visible')
+   * ```
    */
   async elementVisible (selector, msg) {
     msg = msg || `Element ${typeof selector === 'string' ? ` to ${selector}` : ''} is visible`
@@ -468,7 +520,9 @@ export class Test {
    * @returns {Promise<void>}
    *
    * @example
+   * ```js
    * await t.elementInvisible('#dom-selector','Element is invisible')
+   * ```
    */
   async elementInvisible (selector, msg) {
     msg = msg || `Element ${typeof selector === 'string' ? ` to ${selector}` : ''} is not visible`
@@ -490,7 +544,9 @@ export class Test {
    * @returns {Promise<HTMLElement|Element|void>}
    *
    * @example
+   * ```js
    * await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
+   * ```
    */
   waitFor (querySelectorOrFn, opts, msg) {
     if (typeof opts === 'string') {
@@ -537,16 +593,22 @@ export class Test {
    * @returns {Promise<HTMLElement|Element|void>}
    *
    * @example
+   * ```js
    * await t.waitForText('#dom-selector', 'Text to wait for')
+   * ```
    *
    * @example
+   * ```js
    * await t.waitForText('#dom-selector', /hello/i)
+   * ```
    *
    * @example
+   * ```js
    * await t.waitForText('#dom-selector', {
    *   text: 'Text to wait for',
    *   multipleTags: true
    * })
+   * ```
    */
   waitForText (selector, opts, msg) {
     const element = toElement(selector)
@@ -581,7 +643,9 @@ export class Test {
    * @returns {HTMLElement | Element}
    *
    * @example
+   * ```js
    * const element = await t.querySelector('#dom-selector')
+   * ```
    */
   querySelector (selector, msg) {
     const el = document.querySelector(selector)
@@ -598,7 +662,9 @@ export class Test {
    @returns {Array<HTMLElement | Element>}
    *
    * @example
+   * ```js
    * const elements = await t.querySelectorAll('#dom-selector', '')
+   * ```
    */
   querySelectorAll (selector, msg) {
     const elems = document.querySelectorAll(selector)
@@ -617,13 +683,17 @@ export class Test {
    * @throws {Error} - Throws an error if the element has no `ownerDocument` or if `ownerDocument.defaultView` is not available.
    *
    * @example
+   * ```js
    * // Using CSS selector
    * const style = getComputedStyle('.my-element', 'Custom success message');
+   * ```
    *
    * @example
+   * ```js
    * // Using Element object
    * const el = document.querySelector('.my-element');
    * const style = getComputedStyle(el);
+   * ```
    */
   getComputedStyle (selector, msg) {
     msg = msg || `Get computed style ${typeof selector === 'string' ? ` for ${selector}` : ''}`
@@ -647,6 +717,7 @@ export class Test {
    * @param {string} description
    * @param {string} operator
    * @returns {void}
+   * @ignore
    */
   _assert (
     pass, actual, expected,
@@ -726,6 +797,7 @@ export class Test {
 
 /**
  * @returns {string}
+ * @ignore
  */
 function getTapZeroFileName () {
   if (CACHED_FILE) return CACHED_FILE
@@ -757,6 +829,7 @@ function getTapZeroFileName () {
 /**
  * @param {Error} e
  * @returns {string}
+ * @ignore
  */
 function findAtLineFromError (e) {
   const lines = (e.stack || '').split('\n')
@@ -786,24 +859,51 @@ export class TestRunner {
    * @param {(lines: string) => void} [report]
    */
   constructor (report) {
-    /** @type {(lines: string) => void} */
+    /**
+     * @type {(lines: string) => void}
+     * @ignore
+     */
     this.report = report || printLine
 
-    /** @type {Test[]} */
+    /**
+     * @type {Test[]}
+     * @ignore
+     */
     this.tests = []
-    /** @type {Test[]} */
+    /**
+     * @type {Test[]}
+     * @ignore
+     */
     this.onlyTests = []
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.scheduled = false
-    /** @type {number} */
+    /**
+     * @type {number}
+     * @ignore
+     */
     this._id = 0
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.completed = false
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.rethrowExceptions = true
-    /** @type {boolean} */
+    /**
+     * @type {boolean}
+     * @ignore
+     */
     this.strict = false
-    /** @type {function | void} */
+    /**
+    * @type {function | void}
+    * @ignore
+    */
     this._onFinishCallback = undefined
   }
 
@@ -899,6 +999,7 @@ export class TestRunner {
 /**
  * @param {string} line
  * @returns {void}
+ * @ignore
  */
 function printLine (line) {
   console.log(line)
@@ -956,12 +1057,14 @@ export default test
 /**
  * @param {Error} err
  * @returns {void}
+ * @ignore
  */
 function rethrowImmediate (err) {
   setTimeout(rethrow, 0)
 
   /**
    * @returns {void}
+   * @ignore
    */
   function rethrow () { throw err }
 }
@@ -972,9 +1075,13 @@ function rethrowImmediate (err) {
  *
  * @param {unknown} thing
  * @returns {string}
+ * @ignore
  */
 function toJSON (thing) {
-  /** @type {(_k: string, v: unknown) => unknown} */
+  /**
+   * @type {(_k: string, v: unknown) => unknown}
+   * @ignore
+   */
   const replacer = (_k, v) => (v === undefined) ? '_tz_undefined_tz_' : v
 
   const json = JSON.stringify(thing, replacer, '  ') || 'undefined'

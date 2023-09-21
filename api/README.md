@@ -1519,6 +1519,563 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 
 
 
+# [Test](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L17)
+
+
+ Provides a test runner for Socket Runtime.
+
+ Example usage:
+ ```js
+ import { test } from 'socket:test'
+
+ test('test name', async t => {
+   t.equal(1, 1)
+ })
+ ```
+
+## [`getDefaultTestRunnerTimeout()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L54)
+
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | number | The default timeout for tests in milliseconds. |
+
+## [Test](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L69)
+
+
+
+### [`constructor(name, fn, runner)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L76)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| name | string |  | false |  |
+| fn | TestFn |  | false |  |
+| runner | TestRunner |  | false |  |
+
+### [`comment(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L117)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| msg | string |  | false |  |
+
+### [`deepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L128)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | T |  | false |  |
+| expected | T |  | false |  |
+| msg | string |  | false |  |
+
+### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L143)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | T |  | false |  |
+| expected | T |  | false |  |
+| msg | string |  | false |  |
+
+### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L158)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | T |  | false |  |
+| expected | T |  | false |  |
+| msg | string |  | false |  |
+
+### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L173)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | unknown |  | false |  |
+| expected | unknown |  | false |  |
+| msg | string |  | false |  |
+
+### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L186)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| msg | string |  | false |  |
+
+### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L199)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | unknown |  | false |  |
+| msg | string |  | false |  |
+
+### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L211)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| msg | string |  | false |  |
+
+### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L220)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| err | Error \| null \| undefined |  | false |  |
+| msg | string |  | false |  |
+
+### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L233)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| fn | Function |  | false |  |
+| expected | RegExp \| any |  | false |  |
+| message | string |  | false |  |
+
+### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L282)
+
+Sleep for ms with an optional msg
+
+
+ ```js
+ await t.sleep(100)
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| ms | number |  | false |  |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`requestAnimationFrame(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L300)
+
+Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
+ tests are run headlessly.
+
+
+ ```js
+ await t.requestAnimationFrame()
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`click(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L322)
+
+Dispatch the `click`` method on an element specified by selector.
+
+
+ ```js
+ await t.click('.class button', 'Click a button')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L344)
+
+Dispatch the click window.MouseEvent on an element specified by selector.
+
+
+ ```js
+ await t.eventClick('.class button', 'Click a button with an event')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L372)
+
+Dispatch an event on the target.
+
+
+ ```js
+ await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| event | string \| Event |  | false | The event name or Event instance to dispatch. |
+| target | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to dispatch the event on. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L392)
+
+Call the focus method on element specified by selector.
+
+
+ ```js
+ await t.focus('#my-div')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L413)
+
+Call the blur method on element specified by selector.
+
+
+ ```js
+ await t.blur('#my-div')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L435)
+
+Consecutively set the str value of the element specified by selector to simulate typing.
+
+
+ ```js
+ await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| str | string |  | false | The string to type into the :focus element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L467)
+
+appendChild an element el to a parent selector element.
+
+
+ ```js
+ const myElement = createElement('div')
+ await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| parentSelector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to appendChild on. |
+| el | HTMLElement \| Element |  | false | A element to append to the parent element. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L487)
+
+Remove an element from the DOM.
+
+
+ ```js
+ await t.removeElement('#dom-selector', 'Remove #dom-selector')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to remove from the DOM. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L506)
+
+Test if an element is visible
+
+
+ ```js
+ await t.elementVisible('#dom-selector','Element is visible')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to test visibility on. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L527)
+
+Test if an element is invisible
+
+
+ ```js
+ await t.elementInvisible('#dom-selector','Element is invisible')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to test visibility on. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L551)
+
+Test if an element is invisible
+
+
+ ```js
+ await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| querySelectorOrFn | string \| (() => HTMLElement \| Element \| null \| undefined) |  | false | A query string or a function that returns an element. |
+| opts | Object |  | false |  |
+| opts.visible | boolean |  | false | The element needs to be visible. |
+| opts.timeout | number |  | false | The maximum amount of time to wait. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<HTMLElement \| Element \| void> |  |
+
+### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L613)
+
+Test if an element is invisible
+
+
+ ```js
+ await t.waitForText('#dom-selector', 'Text to wait for')
+ ```
+
+ ```js
+ await t.waitForText('#dom-selector', /hello/i)
+ ```
+
+ ```js
+ await t.waitForText('#dom-selector', {
+   text: 'Text to wait for',
+   multipleTags: true
+ })
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
+| opts | WaitForTextOpts \| string \| RegExp |  | false |  |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<HTMLElement \| Element \| void> |  |
+
+### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L650)
+
+Run a querySelector as an assert and also get the results
+
+
+ ```js
+ const element = await t.querySelector('#dom-selector')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string |  | false | A CSS selector string, or an instance of HTMLElement, or Element to select. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | HTMLElement \| Element |  |
+
+### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L669)
+
+Run a querySelectorAll as an assert and also get the results
+
+
+ ```js
+ const elements = await t.querySelectorAll('#dom-selector', '')
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string |  | false | A CSS selector string, or an instance of HTMLElement, or Element to select. |
+| msg | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Array<HTMLElement \| Element> |  |
+
+### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L698)
+
+Retrieves the computed styles for a given element.
+
+
+ ```js
+ // Using CSS selector
+ const style = getComputedStyle('.my-element', 'Custom success message');
+ ```
+
+ ```js
+ // Using Element object
+ const el = document.querySelector('.my-element');
+ const style = getComputedStyle(el);
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| selector | string \| Element |  | false | The CSS selector or the Element object for which to get the computed styles. |
+| msg | string |  | false | An optional message to display when the operation is successful. Default message will be generated based on the type of selector. |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | CSSStyleDeclaration | The computed styles of the element. |
+
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L787)
+
+   pass: number,
+   fail: number
+ }>}
+
+## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L856)
+
+
+
+### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L861)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| report | (lines: string) => void |  | false |  |
+
+### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L913)
+
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string |  |
+
+### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L923)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| name | string |  | false |  |
+| fn | TestFn |  | false |  |
+| only | boolean |  | false |  |
+
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L945)
+
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<void> |  |
+
+### [`onFinish() )`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L992)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| ) | (result: { total: number, success: number, fail: number  | > void} callback | false |  |
+
+## [GLOBAL_TEST_RUNNER](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1008)
+
+This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js`, it's exported but undocumented.
+
+
+## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1017)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| name | string |  | false |  |
+| fn | TestFn |  | false |  |
+
+## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1027)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| _name | string |  | false |  |
+| _fn | TestFn |  | false |  |
+
+## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1033)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| strict | boolean |  | false |  |
+
+## [`test(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1048)
+
+    (name: string, fn?: TestFn): void
+    only(name: string, fn?: TestFn): void
+    skip(name: string, fn?: TestFn): void
+ }}
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| name | string |  | false |  |
+| fn | TestFn |  | false |  |
+
+
 
 # [Window](https://github.com/socketsupply/socket/blob/master/api/window.js#L11)
 

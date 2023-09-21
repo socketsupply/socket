@@ -4421,6 +4421,9 @@ declare module "socket:test/dom-helpers" {
     export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
 }
 declare module "socket:test/index" {
+    /**
+     * @returns {number} - The default timeout for tests in milliseconds.
+     */
     export function getDefaultTestRunnerTimeout(): number;
     /**
      * @param {string} name
@@ -4469,20 +4472,38 @@ declare module "socket:test/index" {
          * @param {TestRunner} runner
          */
         constructor(name: string, fn: TestFn, runner: TestRunner);
-        /** @type {string} */
+        /**
+         * @type {string}
+         * @ignore
+         */
         name: string;
-        /** @type {TestFn} */
+        /**
+         * @type {TestFn}
+         * @ignore
+         */
         fn: TestFn;
-        /** @type {TestRunner} */
+        /**
+         * @type {TestRunner}
+         * @ignore
+         */
         runner: TestRunner;
-        /** @type {{ pass: number, fail: number }} */
+        /**
+         * @type{{ pass: number, fail: number }}
+         * @ignore
+         */
         _result: {
             pass: number;
             fail: number;
         };
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         done: boolean;
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         strict: boolean;
         /**
          * @param {string} msg
@@ -4557,7 +4578,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.sleep(100)
+         * ```
          */
         sleep(ms: number, msg?: string): Promise<void>;
         /**
@@ -4568,7 +4591,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.requestAnimationFrame()
+         * ```
          */
         requestAnimationFrame(msg?: string): Promise<void>;
         /**
@@ -4579,7 +4604,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.click('.class button', 'Click a button')
+         * ```
          */
         click(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4590,7 +4617,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.eventClick('.class button', 'Click a button with an event')
+         * ```
          */
         eventClick(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4602,7 +4631,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
+         * ```
          */
         dispatchEvent(event: string | Event, target: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4613,7 +4644,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.focus('#my-div')
+         * ```
          */
         focus(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4624,7 +4657,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.blur('#my-div')
+         * ```
          */
         blur(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4636,7 +4671,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
+         * ```
          */
         type(selector: string | HTMLElement | Element, str: string, msg?: string): Promise<void>;
         /**
@@ -4648,8 +4685,10 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * const myElement = createElement('div')
          * await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
+         * ```
          */
         appendChild(parentSelector: string | HTMLElement | Element, el: HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4660,7 +4699,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.removeElement('#dom-selector', 'Remove #dom-selector')
+         * ```
          */
         removeElement(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4671,7 +4712,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.elementVisible('#dom-selector','Element is visible')
+         * ```
          */
         elementVisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4682,7 +4725,9 @@ declare module "socket:test/index" {
          * @returns {Promise<void>}
          *
          * @example
+         * ```js
          * await t.elementInvisible('#dom-selector','Element is invisible')
+         * ```
          */
         elementInvisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
         /**
@@ -4696,7 +4741,9 @@ declare module "socket:test/index" {
          * @returns {Promise<HTMLElement|Element|void>}
          *
          * @example
+         * ```js
          * await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
+         * ```
          */
         waitFor(querySelectorOrFn: string | (() => HTMLElement | Element | null | undefined), opts?: {
             visible?: boolean;
@@ -4718,16 +4765,22 @@ declare module "socket:test/index" {
          * @returns {Promise<HTMLElement|Element|void>}
          *
          * @example
+         * ```js
          * await t.waitForText('#dom-selector', 'Text to wait for')
+         * ```
          *
          * @example
+         * ```js
          * await t.waitForText('#dom-selector', /hello/i)
+         * ```
          *
          * @example
+         * ```js
          * await t.waitForText('#dom-selector', {
          *   text: 'Text to wait for',
          *   multipleTags: true
          * })
+         * ```
          */
         waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
             /**
@@ -4749,7 +4802,9 @@ declare module "socket:test/index" {
          * @returns {HTMLElement | Element}
          *
          * @example
+         * ```js
          * const element = await t.querySelector('#dom-selector')
+         * ```
          */
         querySelector(selector: string, msg?: string): HTMLElement | Element;
         /**
@@ -4760,7 +4815,9 @@ declare module "socket:test/index" {
          @returns {Array<HTMLElement | Element>}
          *
          * @example
+         * ```js
          * const elements = await t.querySelectorAll('#dom-selector', '')
+         * ```
          */
         querySelectorAll(selector: string, msg?: string): Array<HTMLElement | Element>;
         /**
@@ -4772,13 +4829,17 @@ declare module "socket:test/index" {
          * @throws {Error} - Throws an error if the element has no `ownerDocument` or if `ownerDocument.defaultView` is not available.
          *
          * @example
+         * ```js
          * // Using CSS selector
          * const style = getComputedStyle('.my-element', 'Custom success message');
+         * ```
          *
          * @example
+         * ```js
          * // Using Element object
          * const el = document.querySelector('.my-element');
          * const style = getComputedStyle(el);
+         * ```
          */
         getComputedStyle(selector: string | Element, msg?: string): CSSStyleDeclaration;
         /**
@@ -4788,6 +4849,7 @@ declare module "socket:test/index" {
          * @param {string} description
          * @param {string} operator
          * @returns {void}
+         * @ignore
          */
         _assert(pass: boolean, actual: unknown, expected: unknown, description: string, operator: string): void;
         /**
@@ -4810,23 +4872,50 @@ declare module "socket:test/index" {
          * @param {(lines: string) => void} [report]
          */
         constructor(report?: (lines: string) => void);
-        /** @type {(lines: string) => void} */
+        /**
+         * @type {(lines: string) => void}
+         * @ignore
+         */
         report: (lines: string) => void;
-        /** @type {Test[]} */
+        /**
+         * @type {Test[]}
+         * @ignore
+         */
         tests: Test[];
-        /** @type {Test[]} */
+        /**
+         * @type {Test[]}
+         * @ignore
+         */
         onlyTests: Test[];
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         scheduled: boolean;
-        /** @type {number} */
+        /**
+         * @type {number}
+         * @ignore
+         */
         _id: number;
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         completed: boolean;
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         rethrowExceptions: boolean;
-        /** @type {boolean} */
+        /**
+         * @type {boolean}
+         * @ignore
+         */
         strict: boolean;
-        /** @type {function | void} */
+        /**
+        * @type {function | void}
+        * @ignore
+        */
         _onFinishCallback: Function | void;
         /**
          * @returns {string}
