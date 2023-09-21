@@ -33,7 +33,7 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
     'path/path.js',
     'process.js',
     'test/index.js',
-    'test/dom-helpers.js',
+    // 'test/dom-helpers.js',
     // 'url/index.js',
     'window.js'
   ]
