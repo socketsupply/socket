@@ -5,7 +5,7 @@ If you are new to Socket Runtime, the [Guides](https://socketsupply.co/guides/) 
 ## Requirements
 To contribute to the project you need to clone the repository and install the dependencies.
 
-#### MacOS and Linux
+### MacOS and Linux
 
 ```bash
 git clone git@github.com:socketsupply/socket.git
