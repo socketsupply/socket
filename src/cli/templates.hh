@@ -141,6 +141,14 @@ constexpr auto gHelloWorld = R"HTML(
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        connect-src https: file: ipc: socket: data:;
+        child-src 'none';
+        img-src https: data: file: socket:;
+      "
+    >
     <style type="text/css">
       html, body {
         height: 100%;
