@@ -22,6 +22,10 @@
   int main (int argc, char** argv)
 #endif
 
+#if defined(__APPLE__)
+#include <os/log.h>
+#endif
+
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
@@ -278,7 +282,22 @@ MAIN {
     return exitCode;
   }
 
+#if defined(__APPLE__)
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    "socket.runtime.mobile"
+  #else
+    "socket.runtime.desktop"
+  #endif
+  );
+#endif
+
   auto onStdErr = [&](auto err) {
+  #if defined(__APPLE__)
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", err.c_str());
+  #endif
     std::cerr << "\033[31m" + err + "\033[0m";
 
     for (auto w : windowManager.windows) {
@@ -380,11 +399,21 @@ MAIN {
       }
 
       if (message.name == "stdout") {
+  #if defined(__APPLE__)
+        dispatch_async(dispatch_get_main_queue(), ^{
+          os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
+        });
+  #endif
         std::cout << value;
         return;
       }
 
       if (message.name == "stderr") {
+  #if defined(__APPLE__)
+        dispatch_async(dispatch_get_main_queue(), ^{
+          os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
+        });
+  #endif
         std::cerr << "\033[31m" + value + "\033[0m";
         return;
       }
