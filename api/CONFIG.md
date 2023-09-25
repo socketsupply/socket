@@ -43,6 +43,7 @@ flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 headless | false |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
+script |  |  The build script
 
 # Section `build.watch`
 
@@ -74,7 +75,8 @@ file_limit |  |  Set the limit of files that can be opened by your process.
 lang |  |  Localization
 maintainer |  |  A String used in the about dialog and meta info.
 title |  |  The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
-version | "" |  Builds an extension when set to "extension". type = "" A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
+type | "" |  Builds an extension when set to "extension".
+version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
 
 # Section `android`
 

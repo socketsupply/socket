@@ -6,7 +6,7 @@ function parseIni (iniText) {
 
   iniText.split(/\r?\n/).forEach((line) => {
     const trimmedLine = line.trim()
-    if (trimmedLine.startsWith(';')) {
+    if (trimmedLine.startsWith(';') && !/;\s+\S+\s+=\s+.*/.test(trimmedLine)) {
       if (trimmedLine.includes('default value:')) {
         defaultValue = trimmedLine.split('default value:')[1].trim()
       } else {
@@ -17,7 +17,7 @@ function parseIni (iniText) {
       sections[currentSection] = []
       lastComment = ''
     } else if (currentSection) {
-      const keyValue = trimmedLine.split('=')
+      const keyValue = trimmedLine.replace('; ', '').split('=')
       if (keyValue.length === 2) {
         sections[currentSection].push({
           key: keyValue[0].trim(),
