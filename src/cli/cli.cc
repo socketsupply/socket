@@ -1806,7 +1806,10 @@ optionsAndEnv parseCommandLineOptions (
 }
 
 int main (const int argc, const char* argv[]) {
-  defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
+  defaultTemplateAttrs = {
+    { "ssc_version", SSC::VERSION_FULL_STRING },
+    { "project_name", "beepboop" }
+  };
   if (argc < 2) {
     printHelp("ssc");
     exit(0);
@@ -2139,14 +2142,20 @@ int main (const int argc, const char* argv[]) {
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
   Options initOptions = {
-    { { "--config" }, true, false }
+    { { "--config" }, true, false },
+    { { "--name" }, true, true }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
     auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
+    auto projectName = optionsWithValue["--name"];
+
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
     } else {
+      if (projectName.size() > 0) {
+        defaultTemplateAttrs["project_name"] = projectName;
+      }
       SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }

@@ -79,6 +79,7 @@ usage:
 
 options:
   --config  only create the config file
+  --name    project name
 )TEXT";
 
 constexpr auto gHelpTextInstallApp = R"TEXT(
@@ -1406,7 +1407,7 @@ flags = -O3
 headless = false
 
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
-name = "beepboop"
+name = "{{project_name}}"
 
 ; The binary output path. It's recommended to add this path to .gitignore.
 ; default value: "build"
@@ -1440,13 +1441,13 @@ flags = "-g"
 ; A unique ID that identifies the bundle (used by all app stores).
 ; It's required when `[meta] type` is not `"extension"`.
 ; It should be in a reverse DNS notation https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion
-bundle_identifier = "com.beepboop"
+bundle_identifier = "com.{{project_name}}"
 
 ; A string that gets used in the about dialog and package meta info.
-copyright = "(c) Beep Boop Corp. 1985"
+; copyright = "(c) Beep Boop Corp. 1985"
 
 ; A short description of the app.
-description = "A UI for the beep boop network"
+; description = "A UI for the beep boop network"
 
 ; Set the limit of files that can be opened by your process.
 file_limit = 1024
@@ -1455,10 +1456,10 @@ file_limit = 1024
 lang = "en-us"
 
 ; A String used in the about dialog and meta info.
-maintainer = "Beep Boop Corp."
+; maintainer = "Beep Boop Corp."
 
 ; The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
-title = "Beep Boop"
+title = "{{project_name}}"
 
 ; Builds an extension when set to "extension".
 ; default value: ""
@@ -1512,7 +1513,7 @@ simulator_device = "iPhone 14"
 categories = "Developer Tools"
 
 ; The command to execute to spawn the "back-end" process.
-cmd = "beepboop"
+; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app in Linux desktop environments.
 icon = "src/icon.png"
@@ -1527,7 +1528,7 @@ appstore_icon = "src/icons/icon.png"
 category = ""
 
 ; The command to execute to spawn the "back-end" process.
-cmd = ""
+; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on MacOS.
 icon = ""
@@ -1552,7 +1553,7 @@ headers = native-module1.hh
 [win]
 
 ; The command to execute to spawn the “back-end” process.
-cmd = "beepboop.exe"
+; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on Windows.
 icon = ""
@@ -1564,7 +1565,7 @@ logo = "src/icons/icon.png"
 pfx = "certs/cert.pfx"
 
 ; The signing information needed by the appx api.
-publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+; publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
 
 
 [window]
