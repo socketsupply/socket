@@ -103,6 +103,7 @@ if [[ "$host" = "Darwin" ]]; then
 
   ldflags+=("-framework" "CoreFoundation")
   ldflags+=("-framework" "CoreBluetooth")
+  ldflags+=("-framework" "CoreLocation")
   ldflags+=("-framework" "Foundation")
   ldflags+=("-framework" "Network")
   ldflags+=("-framework" "UniformTypeIdentifiers")
