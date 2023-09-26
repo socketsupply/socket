@@ -23,17 +23,18 @@
  * ```
  */
 
+import { isBufferLike, isFunction, noop } from '../util.js'
+import console from '../console.js'
+import ipc from '../ipc.js'
+import gc from '../gc.js'
+
 import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
-import { isBufferLike, isFunction, noop } from '../util.js'
 import * as constants from './constants.js'
 import * as promises from './promises.js'
 import { Stats } from './stats.js'
-import console from '../console.js'
-import ipc from '../ipc.js'
 import fds from './fds.js'
-import gc from '../gc.js'
 
 import * as exports from './index.js'
 
@@ -600,7 +601,7 @@ export function readFile (path, options = {}, callback) {
 /**
  * @ignore
  */
-export function readlink (path,  callback) {
+export function readlink (path, callback) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -655,7 +656,7 @@ export function rename (src, dest, callback) {
 /**
  * @ignore
  */
-export function rmdir (path,  callback) {
+export function rmdir (path, callback) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
