@@ -184,7 +184,113 @@ namespace SSC {
       this
     );
 
-    webview = webkit_web_view_new_with_user_content_manager(cm);
+
+    static auto userConfig = SSC::getUserConfig();
+    auto webContext = webkit_web_context_get_default();
+    auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
+    auto settings = webkit_settings_new();
+    auto policies = webkit_website_policies_new_with_policies(
+      "autoplay", userConfig["permission_allow_autoplay"] != "false" ? WEBKIT_AUTOPLAY_ALLOW : WEBKIT_AUTOPLAY_DENY,
+      NULL
+    );
+
+    webview = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+      "web-context", webContext,
+      "settings", settings,
+      "user-content-manager", cm,
+      "website-policies", policies,
+      NULL
+    ));
+
+    webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "permission-request",
+      G_CALLBACK(+[](
+        WebKitWebView* webview,
+        WebKitPermissionRequest *request,
+        gpointer userData
+      ) {
+        static auto userConfig = SSC::getUserConfig();
+
+        if (WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_geolocation"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        } else if (WEBKIT_IS_NOTIFICATION_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_notifications"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        } else if (WEBKIT_IS_CLIPBOARD_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_clipboard"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_user_media"] == "false") {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          } else {
+            if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+              if (userConfig["permissions_allow_microphone"] == "false") {
+                webkit_permission_request_deny(request);
+                return FALSE;
+              }
+            }
+
+            if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+              if (userConfig["permissions_allow_camera"] == "false") {
+                webkit_permission_request_deny(request);
+                return FALSE;
+              }
+            }
+
+            webkit_permission_request_allow(request);
+            return TRUE;
+          }
+        } else if (WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_data_access"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        } else if (WEBKIT_IS_DEVICE_INFO_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_device_info"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        } else if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST(request)) {
+          if (userConfig["permissions_allow_media_key_system"] != "false") {
+            webkit_permission_request_allow(request);
+            return TRUE;
+          } else {
+            webkit_permission_request_deny(request);
+            return FALSE;
+          }
+        }
+
+        webkit_permission_request_deny(request);
+        return FALSE;
+      }),
+      this
+    );
 
     g_signal_connect(
       G_OBJECT(webview),
@@ -575,9 +681,15 @@ namespace SSC {
       )
     );
 
-    WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
-    webkit_settings_set_javascript_can_access_clipboard(settings, true);
     webkit_settings_set_zoom_text_only(settings, false);
+
+    if (userConfig["permissions_allow_clipboard"] != "false") {
+      webkit_settings_set_javascript_can_access_clipboard(settings, true);
+    }
+
+    if (userConfig["permissions_allow_fullscreen"] != "false") {
+      webkit_settings_set_enable_fullscreen(settings, true);
+    }
 
     GdkRGBA rgba = {0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
