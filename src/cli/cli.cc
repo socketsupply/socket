@@ -2640,12 +2640,6 @@ int main (const int argc, const char* argv[]) {
       additionalBuildArgs += " --test=true";
     }
 
-    auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
-      settings,
-      targetPlatform,
-      pathResourcesRelativeToUserBuild
-    );
-
     handleBuildPhaseForUserScript(
       settings,
       targetPlatform,
@@ -2653,6 +2647,12 @@ int main (const int argc, const char* argv[]) {
       oldCwd,
       additionalBuildArgs,
       true
+    );
+
+    auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
+      settings,
+      targetPlatform,
+      pathResourcesRelativeToUserBuild
     );
 
     String flags;
