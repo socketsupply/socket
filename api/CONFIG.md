@@ -56,6 +56,22 @@ sources |  |
 Key | Default Value | Description
 :--- | :--- | :---
 root | "/" |  Make root open index.html
+default_index | "" |  Set default 'index.html' path to open for implicit routes
+
+# Section `permissions`
+
+Key | Default Value | Description
+:--- | :--- | :---
+allow_fullscreen | true |  Allow/Disallow fullscreen in application
+allow_microphone | true |  Allow/Disallow microphone in application
+allow_camera | true |  Allow/Disallow camera in application
+allow_user_media | true |  Allow/Disallow user media (microphone + camera) in application
+allow_geolocation | true |  Allow/Disallow geolocation in application
+allow_notifications | true |  Allow/Disallow notifications in application
+allow_sensors | true |  Allow/Disallow sensors in application
+allow_clipboard | true |  Allow/Disallow clipboard in application
+allow_bluetooth | true |  Allow/Disallow bluetooth in application
+allow_data_access | true |  Allow/Disallow data access in application
 watch | false |  Enable watch mode
 
 # Section `debug`
