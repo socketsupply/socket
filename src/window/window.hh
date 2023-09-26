@@ -22,6 +22,36 @@
 >
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
 sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
+
+-                                      (void) webView: (WKWebView*) webView
+ requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
+                                     initiatedByFrame: (WKFrameInfo*) frame
+                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+
+-                        (void) webView: (WKWebView*) webView
+ requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                                   type: (WKMediaCaptureType) type
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+
+-                       (void) _webView: (WKWebView*) webView
+  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+
+-                        (void) _webView: (WKWebView*) webView
+   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+
+-                     (void) webView: (WKWebView*) webView
+  runJavaScriptAlertPanelWithMessage: (NSString*) message
+                    initiatedByFrame: (WKFrameInfo*) frame
+                   completionHandler: (void (^)(void)) completionHandler;
+
+-                       (void) webView: (WKWebView*) webView
+  runJavaScriptConfirmPanelWithMessage: (NSString*) message
+                      initiatedByFrame: (WKFrameInfo*) frame
+                     completionHandler: (void (^)(BOOL result)) completionHandler;
 @end
 #endif
 

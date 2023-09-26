@@ -50,6 +50,147 @@ SSC::Vector<SSC::String> draggablePayload;
 int lastX = 0;
 int lastY = 0;
 
+-                                      (void) webView: (WKWebView*) webView
+ requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
+                                     initiatedByFrame: (WKFrameInfo*) frame
+                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  static auto userConfig = SSC::getUserConfig();
+
+  if (userConfig["permissions_allow_device_orientation"] == "false") {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                        (void) webView: (WKWebView*) webView
+ requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                                   type: (WKMediaCaptureType) type
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  static auto userConfig = SSC::getUserConfig();
+
+  if (userConfig["permissions_allow_user_media"] == "false") {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  if (type == WKMediaCaptureTypeCameraAndMicrophone) {
+    if (
+      userConfig["permissions_allow_camera"] == "false" ||
+      userConfig["permissions_allow_microphone"] == "false"
+    ) {
+      decisionHandler(WKPermissionDecisionDeny);
+      return;
+    }
+  }
+
+  if (
+    type == WKMediaCaptureTypeCamera &&
+    userConfig["permissions_allow_camera"] == "false"
+  ) {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  if (
+    type == WKMediaCaptureTypeMicrophone &&
+    userConfig["permissions_allow_microphone"] == "false"
+  ) {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                       (void) _webView: (WKWebView*) webView
+  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  printf("requestGeolocationPermissionForOrigin\n");
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                       (void) _webView: (WKWebView*) webView
+   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+
+  printf("requestGeolocationPermissionForFrame\n");
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                     (void) webView: (WKWebView*) webView
+  runJavaScriptAlertPanelWithMessage: (NSString*) message
+                    initiatedByFrame: (WKFrameInfo*) frame
+                   completionHandler: (void (^)(void)) completionHandler {
+#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
+  auto alert = [UIAlertController
+    alertControllerWithTitle: nil
+                     message: message
+              preferredStyle: UIAlertControllerStyleAlert
+  ];
+
+  auto ok = [UIAlertAction
+    actionWithTitle: @"OK"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler();
+  }];
+
+  [alert addAction: ok];
+
+  [webView presentViewController:alert animated: YES completion: nil];
+#else
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText: message];
+  [alert setInformativeText: message];
+  [alert addButtonWithTitle: @"OK"];
+  [alert runModal];
+  completionHandler();
+#endif
+}
+
+-                       (void) webView: (WKWebView*) webView
+  runJavaScriptConfirmPanelWithMessage: (NSString*) message
+                      initiatedByFrame: (WKFrameInfo*) frame
+                     completionHandler: (void (^)(BOOL result)) completionHandler {
+#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
+  auto alert = [UIAlertController
+    alertControllerWithTitle: nil
+                     message: message
+              preferredStyle: UIAlertControllerStyleAlert
+  ];
+
+  auto ok = [UIAlertAction
+    actionWithTitle: @"OK"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler(YES);
+  }];
+
+  auto cancel = [UIAlertAction
+    actionWithTitle: @"Cancel"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler(NO);
+  }];
+
+  [alert addAction: ok];
+  [alert addAction: cancel];
+
+  [webView presentViewController:alert animated: YES completion: nil];
+#else
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText: message];
+  [alert setInformativeText: message];
+  [alert addButtonWithTitle: @"OK"];
+  [alert addButtonWithTitle: @"Cancel"];
+  completionHandler([alert runModal] == NSAlertFirstButtonReturn);
+#endif
+}
+
 - (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
   [info setDraggingFormation: NSDraggingFormationNone];
   return NO;
@@ -413,50 +554,6 @@ namespace SSC {
   static bool isDelegateSet = false;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
-    this->bridge = new IPC::Bridge(app.core);
-
-    this->bridge->router.dispatchFunction = [this] (auto callback) {
-      this->app.dispatch(callback);
-    };
-
-    this->bridge->router.evaluateJavaScriptFunction = [this](auto js) {
-      dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
-    };
-
-    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
-      auto value = message.value;
-      auto seq = message.seq;
-      auto  script = [NSString stringWithUTF8String: value.c_str()];
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
-          if (result) {
-            auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
-            this->bridge->router.send(seq, msg, Post{});
-          } else if (error) {
-            auto exception = (NSString *) error.userInfo[@"WKJavaScriptExceptionMessage"];
-            auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
-            auto err = encodeURIComponent(String(message));
-
-            if (err == "(null)") {
-              this->bridge->router.send(seq, "null", Post{});
-              return;
-            }
-
-            auto json = JSON::Object::Entries {
-              {"err", JSON::Object::Entries {
-                {"message", String("Error: ") + err}
-              }}
-            };
-
-            this->bridge->router.send(seq, JSON::Object(json).str(), Post{});
-          } else {
-            this->bridge->router.send(seq, "undefined", Post{});
-          }
-        }];
-      });
-    });
-
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
@@ -506,6 +603,53 @@ namespace SSC {
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
 
+    static auto userConfig = SSC::getUserConfig();
+
+    this->bridge = new IPC::Bridge(app.core);
+
+    this->bridge->router.dispatchFunction = [this] (auto callback) {
+      this->app.dispatch(callback);
+    };
+
+    this->bridge->router.evaluateJavaScriptFunction = [this](auto js) {
+      dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
+    };
+
+    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
+      auto value = message.value;
+      auto seq = message.seq;
+      auto  script = [NSString stringWithUTF8String: value.c_str()];
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
+          if (result) {
+            auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
+            this->bridge->router.send(seq, msg, Post{});
+          } else if (error) {
+            auto exception = (NSString *) error.userInfo[@"WKJavaScriptExceptionMessage"];
+            auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
+            auto err = encodeURIComponent(String(message));
+
+            if (err == "(null)") {
+              this->bridge->router.send(seq, "null", Post{});
+              return;
+            }
+
+            auto json = JSON::Object::Entries {
+              {"err", JSON::Object::Entries {
+                {"message", String("Error: ") + err}
+              }}
+            };
+
+            this->bridge->router.send(seq, JSON::Object(json).str(), Post{});
+          } else {
+            this->bridge->router.send(seq, "undefined", Post{});
+          }
+        }];
+      });
+    });
+
+
     // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     // https://webkit.org/blog/10882/app-bound-domains/
@@ -519,7 +663,13 @@ namespace SSC {
                    forURLScheme: @"socket"];
 
     WKPreferences* prefs = [config preferences];
-    [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
+    prefs.javaScriptCanOpenWindowsAutomatically = NO;
+
+    if (userConfig["permissions_allow_fullscreen"] == "false") {
+      [prefs setValue: @NO forKey: @"fullScreenEnabled"];
+    } else {
+      [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+    }
 
     if (SSC::isDebugEnabled()) {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
@@ -527,6 +677,55 @@ namespace SSC {
         [webview setInspectable: YES];
       }
     }
+
+    if (userConfig["permissions_allow_clipboard"] == "false") {
+      [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
+    } else {
+      [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
+    }
+
+    if (userConfig["permissions_allow_data_access"] == "false") {
+      [prefs setValue: @NO forKey: @"storageAPIEnabled"];
+    } else {
+      [prefs setValue: @YES forKey: @"storageAPIEnabled"];
+    }
+
+    if (userConfig["permissions_allow_device_orientation"] == "false") {
+      [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
+    } else {
+      [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
+    }
+
+    if (userConfig["permissions_allow_notifications"] == "false") {
+      [prefs setValue: @NO forKey: @"appBadgeEnabled"];
+      [prefs setValue: @NO forKey: @"notificationsEnabled"];
+      [prefs setValue: @NO forKey: @"notificationEventEnabled"];
+    } else {
+      [prefs setValue: @YES forKey: @"appBadgeEnabled"];
+      [prefs setValue: @YES forKey: @"notificationsEnabled"];
+      [prefs setValue: @YES forKey: @"notificationEventEnabled"];
+    }
+
+  #if !TARGET_OS_IPHONE
+    [prefs setValue: @YES forKey: @"cookieEnabled"];
+
+    if (userConfig["permissions_allow_user_media"] == "false") {
+      [prefs setValue: @NO forKey: @"mediaStreamEnabled"];
+    } else {
+      [prefs setValue: @YES forKey: @"mediaStreamEnabled"];
+    }
+  #endif
+
+    [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
+
+/*
+
+    if (userConfig["permissions_allow_geolocation"] == "false") {
+      [prefs setValue: @NO forKey: @"WebKitAlwaysRequestGeolocationPermission"];
+    } else {
+      [prefs setValue: @YES forKey: @"WebKitAlwaysRequestGeolocationPermission"];
+    }
+*/
 
     WKUserContentController* controller = [config userContentController];
 
@@ -597,6 +796,7 @@ namespace SSC {
 
     SSCNavigationDelegate *navDelegate = [[SSCNavigationDelegate alloc] init];
     [webview setNavigationDelegate: navDelegate];
+    webview.UIDelegate = webview;
 
     if (!isDelegateSet) {
       isDelegateSet = true;

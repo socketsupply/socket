@@ -699,6 +699,7 @@ namespace SSC {
               window,
               Microsoft::WRL::Callback<IConHandler>(
                 [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+                  static auto userConfig = SSC::getUserConfig();
                   if (c != nullptr) {
                     controller = c;
                     controller->get_CoreWebView2(&webview);
@@ -716,6 +717,10 @@ namespace SSC {
                   Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                   Settings->put_IsWebMessageEnabled(TRUE);
                   Settings->put_IsStatusBarEnabled(FALSE);
+
+                  if (userConfig["permissions_allow_fullscreen"] != "false") {
+                    Settings->put_IsFullscreenAllowed(TRUE);
+                  }
 
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
                   if (isDebugEnabled()) {
@@ -1226,11 +1231,78 @@ namespace SSC {
                       ICoreWebView2 *webview,
                       ICoreWebView2PermissionRequestedEventArgs *args
                     ) -> HRESULT {
+                      static auto userConfig = SSC::getUserConfig();
                       COREWEBVIEW2_PERMISSION_KIND kind;
                       args->get_PermissionKind(&kind);
 
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE)  {
+                        if (
+                          userConfig["permissions_allow_microphone"] == "false" ||
+                          userConfig["permissions_allow_user_media"] == "false"
+                          ) {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA)  {
+                        if (
+                          userConfig["permissions_allow_camera"] == "false" ||
+                          userConfig["permissions_allow_user_media"] == "false"
+                        ) {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_GEOLOCATION)  {
+                        if (userConfig["permissions_allow_geolocation"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS)  {
+                        if (userConfig["permissions_allow_notifications"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS)  {
+                        if (userConfig["permissions_allow_sensors"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
-                        args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        if (userConfig["permissions_allow_clipboard"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_AUTOPLAY) {
+                        if (userConfig["permissions_allow_autoplay"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
+                      }
+
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_LOCAL_FONTS) {
+                        if (userConfig["permissions_allow_local_fonts"] == "false") {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                        } else {
+                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                        }
                       }
 
                       return S_OK;
