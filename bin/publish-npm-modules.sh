@@ -84,6 +84,7 @@ export PREFIX
 
 if (( !only_top_level && !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
+
 fi
 
 if (( do_global_link && !dry_run )); then
@@ -110,7 +111,7 @@ declare android_abis=()
 
 
 if (( only_top_level )); then
-  : # android libs don't need to be built for top level
+  npm run gen
 elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
   echo "warn - Android not supported on $platform-"$(uname -m)""
 else
