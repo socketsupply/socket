@@ -716,15 +716,6 @@ namespace SSC {
 
     [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
 
-/*
-
-    if (userConfig["permissions_allow_geolocation"] == "false") {
-      [prefs setValue: @NO forKey: @"WebKitAlwaysRequestGeolocationPermission"];
-    } else {
-      [prefs setValue: @YES forKey: @"WebKitAlwaysRequestGeolocationPermission"];
-    }
-*/
-
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
