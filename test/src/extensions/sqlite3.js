@@ -3,7 +3,7 @@ import extension from 'socket:extension'
 import process from 'socket:process'
 import path from 'socket:path'
 import test from 'socket:test'
-import fs from 'socket:fs'
+import fs from 'socket:fs/promises'
 
 test('extension.load(name) - sqlite3', async (t) => {
   if (process.env.SSC_ANDROID_CI) {
