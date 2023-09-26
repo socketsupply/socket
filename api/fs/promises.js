@@ -70,13 +70,6 @@ export async function access (path, mode, options) {
 }
 
 /**
- * @TODO
- * @ignore
- */
-export async function appendFile (path, data, options) {
-}
-
-/**
  * @see {@link https://nodejs.org/api/fs.html#fspromiseschmodpath-mode}
  * @param {string | Buffer | URL} path
  * @param {number} mode
@@ -88,59 +81,103 @@ export async function chmod (path, mode) {
   }
 
   if (mode < 0 || !Number.isInteger(mode)) {
-    throw new RangeError(`The value of "mode" is out of range. It must be an integer. Received ${mode}`)
+    throw new RangeError(`The value of 'mode" is out of range. It must be an integer. Received ${mode}`)
   }
 
-  await ipc.send('fs.chmod', { mode, path })
+  const result = await ipc.send('fs.chmod', { mode, path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
  * @ignore
  */
 export async function chown (path, uid, gid) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+
+  const result = await ipc.send('fs.chown', { path, uid, gid })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
  * @ignore
  */
-export async function copyFile (src, dst, mode) {
+export async function copyFile (src, dest, flags) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  const result = await ipc.send('fs.copyFile', { src, dest, flags })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
- * @ignore
- */
-export async function lchmod (path, mode) {
-}
-
-/**
- * @TODO
  * @ignore
  */
 export async function lchown (path, uid, gid) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+  const result = await ipc.send('fs.lchown', { path, uid, gid })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
  * @ignore
  */
-export async function lutimes (path, atime, mtime) {
-}
+export async function link (src, dest) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
 
-/**
- * @TODO
- * @ignore
- */
-export async function link (existingPath, newPath) {
-}
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
 
-/**
- * @TODO
- * @ignore
- */
-export async function lstat (path, options) {
+  const result = await ipc.send('fs.link', { src, dest })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -163,7 +200,11 @@ export async function mkdir (path, options = {}) {
     throw new RangeError('mode must be a positive finite number.')
   }
 
-  return await ipc.request('fs.mkdir', { mode, path, recursive })
+  const result = await ipc.request('fs.mkdir', { mode, path, recursive })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -236,48 +277,81 @@ export async function readFile (path, options) {
   if (typeof options === 'string') {
     options = { encoding: options }
   }
-  options = {
-    flags: 'r',
-    ...options
-  }
+
+  options = { flags: 'r', ...options }
+
   return await visit(path, options, async (handle) => {
     return await handle.readFile(options)
   })
 }
 
 /**
- * @TODO
  * @ignore
  */
 export async function readlink (path, options) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = await ipc.send('fs.readlink', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  return result.data.path
 }
 
 /**
- * @TODO
  * @ignore
  */
 export async function realpath (path, options) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = await ipc.send('fs.realpath', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  return result.data.path
 }
 
 /**
- * @TODO
  * @ignore
  */
 export async function rename (oldPath, newPath) {
+  if (typeof oldPath !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof newPath !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = await ipc.send('fs.rename', { oldPath, newPath })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
  * @ignore
  */
 export async function rmdir (path, options) {
-}
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
 
-/**
- * @TODO
- * @ignore
- */
-export async function rm (path, options) {
+
+  const result = await ipc.send('fs.rmdir', { path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -294,38 +368,42 @@ export async function stat (path, options) {
 }
 
 /**
- * @TODO
  * @ignore
  */
-export async function symlink (target, path, type) {
+export async function symlink (src, dest, flags) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  const result = await ipc.send('fs.symlink', { src, dest, flags })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
- * @TODO
- * @ignore
- */
-export async function truncate (path, length) {
-}
-
-/**
- * @TODO
  * @ignore
  */
 export async function unlink (path) {
-}
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
 
-/**
- * @TODO
- * @ignore
- */
-export async function utimes (path, atime, mtime) {
-}
 
-/**
- * @TODO
- * @ignore
- */
-export async function watch (path, options) {
+  const result = await ipc.send('fs.unlink', { path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -344,7 +422,9 @@ export async function writeFile (path, data, options) {
   if (typeof options === 'string') {
     options = { encoding: options }
   }
+
   options = { flag: 'w', mode: 0o666, ...options }
+
   return await visit(path, options, async (handle) => {
     return await handle.writeFile(data, options)
   })
