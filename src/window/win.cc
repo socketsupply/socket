@@ -718,10 +718,6 @@ namespace SSC {
                   Settings->put_IsWebMessageEnabled(TRUE);
                   Settings->put_IsStatusBarEnabled(FALSE);
 
-                  if (userConfig["permissions_allow_fullscreen"] != "false") {
-                    Settings->put_IsFullscreenAllowed(TRUE);
-                  }
-
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
                   if (isDebugEnabled()) {
                     Settings->put_AreDevToolsEnabled(TRUE);
