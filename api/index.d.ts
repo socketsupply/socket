@@ -6103,6 +6103,22 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
+declare module "socket:internal/geolocation" {
+    export function getCurrentPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): Promise<any>;
+    export function watchPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): any;
+    export function clearWatch(id: any, ...args: any[]): any;
+    export namespace platform {
+        let getCurrentPosition: any;
+        let watchPosition: any;
+        let clearWatch: any;
+    }
+    namespace _default {
+        export { getCurrentPosition };
+        export { watchPosition };
+        export { clearWatch };
+    }
+    export default _default;
+}
 declare module "socket:internal/globals" {
     /**
      * Gets a global by name.
