@@ -600,7 +600,7 @@ export function readFile (path, options = {}, callback) {
 /**
  * @ignore
  */
-export function readlink (path, options, callback) {
+export function readlink (path,  callback) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -617,7 +617,7 @@ export function readlink (path, options, callback) {
 /**
  * @ignore
  */
-export function realpath (path, options, callback) {
+export function realpath (path, callback) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -655,7 +655,7 @@ export function rename (src, dest, callback) {
 /**
  * @ignore
  */
-export function rmdir (path, options, callback) {
+export function rmdir (path,  callback) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -710,7 +710,9 @@ export function stat (path, options, callback) {
 /**
  * @ignore
  */
-export function symlink (src, dest, flags, callback) {
+export function symlink (src, dest, type = null, callback) {
+  let flags = 0
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -719,8 +721,20 @@ export function symlink (src, dest, flags, callback) {
     throw new TypeError('The argument \'dest\' must be a string')
   }
 
-  if (!Number.isInteger(flags)) {
-    throw new TypeError('The argument \'flags\' must be an integer')
+  if (typeof type === 'function') {
+    callback = type
+  }
+
+  if (!type) {
+    type = 'file'
+  }
+
+  if (type === 'file') {
+    flags = 0
+  } else if (type === 'dir') {
+    flags = constants.UV_FS_SYMLINK_DIR
+  } else if (type === 'junction') {
+    flags = constants.UV_FS_SYMLINK_JUNCTION
   }
 
   if (typeof callback !== 'function') {
