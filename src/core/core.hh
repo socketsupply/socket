@@ -8,6 +8,7 @@
 #import <Webkit/Webkit.h>
 #import <Network/Network.h>
 #import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <UserNotifications/UserNotifications.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
