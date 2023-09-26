@@ -1,8 +1,5 @@
 {
   "type": "module",
-  "directories": [
-    "api"
-  ],
   "scripts": {
     "gen": "npm run gen:docs && npm run gen:tsc",
     "gen:docs": "node ./bin/generate-docs.js",
