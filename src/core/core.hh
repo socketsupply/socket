@@ -417,7 +417,7 @@ namespace SSC {
             uint64_t id;
             Descriptor *desc = nullptr;
             uv_fs_t req;
-            uv_buf_t iov[16];
+            uv_buf_t buf;
             // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
             uv_dirent_t dirents[256];
             int offset = 0;
@@ -440,10 +440,10 @@ namespace SSC {
               uv_fs_req_cleanup(&this->req);
             }
 
-            void setBuffer (int index, size_t len, char *base);
-            void freeBuffer (int index);
-            char* getBuffer (int index);
-            size_t getBufferSize (int index);
+            void setBuffer (char* base, uint32_t len);
+            void freeBuffer ();
+            char* getBuffer ();
+            uint32_t getBufferSize ();
           };
 
           std::map<uint64_t, Descriptor*> descriptors;
@@ -466,12 +466,26 @@ namespace SSC {
             int mode,
             Module::Callback cb
           );
+          void chown (
+            const String seq,
+            const String path,
+            uv_uid_t uid,
+            uv_gid_t gid,
+            Module::Callback cb
+          );
+          void lchown (
+            const String seq,
+            const String path,
+            uv_uid_t uid,
+            uv_gid_t gid,
+            Module::Callback cb
+          );
           void close (const String seq, uint64_t id, Module::Callback cb);
           void copyFile (
             const String seq,
             const String src,
             const String dst,
-            int mode,
+            int flags,
             Module::Callback cb
           );
           void closedir (const String seq, uint64_t id, Module::Callback cb);
@@ -489,10 +503,33 @@ namespace SSC {
           void fstat (const String seq, uint64_t id, Module::Callback cb);
           void getOpenDescriptors (const String seq, Module::Callback cb);
           void lstat (const String seq, const String path, Module::Callback cb);
+					void link (
+            const String seq,
+            const String src,
+            const String dest,
+            Module::Callback cb
+          );
+          void symlink (
+            const String seq,
+            const String src,
+            const String dest,
+            int flags,
+            Module::Callback cb
+          );
           void mkdir (
             const String seq,
             const String path,
             int mode,
+            Module::Callback cb
+          );
+          void readlink (
+            const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void realpath (
+            const String seq,
+            const String path,
             Module::Callback cb
           );
           void open (

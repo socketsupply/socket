@@ -205,26 +205,23 @@ namespace SSC {
     };
   }
 
-  void Core::FS::RequestContext::setBuffer (int index, size_t len, char *base) {
-    this->iov[index].base = base;
-    this->iov[index].len = len;
+	void Core::FS::RequestContext::setBuffer(char* base, uint32_t len) {
+		this->buf.base = base;
+		this->buf.len = len;
   }
 
-  void Core::FS::RequestContext::freeBuffer (int index) {
-    if (this->iov[index].base != nullptr) {
-      delete [] (char *) this->iov[index].base;
-      this->iov[index].base = nullptr;
-    }
-
-    this->iov[index].len = 0;
+  void Core::FS::RequestContext::freeBuffer() {
+    delete[] static_cast<char*>(this->buf.base);
+    this->buf.base = nullptr;
+    this->buf.len = 0;
   }
 
-  char* Core::FS::RequestContext::getBuffer (int index) {
-    return this->iov[index].base;
+  char* Core::FS::RequestContext::getBuffer () {
+    return this->buf.base;
   }
 
-  size_t Core::FS::RequestContext::getBufferSize (int index) {
-    return this->iov[index].len;
+  uint32_t Core::FS::RequestContext::getBufferSize () {
+    return this->buf.len;
   }
 
   Core::FS::Descriptor::Descriptor (Core *core, uint64_t id) {
@@ -317,7 +314,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.access"},
             {"err", JSON::Object::Entries {
@@ -368,7 +365,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.chmod"},
             {"err", JSON::Object::Entries {
@@ -404,6 +401,108 @@ namespace SSC {
     });
   }
 
+	void Core::FS::chown (
+    const String seq,
+    const String path,
+    uv_uid_t uid,
+    uv_gid_t gid,
+    Module::Callback cb
+  ) {
+    core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.chown"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.chown"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_chown(
+          &core->eventLoop, &ctx->req, path.c_str(), uid, gid, uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.chown"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::lchown (
+		const String seq,
+    const String path,
+    uv_uid_t uid,
+    uv_gid_t gid,
+    Module::Callback cb
+  ) {
+    core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.lchown"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.lchown"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_lchown(
+          &core->eventLoop, &ctx->req, path.c_str(), uid, gid, uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.lchown"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
   void Core::FS::close (
     const String seq,
     uint64_t id,
@@ -434,7 +533,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.close"},
             {"err", JSON::Object::Entries {
@@ -495,7 +594,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.open"},
             {"err", JSON::Object::Entries {
@@ -559,7 +658,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.opendir"},
             {"err", JSON::Object::Entries {
@@ -654,7 +753,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.readdir"},
             {"err", JSON::Object::Entries {
@@ -744,7 +843,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.closedir"},
             {"err", JSON::Object::Entries {
@@ -898,15 +997,15 @@ namespace SSC {
       auto req = &ctx->req;
       auto bytes = new char[size]{0};
 
-      ctx->setBuffer(0, size, bytes);
+      ctx->setBuffer(bytes, size);
 
-      auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      auto err = uv_fs_read(loop, req, desc->fd, &ctx->buf, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
         Post post = {0};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.read"},
             {"err", JSON::Object::Entries {
@@ -916,7 +1015,7 @@ namespace SSC {
             }}
           };
 
-          auto bytes = ctx->getBuffer(0);
+          auto bytes = ctx->getBuffer();
           if (bytes != nullptr) {
             delete [] bytes;
           }
@@ -927,7 +1026,7 @@ namespace SSC {
           }};
 
           post.id = SSC::rand64();
-          post.body = ctx->getBuffer(0);
+          post.body = ctx->getBuffer();
           post.length = (int) req->result;
           post.headers = headers.str();
         }
@@ -982,13 +1081,13 @@ namespace SSC {
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
 
-      ctx->setBuffer(0, (int) size, bytes);
-      auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      ctx->setBuffer(bytes, size);
+      auto err = uv_fs_write(loop, req, desc->fd, &ctx->buf, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.write"},
             {"err", JSON::Object::Entries {
@@ -1041,7 +1140,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.stat"},
             {"err", JSON::Object::Entries {
@@ -1102,7 +1201,7 @@ namespace SSC {
         auto desc = ctx->desc;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.fstat"},
             {"err", JSON::Object::Entries {
@@ -1180,7 +1279,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.stat"},
             {"err", JSON::Object::Entries {
@@ -1211,6 +1310,107 @@ namespace SSC {
     });
   }
 
+	void Core::FS::link (
+    const String seq,
+    const String src,
+    const String dest,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.link"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.link"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_link(
+        &core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.link"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::symlink (
+    const String seq,
+    const String src,
+    const String dest,
+    int flags,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.symlink"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.symlink"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_symlink(
+        &core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), flags, uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.symlink"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
   void Core::FS::unlink (
     const String seq,
     const String path,
@@ -1225,7 +1425,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.unlink"},
             {"err", JSON::Object::Entries {
@@ -1261,6 +1461,104 @@ namespace SSC {
     });
   }
 
+	void Core::FS::readlink (
+    const String seq,
+    const String path,
+    const Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.readlink"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.readlink"},
+            {"data", JSON::Object::Entries {
+              {"path", String((char*) uv_fs_get_ptr(req))}
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_readlink(
+          &core->eventLoop, &ctx->req, path.c_str(), uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.readlink"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::realpath (
+    const String seq,
+    const String path,
+    const Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto ctx = new RequestContext(seq, cb);
+      auto uv_cb = [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto json = JSON::Object{};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.realpath"},
+            {"err", JSON::Object::Entries {
+              {"code", uv_fs_get_result(req)},
+              {"message", String(uv_strerror(uv_fs_get_result(req)))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.realpath"},
+            {"data", JSON::Object::Entries {
+              {"path", String((char*) uv_fs_get_ptr(req))}
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      };
+
+      auto err = uv_fs_realpath(
+          &core->eventLoop, &ctx->req, path.c_str(), uv_cb);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.realpath"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+        ctx->cb(seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
   void Core::FS::rename (
     const String seq,
     const String pathA,
@@ -1277,7 +1575,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.rename"},
             {"err", JSON::Object::Entries {
@@ -1330,7 +1628,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.copyFile"},
             {"err", JSON::Object::Entries {
@@ -1380,7 +1678,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.rmdir"},
             {"err", JSON::Object::Entries {
@@ -1431,7 +1729,7 @@ namespace SSC {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (req->result < 0) {
+        if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
             {"source", "fs.mkdir"},
             {"err", JSON::Object::Entries {
