@@ -729,7 +729,7 @@ External docs: https://nodejs.org/api/events.html
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L83)
+## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously check access a file for a given mode calling `callback`
@@ -741,7 +741,7 @@ Asynchronously check access a file for a given mode calling `callback`
 | mode | string? \| function(Error?)? | F_OK(0) | false |  |
 | callback | function(Error?)? |  | false |  |
 
-## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L116)
+## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L117)
 
 External docs: https://nodejs.org/api/fs.html#fschmodpath-mode-callback
 Asynchronously changes the permissions of a file.
@@ -755,7 +755,7 @@ Asynchronously changes the permissions of a file.
 | mode | number |  | false |  |
 | callback | function(Error?) |  | false |  |
 
-## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L165)
+## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L166)
 
 Asynchronously close a file descriptor calling `callback` upon success or error.
 
@@ -764,12 +764,12 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | fd | number |  | false |  |
 | callback | function(Error?)? |  | false |  |
 
-## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L181)
+## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L182)
 
 This is a `FunctionDeclaration` named `copyFile` in `api/fs/index.js`, it's exported but undocumented.
 
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L209)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L210)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -783,7 +783,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | ReadStream |  |
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L249)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L250)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -797,7 +797,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | WriteStream |  |
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L293)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L294)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback
 Invokes the callback with the <fs.Stats> for the file descriptor. See
@@ -811,7 +811,7 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | options | object? \| function? |  | false | An options object. |
 | callback | function? |  | false | The function to call after completion. |
 
-## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L398)
+## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L399)
 
 Asynchronously open a file calling `callback` upon success or error.
 
@@ -823,7 +823,7 @@ Asynchronously open a file calling `callback` upon success or error.
 | options | object? \| function? |  | false |  |
 | callback | function(Error?, number?)? |  | false |  |
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L451)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L452)
 
 Asynchronously open a directory calling `callback` upon success or error.
 
@@ -835,7 +835,7 @@ Asynchronously open a directory calling `callback` upon success or error.
 | options.withFileTypes | boolean? | false | false |  |
 | callback | function(Error?, Dir?)? |  | false |  |
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L477)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L478)
 
 Asynchronously read from an open file descriptor.
 
@@ -848,7 +848,7 @@ Asynchronously read from an open file descriptor.
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
 | callback | function(Error?, number?, Buffer?) |  | false |  |
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L511)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L512)
 
 Asynchronously read all entries in a directory.
 
@@ -860,7 +860,7 @@ Asynchronously read all entries in a directory.
 | options.withFileTypes ? false | boolean? |  | false |  |
 | callback | function(Error?, object) |  | false |  |
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L562)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L563)
 
 
 
@@ -873,7 +873,7 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | false |  |
 | callback | function(Error?, Buffer?) |  | false |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L681)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L682)
 
 
 
@@ -886,7 +886,7 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | false |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L777)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L778)
 
 
 
@@ -926,7 +926,7 @@ Asynchronously read all entries in a directory.
  import fs from 'socket:fs/promises'
  ```
 
-## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L68)
+## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L86)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode
 Asynchronously check access a file.
@@ -937,7 +937,7 @@ Asynchronously check access a file.
 | mode | string? |  | false |  |
 | options | object? |  | false |  |
 
-## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L78)
+## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L96)
 
 External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 
@@ -951,7 +951,7 @@ External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L190)
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L208)
 
 Asynchronously creates a directory.
 
@@ -965,7 +965,7 @@ Asynchronously creates a directory.
 | :---         | :--- | :---        |
 | Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L218)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L236)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 Asynchronously open a file.
@@ -981,7 +981,7 @@ Asynchronously open a file.
 | :---         | :--- | :---        |
 | Not specified | Promise<FileHandle> |  |
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L230)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L248)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -997,7 +997,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L242)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L260)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1009,7 +1009,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | false |  |
 | options.withFileTypes | boolean? | false | false |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L275)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L293)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1026,7 +1026,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L362)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L380)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1041,7 +1041,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L428)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L446)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
