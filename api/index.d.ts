@@ -2334,11 +2334,6 @@ declare module "socket:fs/promises" {
      */
     export function access(path: string | Buffer | URL, mode?: string | null, options?: object | null): Promise<boolean>;
     /**
-     * @TODO
-     * @ignore
-     */
-    export function appendFile(path: any, data: any, options: any): Promise<void>;
-    /**
      * @see {@link https://nodejs.org/api/fs.html#fspromiseschmodpath-mode}
      * @param {string | Buffer | URL} path
      * @param {number} mode
@@ -2346,40 +2341,21 @@ declare module "socket:fs/promises" {
      */
     export function chmod(path: string | Buffer | URL, mode: number): Promise<void>;
     /**
-     * @TODO
      * @ignore
      */
     export function chown(path: any, uid: any, gid: any): Promise<void>;
     /**
-     * @TODO
      * @ignore
      */
-    export function copyFile(src: any, dst: any, mode: any): Promise<void>;
+    export function copyFile(src: any, dest: any, flags: any): Promise<void>;
     /**
-     * @TODO
-     * @ignore
-     */
-    export function lchmod(path: any, mode: any): Promise<void>;
-    /**
-     * @TODO
      * @ignore
      */
     export function lchown(path: any, uid: any, gid: any): Promise<void>;
     /**
-     * @TODO
      * @ignore
      */
-    export function lutimes(path: any, atime: any, mtime: any): Promise<void>;
-    /**
-     * @TODO
-     * @ignore
-     */
-    export function link(existingPath: any, newPath: any): Promise<void>;
-    /**
-     * @TODO
-     * @ignore
-     */
-    export function lstat(path: any, options: any): Promise<void>;
+    export function link(src: any, dest: any): Promise<void>;
     /**
      * Asynchronously creates a directory.
      * @todo recursive option is not implemented yet.
@@ -2427,30 +2403,21 @@ declare module "socket:fs/promises" {
      */
     export function readFile(path: string, options?: object | null): Promise<Buffer | string>;
     /**
-     * @TODO
      * @ignore
      */
-    export function readlink(path: any, options: any): Promise<void>;
+    export function readlink(path: any, options: any): Promise<any>;
     /**
-     * @TODO
      * @ignore
      */
-    export function realpath(path: any, options: any): Promise<void>;
+    export function realpath(path: any, options: any): Promise<any>;
     /**
-     * @TODO
      * @ignore
      */
     export function rename(oldPath: any, newPath: any): Promise<void>;
     /**
-     * @TODO
      * @ignore
      */
     export function rmdir(path: any, options: any): Promise<void>;
-    /**
-     * @TODO
-     * @ignore
-     */
-    export function rm(path: any, options: any): Promise<void>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
@@ -2460,30 +2427,13 @@ declare module "socket:fs/promises" {
      */
     export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
-     * @TODO
      * @ignore
      */
-    export function symlink(target: any, path: any, type: any): Promise<void>;
+    export function symlink(src: any, dest: any, flags: any): Promise<void>;
     /**
-     * @TODO
-     * @ignore
-     */
-    export function truncate(path: any, length: any): Promise<void>;
-    /**
-     * @TODO
      * @ignore
      */
     export function unlink(path: any): Promise<void>;
-    /**
-     * @TODO
-     * @ignore
-     */
-    export function utimes(path: any, atime: any, mtime: any): Promise<void>;
-    /**
-     * @TODO
-     * @ignore
-     */
-    export function watch(path: any, options: any): Promise<void>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
@@ -2543,7 +2493,7 @@ declare module "socket:fs/index" {
      * @param {function(Error?)?} [callback]
      */
     export function close(fd: number, callback?: ((arg0: Error | null) => any) | null): void;
-    export function copyFile(src: any, dst: any, mode: any, callback: any): void;
+    export function copyFile(src: any, dest: any, flags: any, callback: any): void;
     /**
      * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
@@ -2572,23 +2522,11 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function lchmod(path: any, mode: any, callback: any): void;
-    /**
-     * @ignore
-     */
     export function lchown(path: any, uid: any, gid: any, callback: any): void;
     /**
      * @ignore
      */
-    export function lutimes(path: any, atime: any, mtime: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function link(existingPath: any, newPath: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function lstat(path: any, options: any, callback: any): void;
+    export function link(src: any, dest: any, callback: any): void;
     /**
      * @ignore
      */
@@ -2654,15 +2592,11 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function rename(oldPath: any, newPath: any, callback: any): void;
+    export function rename(src: any, dest: any, callback: any): void;
     /**
      * @ignore
      */
     export function rmdir(path: any, options: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function rm(path: any, options: any, callback: any): void;
     /**
      *
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2676,27 +2610,11 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function symlink(target: any, path: any, type: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function truncate(path: any, length: any, callback: any): void;
+    export function symlink(src: any, dest: any, flags: any, callback: any): void;
     /**
      * @ignore
      */
     export function unlink(path: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function utimes(path: any, atime: any, mtime: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function watch(path: any, options: any, callback: any): void;
-    /**
-     * @ignore
-     */
-    export function write(fd: any, buffer: any, offset: any, length: any, position: any, callback: any): void;
     /**
      * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2709,7 +2627,6 @@ declare module "socket:fs/index" {
      * @param {function(Error?)} callback
      */
     export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
-    export function writev(fd: any, buffers: any, position: any, callback: any): void;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
