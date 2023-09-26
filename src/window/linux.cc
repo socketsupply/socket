@@ -194,13 +194,13 @@ namespace SSC {
       NULL
     );
 
-    webview = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+    webview = GTK_WIDGET(WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
       "web-context", webContext,
       "settings", settings,
       "user-content-manager", cm,
       "website-policies", policies,
       NULL
-    ));
+    )));
 
     webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
 
@@ -211,7 +211,7 @@ namespace SSC {
         WebKitWebView* webview,
         WebKitPermissionRequest *request,
         gpointer userData
-      ) {
+      ) -> bool {
         static auto userConfig = SSC::getUserConfig();
 
         if (WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST(request)) {
@@ -224,14 +224,6 @@ namespace SSC {
           }
         } else if (WEBKIT_IS_NOTIFICATION_PERMISSION_REQUEST(request)) {
           if (userConfig["permissions_allow_notifications"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
-        } else if (WEBKIT_IS_CLIPBOARD_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_clipboard"] != "false") {
             webkit_permission_request_allow(request);
             return TRUE;
           } else {
