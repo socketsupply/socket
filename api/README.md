@@ -951,7 +951,7 @@ External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L191)
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L190)
 
 Asynchronously creates a directory.
 
@@ -965,7 +965,7 @@ Asynchronously creates a directory.
 | :---         | :--- | :---        |
 | Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L219)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L218)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 Asynchronously open a file.
@@ -981,7 +981,7 @@ Asynchronously open a file.
 | :---         | :--- | :---        |
 | Not specified | Promise<FileHandle> |  |
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L231)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L230)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -997,7 +997,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L243)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L242)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1009,7 +1009,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | false |  |
 | options.withFileTypes | boolean? | false | false |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L276)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L275)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1026,7 +1026,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L364)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L362)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1041,7 +1041,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L421)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L418)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
