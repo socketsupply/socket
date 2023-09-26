@@ -1,4 +1,4 @@
-/* global GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
+/* global EventTarget, GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
 import ipc from '../ipc.js'
 import os from '../os.js'
 
@@ -7,14 +7,13 @@ const watchers = {}
 
 let currentWatchIdenfifier = 0
 
-class Watcher {
+class Watcher extends EventTarget {
   constructor (identifier) {
     this.identifier = identifier
     this.listener = (event) => {
-      console.log(event)
       if (event.detail?.params?.watch?.identifier === identifier) {
         const position = createGeolocationPosition(event.detail.params)
-        console.log(position)
+        this.dispatchEvent(new CustomEvent('position', { detail: position }))
       }
     }
 
@@ -147,7 +146,31 @@ export function watchPosition (onSuccess, onError, options = {}) {
     return platform.watchPosition(...arguments)
   }
 
+  if (typeof onSuccess !== 'function') {
+    throw new TypeError(
+      'Failed to execute \'getCurrentPosition\' on \'Geolocation\': ' +
+      '1 argument required, but only 0 present.'
+    )
+  }
+
   const identifier = currentWatchIdenfifier + 1
+
+  let timer = null
+  let didTimeout = false
+  if (Number.isFinite(options?.timeout)) {
+    timer = setTimeout(() => {
+      didTimeout = true
+      const error = Object.create(GeolocationPositionError.prototype, {
+        code: { value: GeolocationPositionError.TIMEOUT }
+      })
+
+      if (typeof onError === 'function') {
+        onError(error)
+      } else {
+        throw error
+      }
+    }, options.timeout)
+  }
 
   ipc.send('geolocation.watchPosition', { id: identifier }).then((result) => {
     if (result.err) {
@@ -159,7 +182,17 @@ export function watchPosition (onSuccess, onError, options = {}) {
       }
     }
 
-    watchers[identifier] = new Watcher(identifier)
+    if (didTimeout) {
+      clearWatch(identifier)
+      return
+    }
+
+    const watcher = new Watcher(identifier)
+    watchers[identifier] = watcher
+    watcher.addEventListener('position', (event) => {
+      clearTimeout(timer)
+      onSuccess(event.detail)
+    })
   })
 
   currentWatchIdenfifier = identifier
