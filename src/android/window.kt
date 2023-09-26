@@ -25,6 +25,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
   }
 
   fun load () {
+    val runtime = this.runtime.get() ?: return
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
@@ -47,7 +48,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         activity.webview?.apply {
           // features
           settings.javaScriptEnabled = true
-          settings.domStorageEnabled = true
+
+          settings.domStorageEnabled = runtime.isPermissionAllowed("data_access")
+          settings.databaseEnabled = runtime.isPermissionAllowed("data_access")
+
+          settings.geolocationEnabled = runtime.isPermissionAllowed("geolocation")
+          settings.appCacheEnabled = true
+          settings.javaScriptCanOpenWindowsAutomatically = true
 
           // allow list
           settings.allowFileAccess = true
