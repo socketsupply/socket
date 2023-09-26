@@ -12,6 +12,12 @@ const {
 export default URL
 export { URLPattern, URL, URLSearchParams, parseURL }
 
+for (const key in globalThis.URL) {
+  if (!URL[key]) {
+    URL[key] = globalThis.URL[key].bind(globalThis.URL)
+  }
+}
+
 export const parse = parseURL
 
 // lifted from node
