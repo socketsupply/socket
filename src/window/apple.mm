@@ -109,7 +109,6 @@ int lastY = 0;
   requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
                        initiatedByFrame: (WKFrameInfo*) frame
                         decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  printf("requestGeolocationPermissionForOrigin\n");
   decisionHandler(WKPermissionDecisionGrant);
 }
 
@@ -117,7 +116,6 @@ int lastY = 0;
    requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
                         decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
 
-  printf("requestGeolocationPermissionForFrame\n");
   decisionHandler(WKPermissionDecisionGrant);
 }
 
