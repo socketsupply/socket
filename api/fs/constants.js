@@ -29,6 +29,8 @@ export const UV_DIRENT_FIFO = constants.UV_DIRENT_FIFO || 4
 export const UV_DIRENT_SOCKET = constants.UV_DIRENT_SOCKET || 5
 export const UV_DIRENT_CHAR = constants.UV_DIRENT_CHAR || 6
 export const UV_DIRENT_BLOCK = constants.UV_DIRENT_BLOCK || 7
+export const UV_FS_SYMLINK_DIR = constants.UV_FS_SYMLINK_DIR || 1
+export const UV_FS_SYMLINK_JUNCTION = constants.UV_FS_SYMLINK_JUNCTION || 2
 
 export const O_RDONLY = constants.O_RDONLY || 0
 export const O_WRONLY = constants.O_WRONLY || 1

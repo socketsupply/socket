@@ -287,7 +287,7 @@ export async function readFile (path, options) {
 /**
  * @ignore
  */
-export async function readlink (path, options) {
+export async function readlink (path) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -304,7 +304,7 @@ export async function readlink (path, options) {
 /**
  * @ignore
  */
-export async function realpath (path, options) {
+export async function realpath (path) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -340,7 +340,7 @@ export async function rename (oldPath, newPath) {
 /**
  * @ignore
  */
-export async function rmdir (path, options) {
+export async function rmdir (path) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -368,7 +368,9 @@ export async function stat (path, options) {
 /**
  * @ignore
  */
-export async function symlink (src, dest, flags) {
+export async function symlink (src, dest, type = null) {
+  let flags = 0
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -377,8 +379,16 @@ export async function symlink (src, dest, flags) {
     throw new TypeError('The argument \'dest\' must be a string')
   }
 
-  if (!Number.isInteger(flags)) {
-    throw new TypeError('The argument \'flags\' must be an integer')
+  if (!type) {
+    type = 'file'
+  }
+
+  if (type === 'file') {
+    flags = 0
+  } else if (type === 'dir') {
+    flags = constants.UV_FS_SYMLINK_DIR
+  } else if (type === 'junction') {
+    flags = constants.UV_FS_SYMLINK_JUNCTION
   }
 
   const result = await ipc.send('fs.symlink', { src, dest, flags })
