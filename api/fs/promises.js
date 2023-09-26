@@ -107,7 +107,6 @@ export async function chown (path, uid, gid) {
     throw new TypeError('The argument \'gid\' must be an integer')
   }
 
-
   const result = await ipc.send('fs.chown', { path, uid, gid })
 
   if (result.err) {
@@ -346,7 +345,6 @@ export async function rmdir (path, options) {
     throw new TypeError('The argument \'path\' must be a string')
   }
 
-
   const result = await ipc.send('fs.rmdir', { path })
 
   if (result.err) {
@@ -397,7 +395,6 @@ export async function unlink (path) {
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
-
 
   const result = await ipc.send('fs.unlink', { path })
 
