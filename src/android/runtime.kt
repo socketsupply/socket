@@ -78,4 +78,7 @@ open class Runtime (
 
   @Throws(java.lang.Exception::class)
   external fun stopTimers (): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun isPermissionAllowed (permission: String): Long;
 }

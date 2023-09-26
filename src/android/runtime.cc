@@ -12,6 +12,18 @@ namespace SSC::android {
     this->rootDirectory = rootDirectory;
   }
 
+  bool isPermissionAllowed (const String& name) {
+    static const auto config = SSC::getUserConfig();
+    const auto permission = String("permissions_allow_") + name;
+
+    // `true` by default
+    if (!config.contains(permission)) {
+      return true;
+    }
+
+    return config.at(permission) != "false";
+  }
+
   Runtime::~Runtime () {
     this->env->DeleteGlobalRef(this->self);
   }
@@ -148,5 +160,21 @@ extern "C" {
     runtime->resumeAllPeers();
 
     return true;
+  }
+
+  jboolean external(Runtime, isPermissionAllowed)(
+    JNIEnv *env,
+    jobject self,
+    jstring permission
+  ) {
+    auto runtime = Runtime::from(env, self);
+    auto name = StringWrap(env, rootDirectory).str();
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    return runtime->isPermissionAllowed(name);
   }
 }
