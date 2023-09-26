@@ -2683,6 +2683,7 @@ int main (const int argc, const char* argv[]) {
       flags = "-std=c++2a -ObjC++ -v";
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
+      flags += " -framework CoreLocation";
       flags += " -framework Network";
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
@@ -2939,6 +2940,21 @@ int main (const int argc, const char* argv[]) {
       Map manifestContext;
 
       manifestContext["android_manifest_xml_permissions"] = "";
+
+      if (settings["permission_allow_geolocation"] != "false") {
+        manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n";
+        manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n";
+      }
+
+      if (settings["permission_allow_user_media"] != "false") {
+        if (settings["permission_allow_camera"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAMERA\" />\n";
+        }
+
+        if (settings["permission_allow_microphone"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAPTURE_AUDIO_OUTPUT\" />\n";
+        }
+      }
 
       if (settings["android_manifest_permissions"].size() > 0) {
         settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
@@ -3749,6 +3765,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_flags"] +
               " -framework UniformTypeIdentifiers" +
               " -framework CoreBluetooth" +
+              " -framework CoreLocation" +
               " -framework Network" +
               " -framework UserNotifications" +
               " -framework WebKit" +
@@ -3872,6 +3889,7 @@ int main (const int argc, const char* argv[]) {
             << " -F " << iosSdkPath << "/System/Library/Frameworks/"
             << " -framework UniformTypeIdentifiers"
             << " -framework CoreBluetooth"
+            << " -framework CoreLocation"
             << " -framework Foundation"
             << " -framework Network"
             << " -framework UserNotifications"
@@ -4643,6 +4661,7 @@ int main (const int argc, const char* argv[]) {
             if (platform.mac) {
               compilerFlags += " -framework UniformTypeIdentifiers";
               compilerFlags += " -framework CoreBluetooth";
+              compilerFlags += " -framework CoreLocation";
               compilerFlags += " -framework Network";
               compilerFlags += " -framework UserNotifications";
               compilerFlags += " -framework WebKit";
@@ -5476,20 +5495,29 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      FileSystemWatcher* watcher = new FileSystemWatcher(sources);
-      auto watching = watcher->start([&](
+      // allow changes to 'socket.ini' to be observed
+      sources.push_back("socket.ini");
+
+      FileSystemWatcher* sourcesWatcher = new FileSystemWatcher(sources);
+      auto watchingSources = sourcesWatcher->start([=](
         const String& path,
         const Vector<FileSystemWatcher::Event>& events,
         const FileSystemWatcher::Context& context
       ) {
+        auto settingsForSourcesWatcher = settings;
+        extendMap(
+          settingsForSourcesWatcher,
+          parseINI(readFile(targetPath / "socket.ini"))
+        );
+
         handleBuildPhaseForCopyMappedFiles(
-          settings,
+          settingsForSourcesWatcher,
           targetPlatform,
           pathResourcesRelativeToUserBuild
         );
 
         handleBuildPhaseForUserScript(
-          settings,
+          settingsForSourcesWatcher,
           targetPlatform,
           pathResourcesRelativeToUserBuild,
           targetPath,
@@ -5497,10 +5525,10 @@ int main (const int argc, const char* argv[]) {
           false
         );
 
-        log("file '" + path +"' did change");
+        log("File '" + path + "' did change");
       });
 
-      if (!watching) {
+      if (!watchingSources) {
         log("Unable to start watching");
         exit(1);
       }
