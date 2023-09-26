@@ -886,7 +886,7 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | false |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L763)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L777)
 
 
 
@@ -1041,7 +1041,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L418)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L428)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 

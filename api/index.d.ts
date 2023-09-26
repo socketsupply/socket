@@ -1430,6 +1430,8 @@ declare module "socket:fs/constants" {
     export const UV_DIRENT_SOCKET: any;
     export const UV_DIRENT_CHAR: any;
     export const UV_DIRENT_BLOCK: any;
+    export const UV_FS_SYMLINK_DIR: any;
+    export const UV_FS_SYMLINK_JUNCTION: any;
     export const O_RDONLY: any;
     export const O_WRONLY: any;
     export const O_RDWR: any;
@@ -2405,11 +2407,11 @@ declare module "socket:fs/promises" {
     /**
      * @ignore
      */
-    export function readlink(path: any, options: any): Promise<any>;
+    export function readlink(path: any): Promise<any>;
     /**
      * @ignore
      */
-    export function realpath(path: any, options: any): Promise<any>;
+    export function realpath(path: any): Promise<any>;
     /**
      * @ignore
      */
@@ -2417,7 +2419,7 @@ declare module "socket:fs/promises" {
     /**
      * @ignore
      */
-    export function rmdir(path: any, options: any): Promise<void>;
+    export function rmdir(path: any): Promise<void>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
@@ -2429,7 +2431,7 @@ declare module "socket:fs/promises" {
     /**
      * @ignore
      */
-    export function symlink(src: any, dest: any, flags: any): Promise<void>;
+    export function symlink(src: any, dest: any, type?: any): Promise<void>;
     /**
      * @ignore
      */
@@ -2584,11 +2586,11 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function readlink(path: any, options: any, callback: any): void;
+    export function readlink(path: any, callback: any): void;
     /**
      * @ignore
      */
-    export function realpath(path: any, options: any, callback: any): void;
+    export function realpath(path: any, callback: any): void;
     /**
      * @ignore
      */
@@ -2596,7 +2598,7 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function rmdir(path: any, options: any, callback: any): void;
+    export function rmdir(path: any, callback: any): void;
     /**
      *
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2610,7 +2612,7 @@ declare module "socket:fs/index" {
     /**
      * @ignore
      */
-    export function symlink(src: any, dest: any, flags: any, callback: any): void;
+    export function symlink(src: any, dest: any, type: any, callback: any): void;
     /**
      * @ignore
      */
