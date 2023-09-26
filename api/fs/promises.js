@@ -22,12 +22,30 @@
  * import fs from 'socket:fs/promises'
  * ```
  */
-import { DirectoryHandle, FileHandle } from './handle.js'
-import { Dir, sortDirectoryEntries } from './dir.js'
 import console from '../console.js'
 import ipc from '../ipc.js'
 
+import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
+import { DirectoryHandle, FileHandle } from './handle.js'
+import { ReadStream, WriteStream } from './stream.js'
+import * as constants from './constants.js'
+import { Stats } from './stats.js'
+import fds from './fds.js'
+
 import * as exports from './promises.js'
+
+// re-exports
+export {
+  constants,
+  Dir,
+  DirectoryHandle,
+  Dirent,
+  fds,
+  FileHandle,
+  ReadStream,
+  Stats,
+  WriteStream
+}
 
 /**
  * @typedef {import('../buffer.js').Buffer} Buffer
@@ -437,5 +455,4 @@ export async function writeFile (path, data, options) {
   })
 }
 
-export * as constants from './constants.js'
 export default exports
