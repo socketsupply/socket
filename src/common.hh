@@ -369,8 +369,12 @@ namespace SSC {
     const String& separator
   ) {
     StringStream joined;
+    auto missing = vector.size();
     for (const auto& item : vector) {
-      joined << item << separator << " ";
+      joined << item;
+      if (--missing > 0) {
+        joined << separator << " ";
+      }
     }
 
     return trim(joined.str());
