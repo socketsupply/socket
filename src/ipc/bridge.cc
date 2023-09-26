@@ -909,6 +909,125 @@ void initRouterTable (Router *router) {
     );
   });
 
+#if defined(__APPLE__)
+  router->map("geolocation.getCurrentPosition", [](auto message, auto router, auto reply) {
+    if (!router->locationObserver) {
+      auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
+      err["type"] = "GeolocationPositionError";
+      return reply(Result::Err { message, err });
+    }
+
+    auto performedActivation = [router->locationObserver getCurrentPositionWithCompletion: ^(NSError* error, CLLocation* location) {
+      if (error != nullptr) {
+        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        err["type"] = "GeolocationPositionError";
+        return reply(Result::Err { message, err });
+      }
+
+      auto heading = router->locationObserver.locationManager.heading;
+      auto json = JSON::Object::Entries {
+        {"coords", JSON::Object::Entries {
+          {"latitude", location.coordinate.latitude},
+          {"longitude", location.coordinate.longitude},
+          {"altitude", location.altitude},
+          {"accuracy", location.horizontalAccuracy},
+          {"altitudeAccuracy", location.verticalAccuracy},
+          {"floorLevel", location.floor.level},
+          {"heading", heading.trueHeading},
+          {"speed", location.speed}
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    }];
+
+    if (!performedActivation) {
+      auto err = JSON::Object::Entries {{ "message", "Location observer could not be activated" }};
+      err["type"] = "GeolocationPositionError";
+      return reply(Result::Err { message, err });
+    }
+  });
+
+  router->map("geolocation.watchPosition", [](auto message, auto router, auto reply) {
+    if (!router->locationObserver) {
+      auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
+      err["type"] = "GeolocationPositionError";
+      return reply(Result::Err { message, err });
+    }
+
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
+
+    const int identifier = [router->locationObserver watchPositionForIdentifier: id  completion: ^(NSError* error, CLLocation* location) {
+      if (error != nullptr) {
+        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        err["type"] = "GeolocationPositionError";
+        return reply(Result::Err { message, err });
+      }
+
+      auto heading = router->locationObserver.locationManager.heading;
+      auto json = JSON::Object::Entries {
+        {"watch", JSON::Object::Entries {
+          {"identifier", identifier},
+        }},
+        {"coords", JSON::Object::Entries {
+          {"latitude", location.coordinate.latitude},
+          {"longitude", location.coordinate.longitude},
+          {"altitude", location.altitude},
+          {"accuracy", location.horizontalAccuracy},
+          {"altitudeAccuracy", location.verticalAccuracy},
+          {"floorLevel", location.floor.level},
+          {"heading", heading.trueHeading},
+          {"speed", location.speed}
+        }}
+      };
+
+      reply(Result { "-1", message, json });
+    }];
+
+    if (identifier == -1) {
+      auto err = JSON::Object::Entries {{ "message", "Location observer could not be activated" }};
+      err["type"] = "GeolocationPositionError";
+      return reply(Result::Err { message, err });
+    }
+
+    auto json = JSON::Object::Entries {
+      {"watch", JSON::Object::Entries {
+        {"identifier", identifier}
+      }}
+    };
+
+    reply(Result { message.seq, message, json });
+  });
+
+  router->map("geolocation.clearWatch", [](auto message, auto router, auto reply) {
+    if (!router->locationObserver) {
+      auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
+      err["type"] = "GeolocationPositionError";
+      return reply(Result::Err { message, err });
+    }
+
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
+
+    [router->locationObserver clearWatch: id];
+
+    reply(Result { message.seq, message, JSON::Object{} });
+  });
+#endif
+
   /**
    * A private API for artifically setting the current cached CWD value.
    * This is only useful on platforms that need to set this value from an
@@ -1691,7 +1810,9 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
-      if (ext.size() == 0) {
+      if (ext.size() == 0 && userConfig.contains("webview_default_index")) {
+        path = userConfig["webview_default_index"];
+      } else if (ext.size() == 0) {
         auto redirectURL = String(request.URL.absoluteString.UTF8String) + "/";
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
@@ -1955,6 +2076,256 @@ static void registerSchemeHandler (Router *router) {
   }
 }
 @end
+
+@implementation SSCLocationPositionWatcher
++ (SSCLocationPositionWatcher*) positionWatcherWithIdentifier: (NSInteger) identifier
+                                                   completion: (void (^)(CLLocation*)) completion {
+  auto watcher= [SSCLocationPositionWatcher new];
+  watcher.identifier = identifier;
+  watcher.completion = [completion copy];
+  return watcher;
+}
+@end
+
+@implementation SSCLocationObserver
+- (id) init {
+  self = [super init];
+  self.delegate = [[SSCLocationManagerDelegate alloc] initWithLocationObserver: self];
+  self.isActivated = NO;
+  self.locationWatchers = [NSMutableArray new];
+  self.activationCompletions = [NSMutableArray new];
+  self.locationRequestCompletions = [NSMutableArray new];
+
+  if ([CLLocationManager locationServicesEnabled]) {
+    self.locationManager = [[CLLocationManager alloc] init];
+    self.locationManager.delegate = self.delegate;
+    self.locationManager.desiredAccuracy = CLAccuracyAuthorizationFullAccuracy;
+
+    if (
+    #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+      self.locationManager.authorizationStatus == kCLAuthorizationStatusAuthorized ||
+    #else
+      self.locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedWhenInUse ||
+    #endif
+      self.locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedAlways
+    ) {
+      self.isActivated = YES;
+    }
+  }
+
+  return self;
+}
+
+- (BOOL) attemptActivation {
+  if ([CLLocationManager locationServicesEnabled] == NO) {
+    return NO;
+  }
+
+  if (self.isActivated) {
+    return YES;
+  }
+
+#if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+  [self.locationManager requestWhenInUseAuthorization];
+#else
+  [self.locationManager requestAlwaysAuthorization];
+#endif
+  return YES;
+}
+
+- (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion {
+  if (self.isActivated) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      completion(YES);
+    });
+    return YES;
+  }
+
+  if ([self attemptActivation]) {
+    [self.activationCompletions addObject: [completion copy]];
+    return YES;
+  }
+
+  return NO;
+}
+
+- (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion {
+  return [self attemptActivationWithCompletion: ^(BOOL isActivated) {
+    static auto userConfig = SSC::getUserConfig();
+    if (!isActivated) {
+      auto reason = @("Location observer could not be activated");
+
+      if (!self.locationManager) {
+        reason = @("Location observer manager is not initialized");
+      } else if (!self.locationManager.location) {
+        reason = @("Location observer manager could not provide location");
+      }
+
+      auto error = [NSError
+        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        code: -1
+        userInfo: @{
+          NSLocalizedDescriptionKey: reason
+        }
+      ];
+
+      return completion(error, nullptr);
+    }
+
+    completion(nullptr, self.locationManager.location);
+
+    [self.locationManager requestLocation];
+  }];
+}
+
+- (int) watchPositionForIdentifier: (NSInteger) identifier
+                        completion: (void (^)(NSError*, CLLocation*)) completion {
+  SSCLocationPositionWatcher* watcher = nullptr;
+  BOOL exists = NO;
+
+  for (SSCLocationPositionWatcher* existing in self.locationWatchers) {
+    if (existing.identifier == identifier) {
+      watcher = existing;
+      exists = YES;
+      break;
+    }
+  }
+
+  if (!watcher) {
+    watcher = [SSCLocationPositionWatcher
+      positionWatcherWithIdentifier: identifier
+                         completion: ^(CLLocation* location) {
+      completion(nullptr, location);
+    }];
+  }
+
+  auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isActivated) {
+    static auto userConfig = SSC::getUserConfig();
+    if (!isActivated) {
+      auto error = [NSError
+        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        code: -1
+        userInfo: @{
+          @"Error reason": @("Location observer could not be activated")
+        }
+      ];
+
+      return completion(error, nullptr);
+    }
+
+    [self.locationManager startUpdatingLocation];
+  }];
+
+  if (!performedActivation) {
+  #if !__has_feature(objc_arc)
+    [watcher release];
+    #endif
+    return -1;
+  }
+
+  if (!exists) {
+    [self.locationWatchers addObject: watcher];
+  }
+
+  return identifier;
+}
+
+- (BOOL) clearWatch: (NSInteger) identifier {
+  for (SSCLocationPositionWatcher* watcher in self.locationWatchers) {
+    if (watcher.identifier == identifier) {
+      [self.locationWatchers removeObject: watcher];
+    #if !__has_feature(objc_arc)
+      [watcher release];
+    #endif
+      return YES;
+    }
+  }
+
+  return NO;
+}
+@end
+
+@implementation SSCLocationManagerDelegate
+- (id) initWithLocationObserver: (SSCLocationObserver*) locationObserver {
+  self = [super init];
+  self.locationObserver = locationObserver;
+  locationObserver.delegate = self;
+  return self;
+}
+
+- (void) locationManager: (CLLocationManager*) locationManager
+      didUpdateLocations: (NSArray<CLLocation*>*) locations {
+  auto locationRequestCompletions = [NSArray arrayWithArray: self.locationObserver.locationRequestCompletions];
+  for (id item in locationRequestCompletions) {
+    auto completion = (void (^)(CLLocation*)) item;
+    completion(locations.firstObject);
+    [self.locationObserver.locationRequestCompletions removeObject: item];
+  #if !__has_feature(objc_arc)
+    [completion release];
+  #endif
+  }
+
+  for (SSCLocationPositionWatcher* watcher in self.locationObserver.locationWatchers) {
+    watcher.completion(locations.firstObject);
+  }
+}
+
+- (void) locationManager: (CLLocationManager*) locationManager
+        didFailWithError: (NSError*) error {
+ // TODO(@jwerle): handle location manager error
+}
+
+- (void)            locationManager: (CLLocationManager*) locationManager
+  didFinishDeferredUpdatesWithError: (NSError*) error {
+ // TODO(@jwerle): handle deferred error
+}
+
+- (void) locationManagerDidPauseLocationUpdates: (CLLocationManager*) locationManager {
+ // TODO(@jwerle): handle pause for updates
+}
+
+- (void) locationManagerDidResumeLocationUpdates: (CLLocationManager*) locationManager {
+ // TODO(@jwerle): handle resume for updates
+}
+
+- (void) locationManager: (CLLocationManager*) locationManager
+                didVisit: (CLVisit*) visit {
+  auto locations = [NSArray arrayWithObject: locationManager.location];
+  [self locationManager: locationManager didUpdateLocations: locations];
+}
+
+- (void) locationManagerDidChangeAuthorization: (CLLocationManager*) locationManager {
+  auto activationCompletions = [NSArray arrayWithArray: self.locationObserver.activationCompletions];
+  if (
+  #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    locationManager.authorizationStatus == kCLAuthorizationStatusAuthorized ||
+  #else
+    locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedWhenInUse ||
+  #endif
+    locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedAlways
+  ) {
+    self.locationObserver.isActivated = YES;
+    for (id item in activationCompletions) {
+      auto completion = (void (^)(BOOL)) item;
+      completion(YES);
+      [self.locationObserver.activationCompletions removeObject: item];
+    #if !__has_feature(objc_arc)
+      [completion release];
+    #endif
+    }
+  } else {
+    self.locationObserver.isActivated = NO;
+    for (id item in activationCompletions) {
+      auto completion = (void (^)(BOOL)) item;
+      completion(NO);
+      [self.locationObserver.activationCompletions removeObject: item];
+    #if !__has_feature(objc_arc)
+      [completion release];
+    #endif
+    }
+  }
+}
+@end
 #endif
 
 namespace SSC::IPC {
@@ -2062,34 +2433,46 @@ namespace SSC::IPC {
   Router::Router () {
     initRouterTable(this);
     registerSchemeHandler(this);
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
+    this->locationObserver = [SSCLocationObserver new];
     this->schemeHandler = [SSCIPCSchemeHandler new];
 
     [this->schemeHandler setRouter: this];
+    [this->locationObserver setRouter: this];
     [this->networkStatusObserver setRouter: this];
-#endif
+  #endif
 
     this->preserveCurrentTable();
+
+  #if defined(__APPLE__)
+    [this->networkStatusObserver start];
+  #endif
   }
 
   Router::~Router () {
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
     if (this->networkStatusObserver != nullptr) {
-      #if !__has_feature(objc_arc)
+    #if !__has_feature(objc_arc)
       [this->networkStatusObserver release];
-      #endif
+    #endif
+    }
+
+    if (this->locationObserver != nullptr) {
+    #if !__has_feature(objc_arc)
+      [this->locationObserver release];
+    #endif
     }
 
     if (this->schemeHandler != nullptr) {
-      #if !__has_feature(objc_arc)
+    #if !__has_feature(objc_arc)
       [this->schemeHandler release];
-      #endif
+    #endif
     }
 
     this->networkStatusObserver = nullptr;
     this->schemeHandler = nullptr;
-#endif
+  #endif
   }
 
   void Router::preserveCurrentTable () {
@@ -2322,8 +2705,12 @@ namespace SSC::IPC {
 
   // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
   _monitor = nw_path_monitor_create();
-  nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
-  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
+  nw_path_monitor_set_queue(_monitor, _monitorQueue);
+  nw_path_monitor_set_update_handler(_monitor, ^(nw_path_t path) {
+    if (path == nullptr) {
+      return;
+    }
+
     nw_path_status_t status = nw_path_get_status(path);
 
     String name;
@@ -2363,9 +2750,11 @@ namespace SSC::IPC {
     });
   });
 
-  nw_path_monitor_start(self.monitor);
-
   return self;
+}
+
+- (void) start {
+  nw_path_monitor_start(_monitor);
 }
 
 - (void) userNotificationCenter: (UNUserNotificationCenter *) center

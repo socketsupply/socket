@@ -49,14 +49,59 @@ namespace SSC::IPC {
 - (void) put: (SSC::String) id task: (SSC::IPC::Task) task;
 @end
 
-#if defined(__APPLE__)
 @interface SSCIPCNetworkStatusObserver : NSObject
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property (nonatomic) SSC::IPC::Router* router;
 @property (retain) nw_path_monitor_t monitor;
 - (id) init;
+- (void) start;
 @end
-#endif
+
+@class SSCLocationObserver;
+@interface SSCLocationManagerDelegate : NSObject<CLLocationManagerDelegate>
+@property (nonatomic, strong) SSCLocationObserver* locationObserver;
+
+- (id) initWithLocationObserver: (SSCLocationObserver*) locationObserver;
+
+- (void) locationManager: (CLLocationManager*) locationManager
+        didFailWithError: (NSError*) error;
+
+- (void) locationManager: (CLLocationManager*) locationManager
+      didUpdateLocations: (NSArray<CLLocation*>*) locations;
+
+- (void)            locationManager: (CLLocationManager*) locationManager
+  didFinishDeferredUpdatesWithError: (NSError*) error;
+
+- (void) locationManagerDidPauseLocationUpdates: (CLLocationManager*) locationManager;
+- (void) locationManagerDidResumeLocationUpdates: (CLLocationManager*) locationManager;
+- (void) locationManager: (CLLocationManager*) locationManager
+                didVisit: (CLVisit*) visit;
+
+- (void) locationManagerDidChangeAuthorization: (CLLocationManager*) locationManager;
+@end
+
+@interface SSCLocationPositionWatcher : NSObject
+@property (nonatomic, assign) NSInteger identifier;
+@property (nonatomic, assign) void(^completion)(CLLocation*);
++ (SSCLocationPositionWatcher*) positionWatcherWithIdentifier: (NSInteger) identifier
+                                                   completion: (void (^)(CLLocation*)) completion;
+@end
+
+@interface SSCLocationObserver : NSObject
+@property (nonatomic, retain) CLLocationManager* locationManager;
+@property (nonatomic, retain) SSCLocationManagerDelegate* delegate;
+@property (atomic, retain) NSMutableArray* activationCompletions;
+@property (atomic, retain) NSMutableArray* locationRequestCompletions;
+@property (atomic, retain) NSMutableArray* locationWatchers;
+@property (nonatomic) SSC::IPC::Router* router;
+@property (atomic, assign) BOOL isActivated;
+- (BOOL) attemptActivation;
+- (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion;
+- (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion;
+- (int) watchPositionForIdentifier: (NSInteger) identifier
+                        completion: (void (^)(NSError*, CLLocation*)) completion;
+- (BOOL) clearWatch: (NSInteger) identifier;
+@end
 #endif
 
 namespace SSC::IPC {
@@ -185,6 +230,7 @@ namespace SSC::IPC {
       Bridge *bridge = nullptr;
     #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
+      SSCLocationObserver* locationObserver = nullptr;
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
     #endif
