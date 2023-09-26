@@ -1008,8 +1008,4 @@ fi
 
 _install_cli
 
-if [[ -z $NO_DOC_GEN ]]; then
-  npm run gen
-fi
-
 exit $?
