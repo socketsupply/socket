@@ -1,4 +1,4 @@
-/* global EventTarget, GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
+/* global EventTarget, CustomEvent, GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
 import ipc from '../ipc.js'
 import os from '../os.js'
 
@@ -9,6 +9,8 @@ let currentWatchIdenfifier = 0
 
 class Watcher extends EventTarget {
   constructor (identifier) {
+    super()
+
     this.identifier = identifier
     this.listener = (event) => {
       if (event.detail?.params?.watch?.identifier === identifier) {
