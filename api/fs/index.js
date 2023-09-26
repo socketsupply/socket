@@ -135,6 +135,25 @@ export function chmod (path, mode, callback) {
  * @ignore
  */
 export function chown (path, uid, gid, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.chown', { path, uid, gid }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
 
 /**
@@ -159,7 +178,26 @@ export function close (fd, callback) {
   }
 }
 
-export function copyFile (src, dst, mode, callback) {
+export function copyFile (src, dest, flags, callback) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.copyFile', { src, dest, flags }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
 
 /**
@@ -276,28 +314,49 @@ export function fstat (fd, options, callback) {
 /**
  * @ignore
  */
-export function lchmod (path, mode, callback) {
-}
-/**
- * @ignore
- */
 export function lchown (path, uid, gid, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.lchown', { path, uid, gid }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
+
 /**
  * @ignore
  */
-export function lutimes (path, atime, mtime, callback) {
+export function link (src, dest, callback) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.link', { src, dest }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
-/**
- * @ignore
- */
-export function link (existingPath, newPath, callback) {
-}
-/**
- * @ignore
- */
-export function lstat (path, options, callback) {
-}
+
 /**
  * @ignore
  */
@@ -542,26 +601,72 @@ export function readFile (path, options = {}, callback) {
  * @ignore
  */
 export function readlink (path, options, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.readlink', { path }).then((result) => {
+    result?.err ? callback(result.err) : callback(result.data.path)
+  }).catch(callback)
 }
+
 /**
  * @ignore
  */
 export function realpath (path, options, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.realpath', { path }).then((result) => {
+    result?.err ? callback(result.err) : callback(result.data.path)
+  }).catch(callback)
 }
+
 /**
  * @ignore
  */
-export function rename (oldPath, newPath, callback) {
+export function rename (src, dest, callback) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.rename', { src, dest }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  })
 }
+
 /**
  * @ignore
  */
 export function rmdir (path, options, callback) {
-}
-/**
- * @ignore
- */
-export function rm (path, options, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.rmdir', { path }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  })
 }
 
 /**
@@ -601,35 +706,47 @@ export function stat (path, options, callback) {
     callback(null, stats)
   })
 }
+
 /**
  * @ignore
  */
-export function symlink (target, path, type, callback) {
+export function symlink (src, dest, flags, callback) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.symlink', { src, dest, flags }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
-/**
- * @ignore
- */
-export function truncate (path, length, callback) {
-}
+
 /**
  * @ignore
  */
 export function unlink (path, callback) {
-}
-/**
- * @ignore
- */
-export function utimes (path, atime, mtime, callback) {
-}
-/**
- * @ignore
- */
-export function watch (path, options, callback) {
-}
-/**
- * @ignore
- */
-export function write (fd, buffer, offset, length, position, callback) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  ipc.send('fs.unlink', { path }).then((result) => {
+    result?.err ? callback(result.err) : callback(null)
+  }).catch(callback)
 }
 
 /**
@@ -678,9 +795,6 @@ export function writeFile (path, data, options, callback) {
 
     callback(null)
   })
-}
-
-export function writev (fd, buffers, position, callback) {
 }
 
 // re-exports
