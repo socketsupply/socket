@@ -489,6 +489,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXBuildFile section */
     {{__ios_native_extensions_build_context_sections}}
+		171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 171C1C2A2AC38A70005F587F /* CoreLocation.framework */; };
 		179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */; };
 		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
 		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
@@ -507,6 +508,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXFileReference section */
     {{__ios_native_extensions_build_context_refs}}
+		171C1C2A2AC38A70005F587F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
 		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
 		17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
@@ -534,6 +536,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			buildActionMask = 2147483647;
 			files = (
         {{__ios_native_extensions_build_ids}}
+				171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */,
 				179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */,
 				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
 				17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
@@ -594,6 +597,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXGroup;
 			children = (
         {{__ios_native_extensions_build_refs}}
+				171C1C2A2AC38A70005F587F /* CoreLocation.framework */,
 				179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */,
 				17A7F8F329358D430051D146 /* libsocket-runtime.a */,
 				17A7F8F429358D430051D146 /* libuv.a */,
