@@ -43,7 +43,7 @@ flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 headless | false |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
-script |  |  The build script
+script |  |  The build script. It runs before the `[build] copy` phase.
 
 # Section `build.watch`
 

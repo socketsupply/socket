@@ -1434,7 +1434,7 @@ name = "{{project_name}}"
 ; default value: "build"
 output = "build"
 
-; The build script
+; The build script. It runs before the `[build] copy` phase.
 ; script = "npm run build"
 
 
