@@ -193,6 +193,16 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>This app needs access to the camera</string>
   <key>NSBluetoothAlwaysUsageDescription</key>
   <string>The app would like to discover and connect to peers</string>
+
+  <key>NSLocationUsageDescription</key>
+  <string>{{meta_title}} would like access to your location</string>
+
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>{{meta_title}} would like access to your location while open</string>
+
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+  <string>{{meta_title}} would like access to your location</string>
+
   <key>NSMainNibFile</key>
   <string>MainMenu</string>
   <key>LSMultipleInstancesProhibited</key>
@@ -317,7 +327,9 @@ constexpr auto gAndroidManifest = R"XML(
   >
     <activity
       android:name="{{android_main_activity}}"
-      android:exported="true">
+      android:exported="true"
+      android:configChanges="orientation|screenSize"
+    >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
@@ -974,12 +986,21 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   </dict>
   <key>NSHighResolutionCapable</key>
   <true/>
+
   <key>NSLocalNetworkUsageDescription</key>
-  <string>The app would like to discover and connect to peers</string>
+  <string>{{meta_title}} would like to discover and connect to peers</string>
   <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>The app would like to discover and connect to peers</string>
+  <string>{{meta_title}} would like to discover and connect to peers</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
-  <string>The app would like to discover and connect to peers</string>
+  <string>{{meta_title}} would like to discover and connect to peers</string>
+
+  <key>NSLocationUsageDescription</key>
+  <string>{{meta_title}} would like access to your location</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>{{meta_title}} would like access to your location while open</string>
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+  <string>{{meta_title}} would like access to your location</string>
+
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
@@ -1425,6 +1446,51 @@ sources = "src"
 ; Make root open index.html
 ; default value: "/"
 root = "/"
+
+; Set default 'index.html' path to open for implicit routes
+; default value: ""
+; default_index  = ""
+
+[permissions]
+; Allow/Disallow fullscreen in application
+; default value: true
+; allow_fullscreen = true
+
+; Allow/Disallow microphone in application
+; default value: true
+; allow_microphone = true
+
+; Allow/Disallow camera in application
+; default value: true
+; allow_camera = true
+
+; Allow/Disallow user media (microphone + camera) in application
+; default value: true
+; allow_user_media = true
+
+; Allow/Disallow geolocation in application
+; default value: true
+; allow_geolocation = true
+
+; Allow/Disallow notifications in application
+; default value: true
+; allow_notifications = true
+
+; Allow/Disallow sensors in application
+; default value: true
+; allow_sensors = true
+
+; Allow/Disallow clipboard in application
+; default value: true
+; allow_clipboard = true
+
+; Allow/Disallow bluetooth in application
+; default value: true
+; allow_bluetooth = true
+
+; Allow/Disallow data access in application
+; default value: true
+; allow_data_access = true
 
 ; Enable watch mode
 ; default value: false
