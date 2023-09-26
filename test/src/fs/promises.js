@@ -39,8 +39,7 @@ if (process.platform !== 'ios') {
   if (os.platform() !== 'android') {
     test('fs.promises.mkdir', async (t) => {
       const dirname = FIXTURES + Math.random().toString(16).slice(2)
-      const { err } = await fs.mkdir(dirname, {})
-      t.equal(err, undefined, 'mkdir does not throw')
+      await fs.mkdir(dirname, {})
     })
   }
 
