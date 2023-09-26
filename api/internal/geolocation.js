@@ -1,3 +1,4 @@
+/* global GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
 import ipc from '../ipc.js'
 import os from '../os.js'
 
@@ -16,7 +17,6 @@ class Watcher {
         console.log(position)
       }
     }
-
 
     globalThis.addEventListener('data', this.listener)
   }
@@ -74,7 +74,7 @@ function createGeolocationPosition (data) {
       configurable: false,
       writable: false,
       value: data.coords.speed <= 0 ? null : data.coords.speed
-    },
+    }
   })
 
   return Object.create(GeolocationPosition.prototype, {
