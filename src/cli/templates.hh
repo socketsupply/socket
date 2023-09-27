@@ -1500,6 +1500,10 @@ root = "/"
 ; default value: true
 ; allow_data_access = true
 
+; Allow/Disallow AirPlay access in application (macOS/iOS) only
+; default value: true
+; allow_airplay = true
+
 ; Enable watch mode
 ; default value: false
 watch = false
