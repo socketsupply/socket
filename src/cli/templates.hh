@@ -203,6 +203,18 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
   <string>{{meta_title}} would like access to your location</string>
 
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>{{meta_title}} would like to access Speech Recognition</string>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>{{meta_title}} would like to access to your microphone</string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>{{meta_title}} would like to access to your camera</string>
+
+  <key>NSMotionUsageDescription</key>
+  <string>{{meta_title}} would like to access to detect your device motion</string>
+
   <key>NSMainNibFile</key>
   <string>MainMenu</string>
   <key>LSMultipleInstancesProhibited</key>
@@ -1006,6 +1018,18 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>{{meta_title}} would like access to your location while open</string>
   <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
   <string>{{meta_title}} would like access to your location</string>
+
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>{{meta_title}} would like to access Speech Recognition</string>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>{{meta_title}} would like to access to your microphone</string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>{{meta_title}} would like to access to your camera</string>
+
+  <key>NSMotionUsageDescription</key>
+  <string>{{meta_title}} would like to access to detect your device motion</string>
 
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
