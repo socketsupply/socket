@@ -1962,8 +1962,8 @@ static void registerSchemeHandler (Router *router) {
 
         [task didReceiveResponse: response];
         [task didReceiveData: data];
-
         [task didFinish];
+
         #if !__has_feature(objc_arc)
         [response release];
         #endif
@@ -2037,6 +2037,8 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
 
+    components.path = @(path.c_str());
+
     if (exists && data) {
       headers[@"content-length"] = [@(data.length) stringValue];
       if (isModule && data.length > 0) {
@@ -2048,17 +2050,15 @@ static void registerSchemeHandler (Router *router) {
           conformingToType: nullptr
         ];
 
-        components.path = @(path.c_str());
-
         if (types.count > 0 && types.firstObject.preferredMIMEType) {
           headers[@"content-type"] = types.firstObject.preferredMIMEType;
         }
 
-        headers[@"content-location"] = components.URL.absoluteString;
       }
     }
 
     components.scheme = @("socket");
+    headers[@"content-location"] = components.URL.absoluteString;
 
     auto statusCode = exists ? 200 : 404;
     auto response = [[NSHTTPURLResponse alloc]
@@ -2073,11 +2073,12 @@ static void registerSchemeHandler (Router *router) {
     if (data && data.length > 0) {
       [task didReceiveData: data];
     }
-
     [task didFinish];
+
     #if !__has_feature(objc_arc)
     [response release];
     #endif
+
     return;
   }
 
