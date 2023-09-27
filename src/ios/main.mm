@@ -194,11 +194,11 @@ static dispatch_queue_t queue = dispatch_queue_create(
   viewController.view.frame = appFrame;
   self.window.rootViewController = viewController;
 
-  auto appData = SSC::getUserConfig();
+  auto userConfig = SSC::getUserConfig();
 
   StringStream env;
 
-  for (auto const &envKey : parseStringList(appData["build_env"])) {
+  for (auto const &envKey : parseStringList(userConfig["build_env"])) {
     auto cleanKey = trim(envKey);
 
     if (!hasEnv(cleanKey)) {
@@ -217,7 +217,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
   NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
-  const auto argv = appData["ssc_argv"];
+  const auto argv = userConfig["ssc_argv"];
 
   uv_chdir(cwd.UTF8String);
 
@@ -226,7 +226,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     .isTest = argv.find("--test") != -1,
     .argv = argv,
     .env = env.str(),
-    .appData = appData
+    .appData = userConfig
   };
 
   // Note: you won't see any logs in the preload script before the
@@ -254,8 +254,63 @@ static dispatch_queue_t queue = dispatch_queue_create(
   self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-  [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
-  [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
+  WKPreferences* prefs = self.webview.configuration.preferences;
+
+  [self.webview.configuration
+    setValue: @YES
+      forKey: @"allowUniversalAccessFromFileURLs"
+  ];
+
+  [self.webview.configuration.preferences
+    setValue: @YES
+      forKey: @"allowFileAccessFromFileURLs"
+  ];
+
+  [self.webview.configuration.preferences
+    setValue: @YES
+      forKey: @"javaScriptEnabled"
+  ];
+
+  if (userConfig["permissions_allow_fullscreen"] == "false") {
+    [prefs setValue: @NO forKey: @"fullScreenEnabled"];
+  } else {
+    [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+  }
+
+  if (SSC::isDebugEnabled()) {
+    [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
+    if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
+      [self.webview setInspectable: YES];
+    }
+  }
+
+  if (userConfig["permissions_allow_clipboard"] == "false") {
+    [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
+  } else {
+    [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
+  }
+
+  if (userConfig["permissions_allow_data_access"] == "false") {
+    [prefs setValue: @NO forKey: @"storageAPIEnabled"];
+  } else {
+    [prefs setValue: @YES forKey: @"storageAPIEnabled"];
+  }
+
+  if (userConfig["permissions_allow_device_orientation"] == "false") {
+    [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
+  } else {
+    [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
+  }
+
+  if (userConfig["permissions_allow_notifications"] == "false") {
+    [prefs setValue: @NO forKey: @"appBadgeEnabled"];
+    [prefs setValue: @NO forKey: @"notificationsEnabled"];
+    [prefs setValue: @NO forKey: @"notificationEventEnabled"];
+  } else {
+    [prefs setValue: @YES forKey: @"appBadgeEnabled"];
+    [prefs setValue: @YES forKey: @"notificationsEnabled"];
+    [prefs setValue: @YES forKey: @"notificationEventEnabled"];
+  }
 
   NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
   [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
@@ -293,10 +348,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
       [self.webview loadRequest: [NSURLRequest requestWithURL: url]];
     }
   } else {
-    if (appData["webview_root"].size() != 0) {
-      url = [NSURL URLWithString: @(("socket://" + appData["meta_bundle_identifier"] + appData["webview_root"]).c_str())];
+    if (userConfig["webview_root"].size() != 0) {
+      url = [NSURL URLWithString: @(("socket://" + userConfig["meta_bundle_identifier"] + userConfig["webview_root"]).c_str())];
     } else {
-      url = [NSURL URLWithString: @(("socket://" + appData["meta_bundle_identifier"] + "/index.html").c_str())];
+      url = [NSURL URLWithString: @(("socket://" + userConfig["meta_bundle_identifier"] + "/index.html").c_str())];
     }
 
     auto request = [NSMutableURLRequest requestWithURL: url];
