@@ -133,9 +133,9 @@ namespace SSC {
     preload += (
       "document.addEventListener('readystatechange', () => {                 \n"
       "  if (document.readyState === 'interactive') {                        \n"
-      "    import('socket:internal/init');                                   \n"
+      "    import('socket:internal/init').catch(console.error);              \n"
       "  }                                                                   \n"
-      "});                                                                   \n"
+      "}, { once: true });                                                   \n"
     );
 
     return preload;
