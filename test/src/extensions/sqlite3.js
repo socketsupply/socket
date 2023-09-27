@@ -15,7 +15,9 @@ test('extension.load(name) - sqlite3', async (t) => {
   let sqlite3
   let query
 
-  await fs.unlink(databasePath)
+  try {
+    await fs.unlink(databasePath)
+  } catch {}
 
   try {
     sqlite3 = await extension.load('sqlite3')
