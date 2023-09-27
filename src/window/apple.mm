@@ -27,10 +27,7 @@
 }
 @end
 
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@implementation SSCBridgedWebView
-@end
-#else
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
@@ -43,151 +40,14 @@
   // overloaded with `class_replaceMethod()`
 }
 @end
+#endif
 
 @implementation SSCBridgedWebView
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 SSC::Vector<SSC::String> draggablePayload;
 
 int lastX = 0;
 int lastY = 0;
-
--                                      (void) webView: (WKWebView*) webView
- requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
-                                     initiatedByFrame: (WKFrameInfo*) frame
-                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = SSC::getUserConfig();
-
-  if (userConfig["permissions_allow_device_orientation"] == "false") {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                        (void) webView: (WKWebView*) webView
- requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                                   type: (WKMediaCaptureType) type
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = SSC::getUserConfig();
-
-  if (userConfig["permissions_allow_user_media"] == "false") {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  if (type == WKMediaCaptureTypeCameraAndMicrophone) {
-    if (
-      userConfig["permissions_allow_camera"] == "false" ||
-      userConfig["permissions_allow_microphone"] == "false"
-    ) {
-      decisionHandler(WKPermissionDecisionDeny);
-      return;
-    }
-  }
-
-  if (
-    type == WKMediaCaptureTypeCamera &&
-    userConfig["permissions_allow_camera"] == "false"
-  ) {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  if (
-    type == WKMediaCaptureTypeMicrophone &&
-    userConfig["permissions_allow_microphone"] == "false"
-  ) {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                       (void) _webView: (WKWebView*) webView
-  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                       (void) _webView: (WKWebView*) webView
-   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                     (void) webView: (WKWebView*) webView
-  runJavaScriptAlertPanelWithMessage: (NSString*) message
-                    initiatedByFrame: (WKFrameInfo*) frame
-                   completionHandler: (void (^)(void)) completionHandler {
-#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
-  auto alert = [UIAlertController
-    alertControllerWithTitle: nil
-                     message: message
-              preferredStyle: UIAlertControllerStyleAlert
-  ];
-
-  auto ok = [UIAlertAction
-    actionWithTitle: @"OK"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler();
-  }];
-
-  [alert addAction: ok];
-
-  [webView presentViewController:alert animated: YES completion: nil];
-#else
-  NSAlert *alert = [[NSAlert alloc] init];
-  [alert setMessageText: message];
-  [alert setInformativeText: message];
-  [alert addButtonWithTitle: @"OK"];
-  [alert runModal];
-  completionHandler();
-#endif
-}
-
--                       (void) webView: (WKWebView*) webView
-  runJavaScriptConfirmPanelWithMessage: (NSString*) message
-                      initiatedByFrame: (WKFrameInfo*) frame
-                     completionHandler: (void (^)(BOOL result)) completionHandler {
-#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
-  auto alert = [UIAlertController
-    alertControllerWithTitle: nil
-                     message: message
-              preferredStyle: UIAlertControllerStyleAlert
-  ];
-
-  auto ok = [UIAlertAction
-    actionWithTitle: @"OK"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler(YES);
-  }];
-
-  auto cancel = [UIAlertAction
-    actionWithTitle: @"Cancel"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler(NO);
-  }];
-
-  [alert addAction: ok];
-  [alert addAction: cancel];
-
-  [webView presentViewController:alert animated: YES completion: nil];
-#else
-  NSAlert *alert = [[NSAlert alloc] init];
-  [alert setMessageText: message];
-  [alert setInformativeText: message];
-  [alert addButtonWithTitle: @"OK"];
-  [alert addButtonWithTitle: @"Cancel"];
-  completionHandler([alert runModal] == NSAlertFirstButtonReturn);
-#endif
-}
 
 - (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
   [info setDraggingFormation: NSDraggingFormationNone];
@@ -546,8 +406,153 @@ int lastY = 0;
   SSC::String file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
+#endif
+
+#if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
+
+-                                      (void) webView: (WKWebView*) webView
+ requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
+                                     initiatedByFrame: (WKFrameInfo*) frame
+                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  static auto userConfig = SSC::getUserConfig();
+
+  if (userConfig["permissions_allow_device_orientation"] == "false") {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                        (void) webView: (WKWebView*) webView
+ requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                                   type: (WKMediaCaptureType) type
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  static auto userConfig = SSC::getUserConfig();
+
+  if (userConfig["permissions_allow_user_media"] == "false") {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  if (type == WKMediaCaptureTypeCameraAndMicrophone) {
+    if (
+      userConfig["permissions_allow_camera"] == "false" ||
+      userConfig["permissions_allow_microphone"] == "false"
+    ) {
+      decisionHandler(WKPermissionDecisionDeny);
+      return;
+    }
+  }
+
+  if (
+    type == WKMediaCaptureTypeCamera &&
+    userConfig["permissions_allow_camera"] == "false"
+  ) {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  if (
+    type == WKMediaCaptureTypeMicrophone &&
+    userConfig["permissions_allow_microphone"] == "false"
+  ) {
+    decisionHandler(WKPermissionDecisionDeny);
+    return;
+  }
+
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                       (void) _webView: (WKWebView*) webView
+  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
+                       initiatedByFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+  decisionHandler(WKPermissionDecisionGrant);
+}
+
+-                       (void) _webView: (WKWebView*) webView
+   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
+                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
+
+  decisionHandler(WKPermissionDecisionGrant);
+}
+#endif
+
+-                     (void) webView: (WKWebView*) webView
+  runJavaScriptAlertPanelWithMessage: (NSString*) message
+                    initiatedByFrame: (WKFrameInfo*) frame
+                   completionHandler: (void (^)(void)) completionHandler {
+#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
+  auto alert = [UIAlertController
+    alertControllerWithTitle: nil
+                     message: message
+              preferredStyle: UIAlertControllerStyleAlert
+  ];
+
+  auto ok = [UIAlertAction
+    actionWithTitle: @"OK"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler();
+  }];
+
+  [alert addAction: ok];
+
+  [webView presentViewController:alert animated: YES completion: nil];
+#else
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText: message];
+  [alert setInformativeText: message];
+  [alert addButtonWithTitle: @"OK"];
+  [alert runModal];
+  completionHandler();
+#endif
+}
+
+-                       (void) webView: (WKWebView*) webView
+  runJavaScriptConfirmPanelWithMessage: (NSString*) message
+                      initiatedByFrame: (WKFrameInfo*) frame
+                     completionHandler: (void (^)(BOOL result)) completionHandler {
+#if TARGET_OS_IPHONE || TARGET_OS_IPHONE
+  auto alert = [UIAlertController
+    alertControllerWithTitle: nil
+                     message: message
+              preferredStyle: UIAlertControllerStyleAlert
+  ];
+
+  auto ok = [UIAlertAction
+    actionWithTitle: @"OK"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler(YES);
+  }];
+
+  auto cancel = [UIAlertAction
+    actionWithTitle: @"Cancel"
+              style: UIAlertActionStyleDefault
+            handler: ^(UIAlertAction * action) {
+    completionHandler(NO);
+  }];
+
+  [alert addAction: ok];
+  [alert addAction: cancel];
+
+  [webView presentViewController: alert animated: YES completion: nil];
+#else
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText: message];
+  [alert setInformativeText: message];
+  [alert addButtonWithTitle: @"OK"];
+  [alert addButtonWithTitle: @"Cancel"];
+  completionHandler([alert runModal] == NSAlertFirstButtonReturn);
+#endif
+}
+
 @end
 
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 namespace SSC {
   static bool isDelegateSet = false;
 
@@ -714,6 +719,16 @@ namespace SSC {
     }
   #endif
 
+    if (userConfig["permissions_allow_airplay"] == "false") {
+      config.allowsAirPlayForMediaPlayback = NO;
+    } else {
+      config.allowsAirPlayForMediaPlayback = YES;
+    }
+
+    config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
+    config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
+    config.processPool = [WKProcessPool new];
+
     [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
 
     WKUserContentController* controller = [config userContentController];
@@ -777,15 +792,14 @@ namespace SSC {
     //
     bool exiting = false;
 
-    SSCWindowDelegate* delegate = [SSCWindowDelegate alloc];
-    [controller addScriptMessageHandler: delegate name: @"external"];
+    SSCWindowDelegate* windowDelegate = [SSCWindowDelegate alloc];
+    SSCNavigationDelegate *navigationDelegate = [[SSCNavigationDelegate alloc] init];
+    [controller addScriptMessageHandler: windowDelegate name: @"external"];
 
-    // Set delegate to window
-    [window setDelegate:delegate];
-
-    SSCNavigationDelegate *navDelegate = [[SSCNavigationDelegate alloc] init];
-    [webview setNavigationDelegate: navDelegate];
+    // set delegates
+    window.delegate = windowDelegate;
     webview.UIDelegate = webview;
+    webview.navigationDelegate = navigationDelegate;
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -856,7 +870,7 @@ namespace SSC {
     }
 
     objc_setAssociatedObject(
-      delegate,
+      windowDelegate,
       "window",
       (id) this,
       OBJC_ASSOCIATION_ASSIGN
