@@ -5544,12 +5544,6 @@ int main (const int argc, const char* argv[]) {
           parseINI(readFile(targetPath / "socket.ini"))
         );
 
-        handleBuildPhaseForCopyMappedFiles(
-          settingsForSourcesWatcher,
-          targetPlatform,
-          pathResourcesRelativeToUserBuild
-        );
-
         handleBuildPhaseForUserScript(
           settingsForSourcesWatcher,
           targetPlatform,
@@ -5557,6 +5551,12 @@ int main (const int argc, const char* argv[]) {
           targetPath,
           additionalBuildArgs,
           false
+        );
+
+        handleBuildPhaseForCopyMappedFiles(
+          settingsForSourcesWatcher,
+          targetPlatform,
+          pathResourcesRelativeToUserBuild
         );
 
         log("File '" + path + "' did change");
