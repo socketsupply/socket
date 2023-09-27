@@ -11,8 +11,7 @@
 
 #if defined(__APPLE__)
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@interface SSCBridgedWebView : WKWebView
-@end
+@interface SSCBridgedWebView : WKWebView<WKUIDelegate>
 #else
 @interface SSCBridgedWebView : WKWebView<
   WKUIDelegate,
@@ -22,6 +21,9 @@
 >
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
 sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
+#endif
+
+#if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
 
 -                                      (void) webView: (WKWebView*) webView
  requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
@@ -42,6 +44,7 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 -                        (void) _webView: (WKWebView*) webView
    requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
                         decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+#endif
 
 -                     (void) webView: (WKWebView*) webView
   runJavaScriptAlertPanelWithMessage: (NSString*) message
@@ -53,7 +56,6 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
                       initiatedByFrame: (WKFrameInfo*) frame
                      completionHandler: (void (^)(BOOL result)) completionHandler;
 @end
-#endif
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
 -                  (void) webView: (WKWebView*) webview
