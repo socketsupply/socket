@@ -29,7 +29,7 @@ export function init () {
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
   // initial value
-  globalThis.addEventListener('DOMContentLoaded', async () => {
+  globalThis.addEventListener('DOMContentLoaded', () => {
     const title = globalThis.document.title
     if (title.length !== 0) {
       const index = globalThis.__args.index
