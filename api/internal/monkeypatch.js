@@ -10,6 +10,13 @@ let applied = false
 export function init () {
   if (applied || !globalThis.window) return
 
+  if (
+    typeof globalThis.webkitSpeechRecognition === 'function' &&
+    typeof globalThis.SpeechRecognition !== 'function'
+  ) {
+    globalThis.SpeechRecognition = globalThis.webkitSpeechRecognition
+  }
+
   Object.assign(globalThis, {
     // url
     URL,
