@@ -284,6 +284,8 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <array>
       <string>localhost</string>
   </array>
+
+  {{mac_info_plist_data}}
   </dict>
 </plist>
 )XML";
@@ -1029,6 +1031,8 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
     <string>fetch</string>
     <string>processing</string>
   </array>
+
+  {{ios_info_plist_data}}
 </dict>
 </plist>)XML";
 

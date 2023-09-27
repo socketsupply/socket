@@ -2706,6 +2706,17 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(paths.pathBin);
       fs::create_directories(pathResources);
 
+      if (settings.contains("mac_info_plist_file")) {
+        const auto files = parseStringList(settings["mac_info_plist_file"]);
+        for (const auto file : files) {
+          settings["mac_info_plist_data"] += readFile(file);
+        }
+      }
+
+      if (!settings.contains("mac_info_plist_data")) {
+        settings["mac_info_plist_data"] = "";
+      }
+
       auto plistInfo = tmpl(gPListInfo, settings);
 
       writeFile(paths.pathPackage / pathBase / "Info.plist", plistInfo);
@@ -3751,7 +3762,7 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          for (const auto& source : sources) {
+          for (auto source : sources) {
             if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
               log("extension source: " + source);
             }
@@ -3800,7 +3811,13 @@ int main (const int argc, const char* argv[]) {
               continue;
             }
 
-            auto filename = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o")).filename();
+            auto objectFile = source;
+            objectFile = replace(objectFile, "\\.mm", ".o");
+            objectFile = replace(objectFile, "\\.m", ".o");
+            objectFile = replace(objectFile, "\\.cc", ".o");
+            objectFile = replace(objectFile, "\\.c", ".o");
+
+            auto filename = Path(objectFile).filename();
             auto object = (
               paths.pathResourcesRelativeToUserBuild /
               "socket" /
@@ -3950,6 +3967,17 @@ int main (const int argc, const char* argv[]) {
           xCodeProjectVariables["__ios_native_extensions_build_ids"] += id + ",\n";
           xCodeProjectVariables["__ios_native_extensions_build_refs"] += ref + ",\n";
         }
+      }
+
+      if (settings.contains("ios_info_plist_file")) {
+        const auto files = parseStringList(settings["ios_info_plist_file"]);
+        for (const auto file : files) {
+          settings["ios_info_plist_data"] += readFile(file);
+        }
+      }
+
+      if (!settings.contains("ios_info_plist_data")) {
+        settings["ios_info_plist_data"] = "";
       }
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
@@ -4718,7 +4746,13 @@ int main (const int argc, const char* argv[]) {
               log("extension source: " + source);
             }
 
-            auto object = Path(replace(replace(source, "\\.cc", ".o"), "\\.c", ".o"));
+            auto objectFile = source;
+            objectFile = replace(objectFile, "\\.mm", ".o");
+            objectFile = replace(objectFile, "\\.m", ".o");
+            objectFile = replace(objectFile, "\\.cc", ".o");
+            objectFile = replace(objectFile, "\\.c", ".o");
+
+            auto object = Path(objectFile);
 
             objects << (quote + object.string() + quote) << " ";
             auto compileExtensionObjectCommand = StringStream();
