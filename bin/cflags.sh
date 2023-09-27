@@ -2,7 +2,7 @@
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
-declare IPHONEOS_VERSION_MIN="${IPHONEOS_VERSION_MIN:-14.0}"
+declare IPHONEOS_VERSION_MIN="${IPHONEOS_VERSION_MIN:-15.0}"
 declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSION_MIN}"
 
 declare cflags=()
