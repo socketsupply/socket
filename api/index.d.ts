@@ -580,6 +580,9 @@ declare module "socket:events" {
     } | {
         new (): {};
     };
+    export const EventTarget: {
+        new (): {};
+    };
     export const CustomEvent: {
         new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
         prototype: CustomEvent<any>;
