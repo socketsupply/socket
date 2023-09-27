@@ -3847,7 +3847,7 @@ int main (const int argc, const char* argv[]) {
               << " -fembed-bitcode"
               << " -fPIC"
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
-              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
+              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "15.0")
               << " -c " << source
               << " -o " << object.string()
             ;
@@ -3918,7 +3918,7 @@ int main (const int argc, const char* argv[]) {
             << " -shared"
             << " -v"
             << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
-            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "14.0")
+            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + getEnv("IPHONEOS_VERSION_MIN", "15.0")
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
             << " -o " << lib
           ;
