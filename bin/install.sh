@@ -117,7 +117,7 @@ if [[ "$host" == "Win32" ]]; then
   # In Visual Studio, Debug profiles usually have to be manually modified to include eg ole32d.lib instead ole32.lib.
   # I have used this convention to separate debug objects and libs where possible
   # *.o files are now named *$d.o
-  # Libs are copied to build/platform/lib$d (uv_a.lib didn't support being renamed, this would require modification of the build chain)
+  # Libs are copied to build/platform/lib$d (libuv.lib didn't support being renamed, this would require modification of the build chain)
   # libsocket-runtime.a is now named libsocket-runtime$d.a
   # ssc build --prod defines whether or not the app is being built for debug
   # and therefore links to the app being built to the correct libsocket-runtime$d.a
@@ -797,7 +797,7 @@ function _compile_libuv {
         quiet make install
       fi
     else
-      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
+      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/libuv.lib"; then
         local config="Release"
         if [[ -n "$DEBUG" ]]; then
           config="Debug"
@@ -807,8 +807,8 @@ function _compile_libuv {
         cd "$STAGING_DIR" || exit 1
         quiet cmake --build "$STAGING_DIR/build/" --config $config
         mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
-        quiet echo "cp -up $STAGING_DIR/build/$config/uv_a.lib "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib""
-        cp -up "$STAGING_DIR/build/$config/uv_a.lib" "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
+        quiet echo "cp -up $STAGING_DIR/build/$config/libuv.lib "$BUILD_DIR/$target-$platform/lib$d/libuv.lib""
+        cp -up "$STAGING_DIR/build/$config/libuv.lib" "$BUILD_DIR/$target-$platform/lib$d/libuv.lib"
         if [[ -n "$DEBUG" ]]; then
           cp -up "$STAGING_DIR"/build/$config/uv_a.pdb "$BUILD_DIR/$target-$platform/lib$d/uv_a.pdb"
         fi;
