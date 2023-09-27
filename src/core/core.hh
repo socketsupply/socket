@@ -36,7 +36,8 @@
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "userenv.lib")
-#pragma comment(lib, "uv_a.lib")
+#pragma comment(lib, "libuv.lib")
+#pragma comment(lib, "dbghelp.lib")
 #endif
 
 #include "json.hh"

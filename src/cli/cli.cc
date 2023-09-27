@@ -45,7 +45,7 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "userenv.lib")
 #pragma comment(lib, "uuid.lib")
-#pragma comment(lib, "uv_a.lib")
+#pragma comment(lib, "libuv.lib")
 #pragma comment(lib, "winspool.lib")
 #pragma comment(lib, "ws2_32.lib")
 
@@ -4867,7 +4867,7 @@ int main (const int argc, const char* argv[]) {
 
         #if defined(_WIN32)
           auto d = String(platform.win && debugBuild ? "d" : "");
-          auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\uv_a.lib");
+          auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
         #else
           auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
