@@ -72,6 +72,7 @@ allow_sensors | true |  Allow/Disallow sensors in application
 allow_clipboard | true |  Allow/Disallow clipboard in application
 allow_bluetooth | true |  Allow/Disallow bluetooth in application
 allow_data_access | true |  Allow/Disallow data access in application
+allow_airplay | true |  Allow/Disallow AirPlay access in application (macOS/iOS) only
 watch | false |  Enable watch mode
 
 # Section `debug`
