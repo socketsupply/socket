@@ -483,6 +483,7 @@ EventEmitter.EventEmitter = EventEmitter
 EventEmitter.once = once
 
 export const Event = globalThis.Event || class Event {}
+export const EventTarget = globalThis.EventTarget || class EventTarget {}
 
 export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends Event {
   #detail = null
