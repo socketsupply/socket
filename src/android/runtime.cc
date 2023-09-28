@@ -12,7 +12,7 @@ namespace SSC::android {
     this->rootDirectory = rootDirectory;
   }
 
-  bool isPermissionAllowed (const String& name) {
+  bool Runtime::isPermissionAllowed (const String& name) const {
     static const auto config = SSC::getUserConfig();
     const auto permission = String("permissions_allow_") + name;
 
