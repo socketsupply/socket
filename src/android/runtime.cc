@@ -168,7 +168,7 @@ extern "C" {
     jstring permission
   ) {
     auto runtime = Runtime::from(env, self);
-    auto name = StringWrap(env, rootDirectory).str();
+    auto name = StringWrap(env, permission).str();
 
     if (runtime == nullptr) {
       Throw(env, RuntimeNotInitializedException);
