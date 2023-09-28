@@ -65,7 +65,7 @@ jobs:
   mac:
     name: macOS
     runs-on: macOS-13
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: lint
 
     steps:
