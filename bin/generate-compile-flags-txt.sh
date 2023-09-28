@@ -43,10 +43,12 @@ while (( $# > 0 )); do
       arch="aarch64"
       platform="Android";
       export TARGET_OS_ANDROID=1
+      args+=("-U__APPLE__")
     elif [[ "$1" = "android-emulator" ]] || [[ "$1" = "AndroidEmulator" ]]; then
       arch="x86_64"
       platform="AndroidEmulator";
       export TARGET_ANDROID_EMULATOR=1
+      args+=("-U__APPLE__")
     else
       platform="$1";
     fi
@@ -58,7 +60,7 @@ while (( $# > 0 )); do
 done
 
 function generate () {
-  local cflags=($("$root/bin/cflags.sh" "${args[@]}") -ferror-limit=0 -I"$root/src" -U__APPLE__)
+  local cflags=($("$root/bin/cflags.sh" "${args[@]}") -ferror-limit=0 -I"$root/src")
 
   for flag in "${cflags[@]}"; do
     echo "$flag"
