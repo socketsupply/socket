@@ -9,7 +9,7 @@ The implementation is <250 loc, (<500 with comments) ( https://github.com/Raynos
 ## Migrating from tape
 
 ```js
-const test = require('tape')
+const tape = require('tape')
 // Tapzero exports an object with a test function property.
 const test = require('tapzero').test
 ```
@@ -26,6 +26,7 @@ tapzero('my test', (t) => {
 })
 ```
 
+### End "automatically" if you do not call `t.plan`
 ```js
 // tapzero "auto" ends async tests when the async function completes
 tapzero('my cb test', async (t) => {
@@ -36,6 +37,18 @@ tapzero('my cb test', async (t) => {
       resolve()
     }, 10)
   })
+})
+```
+
+### Plan the number of assertions
+
+```js
+tapzero('planning example', t => {
+  // this test will fail if we execute more or fewer
+  //   than planned assertions
+  t.plan(2)
+  t.ok('hello')
+  t.equal(2, 2, 'two is two')
 })
 ```
 

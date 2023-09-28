@@ -80,6 +80,16 @@ export class Test {
      */
     this.name = name
     /**
+     * @type {null|number}
+     * @ignore
+     */
+    this._planned = null
+    /**
+     * @type {null|number}
+     * @ignore
+     */
+    this._actual = null
+    /**
      * @type {TestFn}
      * @ignore
      */
@@ -116,6 +126,16 @@ export class Test {
    */
   comment (msg) {
     this.runner.report('# ' + msg)
+  }
+
+  /**
+   * Plan the number of assertions.
+   *
+   * @param {number} n
+   * @returns {void}
+   */
+  plan (n) {
+    this._planned = n
   }
 
   /**
@@ -729,6 +749,14 @@ export class Test {
       )
     }
 
+    if (this._planned !== null) {
+      this._actual = ((this._actual || 0) + 1)
+
+      if (this._actual > this._planned) {
+        throw new Error(`More tests than planned in TEST *${this.name}*`)
+      }
+    }
+
     const report = this.runner.report
 
     const prefix = pass ? 'ok' : 'not ok'
@@ -790,7 +818,19 @@ export class Test {
     if (maybeP && typeof maybeP.then === 'function') {
       await maybeP
     }
+
     this.done = true
+
+    if (this._planned !== null && this._actual !== null) {
+      if (this._planned > this._actual) {
+        throw new Error(`Test ended before the planned number
+          planned: ${this._planned}
+          actual: ${this._actual}
+          `
+        )
+      }
+    }
+
     return this._result
   }
 }
