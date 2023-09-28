@@ -195,15 +195,15 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #define ToString(string) String(string)
 
 namespace SSC {
+#if !(defined(__APPLE__) && TARGET_OS_IPHONE && TARGET_OS_SIMULATOR)
   namespace fs = std::filesystem;
+  using Path = fs::path;
+#endif
 
   using String = std::string;
   using StringStream = std::stringstream;
   using WString = std::wstring;
   using WStringStream = std::wstringstream;
-#if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
-  using Path = fs::path;
-#endif
 
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
@@ -682,7 +682,7 @@ namespace SSC {
     notifyCli();
   }
 
-  #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+  #if !(defined(__APPLE__) && TARGET_OS_IPHONE && TARGET_OS_SIMULATOR)
     inline String readFile (fs::path path) {
       if (fs::is_directory(path)) {
         stdWrite("WARNING: trying to read a directory as a file: " + path.string(), true);

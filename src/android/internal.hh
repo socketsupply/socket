@@ -218,6 +218,7 @@ namespace SSC::android {
 
       Runtime (JNIEnv* env, jobject self, String rootDirectory);
       ~Runtime ();
+      bool isPermissionAllowed (const String&) const;
   };
 
   class Bridge : public IPC::Bridge {
