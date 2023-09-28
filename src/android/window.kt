@@ -52,8 +52,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.domStorageEnabled = runtime.isPermissionAllowed("data_access")
           settings.databaseEnabled = runtime.isPermissionAllowed("data_access")
 
-          settings.geolocationEnabled = runtime.isPermissionAllowed("geolocation")
-          settings.appCacheEnabled = true
+          settings.setGeolocationEnabled(runtime.isPermissionAllowed("geolocation"))
           settings.javaScriptCanOpenWindowsAutomatically = true
 
           // allow list
