@@ -82,6 +82,7 @@ fi
 if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
   if [[ "$host" = "Darwin" ]]; then
     cflags+=("-ObjC++")
+    cflags+=("-fPIC")
   elif [[ "$host" = "Linux" ]]; then
     cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.1) -fPIC)
   elif [[ "$host" = "Win32" ]]; then
