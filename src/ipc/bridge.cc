@@ -128,7 +128,7 @@ static String getcwd () {
   }                                                                            \
 }
 
-void initRouterTable (Router *router) {
+static void initRouterTable (Router *router) {
   static auto userConfig = SSC::getUserConfig();
 #if defined(__APPLE__)
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
