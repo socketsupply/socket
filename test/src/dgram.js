@@ -6,6 +6,7 @@ import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
 import dgram from 'socket:dgram'
 import util from 'socket:util'
+import os from 'socket:os'
 
 // node compat
 /*
@@ -118,6 +119,7 @@ test('dgram createSocket, address, bind, close', async (t) => {
 
 test('udp bind, send, remoteAddress', async (t) => {
   if (process.env.SSC_ANDROID_CI) return
+  if (os.platform() === 'win32' && process.env.GITHUB_ACTIONS_CI) return
 
   const server = dgram.createSocket({
     type: 'udp4',

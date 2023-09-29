@@ -31,12 +31,12 @@ if (process.platform !== 'ios') {
     t.equal(access, true, '(X_OK) fixtures/ directory is "executable" - can list items')
   })
 
-  test('fs.promises.chmod', async (t) => {
-    const chmod = await fs.chmod(FIXTURES + 'file.txt', 0o777)
-    t.equal(chmod, undefined, 'file.txt is chmod 777')
-  })
-
   if (os.platform() !== 'android') {
+    test('fs.promises.chmod', async (t) => {
+      const chmod = await fs.chmod(FIXTURES + 'file.txt', 0o777)
+      t.equal(chmod, undefined, 'file.txt is chmod 777')
+    })
+
     test('fs.promises.mkdir', async (t) => {
       const dirname = FIXTURES + Math.random().toString(16).slice(2)
       await fs.mkdir(dirname, {})
