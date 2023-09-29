@@ -4775,7 +4775,6 @@ int main (const int argc, const char* argv[]) {
               << " -Wno-nonportable-include-path"
             #else
               << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
-              << " -lsocket-runtime"
             #endif
               << " -fvisibility=hidden"
               << " -DIOS=0"
