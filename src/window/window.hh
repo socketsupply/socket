@@ -11,7 +11,6 @@
 
 #if defined(__APPLE__)
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@interface SSCBridgedWebView : WKWebView<WKUIDelegate>
 @interface SSCWindowDelegate : NSObject
 @end
 #else
@@ -19,6 +18,11 @@
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
+#endif
+
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@interface SSCBridgedWebView : WKWebView<WKUIDelegate>
+#else
 @interface SSCBridgedWebView : WKWebView<
   WKUIDelegate,
   NSDraggingDestination,
