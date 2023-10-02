@@ -4412,6 +4412,16 @@ declare module "socket:test/index" {
          */
         name: string;
         /**
+         * @type {null|number}
+         * @ignore
+         */
+        _planned: null | number;
+        /**
+         * @type {null|number}
+         * @ignore
+         */
+        _actual: null | number;
+        /**
          * @type {TestFn}
          * @ignore
          */
@@ -4444,6 +4454,13 @@ declare module "socket:test/index" {
          * @returns {void}
          */
         comment(msg: string): void;
+        /**
+         * Plan the number of assertions.
+         *
+         * @param {number} n
+         * @returns {void}
+         */
+        plan(n: number): void;
         /**
          * @template T
          * @param {T} actual

@@ -1550,7 +1550,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | fn | TestFn |  | false |  |
 | runner | TestRunner |  | false |  |
 
-### [`comment(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L117)
+### [`comment(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L127)
 
 
 
@@ -1558,27 +1558,16 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | false |  |
 
-### [`deepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L128)
+### [`plan(n)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L137)
 
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| actual | T |  | false |  |
-| expected | T |  | false |  |
-| msg | string |  | false |  |
-
-### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L143)
-
+Plan the number of assertions.
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| actual | T |  | false |  |
-| expected | T |  | false |  |
-| msg | string |  | false |  |
+| n | number |  | false |  |
 
-### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L158)
+### [`deepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L148)
 
 
 
@@ -1588,7 +1577,27 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | expected | T |  | false |  |
 | msg | string |  | false |  |
 
-### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L173)
+### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L163)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | T |  | false |  |
+| expected | T |  | false |  |
+| msg | string |  | false |  |
+
+### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L178)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| actual | T |  | false |  |
+| expected | T |  | false |  |
+| msg | string |  | false |  |
+
+### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L193)
 
 
 
@@ -1598,7 +1607,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | expected | unknown |  | false |  |
 | msg | string |  | false |  |
 
-### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L186)
+### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L206)
 
 
 
@@ -1606,7 +1615,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | false |  |
 
-### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L199)
+### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L219)
 
 
 
@@ -1615,7 +1624,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | actual | unknown |  | false |  |
 | msg | string |  | false |  |
 
-### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L211)
+### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L231)
 
 
 
@@ -1623,7 +1632,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | false |  |
 
-### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L220)
+### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L240)
 
 
 
@@ -1632,7 +1641,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | err | Error \| null \| undefined |  | false |  |
 | msg | string |  | false |  |
 
-### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L233)
+### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L253)
 
 
 
@@ -1642,7 +1651,7 @@ This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's ex
 | expected | RegExp \| any |  | false |  |
 | message | string |  | false |  |
 
-### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L282)
+### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L302)
 
 Sleep for ms with an optional msg
 
@@ -1660,7 +1669,7 @@ Sleep for ms with an optional msg
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`requestAnimationFrame(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L300)
+### [`requestAnimationFrame(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L320)
 
 Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
  tests are run headlessly.
@@ -1678,7 +1687,7 @@ Request animation frame with an optional msg. Falls back to a 0ms setTimeout whe
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`click(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L322)
+### [`click(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L342)
 
 Dispatch the `click`` method on an element specified by selector.
 
@@ -1696,7 +1705,7 @@ Dispatch the `click`` method on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L344)
+### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L364)
 
 Dispatch the click window.MouseEvent on an element specified by selector.
 
@@ -1714,7 +1723,7 @@ Dispatch the click window.MouseEvent on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L372)
+### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L392)
 
 Dispatch an event on the target.
 
@@ -1733,7 +1742,7 @@ Dispatch an event on the target.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L392)
+### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L412)
 
 Call the focus method on element specified by selector.
 
@@ -1751,7 +1760,7 @@ Call the focus method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L413)
+### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L433)
 
 Call the blur method on element specified by selector.
 
@@ -1769,7 +1778,7 @@ Call the blur method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L435)
+### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L455)
 
 Consecutively set the str value of the element specified by selector to simulate typing.
 
@@ -1788,7 +1797,7 @@ Consecutively set the str value of the element specified by selector to simulate
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L467)
+### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L487)
 
 appendChild an element el to a parent selector element.
 
@@ -1808,7 +1817,7 @@ appendChild an element el to a parent selector element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L487)
+### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L507)
 
 Remove an element from the DOM.
 
@@ -1826,7 +1835,7 @@ Remove an element from the DOM.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L506)
+### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L526)
 
 Test if an element is visible
 
@@ -1844,7 +1853,7 @@ Test if an element is visible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L527)
+### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L547)
 
 Test if an element is invisible
 
@@ -1862,7 +1871,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L551)
+### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L571)
 
 Test if an element is invisible
 
@@ -1883,7 +1892,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L613)
+### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L633)
 
 Test if an element is invisible
 
@@ -1913,7 +1922,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L650)
+### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L670)
 
 Run a querySelector as an assert and also get the results
 
@@ -1931,7 +1940,7 @@ Run a querySelector as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | HTMLElement \| Element |  |
 
-### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L669)
+### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L689)
 
 Run a querySelectorAll as an assert and also get the results
 
@@ -1949,7 +1958,7 @@ Run a querySelectorAll as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | Array<HTMLElement \| Element> |  |
 
-### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L698)
+### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L718)
 
 Retrieves the computed styles for a given element.
 
@@ -1974,17 +1983,17 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | CSSStyleDeclaration | The computed styles of the element. |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L787)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L815)
 
    pass: number,
    fail: number
  }>}
 
-## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L856)
+## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L896)
 
 
 
-### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L861)
+### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L901)
 
 
 
@@ -1992,7 +2001,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | report | (lines: string) => void |  | false |  |
 
-### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L913)
+### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L953)
 
 
 
@@ -2000,7 +2009,7 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L923)
+### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L963)
 
 
 
@@ -2010,7 +2019,7 @@ Retrieves the computed styles for a given element.
 | fn | TestFn |  | false |  |
 | only | boolean |  | false |  |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L945)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L985)
 
 
 
@@ -2018,7 +2027,7 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`onFinish() )`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L992)
+### [`onFinish() )`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1032)
 
 
 
@@ -2026,12 +2035,12 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | ) | (result: { total: number, success: number, fail: number  | > void} callback | false |  |
 
-## [GLOBAL_TEST_RUNNER](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1008)
+## [GLOBAL_TEST_RUNNER](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1048)
 
 This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js`, it's exported but undocumented.
 
 
-## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1017)
+## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1057)
 
 
 
@@ -2040,7 +2049,7 @@ This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js
 | name | string |  | false |  |
 | fn | TestFn |  | false |  |
 
-## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1027)
+## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1067)
 
 
 
@@ -2049,7 +2058,7 @@ This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js
 | _name | string |  | false |  |
 | _fn | TestFn |  | false |  |
 
-## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1033)
+## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1073)
 
 
 
