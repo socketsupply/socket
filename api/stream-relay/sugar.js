@@ -2,10 +2,10 @@ import { wrap, Encryption, sha256, NAT } from './index.js'
 import { sodium } from '../crypto.js'
 import { Buffer } from '../buffer.js'
 import { isBufferLike } from '../util.js'
-import { PacketStream } from './packets.js'
+import { CACHE_TTL, PACKET_BYTES } from './packets.js'
 
 export default (dgram, events) => {
-  let peer = null
+  let _peer = null
   let bus = null
 
   /*
@@ -14,6 +14,9 @@ export default (dgram, events) => {
    * The method returned method should be exposed to the user of the module.
    *
    * @param {object} - options
+   * @param {clusterId} - options.clusterId
+   * @param {peerId} - options.peerId
+   *
    * @return {object}
    *
    * @example
@@ -29,39 +32,162 @@ export default (dgram, events) => {
 
     await sodium.ready
     bus = new events.EventEmitter()
+    bus.peers = new Map()
+    bus._on = bus.on
+    bus._once = bus.once
+    bus._emit = bus.emit
 
-    if (!options.indexed && !options.clusterId) {
+    if (!options.indexed && !options.clusterId && !options.config?.clusterId) {
       throw new Error('expected .clusterId property')
     }
 
-    const clusterId = bus.clusterId = options.clusterId
+    const clusterId = bus.clusterId = options.clusterId || options.config?.clusterId
 
-    peer = new (wrap(dgram))(options)
+    _peer = new (wrap(dgram))(options) // only one peer per process makes sense
 
-    peer.onPacket = (...args) => setTimeout(() => bus.emit('#packet', ...args))
-    peer.onData = (...args) => setTimeout(() => bus.emit('#data', ...args))
-    peer.onSend = (...args) => setTimeout(() => bus.emit('#send', ...args))
-    peer.onMulticast = (...args) => setTimeout(() => bus.emit('#multicast', ...args))
-    peer.onStream = (...args) => setTimeout(() => bus.emit('#stream', ...args))
-    peer.onConnection = (...args) => setTimeout(() => bus.emit('#connection', ...args))
-    peer.onDisconnection = (...args) => bus.emit('#disconnection', ...args)
-    peer.onQuery = (...args) => setTimeout(() => bus.emit('#query', ...args))
-    peer.onNat = (...args) => bus.emit('#network-change', ...args)
-    peer.onError = (...args) => bus.emit('#error', ...args)
-    peer.onWarn = (...args) => bus.emit('#warning', ...args)
-    peer.onState = (...args) => bus.emit('#state', ...args)
-    peer.onConnecting = (...args) => bus.emit('#connecting', ...args)
-
-    peer.onReady = () => {
-      peer.isReady = true
-      bus.emit('#ready')
+    _peer.onPacket = (packet, ...args) => {
+      if (packet.clusterId !== clusterId) return
+      bus._emit('#packet', packet, ...args)
     }
 
-    bus.discovered = new Promise(resolve => bus.once('#ready', resolve))
-    bus.peer = peer
+    _peer.onJoin = (packet, ...args) => {
+      if (packet.clusterId !== clusterId) return
+      bus._emit('#join', packet, ...args)
+    }
+
+    _peer.onStream = (packet, ...args) => {
+      if (packet.clusterId !== clusterId) return
+      bus._emit('#stream', packet, ...args)
+    }
+
+    _peer.onData = (...args) => bus._emit('#data', ...args)
+    _peer.onSend = (...args) => bus._emit('#send', ...args)
+    _peer.onMulticast = (...args) => bus._emit('#multicast', ...args)
+    _peer.onConnection = (...args) => bus._emit('#connection', ...args)
+    _peer.onDisconnection = (...args) => bus._emit('#disconnection', ...args)
+    _peer.onQuery = (...args) => bus._emit('#query', ...args)
+    _peer.onNat = (...args) => bus._emit('#network-change', ...args)
+    _peer.onError = (...args) => bus._emit('#error', ...args)
+    _peer.onWarn = (...args) => bus._emit('#warning', ...args)
+    _peer.onState = (...args) => bus._emit('#state', ...args)
+    _peer.onConnecting = (...args) => bus._emit('#connecting', ...args)
+
+    bus.discovered = new Promise(resolve => bus._once('#discovered', resolve))
+    bus.peer = _peer
+    bus.peerId = _peer.peerId
 
     bus.setMaxListeners(1024)
     bus.subclusters = new Map()
+
+    bus.address = () => ({
+      address: _peer.address,
+      port: _peer.port,
+      natType: NAT.toString(_peer.natType)
+    })
+
+    bus.join = () => _peer.requestReflection()
+    bus.cacheSize = () => _peer.cache.size * PACKET_BYTES
+    bus.open = (m, pk) => _peer.encryption.open(m, pk)
+
+    bus.emit = async (...args) => {
+      return await _peer.publish(options.sharedKey, await pack(...args))
+    }
+
+    bus.on = async (eventName, cb) => {
+      if (eventName[0] !== '#') eventName = await sha256(eventName)
+      bus._on(eventName, cb)
+    }
+
+    _peer.onReady = () => {
+      _peer.isReady = true
+      bus._emit('#discovered')
+    }
+
+    const pack = async (sub, eventName, value, opts = {}) => {
+      if (typeof eventName !== 'string') throw new Error('event name must be a string')
+      if (eventName.length === 0) throw new Error('event name too short')
+
+      opts.ttl = Math.min(opts.ttl, CACHE_TTL)
+
+      const args = {
+        clusterId,
+        ...opts,
+        usr1: await sha256(eventName, { bytes: true })
+      }
+
+      if (!isBufferLike(value) && typeof value === 'object') {
+        try {
+          args.message = Buffer.from(JSON.stringify(value))
+        } catch (err) {
+          return bus._emit('error', err)
+        }
+      } else {
+        args.message = Buffer.from(value)
+      }
+
+      if (opts.publicKey && opts.privateKey) {
+        args.usr2 = Buffer.from(opts.publicKey)
+        args.sig = Buffer.from(Encryption.sign(args.message, Buffer.from(opts.privateKey)))
+      }
+
+      return args
+    }
+
+    const unpack = async packet => {
+      let opened
+      let verified
+      const sub = bus.subclusters.get(packet.subclusterId)
+      if (!sub) return {}
+
+      try {
+        opened = _peer.encryption.open(packet.message, packet.subclusterId)
+      } catch (err) {
+        sub._emit('warning', err)
+        return {}
+      }
+
+      if (packet.sig) {
+        try {
+          if (Encryption.verify(opened, packet.sig, packet.usr2)) {
+            verified = true
+          }
+        } catch (err) {
+          sub._emit('warning', err)
+          return {}
+        }
+      }
+
+      return { opened, verified }
+    }
+
+    //
+    // Creates a peer if one doesn't exist, adds it to the right subcluster
+    // and cluster.
+    //
+    const getPeerRepresentative = (packet, sub, peer) => {
+      let ee
+
+      if (sub && sub.peers.has(peer.peerId)) {
+        ee = sub.peers.get(peer.peerId)
+      } else {
+        ee = new events.EventEmitter()
+        ee._on = ee.on
+        ee._once = ee.once
+        ee._emit = ee.emit
+        ee.peerId = peer.peerId
+        ee.address = peer.address
+        ee.port = peer.port
+      }
+
+      if (!bus.peers.has(peer.peerId)) {
+        bus.peers.set(peer.peerId, ee)
+      }
+
+      if (!sub) return ee
+      sub.peers.set(peer.peerId, ee)
+
+      return ee
+    }
 
     /*
      * Creates an event emitter that will handle inbound and outbound
@@ -75,238 +201,127 @@ export default (dgram, events) => {
      *
      * @example
      *
-     *```js
+     * ```js
      *    import fs from '../fs.js'
      *    import { network, Encryption } from '../network.js'
      *
-     *    const oldState = parse(fs.readFile('state.json'))
+     *    const clusterId = await Encryption.createClusterId()
+     *    const socket = network({ clusterId })
+     *
+     *    socket.emit('foo', value) // publish a message to anyone in this cluster
+     *    socket.on('foo', () => {}) // read published messags from anyone in this cluster
      *
      *    const sharedKey = await Encryption.createSharedKey()
+     *    const sub = await socket.subcluster({ sharedKey })
      *
-     *    const socket = network(oldState)
-     *    const cats = await socket.subcluster({ sharedKey })
+     *    sub.emit('foo', value) // publish a message to anyone in this cluster and this subcluster
+     *    sub.on('foo', () => {}) // read streamed messages from anyone in this cluster and this subcluster
      *
-     *    console.log(cats.sharedKey)
+     *    sub.on('#join', peer => { // subscribe to a specific peer in the subcluster
+     *      peer.emit('foo', value) // send an event named 'foo' only to peer
      *
-     *    cats.emit('mew', value)
-     *
-     *    cats.on('mew', value => {
-     *      console.log(value)
-     *    })
-     *
-     *    cats.on('#connection', cat => {
-     *      cat.emit('mew', value)
-     *
-     *      cat.on('mew', value => {
+     *      peer.on('foo', value => { // listen for events named 'foo' only from peer
      *        console.log(value)
      *      })
      *    })
-     *
-     *    fs.writeFile('state.json', stringify(socket.getState()))
-     *```
+     * ```
      */
     bus.subcluster = async (options = {}) => {
+      if (!options.sharedKey) throw new Error('expected options.sharedKey to be of type Uint8Array')
+
       const keys = await Encryption.createKeyPair(options.sharedKey)
       const subclusterId = Buffer.from(keys.publicKey).toString('base64')
 
       if (bus.subclusters.has(subclusterId)) return bus.subclusters.get(subclusterId)
 
-      const selfEvents = new events.EventEmitter()
-      const emitSelf = selfEvents.emit
-      const onSelf = selfEvents.on
+      const sub = new events.EventEmitter()
+      bus.subclusters.set(subclusterId, sub)
 
-      selfEvents.sharedKey = options.sharedKey
-      selfEvents.keys = keys
+      sub._emit = sub.emit
+      sub._on = sub.on
+      sub.peers = new Map()
+      sub.peerId = _peer.peerId
+      sub.subclusterId = subclusterId
+      sub.sharedKey = options.sharedKey
+      sub.keys = keys
 
-      peer.encryption.add(keys.publicKey, keys.privateKey)
-      bus.subclusters.set(subclusterId, selfEvents)
+      sub.emit = async (eventName, ...args) => {
+        return await _peer.publish(sub.sharedKey, await pack(sub, eventName, ...args))
+      }
 
-      selfEvents.subclusterId = subclusterId
-      selfEvents.peers = new Map()
-      selfEvents.peerId = peer.peerId
-
-      selfEvents.on = async (eventName, cb) => {
+      sub.on = async (eventName, cb) => {
         if (eventName[0] !== '#') eventName = await sha256(eventName)
-        onSelf.call(selfEvents, eventName, cb)
+        sub._on(eventName, cb)
       }
 
-      const onBeforeEmit = async (eventName, value, opts) => {
-        if (typeof eventName !== 'string') throw new Error('event name must be a string')
-        if (eventName.length === 0) throw new Error('event name too short')
+      bus._on('#disconnection', peer => {
+        sub._emit('#leave', peer)
+        sub.peers.delete(peer.peerId)
+        bus.peers.delete(peer.peerId)
+      })
 
-        const args = {
-          clusterId,
-          subclusterId,
-          usr1: await sha256(eventName, { bytes: true })
-        }
+      bus._on('#discovered', () => {
+        _peer.join(sub.sharedKey, { subclusterId, ...options })
+        sub._emit('#ready', bus.address())
+      })
 
-        if (isBufferLike(value) || typeof value === 'string') {
-          args.message = value
-        } else {
-          try {
-            args.message = JSON.stringify(value)
-          } catch (err) {
-            return bus.emit('error', err)
-          }
-        }
+      _peer.join(sub.sharedKey, { subclusterId, ...options })
+      return sub
+    }
 
-        args.message = Buffer.from(args.message)
+    bus._on('#join', async (packet, peer) => {
+      const sub = bus.subclusters.get(packet.subclusterId)
+      if (!sub) return
 
-        if (opts.publicKey && opts.privateKey) {
-          args.usr2 = Buffer.from(opts.publicKey)
-          args.sig = Buffer.from(Encryption.sign(args.message, Buffer.from(opts.privateKey)))
-        }
+      const ee = getPeerRepresentative(packet, sub, peer)
 
-        args.previousId = opts.previousId
-        args.ttl = opts.ttl ?? 0
-        return args
+      ee.emit = async (eventName, ...args) => {
+        return peer.write && peer.write(sub.sharedKey, await pack(sub, eventName, ...args))
       }
 
-      selfEvents.emit = async (...args) => {
-        return await peer.publish(options.sharedKey, await onBeforeEmit(...args))
+      ee.on = async (eventName, cb) => {
+        if (eventName[0] !== '#') eventName = await sha256(eventName)
+        ee._on(eventName, cb)
       }
 
-      bus.on('#connection', (packet, p) => {
-        if (selfEvents.peers.has(p.peerId)) return
+      if (ee) {
+        ee.peerId = peer.peerId
+        ee.address = peer.address
+        sub._emit('#join', ee, packet)
+      }
+    })
 
-        const peerEvents = selfEvents.peers.get(p.peerId) || new events.EventEmitter()
-        const emitPeer = peerEvents.emit
-        const onPeer = peerEvents.on
+    bus._on('#packet', async (packet, peer) => {
+      const sub = bus.subclusters.get(packet.subclusterId)
+      if (!sub) return
 
-        const handleStreamedPacket = (packet, p) => {
-          if (packet?.subclusterId !== subclusterId) return
-          if (packet?.streamFrom !== p.peerId) return
-          if (packet?.streamTo !== peer.peerId) return
+      const exists = sub.peers.has(peer.peerId)
+      const ee = getPeerRepresentative(packet, sub, peer)
+      if (!exists) bus._emit('#join', packet, peer)
 
-          const eventName = packet.usr1.toString('hex')
-          let opened
+      const eventName = packet.usr1.toString('hex')
+      const { verified, opened } = await unpack(packet)
+      if (verified) packet.verified = true
+      sub._emit(eventName, opened, packet)
+      ee._emit(eventName, opened, packet)
+    })
 
-          try {
-            opened = peer.encryption.open(packet.message, packet.subclusterId)
-          } catch (err) {
-            return emitPeer.call(peerEvents, '#error', err)
-          }
+    bus._on('#stream', async (packet, peer, port, address) => {
+      const sub = bus.subclusters.get(packet.subclusterId)
+      if (!sub) return
 
-          if (packet.sig) {
-            try {
-              if (Encryption.verify(opened, packet.sig, packet.usr2)) {
-                packet.verified = true
-              }
-            } catch {}
-          }
+      const exists = sub.peers.has(peer.peerId)
+      const ee = getPeerRepresentative(packet, sub, peer)
+      if (!exists) bus._emit('#join', packet, peer)
 
-          emitPeer.call(peerEvents, eventName, opened, packet)
-        }
+      const eventName = packet.usr1.toString('hex')
+      const { verified, opened } = await unpack(packet)
+      if (verified) packet.verified = true
+      sub._emit(eventName, opened, packet)
+      ee._emit(eventName, opened, packet)
+    })
 
-        if (!selfEvents.peers.has(p.peerId)) {
-          peerEvents.peerId = p.peerId
-
-          selfEvents.peers.set(p.peerId, peerEvents)
-
-          peerEvents.on = async (eventName, cb) => {
-            if (eventName[0] !== '#') eventName = await sha256(eventName)
-            onPeer.call(peerEvents, eventName, cb)
-          }
-
-          peerEvents.emit = async (...args) => {
-            return p.write(options.sharedKey, await onBeforeEmit(...args))
-          }
-
-          bus.once('#disconnection', (packet, peer) => {
-            emitSelf.call(selfEvents, '#disconnection', peerEvents)
-          })
-
-          bus.on('#stream', handleStreamedPacket)
-        }
-
-        emitSelf.call(selfEvents, '#connection', peerEvents, packet)
-
-        if (packet.type === PacketStream.type) {
-          queueMicrotask(() => handleStreamedPacket(packet, p))
-        }
-      })
-
-      bus.on('#stream', (packet, p) => {
-        if (selfEvents.peers.has(p.peerId)) return
-        bus.emit('#connection', packet, p)
-      })
-
-      bus.on('#query', (packet, ...args) => {
-        emitSelf.call(selfEvents, '#query', packet)
-      })
-
-      bus.on('#network-change', (packet, ...args) => {
-        emitSelf.call(selfEvents, '#network-change', packet)
-      })
-
-      bus.on('#state', (packet, ...args) => {
-        emitSelf.call(selfEvents, '#state', packet)
-      })
-
-      bus.on('#error', (...args) => {
-        emitSelf.call(selfEvents, '#error', ...args)
-      })
-
-      bus.on('#packet', (packet, ...args) => {
-        if (packet.subclusterId !== subclusterId) return
-        const eventName = packet.usr1.toString('hex')
-
-        let opened
-
-        try {
-          opened = peer.encryption.open(packet.message, packet.subclusterId)
-        } catch (err) {
-          return emitSelf.call(selfEvents, '#error', err)
-        }
-
-        if (packet.sig) {
-          try {
-            if (Encryption.verify(opened, packet.sig, packet.usr2)) {
-              packet.verified = true
-            }
-          } catch {}
-        }
-        emitSelf.call(selfEvents, eventName, opened, packet)
-      })
-
-      bus.on('#data', (packet, port, address) => {
-        const p = peer.peers.find(p => p.port === port && p.address === address)
-        if (!p) return
-
-        if (!p.received) p.received = 0
-        p.received += 1
-      })
-
-      bus.on('#ready', () => {
-        peer.join(options.sharedKey, { subclusterId, ...options })
-      })
-
-      return selfEvents
-    }
-
-    bus.ready = () => {
-      peer.requestReflection()
-      if (peer.isReady) bus.emit('#ready')
-    }
-
-    bus.getState = () => {
-      return peer.getState()
-    }
-
-    bus.natType = () => {
-      return NAT.toString(peer.natType)
-    }
-
-    bus.cacheSize = () => {
-      return peer.cache.size
-    }
-
-    bus.open = packet => {
-      return peer.encryption.open(packet.message, packet.subclusterId)
-    }
-
-    await peer.init()
-
+    await _peer.init()
     return bus
   }
 }

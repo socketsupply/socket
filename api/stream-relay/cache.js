@@ -220,7 +220,7 @@ export class Cache {
       if (!key || !key.slice) continue
       if (prefix.length && !key.startsWith(prefix)) continue
       const hex = key.slice(prefix.length, prefix.length + 1)
-      children[parseInt(hex, 16)].push(key)
+      if (children[parseInt(hex, 16)]) children[parseInt(hex, 16)].push(key)
     }
 
     // compute a checksum for all child members (deterministically)
