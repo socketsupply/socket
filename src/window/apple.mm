@@ -27,12 +27,10 @@
 }
 @end
 
-#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-@interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
-- (void) userContentController: (WKUserContentController*) userContentController
-       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@implementation SSCWindowDelegate
 @end
-
+#else
 @implementation SSCWindowDelegate
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage
@@ -668,10 +666,14 @@ namespace SSC {
     WKPreferences* prefs = [config preferences];
     prefs.javaScriptCanOpenWindowsAutomatically = NO;
 
-    if (userConfig["permissions_allow_fullscreen"] == "false") {
-      [prefs setValue: @NO forKey: @"fullScreenEnabled"];
-    } else {
-      [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+    @try {
+      if (userConfig["permissions_allow_fullscreen"] == "false") {
+        [prefs setValue: @NO forKey: @"fullScreenEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'fullScreenEnabled': %@", error);
     }
 
     if (SSC::isDebugEnabled()) {
@@ -681,55 +683,95 @@ namespace SSC {
       }
     }
 
-    if (userConfig["permissions_allow_clipboard"] == "false") {
-      [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
-    } else {
-      [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
+    @try {
+      if (userConfig["permissions_allow_clipboard"] == "false") {
+        [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
+      } else {
+        [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'javaScriptCanAccessClipboard': %@", error);
     }
 
-    if (userConfig["permissions_allow_data_access"] == "false") {
-      [prefs setValue: @NO forKey: @"storageAPIEnabled"];
-    } else {
-      [prefs setValue: @YES forKey: @"storageAPIEnabled"];
+    @try {
+      if (userConfig["permissions_allow_data_access"] == "false") {
+        [prefs setValue: @NO forKey: @"storageAPIEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"storageAPIEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'storageAPIEnabled': %@", error);
     }
 
-    if (userConfig["permissions_allow_device_orientation"] == "false") {
-      [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
-    } else {
-      [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
+    @try {
+      if (userConfig["permissions_allow_device_orientation"] == "false") {
+        [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
     }
 
     if (userConfig["permissions_allow_notifications"] == "false") {
-      [prefs setValue: @NO forKey: @"appBadgeEnabled"];
-      [prefs setValue: @NO forKey: @"notificationsEnabled"];
-      [prefs setValue: @NO forKey: @"notificationEventEnabled"];
+      @try {
+        [prefs setValue: @NO forKey: @"appBadgeEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
+      }
+
+      @try {
+        [prefs setValue: @NO forKey: @"notificationsEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'notificationsEnabled': %@", error);
+      }
+
+      @try {
+        [prefs setValue: @NO forKey: @"notificationEventEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'notificationEventEnabled': %@", error);
+      }
     } else {
-      [prefs setValue: @YES forKey: @"appBadgeEnabled"];
-      [prefs setValue: @YES forKey: @"notificationsEnabled"];
-      [prefs setValue: @YES forKey: @"notificationEventEnabled"];
+      @try {
+        [prefs setValue: @YES forKey: @"appBadgeEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
+      }
     }
 
   #if !TARGET_OS_IPHONE
-    [prefs setValue: @YES forKey: @"cookieEnabled"];
+    @try {
+      [prefs setValue: @YES forKey: @"cookieEnabled"];
 
-    if (userConfig["permissions_allow_user_media"] == "false") {
-      [prefs setValue: @NO forKey: @"mediaStreamEnabled"];
-    } else {
-      [prefs setValue: @YES forKey: @"mediaStreamEnabled"];
+      if (userConfig["permissions_allow_user_media"] == "false") {
+        [prefs setValue: @NO forKey: @"mediaStreamEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"mediaStreamEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'mediaStreamEnabled': %@", error);
     }
   #endif
 
-    if (userConfig["permissions_allow_airplay"] == "false") {
-      config.allowsAirPlayForMediaPlayback = NO;
-    } else {
-      config.allowsAirPlayForMediaPlayback = YES;
+    @try {
+      if (userConfig["permissions_allow_airplay"] == "false") {
+        config.allowsAirPlayForMediaPlayback = NO;
+      } else {
+        config.allowsAirPlayForMediaPlayback = YES;
+      }
+    } @catch (NSException *error) {
+      debug("%@", error);
     }
 
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
     config.processPool = [WKProcessPool new];
 
-    [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
+    @try {
+      [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
+    }
 
     WKUserContentController* controller = [config userContentController];
 
@@ -792,8 +834,8 @@ namespace SSC {
     //
     bool exiting = false;
 
-    SSCWindowDelegate* windowDelegate = [SSCWindowDelegate alloc];
-    SSCNavigationDelegate *navigationDelegate = [[SSCNavigationDelegate alloc] init];
+    windowDelegate = [SSCWindowDelegate alloc];
+    navigationDelegate = [[SSCNavigationDelegate alloc] init];
     [controller addScriptMessageHandler: windowDelegate name: @"external"];
 
     // set delegates
@@ -832,7 +874,7 @@ namespace SSC {
           [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
 
-            if (!scriptMessage) return;
+            if (!scriptMessage || !window) return;
             id body = [scriptMessage body];
             if (!body || ![body isKindOfClass:[NSString class]]) {
               return;
@@ -893,6 +935,23 @@ namespace SSC {
     navigate("0", opts.url);
   }
 
+  Window::~Window () {
+    this->close(0);
+
+    #if !__has_feature(objc_arc)
+    if (this->window) {
+      [this->window release];
+    }
+
+    if (this->webview) {
+      [this->webview release];
+    }
+    #endif
+
+    this->window = nullptr;
+    this->webview = nullptr;
+  }
+
   ScreenSize Window::getScreenSize () {
     NSRect e = [[NSScreen mainScreen] frame];
 
@@ -912,6 +971,7 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
+    this->close(code);;
     if (onExit != nullptr) onExit(code);
   }
 
@@ -919,28 +979,46 @@ namespace SSC {
   }
 
   void Window::close (int code) {
-    [window performClose:nil];
+    if (this->window != nullptr) {
+      [this->window performClose: nil];
+      this->window = nullptr;
+    }
+
+    if (this->windowDelegate != nullptr) {
+      objc_removeAssociatedObjects(this->windowDelegate);
+      this->windowDelegate = nullptr;
+    }
+
+    if (this->navigationDelegate != nullptr) {
+      this->navigationDelegate = nullptr;
+    }
   }
 
   void Window::hide () {
-    [window orderOut:window];
+    if (this->window) {
+      [this->window orderOut: this->window];
+    }
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
   }
 
   void Window::eval (const SSC::String& js) {
-    [webview evaluateJavaScript:
-      [NSString stringWithUTF8String:js.c_str()]
-      completionHandler:nil];
+    if (this->webview != nullptr) {
+      auto string = [NSString stringWithUTF8String:js.c_str()];
+      [this->webview evaluateJavaScript: string completionHandler: nil];
+    }
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
+    if (!this->window || !this->webview) return;
     NSMenu* menuBar = [NSApp mainMenu];
     NSArray* menuBarItems = [menuBar itemArray];
+    if (menuBarItems.count == 0) return;
 
-    NSMenu* menu = menuBarItems[barPos];
+    NSMenu* menu = [menuBarItems[barPos] submenu];
     if (!menu) return;
 
     NSArray* menuItems = [menu itemArray];
+    if (menuItems.count == 0) return;
     NSMenuItem* menuItem = menuItems[menuPos];
 
     if (!menuItem) return;
@@ -952,15 +1030,15 @@ namespace SSC {
   void Window::navigate (const SSC::String& seq, const SSC::String& value) {
     auto url = [NSURL URLWithString: [NSString stringWithUTF8String: value.c_str()]];
 
-    if (url != nullptr) {
+    if (url != nullptr && this->webview != nullptr) {
       if (String(url.scheme.UTF8String) == "file") {
         NSString* allowed = [[NSBundle mainBundle] resourcePath];
-        [webview loadFileURL: url
+        [this->webview loadFileURL: url
           allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
         ];
       } else {
         auto request = [NSMutableURLRequest requestWithURL: url];
-        [webview loadRequest: request];
+        [this->webview loadRequest: request];
       }
 
       if (seq.size() > 0) {
@@ -971,15 +1049,22 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    return SSC::String([this->window.title UTF8String]);
+    if (this->window) {
+      return SSC::String([this->window.title UTF8String]);
+    }
+
+    return "";
   }
 
   void Window::setTitle (const SSC::String& value) {
-    [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
+    if (this->window) {
+      auto title = [NSString stringWithUTF8String:value.c_str()];
+      [this->window setTitle: title];
+    }
   }
 
   ScreenSize Window::getSize () {
-    if (this->window == nil) {
+    if (this->window == nullptr) {
       return ScreenSize {0, 0};
     }
 
@@ -995,14 +1080,18 @@ namespace SSC {
   }
 
   void Window::setSize (int width, int height, int hints) {
-    [window setFrame: NSMakeRect(0.f, 0.f, (float) width, (float) height)
-             display: YES
-             animate: NO];
+    if (this->window) {
+      [this->window
+        setFrame: NSMakeRect(0.f, 0.f, (float) width, (float) height)
+         display: YES
+         animate: NO
+      ];
 
-    [window center];
+      [this->window center];
 
-    this->height = height;
-    this->width = width;
+      this->height = height;
+      this->width = width;
+    }
   }
 
   int Window::openExternal (const SSC::String& s) {
@@ -1019,21 +1108,25 @@ namespace SSC {
   }
 
   void Window::showInspector () {
-    // This is a private method on the webview, so we need to use
-    // the pragma keyword to suppress the access warning.
-    #pragma clang diagnostic ignored "-Wobjc-method-access"
-    [[this->webview _inspector] show];
+    if (this->webview) {
+      // This is a private method on the webview, so we need to use
+      // the pragma keyword to suppress the access warning.
+      #pragma clang diagnostic ignored "-Wobjc-method-access"
+      [[this->webview _inspector] show];
+    }
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
-    CGFloat sRGBComponents[4] = { r / 255.0, g / 255.0, b / 255.0, a };
-    NSColorSpace *colorSpace = [NSColorSpace sRGBColorSpace];
+    if (this->window) {
+      CGFloat sRGBComponents[4] = { r / 255.0, g / 255.0, b / 255.0, a };
+      NSColorSpace *colorSpace = [NSColorSpace sRGBColorSpace];
 
-    [window setBackgroundColor:
-      [NSColor colorWithColorSpace: colorSpace
-                        components: sRGBComponents
-                             count: 4]
-    ];
+      [this->window setBackgroundColor:
+        [NSColor colorWithColorSpace: colorSpace
+                          components: sRGBComponents
+                               count: 4]
+      ];
+    }
   }
 
   void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
@@ -1099,7 +1192,7 @@ namespace SSC {
     mainMenu = [[NSMenu alloc] init];
 
     // Create the main menu bar
-    [NSApp setMainMenu:mainMenu];
+    [NSApp setMainMenu: mainMenu];
     [mainMenu release];
     mainMenu = nil;
 
