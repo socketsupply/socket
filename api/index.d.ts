@@ -5132,7 +5132,7 @@ declare module "socket:stream-relay/packets" {
     /**
      * The version of the protocol.
      */
-    export const VERSION: 3;
+    export const VERSION: 4;
     /**
      * The size in bytes of the prefix magic bytes.
      */
@@ -5295,22 +5295,27 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketIntro extends Packet {
         static type: number;
-        constructor({ clock, message }: {
+        constructor({ clock, hops, clusterId, subclusterId, message }: {
             clock: any;
+            hops: any;
+            clusterId: any;
+            subclusterId: any;
             message: any;
         });
     }
     export class PacketJoin extends Packet {
         static type: number;
-        constructor({ clock, clusterId, message }: {
+        constructor({ clock, hops, clusterId, subclusterId, message }: {
             clock: any;
+            hops: any;
             clusterId: any;
+            subclusterId: any;
             message: any;
         });
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, ttl, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5318,6 +5323,7 @@ declare module "socket:stream-relay/packets" {
             subclusterId: any;
             nextId: any;
             clock: any;
+            hops: any;
             to: any;
             usr1: any;
             usr2: any;
@@ -5364,9 +5370,9 @@ declare module "socket:stream-relay/packets" {
 declare module "socket:stream-relay/encryption" {
     export class Encryption {
         static createSharedKey(seed: any): Promise<any>;
-        static createClusterId(sharedKey: any): Promise<any>;
         static createKeyPair(seed: any): Promise<any>;
         static createId(str?: Buffer): Promise<string>;
+        static createClusterId(value: any): Promise<any>;
         static createSubclusterId(value: any): Promise<any>;
         /**
          * @param {Buffer} b - The message to sign
@@ -5759,7 +5765,9 @@ declare module "socket:stream-relay/index" {
             isListening: boolean;
             ctime: number;
             lastUpdate: number;
+            lastSync: number;
             closing: boolean;
+            clock: number;
             unpublished: {};
             cache: any;
             uptime: number;
@@ -5771,6 +5779,16 @@ declare module "socket:stream-relay/index" {
             rates: Map<any, any>;
             streamBuffer: Map<any, any>;
             controlPackets: Map<any, any>;
+            metrics: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+            };
             peers: any;
             encryption: Encryption;
             config: any;
@@ -5844,20 +5862,20 @@ declare module "socket:stream-relay/index" {
              * @return {Array<RemotePeer>}
              * @ignore
              */
-            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): Array<RemotePeer>;
+            getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
             /**
              * Send an eventually consistent packet to a selection of peers (fanout)
              * @return {undefined}
              * @ignore
              */
-            mcast(packet: any, packetId: any, isTaxed: any, ignorelist?: any[]): undefined;
+            mcast(packet: any, isTaxed: any, ignorelist?: any[]): undefined;
             /**
              * The process of determining this peer's NAT behavior (firewall and dependentness)
              * @return {undefined}
              * @ignore
              */
             requestReflection(): undefined;
-            probeReflectionTimeout: number;
+            probeReflectionTimeout: any;
             /**
              * Ping another peer
              * @return {PacketPing}
@@ -5884,11 +5902,11 @@ declare module "socket:stream-relay/index" {
              * This should be called at least once when an app starts to multicast
              * this peer, and starts querying the network to discover peers.
              * @param {object} keys - Created by `Encryption.createKeyPair()`.
-             * @param {object=} opts - Options
-             * @param {number=MAX_BANDWIDTH} opts.rateLimit - How many requests per second to allow for this subclusterId.
+             * @param {object=} args - Options
+             * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
              * @return {RemotePeer}
              */
-            join(sharedKey: any, opts?: object | undefined): RemotePeer;
+            join(sharedKey: any, args?: object | undefined): RemotePeer;
             /**
              * @param {Packet} T - The constructor to be used to create packets.
              * @param {Any} message - The message to be split and packaged.
@@ -5957,6 +5975,7 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             _onIntro(packet: any, port: any, address: any): undefined;
+            socketPool: any[];
             /**
              * Received an Join Packet
              * @return {undefined}
@@ -5996,7 +6015,7 @@ declare module "socket:stream-relay/index" {
             _onMessage(data: Buffer | Uint8Array, { port, address }: {
                 port: number;
                 address: string;
-            }): undefined;
+            }): Promise<undefined>;
         };
     };
     export default wrap;
