@@ -165,7 +165,7 @@ export const connectionStrategy = (a, b) => {
         case UNRESTRICTED: return STRATEGY_DEFER
         case ADDR_RESTRICTED: return STRATEGY_DIRECT_CONNECT // a is guessing, b is hinting
         case PORT_RESTRICTED: return STRATEGY_DIRECT_CONNECT // both guess, will take too long, most resign to proxying
-        case ENDPOINT_RESTRICTED: return STRATEGY_TRAVERSAL_CONNECT // try connecting
+        case ENDPOINT_RESTRICTED: return STRATEGY_TRAVERSAL_OPEN // try connecting
       }
       break
     }
@@ -175,7 +175,7 @@ export const connectionStrategy = (a, b) => {
       switch (a) {
         case UNRESTRICTED: return STRATEGY_DEFER
         case ADDR_RESTRICTED: return STRATEGY_DIRECT_CONNECT // the 3 successive packets will penetrate
-        case PORT_RESTRICTED: return STRATEGY_TRAVERSAL_OPEN // open up some ports
+        case PORT_RESTRICTED: return STRATEGY_TRAVERSAL_CONNECT // open up some ports
         case ENDPOINT_RESTRICTED: return STRATEGY_PROXY // unroutable
       }
     }
