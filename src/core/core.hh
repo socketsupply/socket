@@ -41,7 +41,7 @@
 #endif
 
 #include "json.hh"
-#include "runtime-preload.hh"
+#include "preload.hh"
 
 #if defined(__APPLE__)
 @interface SSCBluetoothController : NSObject<
