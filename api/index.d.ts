@@ -6069,13 +6069,29 @@ declare module "socket:stream-relay" {
     import def from "socket:stream-relay/index";
 }
 declare module "socket:internal/geolocation" {
-    export function getCurrentPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): Promise<any>;
-    export function watchPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): any;
+    /**
+     * @param {function(GeolocationPosition)} onSuccess
+     * @param {onError(Error)} onError
+     * @param {?({ timeout?: number })} [options]
+     * @return {Promise}
+     */
+    export function getCurrentPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: any, options?: ({
+        timeout?: number;
+    }) | null, ...args: any[]): Promise<any>;
+    /**
+     * @param {function(GeolocationPosition)} onSuccess
+     * @param {function(Error)} onError
+     * @param {?({ timeout?: number })} [options]
+     * @return {Promise}
+     */
+    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: ({
+        timeout?: number;
+    }) | null, ...args: any[]): Promise<any>;
     export function clearWatch(id: any, ...args: any[]): any;
     export namespace platform {
-        let getCurrentPosition: any;
-        let watchPosition: any;
-        let clearWatch: any;
+        let getCurrentPosition: Function;
+        let watchPosition: Function;
+        let clearWatch: Function;
     }
     namespace _default {
         export { getCurrentPosition };
@@ -6102,11 +6118,28 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
+declare module "socket:internal/permissions" {
+    /**
+     * @param {{ name: string }} descriptor
+     * @return {Promise<PermissionStatus>}
+     */
+    export function query(descriptor: {
+        name: string;
+    }, ...args: any[]): Promise<PermissionStatus>;
+    const _default: any;
+    export default _default;
+    class PermissionStatus extends EventTarget {
+        constructor(name: any, subscribe: any);
+        get name(): string;
+        get state(): any;
+        set onchange(arg: any);
+        get onchange(): any;
+        #private;
+    }
+}
 declare module "socket:internal/monkeypatch" {
     export function init(): void;
-    namespace _default {
-        export { init };
-    }
+    const _default: void;
     export default _default;
 }
 declare module "socket:internal/init" {
