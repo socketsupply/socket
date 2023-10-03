@@ -43,7 +43,7 @@ export const kClosed = Symbol.for('fs.FileHandle.closed')
 /**
  * A container for a descriptor tracked in `fds` and opened in the native layer.
  * This class implements the Node.js `FileHandle` interface
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-filehandle}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-filehandle}
  */
 export class FileHandle extends EventEmitter {
   static get DEFAULT_ACCESS_MODE () { return F_OK }
@@ -109,7 +109,7 @@ export class FileHandle extends EventEmitter {
 
   /**
    * Asynchronously open a file.
-   * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
+   * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
    * @param {string | Buffer | URL} path
    * @param {string=} [flags = 'r']
    * @param {string=} [mode = 0o666]

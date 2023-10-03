@@ -17,7 +17,7 @@ declare module "socket:errors" {
     export class AbortError extends Error {
         /**
          * The code given to an `ABORT_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -154,7 +154,7 @@ declare module "socket:errors" {
     export class InvalidAccessError extends Error {
         /**
          * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -173,7 +173,7 @@ declare module "socket:errors" {
     export class NetworkError extends Error {
         /**
          * The code given to an `NETWORK_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -192,7 +192,7 @@ declare module "socket:errors" {
     export class NotAllowedError extends Error {
         /**
          * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -211,7 +211,7 @@ declare module "socket:errors" {
     export class NotFoundError extends Error {
         /**
          * The code given to an `NOT_FOUND_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -230,7 +230,7 @@ declare module "socket:errors" {
     export class NotSupportedError extends Error {
         /**
          * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -278,7 +278,7 @@ declare module "socket:errors" {
     export class TimeoutError extends Error {
         /**
          * The code given to an `TIMEOUT_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -704,14 +704,29 @@ declare module "socket:os" {
      * @returns {string} - The operating system's default directory for temporary files.
      */
     export function tmpdir(): string;
+    /**
+     * Get resource usage.
+     */
     export function rusage(): any;
     /**
      * Returns the system uptime in seconds.
      * @returns {number} - The system uptime in seconds.
      */
     export function uptime(): number;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - The operating system name.
+     */
     export function uname(): string;
+    /**
+     * It's implemented in process.hrtime.bigint()
+     * @ignore
+     */
     export function hrtime(): any;
+    /**
+     * Node.js doesn't have this method.
+     * @ignore
+     */
     export function availableMemory(): any;
     /**
      * @type {string}
@@ -723,7 +738,11 @@ declare module "socket:os" {
     
 }
 declare module "socket:process" {
-    export function nextTick(callback: any): void;
+    /**
+     * Adds callback to the 'nextTick' queue.
+     * @param {Function} callback
+     */
+    export function nextTick(callback: Function): void;
     /**
      * @returns {string} The home directory of the current user.
      */
@@ -741,9 +760,11 @@ declare module "socket:process" {
      * @param {number=} [code=0] - The exit code. Default: 0.
      */
     export function exit(code?: number | undefined): Promise<void>;
-    export function memoryUsage(): {
-        rss: any;
-    };
+    /**
+     * Returns an object describing the memory usage of the Node.js process measured in bytes.
+     * @returns {Object}
+     */
+    export function memoryUsage(): any;
     export namespace memoryUsage {
         function rss(): any;
     }
@@ -1951,7 +1972,7 @@ declare module "socket:fs/handle" {
     /**
      * A container for a descriptor tracked in `fds` and opened in the native layer.
      * This class implements the Node.js `FileHandle` interface
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-filehandle}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-filehandle}
      */
     export class FileHandle extends EventEmitter {
         static get DEFAULT_ACCESS_MODE(): any;
@@ -1973,7 +1994,7 @@ declare module "socket:fs/handle" {
         static access(path: string, mode?: number, options?: object | undefined): boolean;
         /**
          * Asynchronously open a file.
-         * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
+         * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
          * @param {string | Buffer | URL} path
          * @param {string=} [flags = 'r']
          * @param {string=} [mode = 0o666]
@@ -2227,7 +2248,7 @@ declare module "socket:fs/dir" {
      * A containerr for a directory and its entries. This class supports scanning
      * a directory entry by entry with a `read()` method. The `Symbol.asyncIterator`
      * interface is exposed along with an AsyncGenerator `entries()` method.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdir}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdir}
      */
     export class Dir {
         static from(fdOrHandle: any, options: any): exports.Dir;
@@ -2266,7 +2287,7 @@ declare module "socket:fs/dir" {
     }
     /**
      * A container for a directory entry.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdirent}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdirent}
      */
     export class Dirent {
         static get UNKNOWN(): any;
@@ -2332,7 +2353,7 @@ declare module "socket:fs/dir" {
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode}
      * @param {string | Buffer | URL} path
      * @param {string?} [mode]
      * @param {object?} [options]
@@ -2390,7 +2411,7 @@ declare module "socket:fs/promises" {
      */
     export function opendir(path: string | Buffer | URL, options?: object | null): Promise<Dir>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} options
      * @param {string?} [options.encoding = 'utf8']
@@ -2398,7 +2419,7 @@ declare module "socket:fs/promises" {
      */
     export function readdir(path: string | Buffer | URL, options: object | null): Promise<any[]>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
      * @param {string} path
      * @param {object?} [options]
      * @param {(string|null)?} [options.encoding = null]
@@ -2440,7 +2461,7 @@ declare module "socket:fs/promises" {
      */
     export function unlink(path: any): Promise<void>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
      * @param {string|Buffer|Array|DataView|TypedArray} data
      * @param {object?} [options]
@@ -2472,7 +2493,7 @@ declare module "socket:fs/index" {
     /**
      * Asynchronously check access a file for a given mode calling `callback`
      * upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?|function(Error?)?} [mode = F_OK(0)]
      * @param {function(Error?)?} [callback]
@@ -2500,21 +2521,29 @@ declare module "socket:fs/index" {
     export function chown(path: any, uid: any, gid: any, callback: any): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsclosefd-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
      * @param {number} fd
      * @param {function(Error?)?} [callback]
      */
     export function close(fd: number, callback?: ((arg0: Error | null) => any) | null): void;
-    export function copyFile(src: any, dest: any, flags: any, callback: any): void;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @param {function(Error=)=} [callback] - The function to call after completion.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     */
+    export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
+    /**
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {ReadStream}
      */
     export function createReadStream(path: string | Buffer | URL, options?: object | null): ReadStream;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {WriteStream}
@@ -2524,7 +2553,7 @@ declare module "socket:fs/index" {
      * Invokes the callback with the <fs.Stats> for the file descriptor. See
      * the POSIX fstat(2) documentation for more detail.
      *
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback}
      *
      * @param {number} fd - A file descriptor.
      * @param {object?|function?} [options] - An options object.
@@ -2545,7 +2574,7 @@ declare module "socket:fs/index" {
     export function mkdir(path: any, options: any, callback: any): void;
     /**
      * Asynchronously open a file calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?} [flags = 'r']
      * @param {string?} [mode = 0o666]
@@ -2555,7 +2584,7 @@ declare module "socket:fs/index" {
     export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
     /**
      * Asynchronously open a directory calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
      * @param {object?|function(Error?, Dir?)} [options]
      * @param {string?} [options.encoding = 'utf8']
@@ -2565,7 +2594,7 @@ declare module "socket:fs/index" {
     export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
     /**
      * Asynchronously read from an open file descriptor.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
      * @param {number} fd
      * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
      * @param {number} offset - The position in buffer to write the data to.
@@ -2576,7 +2605,7 @@ declare module "socket:fs/index" {
     export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
     /**
      * Asynchronously read all entries in a directory.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL } path
      * @param {object?|function(Error?, object[])} [options]
      * @param {string?} [options.encoding ? 'utf8']
@@ -2628,7 +2657,7 @@ declare module "socket:fs/index" {
      */
     export function unlink(path: any, callback: any): void;
     /**
-     * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
+     * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {string | Buffer | TypedArray | DataView | object } data
      * @param {object?} options
@@ -2676,7 +2705,11 @@ declare module "socket:crypto" {
      * @return {TypedArray}
      */
     export function getRandomValues(buffer: TypedArray, ...args: any[]): TypedArray;
-    export function rand64(): bigint;
+    /**
+     * Generate a random 64-bit number.
+     * @returns {BigInt} - A random 64-bit number.
+     */
+    export function rand64(): BigInt;
     /**
      * Generate `size` random bytes.
      * @param {number} size - The number of bytes to generate. The size must not be larger than 2**31 - 1.
@@ -2694,7 +2727,7 @@ declare module "socket:crypto" {
      */
     /**
      * WebCrypto API
-     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
      */
     export let webcrypto: any;
     /**
@@ -3307,6 +3340,9 @@ declare module "socket:window" {
         #private;
     }
     export default ApplicationWindow;
+    /**
+     * @ignore
+     */
     export const constants: typeof statuses;
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
@@ -3601,7 +3637,7 @@ declare module "socket:net" {
     export class Server extends EventEmitter {
         constructor(options: any, handler: any);
         _connections: number;
-        id: bigint;
+        id: BigInt;
         onconnection(data: any): void;
         listen(port: any, address: any, cb: any): this;
         _address: {
@@ -3635,7 +3671,7 @@ declare module "socket:net" {
         pause(): this;
         resume(): this;
         connect(...args: any[]): this;
-        id: bigint;
+        id: BigInt;
         remotePort: any;
         remoteAddress: any;
         unref(): this;
@@ -4893,6 +4929,9 @@ declare module "socket:test/index" {
             fail: number;
         }) => void): void;
     }
+    /**
+     * @ignore
+     */
     export const GLOBAL_TEST_RUNNER: TestRunner;
     export default test;
     export type testWithProperties = {

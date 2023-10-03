@@ -37,7 +37,7 @@ export function sortDirectoryEntries (a, b) {
  * A containerr for a directory and its entries. This class supports scanning
  * a directory entry by entry with a `read()` method. The `Symbol.asyncIterator`
  * interface is exposed along with an AsyncGenerator `entries()` method.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdir}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdir}
  */
 export class Dir {
   static from (fdOrHandle, options) {
@@ -179,7 +179,7 @@ export class Dir {
 
 /**
  * A container for a directory entry.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdirent}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdirent}
  */
 export class Dirent {
   static get UNKNOWN () { return UV_DIRENT_UNKNOWN }

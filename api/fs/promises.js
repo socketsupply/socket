@@ -78,7 +78,7 @@ async function visit (path, options, callback) {
 
 /**
  * Asynchronously check access a file.
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode}
  * @param {string | Buffer | URL} path
  * @param {string?} [mode]
  * @param {object?} [options]
@@ -251,7 +251,7 @@ export async function opendir (path, options) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} options
  * @param {string?} [options.encoding = 'utf8']
@@ -282,7 +282,7 @@ export async function readdir (path, options) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
  * @param {string} path
  * @param {object?} [options]
  * @param {(string|null)?} [options.encoding = null]
@@ -432,7 +432,7 @@ export async function unlink (path) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
  * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
  * @param {string|Buffer|Array|DataView|TypedArray} data
  * @param {object?} [options]

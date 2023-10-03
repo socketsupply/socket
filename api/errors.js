@@ -20,7 +20,7 @@ export const TIMEOUT_ERR = 23
 export class AbortError extends Error {
   /**
    * The code given to an `ABORT_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return ABORT_ERR }
 
@@ -268,7 +268,7 @@ export class InternalError extends Error {
 export class InvalidAccessError extends Error {
   /**
    * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return INVALID_ACCESS_ERR }
 
@@ -301,7 +301,7 @@ export class InvalidAccessError extends Error {
 export class NetworkError extends Error {
   /**
    * The code given to an `NETWORK_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return NETWORK_ERR }
 
@@ -336,7 +336,7 @@ export class NetworkError extends Error {
 export class NotAllowedError extends Error {
   /**
    * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return NOT_ALLOWED_ERR }
 
@@ -369,7 +369,7 @@ export class NotAllowedError extends Error {
 export class NotFoundError extends Error {
   /**
    * The code given to an `NOT_FOUND_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return NOT_FOUND_ERR }
 
@@ -402,7 +402,7 @@ export class NotFoundError extends Error {
 export class NotSupportedError extends Error {
   /**
    * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return NOT_SUPPORTED_ERR }
 
@@ -494,7 +494,7 @@ export class OperationError extends Error {
 export class TimeoutError extends Error {
   /**
    * The code given to an `TIMEOUT_ERR` `DOMException`
-   * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
   static get code () { return TIMEOUT_ERR }
 
