@@ -1,14 +1,7 @@
-#ifndef RUNTIME_PRELOAD_HH
-#define RUNTIME_PRELOAD_HH
-
-#include "../window/options.hh"
+#include "preload.hh"
 
 namespace SSC {
-  struct PreloadOptions {
-    bool module = false;
-  };
-
-  inline String createPreload (
+  String createPreload (
     const WindowOptions opts,
     const PreloadOptions preloadOptions
   ) {
@@ -127,26 +120,37 @@ namespace SSC {
       "  Object.freeze(globalThis.__args.config);                            \n"
       "  Object.freeze(globalThis.__args.argv);                              \n"
       "  Object.freeze(globalThis.__args.env);                               \n"
+      "                                                                      \n"
+      "  try {                                                               \n"
+      "    const event = '__runtime_init__';                                 \n"
+      "    let onload = null                                                 \n"
+      "    Object.defineProperty(globalThis, 'onload', {                     \n"
+      "      get: () => onload,                                              \n"
+      "      set (value) {                                                   \n"
+      "        const opts = { once: true };                                  \n"
+      "        if (onload) {                                                 \n"
+      "          globalThis.removeEventListener(event, onload, opts);        \n"
+      "          onload = null;                                              \n"
+      "        }                                                             \n"
+      "                                                                      \n"
+      "        if (typeof value === 'function') {                            \n"
+      "          onload = value;                                             \n"
+      "          globalThis.addEventListener(event, onload, opts);           \n"
+      "        }                                                             \n"
+      "      }                                                               \n"
+      "    });                                                               \n"
+      "  } catch {}                                                          \n"
       "})();                                                                 \n"
     );
 
     preload += (
-    #if !defined(__linux__) && !defined(__ANDROID__)
       "document.addEventListener('readystatechange', () => {                 \n"
-      "  if (document.readyState === 'interactive') {                        \n"
-    #endif
+      "  if (/interactive|complete/.test(document.readyState)) {             \n"
       "    import('socket:internal/init').catch(console.error);              \n"
-    #if !defined(__linux__) && !defined(__ANDROID__)
       "  }                                                                   \n"
       "}, { once: true });                                                   \n"
-    #endif
     );
 
     return preload;
   }
-
-  inline SSC::String createPreload (WindowOptions opts) {
-    return createPreload(opts, PreloadOptions {});
-  }
 }
-#endif
