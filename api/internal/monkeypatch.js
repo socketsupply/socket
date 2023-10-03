@@ -2,6 +2,7 @@
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
 import geolocation from './geolocation.js'
+import permissions from './permissions.js'
 
 import ipc from '../ipc.js'
 
@@ -30,7 +31,13 @@ export function init () {
     Response
   })
 
-  Object.assign(globalThis.navigator?.geolocation ?? {}, geolocation)
+  try {
+    globalThis.navigator.geolocation = Object.assign(globalThis.navigator?.geolocation ?? {}, geolocation)
+  } catch {}
+
+  try {
+    globalThis.navigator.permissions = Object.assign(globalThis.navigator?.permissions ?? {}, permissions)
+  } catch {}
 
   applied = true
   // create <title> tag in document if it doesn't exist
@@ -65,6 +72,4 @@ export function init () {
   }
 }
 
-export default {
-  init
-}
+export default init()
