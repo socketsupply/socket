@@ -137,6 +137,14 @@ open class MainActivity : WebViewActivity() {
     this.window.onPageStarted(view, url, bitmap)
   }
 
+  override fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    super.onPageFinished(view, url)
+    this.window.onPageFinished(view, url)
+  }
+
   override fun onSchemeRequest (
     request: android.webkit.WebResourceRequest,
     response:  android.webkit.WebResourceResponse,

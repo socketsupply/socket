@@ -76,6 +76,14 @@ open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeCl
       request.deny()
     }
   }
+
+  override fun onProgressChanged (
+    webview: android.webkit.WebView,
+    progress: Int
+  ) {
+    val activity = this.activity.get() ?: return;
+    activity.window.onProgressChanged(webview, progress)
+  }
 }
 
 /**
@@ -348,6 +356,13 @@ export default module
   ) {
     this.activity.get()?.onPageStarted(view, url, bitmap)
   }
+
+  override fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    this.activity.get()?.onPageFinished(view, url)
+  }
 }
 
 /**
@@ -389,6 +404,13 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     bitmap: android.graphics.Bitmap?
   ) {
     console.log("WebViewActivity is loading: $url")
+  }
+
+  open fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    console.log("WebViewActivity finished loading: $url")
   }
 
   open fun onSchemeRequest (
