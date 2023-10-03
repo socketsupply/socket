@@ -63,14 +63,14 @@ It consists of the built-in modules that are available in the runtime and the `s
 These modules have native bindings to the underlying C++/Objective-C/Kotlin code and libuv to expose the platform
 capabilities to the JavaScript code.
 
-2. [`bin`](https://github.com/socketsupply/socket/tree/master/bin): This directory contains useful scripts for building the project on different platforms, managing versions, generating documentation, publishing npm packages, etc.
+1. [`bin`](https://github.com/socketsupply/socket/tree/master/bin): This directory contains useful scripts for building the project on different platforms, managing versions, generating documentation, publishing npm packages, etc.
 
-3. [`npm`](https://github.com/socketsupply/socket/tree/master/npm): This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
+1. [`npm`](https://github.com/socketsupply/socket/tree/master/npm): This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 You can also find the official Socket Runtime Node.js backend in the
 [`npm/packages/@socketsupply/socket-node`](https://github.com/socketsupply/socket/tree/master/npm/packages/%40socketsupply/socket-node) directory.
 
-4. [`src`](https://github.com/socketsupply/socket/tree/master/src): This directory contains the native code for the Socket Runtime:
+1. [`src`](https://github.com/socketsupply/socket/tree/master/src): This directory contains the native code for the Socket Runtime:
 - [`android`](https://github.com/socketsupply/socket/tree/master/src/android): contains the source code for the Socket Runtime library for Android
 - [`app`](https://github.com/socketsupply/socket/tree/master/src/app): contains the source code related to the Socket Runtime application instance
 - [`cli`](https://github.com/socketsupply/socket/tree/master/src/cli): contains the source code for the Socket Runtime CLI
@@ -82,7 +82,7 @@ You can also find the official Socket Runtime Node.js backend in the
 - [`process`](https://github.com/socketsupply/socket/tree/master/src/process): contains the source code for the process management
 - [`window`](https://github.com/socketsupply/socket/tree/master/src/window): contains the source code for the window management on desktop platforms
 
-5. [`test`](https://github.com/socketsupply/socket/tree/master/src/test): This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.
+1. [`test`](https://github.com/socketsupply/socket/tree/master/src/test): This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.
 
 
 ## Other repositories
