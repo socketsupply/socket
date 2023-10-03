@@ -1045,6 +1045,9 @@ function printLine (line) {
   console.log(line)
 }
 
+/**
+ * @ignore
+ */
 export const GLOBAL_TEST_RUNNER = new TestRunner()
 
 initContext(GLOBAL_TEST_RUNNER)

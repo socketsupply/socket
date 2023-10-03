@@ -318,6 +318,7 @@ External docs: https://nodejs.org/api/buffer.html
 
 ## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L27)
 
+External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto
 WebCrypto API
 
 ## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L56)
@@ -337,24 +338,27 @@ Generate cryptographically strong random values into the `buffer`
 | :---         | :--- | :---        |
 | Not specified | TypedArray |  |
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L90)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L94)
 
-This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
+Generate a random 64-bit number.
 
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| A random 64-bit number. | BigInt |  |
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L102)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L103)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L107)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L108)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L112)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L116)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L120)
 
 Generate `size` random bytes.
 
@@ -366,7 +370,7 @@ Generate `size` random bytes.
 | :---         | :--- | :---        |
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L143)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L147)
 
 
 
@@ -731,7 +735,7 @@ External docs: https://nodejs.org/api/events.html
 
 ## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously check access a file for a given mode calling `callback`
  upon success or error.
 
@@ -757,6 +761,7 @@ Asynchronously changes the permissions of a file.
 
 ## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L166)
 
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback
 Asynchronously close a file descriptor calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
@@ -764,14 +769,21 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | fd | number |  | false |  |
 | callback | function(Error?)? |  | false |  |
 
-## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L182)
+## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L190)
 
-This is a `FunctionDeclaration` named `copyFile` in `api/fs/index.js`, it's exported but undocumented.
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback
+Asynchronously copies `src` to `dest` calling `callback` upon success or error.
 
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false | The source file path. |
+| dest | string |  | false | The destination file path. |
+| flags | number |  | false | Modifiers for copy operation. |
+| callback | function(Error=) |  | true | The function to call after completion. |
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L210)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L218)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
 
 | Argument | Type | Default | Optional | Description |
@@ -783,9 +795,9 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | ReadStream |  |
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L250)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L258)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
 
 | Argument | Type | Default | Optional | Description |
@@ -797,9 +809,9 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | WriteStream |  |
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L294)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L302)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback
 Invokes the callback with the <fs.Stats> for the file descriptor. See
  the POSIX fstat(2) documentation for more detail.
 
@@ -811,8 +823,9 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | options | object? \| function? |  | false | An options object. |
 | callback | function? |  | false | The function to call after completion. |
 
-## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L399)
+## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L407)
 
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously open a file calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
@@ -823,8 +836,9 @@ Asynchronously open a file calling `callback` upon success or error.
 | options | object? \| function? |  | false |  |
 | callback | function(Error?, number?)? |  | false |  |
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L452)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L460)
 
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously open a directory calling `callback` upon success or error.
 
 | Argument | Type | Default | Optional | Description |
@@ -835,8 +849,9 @@ Asynchronously open a directory calling `callback` upon success or error.
 | options.withFileTypes | boolean? | false | false |  |
 | callback | function(Error?, Dir?)? |  | false |  |
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L478)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L486)
 
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback
 Asynchronously read from an open file descriptor.
 
 | Argument | Type | Default | Optional | Description |
@@ -848,8 +863,9 @@ Asynchronously read from an open file descriptor.
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
 | callback | function(Error?, number?, Buffer?) |  | false |  |
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L512)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L520)
 
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously read all entries in a directory.
 
 | Argument | Type | Default | Optional | Description |
@@ -860,7 +876,7 @@ Asynchronously read all entries in a directory.
 | options.withFileTypes ? false | boolean? |  | false |  |
 | callback | function(Error?, object) |  | false |  |
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L563)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L571)
 
 
 
@@ -873,7 +889,7 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | false |  |
 | callback | function(Error?, Buffer?) |  | false |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L682)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L690)
 
 
 
@@ -886,7 +902,7 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | false |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L778)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L786)
 
 
 
@@ -928,7 +944,7 @@ Asynchronously read all entries in a directory.
 
 ## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L86)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode
 Asynchronously check access a file.
 
 | Argument | Type | Default | Optional | Description |
@@ -999,7 +1015,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
 ## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L260)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options
 
 
 | Argument | Type | Default | Optional | Description |
@@ -1011,7 +1027,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 
 ## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L293)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
 
 | Argument | Type | Default | Optional | Description |
@@ -1043,7 +1059,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
 ## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L446)
 
-External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options
+External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
 
 | Argument | Type | Default | Optional | Description |
@@ -1213,12 +1229,11 @@ Returns the operating system name.
 
  The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
 
-## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L302)
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L306)
 
-This is a `FunctionDeclaration` named `rusage` in `api/os.js`, it's exported but undocumented.
+Get resource usage.
 
-
-## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L312)
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L316)
 
 Returns the system uptime in seconds.
 
@@ -1226,20 +1241,13 @@ Returns the system uptime in seconds.
 | :---         | :--- | :---        |
 | Not specified | number | The system uptime in seconds. |
 
-## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L318)
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L327)
 
-This is a `FunctionDeclaration` named `uname` in `api/os.js`, it's exported but undocumented.
+Returns the operating system name.
 
-
-## [`hrtime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L328)
-
-This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but undocumented.
-
-
-## [`availableMemory()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L337)
-
-This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
-
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string | The operating system name. |
 
 
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L9)
@@ -1475,12 +1483,15 @@ Converts this `Path` instance to a string.
  import process from 'socket:process'
  ```
 
-## [`nextTick()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L38)
+## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L42)
 
-This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's exported but undocumented.
+Adds callback to the 'nextTick' queue.
 
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| callback | Function |  | false |  |
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L67)
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L71)
 
 
 
@@ -1488,7 +1499,7 @@ This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's expor
 | :---         | :--- | :---        |
 | Not specified | string | The home directory of the current user. |
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L76)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L80)
 
 Computed high resolution time as a `BigInt`.
 
@@ -1500,7 +1511,7 @@ Computed high resolution time as a `BigInt`.
 | :---         | :--- | :---        |
 | Not specified | bigint |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L100)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L104)
 
 
 
@@ -1508,10 +1519,13 @@ Computed high resolution time as a `BigInt`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | code | number | 0 | true | The exit code. Default: 0. |
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L108)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L116)
 
-This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's exported but undocumented.
+Returns an object describing the memory usage of the Node.js process measured in bytes.
 
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Object |  |
 
 
 # [Test](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L17)
@@ -2035,12 +2049,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | ) | (result: { total: number, success: number, fail: number  | > void} callback | false |  |
 
-## [GLOBAL_TEST_RUNNER](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1048)
-
-This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js`, it's exported but undocumented.
-
-
-## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1057)
+## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1060)
 
 
 
@@ -2049,7 +2058,7 @@ This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js
 | name | string |  | false |  |
 | fn | TestFn |  | false |  |
 
-## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1067)
+## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1070)
 
 
 
@@ -2058,7 +2067,7 @@ This is a `VariableDeclaration` named `GLOBAL_TEST_RUNNER` in `api/test/index.js
 | _name | string |  | false |  |
 | _fn | TestFn |  | false |  |
 
-## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1073)
+## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1076)
 
 
 
@@ -2323,9 +2332,4 @@ Removes a listener from the window. An alias for `removeListener`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
-
-## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L409)
-
-This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
-
 

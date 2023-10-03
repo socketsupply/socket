@@ -35,6 +35,10 @@ if (!isNode) {
 
 export default process
 
+/**
+ * Adds callback to the 'nextTick' queue.
+ * @param {Function} callback
+ */
 export function nextTick (callback) {
   if (typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
     process.nextTick(callback)
@@ -105,6 +109,10 @@ export async function exit (code) {
   }
 }
 
+/**
+ * Returns an object describing the memory usage of the Node.js process measured in bytes.
+ * @returns {Object}
+ */
 export function memoryUsage () {
   const rss = memoryUsage.rss()
   return {

@@ -406,4 +406,7 @@ export class ApplicationWindow {
 }
 
 export default ApplicationWindow
+/**
+ * @ignore
+ */
 export const constants = statuses
