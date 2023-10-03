@@ -84,6 +84,33 @@ You can also find the official Socket Runtime Node.js backend in the
 
 1. [`test`](https://github.com/socketsupply/socket/tree/master/src/test): This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.
 
+## Building Socket Runtime applications
+
+Once you have built `ssc`, you can use it to build Socket Runtime applications.
+`ssc -h` command prints the help message for `ssc` and lists all the available commands.
+
+Check out the [Guides](https://socketsupply.co/guides/) for more information on how to build Socket Runtime applications.
+
+## Adding tests
+
+We run Socket Runtime E2E tests from the actual Socket Runtime application located in the [`test`](https://github.com/socketsupply/socket/tree/master/src/test) directory. This allows us to test the Socket Runtime API from the perspective of the Socket Runtime application developer. The tests are written in JavaScript and use the built-in `socket:test` module to test the Socket Runtime API. `socket:test` is a port of the [`tapzero`](https://github.com/socketsupply/tapzero) testing framework.
+
+To run the tests, use the following command:
+
+```bash
+npm run test
+```
+You can also run specific tests against specific module by using the `--test` flag:
+
+```bash
+ssc run --test=application.js ./test
+```
+Be sure to build `ssc` before running the tests if you have made any changes to the Socket Runtime source code.
+You can also rebuild and run `ssc` with a single command:
+
+```bash
+ssc build -r --test=application.js ./test
+```
 
 ## Other repositories
 - [Socket-Examples](https://github.com/socketsupply/socket-examples): This repository contains example projects powered by Socket which helps you build cross-platform apps for desktop and mobile.
