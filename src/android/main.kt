@@ -19,6 +19,11 @@ object console {
   }
 }
 
+class PermissionRequest (callback: (Boolean) -> Unit) {
+  val id: Int = (0..16384).random().toInt()
+  val callback = callback
+}
+
 /**
  * An entry point for the main activity specified in
  * `AndroidManifest.xml` and which can be overloaded in `socket.ini` for
@@ -32,6 +37,8 @@ open class MainActivity : WebViewActivity() {
   open lateinit var runtime: Runtime
   open lateinit var window: Window
 
+  val permissionRequests = mutableListOf<PermissionRequest>()
+
   companion object {
     init {
       System.loadLibrary("socket-runtime")
@@ -41,6 +48,29 @@ open class MainActivity : WebViewActivity() {
   fun getRootDirectory (): String {
     return getExternalFilesDir(null)?.absolutePath
       ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files"
+  }
+
+  fun checkPermission (permission: String): Boolean {
+    val status = androidx.core.content.ContextCompat.checkSelfPermission(
+      this.applicationContext,
+      permission
+    )
+
+    if (status == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+      return true
+    }
+
+    return false
+  }
+
+  fun requestPermissions (permissions: Array<String>, callback: (Boolean) -> Unit) {
+    val request = PermissionRequest(callback)
+    this.permissionRequests.add(request)
+    androidx.core.app.ActivityCompat.requestPermissions(
+      this,
+      permissions,
+      request.id
+    )
   }
 
   override fun onCreate (state: android.os.Bundle?) {
@@ -113,5 +143,19 @@ open class MainActivity : WebViewActivity() {
     stream: java.io.PipedOutputStream
   ): Boolean {
     return this.window.onSchemeRequest(request, response, stream)
+  }
+
+  override fun onRequestPermissionsResult (
+    requestCode: Int,
+    permissions: Array<String>,
+    grantResults: IntArray
+  ) {
+    for (request in this.permissionRequests) {
+      if (request.id == requestCode) {
+        this.permissionRequests.remove(request)
+        request.callback(grantResults.all { r -> r == android.content.pm.PackageManager.PERMISSION_GRANTED })
+        break
+      }
+    }
   }
 }
