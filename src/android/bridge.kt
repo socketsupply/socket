@@ -151,7 +151,10 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     bytes: ByteArray? = null,
     callback: RouteCallback
   ): Boolean {
+    val activity = this.runtime.get()?.activity?.get() ?: return false
+    val runtime = activity.runtime
     val message = Message(value)
+
     message.bytes = bytes
 
     if (buffers.contains(message.seq)) {
@@ -160,6 +163,122 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     }
 
     when (message.command) {
+      "permissions.request" -> {
+        val name = message.get("name") ?: return false
+        val permissions = mutableListOf<String>()
+
+        when (name) {
+          "geolocation" -> {
+            if (
+              activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
+              activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
+            ) {
+              callback(Result(0, message.seq, message.command, "{}"))
+              return true
+            }
+
+            permissions.add("android.permission.ACCESS_COARSE_LOCATION")
+            permissions.add("android.permission.ACCESS_FINE_LOCATION")
+          }
+
+          "push", "notifications" -> {
+            if (activity.checkPermission("android.permission.POST_NOTIFICATIONS")) {
+              callback(Result(0, message.seq, message.command, "{}"))
+              return true
+            }
+
+            permissions.add("android.permission.POST_NOTIFICATIONS")
+          }
+
+          else -> {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "Unknown permission requested: '$name'"
+              }
+            }"""))
+            return true
+          }
+        }
+
+        activity.requestPermissions(permissions.toTypedArray(), fun (granted: Boolean) {
+          if (granted) {
+            callback(Result(0, message.seq, message.command, "{}"))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permission request for '$name'"
+              }
+            }"""))
+          }
+        })
+
+        return true
+      }
+
+      "permissions.query" -> {
+        val name = message.get("name") ?: return false
+        if (name == "geolocation") {
+          if (!runtime.isPermissionAllowed("geolocation")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions to access the device's location"
+              }
+            }"""))
+          } else if (
+            activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
+            activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
+          ) {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "granted"
+              }
+            }"""))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "prompt"
+              }
+            }"""))
+          }
+        }
+
+        if (name == "notifications" || name == "push") {
+          if (!runtime.isPermissionAllowed("notifications")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions to show notifications"
+              }
+            }"""))
+          } else if (
+            activity.checkPermission("android.permission.POST_NOTIFICATIONS")
+          ) {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "granted"
+              }
+            }"""))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "prompt"
+              }
+            }"""))
+          }
+        }
+
+        if (name == "persistent-storage" || name == "storage-access") {
+          if (!runtime.isPermissionAllowed("data_access")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions for ${name.replace('-', ' ')}"
+              }
+            }"""))
+          }
+        }
+
+        return true
+      }
+
       "buffer.map" -> {
         if (bytes != null) {
           buffers[message.seq] = bytes
@@ -209,6 +328,11 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       if (message.has("dest")) {
         var dest = message.get("dest")
         message.set("dest", root.resolve(java.nio.file.Paths.get(dest)).toString())
+      }
+
+      if (message.has("dst")) {
+        var dest = message.get("dst")
+        message.set("dst", root.resolve(java.nio.file.Paths.get(dest)).toString())
       }
     }
 
