@@ -50,6 +50,20 @@ Additional flags on Windows:
 - `-verbose` - prints useful information about the build process. Please use this flag if you are reporting a bug.
 - `-yesdeps` - automatically installs the dependencies for Socket Runtime.
 
+If you make any changes to the Socket Runtime JavaScript API source code, you should run `npm run gen` after running `./bin/install.sh` or `.\bin\install.ps1` to update the TypeScript type definitions for Socket Runtime and the API documentation.
+
+### `./bin/publish-npm-modules.sh` (macOS and Linux)
+
+This command runs `./bin/install.sh`, builds `ssc` npm packages and does [`npm link`](https://docs.npmjs.com/cli/v10/commands/npm-link) for the `@socketsupply/socket` package and platform-specific packages  (if `--link` flag is provided, see description below).
+This allows you to use the latest version of Socket Runtime in your Socket Runtime applications without publishing the npm packages to npmjs.com registry. Just run `npm link @socketsupply/socket` in your Socket Runtime application directory and you are good to go and use your local version of Socket Runtime.
+
+Useful flags:
+- `--only-platforms` - builds only the platform-specific npm packages.
+- `--only-top-level` - builds only the top-level npm package.
+- `--link` - runs `npm link` for the `@socketsupply/socket` package and platform-specific packages.
+
+You don't have to run `npm run gen` after running `./bin/publish-npm-modules.sh` because it runs `npm run gen` automatically.
+
 ### `./bin/clean.sh` (macOS and Linux)
 
 Sometimes you need to clean the build artifacts and start from scratch. This command removes the build artifacts for `ssc` and the Socket Runtime libraries.
