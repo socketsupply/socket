@@ -25,13 +25,60 @@ fun isAssetUri (uri: android.net.Uri): Boolean {
 }
 
 /**
- * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
  */
 open class WebView (context: android.content.Context) : android.webkit.WebView(context)
 
 /**
- * @TODO
+ * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
+ */
+open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeClient() {
+  protected val activity = WeakReference(activity)
+
+  override fun onGeolocationPermissionsShowPrompt (
+    origin: String,
+    callback: android.webkit.GeolocationPermissions.Callback
+  ) {
+    val runtime = this.activity.get()?.runtime ?: return callback(origin, false, false)
+    val allowed = runtime.isPermissionAllowed("geolocation")
+
+    callback(origin, allowed, allowed)
+  }
+
+  override fun onPermissionRequest (request: android.webkit.PermissionRequest) {
+    val runtime = this.activity.get()?.runtime ?: return request.deny()
+    val resources = request.resources
+    var grants = mutableListOf<String>()
+    for (resource in resources) {
+      when (resource) {
+        android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+          if (runtime.isPermissionAllowed("microphone") || runtime.isPermissionAllowed("user_media")) {
+            grants.add(android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+          }
+        }
+
+        android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+          if (runtime.isPermissionAllowed("camera") || runtime.isPermissionAllowed("user_media")) {
+            grants.add(android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+          }
+        }
+
+        // auto grant EME
+        android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+          grants.add(android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)
+        }
+      }
+    }
+
+    if (grants.size > 0) {
+      request.grant(grants.toTypedArray())
+    } else {
+      request.deny()
+    }
+  }
+}
+
+/**
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
