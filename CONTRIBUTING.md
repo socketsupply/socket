@@ -78,24 +78,21 @@ These modules have native bindings to the underlying C++/Objective-C/Kotlin code
 capabilities to the JavaScript code.
 
 1. [`bin`](https://github.com/socketsupply/socket/tree/master/bin): This directory contains useful scripts for building the project on different platforms, managing versions, generating documentation, publishing npm packages, etc.
-
 1. [`npm`](https://github.com/socketsupply/socket/tree/master/npm): This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 This directory consists of the JavaScrip wrappers for the native code, build scripts and package directories.
 You can also find the official Socket Runtime Node.js backend in the
 [`npm/packages/@socketsupply/socket-node`](https://github.com/socketsupply/socket/tree/master/npm/packages/%40socketsupply/socket-node) directory.
-
 1. [`src`](https://github.com/socketsupply/socket/tree/master/src): This directory contains the native code for the Socket Runtime:
-- [`android`](https://github.com/socketsupply/socket/tree/master/src/android): contains the source code for the Socket Runtime library for Android
-- [`app`](https://github.com/socketsupply/socket/tree/master/src/app): contains the source code related to the Socket Runtime application instance
-- [`cli`](https://github.com/socketsupply/socket/tree/master/src/cli): contains the source code for the Socket Runtime CLI
-- [`core`](https://github.com/socketsupply/socket/tree/master/src/core): contains the source code for the Socket Runtime core, such as Bluetooth support, File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
-- [`desktop`](https://github.com/socketsupply/socket/tree/master/src/desktop): contains the source code for the Socket Runtime library for desktop platforms
-- [`extension`](https://github.com/socketsupply/socket/tree/master/src/extension): contains the source code for the Socket Runtime extensions ABI
-- [`ios`](https://github.com/socketsupply/socket/tree/master/src/ios): contains the source code for the Socket Runtime library for iOS
-- [`ipc`](https://github.com/socketsupply/socket/tree/master/src/ipc): contains the source code for the Socket Runtime IPC library
-- [`process`](https://github.com/socketsupply/socket/tree/master/src/process): contains the source code for the process management
-- [`window`](https://github.com/socketsupply/socket/tree/master/src/window): contains the source code for the window management on desktop platforms
-
+   - [`android`](https://github.com/socketsupply/socket/tree/master/src/android): contains the source code for the Socket Runtime library for Android
+   - [`app`](https://github.com/socketsupply/socket/tree/master/src/app): contains the source code related to the Socket Runtime application instance
+   - [`cli`](https://github.com/socketsupply/socket/tree/master/src/cli): contains the source code for the Socket Runtime CLI
+   - [`core`](https://github.com/socketsupply/socket/tree/master/src/core): contains the source code for the Socket Runtime core, such as Bluetooth support, File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
+   - [`desktop`](https://github.com/socketsupply/socket/tree/master/src/desktop): contains the source code for the Socket Runtime library for desktop platforms
+   - [`extension`](https://github.com/socketsupply/socket/tree/master/src/extension): contains the source code for the Socket Runtime extensions ABI
+   - [`ios`](https://github.com/socketsupply/socket/tree/master/src/ios): contains the source code for the Socket Runtime library for iOS
+   - [`ipc`](https://github.com/socketsupply/socket/tree/master/src/ipc): contains the source code for the Socket Runtime IPC library
+   - [`process`](https://github.com/socketsupply/socket/tree/master/src/process): contains the source code for the process management
+   - [`window`](https://github.com/socketsupply/socket/tree/master/src/window): contains the source code for the window management on desktop platforms
 1. [`test`](https://github.com/socketsupply/socket/tree/master/src/test): This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.
 
 ## Building Socket Runtime applications
