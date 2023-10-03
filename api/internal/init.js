@@ -12,16 +12,15 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
+import './monkeypatch.js'
+
 import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { Event, CustomEvent, ErrorEvent } from '../events.js'
-import monkeypatch from './monkeypatch.js'
 import location from '../location.js'
 import { URL } from '../url.js'
 
 const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
-
-monkeypatch.init()
 
 // only patch a webview or worker context
 if ((globalThis.window || globalThis.self) === globalThis) {
