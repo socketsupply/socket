@@ -1483,6 +1483,11 @@ root = "/"
 ; default value: ""
 ; default_index  = ""
 
+; Enable watch mode
+; default value: false
+watch = false
+
+
 [permissions]
 ; Allow/Disallow fullscreen in application
 ; default value: true
@@ -1527,10 +1532,6 @@ root = "/"
 ; Allow/Disallow AirPlay access in application (macOS/iOS) only
 ; default value: true
 ; allow_airplay = true
-
-; Enable watch mode
-; default value: false
-watch = false
 
 
 [debug]
