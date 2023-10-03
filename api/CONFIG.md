@@ -57,6 +57,7 @@ Key | Default Value | Description
 :--- | :--- | :---
 root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
+watch | false |  Enable watch mode
 
 # Section `permissions`
 
@@ -73,7 +74,6 @@ allow_clipboard | true |  Allow/Disallow clipboard in application
 allow_bluetooth | true |  Allow/Disallow bluetooth in application
 allow_data_access | true |  Allow/Disallow data access in application
 allow_airplay | true |  Allow/Disallow AirPlay access in application (macOS/iOS) only
-watch | false |  Enable watch mode
 
 # Section `debug`
 
