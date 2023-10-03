@@ -243,14 +243,15 @@ export class Hooks extends EventTarget {
     // prior to hook initialization
     if (isRuntimeInitialized) {
       dispatchLoadEvent(this)
-      dispatchReadyEvent(this)
       dispatchInitEvent(this)
+      dispatchReadyEvent(this)
       return
     }
 
     addEventListenerOnce(global, RUNTIME_INIT_EVENT_NAME, () => {
       isRuntimeInitialized = true
       dispatchInitEvent(this)
+      dispatchReadyEvent(this)
     })
 
     if (!isWorkerContext && readyState !== 'complete') {
@@ -259,7 +260,6 @@ export class Hooks extends EventTarget {
 
     isGlobalLoaded = true
     dispatchLoadEvent(this)
-    dispatchReadyEvent(this)
   }
 
   /**
