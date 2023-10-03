@@ -131,11 +131,15 @@ namespace SSC {
     );
 
     preload += (
+    #if !defined(__linux__) && !defined(__ANDROID__)
       "document.addEventListener('readystatechange', () => {                 \n"
       "  if (document.readyState === 'interactive') {                        \n"
+    #endif
       "    import('socket:internal/init').catch(console.error);              \n"
+    #if !defined(__linux__) && !defined(__ANDROID__)
       "  }                                                                   \n"
       "}, { once: true });                                                   \n"
+    #endif
     );
 
     return preload;
