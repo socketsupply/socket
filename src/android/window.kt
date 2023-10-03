@@ -63,7 +63,10 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
           activity.client.putRootDirectory(rootDirectory)
+
+          // clients
           webViewClient = activity.client
+          webChromeClient = WebChromeClient(activity)
 
           addJavascriptInterface(userMessageHandler, "external")
           loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
