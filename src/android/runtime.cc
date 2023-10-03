@@ -14,7 +14,7 @@ namespace SSC::android {
 
   bool Runtime::isPermissionAllowed (const String& name) const {
     static const auto config = SSC::getUserConfig();
-    const auto permission = String("permissions_allow_") + name;
+    const auto permission = String("permissions_allow_") + replace(name, "-", "_");
 
     // `true` by default
     if (!config.contains(permission)) {
