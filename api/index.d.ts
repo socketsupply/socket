@@ -6072,21 +6072,19 @@ declare module "socket:internal/geolocation" {
     /**
      * @param {function(GeolocationPosition)} onSuccess
      * @param {onError(Error)} onError
-     * @param {?({ timeout?: number })} [options]
+     * @param {object=} options
+     * @param {number=} options.timeout
      * @return {Promise}
      */
-    export function getCurrentPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: any, options?: ({
-        timeout?: number;
-    }) | null, ...args: any[]): Promise<any>;
+    export function getCurrentPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: any, options?: object | undefined, ...args: any[]): Promise<any>;
     /**
      * @param {function(GeolocationPosition)} onSuccess
      * @param {function(Error)} onError
-     * @param {?({ timeout?: number })} [options]
+     * @param {object=} options
+     * @param {number=} options.timeout
      * @return {Promise}
      */
-    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: ({
-        timeout?: number;
-    }) | null, ...args: any[]): Promise<any>;
+    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: object | undefined, ...args: any[]): Promise<any>;
     export function clearWatch(id: any, ...args: any[]): any;
     export namespace platform {
         let getCurrentPosition: Function;

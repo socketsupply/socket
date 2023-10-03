@@ -127,7 +127,8 @@ export const platform = {
 /**
  * @param {function(GeolocationPosition)} onSuccess
  * @param {onError(Error)} onError
- * @param {?({ timeout?: number })} [options]
+ * @param {object=} options
+ * @param {number=} options.timeout
  * @return {Promise}
  */
 export async function getCurrentPosition (
@@ -212,7 +213,8 @@ export async function getCurrentPosition (
 /**
  * @param {function(GeolocationPosition)} onSuccess
  * @param {function(Error)} onError
- * @param {?({ timeout?: number })} [options]
+ * @param {object=} options
+ * @param {number=} options.timeout
  * @return {Promise}
  */
 export function watchPosition (
