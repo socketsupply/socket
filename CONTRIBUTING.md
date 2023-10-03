@@ -20,6 +20,40 @@ cd socket
 .\bin\install.ps1
 ```
 
+## Building `ssc` and other useful commands
+
+`ssc` (short for Socket Supply Compiler) is a command-line tool that is used to build Socket Runtime applications.
+It is a wrapper around the native build tools for each platform and provides a unified interface for building Socket Runtime applications. You don't have to use Xcode, MSAndroid Studio, or Visual Studio to build Socket Runtime applications, but you can if you want to.
+
+### `./bin/install.sh` (macOS and Linux) or `.\bin\install.ps1` (Windows)
+
+This command installs the dependencies for Socket Runtime and builds `ssc` for your platform.
+- `ssc` on macOS can cross-compile for iOS, iOS Simulator, Android, and Android Emulator.
+- `ssc` on Linux can cross-compile for Android and Android Emulator.
+- `ssc` on Windows can cross-compile for Android and Android Emulator.
+
+Additional flags on macOS and Linux:
+- `VERBOSE=1` - prints useful information about the build process. Please use this flag if you are reporting a bug.
+- `DEBUG=1` - builds `ssc` in debug mode. This is useful if you are developing `ssc` and want to debug it.
+- `NO_ANDROID=1` - skips the `ssc`'s Android support. This is useful if you are not developing for Android and don't want to install the Android SDK.
+- `NO_IOS=1` - skips the `ssc`'s iOS support. This is useful if you are not developing for iOS and don't want to install the iOS SDK. It's only useful on macOS.
+- `CPU_CORES={number}` - sets the number of CPU cores to use for the build. This is useful if you want to speed up the build process. The default value is the number of CPU cores on your machine.
+<!--
+TODO(@chicoxyzzy):
+- `SOCKET_HOME={path}` - sets the path to the Socket Runtime build directory. This is useful if you want to build Socket Runtime in a different directory than the default one.
+
+what else?
+-->
+
+Additional flags on Windows:
+- `-debug` - builds `ssc` in debug mode. This is useful if you are developing `ssc` and want to debug it.
+- `-verbose` - prints useful information about the build process. Please use this flag if you are reporting a bug.
+- `-yesdeps` - automatically installs the dependencies for Socket Runtime.
+
+### `./bin/clean.sh` (macOS and Linux)
+
+Sometimes you need to clean the build artifacts and start from scratch. This command removes the build artifacts for `ssc` and the Socket Runtime libraries.
+
 ## Project directory structure
 
 The project is structured as follows:
