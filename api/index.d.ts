@@ -4346,6 +4346,12 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onOffline(callback: Function): Function;
+        /**
+         * Calls callback when runtime user preferred language has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLanguageChange(callback: Function): Function;
         #private;
     }
     const _default: Hooks;
