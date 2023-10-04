@@ -10,8 +10,6 @@ class PermissionStatus extends EventTarget {
   #state = null
   #name = null
 
-  // eslint-disable-next-line
-  [Symbol.toStringTag] = 'PermissionStatus'
 
   constructor (name, subscribe) {
     super()
@@ -22,6 +20,10 @@ class PermissionStatus extends EventTarget {
         this.dispatchEvent(new Event('change'))
       }
     })
+  }
+
+  get [Symbol.toStringTag] () {
+    return 'PermissionStatus'
   }
 
   get name () {
