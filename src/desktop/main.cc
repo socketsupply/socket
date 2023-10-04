@@ -313,27 +313,48 @@ MAIN {
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   auto onStdOut = [&](SSC::String const &out) {
+    IPC::Message message(out);
+
+    if (message.index > 0 && message.name.size() == 0) {
+      // @TODO: print warning
+      return;
+    }
+
+    if (message.index > SSC_MAX_WINDOWS) {
+      // @TODO: print warning
+      return;
+    }
+
+    auto value = message.get("value");
+
+    if (message.name == "stdout") {
+#if defined(__APPLE__)
+      dispatch_async(dispatch_get_main_queue(), ^{
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
+      });
+#endif
+      std::cout << value;
+      return;
+    }
+
+    if (message.name == "stderr") {
+#if defined(__APPLE__)
+      dispatch_async(dispatch_get_main_queue(), ^{
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
+      });
+#endif
+      std::cerr << "\033[31m" + value + "\033[0m";
+      return;
+    }
+
     //
     // ## Dispatch
     // Messages from the backend process may be sent to the render process. If they
     // are parsable commands, try to do something with them, otherwise they are
     // just stdout and we can write the data to the pipe.
     //
-    app.dispatch([&, out] {
-      IPC::Message message(out, true);
-
-      auto value = message.get("value");
+    app.dispatch([&, message, value] {
       auto seq = message.get("seq");
-
-      if (message.index > 0 && message.name.size() == 0) {
-        // @TODO: print warning
-        return;
-      }
-
-      if (message.index > SSC_MAX_WINDOWS) {
-        // @TODO: print warning
-        return;
-      }
 
       if (message.name == "send") {
         SSC::String script = getEmitToRenderProcessJavaScript(
@@ -395,26 +416,6 @@ MAIN {
             window->resolvePromise(message.seq, OK_STATE, value);
           }
         }
-        return;
-      }
-
-      if (message.name == "stdout") {
-  #if defined(__APPLE__)
-        dispatch_async(dispatch_get_main_queue(), ^{
-          os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
-        });
-  #endif
-        std::cout << value;
-        return;
-      }
-
-      if (message.name == "stderr") {
-  #if defined(__APPLE__)
-        dispatch_async(dispatch_get_main_queue(), ^{
-          os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
-        });
-  #endif
-        std::cerr << "\033[31m" + value + "\033[0m";
         return;
       }
     });
