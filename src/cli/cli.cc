@@ -2194,6 +2194,7 @@ int main (const int argc, const char* argv[]) {
     auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
     auto projectName = optionsWithValue["--name"];
 
+    // create socket.ini
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
     } else {
@@ -2203,7 +2204,9 @@ int main (const int argc, const char* argv[]) {
       writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }
+
     if (!configOnly) {
+      // create src/index.html
       if (isCurrentPathEmpty) {
         fs::create_directories(targetPath / "src");
         writeFile(targetPath / "src" / "index.html", gHelloWorld);
@@ -2211,11 +2214,19 @@ int main (const int argc, const char* argv[]) {
       } else {
         log("Current directory was not empty. Assuming index.html is already in place.");
       }
-      if (fs::exists(targetPath / ".gitignore")) {
-        log(".gitignore already exists in " + targetPath.string());
-      } else {
-        writeFile(targetPath / ".gitignore", gDefaultGitignore);
+      // create .gitignore
+      if (!fs::exists(targetPath / ".gitignore")) {
+        SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
         log(".gitignore created in " + targetPath.string());
+      } else {
+        log(".gitignore already exists in " + targetPath.string());
+      }
+      // copy icon.png
+      if (!fs::exists(targetPath / "src" / "icon.png")) {
+        fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
+        log("icon.png created in " + targetPath.string() + "/src");
+      } else {
+        log("icon.png already exists in " + targetPath.string() + "/src");
       }
     }
     exit(0);

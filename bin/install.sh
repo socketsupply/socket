@@ -583,6 +583,9 @@ function _install {
     mkdir -p "$SOCKET_HOME/api"
     cp -frp "$root"/api/* "$SOCKET_HOME/api"
 
+    mkdir -p "$SOCKET_HOME/assets"
+    cp -rf "$root"/assets/* "$SOCKET_HOME/assets"
+
     # only do this for desktop, no need to copy again for other platforms
     rm -rf "$SOCKET_HOME/include"
     mkdir -p "$SOCKET_HOME/include"
