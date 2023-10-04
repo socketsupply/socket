@@ -55,7 +55,7 @@ export function getMessagesForLocale (locale) {
       application.config[`i18n_locales_${tag}_source`] ||
       application.config[`i18n_locales_${tag.toLowerCase()}_source`] ||
       application.config[`i18n_locales_${tag}`] ||
-      application.config[`i18n_locales_${tag.toLowerCase()}`]
+      application.config[`i18n_locales_${tag.toLowerCase()}`] ||
       `${DEFAULT_LOCALES_LOCATION}/${tag}`
     )
 
@@ -191,9 +191,14 @@ export function getMessage (
 /**
  * Gets a localized message description string for the specified message name.
  * @param {string} messageName
+ * @param {object=} [options]
+ * @param {string=} [options.locale = null]
  * @return {?string}
  */
-export function getMessageDescription (messageName) {
+export function getMessageDescription (
+  messageName,
+  options = { locale: null }
+) {
   const locale = options?.locale ?? getUILanguage()
   const results = getMessagesForLocale(locale)
 
