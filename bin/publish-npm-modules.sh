@@ -169,6 +169,9 @@ if (( !only_top_level )); then
     cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
     cp -f "$root/README.md" "$SOCKET_HOME/packages/$package"
 
+    mkdir -p "$SOCKET_HOME/packages/$package/assets"
+    cp -rf "$root/assets"/* "$SOCKET_HOME/packages/$package/assets"
+
     cp -rf "$SOCKET_HOME/uv"/* "$SOCKET_HOME/packages/$package/uv"
     cp -rf "$SOCKET_HOME/bin"/* "$SOCKET_HOME/packages/$package/bin"
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"

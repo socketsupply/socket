@@ -1816,7 +1816,7 @@ icon = "src/icon.png"
 [mac]
 
 ; Mac App Store icon
-appstore_icon = "src/icons/icon.png"
+appstore_icon = "src/icon.png"
 
 ; A category in the App Store
 category = ""
@@ -1825,7 +1825,7 @@ category = ""
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on MacOS.
-icon = ""
+icon = "src/icon.pn"
 
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_identity = ""
@@ -1849,10 +1849,10 @@ headers = native-module1.hh
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on Windows.
-icon = ""
+icon = "src/icon.png"
 
 ; The icon to use for identifying your app on Windows.
-logo = "src/icons/icon.png"
+logo = "icon.png"
 
 ; A relative path to the pfx file used for signing.
 pfx = "certs/cert.pfx"
