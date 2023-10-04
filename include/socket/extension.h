@@ -1238,6 +1238,13 @@ extern "C" {
     sapi_json_any_t* json
   );
 
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_emit (
+    sapi_context_t* ctx,
+    const char* name,
+    const char* data
+  );
+
   /**
    * Send bytes to the bridge to propagate to the WebView.
    * @param context - An extension context
