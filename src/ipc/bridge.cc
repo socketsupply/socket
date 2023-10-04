@@ -2488,7 +2488,7 @@ namespace SSC::IPC {
   #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
       this->fileSystemWatcher = new FileSystemWatcher(getcwd());
-      this->fileSystemWatcher->start([=](
+      this->fileSystemWatcher->start([=, this](
         const auto& path,
         const auto& events,
         const auto& context
