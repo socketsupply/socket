@@ -1,5 +1,5 @@
 {
-  "include": ["api/*.js", "api/**/*.js"],
+  "include": ["api/*.js", "api/**/*.js", "api/**/**/*.js"],
   "compilerOptions": {
     "baseUrl": "socket:",
     "target": "ES2022",
