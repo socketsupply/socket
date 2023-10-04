@@ -29,9 +29,8 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
   }                                                                            \
                                                                                \
   auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
-  os_log_with_type(                                                            \
+  os_log_error(                                                                \
     SSC_OS_LOG_DEBUG_BUNDLE,                                                   \
-    OS_LOG_TYPE_ERROR,                                                         \
     "%{public}s",                                                              \
     string.UTF8String                                                          \
   );                                                                           \
