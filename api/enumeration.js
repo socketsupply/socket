@@ -7,7 +7,6 @@
  * A container for enumerated values.
  */
 export class Enumeration extends Set {
-
   /**
    * Creates an `Enumeration` instance from arguments.
    * @param {...any} values
