@@ -571,7 +571,7 @@ export const tags = Enumeration.from([
   'zh-SG',
   'zh-TW',
   'zu',
-  'zu-ZA',
+  'zu-ZA'
 ])
 
 /**
@@ -879,6 +879,7 @@ export class LanguageQueryResult {
    * @return {LanguageQueryResult}
    */
   inspect () {
+    // eslint-disable-next-line
     return Object.assign(new class LanguageQueryResult {}, this.toJSON())
   }
 
@@ -960,6 +961,7 @@ export class LanguageDescription {
    * @return {LanguageDescription}
    */
   inspect () {
+    // eslint-disable-next-line
     return Object.assign(new class LanguageDescription {}, this.toJSON())
   }
 
@@ -1080,7 +1082,7 @@ export function lookup (query, options = { strict: false }) {
  * @return {?LanguageDescription[]}
  */
 export function describe (query, options = { strict: true }) {
-  const queried  = lookup(query, options)
+  const queried = lookup(query, options)
   const results = []
 
   for (const item of queried) {
