@@ -4876,10 +4876,6 @@ int main (const int argc, const char* argv[]) {
           auto d = String(debugBuild ? "d" : "");
           auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
-        #elif defined(__linux__)
-          auto d = "";
-          auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
-          auto static_runtime = trim(prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a"));
         #else
           auto d = "";
           auto static_uv = "";
@@ -4906,6 +4902,10 @@ int main (const int argc, const char* argv[]) {
           #else
             << " " << flags
             << " " << extraFlags
+          #if defined(__linux__)
+            << " -luv"
+            << " -lsocket-runtime"
+          #endif
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
             << " -fvisibility=hidden"
