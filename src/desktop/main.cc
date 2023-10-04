@@ -246,7 +246,7 @@ MAIN {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
-          stdWrite(decodeURIComponent(message.get("value")), false);
+          stdWrite(message.get("value"), false);
         }
       },
       [](SSC::String const &out) { stdWrite(out, true); },
@@ -299,7 +299,7 @@ MAIN {
     // just stdout and we can write the data to the pipe.
     //
     app.dispatch([&, out] {
-      IPC::Message message(out);
+      IPC::Message message(out, true);
 
       auto value = message.get("value");
       auto seq = message.get("seq");
@@ -315,22 +315,20 @@ MAIN {
       }
 
       if (message.name == "send") {
+        SSC::String script = getEmitToRenderProcessJavaScript(
+          message.get("event"),
+          value
+        );
         if (message.index >= 0) {
           auto window = windowManager.getWindow(message.index);
           if (window) {
-            window->eval(getEmitToRenderProcessJavaScript(
-              decodeURIComponent(message.get("event")),
-              value
-            ));
+            window->eval(script);
           }
         } else {
           for (auto w : windowManager.windows) {
             if (w != nullptr) {
               auto window = windowManager.getWindow(w->opts.index);
-              window->eval(getEmitToRenderProcessJavaScript(
-                decodeURIComponent(message.get("event")),
-                value
-              ));
+              window->eval(script);
             }
           }
         }
@@ -407,7 +405,7 @@ MAIN {
   //
   auto onMessage = [&](auto out) {
     // debug("onMessage %s", out.c_str());
-    IPC::Message message(out);
+    IPC::Message message(out, true);
 
     auto window = windowManager.getWindow(message.index);
     auto value = message.get("value");
@@ -470,7 +468,7 @@ MAIN {
 
     if (message.name == "window.send") {
       const auto event = message.get("event");
-      const auto value = decodeURIComponent(message.get("value"));
+      const auto value = message.get("value");
       const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       const auto currentWindow = windowManager.getWindow(message.index);
@@ -484,7 +482,7 @@ MAIN {
 
     if (message.name == "application.exit") {
       try {
-        exitCode = std::stoi(decodeURIComponent(value));
+        exitCode = std::stoi(value);
       } catch (...) {
       }
 
@@ -548,7 +546,7 @@ MAIN {
         return;
       }
 
-      SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("url")));
+      SSC::String error = getNavigationError(cwd, message.get("url"));
       if (error.size() > 0) {
         const JSON::Object json = SSC::JSON::Object::Entries {
           {"err", JSON::Object::Entries {
@@ -733,7 +731,7 @@ MAIN {
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       const auto url = message.get("url");
-      const auto error = getNavigationError(cwd, decodeURIComponent(url));
+      const auto error = getNavigationError(cwd, url);
 
       if (error.size() > 0) {
         JSON::Object json = JSON::Object::Entries {
@@ -852,7 +850,7 @@ MAIN {
 
     if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
-      window->setSystemMenu(seq, decodeURIComponent(value));
+      window->setSystemMenu(seq, value);
       return;
     }
 
@@ -888,9 +886,9 @@ MAIN {
       bool bDirs = message.get("allowDirs").compare("true") == 0;
       bool bFiles = message.get("allowFiles").compare("true") == 0;
       bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = decodeURIComponent(message.get("defaultName"));
-      SSC::String defaultPath = decodeURIComponent(message.get("defaultPath"));
-      SSC::String title = decodeURIComponent(message.get("title"));
+      SSC::String defaultName = message.get("defaultName");
+      SSC::String defaultPath = message.get("defaultPath");
+      SSC::String title = message.get("title");
 
       window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
@@ -898,7 +896,7 @@ MAIN {
 
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
-      window->setContextMenu(seq, decodeURIComponent(value));
+      window->setContextMenu(seq, value);
       window->resolvePromise(
         message.seq,
         OK_STATE,
