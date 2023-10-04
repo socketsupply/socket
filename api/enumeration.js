@@ -1,4 +1,18 @@
+/**
+ * @module enumeration
+ * This module provides a data structure for enumerated unique values.
+ */
+
+/**
+ * A container for enumerated values.
+ */
 export class Enumeration extends Set {
+
+  /**
+   * Creates an `Enumeration` instance from arguments.
+   * @param {...any} values
+   * @return {Enumeration}
+   */
   static from (...values) {
     if (values.length > 1 && typeof values[1] !== 'object') {
       return new this(values)
@@ -7,7 +21,13 @@ export class Enumeration extends Set {
     return new this(...values)
   }
 
-  constructor (values, options = {}) {
+  /**
+   * `Enumeration` class constructor.
+   * @param {any[]} values
+   * @param {object=} [options = {}]
+   * @param {number=} [options.start = 0]
+   */
+  constructor (values, options = { start: 0 }) {
     super()
 
     let index = options?.start ?? 0
@@ -31,7 +51,7 @@ export class Enumeration extends Set {
         configurable: false,
         enumerable: false,
         writable: false,
-        value: value
+        value
       })
 
       Set.prototype.add.call(this, value)
@@ -55,6 +75,15 @@ export class Enumeration extends Set {
    */
   get length () {
     return this.size
+  }
+
+  /**
+   * Returns `true` if enumeration contains `value`. An alias
+   * for `Set.prototype.has`.
+   * @return {boolean}
+   */
+  contains (value) {
+    return this.has(value)
   }
 
   /**
