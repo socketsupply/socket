@@ -3991,13 +3991,37 @@ declare module "socket:dgram" {
     
 }
 declare module "socket:enumeration" {
+    /**
+     * @module enumeration
+     * This module provides a data structure for enumerated unique values.
+     */
+    /**
+     * A container for enumerated values.
+     */
     export class Enumeration extends Set<any> {
+        /**
+         * Creates an `Enumeration` instance from arguments.
+         * @param {...any} values
+         * @return {Enumeration}
+         */
         static from(...values: any[]): Enumeration;
-        constructor(values: any, options?: {});
+        /**
+         * `Enumeration` class constructor.
+         * @param {any[]} values
+         * @param {object=} [options = {}]
+         * @param {number=} [options.start = 0]
+         */
+        constructor(values: any[], options?: object | undefined);
         /**
          * @type {number}
          */
         get length(): number;
+        /**
+         * Returns `true` if enumeration contains `value`. An alias
+         * for `Set.prototype.has`.
+         * @return {boolean}
+         */
+        contains(value: any): boolean;
         /**
          * @ignore
          */
@@ -4505,9 +4529,11 @@ declare module "socket:i18n" {
     /**
      * Gets a localized message description string for the specified message name.
      * @param {string} messageName
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
      * @return {?string}
      */
-    export function getMessageDescription(messageName: string): string | null;
+    export function getMessageDescription(messageName: string, options?: object | undefined): string | null;
     /**
      * A cache of loaded locale messages.
      * @type {Map}
