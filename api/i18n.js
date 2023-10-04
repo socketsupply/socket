@@ -12,13 +12,20 @@ import language from './language.js'
 import location from './location.js'
 import hooks from './hooks.js'
 
-// preload environment languages when environment is ready
-hooks.onReady(() => {
-  const languages = getUILanguage()
-  for (const language of languages) {
+// preload environment languages when environment is ready and listen
+// for language change events
+hooks.onReady(preloadUILanguage)
+hooks.onLanguageChange(preloadUILanguage)
+
+/**
+ * Preloads current UI language into cache.
+ * @ignore
+ */
+function preloadUILanguage () {
+  for (const language of getAcceptLanguages()) {
     queueMicrotask(() => getMessagesForLocale(language))
   }
-})
+}
 
 /**
  * A cache of loaded locale messages.
