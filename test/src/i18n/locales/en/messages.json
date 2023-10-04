@@ -1,0 +1,23 @@
+{
+  "key1": {
+    "message": "A message for key1",
+    "description": "A message for key1"
+  },
+  "key2": {
+    "message": "A message for key2",
+    "description": "A message for key2"
+  },
+  "key-with-indexed-substitutions": {
+    "message": "first={0}, second=$1, third={2}",
+    "description": "A message for 3 substitutions"
+  },
+  "key-with-placeholder-substitutions": {
+    "message": "first={first}, second=$second, third=$THIRD$",
+    "description": "A message for 3 substitutions",
+    "placeholders": {
+      "first": { "content": "$0" },
+      "second": { "content": "{1}" },
+      "third": { "content": "$2$" }
+    }
+  }
+}
