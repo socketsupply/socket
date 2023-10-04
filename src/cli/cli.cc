@@ -4872,10 +4872,14 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-        #if defined(_WIN32) || defined(__linux__)
-          auto d = String(platform.win && debugBuild ? "d" : "");
+        #if defined(_WIN32)
+          auto d = String(debugBuild ? "d" : "");
           auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
+        #elif defined(__linux__)
+          auto d = "";
+          auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
+          auto static_runtime = trim(prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a"));
         #else
           auto d = "";
           auto static_uv = "";
