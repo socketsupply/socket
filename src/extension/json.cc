@@ -50,7 +50,7 @@ sapi_json_any_t* sapi_json_raw_from (
   );
 }
 
-const char * sapi_json_stringify (const sapi_json_any_t* json) {
+const char * sapi_json_stringify_value (const sapi_json_any_t* json) {
   SSC::String string;
   switch (sapi_json_typeof(json)) {
     case SAPI_JSON_TYPE_NULL:
@@ -96,7 +96,7 @@ const char * sapi_json_stringify (const sapi_json_any_t* json) {
   return nullptr;
 }
 
-void sapi_json_object_set (
+void sapi_json_object_set_value (
   sapi_json_object_t* json,
   const char* key,
   sapi_json_any_t* any
@@ -140,7 +140,7 @@ sapi_json_any_t* sapi_json_object_get (
   return nullptr;
 }
 
-void sapi_json_array_set (
+void sapi_json_array_set_value (
   sapi_json_array_t* json,
   unsigned int index,
   sapi_json_any_t* any
@@ -172,7 +172,7 @@ void sapi_json_array_set (
   }
 }
 
-void sapi_json_array_push (
+void sapi_json_array_push_value (
   sapi_json_array_t* json,
   sapi_json_any_t* any
 ) {
