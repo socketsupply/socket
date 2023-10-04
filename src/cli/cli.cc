@@ -2640,21 +2640,6 @@ int main (const int argc, const char* argv[]) {
       additionalBuildArgs += " --test=true";
     }
 
-    handleBuildPhaseForUserScript(
-      settings,
-      targetPlatform,
-      pathResourcesRelativeToUserBuild,
-      oldCwd,
-      additionalBuildArgs,
-      true
-    );
-
-    auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
-      settings,
-      targetPlatform,
-      pathResourcesRelativeToUserBuild
-    );
-
     String flags;
     String files;
 
@@ -4174,6 +4159,21 @@ int main (const int argc, const char* argv[]) {
 
       // TODO Copy the files into place
     }
+
+    handleBuildPhaseForUserScript(
+      settings,
+      targetPlatform,
+      pathResourcesRelativeToUserBuild,
+      oldCwd,
+      additionalBuildArgs,
+      true
+    );
+
+    auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
+      settings,
+      targetPlatform,
+      pathResourcesRelativeToUserBuild
+    );
 
     log("package prepared");
 
