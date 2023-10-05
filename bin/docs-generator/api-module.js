@@ -141,21 +141,21 @@ export function generateApiModuleDoc ({
           item.signature = item.signature || []
           const parts = attr.split(/-\s+(.*)/)
           const { 1: rawType, 2: rawName } = parts[0].match(/{([^}]+)}(.*)/)
-          const [name, defaultValue] = rawName.replace(/[[\]']+/g, '').trim().split('=')
+          const [name, defaultValue] = rawName.replace(/[[\]']+/g, '').trim().split(/ *[=] */)
 
           // type could be [(string|number)=]
           const parenthasisedType = rawType
             .replace(/\s*\|\s*/g, ' \\| ')
             .replace(/\[|\]/g, '')
           // now it is (string|number)=
-          const optional = parenthasisedType.endsWith('=')
+          const optional = parenthasisedType.endsWith('=') || /^ *\[/.test(rawName)
           const compundType = parenthasisedType.replace(/=$/, '')
           // now it is (string|number)
           const type = compundType.match(/^\((.*)\)$/)?.[1] ?? compundType
           // now it is string|number
 
           const param = {
-            name: name.trim() || `(Position ${position++})`,
+            name: name || `(Position ${position++})`,
             type
           }
 
