@@ -3388,11 +3388,11 @@ declare module "socket:application" {
     export function getScreenSize(): Promise<ipc.Result>;
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
-     * @param {number[]|undefined} indices - the indices of the windows
+     * @param {number[]} [indices] - the indices of the windows
      * @return {Promise<Object.<number, ApplicationWindow>>}
      * @throws {Error} - if indices is not an array of integer numbers
      */
-    export function getWindows(indices: number[] | undefined): Promise<{
+    export function getWindows(indices?: number[]): Promise<{
         [x: number]: ApplicationWindow;
     }>;
     /**
@@ -3409,10 +3409,10 @@ declare module "socket:application" {
     export function getCurrentWindow(): Promise<ApplicationWindow>;
     /**
      * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-     * @param {object} code - an exit code
+     * @param {number} [code] - an exit code
      * @return {Promise<ipc.Result>}
      */
-    export function exit(code: object): Promise<ipc.Result>;
+    export function exit(code?: number): Promise<ipc.Result>;
     /**
      * Set the native menu for the app.
      *
@@ -4047,12 +4047,16 @@ declare module "socket:enumeration" {
 }
 declare module "socket:extension" {
     /**
-     * Load an extension by name.
-     * @param {string} name
-     * @param {object?} [options]
-     * @return {Promise<Extension>}
+     * @typedef {{ allow: string[] | string }} ExtensionLoadOptions
      */
-    export function load(name: string, options?: object | null): Promise<Extension>;
+    /**
+     * Load an extension by name.
+     * @template {Record<string, any> T}
+     * @param {string} name
+     * @param {ExtensionLoadOptions} [options]
+     * @return {Promise<Extension<T>>}
+     */
+    export function load<T extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T>>;
     /**
      * Provides current stats about the loaded extensions.
      * @return {Promise<ExtensionStats>}
@@ -4066,15 +4070,17 @@ declare module "socket:extension" {
      */
     /**
      * A interface for a native extension.
+     * @template {Record<string, any> T}
      */
-    export class Extension extends EventTarget {
+    export class Extension<T extends Record<string, any>> extends EventTarget {
         /**
          * Load an extension by name.
+         * @template {Record<string, any> T}
          * @param {string} name
-         * @param {{ allow: string[] | string ?} [options]
-         * @return {Promise<Extension>}
+         * @param {ExtensionLoadOptions} [options]
+         * @return {Promise<Extension<T>>}
          */
-        static load(name: string, options: any): Promise<Extension>;
+        static load<T_1 extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T_1>>;
         /**
          * Provides current stats about the loaded extensions.
          * @return {Promise<ExtensionStats>}
@@ -4084,9 +4090,9 @@ declare module "socket:extension" {
          * `Extension` class constructor.
          * @param {string} name
          * @param {ExtensionInfo} info
-         * @param {object?} [options]
+         * @param {ExtensionLoadOptions} [options]
          */
-        constructor(name: string, info: ExtensionInfo, options?: object | null);
+        constructor(name: string, info: ExtensionInfo, options?: ExtensionLoadOptions);
         /**
          * The name of the extension
          * @type {string?}
@@ -4112,9 +4118,9 @@ declare module "socket:extension" {
          */
         options: object;
         /**
-         * @type {Proxy}
+         * @type {T}
          */
-        binding: ProxyConstructor;
+        binding: T;
         /**
          * `true` if the extension was loaded, otherwise `false`
          * @type {boolean}
@@ -4132,6 +4138,9 @@ declare module "socket:extension" {
         export { stats };
     }
     export default _default;
+    export type ExtensionLoadOptions = {
+        allow: string[] | string;
+    };
     export type ExtensionInfo = {
         abi: number;
         version: string;
