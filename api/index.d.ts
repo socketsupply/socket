@@ -3409,7 +3409,7 @@ declare module "socket:application" {
     export function getCurrentWindow(): Promise<ApplicationWindow>;
     /**
      * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-     * @param {number} [code] - an exit code
+     * @param {number} [code = 0] - an exit code
      * @return {Promise<ipc.Result>}
      */
     export function exit(code?: number): Promise<ipc.Result>;
