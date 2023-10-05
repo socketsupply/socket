@@ -47,7 +47,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| indices | number \| undefined |  | false | the indices of the windows |
+| indices | number |  | true | the indices of the windows |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -79,7 +79,7 @@ Quits the backend process and then quits the render process, the exit code used 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| code | object |  | false | an exit code |
+| code | number | 0 | true | an exit code |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -215,7 +215,7 @@ The application's backend instance.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | opts | object |  | false | an options object |
-| opts.force | boolean | false | false | whether to force the existing process to close |
+| opts.force | boolean | false | true | whether to force the existing process to close |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -261,7 +261,7 @@ Start the Bluetooth service.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`subscribe(id )`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L119)
+### [`subscribe(id)`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L119)
 
 Start scanning for published values that correspond to a well-known UUID.
  Once subscribed to a UUID, events that correspond to that UUID will be
@@ -278,7 +278,7 @@ Start scanning for published values that correspond to a well-known UUID.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| id | string |  | false | A well-known UUID |
+| id | string |  | true | A well-known UUID |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -290,8 +290,8 @@ Start advertising a new value for a well-known UUID
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| id | string |  | false | A well-known UUID |
-| value | string |  | false |  |
+| id | string |  | true | A well-known UUID |
+| value | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -733,7 +733,7 @@ External docs: https://nodejs.org/api/events.html
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
+## [`access(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously check access a file for a given mode calling `callback`
@@ -742,8 +742,8 @@ Asynchronously check access a file for a given mode calling `callback`
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string? \| function(Error?)? | F_OK(0) | false |  |
-| callback | function(Error?)? |  | false |  |
+| mode | string? \| function(Error?)? | F_OK(0) | true |  |
+| callback | function(Error?)? |  | true |  |
 
 ## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L117)
 
@@ -767,7 +767,7 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false |  |
-| callback | function(Error?)? |  | false |  |
+| callback | function(Error?)? |  | true |  |
 
 ## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L190)
 
@@ -789,7 +789,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | false |  |
+| options | object? |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -803,7 +803,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | false |  |
+| options | object? |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -820,10 +820,10 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false | A file descriptor. |
-| options | object? \| function? |  | false | An options object. |
-| callback | function? |  | false | The function to call after completion. |
+| options | object? \| function? |  | true | An options object. |
+| callback | function? |  | true | The function to call after completion. |
 
-## [`open(path, flags , mode , options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L407)
+## [`open(path, flags, mode, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L407)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously open a file calling `callback` upon success or error.
@@ -831,10 +831,10 @@ Asynchronously open a file calling `callback` upon success or error.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| flags | string? | r | false |  |
-| mode | string? | 0o666 | false |  |
-| options | object? \| function? |  | false |  |
-| callback | function(Error?, number?)? |  | false |  |
+| flags | string? | r | true |  |
+| mode | string? | 0o666 | true |  |
+| options | object? \| function? |  | true |  |
+| callback | function(Error?, number?)? |  | true |  |
 
 ## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L460)
 
@@ -844,9 +844,9 @@ Asynchronously open a directory calling `callback` upon success or error.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? \| function(Error?, Dir?) |  | false |  |
-| options.encoding | string? | utf8 | false |  |
-| options.withFileTypes | boolean? | false | false |  |
+| options | object? \| function(Error?, Dir?) |  | true |  |
+| options.encoding | string? | utf8 | true |  |
+| options.withFileTypes | boolean? | false | true |  |
 | callback | function(Error?, Dir?)? |  | false |  |
 
 ## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L486)
@@ -871,9 +871,9 @@ Asynchronously read all entries in a directory.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL  |  | false |  |
-| options | object? \| function(Error?, object) |  | false |  |
-| options.encoding ? utf8 | string? |  | false |  |
-| options.withFileTypes ? false | boolean? |  | false |  |
+| options | object? \| function(Error?, object) |  | true |  |
+| options.encoding ? utf8 | string? |  | true |  |
+| options.withFileTypes ? false | boolean? |  | true |  |
 | callback | function(Error?, object) |  | false |  |
 
 ## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L571)
@@ -883,10 +883,10 @@ Asynchronously read all entries in a directory.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number  |  | false |  |
-| options | object? \| function(Error?, Buffer?) |  | false |  |
-| options.encoding ? utf8 | string? |  | false |  |
-| options.flag ? r | string? |  | false |  |
-| options.signal | AbortSignal? |  | false |  |
+| options | object? \| function(Error?, Buffer?) |  | true |  |
+| options.encoding ? utf8 | string? |  | true |  |
+| options.flag ? r | string? |  | true |  |
+| options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Buffer?) |  | false |  |
 
 ## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L690)
@@ -897,9 +897,9 @@ Asynchronously read all entries in a directory.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
 | options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | false |  |
-| options.flag ? r | string? |  | false |  |
-| options.signal | AbortSignal? |  | false |  |
+| options.encoding ? utf8 | string? |  | true |  |
+| options.flag ? r | string? |  | true |  |
+| options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
 ## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L786)
@@ -911,10 +911,10 @@ Asynchronously read all entries in a directory.
 | path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
 | data | string \| Buffer \| TypedArray \| DataView \| object  |  | false |  |
 | options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | false |  |
-| options.mode ? 0o666 | string? |  | false |  |
-| options.flag ? w | string? |  | false |  |
-| options.signal | AbortSignal? |  | false |  |
+| options.encoding ? utf8 | string? |  | true |  |
+| options.mode ? 0o666 | string? |  | true |  |
+| options.flag ? w | string? |  | true |  |
+| options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
 
 
@@ -950,8 +950,8 @@ Asynchronously check access a file.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string? |  | false |  |
-| options | object? |  | false |  |
+| mode | string? |  | true |  |
+| options | object? |  | true |  |
 
 ## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L96)
 
@@ -1005,9 +1005,9 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | false |  |
-| options.encoding | string? | utf8 | false |  |
-| options.bufferSize | number? | 32 | false |  |
+| options | object? |  | true |  |
+| options.encoding | string? | utf8 | true |  |
+| options.bufferSize | number? | 32 | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1022,8 +1022,8 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
 | options | object? |  | false |  |
-| options.encoding | string? | utf8 | false |  |
-| options.withFileTypes | boolean? | false | false |  |
+| options.encoding | string? | utf8 | true |  |
+| options.withFileTypes | boolean? | false | true |  |
 
 ## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L293)
 
@@ -1033,10 +1033,10 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| options | object? |  | false |  |
-| options.encoding | (string \| null)? | null | false |  |
-| options.flag | string? | r | false |  |
-| options.signal | AbortSignal? |  | false |  |
+| options | object? |  | true |  |
+| options.encoding | (string \| null)? | null | true |  |
+| options.flag | string? | r | true |  |
+| options.signal | AbortSignal? |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1050,8 +1050,8 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | false |  |
-| options.bigint | boolean? | false | false |  |
+| options | object? |  | true |  |
+| options.bigint | boolean? | false | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1066,11 +1066,11 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| FileHandle |  | false | filename or FileHandle |
 | data | string \| Buffer \| Array \| DataView \| TypedArray |  | false |  |
-| options | object? |  | false |  |
-| options.encoding | string \| null | utf8 | false |  |
-| options.mode | number | 0o666 | false |  |
-| options.flag | string | w | false |  |
-| options.signal | AbortSignal? |  | false |  |
+| options | object? |  | true |  |
+| options.encoding | string \| null | utf8 | true |  |
+| options.mode | number | 0o666 | true |  |
+| options.flag | string | w | true |  |
+| options.signal | AbortSignal? |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1107,7 +1107,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
  import { send } from 'socket:ipc'
  ```
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1065)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1065)
 
 Emit event to be dispatched on `window` object.
 
@@ -1407,16 +1407,16 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | input | PathComponent |  | false |  |
-| cwd | string |  | false |  |
+| cwd | string |  | true |  |
 
-### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L398)
+### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L398)
 
 `Path` class constructor.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | pathname | string |  | false |  |
-| cwd | string | Path.cwd() | false |  |
+| cwd | string | Path.cwd() | true |  |
 
 ### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L467)
 
@@ -1505,7 +1505,7 @@ Computed high resolution time as a `BigInt`.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| time | Array<number>? |  | false |  |
+| time | Array<number>? |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1589,7 +1589,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | actual | T |  | false |  |
 | expected | T |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L163)
 
@@ -1599,7 +1599,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | actual | T |  | false |  |
 | expected | T |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L178)
 
@@ -1609,7 +1609,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | actual | T |  | false |  |
 | expected | T |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L193)
 
@@ -1619,7 +1619,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | actual | unknown |  | false |  |
 | expected | unknown |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L206)
 
@@ -1627,7 +1627,7 @@ Plan the number of assertions.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L219)
 
@@ -1636,7 +1636,7 @@ Plan the number of assertions.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | actual | unknown |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L231)
 
@@ -1644,7 +1644,7 @@ Plan the number of assertions.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L240)
 
@@ -1653,7 +1653,7 @@ Plan the number of assertions.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | err | Error \| null \| undefined |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 ### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L253)
 
@@ -1662,8 +1662,8 @@ Plan the number of assertions.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fn | Function |  | false |  |
-| expected | RegExp \| any |  | false |  |
-| message | string |  | false |  |
+| expected | RegExp \| any |  | true |  |
+| message | string |  | true |  |
 
 ### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L302)
 
@@ -1677,7 +1677,7 @@ Sleep for ms with an optional msg
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | ms | number |  | false |  |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1695,7 +1695,7 @@ Request animation frame with an optional msg. Falls back to a 0ms setTimeout whe
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1713,7 +1713,7 @@ Dispatch the `click`` method on an element specified by selector.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1731,7 +1731,7 @@ Dispatch the click window.MouseEvent on an element specified by selector.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1750,7 +1750,7 @@ Dispatch an event on the target.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string \| Event |  | false | The event name or Event instance to dispatch. |
 | target | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to dispatch the event on. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1768,7 +1768,7 @@ Call the focus method on element specified by selector.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1786,7 +1786,7 @@ Call the blur method on element specified by selector.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1805,7 +1805,7 @@ Consecutively set the str value of the element specified by selector to simulate
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
 | str | string |  | false | The string to type into the :focus element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1825,7 +1825,7 @@ appendChild an element el to a parent selector element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | parentSelector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to appendChild on. |
 | el | HTMLElement \| Element |  | false | A element to append to the parent element. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1843,7 +1843,7 @@ Remove an element from the DOM.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to remove from the DOM. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1861,7 +1861,7 @@ Test if an element is visible
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to test visibility on. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1879,7 +1879,7 @@ Test if an element is invisible
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element to test visibility on. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1897,10 +1897,10 @@ Test if an element is invisible
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | querySelectorOrFn | string \| (() => HTMLElement \| Element \| null \| undefined) |  | false | A query string or a function that returns an element. |
-| opts | Object |  | false |  |
-| opts.visible | boolean |  | false | The element needs to be visible. |
-| opts.timeout | number |  | false | The maximum amount of time to wait. |
-| msg | string |  | false |  |
+| opts | Object |  | true |  |
+| opts.visible | boolean |  | true | The element needs to be visible. |
+| opts.timeout | number |  | true | The maximum amount of time to wait. |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1929,8 +1929,8 @@ Test if an element is invisible
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| HTMLElement \| Element |  | false | A CSS selector string, or an instance of HTMLElement, or Element. |
-| opts | WaitForTextOpts \| string \| RegExp |  | false |  |
-| msg | string |  | false |  |
+| opts | WaitForTextOpts \| string \| RegExp |  | true |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1948,7 +1948,7 @@ Run a querySelector as an assert and also get the results
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string |  | false | A CSS selector string, or an instance of HTMLElement, or Element to select. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1966,7 +1966,7 @@ Run a querySelectorAll as an assert and also get the results
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string |  | false | A CSS selector string, or an instance of HTMLElement, or Element to select. |
-| msg | string |  | false |  |
+| msg | string |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1991,7 +1991,7 @@ Retrieves the computed styles for a given element.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | selector | string \| Element |  | false | The CSS selector or the Element object for which to get the computed styles. |
-| msg | string |  | false | An optional message to display when the operation is successful. Default message will be generated based on the type of selector. |
+| msg | string |  | true | An optional message to display when the operation is successful. Default message will be generated based on the type of selector. |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -2013,7 +2013,7 @@ Retrieves the computed styles for a given element.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| report | (lines: string) => void |  | false |  |
+| report | (lines: string) => void |  | true |  |
 
 ### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L953)
 
@@ -2041,7 +2041,7 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`onFinish() )`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1032)
+### [`onFinish())`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1032)
 
 
 
@@ -2056,7 +2056,7 @@ Retrieves the computed styles for a given element.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | name | string |  | false |  |
-| fn | TestFn |  | false |  |
+| fn | TestFn |  | true |  |
 
 ## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1070)
 
@@ -2065,7 +2065,7 @@ Retrieves the computed styles for a given element.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | _name | string |  | false |  |
-| _fn | TestFn |  | false |  |
+| _fn | TestFn |  | true |  |
 
 ## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1076)
 
