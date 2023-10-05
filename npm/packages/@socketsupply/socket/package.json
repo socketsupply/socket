@@ -5,6 +5,10 @@
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    "types": "./index.d.ts",
+    "default": "./index.js"
+  },
   "bin": {
     "ssc": "bin/ssc.js"
   },
