@@ -4566,9 +4566,19 @@ int main (const int argc, const char* argv[]) {
 
           auto source = settings["build_extensions_" + extension + "_source"];
 
-          if (source.size() == 0 && fs::is_directory(settings["build_extensions_" + extension])) {
+          if (source.size() == 0) {
             source = settings["build_extensions_" + extension];
-            settings["build_extensions_" + extension] = "";
+            if (source.size() > 0) {
+              if (fs::is_directory(source)) {
+                settings["build_extensions_" + extension] = "";
+              } else {
+                log(
+                  "\033[33mWARN\033[0m " + key + " is not a directory, ignoring: " +
+                  fs::absolute(source).string()
+                );
+                source = "";
+              }
+            }
           }
 
           if (source.size() > 0) {
@@ -4606,6 +4616,13 @@ int main (const int argc, const char* argv[]) {
                     settings[index] = value;
                   }
                 }
+              }
+
+              if (settings["build_extensions_" + extension].size() == 0) {
+                log(
+                  "\033[33mWARN\033[0m " + key + " has no sources, ignoring: " +
+                  fs::canonical(configFile).string()
+                );
               }
             }
           }
