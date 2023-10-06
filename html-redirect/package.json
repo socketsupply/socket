@@ -9,5 +9,8 @@
   },
   "keywords": [],
   "author": "Bret Comnes <bcomnes@gmail.com> (https://bret.io/)",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "standard": "^17.1.0"
+  }
 }
