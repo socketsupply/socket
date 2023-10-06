@@ -2471,7 +2471,7 @@ int main (const int argc, const char* argv[]) {
       argvForward += " --headless";
     }
 
-    if (optionsWithoutValue.find("--quite") != optionsWithoutValue.end() || equal(rc["build_quiet"], "true")) {
+    if (optionsWithoutValue.find("--quiet") != optionsWithoutValue.end() || equal(rc["build_quiet"], "true")) {
       flagQuietMode = true;
     }
 
