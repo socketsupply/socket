@@ -1,0 +1,13 @@
+{
+  "name": "html-redirect",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "",
+  "main": "redirect.js",
+  "scripts": {
+    "test": "node --test --test-reporter spec"
+  },
+  "keywords": [],
+  "author": "Bret Comnes <bcomnes@gmail.com> (https://bret.io/)",
+  "license": "MIT"
+}
