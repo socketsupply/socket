@@ -4657,7 +4657,13 @@ int main (const int argc, const char* argv[]) {
           }
 
           if (configure.size() > 0) {
-            auto output = replace(exec(configure + argvForward).output, "\n", " ");
+            SSC::ExecOutput result = exec(configure + argvForward);
+            if (result.exitCode != 0) {
+              log("ERROR: failed to configure extension: " + extension);
+              log(result.output);
+              exit(result.exitCode);
+            }
+            auto output = replace(result.output, "\n", " ");
             if (output.size() > 0) {
               for (const auto& source : parseStringList(output, ' ')) {
                 sources.push_back(source);
