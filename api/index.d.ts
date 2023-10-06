@@ -3388,11 +3388,11 @@ declare module "socket:application" {
     export function getScreenSize(): Promise<ipc.Result>;
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
-     * @param {number[]|undefined} indices - the indices of the windows
+     * @param {number[]} [indices] - the indices of the windows
      * @return {Promise<Object.<number, ApplicationWindow>>}
      * @throws {Error} - if indices is not an array of integer numbers
      */
-    export function getWindows(indices: number[] | undefined): Promise<{
+    export function getWindows(indices?: number[]): Promise<{
         [x: number]: ApplicationWindow;
     }>;
     /**
@@ -3409,10 +3409,10 @@ declare module "socket:application" {
     export function getCurrentWindow(): Promise<ApplicationWindow>;
     /**
      * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-     * @param {object} code - an exit code
+     * @param {number} [code = 0] - an exit code
      * @return {Promise<ipc.Result>}
      */
-    export function exit(code: object): Promise<ipc.Result>;
+    export function exit(code?: number): Promise<ipc.Result>;
     /**
      * Set the native menu for the app.
      *
@@ -3990,14 +3990,73 @@ declare module "socket:dgram" {
     import { InternalError } from "socket:errors";
     
 }
+declare module "socket:enumeration" {
+    /**
+     * @module enumeration
+     * This module provides a data structure for enumerated unique values.
+     */
+    /**
+     * A container for enumerated values.
+     */
+    export class Enumeration extends Set<any> {
+        /**
+         * Creates an `Enumeration` instance from arguments.
+         * @param {...any} values
+         * @return {Enumeration}
+         */
+        static from(...values: any[]): Enumeration;
+        /**
+         * `Enumeration` class constructor.
+         * @param {any[]} values
+         * @param {object=} [options = {}]
+         * @param {number=} [options.start = 0]
+         */
+        constructor(values: any[], options?: object | undefined);
+        /**
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Returns `true` if enumeration contains `value`. An alias
+         * for `Set.prototype.has`.
+         * @return {boolean}
+         */
+        contains(value: any): boolean;
+        /**
+         * @ignore
+         */
+        add(): void;
+        /**
+         * @ignore
+         */
+        delete(): void;
+        /**
+         * JSON represenation of a `Enumeration` instance.
+         * @ignore
+         * @return {string[]}
+         */
+        toJSON(): string[];
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageQueryResult}
+         */
+        inspect(): LanguageQueryResult;
+    }
+    export default Enumeration;
+}
 declare module "socket:extension" {
     /**
-     * Load an extension by name.
-     * @param {string} name
-     * @param {object?} [options]
-     * @return {Promise<Extension>}
+     * @typedef {{ allow: string[] | string }} ExtensionLoadOptions
      */
-    export function load(name: string, options?: object | null): Promise<Extension>;
+    /**
+     * Load an extension by name.
+     * @template {Record<string, any> T}
+     * @param {string} name
+     * @param {ExtensionLoadOptions} [options]
+     * @return {Promise<Extension<T>>}
+     */
+    export function load<T extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T>>;
     /**
      * Provides current stats about the loaded extensions.
      * @return {Promise<ExtensionStats>}
@@ -4011,15 +4070,17 @@ declare module "socket:extension" {
      */
     /**
      * A interface for a native extension.
+     * @template {Record<string, any> T}
      */
-    export class Extension extends EventTarget {
+    export class Extension<T extends Record<string, any>> extends EventTarget {
         /**
          * Load an extension by name.
+         * @template {Record<string, any> T}
          * @param {string} name
-         * @param {{ allow: string[] | string ?} [options]
-         * @return {Promise<Extension>}
+         * @param {ExtensionLoadOptions} [options]
+         * @return {Promise<Extension<T>>}
          */
-        static load(name: string, options: any): Promise<Extension>;
+        static load<T_1 extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T_1>>;
         /**
          * Provides current stats about the loaded extensions.
          * @return {Promise<ExtensionStats>}
@@ -4029,9 +4090,9 @@ declare module "socket:extension" {
          * `Extension` class constructor.
          * @param {string} name
          * @param {ExtensionInfo} info
-         * @param {object?} [options]
+         * @param {ExtensionLoadOptions} [options]
          */
-        constructor(name: string, info: ExtensionInfo, options?: object | null);
+        constructor(name: string, info: ExtensionInfo, options?: ExtensionLoadOptions);
         /**
          * The name of the extension
          * @type {string?}
@@ -4057,9 +4118,9 @@ declare module "socket:extension" {
          */
         options: object;
         /**
-         * @type {Proxy}
+         * @type {T}
          */
-        binding: ProxyConstructor;
+        binding: T;
         /**
          * `true` if the extension was loaded, otherwise `false`
          * @type {boolean}
@@ -4077,6 +4138,9 @@ declare module "socket:extension" {
         export { stats };
     }
     export default _default;
+    export type ExtensionLoadOptions = {
+        allow: string[] | string;
+    };
     export type ExtensionInfo = {
         abi: number;
         version: string;
@@ -4291,10 +4355,225 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onOffline(callback: Function): Function;
+        /**
+         * Calls callback when runtime user preferred language has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLanguageChange(callback: Function): Function;
         #private;
     }
     const _default: Hooks;
     export default _default;
+}
+declare module "socket:language" {
+    /**
+     * Look up a language name or code by query.
+     * @param {string} query
+     * @param {object=} [options]
+     * @param {boolean=} [options.strict = false]
+     * @return {?LanguageQueryResult[]}
+     */
+    export function lookup(query: string, options?: object | undefined, ...args: any[]): LanguageQueryResult[] | null;
+    /**
+     * Describe a language by tag
+     * @param {string} query
+     * @param {object=} [options]
+     * @param {boolean=} [options.strict = true]
+     * @return {?LanguageDescription[]}
+     */
+    export function describe(query: string, options?: object | undefined): LanguageDescription[] | null;
+    /**
+     * A list of ISO 639-1 language names.
+     * @type {string[]}
+     */
+    export const names: string[];
+    /**
+     * A list of ISO 639-1 language codes.
+     * @type {string[]}
+     */
+    export const codes: string[];
+    /**
+     * A list of RFC 5646 language tag identifiers.
+     * @see {@link http://tools.ietf.org/html/rfc5646}
+     */
+    export const tags: Enumeration;
+    /**
+     * A list of RFC 5646 language tag titles corresponding
+     * to language tags.
+     * @see {@link http://tools.ietf.org/html/rfc5646}
+     */
+    export const descriptions: Enumeration;
+    /**
+     * A container for a language query response containing an ISO language
+     * name and code.
+     * @see {@link https://www.sitepoint.com/iso-2-letter-language-codes}
+     */
+    export class LanguageQueryResult {
+        /**
+         * `LanguageQueryResult` class constructor.
+         * @param {string} code
+         * @param {string} name
+         * @param {string[]} [tags]
+         */
+        constructor(code: string, name: string, tags?: string[]);
+        /**
+         * The language code corresponding to the query.
+         * @type {string}
+         */
+        get code(): string;
+        /**
+         * The language name corresponding to the query.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The language tags corresponding to the query.
+         * @type {string[]}
+         */
+        get tags(): string[];
+        /**
+         * JSON represenation of a `LanguageQueryResult` instance.
+         * @return {{
+         *   code: string,
+         *   name: string,
+         *   tags: string[]
+         * }}
+         */
+        toJSON(): {
+            code: string;
+            name: string;
+            tags: string[];
+        };
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageQueryResult}
+         */
+        inspect(): LanguageQueryResult;
+        #private;
+    }
+    /**
+     * A container for a language code, tag, and description.
+     */
+    export class LanguageDescription {
+        /**
+         * `LanguageDescription` class constructor.
+         * @param {string} code
+         * @param {string} tag
+         * @param {string} description
+         */
+        constructor(code: string, tag: string, description: string);
+        /**
+         * The language code corresponding to the language
+         * @type {string}
+         */
+        get code(): string;
+        /**
+         * The language tag corresponding to the language.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * The language description corresponding to the language.
+         * @type {string}
+         */
+        get description(): string;
+        /**
+         * JSON represenation of a `LanguageDescription` instance.
+         * @return {{
+         *   code: string,
+         *   tag: string,
+         *   description: string
+         * }}
+         */
+        toJSON(): {
+            code: string;
+            tag: string;
+            description: string;
+        };
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageDescription}
+         */
+        inspect(): LanguageDescription;
+        #private;
+    }
+    namespace _default {
+        export { codes };
+        export { describe };
+        export { lookup };
+        export { names };
+        export { tags };
+    }
+    export default _default;
+    import Enumeration from "socket:enumeration";
+}
+declare module "socket:i18n" {
+    /**
+     * Get messages for `locale` pattern. This function could return many results
+     * for various locales given a `locale` pattern. such as `fr`, which could
+     * return results for `fr`, `fr-FR`, `fr-BE`, etc.
+     * @ignore
+     * @param {string} locale
+     * @return {object[]}
+     */
+    export function getMessagesForLocale(locale: string): object[];
+    /**
+     * Returns user preferred ISO 639 language codes or RFC 5646 language tags.
+     * @return {string[]}
+     */
+    export function getAcceptLanguages(): string[];
+    /**
+     * Returns the current user ISO 639 language code or RFC 5646 language tag.
+     * @return {?string}
+     */
+    export function getUILanguage(): string | null;
+    /**
+     * Gets a localized message string for the specified message name.
+     * @param {string} messageName
+     * @param {object|string[]=} [substitutions = []]
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     * @see {@link https://www.ibm.com/docs/en/rbd/9.5.1?topic=syslib-getmessage}
+     * @return {?string}
+     */
+    export function getMessage(messageName: string, substitutions?: (object | string[]) | undefined, options?: object | undefined): string | null;
+    /**
+     * Gets a localized message description string for the specified message name.
+     * @param {string} messageName
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @return {?string}
+     */
+    export function getMessageDescription(messageName: string, options?: object | undefined): string | null;
+    /**
+     * A cache of loaded locale messages.
+     * @type {Map}
+     */
+    export const cache: Map<any, any>;
+    /**
+     * Default location of i18n locale messages
+     * @type {string}
+     */
+    export const DEFAULT_LOCALES_LOCATION: string;
+    /**
+     * An enumeration of supported ISO 639 language codes or RFC 5646 language tags.
+     * @type {Enumeration}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/i18n/LanguageCode}
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     */
+    export const LanguageCode: Enumeration;
+    namespace _default {
+        export { LanguageCode };
+        export { getAcceptLanguages };
+        export { getMessage };
+        export { getUILanguage };
+    }
+    export default _default;
+    import Enumeration from "socket:enumeration";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;

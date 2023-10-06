@@ -21,13 +21,15 @@ const $loaded = Symbol('loaded')
 
 /**
  * A interface for a native extension.
+ * @template {Record<string, any> T}
  */
 export class Extension extends EventTarget {
   /**
    * Load an extension by name.
+   * @template {Record<string, any> T}
    * @param {string} name
-   * @param {{ allow: string[] | string ?} [options]
-   * @return {Promise<Extension>}
+   * @param {ExtensionLoadOptions} [options]
+   * @return {Promise<Extension<T>>}
    */
   static async load (name, options) {
     options = { name, ...options }
@@ -86,7 +88,7 @@ export class Extension extends EventTarget {
   options = {}
 
   /**
-   * @type {Proxy}
+   * @type {T}
    */
   binding = null
 
@@ -94,7 +96,7 @@ export class Extension extends EventTarget {
    * `Extension` class constructor.
    * @param {string} name
    * @param {ExtensionInfo} info
-   * @param {object?} [options]
+   * @param {ExtensionLoadOptions} [options]
    */
   constructor (name, info, options = null) {
     super()
@@ -145,10 +147,15 @@ export class Extension extends EventTarget {
 }
 
 /**
+ * @typedef {{ allow: string[] | string }} ExtensionLoadOptions
+ */
+
+/**
  * Load an extension by name.
+ * @template {Record<string, any> T}
  * @param {string} name
- * @param {object?} [options]
- * @return {Promise<Extension>}
+ * @param {ExtensionLoadOptions} [options]
+ * @return {Promise<Extension<T>>}
  */
 export async function load (name, options = {}) {
   return await Extension.load(name, options)

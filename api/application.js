@@ -108,7 +108,7 @@ function throwOnInvalidIndex (index) {
 
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
- * @param {number[]|undefined} indices - the indices of the windows
+ * @param {number[]} [indices] - the indices of the windows
  * @return {Promise<Object.<number, ApplicationWindow>>}
  * @throws {Error} - if indices is not an array of integer numbers
  */
@@ -147,10 +147,10 @@ export async function getCurrentWindow () {
 
 /**
  * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
- * @param {object} code - an exit code
+ * @param {number} [code = 0] - an exit code
  * @return {Promise<ipc.Result>}
  */
-export async function exit (code) {
+export async function exit (code = 0) {
   const { data, err } = await ipc.send('application.exit', code)
   if (err) {
     throw err

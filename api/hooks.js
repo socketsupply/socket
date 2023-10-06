@@ -368,6 +368,16 @@ export class Hooks extends EventTarget {
     this.addEventListener('offline', callback)
     return () => this.removeEventListener('offline', callback)
   }
+
+  /**
+   * Calls callback when runtime user preferred language has changed.
+   * @param {function} callback
+   * @return {function}
+   */
+  onLanguageChange (callback) {
+    this.addEventListener('languagechange', callback)
+    return () => this.removeEventListener('languagechange', callback)
+  }
 }
 
 export default new Hooks()

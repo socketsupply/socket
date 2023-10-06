@@ -4873,12 +4873,13 @@ int main (const int argc, const char* argv[]) {
           }
 
         #if defined(_WIN32)
-          auto d = String(platform.win && debugBuild ? "d" : "");
+          auto d = String(debugBuild ? "d" : "");
           auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
         #else
-          auto static_uv = prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
-          auto static_runtime = trim(prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a"));
+          auto d = "";
+          auto static_uv = "";
+          auto static_runtime = "";
         #endif
 
           auto compileExtensionLibraryCommand = StringStream();
@@ -4901,8 +4902,10 @@ int main (const int argc, const char* argv[]) {
           #else
             << " " << flags
             << " " << extraFlags
-            << " -lsocket-runtime"
+          #if defined(__linux__)
             << " -luv"
+            << " -lsocket-runtime"
+          #endif
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
           #endif
             << " -fvisibility=hidden"
