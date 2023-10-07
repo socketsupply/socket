@@ -4599,16 +4599,69 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (fs::exists(target)) {
+              target = fs::canonical(target);
+
               auto configFile = target / "socket.ini";
               auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
               settings["build_extensions_" + extension + "_path"] = target.string();
 
               for (const auto& entry : config) {
                 if (entry.first.starts_with("extension_sources")) {
-                  settings["build_extensions_" + extension] += entry.second;
+                  settings["build_extensions_" + extension] += fs::canonical(target / entry.second);
                 } else if (entry.first.starts_with("extension_")) {
                   auto key = replace(entry.first, "extension_", extension + "_");
                   auto value = entry.second;
+                  if (key.ends_with("_flags")) {
+                    // Replace all $(…) with evaluated stdout.
+                    // E.g. $(pkg-config --libs --cflags libssl) => -lssl
+                    auto match = std::smatch{};
+                    while (std::regex_search(value, match, std::regex("\\$\\((.*?)\\)"))) {
+                      auto subcommand = match[1].str();
+                      log("Running subcommand: " + subcommand);
+                      auto proc = exec(subcommand);
+                      if (proc.exitCode != 0) {
+                        log("ERROR: failed to run subcommand: " + subcommand);
+                        exit(proc.exitCode);
+                      }
+                      auto output = trim(replace(proc.output, "\n", " "));
+                      value = value.replace(match[0].first, match[0].second, output);
+                    }
+                    // Replace all $\w+ with env var.
+                    // E.g. $CXX => clang++
+                    match = std::smatch{};
+                    while (std::regex_search(value, match, std::regex("\\$(\\w+)"))) {
+                      auto envVar = match[1].str();
+                      auto envValue = envVar == "PWD"
+                        ? target.string() // Use the extension root.
+                        : getEnv(envVar);
+                      if (envValue.size() == 0) {
+                        log("ERROR: failed to find env var: " + envVar);
+                        exit(1);
+                      }
+                      value = value.replace(match[0].first, match[0].second, envValue);
+                    }
+                    // Replace all ./ and ../ with absolute paths.
+                    match = std::smatch{};
+                    while (std::regex_search(value, match, std::regex("\\.\\.?/([^ ]|\\\\ )+"))) {
+                      auto relativePath = match[0].str();
+                      auto absolutePath = fs::absolute(target / relativePath);
+                      try {
+                        absolutePath = fs::canonical(absolutePath);
+                        value = value.replace(
+                          match[0].first,
+                          match[0].second,
+                          absolutePath.string()
+                        );
+                      } catch (const std::filesystem::filesystem_error& e) {
+                        if (e.code() == std::errc::no_such_file_or_directory) {
+                          log("ERROR: path not found: " + absolutePath.string());
+                          exit(1);
+                        } else {
+                          throw e;
+                        }
+                      }
+                    }
+                  }
                   auto index = "build_extensions_" + key;
                   if (settings[index].size() > 0) {
                     settings[index] += " " + value;
