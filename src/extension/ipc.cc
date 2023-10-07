@@ -112,6 +112,15 @@ bool sapi_ipc_router_unlisten (
   return ctx->router->unlisten(name, token);
 }
 
+bool sapi_ipc_reply_with_error (sapi_ipc_result_t* result, const char* error) {
+  sapi_context* context = sapi_ipc_result_get_context(result);
+  sapi_json_string* errorJson = sapi_json_string_create(context, error);
+  sapi_json_object* errorObject = sapi_json_object_create(context);
+  sapi_json_object_set(errorObject, "message", errorJson);
+  sapi_ipc_result_set_json_error(result, ((sapi_json_any*)errorObject));
+  return sapi_ipc_reply(result);
+}
+
 bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   if (result == nullptr) return false;
   if (result->context == nullptr) return false;
