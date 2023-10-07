@@ -64,7 +64,7 @@
     };                                                                         \
                                                                                \
     SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
-    unsigned int __sapi_extension_abi () {                               \
+    unsigned long __sapi_extension_abi () {                                    \
       return __sapi_extension__.abi;                                           \
     }                                                                          \
                                                                                \
