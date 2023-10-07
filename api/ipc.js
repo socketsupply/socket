@@ -1005,16 +1005,16 @@ const { toString } = Object.prototype
 
 class IPCSearchParams extends URLSearchParams {
   constructor (params, nonce) {
-    const index = params?.index ?? globalThis.__args?.index ?? 0
-    const seq = 'R' + nextSeq++
-
+    let value
+    if (params !== undefined && toString.call(params) !== '[object Object]') {
+      value = params
+      params = null
+    }
     super({
-      value: params !== undefined && toString.call(params) !== '[object Object]'
-        ? params
-        : undefined,
+      value,
+      index: globalThis.__args?.index ?? 0,
       ...params,
-      index,
-      seq,
+      seq: 'R' + nextSeq++,
       nonce
     })
   }
