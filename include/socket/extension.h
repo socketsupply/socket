@@ -1105,6 +1105,15 @@ extern "C" {
   bool sapi_ipc_reply (const sapi_ipc_result_t* result);
 
   /**
+   * Convenience method for replying with an error message.
+    * @param result - An IPC request result
+    * @param error  - An error message to include in the result
+    * @return `true` if successful, otherwise `false`
+    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_reply_with_error (sapi_ipc_result_t* result, const char* error);
+
+  /**
    * Send JSON to the bridge to propagate to the WebView.
    * @param context - An extension context
    * @param message - The IPC message this send request sources from
