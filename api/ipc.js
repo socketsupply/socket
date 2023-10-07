@@ -1010,7 +1010,7 @@ class IPCSearchParams extends URLSearchParams {
 
     super({
       value: params !== undefined && toString.call(params) !== '[object Object]'
-        ? { value: params }
+        ? params
         : undefined,
       ...params,
       index,
