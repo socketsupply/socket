@@ -2,9 +2,6 @@ import { access, stat } from 'fs/promises'
 import path from 'path'
 
 export async function redirect (inputPath, basePath) {
-  // Special case for root path
-  if (inputPath === '/') return '/index.html'
-
   // Resolve the full path for easier handling
   const fullPath = path.join(basePath, inputPath)
 
@@ -17,15 +14,15 @@ export async function redirect (inputPath, basePath) {
   const indexPath = path.join(fullPath, 'index.html')
   if (await exists(indexPath)) return stripBasePath(indexPath, basePath)
 
-  // 3. Check if the input ends with .html, strip it and check
-  if (path.extname(fullPath) === '.html') {
-    const strippedPath = fullPath.substring(0, fullPath.length - 5)
-    if (await exists(strippedPath)) return stripBasePath(strippedPath, basePath)
-  }
-
-  // 4. Check if a .html file exists for the given path
+  // 3. Check if appending a .html file extension gives a valid file
   const htmlPath = `${fullPath}.html`
-  if (await exists(htmlPath)) return stripBasePath(htmlPath, basePath)
+  if (await isFile(htmlPath)) return stripBasePath(htmlPath, basePath)
+
+  // Special case for root path
+  if (inputPath === '/') {
+    const rootIndexPath = path.join(basePath, 'index.html')
+    return await exists(rootIndexPath) ? '/index.html' : null
+  }
 
   // If no valid path is found, return null
   return null
