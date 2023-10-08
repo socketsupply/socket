@@ -4546,6 +4546,7 @@ int main (const int argc, const char* argv[]) {
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
           if (key.find("configure_script") != String::npos) continue;
+          if (key.find("build_script") != String::npos) continue;
           if (key.starts_with("build_extensions_ios_")) continue;
           if (key.starts_with("build_extensions_android_")) continue;
           if (key.ends_with("_path")) continue;
