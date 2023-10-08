@@ -2790,12 +2790,12 @@ declare module "socket:ipc" {
      * Sends a synchronous IPC command over XHR returning a `Result`
      * upon success or error.
      * @param {string} command
-     * @param {object|string?} [params]
+     * @param {any?} [value]
      * @param {object?} [options]
      * @return {Result}
      * @ignore
      */
-    export function sendSync(command: string, params?: object | (string | null), options?: object | null): Result;
+    export function sendSync(command: string, value?: any | null, options?: object | null): Result;
     /**
      * Emit event to be dispatched on `window` object.
      * @param {string} name
@@ -2824,21 +2824,21 @@ declare module "socket:ipc" {
     /**
      * Sends an async IPC command request with parameters and buffered bytes.
      * @param {string} command
-     * @param {object=} params
+     * @param {any=} value
      * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
      * @param {object=} options
      * @ignore
      */
-    export function write(command: string, params?: object | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
+    export function write(command: string, value?: any | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
     /**
      * Sends an async IPC command request with parameters requesting a response
      * with buffered bytes.
      * @param {string} command
-     * @param {object=} params
+     * @param {any=} value
      * @param {object=} options
      * @ignore
      */
-    export function request(command: string, params?: object | undefined, options?: object | undefined): Promise<any>;
+    export function request(command: string, value?: any | undefined, options?: object | undefined): Promise<any>;
     /**
      * Factory for creating a proxy based IPC API.
      * @param {string} domain
