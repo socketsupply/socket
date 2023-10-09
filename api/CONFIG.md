@@ -175,6 +175,7 @@ Key | Default Value | Description
 :--- | :--- | :---
 cmd |  |  The command to execute to spawn the “back-end” process.
 icon |  |  The icon to use for identifying your app on Windows.
+logo |  |  The icon to use for identifying your app on Windows.
 pfx |  |  A relative path to the pfx file used for signing.
 
 # `window`

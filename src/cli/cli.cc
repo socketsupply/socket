@@ -2220,7 +2220,7 @@ int main (const int argc, const char* argv[]) {
       }
       // create .gitignore
       if (!fs::exists(targetPath / ".gitignore")) {
-        SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
+        writeFile(targetPath / ".gitignore", gDefaultGitignore);
         log(".gitignore created in " + targetPath.string());
       } else {
         log(".gitignore already exists in " + targetPath.string());

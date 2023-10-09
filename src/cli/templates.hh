@@ -519,7 +519,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   <Properties>
     <DisplayName>{{meta_title}}</DisplayName>
     <Description>{{meta_description}}</Description>
-    <Logo>{{win_icon}}</Logo>
+    <Logo>{{win_logo}}</Logo>
     <PublisherDisplayName>{{meta_maintainer}}</PublisherDisplayName>
   </Properties>
 
@@ -545,12 +545,12 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
       Executable="{{win_exe}}"
     >
       <uap:VisualElements DisplayName="{{meta_title}}"
-        Square150x150Logo="{{win_icon}}"
-        Square44x44Logo="{{win_icon}}"
+        Square150x150Logo="{{win_logo}}"
+        Square44x44Logo="{{win_logo}}"
         Description="{{meta_description}}"
         BackgroundColor="#20123A"
       >
-        <uap:DefaultTile Wide310x150Logo="{{win_icon}}" />
+        <uap:DefaultTile Wide310x150Logo="{{win_logo}}" />
       </uap:VisualElements>
       <Extensions>
         <uap3:Extension
@@ -1848,8 +1848,11 @@ headers = native-module1.hh
 ; The icon to use for identifying your app on Windows.
 icon = "src/icon.png"
 
+; The icon to use for identifying your app on Windows.
+logo = "src/icons/icon.png"
+
 ; A relative path to the pfx file used for signing.
-pfx = "certs/cert.pfx"
+; pfx = "certs/cert.pfx"
 
 ; The signing information needed by the appx api.
 ; publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
