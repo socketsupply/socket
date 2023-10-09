@@ -156,7 +156,6 @@ icon |  |  The icon to use for identifying your app in Linux desktop environment
 
 Key | Default Value | Description
 :--- | :--- | :---
-appstore_icon |  |  Mac App Store icon
 category |  |  A category in the App Store
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app on MacOS.
@@ -176,7 +175,6 @@ Key | Default Value | Description
 :--- | :--- | :---
 cmd |  |  The command to execute to spawn the “back-end” process.
 icon |  |  The icon to use for identifying your app on Windows.
-logo |  |  The icon to use for identifying your app on Windows.
 pfx |  |  A relative path to the pfx file used for signing.
 
 # `window`
