@@ -1825,7 +1825,7 @@ category = ""
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on MacOS.
-icon = "src/icon.pn"
+icon = "src/icon.png"
 
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_identity = ""
