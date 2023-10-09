@@ -4617,7 +4617,9 @@ int main (const int argc, const char* argv[]) {
                     auto match = std::smatch{};
                     while (std::regex_search(value, match, std::regex("\\$\\((.*?)\\)"))) {
                       auto subcommand = match[1].str();
-                      log("Running subcommand: " + subcommand);
+                      if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1") {
+                        log("Running subcommand: " + subcommand);
+                      }
                       auto proc = exec(subcommand);
                       if (proc.exitCode != 0) {
                         log("ERROR: failed to run subcommand: " + subcommand);
