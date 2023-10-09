@@ -1,5 +1,4 @@
 // @ts-check
-import { format } from 'node:util'
 import { EventEmitter } from 'node:events'
 
 const MAX_MESSAGE_KB = 512 * 1024
