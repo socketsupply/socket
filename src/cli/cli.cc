@@ -2206,13 +2206,17 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (!configOnly) {
-      // create src/index.html
       if (isCurrentPathEmpty) {
+        // create src/index.html
         fs::create_directories(targetPath / "src");
         writeFile(targetPath / "src" / "index.html", gHelloWorld);
         log("src/index.html created in " + targetPath.string());
+
+        // copy icon.png
+        fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
+        log("icon.png created in " + targetPath.string() + "/src");
       } else {
-        log("Current directory was not empty. Assuming index.html is already in place.");
+        log("Current directory was not empty. Assuming index.html and icon are already in place.");
       }
       // create .gitignore
       if (!fs::exists(targetPath / ".gitignore")) {
@@ -2220,13 +2224,6 @@ int main (const int argc, const char* argv[]) {
         log(".gitignore created in " + targetPath.string());
       } else {
         log(".gitignore already exists in " + targetPath.string());
-      }
-      // copy icon.png
-      if (!fs::exists(targetPath / "src" / "icon.png")) {
-        fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
-        log("icon.png created in " + targetPath.string() + "/src");
-      } else {
-        log("icon.png already exists in " + targetPath.string() + "/src");
       }
     }
     exit(0);
