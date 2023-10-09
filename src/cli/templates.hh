@@ -519,7 +519,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   <Properties>
     <DisplayName>{{meta_title}}</DisplayName>
     <Description>{{meta_description}}</Description>
-    <Logo>{{win_logo}}</Logo>
+    <Logo>{{win_icon}}</Logo>
     <PublisherDisplayName>{{meta_maintainer}}</PublisherDisplayName>
   </Properties>
 
@@ -545,12 +545,12 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
       Executable="{{win_exe}}"
     >
       <uap:VisualElements DisplayName="{{meta_title}}"
-        Square150x150Logo="{{win_logo}}"
-        Square44x44Logo="{{win_logo}}"
+        Square150x150Logo="{{win_icon}}"
+        Square44x44Logo="{{win_icon}}"
         Description="{{meta_description}}"
         BackgroundColor="#20123A"
       >
-        <uap:DefaultTile Wide310x150Logo="{{win_logo}}" />
+        <uap:DefaultTile Wide310x150Logo="{{win_icon}}" />
       </uap:VisualElements>
       <Extensions>
         <uap3:Extension
@@ -1814,9 +1814,6 @@ icon = "src/icon.png"
 
 
 [mac]
-
-; Mac App Store icon
-appstore_icon = "src/icon.png"
 
 ; A category in the App Store
 category = ""
