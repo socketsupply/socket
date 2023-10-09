@@ -1851,9 +1851,6 @@ headers = native-module1.hh
 ; The icon to use for identifying your app on Windows.
 icon = "src/icon.png"
 
-; The icon to use for identifying your app on Windows.
-logo = "icon.png"
-
 ; A relative path to the pfx file used for signing.
 pfx = "certs/cert.pfx"
 
