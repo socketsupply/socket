@@ -77,6 +77,8 @@ namespace SSC::IPC {
 - (void) locationManager: (CLLocationManager*) locationManager
                 didVisit: (CLVisit*) visit;
 
+-       (void) locationManager: (CLLocationManager*) locationManager
+  didChangeAuthorizationStatus: (CLAuthorizationStatus) status;
 - (void) locationManagerDidChangeAuthorization: (CLLocationManager*) locationManager;
 @end
 
@@ -94,13 +96,23 @@ namespace SSC::IPC {
 @property (atomic, retain) NSMutableArray* locationRequestCompletions;
 @property (atomic, retain) NSMutableArray* locationWatchers;
 @property (nonatomic) SSC::IPC::Router* router;
-@property (atomic, assign) BOOL isActivated;
+@property (atomic, assign) BOOL isAuthorized;
 - (BOOL) attemptActivation;
 - (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion;
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion;
 - (int) watchPositionForIdentifier: (NSInteger) identifier
                         completion: (void (^)(NSError*, CLLocation*)) completion;
 - (BOOL) clearWatch: (NSInteger) identifier;
+@end
+
+@interface SSCUserNotificationCenterDelegate : NSObject<UNUserNotificationCenterDelegate>
+-  (void) userNotificationCenter: (UNUserNotificationCenter*) center
+  didReceiveNotificationResponse: (UNNotificationResponse*) response
+           withCompletionHandler: (void (^)(void)) completionHandler;
+
+- (void) userNotificationCenter: (UNUserNotificationCenter*) center
+        willPresentNotification: (UNNotification*) notification
+          withCompletionHandler: (void (^)(UNNotificationPresentationOptions options)) completionHandler;
 @end
 #endif
 
@@ -233,6 +245,7 @@ namespace SSC::IPC {
       SSCLocationObserver* locationObserver = nullptr;
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
+      NSTimer* notificationPollTimer = nullptr;
     #endif
 
       Router ();
