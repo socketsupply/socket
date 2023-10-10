@@ -32,6 +32,7 @@ namespace SSC::IPC {
     this->seq = message.seq;
     this->uri = message.uri;
     this->args = message.args;
+    this->isHTTP = message.isHTTP;
   }
 
   Message::Message (const String& source, char *bytes, size_t size)

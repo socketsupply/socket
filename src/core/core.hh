@@ -126,6 +126,8 @@ namespace SSC {
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
+    std::shared_ptr<std::function<bool(const char*, const char*, bool)>> event_stream;
+    std::shared_ptr<std::function<bool(const char*, size_t, bool)>> chunk_stream;
   };
 
   using Posts = std::map<uint64_t, Post>;

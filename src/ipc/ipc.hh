@@ -146,6 +146,7 @@ namespace SSC::IPC {
       int index = -1;
       Seq seq = "";
       Map args;
+      bool isHTTP = false;
 
       Message () = default;
       Message (const Message& message);
@@ -272,6 +273,12 @@ namespace SSC::IPC {
       bool invoke (const String& msg, const char *bytes, size_t size);
       bool invoke (
         const String& msg,
+        const char *bytes,
+        size_t size,
+        ResultCallback callback
+      );
+      bool invoke (
+        const Message& msg,
         const char *bytes,
         size_t size,
         ResultCallback callback
