@@ -1097,6 +1097,51 @@ extern "C" {
   );
 
   /**
+   * Write a chunk to the HTTP response associated with the IPC result.
+   *
+   * ⚠️ You must have called `sapi_ipc_result_set_header` with a `Transfer-Encoding`
+   * header of `chunked` to use this function.
+   *
+   * ⚠️ You must call `sapi_ipc_reply` before calling this function.
+   *
+   * @param result      - An IPC request result
+   * @param chunk       - The chunk to write
+   * @param chunk_size  - The size of the chunk
+   * @param finished    - `true` if this is the last chunk to write
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_chunk (
+    sapi_ipc_result_t* result,
+    const char* chunk,
+    size_t chunk_size,
+    bool finished
+  );
+
+  /**
+   * Write an event to the HTTP response associated with the IPC result.
+   *
+   * ⚠️ You must have called `sapi_ipc_result_set_header` with a `Content-Type`
+   * header of `text/event-stream` to use this function.
+   *
+   * ⚠️ You must call `sapi_ipc_reply` before calling this function.
+   *
+   * ⚠️ The `name` and `data` arguments must be null-terminated strings. Either
+   * can be empty as long as it's null-terminated and the other is not empty.
+   *
+   * @param result   - An IPC request result
+   * @param name     - The event name
+   * @param data     - The event data
+   * @param finished - `true` if this is the last event to write
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_event (
+    sapi_ipc_result_t* result,
+    const char* name,
+    const char* data,
+    bool finished
+  );
+
+  /**
    * Creates a "reply" for an IPC route request.
    * @param result - An IPC request result
    * @return `true` if successful, otherwise `false`

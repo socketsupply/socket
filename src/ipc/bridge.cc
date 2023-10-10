@@ -1881,8 +1881,8 @@ static void registerSchemeHandler (Router *router) {
 
   auto request = task.request;
   auto url = String(request.URL.absoluteString.UTF8String);
-  auto message = Message {url};
-  auto seq = message.seq;
+  auto message = Message(url, true);
+  message.isHTTP = true;
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
@@ -2140,25 +2140,59 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  auto invoked = self.router->invoke(url, body, bufsize, [=](auto result) {
-    auto json = result.str();
-    auto size = result.post.body != nullptr ? result.post.length : json.size();
-    auto body = result.post.body != nullptr ? result.post.body : json.c_str();
-    auto data = [NSData dataWithBytes: body length: size];
-    auto  headers = [NSMutableDictionary dictionary];
-
+  auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
+    auto headers = [NSMutableDictionary dictionary];
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
-    headers[@"content-length"] = [@(size) stringValue];
-
-    for (const auto& header : result.headers.entries) {
-      headers[@(header.key.c_str())] = @(header.value.c_str());
-    }
 
     for (const auto& header : result.headers.entries) {
       auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
       auto value = [NSString stringWithUTF8String: trim(header.value.str()).c_str()];
       headers[key] = value;
+    }
+
+    NSData* data = nullptr;
+    if (result.post.event_stream != nullptr) {
+      *result.post.event_stream = [task](const char* name, const char* data,
+                                         bool finished) {
+        auto event =
+            [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
+                                       [NSString stringWithUTF8String:name],
+                                       [NSString stringWithUTF8String:data]];
+
+        [task didReceiveData:[event dataUsingEncoding:NSUTF8StringEncoding]];
+        if (finished) {
+          [task didFinish];
+        }
+        return true;
+      };
+      headers[@"content-type"] = @"text/event-stream";
+      headers[@"cache-control"] = @"no-store";
+    } else if (result.post.chunk_stream != nullptr) {
+      *result.post.chunk_stream = [task](const char* chunk, size_t chunk_size,
+                                         bool finished) {
+        [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
+        if (finished) {
+          [task didFinish];
+        }
+        return true;
+      };
+      headers[@"transfer-encoding"] = @"chunked";
+    } else {
+      std::string json;
+      const char* body;
+      size_t size;
+      if (result.post.body != nullptr) {
+        body = result.post.body;
+        size = result.post.length;
+      } else {
+        json = result.str();
+        body = json.c_str();
+        size = json.size();
+        headers[@"content-type"] = @"application/json";
+      }
+      headers[@"content-length"] = @(size).stringValue;
+      data = [NSData dataWithBytes: body length: size];
     }
 
     auto response = [[NSHTTPURLResponse alloc]
@@ -2169,8 +2203,10 @@ static void registerSchemeHandler (Router *router) {
     ];
 
     [task didReceiveResponse: response];
-    [task didReceiveData: data];
-    [task didFinish];
+    if (data != nullptr) {
+      [task didReceiveData: data];
+      [task didFinish];
+    }
 
   #if !__has_feature(objc_arc)
     [response release];
@@ -2691,6 +2727,15 @@ namespace SSC::IPC {
     ResultCallback callback
   ) {
     auto message = Message { uri };
+    return this->invoke(message, bytes, size, callback);
+  }
+
+  bool Router::invoke (
+    const Message& message,
+    const char *bytes,
+    size_t size,
+    ResultCallback callback
+  ) {
     auto name = message.name;
     MessageCallbackContext ctx;
 
