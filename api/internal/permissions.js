@@ -1,39 +1,146 @@
 /* global EventTarget, Event */
+/**
+ * @module Permissions
+ * This module provides an API for querying and requesting permissions.
+ */
 import { IllegalConstructorError } from '../errors.js'
+import Enumeration from '../enumeration.js'
+import hooks from '../hooks.js'
 import ipc from '../ipc.js'
+import gc from '../gc.js'
 import os from '../os.js'
 
-const isAndroid = os.platform() === 'android'
+/**
+ * @typedef {{ name: string }} PermissionDescriptor
+ */
 
+const isAndroid = os.platform() === 'android'
+const isApple = os.platform() === 'darwin'
+
+/**
+ * Get a bound platform `navigator.permissions` function.
+ * @ignore
+ * @param {string} name}
+ * @return {function}
+ */
+function getPlatformFunction (name) {
+  if (!globalThis.window?.navigator?.permissions?.[name]) return null
+  const value = globalThis.window.navigator.permissions[name]
+  return value.bind(globalThis.navigator.permissions)
+}
+
+/**
+ * Native platform functions
+ * @ignore
+ */
+const platform = {
+  query: getPlatformFunction('query')
+}
+
+/**
+ * An enumeration of the permission types.
+ * - 'geolocation'
+ * - 'notifications'
+ * - 'push'
+ * - 'persistent-storage'
+ * - 'midi'
+ * - 'storage-access'
+ * @type {Enumeration}
+ * @ignore
+ */
+export const types = Enumeration.from([
+  'geolocation',
+  'notifications',
+  'push',
+  'persistent-storage',
+  'midi',
+  'storage-access'
+])
+
+/**
+ * A container that provides the state of an object and an event handler
+ * for monitoring changes permission changes.
+ * @ignore
+ */
 class PermissionStatus extends EventTarget {
+  #removePermissionChangeListener = null
+  #subscribed = true
   #onchange = null
+  #signal = null
   #state = null
   #name = null
 
-
-  constructor (name, subscribe) {
+  /**
+   * `PermissionStatus` class constructor.
+   * @param {string} name
+   * @param {string} initialState
+   * @param {object=} [options]
+   * @param {?AbortSignal} [options.signal = null]
+   */
+  constructor (name, initialState, options = { signal: null }) {
     super()
     this.#name = name
-    subscribe((state) => {
-      if (this.#state !== state) {
-        this.#state = state
+    this.#state = initialState
+    this.#signal = options?.signal ?? null
+
+    this.#removePermissionChangeListener = hooks.onPermissionChange((event) => {
+      const { detail } = event
+      if (this.#subscribed === false) {
+        this.#removePermissionChangeListener()
+        this.#removePermissionChangeListener = null
+        return
+      }
+
+      if (detail.name === name && detail.state !== this.#state) {
+        this.#state = detail.state
         this.dispatchEvent(new Event('change'))
       }
     })
+
+    if (this.#signal?.aborted === true) {
+      this.removePermissionChangeListener()
+    }
+
+    if (typeof this.#signal?.addEventListener === 'function') {
+      this.#signal.addEventListener('abort', () => {
+        this.#removePermissionChangeListener()
+        this.#removePermissionChangeListener = null
+        this.unsubscribe()
+      }, { once: true })
+    }
+
+    gc.ref(this)
   }
 
+  /**
+   * String tag for `PermissionStatus`.
+   * @ignore
+   */
   get [Symbol.toStringTag] () {
     return 'PermissionStatus'
   }
 
+  /**
+   * The name of this permission this status is for.
+   * @type {string}
+   */
   get name () {
     return this.#name
   }
 
+  /**
+   * The current state of the permission status.
+   * @type {string}
+   */
   get state () {
     return this.#state
   }
 
+  /**
+   * Level 0 event target 'change' event listener accessor
+   * @type {function(Event)}
+   */
+  get onchange () { return this.#onchange }
   set onchange (onchange) {
     if (typeof this.#onchange === 'function') {
       this.removeEventListener('change', this.#onchange)
@@ -45,43 +152,41 @@ class PermissionStatus extends EventTarget {
     }
   }
 
-  get onchange () {
-    return this.#onchange
+  /**
+   * Non-standard method for unsubscribing to status state updates.
+   * @ignore
+   */
+  unsubscribe () {
+    this.#subscribed = false
+  }
+
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @return {gc.Finalizer}
+   * @ignore
+   */
+  [gc.finalizer] () {
+    return {
+      args: [this.removePermissionChangeListener],
+      handle (removePermissionChangeListener) {
+        console.log('GCd')
+        removePermissionChangeListener()
+      }
+    }
   }
 }
 
 /**
- * @ignore
- * @param {string} name}
- * @return {function}
- */
-function getPlatformFunction (name) {
-  if (!globalThis.window?.navigator?.permissions?.[name]) return null
-  const value = globalThis.window.navigator.permissions[name]
-  return value.bind(globalThis.navigator.permissions)
-}
-
-const platform = {
-  query: getPlatformFunction('query')
-}
-
-/**
- * @param {{ name: string }} descriptor
+ * Query for a permission status.
+ * @param {PermissionDescriptor} descriptor
+ * @param {object=} [options]
+ * @param {?AbortSignal} [options.signal = null]
  * @return {Promise<PermissionStatus>}
  */
-export async function query (descriptor) {
-  if (!isAndroid) {
+export async function query (descriptor, options) {
+  if (!isAndroid && !isApple) {
     return platform.query(descriptor)
   }
-
-  const types = [
-    'geolocation',
-    'notifications',
-    'push',
-    'persistent-storage',
-    'midi',
-    'storage-access'
-  ]
 
   if (arguments.length === 0) {
     throw new TypeError(
@@ -107,7 +212,7 @@ export async function query (descriptor) {
     )
   }
 
-  if (typeof name !== 'string' || name.length === 0 || !types.includes(name)) {
+  if (typeof name !== 'string' || name.length === 0 || !types.contains(name)) {
     throw new TypeError(
       'Failed to execute \'query\' on \'Permissions\': ' +
       'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
@@ -115,22 +220,92 @@ export async function query (descriptor) {
     )
   }
 
-  const result = await ipc.send('permissions.query', { name })
-  const status = new PermissionStatus(name, async (update) => {
-    queueMicrotask(() => update(result.data.state))
-  })
+  const result = await ipc.send('permissions.query', { name, signal: options?.signal })
 
   if (result.err) {
     throw result.err
   }
 
-  return status
+  return new PermissionStatus(name, result.data.state, options)
 }
 
+/**
+ * Request a permission to be granted.
+ * @param {PermissionDescriptor} descriptor
+ * @param {object=} [options]
+ * @param {?AbortSignal} [options.signal = null]
+ * @return {Promise<PermissionStatus>}
+ */
+export async function request (descriptor, options) {
+  if (arguments.length === 0) {
+    throw new TypeError(
+      'Failed to execute \'request\' on \'Permissions\': ' +
+      '1 argument required, but only 0 present.'
+    )
+  }
+
+  if (!descriptor || typeof descriptor !== 'object') {
+    throw new TypeError(
+      'Failed to execute \'request\' on \'Permissions\': ' +
+      'parameter 1 is not of type \'object\'.'
+    )
+  }
+
+  const { name } = descriptor
+
+  if (name === undefined) {
+    throw new TypeError(
+      'Failed to execute \'request\' on \'Permissions\': ' +
+      'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
+      'Required member is undefined.'
+    )
+  }
+
+  if (typeof name !== 'string' || name.length === 0 || !types.contains(name)) {
+    throw new TypeError(
+      'Failed to execute \'request\' on \'Permissions\': ' +
+      'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
+      `The provided value '${name}' is not a valid enum value of type PermissionName.`
+    )
+  }
+
+  const result = await ipc.send('permissions.request', { name, signal: options?.signal })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  return new PermissionStatus(name, result.data.state, options)
+}
+
+/**
+ * An interface for querying and revoking permissions.
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Permissions}
+ */
 class Permissions {
+  /**
+   * Returns the state of a user permission on the global scope.
+   * @type {function(PermissionDescriptor): Promise<PermissionStatus>}
+   */
+  query = query
+
+  /**
+   * Request a permission to be granted.
+   * @type {function(PermissionDescriptor): Promise<PermissionStatus>}
+   */
+  request = request
+
+  /**
+   * `Permissions` class constructor. This interface is
+   * not constructable.
+   * @ignore
+   */
   constructor () {
     throw new IllegalConstructorError()
   }
 }
 
-export default Object.assign(Object.create(Permissions.prototype), { query })
+export default Object.assign(Object.create(Permissions.prototype), {
+  query,
+  request
+})
