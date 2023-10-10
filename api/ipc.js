@@ -1011,11 +1011,13 @@ class IPCSearchParams extends URLSearchParams {
       params = null
     }
     super({
-      value,
       index: globalThis.__args?.index ?? 0,
       ...params,
       seq: 'R' + nextSeq++
     })
+    if (value !== undefined) {
+      this.set('value', value)
+    }
     if (nonce) {
       this.set('nonce', nonce)
     }
