@@ -92,6 +92,51 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+  typedef struct sapi_extension_registration sapi_extension_registration_t;
+
+  /**
+   * Internal APIs
+   */
+
+  /**
+   * Internal ABI version getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  unsigned long __sapi_extension_abi ();
+
+  /**
+   * Internal name getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_name ();
+
+  /**
+   * Internal description getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_description ();
+
+  /**
+   * Internal version getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_version ();
+
+  /**
+   * Internal initializer for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const sapi_extension_registration_t* __sapi_extension_init ();
 
   /**
    * Context API
@@ -692,7 +737,6 @@ extern "C" {
   /**
    * A container for an extension registration.
    */
-  typedef struct sapi_extension_registration sapi_extension_registration_t;
   struct sapi_extension_registration {
     unsigned long abi;
     // required
