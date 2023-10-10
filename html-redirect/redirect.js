@@ -18,12 +18,6 @@ export async function redirect (inputPath, basePath) {
   const htmlPath = `${fullPath}.html`
   if (await isFile(htmlPath)) return stripBasePath(htmlPath, basePath)
 
-  // Special case for root path
-  if (inputPath === '/') {
-    const rootIndexPath = path.join(basePath, 'index.html')
-    return await isFile(rootIndexPath) ? '/index.html' : null
-  }
-
   // If no valid path is found, return null
   return null
 }
