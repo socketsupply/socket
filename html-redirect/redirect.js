@@ -1,4 +1,4 @@
-import { access, stat } from 'fs/promises'
+import { stat } from 'fs/promises'
 import path from 'path'
 
 export async function redirect (inputPath, basePath) {
@@ -12,7 +12,7 @@ export async function redirect (inputPath, basePath) {
 
   // 2. Try appending a `/` to the path and checking for an index.html
   const indexPath = path.join(fullPath, 'index.html')
-  if (await exists(indexPath)) return stripBasePath(indexPath, basePath)
+  if (await isFile(indexPath)) return stripBasePath(indexPath, basePath)
 
   // 3. Check if appending a .html file extension gives a valid file
   const htmlPath = `${fullPath}.html`
@@ -21,21 +21,11 @@ export async function redirect (inputPath, basePath) {
   // Special case for root path
   if (inputPath === '/') {
     const rootIndexPath = path.join(basePath, 'index.html')
-    return await exists(rootIndexPath) ? '/index.html' : null
+    return await isFile(rootIndexPath) ? '/index.html' : null
   }
 
   // If no valid path is found, return null
   return null
-}
-
-// Helper function to check if a path exists
-async function exists (filePath) {
-  try {
-    await access(filePath)
-    return true
-  } catch {
-    return false
-  }
 }
 
 // Helper function to check if a path points to a file
