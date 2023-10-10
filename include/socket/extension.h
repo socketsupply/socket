@@ -1055,7 +1055,7 @@ extern "C" {
    * @return The size of the IPC result bytes
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  unsigned int sapi_ipc_result_get_bytes_size (
+  size_t sapi_ipc_result_get_bytes_size (
     const sapi_ipc_result_t* result
   );
 
