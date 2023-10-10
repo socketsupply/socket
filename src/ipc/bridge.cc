@@ -2614,10 +2614,15 @@ static void registerSchemeHandler (Router *router) {
     if (result.post.event_stream != nullptr) {
       *result.post.event_stream = [task](const char* name, const char* data,
                                          bool finished) {
+        auto event_name = [NSString stringWithUTF8String:name];
+        auto event_data = [NSString stringWithUTF8String:data];
         auto event =
-            [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
-                                       [NSString stringWithUTF8String:name],
-                                       [NSString stringWithUTF8String:data]];
+            event_name.length > 0 && event_data.length > 0
+                ? [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
+                                             event_name, event_data]
+            : event_data.length > 0
+                ? [NSString stringWithFormat:@"data: %@\n\n", event_data]
+                : [NSString stringWithFormat:@"event: %@\n\n", event_name];
 
         [task didReceiveData:[event dataUsingEncoding:NSUTF8StringEncoding]];
         if (finished) {
