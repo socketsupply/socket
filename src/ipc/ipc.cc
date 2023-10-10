@@ -106,7 +106,10 @@ namespace SSC::IPC {
   }
 
   bool Message::has (const String& key) const {
-    return this->args.find(key) != this->args.end();
+    return (
+      this->args.find(key) != this->args.end() &&
+      this->args.at(key).size() > 0
+    );
   }
 
   String Message::get (const String& key) const {
