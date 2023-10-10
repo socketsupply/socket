@@ -1,4 +1,4 @@
-/* global EventTarget, Event */
+/* global EventTarget, CustomEvent, Event */
 /**
  * @module Permissions
  * This module provides an API for querying and requesting permissions.
@@ -274,6 +274,17 @@ export async function request (descriptor, options) {
   if (result.err) {
     throw result.err
   }
+
+  const globalEvent = new CustomEvent('permissionchange', {
+    detail: {
+      name,
+      state: result.data.state
+    }
+  })
+
+  queueMicrotask(() => {
+    globalThis.dispatchEvent(globalEvent)
+  })
 
   return new PermissionStatus(name, result.data.state, options)
 }
