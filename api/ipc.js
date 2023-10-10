@@ -171,7 +171,7 @@ function getErrorClass (type, fallback) {
   if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
-      const object = Object.create(globalThis[type].prototype, {
+      const object = Object.create(globalThis[${type}].prototype, {
         code: { value: null }
       })
 
