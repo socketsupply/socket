@@ -2212,14 +2212,6 @@ static void registerSchemeHandler (Router *router) {
 
     auto ext = fs::path(path).extension().string();
 
-    if (path == "/" || path.size() == 0) {
-      path = "/index.html";
-      ext = ".html";
-    } else if (path.ends_with("/")) {
-      path += "index.html";
-      ext = ".html";
-    }
-
     if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
@@ -2247,8 +2239,13 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    if (ext.size() == 0) {
-      auto redirectURL = uri + "/";
+    auto resolved = Router::resolveURLPathForWebView(path, cwd);
+    path = resolved.path;
+
+    if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+      path = userConfig["webview_default_index"];
+    } else if (resolved.redirect) {
+      auto redirectURL = path;
       auto redirectSource = String(
         "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
       );
@@ -2270,9 +2267,11 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
+    if (path.size() > 0) {
+      path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
+    }
 
-    if (!fs::exists(path)) {
+    if (path.size() == 0 || !fs::exists(path)) {
       auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
       auto response = webkit_uri_scheme_response_new(stream, 0);
 
@@ -2380,6 +2379,7 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     bool isModule = false;
+    auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String);
     auto path = String(components.path.UTF8String);
 
     auto ext = String(
@@ -2387,14 +2387,6 @@ static void registerSchemeHandler (Router *router) {
         ? components.URL.pathExtension.UTF8String
         : ""
     );
-
-    if (path == "/" || path.size() == 0) {
-      path = "/index.html";
-      ext = ".html";
-    } else if (path.ends_with("/")) {
-      path += "index.html";
-      ext = ".html";
-    }
 
     if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
@@ -2404,10 +2396,13 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
-      if (ext.size() == 0 && userConfig.contains("webview_default_index")) {
+      auto resolved = Router::resolveURLPathForWebView(path, basePath);
+      path = resolved.path;
+
+      if (path.size() == 0 && userConfig.contains("webview_default_index")) {
         path = userConfig["webview_default_index"];
-      } else if (ext.size() == 0) {
-        auto redirectURL = String(request.URL.absoluteString.UTF8String) + "/";
+      } else if (resolved.redirect) {
+        auto redirectURL = path;
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -3201,6 +3196,48 @@ namespace SSC::IPC {
       return this->router.invoke(uri, bytes, size);
     }
   }
+
+  Router::WebViewURLPathResolution Router::resolveURLPathForWebView (String inputPath, const String& basePath) {
+    namespace fs = std::filesystem;
+
+    if (inputPath.starts_with("/")) {
+      inputPath = inputPath.substr(1);
+    }
+
+    // Resolve the full path
+    fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
+
+    // 1. Try the given path if it's a file
+    if (fs::is_regular_file(fullPath)) {
+      return Router::WebViewURLPathResolution{"/" + fs::relative(fullPath, basePath).string()};
+    }
+
+    // 2. Try appending a `/` to the path and checking for an index.html
+    fs::path indexPath = fullPath / fs::path("index.html");
+    if (fs::is_regular_file(indexPath)) {
+      if (fullPath.string().ends_with("/")) {
+        return Router::WebViewURLPathResolution{
+          .path = "/" + fs::relative(indexPath, basePath).string(),
+          .redirect = false
+        };
+      } else {
+        return Router::WebViewURLPathResolution{
+          .path = "/" + fs::relative(fullPath, basePath).string() + "/",
+          .redirect = true
+        };
+      }
+    }
+
+    // 3. Check if appending a .html file extension gives a valid file
+    fs::path htmlPath = fullPath;
+    htmlPath.replace_extension(".html");
+    if (fs::is_regular_file(htmlPath)) {
+      return Router::WebViewURLPathResolution{"/" + fs::relative(htmlPath, basePath).string()};
+    }
+
+    // If no valid path is found, return empty string
+    return Router::WebViewURLPathResolution{};
+  };
 
   Router::Router () {
     static auto userConfig = SSC::getUserConfig();
