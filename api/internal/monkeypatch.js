@@ -1,6 +1,7 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
+import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 
@@ -28,16 +29,30 @@ export function init () {
     fetch,
     Headers,
     Request,
-    Response
+    Response,
+
+    // notifications
+    Notification
   })
 
   try {
-    globalThis.navigator.geolocation = Object.assign(globalThis.navigator?.geolocation ?? {}, geolocation)
+    // @ts-ignore
+    globalThis.navigator.geolocation = Object.assign(
+      globalThis.navigator?.geolocation ?? {},
+      geolocation
+    )
   } catch {}
 
-  try {
-    globalThis.navigator.permissions = Object.assign(globalThis.navigator?.permissions ?? {}, permissions)
-  } catch {}
+  if (!globalThis.navigator?.permissions) {
+    // @ts-ignore
+    globalThis.navigator.permissions = permissions
+  } else {
+    try {
+      for (const key in permissions) {
+        globalThis.navigator.permissions[key] = permissions[key]
+      }
+    } catch {}
+  }
 
   applied = true
   // create <title> tag in document if it doesn't exist
