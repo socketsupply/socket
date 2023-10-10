@@ -2,46 +2,41 @@
 #include <string>
 #include <filesystem>
 
-std::string redirect(const std::string& inputPath, const std::string& basePath) {
+std::string redirect(std::string inputPath, const std::string& basePath) {
     namespace fs = std::filesystem;
 
-    fs::path fullPath = fs::path(basePath) / inputPath;
+    if (inputPath.starts_with("/")) {
+        inputPath = inputPath.substr(1);
+    }
 
+    // Resolve the full path
+    fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
+
+    // 1. Try the given path if it's a file
     if (fs::is_regular_file(fullPath)) {
-        return stripBasePath(fullPath.string(), basePath);
+        return "/" + fs::relative(fullPath, basePath).string();
     }
 
-    fs::path indexPath = fullPath / "index.html";
+    // 2. Try appending a `/` to the path and checking for an index.html
+    fs::path indexPath = fullPath / fs::path("index.html");
     if (fs::is_regular_file(indexPath)) {
-        return stripBasePath(indexPath.string(), basePath);
+        return "/" + fs::relative(indexPath, basePath).string();
     }
 
+    // 3. Check if appending a .html file extension gives a valid file
     fs::path htmlPath = fullPath;
     htmlPath.replace_extension(".html");
     if (fs::is_regular_file(htmlPath)) {
-        return stripBasePath(htmlPath.string(), basePath);
+        return "/" + fs::relative(htmlPath, basePath).string();
     }
 
-    if (inputPath == "/") {
-        fs::path rootIndexPath = fs::path(basePath) / "index.html";
-        return fs::is_regular_file(rootIndexPath) ? "/index.html" : "";
-    }
-
+    // If no valid path is found, return empty string
     return "";
 }
 
-// Helper function to strip the basePath from the fullPath
-std::string stripBasePath(const std::string& fullPath, const std::string& basePath) {
-    size_t pos = fullPath.find(basePath);
-    if (pos != std::string::npos) {
-        return fullPath.substr(pos + basePath.length());
-    }
-    return fullPath;
+int main() {
+    std::string basePath = "/Users/bret/Developer/ssc/socket/html-redirect/test-cases/1";
+    std::string testPath = "/an-index-file/a-html-file.html";
+    std::string resolvedPath = redirect(testPath, basePath);
+    std::cout << resolvedPath << std::endl;
 }
-
-// int main() {
-//     std::string basePath = "/path/to/base"; // Replace this with your actual base path
-//     std::string testPath = "/an-index-file/a-html-file"; // Example test path
-//     std::string resolvedPath = redirect(testPath, basePath);
-//     std::cout << resolvedPath << std::endl;
-// }
