@@ -616,7 +616,7 @@ namespace SSC {
       dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
     };
 
-    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
+    this->bridge->router.map("window.eval", [=, this](auto message, auto router, auto reply) {
       auto value = message.value;
       auto seq = message.seq;
       auto  script = [NSString stringWithUTF8String: value.c_str()];
@@ -823,12 +823,6 @@ namespace SSC {
         forKey: @"drawsTransparentBackground"
     ]; */
 
-    /* [[NSNotificationCenter defaultCenter] addObserver: webview
-                                             selector: @selector(systemColorsDidChangeNotification:)
-                                                 name: NSSystemColorsDidChangeNotification
-                                               object: nil
-    ]; */
-
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
     //
@@ -871,7 +865,7 @@ namespace SSC {
         [SSCWindowDelegate class],
         @selector(userContentController:didReceiveScriptMessage:),
         imp_implementationWithBlock(
-          [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
+          [=, this](id self, SEL cmd, WKScriptMessage* scriptMessage) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
 
             if (!scriptMessage || !window) return;
