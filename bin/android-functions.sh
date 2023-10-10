@@ -487,8 +487,8 @@ function android_supported_abis() {
 }
 export ANDROID_DEPS_ERROR
 
-declare ANDROID_PLATFORM="33"
-declare NDK_VERSION="25.0.8775105"
+declare ANDROID_PLATFORM="34"
+declare NDK_VERSION="26.0.10792818"
 
 export BUILD_ANDROID
 
