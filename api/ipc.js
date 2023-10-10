@@ -993,7 +993,7 @@ export async function ready () {
       if (Date.now() - startReady > 10000) {
         reject(new Error('failed to resolve globalThis.__args'))
       } else if (globalThis.__args) {
-        queueMicrotask(resolve)
+        queueMicrotask(() => resolve())
       } else {
         queueMicrotask(loop)
       }
@@ -1010,14 +1010,17 @@ class IPCSearchParams extends URLSearchParams {
       value = params
       params = null
     }
+
     super({
-      index: globalThis.__args?.index ?? 0,
       ...params,
+      index: globalThis.__args?.index ?? 0,
       seq: 'R' + nextSeq++
     })
+
     if (value !== undefined) {
       this.set('value', value)
     }
+
     if (nonce) {
       this.set('nonce', nonce)
     }
