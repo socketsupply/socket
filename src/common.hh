@@ -16,6 +16,10 @@
 #include <objc/objc-runtime.h>
 #endif
 
+#if !defined(WAS_CODESIGNED)
+#define WAS_CODESIGNED 0
+#endif
+
 #ifndef debug
 #if !defined(SSC_CLI)
 static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
