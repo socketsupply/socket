@@ -34,6 +34,7 @@ class PermissionRequest (callback: (Boolean) -> Unit) {
  */
 open class MainActivity : WebViewActivity() {
   override open protected val TAG = "Mainctivity"
+  open lateinit var notificationChannel: android.app.NotificationChannel
   open lateinit var runtime: Runtime
   open lateinit var window: Window
 
@@ -80,6 +81,12 @@ open class MainActivity : WebViewActivity() {
 
     super.onCreate(state)
 
+    this.notificationChannel = android.app.NotificationChannel(
+      "__BUNDLE_IDENTIFIER__",
+      "__BUNDLE_IDENTIFIER__ Notifications",
+      android.app.NotificationManager.IMPORTANCE_DEFAULT
+    )
+
     this.runtime = Runtime(this, RuntimeConfiguration(
       assetManager = this.applicationContext.resources.assets,
       rootDirectory = this.getRootDirectory(),
@@ -101,6 +108,11 @@ open class MainActivity : WebViewActivity() {
 
     this.window.load()
     this.runtime.start()
+
+    if (this.runtime.isPermissionAllowed("notifications")) {
+      val notificationManager = this.getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+      notificationManager.createNotificationChannel(this.notificationChannel)
+    }
   }
 
   override fun onStart () {
@@ -126,6 +138,33 @@ open class MainActivity : WebViewActivity() {
   override fun onDestroy () {
     this.runtime.destroy()
     return super.onDestroy()
+  }
+
+  override fun onNewIntent (intent: android.content.Intent) {
+    super.onNewIntent(intent)
+    val window = this.window
+    val action = intent.action
+    val id = intent.extras?.getCharSequence("id")?.toString()
+
+    if (action != null) {
+      if (action == "notification.response.default") {
+        this.runOnUiThread {
+          window.bridge.emit("notificationresponse", """{
+            "id": "$id",
+            "action": "default"
+          }""")
+        }
+      }
+
+      if (action == "notification.response.dismiss") {
+        this.runOnUiThread {
+          window.bridge.emit("notificationresponse", """{
+            "id": "$id",
+            "action": "dismiss"
+          }""")
+        }
+      }
+    }
   }
 
   override fun onPageStarted (
