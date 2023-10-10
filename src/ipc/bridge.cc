@@ -2731,7 +2731,7 @@ namespace SSC::IPC {
     size_t size,
     ResultCallback callback
   ) {
-    auto message = Message { uri };
+    auto message = Message(uri, true);
     return this->invoke(message, bytes, size, callback);
   }
 
