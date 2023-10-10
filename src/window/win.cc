@@ -853,6 +853,7 @@ namespace SSC {
                             DWORD actual;
                             HRESULT r;
                             auto msg = IPC::Message(uri);
+                            msg.isHTTP = true;
                             // TODO(trevnorris): Make sure index and seq are set.
                             if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
                               IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
