@@ -4229,6 +4229,84 @@ declare module "socket:fetch" {
 }
 declare module "socket:hooks" {
     /**
+     * Wait for the global Window, Document, and Runtime to be ready.
+     * The callback function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onReady(callback: Function): Function;
+    /**
+     * Wait for the global Window and Document to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLoad(callback: Function): Function;
+    /**
+     * Wait for the runtime to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onInit(callback: Function): Function;
+    /**
+     * Calls callback when a global exception occurs.
+     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onError(callback: Function): Function;
+    /**
+     * Subscribes to the global data pipe calling callback when
+     * new data is emitted on the global Window.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onData(callback: Function): Function;
+    /**
+     * Subscribes to global messages likely from an external `postMessage`
+     * invocation.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onMessage(callback: Function): Function;
+    /**
+     * Calls callback when runtime is working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOnline(callback: Function): Function;
+    /**
+     * Calls callback when runtime is not working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOffline(callback: Function): Function;
+    /**
+     * Calls callback when runtime user preferred language has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLanguageChange(callback: Function): Function;
+    /**
+     * Calls callback when an application permission has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onPermissionChange(callback: Function): Function;
+    /**
+     * Calls callback in response to a presented `Notification`.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationResponse(callback: Function): Function;
+    /**
+     * Calls callback when a `Notification` is presented.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationPresented(callback: Function): Function;
+    /**
      * An event dispatched when the runtime has been initialized.
      */
     export class InitEvent {
@@ -4361,10 +4439,32 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onLanguageChange(callback: Function): Function;
+        /**
+         * Calls callback when an application permission has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onPermissionChange(callback: Function): Function;
+        /**
+         * Calls callback in response to a displayed `Notification`.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationResponse(callback: Function): Function;
+        /**
+         * Calls callback when a `Notification` is presented.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationPresented(callback: Function): Function;
         #private;
     }
-    const _default: Hooks;
-    export default _default;
+    export default hooks;
+    /**
+     * `Hooks` single instance.
+     * @ignore
+     */
+    const hooks: Hooks;
 }
 declare module "socket:language" {
     /**
@@ -6381,6 +6481,427 @@ declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
     export default resolve;
 }
+declare module "socket:internal/permissions" {
+    /**
+     * Query for a permission status.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function query(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * Request a permission to be granted.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function request(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * An enumeration of the permission types.
+     * - 'geolocation'
+     * - 'notifications'
+     * - 'push'
+     * - 'persistent-storage'
+     * - 'midi'
+     * - 'storage-access'
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const types: Enumeration;
+    const _default: any;
+    export default _default;
+    export type PermissionDescriptor = {
+        name: string;
+    };
+    /**
+     * A container that provides the state of an object and an event handler
+     * for monitoring changes permission changes.
+     * @ignore
+     */
+    class PermissionStatus extends EventTarget {
+        /**
+         * `PermissionStatus` class constructor.
+         * @param {string} name
+         * @param {string} initialState
+         * @param {object=} [options]
+         * @param {?AbortSignal} [options.signal = null]
+         */
+        constructor(name: string, initialState: string, options?: object | undefined);
+        /**
+         * The name of this permission this status is for.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The current state of the permission status.
+         * @type {string}
+         */
+        get state(): string;
+        set onchange(arg: (arg0: Event) => any);
+        /**
+         * Level 0 event target 'change' event listener accessor
+         * @type {function(Event)}
+         */
+        get onchange(): (arg0: Event) => any;
+        /**
+         * Non-standard method for unsubscribing to status state updates.
+         * @ignore
+         */
+        unsubscribe(): void;
+        /**
+         * String tag for `PermissionStatus`.
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    import Enumeration from "socket:enumeration";
+}
+declare module "socket:notification" {
+    /**
+     * Show a notification. Creates a `Notification` instance and displays
+     * it to the user.
+     * @param {string} title
+     * @param {NotificationOptions=} [options]
+     * @param {function(Event)=} [onclick]
+     * @param {function(Event)=} [onclose]
+     * @return {Promise}
+     */
+    export function showNotification(title: string, options?: NotificationOptions | undefined, onclick?: ((arg0: Event) => any) | undefined, onshow?: any): Promise<any>;
+    /**
+     * An enumeratino of notification test directions:
+     * - 'auto'  Automatically determined by the operating system
+     * - 'ltr'   Left-to-right text direction
+     * - 'rtl'   Right-to-left text direction
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationDirection: Enumeration;
+    /**
+     * An enumeration of permission types granted by the user for the current
+     * origin to display notifications to the end user.
+     * - 'granted'  The user has explicitly granted permission for the current
+     *              origin to display system notifications.
+     * - 'denied'   The user has explicitly denied permission for the current
+     *              origin to display system notifications.
+     * - 'default'  The user decision is unknown; in this case the application
+     *              will act as if permission was denied.
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationPermission: Enumeration;
+    /**
+     * A validated notification action object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationAction {
+        /**
+         * `NotificationAction` class constructor.
+         * @ignore
+         * @param {object} options
+         * @param {string} options.action
+         * @param {string} options.title
+         * @param {string|URL=} [options.icon = '']
+         */
+        constructor(options: {
+            action: string;
+            title: string;
+            icon?: (string | URL) | undefined;
+        });
+        /**
+         * A string identifying a user action to be displayed on the notification.
+         * @type {string}
+         */
+        get action(): string;
+        /**
+         * A string containing action text to be shown to the user.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * A string containing the URL of an icon to display with the action.
+         * @type {string}
+         */
+        get icon(): string;
+        #private;
+    }
+    /**
+     * A validated notification options object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationOptions {
+        /**
+         * `NotificationOptions` class constructor.
+         * @ignore
+         * @param {object} [options = {}]
+         * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+         * @param {NotificationAction[]=} [options.actions = []]
+         * @param {string|URL=} [options.badge = '']
+         * @param {string=} [options.body = '']
+         * @param {?any=} [options.data = null]
+         * @param {string|URL=} [options.icon = '']
+         * @param {string|URL=} [options.image = '']
+         * @param {string=} [options.lang = '']
+         * @param {string=} [options.tag = '']
+         * @param {boolean=} [options.boolean = '']
+         * @param {boolean=} [options.requireInteraction = false]
+         * @param {boolean=} [options.silent = false]
+         * @param {number[]=} [options.vibrate = []]
+         */
+        constructor(options?: object);
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        #private;
+    }
+    /**
+     * The Notification interface is used to configure and display
+     * desktop and mobile notifications to the user.
+     */
+    export class Notification extends EventTarget {
+        /**
+         * A read-only property that indicates the current permission granted
+         * by the user to display notifications.
+         * @type {'prompt'|'granted'|'denied'}
+         */
+        static get permission(): "denied" | "granted" | "prompt";
+        /**
+         * The maximum number of actions supported by the device.
+         * @type {number}
+         */
+        static get maxActions(): number;
+        /**
+         * Requests permission from the user to display notifications.
+         */
+        static requestPermission(): Promise<any>;
+        /**
+         * `Notification` class constructor.
+         * @param {string} title
+         * @param {NotificationOptions=} [options]
+         */
+        constructor(title: string, options?: NotificationOptions | undefined, ...args: any[]);
+        /**
+         * A unique identifier for this notification.
+         * @type {string}
+         */
+        get id(): string;
+        set onclick(arg: Function);
+        /**
+         * The click event is dispatched when the user clicks on
+         * displayed notification.
+         * @type {?function}
+         */
+        get onclick(): Function;
+        set onclose(arg: Function);
+        /**
+         * The close event is dispatched when the notification closes.
+         * @type {?function}
+         */
+        get onclose(): Function;
+        set onerror(arg: Function);
+        /**
+         * The eror event is dispatched when the notification fails to display
+         * or encounters an error.
+         * @type {?function}
+         */
+        get onerror(): Function;
+        set onshow(arg: Function);
+        /**
+         * The click event is dispatched when the notification is displayed.
+         * @type {?function}
+         */
+        get onshow(): Function;
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        /**
+         * The timestamp of the notification.
+         * @type {number}
+         */
+        get timestamp(): number;
+        /**
+         * The title read-only property of the `Notification` instace indicates
+         * the title of the notification, as specified in the `title` parameter
+         * of the `Notification` constructor.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * Closes the notification programmatically.
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    export default Notification;
+    import { Enumeration } from "socket:enumeration";
+    import URL from "socket:url";
+}
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
@@ -6388,6 +6909,7 @@ declare module "socket:stream-relay" {
 }
 declare module "socket:internal/geolocation" {
     /**
+     * Get the current position of the device.
      * @param {function(GeolocationPosition)} onSuccess
      * @param {onError(Error)} onError
      * @param {object=} options
@@ -6396,14 +6918,22 @@ declare module "socket:internal/geolocation" {
      */
     export function getCurrentPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: any, options?: object | undefined, ...args: any[]): Promise<any>;
     /**
+     * Register a handler function that will be called automatically each time the
+     * position of the device changes. You can also, optionally, specify an error
+     * handling callback function.
      * @param {function(GeolocationPosition)} onSuccess
      * @param {function(Error)} onError
-     * @param {object=} options
-     * @param {number=} options.timeout
-     * @return {Promise}
+     * @param {object=} [options]
+     * @param {number=} [options.timeout = null]
+     * @return {number}
      */
-    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: object | undefined, ...args: any[]): Promise<any>;
-    export function clearWatch(id: any, ...args: any[]): any;
+    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: object | undefined, ...args: any[]): number;
+    /**
+     * Unregister location and error monitoring handlers previously installed
+     * using `watchPosition`.
+     * @param {number} id
+     */
+    export function clearWatch(id: number, ...args: any[]): any;
     export namespace platform {
         let getCurrentPosition: Function;
         let watchPosition: Function;
@@ -6433,25 +6963,6 @@ declare module "socket:internal/globals" {
         register(name: any, value: any): any;
         get(name: any): any;
     };
-}
-declare module "socket:internal/permissions" {
-    /**
-     * @param {{ name: string }} descriptor
-     * @return {Promise<PermissionStatus>}
-     */
-    export function query(descriptor: {
-        name: string;
-    }, ...args: any[]): Promise<PermissionStatus>;
-    const _default: any;
-    export default _default;
-    class PermissionStatus extends EventTarget {
-        constructor(name: any, subscribe: any);
-        get name(): string;
-        get state(): any;
-        set onchange(arg: any);
-        get onchange(): any;
-        #private;
-    }
 }
 declare module "socket:internal/monkeypatch" {
     export function init(): void;
