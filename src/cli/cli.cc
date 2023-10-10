@@ -72,6 +72,7 @@ Map rc;
 auto start = system_clock::now();
 
 bool flagDebugMode = true;
+bool flagVerboseMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs;
 
@@ -1166,7 +1167,7 @@ struct AndroidCliState {
   SSC::String androidHome;
   // android, android-emulator
   SSC::String targetPlatform;
-  // android-33 or current platform number
+  // android-34 or current platform number
   SSC::String platform;
   StringStream avdmanager;
   bool sscAvdExists = false;
@@ -1744,6 +1745,7 @@ optionsAndEnv parseCommandLineOptions (
     }
 
     if (equal(key, "--verbose")) {
+      flagVerboseMode = true;
       setEnv("SSC_VERBOSE", "1");
       continue;
     }
@@ -1765,6 +1767,9 @@ optionsAndEnv parseCommandLineOptions (
       } else {
         // Option in the form "--key" or "-k"
         value = "";
+        if (i + 1 < options.size() && options[i + 1][0] != '-') {
+          targetPath = fs::absolute(options[i + 1]).lexically_normal();
+        }
       }
     }
 
@@ -1782,8 +1787,20 @@ optionsAndEnv parseCommandLineOptions (
       continue;
     }
 
-    auto option = validateOption(key, value, availableOptions, subcommand);
-    handleOption(optionsWithValue, optionsWithoutValue, option, value, subcommand);
+    if (key.size() && !key.starts_with("-")) {
+      targetPath = fs::absolute(key).lexically_normal();
+      value = "";
+      key = "";
+    }
+
+    if (key.size() > 0) {
+      auto option = validateOption(key, value, availableOptions, subcommand);
+      handleOption(optionsWithValue, optionsWithoutValue, option, value, subcommand);
+    }
+  }
+
+  if (targetPath.empty()) {
+    targetPath = fs::current_path();
   }
 
   result.optionsWithValue = optionsWithValue;
@@ -1849,15 +1866,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   auto const lastOption = argv[argc-1];
-  int numberOfOptions = argc - 3;
-
-  // if no path provided, use current directory
-  if (argc == 2 || lastOption[0] == '-') {
-    numberOfOptions = argc - 2;
-    targetPath = fs::current_path();
-  } else {
-    targetPath = fs::absolute(lastOption).lexically_normal();
-  }
+  const int numberOfOptions = argc - 2;
 
 #if defined(_WIN32)
   static String HOME = getEnv("HOMEPATH");
@@ -2122,10 +2131,8 @@ int main (const int argc, const char* argv[]) {
 
           // internal
           if (flagDebugMode) {
-            settings["apple_instruments"] = "true";
             suffix += "-dev";
           } else {
-            settings["apple_instruments"] = "false";
           }
 
           settings["debug"] = flagDebugMode;
@@ -2142,8 +2149,8 @@ int main (const int argc, const char* argv[]) {
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
   Options initOptions = {
-    { { "--config" }, true, false },
-    { { "--name" }, true, true }
+    { { "--config", "-C" }, true, false },
+    { { "--name", "-n" }, true, true }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
@@ -2286,12 +2293,17 @@ int main (const int argc, const char* argv[]) {
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
   Options installAppOptions = {
-    { { "--platform" }, false, true },
-    { { "--device" }, true, true }
+    { { "--debug", "-D" }, true, false },
+    { { "--device" }, true, true },
+    { { "--platform" }, true, true },
+    { { "--prod", "-P" }, true, false },
+    { { "--verbose", "-V" }, true, false },
+    { { "--target" }, true, true }
   };
   createSubcommand("install-app", installAppOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     String commandOptions = "";
     String targetPlatform = optionsWithValue["--platform"];
+    String installTarget = optionsWithValue["--target"];
 
     if (targetPlatform.size() > 0) {
       // just assume android when 'android-emulator' is given
@@ -2300,9 +2312,18 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (targetPlatform != "ios" && targetPlatform != "android") {
-        std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+        log("ERROR: Unsupported platform: " + targetPlatform);
         exit(1);
       }
+    }
+
+    if (targetPlatform.size() == 0) {
+      if (!platform.mac && !platform.linux) {
+        log("ERROR: Unsupported host desktop platform. Only 'macOS' and 'Linux' is supported");
+        exit(1);
+      }
+
+      targetPlatform = platform.os;
     }
 
     auto device = optionsWithValue["--device"];
@@ -2331,15 +2352,20 @@ int main (const int argc, const char* argv[]) {
       // this command will install the app to the first connected device which was
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
+      if (flagDebugMode) {
+        log(command);
+      }
+
       auto r = exec(command);
 
       if (r.exitCode != 0) {
         log("ERROR: failed to install the app. Is the device plugged in?");
+        if (flagDebugMode) {
+          log(r.output);
+        }
         exit(1);
       }
-    }
-
-    if (targetPlatform == "android") {
+    } else if (targetPlatform == "android") {
       auto androidHome = getAndroidHome();
       auto paths = getPaths(targetPlatform);
       auto output = paths.platformSpecificOutputPath;
@@ -2367,9 +2393,114 @@ int main (const int argc, const char* argv[]) {
         log("ERROR: failed to install the app. Is the device plugged in?");
         exit(1);
       }
+    } else if (platform.mac) {
+      if (installTarget.size() == 0) {
+        installTarget = "/";
+      }
+
+      auto paths = getPaths(targetPlatform);
+      auto pkgArchive = paths.platformSpecificOutputPath / (settings["build_name"] + ".pkg");
+      auto zipArchive = paths.platformSpecificOutputPath / (settings["build_name"] + ".zip");
+      auto appDirectory = paths.platformSpecificOutputPath / (settings["build_name"] + ".app");
+
+      if (fs::exists(pkgArchive)) {
+        String command = "";
+
+        if (installTarget == "/") {
+          command = "sudo installer";
+        } else {
+          command = "installer";
+        }
+
+        if (flagVerboseMode) {
+          command += " -verbose";
+        }
+
+        command += " -pkg " + pkgArchive.string();
+        command += " -target " + installTarget;
+
+        auto r = exec(command);
+        if (r.exitCode != 0) {
+          log("ERROR: Failed to install app in target");
+
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        if (flagVerboseMode) {
+          log(r.output);
+        }
+      } else if (fs::exists(zipArchive)) {
+        String command = (
+          "ditto -x -k " +
+          zipArchive.string() +
+          " " + (Path(installTarget) / "Applications").string()
+        );
+
+        auto r = exec(command);
+        if (r.exitCode != 0) {
+          log("ERROR: Failed to unzip app to install target");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        if (flagVerboseMode) {
+          log(r.output);
+        }
+      } else if (fs::exists(appDirectory)) {
+        String command = (
+          "cp -r " +
+          appDirectory.string() +
+          " " + (Path(installTarget) / "Applications").string()
+        );
+
+        auto r = exec(command);
+        if (r.exitCode != 0) {
+          log("ERROR: Failed to copy app to install target");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        if (flagVerboseMode) {
+          log(r.output);
+        }
+      } else {
+        log("ERROR: Unable to determine macOS application or package to install.");
+        exit(1);
+      }
+    } else if (platform.linux) {
+      auto paths = getPaths(targetPlatform);
+      auto debArchive = paths.pathPackage.string() + ".deb";
+
+      String command = "dpkg -i " + debArchive;
+      auto r = exec(command);
+      if (r.exitCode != 0) {
+        log("ERROR: Failed to install app to target");
+        if (flagDebugMode) {
+          log(r.output);
+        }
+        exit(r.exitCode);
+      }
+
+      if (flagVerboseMode) {
+        log(r.output);
+      }
+    } else {
+      log("ERROR: Unsupported platform target.");
+      exit(1);
     }
 
-    log("successfully installed the app on your device(s).");
+    if (targetPlatform == "ios" || targetPlatform == "android") {
+      log("Successfully installed the app on your device(s).");
+    } else {
+      log("Successfully installed the app to your desktop.");
+    }
     exit(0);
   });
 
@@ -2398,23 +2529,25 @@ int main (const int argc, const char* argv[]) {
   // second flag indicating whether option should be followed by a value
   Options runOptions = {
     { { "--platform" }, true, true },
-    { { "--host" }, true, true },
-    { { "--port" }, true, true },
-    { { "--prod" }, true, false },
-    { { "--test" }, true, true },
-    { { "--headless" }, true, false }
+    { { "--prod", "-P" }, true, false },
+    { { "--test", "-t" }, true, true },
+    { { "--headless", "-H" }, true, false },
+    { { "--debug", "-D" }, true, false },
+    { { "--verbose", "-V" }, true, false },
   };
 
   Options buildOptions = {
-    { { "--quiet" }, true, false },
+    { { "--quiet", "-q" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
-    { { "--watch", "-w" }, true, false },
-    { { "-p" }, true, false },
-    { { "-c" }, true, false },
-    { { "-s" }, true, false },
-    { { "-e" }, true, false },
-    { { "-n" }, true, false }
+    { { "--watch", "-W" }, true, false },
+    { { "--debug", "-D" }, true, false },
+    { { "--verbose", "-V" }, true, false },
+    { { "--prod", "-P" }, true, false },
+    { { "--package", "-p" }, true, false },
+    { { "--package-format", "-f" }, true, true },
+    { { "--codesign", "-c" }, true, false },
+    { { "--notarize", "-n" }, true, false }
   };
 
   // Insert the elements of runOptions into buildOptions
@@ -2442,14 +2575,12 @@ int main (const int argc, const char* argv[]) {
     String additionalBuildArgs = "";
 
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
-    bool flagAppStore = optionsWithoutValue.find("-s") != optionsWithoutValue.end() || equal(rc["build_app_store"], "true");
-    bool flagCodeSign = optionsWithoutValue.find("-c") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
+    bool flagCodeSign = optionsWithoutValue.find("--codesign") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
     bool flagBuildHeadless = settings["build_headless"] == "true";
     bool flagRunHeadless = optionsWithoutValue.find("--headless") != optionsWithoutValue.end();
     bool flagShouldRun = optionsWithoutValue.find("--run") != optionsWithoutValue.end() || equal(rc["build_run"], "true");
-    bool flagEntitlements = optionsWithoutValue.find("-e") != optionsWithoutValue.end() || equal(rc["build_entitlements"], "true");
-    bool flagShouldNotarize = optionsWithoutValue.find("-n") != optionsWithoutValue.end() || equal(rc["build_notarize"], "true");
-    bool flagShouldPackage = optionsWithoutValue.find("-p") != optionsWithoutValue.end() || equal(rc["build_package"], "true");
+    bool flagShouldNotarize = optionsWithoutValue.find("--notarize") != optionsWithoutValue.end() || equal(rc["build_notarize"], "true");
+    bool flagShouldPackage = optionsWithoutValue.find("--package") != optionsWithoutValue.end() || equal(rc["build_package"], "true");
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
@@ -2457,6 +2588,10 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildTest = optionsWithoutValue.find("--test") != optionsWithoutValue.end() || optionsWithValue["--test"].size() > 0;
     bool flagShouldWatch = optionsWithoutValue.find("--watch") != optionsWithoutValue.end() || equal(rc["build_watch"], "true");
     String testFile = optionsWithValue["--test"];
+
+    if (optionsWithValue["--package-format"].size() > 0) {
+      flagShouldPackage = true;
+    }
 
     if (flagBuildTest && testFile.size() == 0) {
       log("ERROR: --test value is required.");
@@ -2473,11 +2608,6 @@ int main (const int argc, const char* argv[]) {
 
     if (optionsWithoutValue.find("--quiet") != optionsWithoutValue.end() || equal(rc["build_quiet"], "true")) {
       flagQuietMode = true;
-    }
-
-    if (flagEntitlements && !platform.mac) {
-      log("WARNING: Entitlements are only supported on macOS. Ignoring option.");
-      flagEntitlements = false;
     }
 
     if (flagShouldNotarize && !platform.mac) {
@@ -2675,6 +2805,11 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework Cocoa";
       flags += " -framework OSLog";
       flags += " -DMACOS=1";
+      if (flagCodeSign) {
+        flags += " -DWAS_CODESIGNED=1";
+      } else {
+        flags += " -DWAS_CODESIGNED=0";
+      }
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
@@ -2702,7 +2837,74 @@ int main (const int argc, const char* argv[]) {
         settings["mac_info_plist_data"] = "";
       }
 
-      auto plistInfo = tmpl(gPListInfo, settings);
+      if (flagRunHeadless) {
+        settings["mac_info_plist_data"] += (
+          "  <key>LSBackgroundOnly</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      // determine XCode version
+      do {
+        auto r = exec("xcodebuild -version | head -n1 | awk '{print $2}'");
+        if (r.exitCode != 0) {
+          if (flagDebugMode) {
+          log("Failed to determine XCode version.");
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        settings["__xcode_version"] = trim(r.output);
+      } while (0);
+
+      // determine XCode Build version
+      do {
+        auto r = exec("xcodebuild -version | tail -n1 | awk '{print $3}'");
+        if (r.exitCode != 0) {
+          log("Failed to determine XCode Build version code.");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        settings["__xcode_build_version"] = trim(r.output);
+      } while (0);
+
+      // determine macOS SDK build version
+      do {
+        auto r = exec(" xcodebuild -sdk macosx -version | grep ProductBuildVersion | awk '{ print $2 }'");
+        if (r.exitCode != 0) {
+          if (flagDebugMode) {
+          log("Failed to determine MacOSX SDK build version code.");
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        settings["__xcode_macosx_sdk_build_version"] = trim(r.output);
+      } while (0);
+
+      // determine macOS SDK version
+      do {
+        auto r = exec(" xcodebuild -sdk macosx -version | grep ProductVersion | awk '{ print $2 }'");
+        if (r.exitCode != 0) {
+          if (flagDebugMode) {
+          log("Failed to determine MacOSX SDK version.");
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        settings["__xcode_macosx_sdk_version"] = trim(r.output);
+      } while (0);
+
+      if (settings["mac_minimum_supported_version"].size() == 0) {
+        settings["mac_minimum_supported_version"] = "13.0.0";
+      }
+
+      auto plistInfo = tmpl(gMacOSInfoPList, settings);
 
       writeFile(paths.pathPackage / pathBase / "Info.plist", plistInfo);
 
@@ -2978,8 +3180,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (settings["android_allow_cleartext"].size() == 0) {
-        if (flagDebugMode)
-        {
+        if (flagDebugMode) {
           settings["android_allow_cleartext"] = "android:usesCleartextTraffic=\"true\"\n";
         } else {
           settings["android_allow_cleartext"] = "";
@@ -3558,14 +3759,14 @@ int main (const int argc, const char* argv[]) {
 
         settings["ios_provisioning_specifier"] = provSpec;
         settings["ios_provisioning_profile"] = uuid;
-        settings["apple_team_id"] = team;
+        settings["apple_team_identifier"] = team;
       }
 
       if (flagBuildForSimulator) {
         settings["ios_provisioning_specifier"] = "";
         settings["ios_provisioning_profile"] = "";
         settings["ios_codesign_identity"] = "";
-        settings["apple_team_id"] = "";
+        settings["apple_team_identifier"] = "";
       }
 
       // --platform=ios should always build for arm64 even on Darwin x86_64
@@ -3615,6 +3816,7 @@ int main (const int argc, const char* argv[]) {
         {"SSC_SETTINGS", _settings},
         {"SSC_VERSION", VERSION_STRING},
         {"SSC_VERSION_HASH", VERSION_HASH_STRING},
+        {"WAS_CODESIGNED", flagCodeSign ? "1" : "0"},
         {"__ios_native_extensions_build_ids", ""},
         {"__ios_native_extensions_build_refs", ""},
         {"__ios_native_extensions_build_context_refs", ""},
@@ -3974,7 +4176,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-      writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
+      writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));
       writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
 
@@ -4219,8 +4421,75 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathBase);
 
       writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
-      // TODO allow the user to copy their own if they have one
-      writeFile(pathToDist / "socket.entitlements", tmpl(gXcodeEntitlements, settings));
+
+      Map entitlementSettings;
+      extendMap(entitlementSettings, settings);
+
+      if (flagDebugMode) {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>get-task-allow</key>\n"
+          "  <true/>\n "
+        );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.cs.debugger</key>\n"
+          "  <true/>\n "
+        );
+      }
+
+      if (settings["permission_allow_user_media"] != "false") {
+        if (settings["permission_allow_camera"] != "false") {
+          entitlementSettings["configured_entitlements"] += (
+              "  <key>com.apple.security.device.camera</key>\n"
+              "  <true/>\n"
+              );
+        }
+
+        if (settings["permission_allow_microphone"] != "false") {
+          entitlementSettings["configured_entitlements"] += (
+              "  <key>com.apple.security.device.microphone</key>\n"
+              "  <true/>\n"
+              );
+        }
+      }
+
+      if (settings["permissions_allow_bluetooth"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.device.bluetooth</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (settings["permissions_allow_notifications"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.developer.usernotifications.filtering</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (settings["permissions_allow_geolocation"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.personal-information.location</key>\n"
+          "  <true/>\n"
+        );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.developer.location.push</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (settings["ios_sandbox"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.app-sandbox</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      writeFile(
+        pathToDist / "socket.entitlements",
+        tmpl(gXcodeEntitlements, entitlementSettings)
+      );
 
       //
       // For iOS we're going to bail early and let XCode infrastructure handle
@@ -4318,8 +4587,8 @@ int main (const int argc, const char* argv[]) {
       StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
-      String ndkVersion = "25.0.8775105";
-      String androidPlatform = "android-33";
+      String ndkVersion = "26.0.10792818";
+      String androidPlatform = "android-34";
 
       if (platform.unix) {
         gradlew
@@ -5004,7 +5273,7 @@ int main (const int argc, const char* argv[]) {
 
           if (platform.mac) {
             if (isForDesktop) {
-              settings["mac_sign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT)).string() + ";";
+              settings["mac_codesign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SHARED_OBJ_EXT)).string() + ";";
             }
           }
 
@@ -5077,38 +5346,81 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.linux && isForDesktop) {
-      Path pathSymLinks = {
-        paths.pathPackage /
-        "usr" /
-        "local" /
-        "bin"
-      };
+      auto packageFormat = settings["build_linux_package_format"];
 
-      auto linuxExecPath = Path {
-        Path("/opt") /
-        settings["build_name"] /
-        settings["build_name"]
-      };
+      if (optionsWithValue["--package-format"].size()) {
+        packageFormat = optionsWithValue["--package-format"];
+      }
 
-      fs::create_directories(pathSymLinks);
-      fs::create_symlink(
-        linuxExecPath,
-        pathSymLinks / settings["build_name"]
-      );
+      if (packageFormat.size() == 0) {
+        packageFormat = "deb";
+      }
 
-      StringStream archiveCommand;
+      if (packageFormat == "deb") {
+        Path pathSymLinks = {
+          paths.pathPackage /
+            "usr" /
+            "local" /
+            "bin"
+        };
 
-      archiveCommand
-        << "dpkg-deb --build --root-owner-group "
-        << paths.pathPackage.string()
-        << " "
-        << (paths.platformSpecificOutputPath).string();
+        auto linuxExecPath = Path {
+          Path("/opt") /
+            settings["build_name"] /
+            settings["build_name"]
+        };
 
-      if (debugEnv || verboseEnv) log(archiveCommand.str());
-      auto r = std::system(archiveCommand.str().c_str());
+        fs::create_directories(pathSymLinks);
+        fs::create_symlink(
+          linuxExecPath,
+          pathSymLinks / settings["build_name"]
+        );
 
-      if (r != 0) {
-        log("ERROR: failed to create deb package");
+        StringStream archiveCommand;
+
+        archiveCommand
+          << "dpkg-deb --build --root-owner-group "
+          << paths.pathPackage.string()
+          << " "
+          << (paths.platformSpecificOutputPath).string();
+
+        if (debugEnv || verboseEnv) {
+          log(archiveCommand.str());
+        }
+
+        auto r = exec(archiveCommand.str());
+
+        if (r.exitCode != 0) {
+          log("ERROR: Build packaging failed for Linux");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+      } else if (packageFormat == "zip") {
+        StringStream zipCommand;
+
+        zipCommand
+          << "zip -r"
+          << " " << (paths.platformSpecificOutputPath / (settings["build_name"] + ".zip")).string()
+          << " " << pathResourcesRelativeToUserBuild.string()
+          ;
+
+        if (debugEnv || verboseEnv) {
+          log(zipCommand.str());
+        }
+
+        auto r = exec(zipCommand.str());
+
+        if (r.exitCode != 0) {
+          log("ERROR: Build packaging failed for Linux");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+      } else {
+        log("ERROR: Unknown package format given in '[build.linux.package] format = \"" + packageFormat + "\"");
         exit(1);
       }
     }
@@ -5141,15 +5453,72 @@ int main (const int argc, const char* argv[]) {
       // https://developer.apple.com/forums/thread/128166
       // https://wiki.lazarus.freepascal.org/Code_Signing_for_macOS
       //
+      Path pathBase = "Contents";
       StringStream signCommand;
       String entitlements = "";
 
-      if (settings.count("entitlements") == 1) {
-        // entitlements = " --entitlements " + (targetPath / settings["entitlements"]).string();
+      Map entitlementSettings;
+      extendMap(entitlementSettings, settings);
+
+      if (settings["permission_allow_user_media"] != "false") {
+        if (settings["permission_allow_camera"] != "false") {
+          entitlementSettings["configured_entitlements"] += (
+            "  <key>com.apple.security.device.camera</key>\n"
+            "  <true/>\n"
+          );
+        }
+
+        if (settings["permission_allow_microphone"] != "false") {
+          entitlementSettings["configured_entitlements"] += (
+            "  <key>com.apple.security.device.microphone</key>\n"
+            "  <true/>\n"
+            "  <key>com.apple.security.device.audio-input</key>\n"
+            "  <true/>\n"
+          );
+        }
       }
 
-      if (settings.count("mac_sign") == 0) {
-        log("'mac_sign' key/value is required");
+      if (settings["permissions_allow_bluetooth"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.device.bluetooth</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (settings["permissions_allow_geolocation"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.personal-information.location</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (settings["apple_team_identifier"].size() > 0) {
+        auto identifier = (
+          settings["apple_team_identifier"] +
+          "." +
+          settings["meta_bundle_identifier"]
+        );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.application-identifier</key>\n"
+          "  <string>" + identifier  + "</string>\n"
+        );
+      }
+
+      if (settings["mac_sandbox"] != "false") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.app-sandbox</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      writeFile(
+        paths.platformSpecificOutputPath / "socket.entitlements",
+        tmpl(gXcodeEntitlements, entitlementSettings)
+      );
+
+      if (settings.count("mac_codesign_identity") == 0) {
+        log("'[mac.codesign] identity' key/value is required");
         exit(1);
       }
 
@@ -5159,13 +5528,14 @@ int main (const int argc, const char* argv[]) {
         << " --force"
         << " --options runtime"
         << " --timestamp"
-        << entitlements
-        << " --sign '" + settings["mac_sign"] + "'"
+        << " --entitlements " << (paths.platformSpecificOutputPath / "socket.entitlements").string()
+        << " --identifier '" << settings["meta_bundle_identifier"] << "'"
+        << " --sign '" << settings["mac_codesign_identity"] << "'"
         << " "
       ;
 
-      if (settings["mac_sign_paths"].size() > 0) {
-        auto paths = split(settings["mac_sign_paths"], ';');
+      if (settings["mac_codesign_paths"].size() > 0) {
+        auto paths = split(settings["mac_codesign_paths"], ';');
 
         for (int i = 0; i < paths.size(); i++) {
           String prefix = (i > 0) ? ";" : "";
@@ -5177,7 +5547,7 @@ int main (const int argc, const char* argv[]) {
             << (pathResources / paths[i]).string()
           ;
         }
-        signCommand << ";";
+        signCommand << "&& ";
       }
 
       signCommand
@@ -5185,24 +5555,49 @@ int main (const int argc, const char* argv[]) {
         << commonFlags.str()
         << binaryPath.string()
 
-        << "; codesign"
+        << " && codesign"
         << commonFlags.str()
         << paths.pathPackage.string();
 
-      log(signCommand.str());
+      if (flagDebugMode) {
+        log(signCommand.str());
+      }
+
       auto r = exec(signCommand.str());
 
       if (r.output.size() > 0) {
         if (r.exitCode != 0) {
-          log("Unable to sign");
-          std::cerr << r.output << std::endl;
+          log("ERROR: Unable to sign application with 'codesign'");
+          if (flagDebugMode) {
+            log(r.output);
+          }
           exit(r.exitCode);
-        } else {
-          std::cout << r.output << std::endl;
         }
       }
 
-      log("finished code signing");
+      if (flagVerboseMode) {
+        log(r.output);
+      }
+
+      log("Successfully code signed app with 'codesign'");
+    }
+
+    if (platform.mac && isForDesktop) {
+      auto packageFormat = settings["build_mac_package_format"];
+
+      if (optionsWithValue["--package-format"].size()) {
+        packageFormat = optionsWithValue["--package-format"];
+      }
+
+      if (packageFormat.size() == 0) {
+        packageFormat = "zip";
+        settings["build_mac_package_format"] = packageFormat;
+      }
+
+      pathToArchive = paths.platformSpecificOutputPath / (settings["build_name"] + "." + packageFormat);
+      if (!flagShouldPackage && flagShouldNotarize && !fs::exists(pathToArchive)) {
+        flagShouldPackage = true;
+      }
     }
 
     //
@@ -5210,27 +5605,91 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.mac && isForDesktop) {
-      StringStream zipCommand;
-      auto ext = ".zip";
-      auto pathToBuild = paths.platformSpecificOutputPath / "build";
+      auto packageFormat = settings["build_mac_package_format"];
 
-      pathToArchive = paths.platformSpecificOutputPath / (settings["build_name"] + ext);
+      if (optionsWithValue["--package-format"].size()) {
+        packageFormat = optionsWithValue["--package-format"];
+      }
 
-      zipCommand
-        << "ditto"
-        << " -c"
-        << " -k"
-        << " --sequesterRsrc"
-        << " --keepParent"
-        << " "
-        << paths.pathPackage.string()
-        << " "
-        << pathToArchive.string();
+      if (packageFormat == "zip") {
+        StringStream zipCommand;
+        zipCommand
+          << "ditto"
+          << " -c"
+          << " -k"
+          << " --sequesterRsrc"
+          << " --keepParent"
+          << " "
+          << paths.pathPackage.string()
+          << " "
+          << pathToArchive.string();
 
-      auto r = std::system(zipCommand.str().c_str());
+        auto r = exec(zipCommand.str());
 
-      if (r != 0) {
-        log("ERROR: failed to create zip for notarization");
+        if (r.exitCode != 0) {
+          log("ERROR: Build packaging fails for macOS");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+      } else if (packageFormat == "pkg") {
+        StringStream productBuildCommand;
+        auto identity = settings["mac_productbuild_identity"];
+        auto productBuildInstallPath = settings["mac_productbuild_install_path"];
+
+        if (identity.size() == 0) {
+          log("ERROR: Missing '[mac.productbuild] identity = ...' in 'socket.ini'");
+          exit(1);
+        }
+
+        if (productBuildInstallPath.size() == 0) {
+          productBuildInstallPath = "/Applications";
+        }
+
+        auto productBuildOutput = (paths.platformSpecificOutputPath / Path(settings["build_name"] + ".pkg")).string();
+        productBuildCommand
+          << "xcrun productbuild"
+          << " --sign '" << identity << "'"
+          << " --version '" << settings["meta_version"] << "'"
+          << " --component '" << paths.pathPackage.string() << "'" << " " << productBuildInstallPath
+          << " --identifier '" << settings["meta_bundle_identifier"] << "'"
+          << " --timestamp"
+          << " " << productBuildOutput;
+
+        if (verboseEnv) {
+          log(productBuildCommand.str());
+        }
+
+        auto r = exec(productBuildCommand.str());
+
+        if (r.exitCode != 0) {
+          log("ERROR: Failed to package macOS application with 'productbuild'");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        if (verboseEnv) {
+          log(r.output);
+        }
+
+        r = exec(String("xcrun pkgutil --check-signature ") + productBuildOutput);
+
+        if (r.exitCode != 0) {
+          log("ERROR: Failed to verify macOS package signature with 'pkgutil'");
+          if (flagDebugMode) {
+            log(r.output);
+          }
+          exit(r.exitCode);
+        }
+
+        if (verboseEnv) {
+          log(r.output);
+        }
+      } else {
+        log("ERROR: Unknown package format given in '[build.mac.package] format = \"" + packageFormat + "\"");
         exit(1);
       }
 
@@ -5246,20 +5705,59 @@ int main (const int argc, const char* argv[]) {
       String username = getEnv("APPLE_ID");
       String password = getEnv("APPLE_ID_PASSWORD");
 
+      if (username.size() == 0) {
+        username = settings["apple_identifier"];
+      }
+
+      if (username.size() == 0) {
+        log(
+          "ERROR: AppleID identifier could not be determined. "
+          "Please set '[apple] identifier = ...' or 'APPLE_ID' environment variable."
+        );
+        exit(1);
+      }
+
+      if (password.size() == 0) {
+        log(
+          "ERROR: AppleID identifier could not be determined. "
+          "Please set the 'APPLE_ID_PASSWORD' environment variable."
+        );
+        exit(1);
+      }
+
+      if (!fs::exists(pathToArchive)) {
+        log(
+          "ERROR: Cannot notarize application: Package archive does not exists."
+        );
+        exit(1);
+      }
+
       notarizeCommand
         << "xcrun"
-        << " altool"
-        << " --notarize-app"
-        << " --username \"" << username << "\""
-        << " --password \"" << password << "\""
-        << " --primary-bundle-id \"" << settings["meta_bundle_identifier"] << "\""
-        << " --file \"" << pathToArchive.string() << "\""
-      ;
+        << " notarytool submit"
+        << " --wait"
+        << " --apple-id \"" << username << "\""
+        << " --password \"" << password << "\"";
+
+      if (settings["apple_team_identifier"].size() > 0) {
+        notarizeCommand << " --team-id " << settings["apple_team_identifier"];
+      }
+
+      notarizeCommand << " \"" << pathToArchive.string() << "\"";
+
+      if (flagDebugMode) {
+        log(notarizeCommand.str());
+      }
 
       auto r = exec(notarizeCommand.str().c_str());
 
       if (r.exitCode != 0) {
-        log("Unable to notarize");
+        log("Unable to notarize macOS application");
+
+        if (flagDebugMode) {
+          log(r.output);
+        }
+
         exit(r.exitCode);
       }
 
@@ -5741,7 +6239,7 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
-    auto androidPlatform = "android-33";
+    auto androidPlatform = "android-34";
     AndroidCliState androidState;
     androidState.androidHome = getAndroidHome();
     androidState.verbose = debugEnv || verboseEnv;
@@ -5759,7 +6257,10 @@ int main (const int argc, const char* argv[]) {
   // second flag indicating whether option should be followed by a value
   Options setupOptions = {
     { { "--platform" }, true, true },
-    { { "--yes", "-y" }, true, false }
+    { { "--yes", "-y" }, true, false },
+    { { "--quiet", "-q" }, true, false },
+    { { "--debug", "-D" }, true, false },
+    { { "--verbose", "-V" }, true, false },
   };
   createSubcommand("setup", setupOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto help = false;
@@ -5843,6 +6344,10 @@ int main (const int argc, const char* argv[]) {
       } else if (platform.mac) {
         targetPlatform = "darwin";
       }
+    }
+
+    if (optionsWithoutValue.find("--quiet") != optionsWithoutValue.end() || equal(rc["build_quiet"], "true")) {
+      flagQuietMode = true;
     }
 
     log("Running setup for platform '" + targetPlatform + "' in " + "SOCKET_HOME (" + prefixFile() + ")");
