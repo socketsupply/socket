@@ -16,6 +16,9 @@ using namespace SSC;
 using namespace SSC::IPC;
 
 #if defined(__APPLE__)
+static std::map<String, Router*> notificationRouterMap;
+static Mutex notificationRouterMapMutex;
+
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -1193,6 +1196,277 @@ static void initRouterTable (Router *router) {
   #endif
   });
 
+#if defined(__APPLE__)
+  router->map("notification.show", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {
+      "id",
+      "title"
+    });
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    auto attachments = [NSMutableArray new];
+    auto userInfo = [NSMutableDictionary new];
+    auto content = [UNMutableNotificationContent new];
+    auto __block id = message.get("id");
+
+    if (message.has("tag")) {
+      userInfo[@"tag"]  = @(message.get("tag").c_str());
+      content.threadIdentifier = @(message.get("tag").c_str());
+    }
+
+    if (message.has("lang")) {
+      userInfo[@"lang"]  = @(message.get("lang").c_str());
+    }
+
+    if (!message.has("silent") && message.get("silent") == "false") {
+      content.sound = [UNNotificationSound defaultSound];
+    }
+
+    if (message.has("icon")) {
+      NSError* error = nullptr;
+      auto url = [NSURL URLWithString: @(message.get("icon").c_str())];
+
+      if (message.get("icon").starts_with("socket://")) {
+        url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+            stringByAppendingPathComponent: [NSString
+            #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+              stringWithFormat: @"/ui/%s", url.path.UTF8String
+            #else
+              stringWithFormat: @"/%s", url.path.UTF8String
+            #endif
+            ]
+        ]];
+
+        url = [NSURL fileURLWithPath: url.path];
+      }
+
+      auto types = [UTType
+            typesWithTag: url.pathExtension
+                tagClass: UTTagClassFilenameExtension
+        conformingToType: nullptr
+      ];
+
+      auto options = [NSMutableDictionary new];
+
+      if (types.count > 0) {
+        options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
+      };
+
+      auto attachment = [UNNotificationAttachment
+        attachmentWithIdentifier: @("")
+                             URL: url
+                         options: options
+                           error: &error
+      ];
+
+      if (error != nullptr) {
+        auto message = String(
+          error.localizedFailureReason.UTF8String != nullptr
+            ? error.localizedFailureReason.UTF8String
+            : "An unknown error occurred"
+        );
+
+        auto err = JSON::Object::Entries { { "message", message } };
+        return reply(Result::Err { message, err });
+      }
+
+      [attachments addObject: attachment];
+    } else {
+    // using an asset from the resources directory will require a code signed application
+    #if WAS_CODESIGNED
+      NSError* error = nullptr;
+      auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+        stringByAppendingPathComponent: [NSString
+        #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+          stringWithFormat: @"/ui/icon.png"
+        #else
+          stringWithFormat: @"/icon.png"
+        #endif
+        ]
+      ]];
+
+      url = [NSURL fileURLWithPath: url.path];
+
+      auto types = [UTType
+            typesWithTag: url.pathExtension
+                tagClass: UTTagClassFilenameExtension
+        conformingToType: nullptr
+      ];
+
+      auto options = [NSMutableDictionary new];
+
+      auto attachment = [UNNotificationAttachment
+        attachmentWithIdentifier: @("")
+                             URL: url
+                         options: options
+                           error: &error
+      ];
+
+      if (error != nullptr) {
+        auto message = String(
+          error.localizedFailureReason.UTF8String != nullptr
+            ? error.localizedFailureReason.UTF8String
+            : "An unknown error occurred"
+        );
+
+        auto err = JSON::Object::Entries { { "message", message } };
+
+        return reply(Result::Err { message, err });
+      }
+
+      [attachments addObject: attachment];
+    #endif
+    }
+
+    if (message.has("image")) {
+      NSError* error = nullptr;
+      auto url = [NSURL URLWithString: @(message.get("image").c_str())];
+
+      if (message.get("image").starts_with("socket://")) {
+        url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+            stringByAppendingPathComponent: [NSString
+            #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+              stringWithFormat: @"/ui/%s", url.path.UTF8String
+            #else
+              stringWithFormat: @"/%s", url.path.UTF8String
+            #endif
+            ]
+        ]];
+
+        url = [NSURL fileURLWithPath: url.path];
+      }
+
+      auto types = [UTType
+            typesWithTag: url.pathExtension
+                tagClass: UTTagClassFilenameExtension
+        conformingToType: nullptr
+      ];
+
+      auto options = [NSMutableDictionary new];
+
+      if (types.count > 0) {
+        options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
+      };
+
+      auto attachment = [UNNotificationAttachment
+        attachmentWithIdentifier: @("")
+                             URL: url
+                         options: options
+                           error: &error
+      ];
+
+      if (error != nullptr) {
+        auto err = JSON::Object::Entries {
+          { "message", String(error.localizedFailureReason.UTF8String) }
+        };
+
+        return reply(Result::Err { message, err });
+      }
+
+      [attachments addObject: attachment];
+    }
+
+    content.attachments = attachments;
+    content.userInfo = userInfo;
+    content.title = @(message.get("title").c_str());
+    content.body = @(message.get("body", "").c_str());
+
+    auto request = [UNNotificationRequest
+      requestWithIdentifier: @(id.c_str())
+                    content: content
+                    trigger: nil
+    ];
+
+    {
+      Lock lock(notificationRouterMapMutex);
+      notificationRouterMap.insert_or_assign(id, router);
+    }
+
+    [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
+      if (error != nullptr) {
+        auto message = String(
+          error.localizedFailureReason.UTF8String != nullptr
+            ? error.localizedFailureReason.UTF8String
+            : "An unknown error occurred"
+        );
+
+        auto err = JSON::Object::Entries {
+          { "message", message }
+        };
+
+        reply(Result::Err { message, err });
+        Lock lock(notificationRouterMapMutex);
+        notificationRouterMap.erase(id);
+        return;
+      }
+
+      reply(Result { message.seq, message, JSON::Object::Entries {
+        {"id", request.identifier.UTF8String}
+      }});
+    }];
+  });
+
+  router->map("notification.close", [](auto message, auto router, auto reply) {
+    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    auto err = validateMessageParameters(message, { "id" });
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto id = message.get("id");
+    auto identifiers = @[@(id.c_str())];
+
+    [notificationCenter removePendingNotificationRequestsWithIdentifiers: identifiers];
+    [notificationCenter removeDeliveredNotificationsWithIdentifiers: identifiers];
+
+    reply(Result { message.seq, message, JSON::Object::Entries {
+      {"id", id}
+    }});
+
+    Lock lock(notificationRouterMapMutex);
+    if (notificationRouterMap.contains(id)) {
+      auto notificationRouter = notificationRouterMap.at(id);
+      JSON::Object json = JSON::Object::Entries {
+        {"id", id},
+        {"action",  "dismiss"}
+      };
+
+      notificationRouter->emit("notificationresponse", json.str());
+      notificationRouterMap.erase(id);
+    }
+  });
+
+  router->map("notification.list", [](auto message, auto router, auto reply) {
+    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    [notificationCenter getDeliveredNotificationsWithCompletionHandler: ^(NSArray<UNNotification*> *notifications) {
+      JSON::Array::Entries entries;
+
+      Lock lock(notificationRouterMapMutex);
+      for (UNNotification* notification in notifications) {
+        auto id = String(notification.request.identifier.UTF8String);
+
+        if (
+          !notificationRouterMap.contains(id) ||
+          notificationRouterMap.at(id) != router
+        ) {
+          continue;
+        }
+
+        entries.push_back(JSON::Object::Entries {
+          {"id", id}
+        });
+      }
+
+      reply(Result { message.seq, message, entries });
+    }];
+  });
+#endif
+
   /**
    * Read or modify the `SEND_BUFFER` or `RECV_BUFFER` for a peer socket.
    * @param id Handle ID for the buffer to read/modify
@@ -1254,6 +1528,170 @@ static void initRouterTable (Router *router) {
 
   router->map("os.availableMemory", [](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("permissions.query", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto name = message.get("name");
+
+  #if defined(__APPLE__)
+    if (name == "geolocation") {
+      if (router->locationObserver.isAuthorized) {
+        auto data = JSON::Object::Entries {{"state", "granted"}};
+        return reply(Result::Data { message, data });
+      } else if (router->locationObserver.locationManager) {
+        auto authorizationStatus = (
+          router->locationObserver.locationManager.authorizationStatus
+        );
+
+        if (authorizationStatus == kCLAuthorizationStatusDenied) {
+          auto data = JSON::Object::Entries {{"state", "denied"}};
+          return reply(Result::Data { message, data });
+        } else {
+          auto data = JSON::Object::Entries {{"state", "prompt"}};
+          return reply(Result::Data { message, data });
+        }
+      }
+
+      auto data = JSON::Object::Entries {{"state", "denied"}};
+      return reply(Result::Data { message, data });
+    }
+
+    if (name == "notifications") {
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+      [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+        if (!settings) {
+          auto err = JSON::Object::Entries {{ "message", "Failed to reach user notification settings" }};
+          return reply(Result::Err { message, err });
+        }
+
+        if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+          auto data = JSON::Object::Entries {{"state", "denied"}};
+          return reply(Result::Data { message, data });
+        } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+          auto data = JSON::Object::Entries {{"state", "prompt"}};
+          return reply(Result::Data { message, data });
+        }
+
+        auto data = JSON::Object::Entries {{"state", "granted"}};
+        return reply(Result::Data { message, data });
+      }];
+    }
+  #endif
+  });
+
+  router->map("permissions.request", [](auto message, auto router, auto reply) {
+    static auto userConfig = SSC::getUserConfig();
+    auto err = validateMessageParameters(message, {"name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto name = message.get("name");
+
+    if (name == "geolocation") {
+    #if defined(__APPLE__)
+      auto performedActivation = [router->locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
+        if (!isAuthorized) {
+          auto reason = @("Location observer could not be activated");
+
+          if (!router->locationObserver.locationManager) {
+            reason = @("Location observer manager is not initialized");
+          } else if (!router->locationObserver.locationManager.location) {
+            reason = @("Location observer manager could not provide location");
+          }
+
+          auto error = [NSError
+            errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+            code: -1
+            userInfo: @{
+              NSLocalizedDescriptionKey: reason
+            }
+          ];
+        }
+
+        if (isAuthorized) {
+          auto data = JSON::Object::Entries {{"state", "granted"}};
+          return reply(Result::Data { message, data });
+        } else if (router->locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
+          auto data = JSON::Object::Entries {{"state", "prompt"}};
+          return reply(Result::Data { message, data });
+        } else {
+          auto data = JSON::Object::Entries {{"state", "denied"}};
+          return reply(Result::Data { message, data });
+        }
+      }];
+
+      if (!performedActivation) {
+        auto err = JSON::Object::Entries {{ "message", "Location observer could not be activated" }};
+        err["type"] = "GeolocationPositionError";
+        return reply(Result::Err { message, err });
+      }
+
+      return;
+    #endif
+    }
+
+    if (name == "notifications") {
+    #if defined(__APPLE__)
+      UNAuthorizationOptions options = UNAuthorizationOptionProvisional;
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+      auto requestAlert = message.get("alert") == "true";
+      auto requestBadge = message.get("badge") == "true";
+      auto requestSound = message.get("sound") == "true";
+
+      if (requestAlert) {
+        options |= UNAuthorizationOptionAlert;
+      }
+
+      if (requestBadge) {
+        options |= UNAuthorizationOptionBadge;
+      }
+
+      if (requestSound) {
+        options |= UNAuthorizationOptionSound;
+      }
+
+      if (requestAlert && requestSound) {
+        options |= UNAuthorizationOptionCriticalAlert;
+      }
+
+      [notificationCenter
+        requestAuthorizationWithOptions: options
+                      completionHandler: ^(BOOL granted, NSError *error) {
+        [notificationCenter
+          getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+          if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+            auto data = JSON::Object::Entries {{"state", "denied"}};
+            return reply(Result::Data { message, data });
+          } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+            if (error) {
+              auto err = JSON::Object::Entries {
+                { "message", String(error.localizedFailureReason.UTF8String) }
+              };
+
+              return reply(Result::Err { message, err });
+            }
+
+            auto data = JSON::Object::Entries {
+              {"state", granted ? "granted" : "denied" }
+            };
+
+            return reply(Result::Data { message, data });
+          }
+
+          auto data = JSON::Object::Entries {{"state", "granted"}};
+          return reply(Result::Data { message, data });
+        }];
+      }];
+    #endif
+    }
   });
 
   /**
@@ -2225,16 +2663,22 @@ static void registerSchemeHandler (Router *router) {
 - (id) init {
   self = [super init];
   self.delegate = [[SSCLocationManagerDelegate alloc] initWithLocationObserver: self];
-  self.isActivated = NO;
+  self.isAuthorized = NO;
   self.locationWatchers = [NSMutableArray new];
   self.activationCompletions = [NSMutableArray new];
   self.locationRequestCompletions = [NSMutableArray new];
 
-  if ([CLLocationManager locationServicesEnabled]) {
-    self.locationManager = [[CLLocationManager alloc] init];
-    self.locationManager.delegate = self.delegate;
-    self.locationManager.desiredAccuracy = CLAccuracyAuthorizationFullAccuracy;
+  self.locationManager = [CLLocationManager new];
+  self.locationManager.delegate = self.delegate;
+  self.locationManager.desiredAccuracy = CLAccuracyAuthorizationFullAccuracy;
+  self.locationManager.pausesLocationUpdatesAutomatically = NO;
 
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  self.locationManager.allowsBackgroundLocationUpdates = YES;
+  self.locationManager.showsBackgroundLocationIndicator = YES;
+#endif
+
+  if ([CLLocationManager locationServicesEnabled]) {
     if (
     #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       self.locationManager.authorizationStatus == kCLAuthorizationStatusAuthorized ||
@@ -2243,7 +2687,7 @@ static void registerSchemeHandler (Router *router) {
     #endif
       self.locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedAlways
     ) {
-      self.isActivated = YES;
+      self.isAuthorized = YES;
     }
   }
 
@@ -2255,7 +2699,8 @@ static void registerSchemeHandler (Router *router) {
     return NO;
   }
 
-  if (self.isActivated) {
+  if (self.isAuthorized) {
+    [self.locationManager requestLocation];
     return YES;
   }
 
@@ -2264,11 +2709,12 @@ static void registerSchemeHandler (Router *router) {
 #else
   [self.locationManager requestAlwaysAuthorization];
 #endif
+
   return YES;
 }
 
 - (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion {
-  if (self.isActivated) {
+  if (self.isAuthorized) {
     dispatch_async(dispatch_get_main_queue(), ^{
       completion(YES);
     });
@@ -2284,9 +2730,9 @@ static void registerSchemeHandler (Router *router) {
 }
 
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion {
-  return [self attemptActivationWithCompletion: ^(BOOL isActivated) {
+  return [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
     static auto userConfig = SSC::getUserConfig();
-    if (!isActivated) {
+    if (!isAuthorized) {
       auto reason = @("Location observer could not be activated");
 
       if (!self.locationManager) {
@@ -2306,7 +2752,12 @@ static void registerSchemeHandler (Router *router) {
       return completion(error, nullptr);
     }
 
-    completion(nullptr, self.locationManager.location);
+    auto location = self.locationManager.location;
+    if (location.timestamp.timeIntervalSince1970 > 0) {
+      completion(nullptr, self.locationManager.location);
+    } else {
+      [self.locationRequestCompletions addObject: [completion copy]];
+    }
 
     [self.locationManager requestLocation];
   }];
@@ -2333,9 +2784,9 @@ static void registerSchemeHandler (Router *router) {
     }];
   }
 
-  auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isActivated) {
+  auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
     static auto userConfig = SSC::getUserConfig();
-    if (!isActivated) {
+    if (!isAuthorized) {
       auto error = [NSError
         errorWithDomain: @(userConfig["bundle_identifier"].c_str())
         code: -1
@@ -2348,6 +2799,12 @@ static void registerSchemeHandler (Router *router) {
     }
 
     [self.locationManager startUpdatingLocation];
+
+    if (CLLocationManager.headingAvailable) {
+      [self.locationManager startUpdatingHeading];
+    }
+
+    [self.locationManager startMonitoringSignificantLocationChanges];
   }];
 
   if (!performedActivation) {
@@ -2407,25 +2864,35 @@ static void registerSchemeHandler (Router *router) {
 - (void) locationManager: (CLLocationManager*) locationManager
         didFailWithError: (NSError*) error {
  // TODO(@jwerle): handle location manager error
+  debug("locationManager:didFailWithError: %@", error);
 }
 
 - (void)            locationManager: (CLLocationManager*) locationManager
   didFinishDeferredUpdatesWithError: (NSError*) error {
+  debug("locationManager:didFinishDeferredUpdatesWithError: %@", error);
  // TODO(@jwerle): handle deferred error
 }
 
 - (void) locationManagerDidPauseLocationUpdates: (CLLocationManager*) locationManager {
  // TODO(@jwerle): handle pause for updates
+  debug("locationManagerDidPauseLocationUpdates");
 }
 
 - (void) locationManagerDidResumeLocationUpdates: (CLLocationManager*) locationManager {
- // TODO(@jwerle): handle resume for updates
+  // TODO(@jwerle): handle resume for updates
+  debug("locationManagerDidResumeLocationUpdates");
 }
 
 - (void) locationManager: (CLLocationManager*) locationManager
                 didVisit: (CLVisit*) visit {
   auto locations = [NSArray arrayWithObject: locationManager.location];
   [self locationManager: locationManager didUpdateLocations: locations];
+}
+
+-       (void) locationManager: (CLLocationManager*) locationManager
+  didChangeAuthorizationStatus: (CLAuthorizationStatus) status {
+  // XXX(@jwerle): this is a legacy callback
+  [self locationManagerDidChangeAuthorization: locationManager];
 }
 
 - (void) locationManagerDidChangeAuthorization: (CLLocationManager*) locationManager {
@@ -2438,7 +2905,13 @@ static void registerSchemeHandler (Router *router) {
   #endif
     locationManager.authorizationStatus == kCLAuthorizationStatusAuthorizedAlways
   ) {
-    self.locationObserver.isActivated = YES;
+    JSON::Object json = JSON::Object::Entries {
+      {"name", "geolocation"},
+      {"state", "granted"}
+    };
+
+    self.locationObserver.router->emit("permissionchange", json.str());
+    self.locationObserver.isAuthorized = YES;
     for (id item in activationCompletions) {
       auto completion = (void (^)(BOOL)) item;
       completion(YES);
@@ -2448,7 +2921,16 @@ static void registerSchemeHandler (Router *router) {
     #endif
     }
   } else {
-    self.locationObserver.isActivated = NO;
+    JSON::Object json = JSON::Object::Entries {
+      {"name", "geolocation"},
+      {"state", locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined
+        ? "prompt"
+        : "denied"
+      }
+    };
+
+    self.locationObserver.router->emit("permissionchange", json.str());
+    self.locationObserver.isAuthorized = NO;
     for (id item in activationCompletions) {
       auto completion = (void (^)(BOOL)) item;
       completion(NO);
@@ -2457,6 +2939,96 @@ static void registerSchemeHandler (Router *router) {
       [completion release];
     #endif
     }
+  }
+}
+@end
+
+@implementation SSCUserNotificationCenterDelegate
+-  (void) userNotificationCenter: (UNUserNotificationCenter*) center
+  didReceiveNotificationResponse: (UNNotificationResponse*) response
+           withCompletionHandler: (void (^)(void)) completionHandler {
+  completionHandler();
+  Lock lock(notificationRouterMapMutex);
+  auto id = String(response.notification.request.identifier.UTF8String);
+  Router* router = notificationRouterMap.find(id) != notificationRouterMap.end()
+    ? notificationRouterMap.at(id)
+    : nullptr;
+
+  if (router) {
+    JSON::Object json = JSON::Object::Entries {
+      {"id", id},
+      {"action",
+        [response.actionIdentifier isEqualToString: UNNotificationDefaultActionIdentifier]
+          ? "default"
+          : "dismiss"
+      }
+    };
+
+    notificationRouterMap.erase(id);
+    router->emit("notificationresponse", json.str());
+  }
+}
+
+- (void) userNotificationCenter: (UNUserNotificationCenter*) center
+        willPresentNotification: (UNNotification*) notification
+          withCompletionHandler: (void (^)(UNNotificationPresentationOptions options)) completionHandler {
+  UNNotificationPresentationOptions options = UNNotificationPresentationOptionList;
+
+  if (notification.request.content.sound != nullptr) {
+    options |= UNNotificationPresentationOptionSound;
+  }
+
+  if (notification.request.content.attachments != nullptr) {
+    if (notification.request.content.attachments.count > 0) {
+      options |= UNNotificationPresentationOptionBanner;
+    }
+  }
+
+  completionHandler(options);
+
+  Lock lock(notificationRouterMapMutex);
+  auto __block id = String(notification.request.identifier.UTF8String);
+  Router* __block router = notificationRouterMap.find(id) != notificationRouterMap.end()
+    ? notificationRouterMap.at(id)
+    : nullptr;
+
+  if (router) {
+    JSON::Object json = JSON::Object::Entries {
+      {"id", id}
+    };
+
+    router->emit("notificationpresented", json.str());
+    // look for dismissed notification
+    auto timer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+      [notificationCenter getDeliveredNotificationsWithCompletionHandler: ^(NSArray<UNNotification*> *notifications) {
+        BOOL found = NO;
+
+        for (UNNotification* notification in notifications) {
+          if (String(notification.request.identifier.UTF8String) == id) {
+            return;
+          }
+        }
+
+        [timer invalidate];
+        JSON::Object json = JSON::Object::Entries {
+          {"id", id},
+          {"action", "dismiss"}
+        };
+
+        router->emit("notificationresponse", json.str());
+
+        Lock lock(notificationRouterMapMutex);
+        if (notificationRouterMap.contains(id)) {
+          notificationRouterMap.erase(id);
+        }
+      }];
+    }];
+
+    [NSRunLoop.mainRunLoop
+      addTimer: timer
+       forMode: NSDefaultRunLoopMode
+    ];
   }
 }
 @end
@@ -2565,8 +3137,11 @@ namespace SSC::IPC {
   }
 
   Router::Router () {
+    static auto userConfig = SSC::getUserConfig();
+
     initRouterTable(this);
     registerSchemeHandler(this);
+
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
     this->locationObserver = [SSCLocationObserver new];
@@ -2581,6 +3156,51 @@ namespace SSC::IPC {
 
   #if defined(__APPLE__)
     [this->networkStatusObserver start];
+
+    if (userConfig["permissions_allow_notifications"] != "false") {
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+
+      if (!notificationCenter.delegate) {
+        notificationCenter.delegate = [SSCUserNotificationCenterDelegate new];
+      }
+
+      UNAuthorizationStatus __block currentAuthorizationStatus;
+      [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+        currentAuthorizationStatus = settings.authorizationStatus;
+        this->notificationPollTimer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
+          // look for authorization status changes
+          [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+            if (currentAuthorizationStatus != settings.authorizationStatus) {
+              JSON::Object json;
+              currentAuthorizationStatus = settings.authorizationStatus;
+              if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+                json = JSON::Object::Entries {
+                  {"name", "notifications"},
+                  {"state", "denied"}
+                };
+              } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+                json = JSON::Object::Entries {
+                  {"name", "notifications"},
+                  {"state", "prompt"}
+                };
+              } else {
+                json = JSON::Object::Entries {
+                  {"name", "notifications"},
+                  {"state", "granted"}
+                };
+              }
+
+              this->emit("permissionchange", json.str());
+            }
+          }];
+        }];
+
+        [NSRunLoop.mainRunLoop
+          addTimer: this->notificationPollTimer
+            forMode: NSDefaultRunLoopMode
+        ];
+      }];
+    }
   #endif
   }
 
@@ -2604,7 +3224,16 @@ namespace SSC::IPC {
     #endif
     }
 
+    if (this->notificationPollTimer) {
+      [this->notificationPollTimer invalidate];
+    #if !__has_feature(objc_arc)
+      [this->notificationPollTimer release];
+    #endif
+    }
+
+    this->notificationPollTimer = nullptr;
     this->networkStatusObserver = nullptr;
+    this->locationObserver = nullptr;
     this->schemeHandler = nullptr;
   #endif
   }
@@ -2889,13 +3518,6 @@ namespace SSC::IPC {
 
 - (void) start {
   nw_path_monitor_start(_monitor);
-}
-
-- (void) userNotificationCenter: (UNUserNotificationCenter *) center
-        willPresentNotification: (UNNotification *) notification
-          withCompletionHandler: (void (^)(UNNotificationPresentationOptions options)) completionHandler
-{
-  completionHandler(UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner);
 }
 @end
 #endif
