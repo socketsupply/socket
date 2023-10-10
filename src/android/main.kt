@@ -200,8 +200,48 @@ open class MainActivity : WebViewActivity() {
     for (request in this.permissionRequests) {
       if (request.id == requestCode) {
         this.permissionRequests.remove(request)
-        request.callback(grantResults.all { r -> r == android.content.pm.PackageManager.PERMISSION_GRANTED })
+        request.callback(grantResults.all { r ->
+          r == android.content.pm.PackageManager.PERMISSION_GRANTED
+        })
         break
+      }
+    }
+
+    var i = 0
+    val seen = mutableSetOf<String>()
+    for (permission in permissions) {
+      val granted = (
+        grantResults[i++] == android.content.pm.PackageManager.PERMISSION_GRANTED
+      )
+
+      var name = ""
+      when (permission) {
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION" -> {
+          name = "geolocation"
+        }
+
+        "android.permission.POST_NOTIFICATIONS" -> {
+          name = "notifications"
+        }
+      }
+
+      if (seen.contains(name)) {
+        continue
+      }
+
+      if (name.length == 0) {
+        continue
+      }
+
+      seen.add(name)
+
+      this.runOnUiThread {
+        val state = if (granted) "grated" else "denied"
+        window.bridge.emit("permissionchange", """{
+          "name": "$name",
+          "state": "$state"
+        }""")
       }
     }
   }
