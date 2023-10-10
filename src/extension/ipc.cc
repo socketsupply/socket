@@ -596,7 +596,7 @@ unsigned char* sapi_ipc_result_get_bytes (
     : nullptr;
 }
 
-unsigned int sapi_ipc_result_get_bytes_size (
+size_t sapi_ipc_result_get_bytes_size (
   const sapi_ipc_result_t* result
 ) {
   return result ? result->post.length : 0;
