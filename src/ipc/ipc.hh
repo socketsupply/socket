@@ -228,6 +228,13 @@ namespace SSC::IPC {
       using Table = std::map<String, MessageCallbackContext>;
       using Listeners = std::map<String, std::vector<MessageCallbackListenerContext>>;
 
+      struct WebViewURLPathResolution {
+        String path = "";
+        bool redirect = false;
+      };
+
+      static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
+
     private:
       Table preserved;
 

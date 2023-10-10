@@ -20,6 +20,7 @@ std::string redirect(std::string inputPath, const std::string& basePath) {
     // 2. Try appending a `/` to the path and checking for an index.html
     fs::path indexPath = fullPath / fs::path("index.html");
     if (fs::is_regular_file(indexPath)) {
+        // Also redirect
         return "/" + fs::relative(indexPath, basePath).string();
     }
 
@@ -36,7 +37,7 @@ std::string redirect(std::string inputPath, const std::string& basePath) {
 
 int main() {
     std::string basePath = "/Users/bret/Developer/ssc/socket/html-redirect/test-cases/1";
-    std::string testPath = "/an-index-file/a-html-file.html";
+    std::string testPath = "/";
     std::string resolvedPath = redirect(testPath, basePath);
     std::cout << resolvedPath << std::endl;
 }
