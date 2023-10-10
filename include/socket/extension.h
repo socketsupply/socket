@@ -1104,6 +1104,8 @@ extern "C" {
    *
    * ⚠️ You must call `sapi_ipc_reply` before calling this function.
    *
+   * Supported on iOS/macOS only.
+   *
    * @param result      - An IPC request result
    * @param chunk       - The chunk to write
    * @param chunk_size  - The size of the chunk
@@ -1127,6 +1129,8 @@ extern "C" {
    *
    * ⚠️ The `name` and `data` arguments must be null-terminated strings. Either
    * can be empty as long as it's null-terminated and the other is not empty.
+   *
+   * Supported on iOS/macOS only.
    *
    * @param result   - An IPC request result
    * @param name     - The event name
