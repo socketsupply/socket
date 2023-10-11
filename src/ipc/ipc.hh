@@ -288,7 +288,7 @@ namespace SSC::IPC {
     #endif
 
     #if defined(__ANDROID__)
-      std::atomic<bool> isAndroidEmulator = false;
+      bool isAndroidEmulator = false;
     #endif
 
       Bridge (Core *core);
