@@ -1,4 +1,4 @@
-/* global Event, ErrorEvent, EventTarget */
+/* global CustomEvent, Event, ErrorEvent, EventTarget */
 /**
  * @module Notification
  * The Notification modules provides an API to configure and display
@@ -13,6 +13,10 @@ import location from './location.js'
 import hooks from './hooks.js'
 import URL from './url.js'
 import ipc from './ipc.js'
+import os from './os.js'
+
+const isLinux = os.platform() === 'linux'
+const NativeNotification = globalThis.Notification
 
 /**
  * Used to determine if notification beign created in a `ServiceWorker`.
@@ -26,6 +30,104 @@ const isServiceWorkerGlobalScope = typeof globalThis.registration?.active === 's
  * @type {number}
  */
 const DEFAULT_MAX_ACTIONS = 2
+
+/**
+ * The global event dispatched when a `Notification` is presented to
+ * the user.
+ * @ignore
+ * @type {string}
+ */
+export const NOTIFICATION_PRESENTED_EVENT = 'notificationpresented'
+
+/**
+ * The global event dispatched when a `Notification` has a response
+ * from the user.
+ * @ignore
+ * @type {string}
+ */
+export const NOTIFICATION_RESPONSE_EVENT = 'notificationresponse'
+
+/**
+ * A container to proxy native notification events to a runtime notication.
+ * @ignore
+ */
+class NativeNotificationProxy extends NativeNotification {
+  /**
+   * @type {Notification}
+   * @ignore
+   */
+  #notification = null
+
+  /**
+   * `NativeNotificationProxy` class constructor.
+   * @param {Notification} notification
+   * @ignore
+   */
+  constructor (notification) {
+    super(notification.title, notification)
+
+    let clicked = false
+    let error = false
+
+    this.#notification = notification
+
+    this.onerror = (event) => {
+      error = true
+      notification.dispatchEvent(new ErrorEvent('error', {
+        error: (
+          event.error ||
+          event.message ||
+          new Error('An unknown error occured', { cause: event })
+        )
+      }))
+    }
+
+    this.onclose = (event) => {
+      if (error) return
+      if (!clicked) {
+        const event = new CustomEvent(NOTIFICATION_RESPONSE_EVENT, {
+          detail: {
+            id: notification.id,
+            action: 'dismiss'
+          }
+        })
+
+        globalThis.dispatchEvent(event)
+      }
+    }
+
+    this.onclick = () => {
+      if (error) return
+      clicked = true
+      const event = new CustomEvent(NOTIFICATION_RESPONSE_EVENT, {
+        detail: {
+          id: notification.id,
+          action: 'default'
+        }
+      })
+
+      globalThis.dispatchEvent(event)
+    }
+
+    this.onshow = () => {
+      if (error) return
+      const event = new CustomEvent(NOTIFICATION_PRESENTED_EVENT, {
+        detail: { id: notification.id }
+      })
+
+      globalThis.dispatchEvent(event)
+    }
+  }
+
+  /**
+   * The underlying `Notification` this proxy dispatches events to.
+   * @type {Notification}
+   * @ignore
+   */
+  get notification () {
+    return this.#notification
+  }
+}
 
 /**
  * An enumeratino of notification test directions:
@@ -422,8 +524,17 @@ export class Notification extends EventTarget {
 
   /**
    * Requests permission from the user to display notifications.
+   * @return {Promise<'granted'|'default'|'denied'>}
    */
   static async requestPermission () {
+    if (isLinux) {
+      if (typeof NativeNotification?.requestPermission === 'function') {
+        return await NativeNotification.requestPermission()
+      }
+
+      return 'denied'
+    }
+
     const status = await permissions.request({ name: 'notifications' })
     status.unsubscribe()
     return status.state
@@ -438,6 +549,8 @@ export class Notification extends EventTarget {
   #timestamp = Date.now()
   #title = null
   #id = null
+
+  #proxy = null
 
   /**
    * `Notification` class constructor.
@@ -477,18 +590,29 @@ export class Notification extends EventTarget {
 
     this.#id = (rand64() & 0xFFFFn).toString()
 
-    const request = ipc.request('notification.show', {
-      body: this.body,
-      icon: this.icon,
-      id: this.#id,
-      image: this.image,
-      lang: this.lang,
-      tag: this.tag || '',
-      title: this.title,
-      silent: this.silent
-    })
+    if (isLinux) {
+      const proxy = new NativeNotificationProxy(this)
+      const request = new Promise((resolve) => {
+        proxy.addEventListener('show', () => resolve({}))
+        proxy.addEventListener('error', (e) => resolve({ err: e.error }))
+      })
 
-    this[Symbol.for('Notification.request')] = request
+      this.#proxy = proxy
+      this[Symbol.for('Notification.request')] = request
+    } else {
+      const request = ipc.request('notification.show', {
+        body: this.body,
+        icon: this.icon,
+        id: this.#id,
+        image: this.image,
+        lang: this.lang,
+        tag: this.tag || '',
+        title: this.title,
+        silent: this.silent
+      })
+
+      this[Symbol.for('Notification.request')] = request
+    }
 
     state.pending.set(this.id, this)
 
@@ -511,8 +635,8 @@ export class Notification extends EventTarget {
     })
 
     // propagate error to caller
-    request.then((result) => {
-      if (result.err) {
+    this[Symbol.for('Notification.request')].then((result) => {
+      if (result?.err) {
         state.pending.delete(this.id, this)
         removeNotificationPresentedListener()
         removeNotificationResponseListener()
@@ -733,6 +857,14 @@ export class Notification extends EventTarget {
    * Closes the notification programmatically.
    */
   async close () {
+    if (isLinux) {
+      if (this.#proxy) {
+        return this.#proxy.close()
+      }
+
+      return
+    }
+
     const result = await ipc.request('notification.close', { id: this.id })
     if (result.err) {
       console.warn('Failed to close \'Notification\': %s', result.err.message)

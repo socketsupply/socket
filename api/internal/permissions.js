@@ -4,6 +4,7 @@
  * This module provides an API for querying and requesting permissions.
  */
 import { IllegalConstructorError } from '../errors.js'
+import Notification from '../notification.js'
 import Enumeration from '../enumeration.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
@@ -16,6 +17,7 @@ import os from '../os.js'
 
 const isAndroid = os.platform() === 'android'
 const isApple = os.platform() === 'darwin'
+const isLinux = os.platform() === 'linux'
 
 /**
  * Get a bound platform `navigator.permissions` function.
@@ -169,7 +171,6 @@ class PermissionStatus extends EventTarget {
     return {
       args: [this.removePermissionChangeListener],
       handle (removePermissionChangeListener) {
-        console.log('GCd')
         removePermissionChangeListener()
       }
     }
@@ -267,6 +268,27 @@ export async function request (descriptor, options) {
       'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
       `The provided value '${name}' is not a valid enum value of type PermissionName.`
     )
+  }
+
+  if (isLinux) {
+    if (name === 'notifications') {
+      const currentState = Notification.permission
+      const state = await Notification.requestPermission()
+
+      if (currentState !== state) {
+        const globalEvent = new CustomEvent('permissionchange', {
+          detail: { name, state }
+        })
+
+        queueMicrotask(() => {
+          globalThis.dispatchEvent(globalEvent)
+        })
+      }
+
+      return new PermissionStatus(name, state, options)
+    }
+
+    return new PermissionStatus(name, 'prompt', options)
   }
 
   const result = await ipc.send('permissions.request', { name, signal: options?.signal })
