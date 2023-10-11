@@ -872,11 +872,13 @@ export class Notification extends EventTarget {
   }
 }
 
-// listen for 'notification' permission changes where applicable
-permissions.query({ name: 'notifications' }).then((result) => {
-  result.addEventListener('change', () => {
-    // 'prompt' -> 'default'
-    state.permission = result.state.replace('prompt', 'default')
+hooks.onReady(() => {
+  // listen for 'notification' permission changes where applicable
+  permissions.query({ name: 'notifications' }).then((result) => {
+    result.addEventListener('change', () => {
+      // 'prompt' -> 'default'
+      state.permission = result.state.replace('prompt', 'default')
+    })
   })
 })
 
