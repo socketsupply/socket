@@ -360,6 +360,24 @@ export function availableMemory () {
   return result.data.readBigUInt64BE(0)
 }
 
+/**
+ * The host operating system. This value can be one of:
+ * - android
+ * - android-emulator
+ * - iphoneos
+ * - iphone-simulator
+ * - linux
+ * - macosx
+ * - unix
+ * - unknown
+ * - win32
+ * @ignore
+ * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+ */
+export function host () {
+  return primordials['host-operating-system'] || 'unknown'
+}
+
 // eslint-disable-next-line
 import * as exports from './os.js'
 export default exports
