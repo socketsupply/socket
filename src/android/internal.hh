@@ -215,7 +215,7 @@ namespace SSC::android {
       jobject self = nullptr;
       jlong pointer = 0;
       String rootDirectory = "";
-      std::atomic<bool> isEmulator = false;
+      bool isEmulator = false;
 
       Runtime (JNIEnv* env, jobject self, String rootDirectory);
       ~Runtime ();
