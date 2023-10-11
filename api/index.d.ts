@@ -481,8 +481,8 @@ declare module "socket:url/index" {
 }
 declare module "socket:url" {
     export * from "socket:url/index";
-    export default exports;
-    import * as exports from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
 }
 declare module "socket:util" {
     export function hasOwnProperty(object: any, property: any): any;
@@ -5359,7 +5359,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
-        url: typeof url;
+        url: any;
     };
     export const builtinModules: {
         buffer: typeof buffer;
@@ -5383,7 +5383,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
-        url: typeof url;
+        url: any;
     };
     /**
      * CommonJS module scope source wrapper.
@@ -5553,7 +5553,6 @@ declare module "socket:module" {
     import stream from "socket:stream";
     import test from "socket:test";
     import util from "socket:util";
-    import url from "socket:url";
     
 }
 declare module "socket:stream-relay/packets" {
