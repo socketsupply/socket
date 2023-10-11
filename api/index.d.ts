@@ -471,8 +471,8 @@ declare module "socket:url/url/url" {
 }
 declare module "socket:url/index" {
     export function resolve(from: any, to: any): any;
-    export default URL;
     export const parse: any;
+    export default URL;
     export const URL: any;
     import { URLPattern } from "socket:url/urlpattern/urlpattern";
     export const URLSearchParams: any;
@@ -728,6 +728,21 @@ declare module "socket:os" {
      * @ignore
      */
     export function availableMemory(): any;
+    /**
+     * The host operating system. This value can be one of:
+     * - android
+     * - android-emulator
+     * - iphoneos
+     * - iphone-simulator
+     * - linux
+     * - macosx
+     * - unix
+     * - unknown
+     * - win32
+     * @ignore
+     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+     */
+    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
     /**
      * @type {string}
      * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
