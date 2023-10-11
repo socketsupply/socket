@@ -1,12 +1,14 @@
-#include "common.hh"
+#include "config.hh"
 
+#if defined(__cplusplus)
+#include <map>
 // These rely on project-specific, compile-time variables.
 namespace SSC {
   bool isDebugEnabled () {
     return DEBUG == 1;
   }
 
-  const Map getUserConfig () {
+  const std::map<std::string, std::string> getUserConfig () {
     #include "user-config-bytes.hh" // NOLINT
     return parseINI(std::string(
       (const char*) __ssc_config_bytes,
@@ -23,3 +25,4 @@ namespace SSC {
     return PORT;
   }
 }
+#endif
