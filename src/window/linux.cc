@@ -205,6 +205,34 @@ namespace SSC {
     webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
 
     g_signal_connect(
+      G_OBJECT(webContext),
+      "initialize-notification-permissions",
+      G_CALLBACK(+[](
+        WebKitWebContext* webContext,
+        gpointer userData
+      ) {
+        static const auto userConfig = SSC::getUserConfig();
+        static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+        GList allowed;
+        Glist disallowed;
+
+        if (userConfig["permissions_allow_notifications"] == "false") {
+          g_list_append(&disallowed, bundleIdentifier.c_str());
+        } else {
+          g_list_append(&sallowed, bundleIdentifier.c_str());
+        }
+
+        webkit_web_context_initialize_notification_permissions(
+          webContext,
+          allowed,
+          disallowed
+        );
+      }),
+      this
+    );
+
+    g_signal_connect(
       G_OBJECT(webview),
       "show-notification",
       G_CALLBACK(+[](
