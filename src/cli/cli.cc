@@ -4841,12 +4841,6 @@ int main (const int argc, const char* argv[]) {
             if (source.size() > 0) {
               if (fs::is_directory(source)) {
                 settings["build_extensions_" + extension] = "";
-              } else {
-                log(
-                  "\033[33mWARN\033[0m " + key + " is not a directory, ignoring: " +
-                  fs::absolute(source).string()
-                );
-                source = "";
               }
             }
           }
@@ -4868,16 +4862,25 @@ int main (const int argc, const char* argv[]) {
               }
             }
 
-            if (fs::exists(target)) {
+            if (fs::exists(target) && fs::is_directory(target)) {
               target = fs::canonical(target);
 
               auto configFile = target / "socket.ini";
               auto config = parseINI(fs::exists(configFile) ? readFile(configFile) : "");
               settings["build_extensions_" + extension + "_path"] = target.string();
+              fs::current_path(target);
 
               for (const auto& entry : config) {
                 if (entry.first.starts_with("extension_sources")) {
-                  settings["build_extensions_" + extension] += fs::canonical(target / entry.second);
+                  const auto sources = parseStringList(entry.second, ' ');
+                  Vector<String> canonical;
+                  for (const auto& source : sources) {
+                    log("target = " + target.string());
+                    log("source = " + source);
+                    canonical.push_back(fs::canonical(target / source));
+                  }
+
+                  settings["build_extensions_" + extension] = join(canonical, " ");
                 } else if (entry.first.starts_with("extension_")) {
                   auto key = replace(entry.first, "extension_", extension + "_");
                   auto value = entry.second;
