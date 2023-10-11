@@ -287,6 +287,10 @@ namespace SSC::IPC {
       FileSystemWatcher* fileSystemWatcher = nullptr;
     #endif
 
+    #if defined(__ANDROID__)
+      std::atomic<bool> isAndroidEmulator = false;
+    #endif
+
       Bridge (Core *core);
       ~Bridge ();
       bool route (const String& msg, const char *bytes, size_t size);
