@@ -3209,14 +3209,18 @@ namespace SSC::IPC {
     ├── another-file.html
     └── index.html
 
+    Subtleties:
+    Direct file navigation always wins
+    /foo/index.html have precedent over foo.html
+    /foo redirects to /foo/ when there is a /foo/index.html
 
     '/' -> '/index.html'
     '/index.html' -> '/index.html'
-    '/a-conflict-index' -> '/a-conflict-index/index.html'
+    '/a-conflict-index' -> redirect to '/a-conflict-index/'
     '/another-file' -> '/another-file.html'
     '/another-file.html' -> '/another-file.html'
     '/an-index-file/' -> '/an-index-file/index.html'
-    '/an-index-file' -> '/an-index-file/index.html'
+    '/an-index-file' -> redirect to '/an-index-file/'
     '/an-index-file/a-html-file' -> '/an-index-file/a-html-file.html'
    */
   Router::WebViewURLPathResolution Router::resolveURLPathForWebView (String inputPath, const String& basePath) {
