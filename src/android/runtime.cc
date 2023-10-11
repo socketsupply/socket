@@ -177,4 +177,21 @@ extern "C" {
 
     return runtime->isPermissionAllowed(name);
   }
+
+  jboolean external(Runtime, setIsEmulator)(
+    JNIEnv *env,
+    jobject self,
+    jboolean value
+  ) {
+    auto runtime = Runtime::from(env, self);
+    auto name = StringWrap(env, permission).str();
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->isEmulator = value;
+    return true;
+  }
 }

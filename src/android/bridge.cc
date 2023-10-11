@@ -20,6 +20,8 @@ namespace SSC::android {
         callback();
       }
     };
+
+    this->isAndroidEmulator = this->runtime->isEmulator;
   }
 
   Bridge::~Bridge () {
