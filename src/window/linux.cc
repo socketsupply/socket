@@ -254,74 +254,75 @@ namespace SSC {
         WebKitPermissionRequest *request,
         gpointer userData
       ) -> bool {
+        Window* window = reinterpret_cast<Window*>(userData)
         static auto userConfig = SSC::getUserConfig();
+        auto result = false;
+        String name = "";
+        String description = "{{meta_title}} would like permission to use a an unknown feature.";
 
         if (WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_geolocation"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
+          name = "geolocation";
+          result = userConfig["permissions_allow_geolocation"] != "false";
+          description = "{{meta_title}} would like access to your location.";
         } else if (WEBKIT_IS_NOTIFICATION_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_notifications"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
+          name = "notifications";
+          result = userConfig["permissions_allow_notifications"] != "false";
+          description = "{{meta_title}} would like display notifications.";
         } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_user_media"] == "false") {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          } else {
-            if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
-              if (userConfig["permissions_allow_microphone"] == "false") {
-                webkit_permission_request_deny(request);
-                return FALSE;
-              }
-            }
-
-            if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
-              if (userConfig["permissions_allow_camera"] == "false") {
-                webkit_permission_request_deny(request);
-                return FALSE;
-              }
-            }
-
-            webkit_permission_request_allow(request);
-            return TRUE;
+          if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+            name = "microphone";
+            result = userConfig["permissions_allow_microphone"] == "false";
+            description = "{{meta_title}} would like access to your microphone.";
           }
+
+          if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+            name = "camera";
+            result = userConfig["permissions_allow_camera"] == "false";
+            description = "{{meta_title}} would like access to your camera.";
+          }
+
+          result = userConfig["permissions_allow_user_media"] == "false";
         } else if (WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_data_access"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
+          name = "storage-access";
+          result = userConfig["permissions_allow_data_access"] != "false";
+          description = "{{meta_title}} would like access to local storage.";
         } else if (WEBKIT_IS_DEVICE_INFO_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_device_info"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
+          result = userConfig["permissions_allow_device_info"] != "false";
+          description = "{{meta_title}} would like access to your device information.";
         } else if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST(request)) {
-          if (userConfig["permissions_allow_media_key_system"] != "false") {
-            webkit_permission_request_allow(request);
-            return TRUE;
-          } else {
-            webkit_permission_request_deny(request);
-            return FALSE;
-          }
+          result = userConfig["permissions_allow_media_key_system"] != "false";
+          description = "{{meta_title}} would like access to your media key system.";
         }
 
-        webkit_permission_request_deny(request);
-        return FALSE;
+        if (result) {
+          auto title = userConfig["meta_title"];
+          GtkWidget *dialog = gtk_message_dialog_new(window->window,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_YES_NO,
+            tmpl(description, userConfig).c_str()
+          );
+
+          gtk_widget_show(dialog);
+          if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_YES) {
+            webkit_permission_request_allow(request);
+          } else {
+            webkit_permission_request_deny(request);
+          }
+
+          gtk_widget_destroy(dialog);
+        } else {
+          webkit_permission_request_deny(request);
+        }
+
+        if (name.size() > 0) {
+          JSON::Object json = JSON::Object::Entries {
+            {"name", name},
+            {"state", result ? "granted" : "denied"}
+          };
+        }
+
+        return result;
       }),
       this
     );
@@ -715,15 +716,58 @@ namespace SSC {
       )
     );
 
+    // ALWAYS on or off
+    webkit_settings_set_enable_webgl(settings, true);
     webkit_settings_set_zoom_text_only(settings, false);
+    webkit_settings_set_enable_mediasource(settings, true);
+    webkit_settings_set_enable_encrypted_media(settings, true);
+    webkit_settings_set_media_playback_allows_inline(settings, true);
+    webkit_settings_set_enable_dns_prefetching(settings, true);
 
-    if (userConfig["permissions_allow_clipboard"] != "false") {
-      webkit_settings_set_javascript_can_access_clipboard(settings, true);
-    }
+    // TODO(@jwerle); make configurable with '[permissions] allow_dialogs'
+    webkit_settings_set_allow_modal_dialogs(
+      settings,
+      true
+    );
 
-    if (userConfig["permissions_allow_fullscreen"] != "false") {
-      webkit_settings_set_enable_fullscreen(settings, true);
-    }
+    // TODO(@jwerle); make configurable with '[permissions] allow_media'
+    webkit_settings_set_enable_media(settings, true);
+    webkit_settings_set_enable_webaudio(settings, true);
+
+    webkit_settings_set_enable_media_stream(
+      settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_enable_media_capabilities(
+      settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_enable_webrtc(
+      settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_javascript_can_access_clipboard(
+      settings,
+      userConfig["permissions_allow_clipboard"] != "false"
+    );
+
+    webkit_settings_set_enable_fullscreen(
+      settings,
+      userConfig["permissions_allow_fullscreen"] != "false"
+    );
+
+    webkit_settings_set_enable_html5_local_storage(
+      settings,
+      userConfig["permissions_allow_data_access"] != "false"
+    );
+
+    webkit_settings_set_enable_html5_database(
+      settings,
+      userConfig["permissions_allow_data_access"] != "false"
+    );
 
     GdkRGBA rgba = {0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
