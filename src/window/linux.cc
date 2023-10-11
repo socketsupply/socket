@@ -48,20 +48,23 @@ namespace SSC {
       auto value = message.get("value");
       auto ctx = new WebViewJavaScriptAsyncContext { reply, message, window };
 
-      webkit_web_view_run_javascript(
+      webkit_web_view_evaluate_javascript(
         WEBKIT_WEB_VIEW(window->webview),
         value.c_str(),
+        -1,
+        nullptr,
+        nullptr,
         nullptr,
         [](GObject *object, GAsyncResult *res, gpointer data) {
           GError *error = nullptr;
           auto ctx = reinterpret_cast<WebViewJavaScriptAsyncContext*>(data);
-          auto result = webkit_web_view_run_javascript_finish(
+          auto value = webkit_web_view_evaluate_javascript_finish(
             WEBKIT_WEB_VIEW(ctx->window->webview),
             res,
             &error
           );
 
-          if (!result) {
+          if (!value) {
             ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
               {"code", error->code},
               {"message", String(error->message)}
@@ -70,8 +73,6 @@ namespace SSC {
             g_error_free(error);
             return;
           } else {
-            auto value = webkit_javascript_result_get_js_value(result);
-
             if (
               jsc_value_is_null(value) ||
               jsc_value_is_array(value) ||
@@ -110,8 +111,6 @@ namespace SSC {
               }});
             }
           }
-
-          webkit_javascript_result_unref(result);
         },
         ctx
       );
@@ -211,23 +210,43 @@ namespace SSC {
         WebKitWebContext* webContext,
         gpointer userData
       ) {
-        static const auto userConfig = SSC::getUserConfig();
+        static auto userConfig = SSC::getUserConfig();
         static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
-        GList allowed;
-        Glist disallowed;
+        auto uri = "socket://" + bundleIdentifier;
+        auto origin = webkit_security_origin_new_for_uri(uri.c_str());
+        GList* allowed = nullptr;
+        GList* disallowed = nullptr;
 
-        if (userConfig["permissions_allow_notifications"] == "false") {
-          g_list_append(&disallowed, bundleIdentifier.c_str());
-        } else {
-          g_list_append(&sallowed, bundleIdentifier.c_str());
+        webkit_security_origin_ref(origin);
+
+        if (origin && allowed && disallowed) {
+          if (userConfig["permissions_allow_notifications"] == "false") {
+            disallowed = g_list_append(disallowed, (gpointer) origin);
+          } else {
+            allowed = g_list_append(allowed, (gpointer) origin);
+          }
+
+          if (allowed && disallowed) {
+            webkit_web_context_initialize_notification_permissions(
+              webContext,
+              allowed,
+              disallowed
+            );
+          }
         }
 
-        webkit_web_context_initialize_notification_permissions(
-          webContext,
-          allowed,
-          disallowed
-        );
+        if (allowed) {
+          g_list_free(allowed);
+        }
+
+        if (disallowed) {
+          g_list_free(disallowed);
+        }
+
+        if (origin) {
+          webkit_security_origin_unref(origin);
+        }
       }),
       this
     );
@@ -246,15 +265,54 @@ namespace SSC {
       this
     );
 
+    // handle `navigator.permissions.query()`
+    g_signal_connect(
+      G_OBJECT(webview),
+      "query-permission-state",
+      G_CALLBACK((+[](
+        WebKitWebView* webview,
+        WebKitPermissionStateQuery* query,
+        gpointer user_data
+      ) -> bool {
+        static auto userConfig = SSC::getUserConfig();
+        auto name = String(webkit_permission_state_query_get_name(query));
+
+        if (name == "geolocation") {
+          webkit_permission_state_query_finish(
+            query,
+            userConfig["permissions_allow_geolocation"] == "false"
+              ? WEBKIT_PERMISSION_STATE_DENIED
+              : WEBKIT_PERMISSION_STATE_PROMPT
+          );
+        }
+
+        if (name == "notifications") {
+          webkit_permission_state_query_finish(
+            query,
+            userConfig["permissions_allow_notifications"] == "false"
+              ? WEBKIT_PERMISSION_STATE_DENIED
+              : WEBKIT_PERMISSION_STATE_PROMPT
+          );
+        }
+
+        webkit_permission_state_query_finish(
+          query,
+          WEBKIT_PERMISSION_STATE_PROMPT
+        );
+        return true;
+      })),
+      this
+    );
+
     g_signal_connect(
       G_OBJECT(webview),
       "permission-request",
-      G_CALLBACK(+[](
+      G_CALLBACK((+[](
         WebKitWebView* webview,
         WebKitPermissionRequest *request,
         gpointer userData
       ) -> bool {
-        Window* window = reinterpret_cast<Window*>(userData)
+        Window* window = reinterpret_cast<Window*>(userData);
         static auto userConfig = SSC::getUserConfig();
         auto result = false;
         String name = "";
@@ -296,10 +354,12 @@ namespace SSC {
 
         if (result) {
           auto title = userConfig["meta_title"];
-          GtkWidget *dialog = gtk_message_dialog_new(window->window,
+          GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(window->window),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
+            "%s",
             tmpl(description, userConfig).c_str()
           );
 
@@ -316,14 +376,14 @@ namespace SSC {
         }
 
         if (name.size() > 0) {
-          JSON::Object json = JSON::Object::Entries {
+          JSON::Object::Entries json = JSON::Object::Entries {
             {"name", name},
             {"state", result ? "granted" : "denied"}
           };
         }
 
         return result;
-      }),
+      })),
       this
     );
 
@@ -417,19 +477,26 @@ namespace SSC {
           "})()"
         );
 
-        webkit_web_view_run_javascript(
+        webkit_web_view_evaluate_javascript(
           WEBKIT_WEB_VIEW(wv),
           js.c_str(),
+          -1,
+          nullptr,
+          nullptr,
           nullptr,
           [](GObject* src, GAsyncResult* result, gpointer arg) {
             auto *w = static_cast<Window*>(arg);
             if (!w) return;
 
             GError* error = NULL;
-            WebKitJavascriptResult* wkr = webkit_web_view_run_javascript_finish(WEBKIT_WEB_VIEW(src), result, &error);
-            if (!wkr || error) return;
+            auto value = webkit_web_view_evaluate_javascript_finish(
+              WEBKIT_WEB_VIEW(src),
+              result,
+              &error
+            );
 
-            auto* value = webkit_javascript_result_get_js_value(wkr);
+            if (!value || error) return;
+
             if (!jsc_value_is_string(value)) return;
 
             JSCException *exception;
@@ -858,9 +925,12 @@ namespace SSC {
   void Window::eval (const String& source) {
     auto webview = this->webview;
     this->app.dispatch([=, this] {
-      webkit_web_view_run_javascript(
+      webkit_web_view_evaluate_javascript(
         WEBKIT_WEB_VIEW(this->webview),
         String(source).c_str(),
+        -1,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr
@@ -891,6 +961,7 @@ namespace SSC {
     color.alpha = a;
 
     gtk_widget_realize(this->window);
+    // FIXME(@jwerle): this is deprecated
     gtk_widget_override_background_color(
       this->window, GTK_STATE_FLAG_NORMAL, &color
     );
