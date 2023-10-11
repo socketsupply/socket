@@ -1782,6 +1782,27 @@ static void initRouterTable (Router *router) {
           {"full", SSC::VERSION_FULL_STRING},
           {"short", SSC::VERSION_STRING},
           {"hash", SSC::VERSION_HASH_STRING}}
+        },
+        {"host-operating-system",
+        #if defined(__APPLE__)
+          #if TARGET_OS_IPHONE
+            "iphoneos"
+          #elif TARGET_IPHONE_SIMULATOR
+             "iphonesimulator"
+          #else
+             "macosx"
+          #endif
+        #elif defined(__ANDROID__)
+             (router->bridge->isAndroidEmulator ? "android-emulator" : "android")
+        #elif defined(__WIN32)
+             "win32"
+        #elif defined(__linux__)
+             "linux"
+        #elif defined(__unix__) || defined(__unix)
+             "unix"
+        #else
+             "unknown"
+        #endif
         }
       }}
     };
