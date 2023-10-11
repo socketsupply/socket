@@ -28,8 +28,8 @@ $VERSION_NODE = npm show ./npm/packages/@socketsupply/socket-node version
 
 $BASE_LIST = $VERSION_NODE -split '\.'
 
-$V_MAJOR_NODE = $BASE_LIST_NODE[0]
-$V_MINOR_NODE = $BASE_LIST_NODE[1]
+$V_MAJOR_NODE = $BASE_LIST[0]
+$V_MINOR_NODE = $BASE_LIST[1]
 
 if (($V_MAJOR -ne $V_MAJOR_NODE) -or ($V_MINOR -ne $V_MINOR_NODE)) {
     Write-Output "Version of @socketsupply/socket-node is not in sync with @socketsupply/socket"
