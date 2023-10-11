@@ -12,51 +12,48 @@ let applied = false
 export function init () {
   if (applied || !globalThis.window) return
 
-  function install (name, implementation, target = globalThis, prefix) {
-    if (typeof name === 'object') {
-      for (const key in name) {
-        install(key, name[key], target || implementation, prefix || target)
+  function install (implementations, target = globalThis, prefix) {
+    for (let name in implementations) {
+      const implementation = implementations[name]
+
+      if (typeof prefix === 'string') {
+        name = `${prefix}.${name}`
       }
-      return
-    }
 
-    const actualName = name.split('.').slice(-1)[0]
+      const actualName = name.split('.').slice(-1)[0]
 
-    if (typeof prefix === 'string') {
-      name = `${prefix}.${name}`
-    }
+      if (typeof target[actualName] === 'object' && target[actualName] !== null) {
+        for (const key in implementation) {
+          const nativeImplementation = target[actualName][key] || null
+          // let this fail, the environment implementation may not be writable
+          try {
+            target[actualName][key] = implementation[key]
+          } catch {}
 
-    if (typeof target[actualName] === 'object' && target[actualName] !== null) {
-      for (const key in implementation) {
-        const nativeImplementation = target[actualName][key] || null
+          if (nativeImplementation !== null) {
+            const nativeName = ['_', 'native', ...name.split('.'), key].join('_')
+            Object.defineProperty(globalThis, nativeName, {
+              enumerable: false,
+              configurable: false,
+              value: nativeImplementation
+            })
+          }
+        }
+      } else {
+        const nativeImplementation = target[actualName] || null
         // let this fail, the environment implementation may not be writable
         try {
-          target[actualName][key] = implementation[key]
+          target[actualName] = implementation
         } catch {}
 
         if (nativeImplementation !== null) {
-          const nativeName = ['_', 'native', ...name.split('.'), key].join('_')
+          const nativeName = ['_', 'native', ...name.split('.')].join('_')
           Object.defineProperty(globalThis, nativeName, {
             enumerable: false,
             configurable: false,
             value: nativeImplementation
           })
         }
-      }
-    } else {
-      const nativeImplementation = target[actualName] || null
-      // let this fail, the environment implementation may not be writable
-      try {
-        target[actualName] = implementation
-      } catch {}
-
-      if (nativeImplementation !== null) {
-        const nativeName = ['_', 'native', ...name.split('.')].join('_')
-        Object.defineProperty(globalThis, nativeName, {
-          enumerable: false,
-          configurable: false,
-          value: nativeImplementation
-        })
       }
     }
   }
