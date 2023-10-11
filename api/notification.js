@@ -16,7 +16,10 @@ import ipc from './ipc.js'
 import os from './os.js'
 
 const isLinux = os.platform() === 'linux'
-const NativeNotification = globalThis.Notification
+const NativeNotification = (
+  globalThis.Notification ||
+  class NativeNotification extends EventTarget {}
+)
 
 /**
  * Used to determine if notification beign created in a `ServiceWorker`.
