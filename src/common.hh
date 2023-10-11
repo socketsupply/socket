@@ -1,6 +1,8 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
+#include "config.hh"
+
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -139,31 +141,6 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #include <thread>
 #include <vector>
 
-#ifndef DEBUG
-#define DEBUG 0
-#endif
-
-#ifndef SSC_SETTINGS
-#define SSC_SETTINGS ""
-#endif
-
-#ifndef SSC_VERSION
-#define SSC_VERSION ""
-#endif
-
-#ifndef SSC_VERSION_HASH
-#define SSC_VERSION_HASH ""
-#endif
-
-#ifndef HOST
-#define HOST "localhost"
-#endif
-
-#ifndef PORT
-#define PORT 0
-#endif
-
-
 #if defined(_WIN32)
 #define SHARED_OBJ_EXT ".dll"
 #else
@@ -220,12 +197,6 @@ namespace SSC {
 
   inline const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
   inline const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
-
-  // from init.cc
-  extern const Map getUserConfig ();
-  extern bool isDebugEnabled ();
-  extern const char* getDevHost ();
-  extern int getDevPort ();
 
   inline String encodeURIComponent (const String& sSrc);
   inline String decodeURIComponent (const String& sSrc);
