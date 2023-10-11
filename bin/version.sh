@@ -19,6 +19,16 @@ fi
 echo -e "Will set new version to be $INPUT_STRING"
 echo $INPUT_STRING > VERSION.txt
 jq ".version = \"$INPUT_STRING\"" clib.json > tmp.$$.json && mv tmp.$$.json clib.json
+
+BASE_LIST=($(echo $INPUT_STRING | tr '.' ' '))
+V_MAJOR_NEW=${BASE_LIST[0]}
+V_MINOR_NEW=${BASE_LIST[1]}
+
+if [ "$V_MAJOR" -ne "$V_MAJOR_NEW" ] || [ "$V_MINOR" -ne "$V_MINOR_NEW" ]; then
+    cd npm/packages/@socketsupply/socket-node
+    npm version $V_MAJOR_NEW.$V_MINOR_NEW.0
+fi
+
 # git add VERSION.txt clib.json
 # git commit -m "Bump version to ${INPUT_STRING}."
 # git tag -a -m "Tag version ${INPUT_STRING}." "v$INPUT_STRING"
