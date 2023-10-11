@@ -26,7 +26,7 @@ void onexec (
     sapi_json_object_set(
       err,
       "message",
-      sapi_json_any(sapi_json_string_create(context, "Missing 'query' in parameters"))
+      sapi_json_string_create(context, "Missing 'query' in parameters")
     );
     sapi_ipc_result_set_json_error(result, sapi_json_any(err));
     sapi_ipc_reply(result);
@@ -38,7 +38,7 @@ void onexec (
     sapi_json_object_set(
       err,
       "message",
-      sapi_json_any(sapi_json_string_create(context, "Missing 'id' in parameters"))
+      sapi_json_string_create(context, "Missing 'id' in parameters")
     );
     sapi_ipc_result_set_json_error(result, sapi_json_any(err));
     sapi_ipc_reply(result);
@@ -50,12 +50,12 @@ void onexec (
     sapi_json_object_set(
       err,
       "type",
-      sapi_json_any(sapi_json_string_create(context, "NotFoundError"))
+      sapi_json_string_create(context, "NotFoundError")
     );
     sapi_json_object_set(
       err,
       "message",
-      sapi_json_any(sapi_json_string_create(context, "Database not found"))
+      sapi_json_string_create(context, "Database not found")
     );
     sapi_ipc_result_set_json_error(result, sapi_json_any(err));
     sapi_ipc_reply(result);
@@ -71,7 +71,7 @@ void onexec (
     sapi_json_object_set(
       err,
       "message",
-      sapi_json_any(sapi_json_string_create(context, sqlite3_errmsg(db)))
+      sapi_json_string_create(context, sqlite3_errmsg(db))
     );
     sapi_ipc_result_set_json_error(result, sapi_json_any(err));
     sapi_ipc_reply(result);
@@ -96,7 +96,7 @@ void onexec (
           sapi_json_object_set(
             row,
             name,
-            sapi_json_any(sapi_json_number_create(context, value))
+            sapi_json_number_create(context, value)
           );
           break;
         }

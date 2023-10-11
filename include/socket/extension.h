@@ -462,9 +462,9 @@ extern "C" {
     sapi_json_object_set_value(                                                \
       (sapi_json_object_t*) (object),                                          \
       (const char*)(key),                                                      \
-      sapi_json_any((value))                                                   \
-    )
+      (sapi_json_any((value)))                                                 \
 
+    )
   /**
    * Set JSON `value` for JSON `array` at `index`. Generally, an alias to the
    * `sapi_json_array_set` function.
@@ -476,7 +476,7 @@ extern "C" {
     sapi_json_array_set_value(                                                 \
       (sapi_json_array_t*) (array),                                            \
       (unsigned int) (index),                                                  \
-      sapi_json_any((value))                                                   \
+      (sapi_json_any((value)))                                                \
     )
 
   /**
