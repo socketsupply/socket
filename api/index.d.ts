@@ -6571,6 +6571,20 @@ declare module "socket:notification" {
      */
     export function showNotification(title: string, options?: NotificationOptions | undefined, onclick?: ((arg0: Event) => any) | undefined, onshow?: any): Promise<any>;
     /**
+     * The global event dispatched when a `Notification` is presented to
+     * the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_PRESENTED_EVENT: string;
+    /**
+     * The global event dispatched when a `Notification` has a response
+     * from the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_RESPONSE_EVENT: string;
+    /**
      * An enumeratino of notification test directions:
      * - 'auto'  Automatically determined by the operating system
      * - 'ltr'   Left-to-right text direction
@@ -6757,8 +6771,9 @@ declare module "socket:notification" {
         static get maxActions(): number;
         /**
          * Requests permission from the user to display notifications.
+         * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(): Promise<any>;
+        static requestPermission(): Promise<'granted' | 'default' | 'denied'>;
         /**
          * `Notification` class constructor.
          * @param {string} title
@@ -6895,7 +6910,7 @@ declare module "socket:notification" {
         /**
          * Closes the notification programmatically.
          */
-        close(): Promise<void>;
+        close(): Promise<any>;
         #private;
     }
     export default Notification;
