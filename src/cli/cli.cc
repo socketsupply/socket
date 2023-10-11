@@ -4875,8 +4875,6 @@ int main (const int argc, const char* argv[]) {
                   const auto sources = parseStringList(entry.second, ' ');
                   Vector<String> canonical;
                   for (const auto& source : sources) {
-                    log("target = " + target.string());
-                    log("source = " + source);
                     canonical.push_back(fs::canonical(target / source));
                   }
 
