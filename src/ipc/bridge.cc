@@ -3197,6 +3197,28 @@ namespace SSC::IPC {
     }
   }
 
+  /*
+
+    .
+    ├── a-conflict-index
+    │             └── index.html
+    ├── a-conflict-index.html
+    ├── an-index-file
+    │             ├── a-html-file.html
+    │             └── index.html
+    ├── another-file.html
+    └── index.html
+
+
+    '/' -> '/index.html'
+    '/index.html' -> '/index.html'
+    '/a-conflict-index' -> '/a-conflict-index/index.html'
+    '/another-file' -> '/another-file.html'
+    '/another-file.html' -> '/another-file.html'
+    '/an-index-file/' -> '/an-index-file/index.html'
+    '/an-index-file' -> '/an-index-file/index.html'
+    '/an-index-file/a-html-file' -> '/an-index-file/a-html-file.html'
+   */
   Router::WebViewURLPathResolution Router::resolveURLPathForWebView (String inputPath, const String& basePath) {
     namespace fs = std::filesystem;
 
