@@ -876,6 +876,10 @@ export class Notification extends EventTarget {
 }
 
 hooks.onReady(() => {
+  if (os.host() === 'iphone-simulator' || os.host() === 'android-emulator') {
+    return
+  }
+
   // listen for 'notification' permission changes where applicable
   permissions.query({ name: 'notifications' }).then((result) => {
     result.addEventListener('change', () => {
