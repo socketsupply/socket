@@ -870,7 +870,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "DEBUG=1",
           "SSC_VERSION={{SSC_VERSION}}",
           "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
-          "WAS_CODESIGNED={{WAS_CODESIGNED}}"
+          "WAS_CODESIGNED={{WAS_CODESIGNED}}",
           "$(inherited)",
         );
         GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
