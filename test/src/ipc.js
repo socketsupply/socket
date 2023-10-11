@@ -43,7 +43,8 @@ test('primordials', (t) => {
     'arch',
     'cwd',
     'platform',
-    'version'
+    'version',
+    'host-operating-system'
   ].sort(), 'primordials keys match')
   t.equal(typeof primordials.arch, 'string', 'primordials.arch is a string')
   t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
