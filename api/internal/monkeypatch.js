@@ -12,6 +12,55 @@ let applied = false
 export function init () {
   if (applied || !globalThis.window) return
 
+  function install (name, implementation, target = globalThis, prefix) {
+    if (typeof name === 'object') {
+      for (const key in name) {
+        install(key, name[key], target || implementation, prefix || target)
+      }
+      return
+    }
+
+    const actualName = name.split('.').slice(-1)[0]
+
+    if (typeof prefix === 'string') {
+      name = `${prefix}.${name}`
+    }
+
+    if (typeof target[actualName] === 'object' && target[actualName] !== null) {
+      for (const key in implementation) {
+        const nativeImplementation = target[actualName][key] || null
+        // let this fail, the environment implementation may not be writable
+        try {
+          target[actualName][key] = implementation[key]
+        } catch {}
+
+        if (nativeImplementation !== null) {
+          const nativeName = ['_', 'native', ...name.split('.'), key].join('_')
+          Object.defineProperty(globalThis, nativeName, {
+            enumerable: false,
+            configurable: false,
+            value: nativeImplementation
+          })
+        }
+      }
+    } else {
+      const nativeImplementation = target[actualName] || null
+      // let this fail, the environment implementation may not be writable
+      try {
+        target[actualName] = implementation
+      } catch {}
+
+      if (nativeImplementation !== null) {
+        const nativeName = ['_', 'native', ...name.split('.')].join('_')
+        Object.defineProperty(globalThis, nativeName, {
+          enumerable: false,
+          configurable: false,
+          value: nativeImplementation
+        })
+      }
+    }
+  }
+
   if (
     typeof globalThis.webkitSpeechRecognition === 'function' &&
     typeof globalThis.SpeechRecognition !== 'function'
@@ -19,7 +68,8 @@ export function init () {
     globalThis.SpeechRecognition = globalThis.webkitSpeechRecognition
   }
 
-  Object.assign(globalThis, {
+  // globals
+  install({
     // url
     URL,
     URLPattern,
@@ -35,24 +85,8 @@ export function init () {
     Notification
   })
 
-  try {
-    // @ts-ignore
-    globalThis.navigator.geolocation = Object.assign(
-      globalThis.navigator?.geolocation ?? {},
-      geolocation
-    )
-  } catch {}
-
-  if (!globalThis.navigator?.permissions) {
-    // @ts-ignore
-    globalThis.navigator.permissions = permissions
-  } else {
-    try {
-      for (const key in permissions) {
-        globalThis.navigator.permissions[key] = permissions[key]
-      }
-    } catch {}
-  }
+  // navigator
+  install({ geolocation, permissions }, globalThis.navigator, 'navigator')
 
   applied = true
   // create <title> tag in document if it doesn't exist

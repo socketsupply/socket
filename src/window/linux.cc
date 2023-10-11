@@ -206,6 +206,32 @@ namespace SSC {
 
     g_signal_connect(
       G_OBJECT(webview),
+      "show-notification",
+      G_CALLBACK(+[](
+        WebKitWebView* webview,
+        WebKitNotification* notification,
+        gpointer userData
+      ) -> bool {
+        return false;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "close-notification",
+      G_CALLBACK(+[](
+        WebKitWebView* webview,
+        WebKitNotification* notification,
+        gpointer userData
+      ) -> bool {
+        return false;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
       "permission-request",
       G_CALLBACK(+[](
         WebKitWebView* webview,

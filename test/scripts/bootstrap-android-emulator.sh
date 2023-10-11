@@ -94,7 +94,7 @@ write_code 0
 
 if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
   echo "Downloading AVD image..."
-  pkg="system-images;android-33;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
+  pkg="system-images;android-34;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
   yes | "$sdkmanager" "$pkg"
   rc=$?
   (( rc != 0 )) && exit_and_write_code $rc
