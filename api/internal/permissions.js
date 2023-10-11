@@ -185,10 +185,6 @@ class PermissionStatus extends EventTarget {
  * @return {Promise<PermissionStatus>}
  */
 export async function query (descriptor, options) {
-  if (!isAndroid && !isApple) {
-    return platform.query(descriptor)
-  }
-
   if (arguments.length === 0) {
     throw new TypeError(
       'Failed to execute \'query\' on \'Permissions\': ' +
@@ -219,6 +215,16 @@ export async function query (descriptor, options) {
       'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
       `The provided value '${name}' is not a valid enum value of type PermissionName.`
     )
+  }
+
+  if (!isAndroid && !isApple) {
+    if (isLinux) {
+      if (name === 'notifications' || name === 'push') {
+        return new PermissionStatus(name, Notification.permission)
+      }
+    }
+
+    return platform.query(descriptor)
   }
 
   const result = await ipc.send('permissions.query', { name, signal: options?.signal })
@@ -271,7 +277,7 @@ export async function request (descriptor, options) {
   }
 
   if (isLinux) {
-    if (name === 'notifications') {
+    if (name === 'notifications' || name === 'push') {
       const currentState = Notification.permission
       const state = await Notification.requestPermission()
 
