@@ -1,6 +1,7 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 #include "../window/window.hh"
+#include "../cli/cli.hh"
 
 using namespace SSC;
 
@@ -83,9 +84,9 @@ static dispatch_queue_t queue = dispatch_queue_create(
     auto code = std::stoi(msg.get("value", "0"));
 
     if (code > 0) {
-      notifyCli(SIGTERM);
+      CLI::notify(SIGTERM);
     } else {
-      notifyCli(SIGUSR2);
+      CLI::notify(SIGUSR2);
     }
   } else {
     bridge->route([body UTF8String], nullptr, 0);
@@ -171,8 +172,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
 {
   using namespace SSC;
 
-  platform.os = "ios";
-
   core = new Core;
   bridge = new IPC::Bridge(core);
   bridge->router.dispatchFunction = [=] (auto callback) {
@@ -201,11 +200,11 @@ static dispatch_queue_t queue = dispatch_queue_create(
   for (auto const &envKey : parseStringList(userConfig["build_env"])) {
     auto cleanKey = trim(envKey);
 
-    if (!hasEnv(cleanKey)) {
+    if (!Env::has(cleanKey)) {
       continue;
     }
 
-    auto envValue = getEnv(cleanKey.c_str());
+    auto envValue = Env::get(cleanKey.c_str());
 
     env << String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -231,7 +230,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
-  String  preload = ToString(createPreload(opts));
+  String  preload = createPreload(opts);
 
   WKUserScript* initScript = [[WKUserScript alloc]
     initWithSource: [NSString stringWithUTF8String: preload.c_str()]

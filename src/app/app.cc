@@ -192,7 +192,7 @@ namespace SSC {
 
 namespace SSC {
   static inline void alert (const SSC::WString &ws) {
-    MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+    MessageBoxA(nullptr, SSC::convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
   static inline void alert (const SSC::String &s) {

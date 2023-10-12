@@ -1,8 +1,12 @@
 #ifndef SSC_WINDOW_WINDOW_H
 #define SSC_WINDOW_WINDOW_H
 
+#include <iostream>
+
 #include "../ipc/ipc.hh"
 #include "../app/app.hh"
+#include "../core/env.hh"
+
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
@@ -88,6 +92,11 @@ namespace SSC {
     WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
     WINDOW_HINT_MAX = 2,   // Width and height are maximum bounds
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
+  };
+
+  struct ScreenSize {
+    int height = 0;
+    int width = 0;
   };
 
   class Window {
@@ -495,11 +504,11 @@ namespace SSC {
           for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
             auto cleanKey = trim(envKey);
 
-            if (!hasEnv(cleanKey)) {
+            if (!Env::has(cleanKey)) {
               continue;
             }
 
-            auto envValue = getEnv(cleanKey.c_str());
+            auto envValue = Env::get(cleanKey.c_str());
 
             env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -509,11 +518,11 @@ namespace SSC {
           for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
             auto cleanKey = trim(envKey);
 
-            if (!hasEnv(cleanKey)) {
+            if (!Env::has(cleanKey)) {
               continue;
             }
 
-            auto envValue = getEnv(cleanKey.c_str());
+            auto envValue = Env::get(cleanKey);
 
             env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -613,7 +622,7 @@ namespace SSC {
   };
 
 #if defined(_WIN32)
-  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
+  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
   using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;

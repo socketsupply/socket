@@ -1,7 +1,7 @@
 #ifndef SSC_WINDOW_OPTIONS_H
 #define SSC_WINDOW_OPTIONS_H
 
-#include "../common.hh"
+#include "../core/types.hh"
 
 namespace SSC {
   struct WindowOptions {
