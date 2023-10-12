@@ -1,4 +1,6 @@
+#include "codec.hh"
 #include "preload.hh"
+#include "string.hh"
 
 namespace SSC {
   String createPreload (
