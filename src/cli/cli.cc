@@ -2995,8 +2995,7 @@ int main (const int argc, const char* argv[]) {
       if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
 
       sdkmanager << androidHome;
-      if (Env::get("ANDROID_SDK_MANAGER").size() > 0)
-      {
+      if (Env::get("ANDROID_SDK_MANAGER").size() > 0) {
         sdkmanager << "/" << Env::get("ANDROID_SDK_MANAGER");
       } else if (std::system("  sdkmanager --version 2>&1 >/dev/null") != 0) {
         if (!platform.win) {
@@ -3058,23 +3057,30 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      // Core
+      // user entry
       fs::copy(trim(prefixFile("src/init.cc")), jni, fs::copy_options::overwrite_existing);
+      // android runtime
       fs::copy(trim(prefixFile("src/android/bridge.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/runtime.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/string_wrap.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/window.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/config.hh")), jni, fs::copy_options::overwrite_existing);
+      // core
+      fs::copy(trim(prefixFile("src/core/codec.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/config.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/debug.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/env.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/ini.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/io.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/platform.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/string.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/types.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/version.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      // ipc
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
+      // window
       fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
 
