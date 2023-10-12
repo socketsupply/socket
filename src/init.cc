@@ -1,23 +1,25 @@
-#include "config.hh"
+#include "core/config.hh"
+#include "core/string.hh"
+#include "core/types.hh"
+#include "core/ini.hh"
 
 #if defined(__cplusplus)
-#include <map>
 // These rely on project-specific, compile-time variables.
 namespace SSC {
   bool isDebugEnabled () {
     return DEBUG == 1;
   }
 
-  const std::map<std::string, std::string> getUserConfig () {
+  const Map getUserConfig () {
     #include "user-config-bytes.hh" // NOLINT
-    return parseINI(std::string(
+    return INI::parse(std::string(
       (const char*) __ssc_config_bytes,
       sizeof(__ssc_config_bytes)
     ));
   }
 
   const char* getDevHost () {
-    static const char* host = STR_VALUE(HOST);
+    static const char* host = CONVERT_TO_STRING(HOST);
     return host;
   }
 
