@@ -5,7 +5,6 @@
 #include "config.hh"
 #include "debug.hh"
 #include "env.hh"
-#include "file_system_watcher.hh"
 #include "ini.hh"
 #include "io.hh"
 #include "json.hh"
@@ -14,6 +13,10 @@
 #include "string.hh"
 #include "types.hh"
 #include "version.hh"
+
+#if !defined(__ANDROID__)
+#include "file_system_watcher.hh"
+#endif
 
 #if defined(__APPLE__)
 @interface SSCBluetoothController : NSObject<
