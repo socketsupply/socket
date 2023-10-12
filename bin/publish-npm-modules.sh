@@ -149,6 +149,7 @@ if (( !only_platforms || only_top_level )); then
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
   cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  rm "$SOCKET_HOME/packages/$package/global.d.ts"
 fi
 
 if (( !only_top_level )); then

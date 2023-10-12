@@ -6,7 +6,7 @@ cd "$root" || exit $?
 
 "$root/node_modules/.bin/tsc" --emitDeclarationOnly --module es2022 --outFile api/index.tmp || exit $?
 
-cat api/index.tmp.d.ts                                           \
+cat api/index.tmp.d.ts api/global.d.ts                           \
   | sed 's/declare module "\(.*\)"/declare module "socket:\1"/g' \
   | sed 's/from "\(.*\)"/from "socket:\1"/g'                     \
   | sed 's/import("\(.*\)")/import("socket:\1")/g'               \
