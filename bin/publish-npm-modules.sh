@@ -174,6 +174,10 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"
     cp -rf "$SOCKET_HOME/include"/* "$SOCKET_HOME/packages/$package/include"
 
+    if test -d "$SOCKET_HOME/pkgconfig"; then
+      cp -rf "$SOCKET_HOME/pkgconfig" "$SOCKET_HOME/packages/$package/pkgconfig"
+    fi
+
     # don't copy debug files, too large
     rm -rf $SOCKET_HOME/lib/*-android/objs-debug
     cp -rf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"

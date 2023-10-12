@@ -1,0 +1,7 @@
+Name: socket-runtime
+Version: {{VERSION}}
+Description: Build and package lean, fast, native desktop and mobile applications using the web technologies you already know.
+URL: https://github.com/socketsupply/socket
+Requires: {{DEPENDENCIES}}
+Libs: -L{{LIB_DIRECTORY}} -lsocket-runtime -luv {{LDFLAGS}}
+Cflags: -I{{INCLUDE_DIRECTORY}} {{CFLAGS}}

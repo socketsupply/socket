@@ -92,7 +92,7 @@ function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$command" "$@"
     "$command" "$@"
-  else  
+  else
     "$command" "$@" > /dev/null 2>&1
   fi
 
