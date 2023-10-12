@@ -3329,6 +3329,7 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
+      Vector<String> seenExtensions;
       for (const auto& tuple : settings) {
         auto& key = tuple.first;
         if (tuple.second.size() == 0) continue;
@@ -3352,6 +3353,11 @@ int main (const int argc, const char* argv[]) {
           }
 
           extension = split(extension, '_')[0];
+
+          if (std::find(seenExtensions.begin(), seenExtensions.end(), extension) != seenExtensions.end()) {
+            continue;
+          }
+          seenExtensions.push_back(extension);
 
           auto source = settings["build_extensions_" + extension + "_source"];
           auto oldCwd = fs::current_path();
