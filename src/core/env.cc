@@ -88,7 +88,7 @@ namespace SSC {
 
   void Env::set (const String& name, const String& value) {
   #if defined(_WIN32)
-    return _putenv((name + "=" + value).c_str());
+    _putenv((name + "=" + value).c_str());
   #else
     setenv(name.c_str(), value.c_str(), 1);
   #endif
@@ -96,10 +96,10 @@ namespace SSC {
 
   void Env::set (const char* name) {
   #if defined(_WIN32)
-    return _putenv(name);
-  #endif
-
+    _putenv(name);
+  #else
     auto parts = split(String(name), '=');
     set(parts[0], parts[1]);
+  #endif
   }
 }

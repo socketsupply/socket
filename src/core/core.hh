@@ -40,6 +40,11 @@ namespace SSC {
   uint64_t rand64 ();
   void msleep (uint64_t ms);
 
+#if defined(_WIN32)
+  String FormatError (DWORD error, String source);
+#endif
+
+   
   // forward
   class Core;
 
