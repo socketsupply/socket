@@ -1007,7 +1007,7 @@ namespace SSC {
                               }
                             } else {
                               auto rootPath = this->modulePath.parent_path();
-                              auto resolved = Router::resolveURLPathForWebView(path, rootPath);
+                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
                               path = resolved.path;
 
                               if (path.size() == 0 && userConfig.contains("webview_default_index")) {
@@ -1025,10 +1025,10 @@ namespace SSC {
                                     ).c_str(),
                                     &res
                                   );
+
                                   args->put_Response(res);
                                   deferral->Complete();
-                                });
-                                return S_OK;
+                                  return S_OK;
                               }
 
                               if (path.size() > 0) {
