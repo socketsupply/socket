@@ -876,7 +876,7 @@ export class Notification extends EventTarget {
 }
 
 hooks.onReady(() => {
-  if (os.host() === 'iphone-simulator' || os.host() === 'android-emulator') {
+  if (os.host() === 'iphonesimulator' || os.host() === 'android-emulator') {
     return
   }
 
