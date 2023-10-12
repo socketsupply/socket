@@ -2,8 +2,12 @@
 #include <regex>
 
 namespace SSC {
+  String replace (const String& source, const std::regex& regex, const String& value) {
+    return std::regex_replace(source, regex, value);
+  }
+
   String replace (const String& source, const String& regex, const String& value) {
-    return std::regex_replace(source, std::regex(regex), value);
+    return replace(source, std::regex(regex), value);
   }
 
   String tmpl (const String& source, const Map& variables) {

@@ -767,7 +767,7 @@ namespace SSC {
       this
     );
 
-    String preload = ToString(createPreload(opts));
+    String preload = createPreload(opts);
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
