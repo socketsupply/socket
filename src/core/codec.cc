@@ -1,5 +1,6 @@
 #include "codec.hh"
 #include "string.hh"
+#include <math.h>
 
 #define UNSIGNED_IN_RANGE(value, min, max) (                                   \
   (unsigned char) (value) >= (unsigned char) (min) &&                          \

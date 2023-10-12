@@ -2,6 +2,7 @@
 #define SSC_CORE_STRING_HH
 
 #include "types.hh"
+#include <regex>
 
 /**
  * Converts a literal expression to an inline string:
@@ -13,6 +14,7 @@
 namespace SSC {
   // transform
   String replace (const String& source, const String& regex, const String& value);
+  String replace (const String& source, const std::regex& regex, const String& value);
   String tmpl (const String& source, const Map& variables);
   String trim (String source);
 

@@ -28,7 +28,7 @@
 #else
 #include <Cocoa/Cocoa.h>
 #include <objc/objc-runtime.h>
-#endif
+#endif // `TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR`
 #endif // `__APPLE__`
 
 // Linux
