@@ -4892,6 +4892,7 @@ int main (const int argc, const char* argv[]) {
             source = settings["build_extensions_" + extension];
             if (source.size() > 0) {
               if (fs::is_directory(source)) {
+                settings["build_extensions_" + extension + "_path"] = (targetPath / source).string();
                 settings["build_extensions_" + extension] = "";
               }
             }
@@ -4900,7 +4901,7 @@ int main (const int argc, const char* argv[]) {
           if (source.size() > 0) {
             Path target;
             if (fs::exists(source)) {
-              target = source;
+              target = targetPath / source;
             } else if (source.ends_with(".git")) {
               auto path = Path { source };
               target = paths.platformSpecificOutputPath / "extensions" / replace(path.filename().string(), ".git", "");
@@ -4927,7 +4928,11 @@ int main (const int argc, const char* argv[]) {
                   const auto sources = parseStringList(entry.second, ' ');
                   Vector<String> canonical;
                   for (const auto& source : sources) {
-                    canonical.push_back(fs::canonical(target / source).string());
+                    try {
+                      canonical.push_back(fs::canonical(target / source).string());
+                    } catch (const std::filesystem::filesystem_error& e) {
+                      canonical.push_back((target / source).string());
+                    }
                   }
 
                   settings["build_extensions_" + extension] = join(canonical, " ");
@@ -4979,8 +4984,8 @@ int main (const int argc, const char* argv[]) {
                         );
                       } catch (const std::filesystem::filesystem_error& e) {
                         if (e.code() == std::errc::no_such_file_or_directory) {
-                          log("ERROR: path not found: " + absolutePath.string());
-                          exit(1);
+                          log("WARNING: path not found: " + absolutePath.string());
+                          break;
                         } else {
                           throw e;
                         }
