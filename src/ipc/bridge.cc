@@ -1,9 +1,11 @@
-#include "ipc.hh"
-#include "../extension/extension.hh"
+#include <regex>
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #endif
+
+#include "../extension/extension.hh"
+#include "ipc.hh"
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
@@ -1785,10 +1787,10 @@ static void initRouterTable (Router *router) {
         },
         {"host-operating-system",
         #if defined(__APPLE__)
-          #if TARGET_OS_IPHONE
-            "iphoneos"
-          #elif TARGET_IPHONE_SIMULATOR
+          #if TARGET_IPHONE_SIMULATOR
              "iphonesimulator"
+          #elif TARGET_OS_IPHONE
+            "iphoneos"
           #else
              "macosx"
           #endif
@@ -1844,7 +1846,7 @@ static void initRouterTable (Router *router) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
-    stdWrite(message.value, false);
+    IO::write(message.value, false);
   });
 
   /**
@@ -1854,7 +1856,7 @@ static void initRouterTable (Router *router) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
-    stdWrite(message.value, true);
+    IO::write(message.value, true);
   });
 
   /**
