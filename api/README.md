@@ -180,7 +180,7 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L304)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L331)
 
 Set the enabled state of the system menu.
 
@@ -192,23 +192,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L312)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L339)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L318)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L345)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L324)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L351)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L329)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L356)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L335)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L362)
 
 
 
@@ -221,7 +221,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L343)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L370)
 
 
 
