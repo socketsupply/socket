@@ -271,25 +271,48 @@ export async function setSystemMenu (o) {
   const frame = e.stack.split('\n')[2]
   const callerLineNo = frame.split(':').reverse()[1]
 
+  // Use this link to test the regex (https://regexr.com/7lhqe)
+  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*)(.*))$/m
+  const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
+
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const l = Number(callerLineNo) + i
-
-    let errMsg
-
-    if (line.trim().length === 0) continue
-    if (/.*:\n/.test(line)) continue // ignore submenu labels
-    if (/---/.test(line)) continue // ignore separators
-    if (/\w+/.test(line) && !line.includes(':')) {
-      errMsg = 'Missing label'
-    } else if (/:\s*\+/.test(line)) {
-      errMsg = 'Missing accelerator'
-    } else if (/\+(\n|$)/.test(line)) {
-      errMsg = 'Missing modifier'
+    const lineText = lines[i].trim()
+    if (lineText.length === 0) {
+      continue // Empty line
+    }
+    if (lineText[0] === ';') {
+      continue // End of submenu
     }
 
-    if (errMsg) {
-      throw new Error(`${errMsg} on line ${l}: "${line}"`)
+    let err
+
+    const match = lineText.match(validLineRegex)
+    if (!match) {
+      err = 'Unsupported syntax'
+    } else {
+      const label = match[1] || match[2]
+      if (label.startsWith('---')) {
+        continue // Valid separator
+      }
+      const binding = match[3]
+      if (binding) {
+        const [accelerator, ...modifiers] = binding.split(/ *\+ */)
+        if (validModifiers.test(accelerator)) {
+          err = 'Missing accelerator'
+        } else {
+          for (const modifier of modifiers) {
+            if (!validModifiers.test(modifier)) {
+              err = `Invalid modifier "${modifier}"`
+              break
+            }
+          }
+        }
+      }
+    }
+
+    if (err) {
+      const lineNo = Number(callerLineNo) + i
+      throw new Error(`${err} on line ${lineNo}: "${lineText}"`)
     }
   }
 
