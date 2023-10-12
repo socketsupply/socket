@@ -633,6 +633,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXFileReference section */
     {{__ios_native_extensions_build_context_refs}}
 		171C1C2A2AC38A70005F587F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		1790CE4D2AD78CCF00AA7E5B /* ini.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ini.hh; sourceTree = "<group>"; };
+		1790CE4E2AD78CCF00AA7E5B /* string.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = string.hh; sourceTree = "<group>"; };
+		1790CE4F2AD78CCF00AA7E5B /* config.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = config.hh; sourceTree = "<group>"; };
+		1790CE502AD78CCF00AA7E5B /* types.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = types.hh; sourceTree = "<group>"; };
 		179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
 		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
 		17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
@@ -677,6 +681,17 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1790CE4C2AD78CCF00AA7E5B /* core */ = {
+			isa = PBXGroup;
+			children = (
+				1790CE4D2AD78CCF00AA7E5B /* ini.hh */,
+				1790CE4E2AD78CCF00AA7E5B /* string.hh */,
+				1790CE4F2AD78CCF00AA7E5B /* config.hh */,
+				1790CE502AD78CCF00AA7E5B /* types.hh */,
+			);
+			path = core;
+			sourceTree = "<group>";
+		};
 		17A7F8EF29358D180051D146 /* objects */ = {
 			isa = PBXGroup;
 			children = (
