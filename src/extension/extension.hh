@@ -7,9 +7,14 @@
 
 #include "../../include/socket/extension.h"
 #include "../process/process.hh"
-#include "../core/json.hh"
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
+
+#if defined(_WIN32)
+#define RUNTIME_EXTENSION_FILE_EXT ".dll"
+#else
+#define RUNTIME_EXTENSION_FILE_EXT ".so"
+#endif
 
 namespace SSC {
   class Extension {
