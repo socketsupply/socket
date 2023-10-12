@@ -655,6 +655,7 @@ void sapi_ipc_result_set_header (
   if (result && name && value) {
     result->headers.set(name, value);
 
+  #if !defined(_WIN32)
     if (strcasecmp(name, "content-type") == 0 &&
         strcasecmp(value, "text/event-stream") == 0) {
       result->post = SSC::Post();
@@ -672,6 +673,7 @@ void sapi_ipc_result_set_header (
                 return false;
               });
     }
+  #endif
   }
 }
 
