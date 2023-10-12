@@ -297,6 +297,8 @@ export async function setSystemMenu (o) {
       const binding = match[3]
       if (label.length === 0) {
         err = 'Missing label'
+      } else if (label.includes(':')) {
+        err = 'Invalid label contains ":"'
       } else if (binding) {
         const [accelerator, ...modifiers] = binding.split(/ *\+ */)
         if (validModifiers.test(accelerator)) {
