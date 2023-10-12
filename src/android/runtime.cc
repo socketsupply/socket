@@ -184,7 +184,6 @@ extern "C" {
     jboolean value
   ) {
     auto runtime = Runtime::from(env, self);
-    auto name = StringWrap(env, permission).str();
 
     if (runtime == nullptr) {
       Throw(env, RuntimeNotInitializedException);
