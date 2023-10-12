@@ -22,11 +22,11 @@ namespace SSC::android {
     for (auto const &var : parseStringList(this->config["build_env"])) {
       auto key = trim(var);
 
-      if (!hasEnv(key)) {
+      if (!Env::has(key)) {
         continue;
       }
 
-      auto value = getEnv(key.c_str());
+      auto value = Env::get(key.c_str());
 
       if (value.size() > 0) {
         stream << key << "=" << encodeURIComponent(value) << "&";
