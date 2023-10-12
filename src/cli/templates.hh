@@ -643,7 +643,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
 		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -711,9 +710,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				1790CE512AD792B600AA7E5B /* core */,
 				17A7F8EE29358D180051D146 /* init.cc */,
 				17A7F8EF29358D180051D146 /* objects */,
-				17E73FDA28FCC9320087604F /* common.hh */,
 				290F7F86276BC2B000486988 /* lib */,
 				294A3C9027677424007B5B9A /* socket.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
