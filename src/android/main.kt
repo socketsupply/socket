@@ -107,7 +107,7 @@ open class MainActivity : WebViewActivity() {
     this.runtime.setIsEmulator(
       (
         android.os.Build.BRAND.startsWith("generic") &&
-        android.ios.Build.DEVICE.startsWith("generic")
+        android.os.Build.DEVICE.startsWith("generic")
       ) ||
       android.os.Build.FINGERPRINT.startsWith("generic") ||
       android.os.Build.FINGERPRINT.startsWith("unknown") ||
@@ -124,7 +124,7 @@ open class MainActivity : WebViewActivity() {
       android.os.Build.PRODUCT.contains("sdk_gphone64_arm64") ||
       android.os.Build.PRODUCT.contains("vbox86p") ||
       android.os.Build.PRODUCT.contains("emulator") ||
-      android.os.Build.PRODUCT.contains("simulator") ||
+      android.os.Build.PRODUCT.contains("simulator")
     )
 
     this.window = Window(this.runtime, this)
