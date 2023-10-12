@@ -776,7 +776,7 @@ namespace SSC {
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
-    SSC::String preload = ToString(createPreload(opts));
+    SSC::String preload = createPreload(opts);
 
     WKUserScript* userScript = [WKUserScript alloc];
 

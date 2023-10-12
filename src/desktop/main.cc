@@ -1,7 +1,14 @@
 #include "../app/app.hh"
+#include "../cli/cli.hh"
+#include "../ipc/ipc.hh"
+#include "../core/core.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
-#include "../ipc/ipc.hh"
+
+#include <iostream>
+#include <ostream>
+#include <regex>
+#include <span>
 
 //
 // A cross platform MAIN macro that
@@ -50,6 +57,17 @@ SSC::String getNavigationError (const String &cwd, const String &value) {
   }
 
   return SSC::String("");
+}
+
+inline const Vector<int> splitToInts (const String& s, const char& c) {
+  Vector<int> result;
+  String token;
+  std::istringstream ss(s);
+
+  while (std::getline(ss, token, c)) {
+    result.push_back(std::stoi(token));
+  }
+  return result;
 }
 
 //
@@ -185,11 +203,11 @@ MAIN {
   for (auto const &envKey : parseStringList(app.appData["build_env"])) {
     auto cleanKey = trim(envKey);
 
-    if (!hasEnv(cleanKey)) {
+    if (!Env::has(cleanKey)) {
       continue;
     }
 
-    auto envValue = getEnv(cleanKey.c_str());
+    auto envValue = Env::get(cleanKey.c_str());
 
     env << SSC::String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -250,15 +268,15 @@ MAIN {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
-          stdWrite(message.get("value"), false);
+          IO::write(message.get("value"), false);
         }
       },
-      [](SSC::String const &out) { stdWrite(out, true); },
+      [](SSC::String const &out) { IO::write(out, true); },
       [](SSC::String const &code){ exit(std::stoi(code)); }
     );
 
     if (cmd.size() == 0) {
-      stdWrite("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
+      IO::write("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
       exit(1);
     }
 
@@ -531,7 +549,7 @@ MAIN {
     #if defined(__APPLE__)
       if (app.fromSSC) {
         debug("__EXIT_SIGNAL__=%d", exitCode);
-        notifyCli();
+        CLI::notify();
       }
     #endif
       window->exit(exitCode);
@@ -556,7 +574,7 @@ MAIN {
     if (message.name == "application.getWindows") {
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
-      auto indices = SSC::splitToInts(value, ',');
+      auto indices = splitToInts(value, ',');
       if (indices.size() == 0) {
         for (auto w : windowManager.windows) {
           if (w != nullptr) {
@@ -989,7 +1007,7 @@ MAIN {
   #if defined(__APPLE__)
     if (app_ptr->fromSSC) {
       debug("__EXIT_SIGNAL__=%d", 0);
-      notifyCli();
+      CLI::notify();
     }
   #endif
 
