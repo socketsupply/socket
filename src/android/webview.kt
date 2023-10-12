@@ -86,6 +86,11 @@ open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeCl
   }
 }
 
+final class WebViewURLPathResolution (path: String, redirect: Boolean = false) {
+  val path = path
+  val redirect = redirect
+}
+
 /**
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
@@ -140,6 +145,67 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     return true
   }
 
+  fun resolveURLPathForWebView (input: String? = null): WebViewURLPathResolution? {
+    var path = input ?: return null
+    val activity = this.activity.get() ?: return null
+    val assetManager = activity.getAssetManager() ?: return null
+    val root = activity.getRootDirectory()
+
+    if (path == "/") {
+      try {
+        val htmlPath = "index.html"
+        val stream = assetManager.open(htmlPath)
+        stream.close()
+        return WebViewURLPathResolution("/" + htmlPath)
+      } catch (_: Exception) {}
+    }
+
+    if (path.startsWith("/")) {
+      path = path.substring(1, path.length)
+    } else if (path.startsWith("./")) {
+      path = path.substring(2, path.length)
+    }
+
+    try {
+      val htmlPath = path
+      val stream = assetManager.open(htmlPath)
+      stream.close()
+      return WebViewURLPathResolution("/" + htmlPath)
+    } catch (_: Exception) {}
+
+    if (path.endsWith("/")) {
+      try {
+        val list = assetManager.list(path)
+        if (list != null && list.size > 0) {
+          try {
+            val htmlPath = path + "index.html"
+            val stream = assetManager.open(htmlPath)
+            stream.close()
+            return WebViewURLPathResolution("/" + htmlPath)
+          } catch (_: Exception) {}
+        }
+      } catch (_: Exception) {}
+
+      return null
+    } else {
+      try {
+        val htmlPath = path + "/index.html"
+        val stream = assetManager.open(htmlPath)
+        stream.close()
+        return WebViewURLPathResolution("/" + htmlPath, true)
+      } catch (_: Exception) {}
+    }
+
+    try {
+      val htmlPath = path + ".html"
+      val stream = assetManager.open(htmlPath)
+      stream.close()
+      return WebViewURLPathResolution("/" + htmlPath)
+    } catch (_: Exception) {}
+
+    return null
+  }
+
   override fun shouldInterceptRequest (
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
@@ -156,18 +222,18 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       var path = url.path
       val regex = Regex("(\\.[a-z|A-Z|0-9|_|-]+)$")
       var redirect = false
+      val resolved = resolveURLPathForWebView(path)
 
-      if (path != null && !regex.containsMatchIn(path)) {
-        if (path.endsWith("/")) {
-          path += "index.html"
-        } else {
-          path += "/"
-          redirect = true
-        }
+      if (resolved != null) {
+        path = resolved.path
       }
 
-      if (redirect) {
-        val redirectURL = "${url.scheme}://${url.host}${path}"
+      if (resolved != null && resolved.redirect) {
+        redirect = true
+      }
+
+      if (redirect && resolved != null) {
+        val redirectURL = "${url.scheme}://${url.host}${resolved.path}"
         val redirectSource = """
           <meta http-equiv="refresh" content="0; url='${redirectURL}'" />"
         """
@@ -383,6 +449,15 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     runOnUiThread {
       webview?.evaluateJavascript(source, callback)
     }
+  }
+
+  fun getAssetManager (): android.content.res.AssetManager {
+    return this.applicationContext.resources.assets
+  }
+
+  open fun getRootDirectory (): String {
+    return getExternalFilesDir(null)?.absolutePath
+      ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files"
   }
 
   /**

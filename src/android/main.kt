@@ -46,11 +46,6 @@ open class MainActivity : WebViewActivity() {
     }
   }
 
-  fun getRootDirectory (): String {
-    return getExternalFilesDir(null)?.absolutePath
-      ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files"
-  }
-
   fun checkPermission (permission: String): Boolean {
     val status = androidx.core.content.ContextCompat.checkSelfPermission(
       this.applicationContext,
