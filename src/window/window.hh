@@ -622,7 +622,7 @@ namespace SSC {
   };
 
 #if defined(_WIN32)
-  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvCompletedHandler;
+  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
   using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
