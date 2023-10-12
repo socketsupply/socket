@@ -1,9 +1,8 @@
 #ifndef SSC_FILE_SYSTEM_WATCHER
 #define SSC_FILE_SYSTEM_WATCHER
 
-#include "core.hh"
-
-using AtomicBool = std::atomic<bool>;
+#include "platform.hh"
+#include "types.hh"
 
 namespace SSC {
   class FileSystemWatcher {
