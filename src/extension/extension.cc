@@ -303,7 +303,7 @@ namespace SSC {
     // check if extension is already known
     if (isLoaded(name)) return true;
 
-    auto path = getExtensionsDirectory(name) + (name + SHARED_OBJ_EXT);
+    auto path = getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
 
   #if defined(_WIN32)
     auto handle = LoadLibrary(path.c_str());
@@ -312,7 +312,7 @@ namespace SSC {
     if (!__sapi_extension_init) return false;
   #else
   #if defined(__ANDROID__)
-    auto handle = dlopen(String("libextension-" + name + SHARED_OBJ_EXT).c_str(), RTLD_NOW | RTLD_LOCAL);
+    auto handle = dlopen(String("libextension-" + name + RUNTIME_EXTENSION_FILE_EXT).c_str(), RTLD_NOW | RTLD_LOCAL);
   #else
     auto handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
   #endif
@@ -571,7 +571,7 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
 #if defined(__linux__) && defined(__ANDROID__)
   __android_log_print(ANDROID_LOG_INFO, "Console", "%s", message);
 #else
-  SSC::stdWrite(output, false);
+  SSC::IO::write(output, false);
 #endif
 
 #if defined(__APPLE__)

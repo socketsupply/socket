@@ -22,7 +22,7 @@ const char* sapi_env_get (
     return nullptr;
   }
 
-  auto value = SSC::getEnv(name);
+  auto value = SSC::Env::get(name);
   if (value.size() == 0) {
     return nullptr;
   }
