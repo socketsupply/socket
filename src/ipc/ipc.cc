@@ -86,7 +86,7 @@ namespace SSC::IPC {
         try {
           index = std::stoi(pair[1].size() > 0 ? pair[1] : "0");
         } catch (...) {
-          std::cout << "Warning: received non-integer index" << std::endl;
+          debug("Warning: received non-integer index");
         }
       }
 
