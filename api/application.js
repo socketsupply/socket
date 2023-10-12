@@ -295,7 +295,9 @@ export async function setSystemMenu (o) {
         continue // Valid separator
       }
       const binding = match[3]
-      if (binding) {
+      if (label.length === 0) {
+        err = 'Missing label'
+      } else if (binding) {
         const [accelerator, ...modifiers] = binding.split(/ *\+ */)
         if (validModifiers.test(accelerator)) {
           err = 'Missing accelerator'
