@@ -1014,7 +1014,6 @@ namespace SSC {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
                                 uri += "/";
-                                app.dispatch([&, uri, path, args, deferral, env] {
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
