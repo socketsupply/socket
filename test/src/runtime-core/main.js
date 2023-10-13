@@ -1,10 +1,15 @@
 import extension from 'socket:extension'
 import process from 'socket:process'
 
+const EXIT_TIMEOUT = 250
+
 try {
   await extension.load('runtime-core-tests')
-  process.exit(0)
+  setTimeout(() => process.exit(1), EXIT_TIMEOUT)
 } catch (err) {
-  console.error(err.message || err)
-  process.exit(1)
+  if (!/failed to load/i.test(err?.message)) {
+    console.error(err.message || err)
+  }
+
+  setTimeout(() => process.exit(1), EXIT_TIMEOUT)
 }
