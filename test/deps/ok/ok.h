@@ -19,7 +19,7 @@ extern "C" {
  * libok version
  */
 #ifndef OK_VERSION
-#define OK_VERSION "0.6.3"
+#define OK_VERSION "0.6.4"
 #endif
 
 /**
@@ -76,7 +76,7 @@ extern "C" {
  */
 #define notok(format, ...) ({                                                  \
   if (ok_count() == 0 && ok_failed() == 0) ok_begin(NULL);                     \
-  int count = ok_count_inc() + ok_failed();                                    \
+  int count = ok_count() + ok_failed_inc();                                    \
   LIBOK_PRINTF("not ok %d - " format, count, ##__VA_ARGS__);                   \
                                                                                \
   if (LIBOK_PRINTF_NEEDS_NEWLINE) {                                            \

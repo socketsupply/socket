@@ -3,6 +3,6 @@
   "private": true,
   "src": [],
   "dependencies": {
-    "jwerle/libok": "0.6.3"
+    "jwerle/libok": "0.6.4"
   }
 }
