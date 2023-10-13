@@ -448,7 +448,9 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
             // have access to, filter them out
             if (String(message) != "<private>") {
               if (String(message).starts_with("__EXIT_SIGNAL__")) {
-                appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
+                if (appStatus == -1) {
+                  appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
+                }
               } else if (
                 entry.level == OSLogEntryLogLevelDebug ||
                 entry.level == OSLogEntryLogLevelError ||
