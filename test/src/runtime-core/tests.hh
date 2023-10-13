@@ -4,8 +4,9 @@
 #include <functional>
 
 #include <socket/extension.h>
-#include "src/core/types.hh"
-#include "./ok.hh"
+#include "src/core/core.hh"
+
+#undef assert
 
 namespace SSC::Tests {
   class Harness;
@@ -13,17 +14,32 @@ namespace SSC::Tests {
 
   class Harness {
     public:
+      struct Options {
+        bool resetContextAfterEachRun = false;
+      };
+
+      using Mutex = std::mutex;
+      const Options options;
       Harness ();
+      Harness (const Options& options);
 
       bool assert (bool assertion, const String& message = "") const;
       bool assert (int64_t value, const String& message = "") const;
       bool assert (double value, const String& message = "") const;
       bool assert (void* value, const String& message = "") const;
       bool assert (const String& value, const String& message) const;
-      bool equals (const char* left, const char* right, const String& message) const;
+
       bool equals (const String& left, const String& right, const String& message) const;
+      bool equals (const char* left, const char* right, const String& message) const;
+      bool equals (const bool left, const bool right, const String& message) const;
       bool equals (const int64_t left, const int64_t right, const String& message) const;
       bool equals (const double left, const double right, const String& message) const;
+
+      bool notEquals (const String& left, const String& right, const String& message) const;
+      bool notEquals (const char* left, const char* right, const String& message) const;
+      bool notEquals (const int64_t left, const int64_t right, const String& message) const;
+      bool notEquals (const double left, const double right, const String& message) const;
+
       bool throws (std::function<void()> fn, const String& message) const;
 
       void comment (const String& comment) const;
