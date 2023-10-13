@@ -25,7 +25,7 @@ namespace SSC::INI {
           prefix = entry.substr(1, entry.length() - 2);
         }
 
-        prefix = replace(prefix, "\\.", "_");
+        prefix = replace(prefix, "\\.", keyPathSeparator);
         if (prefix.size() > 0) {
           prefix += keyPathSeparator;
         }
