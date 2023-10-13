@@ -2,6 +2,10 @@
 
 namespace SSC::INI {
   Map parse (const String& source) {
+    return parse(source, "_");
+  }
+
+  Map parse (const String& source, const String& keyPathSeparator) {
     Vector<String> entries = split(source, '\n');
     String prefix = "";
     Map settings = {};
@@ -23,7 +27,7 @@ namespace SSC::INI {
 
         prefix = replace(prefix, "\\.", "_");
         if (prefix.size() > 0) {
-          prefix += "_";
+          prefix += keyPathSeparator;
         }
 
         continue;
