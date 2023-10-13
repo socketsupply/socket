@@ -111,6 +111,7 @@ namespace SSC {
     bool mac = false;
     bool ios = false;
     bool win = false;
+    bool android = false;
     bool linux = false;
     bool unix = false;
   };
