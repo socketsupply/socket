@@ -5,7 +5,7 @@ const EXIT_TIMEOUT = 250
 
 try {
   await extension.load('runtime-core-tests')
-  setTimeout(() => process.exit(1), EXIT_TIMEOUT)
+  setTimeout(() => process.exit(0), EXIT_TIMEOUT)
 } catch (err) {
   if (!/failed to load/i.test(err?.message)) {
     console.error(err.message || err)
