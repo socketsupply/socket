@@ -2399,8 +2399,26 @@ static void registerSchemeHandler (Router *router) {
       auto resolved = Router::resolveURLPathForWebView(path, basePath);
       path = resolved.path;
 
-      if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-        path = userConfig["webview_default_index"];
+      if (path.size() == 0) {
+        if (userConfig.contains("webview_default_index")) {
+          path = userConfig["webview_default_index"];
+        } else {
+          auto response = [[NSHTTPURLResponse alloc]
+            initWithURL: request.URL
+            statusCode: 404
+            HTTPVersion: @"HTTP/1.1"
+            headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didReceiveData: data];
+          [task didFinish];
+
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
       } else if (resolved.redirect) {
         auto redirectURL = path;
         auto redirectSource = String(
