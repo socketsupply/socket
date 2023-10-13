@@ -1,0 +1,16 @@
+{
+  "name": "ok",
+  "version": "0.6.3",
+  "author": "Joseph Werle",
+  "description": "Super tiny tap output library",
+  "repo": "jwerle/libok",
+  "src": [
+    "ok.h",
+    "ok.c",
+    "Makefile"
+  ],
+  "keywords": [
+    "tap",
+    "test"
+  ]
+}

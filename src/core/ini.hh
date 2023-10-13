@@ -6,5 +6,6 @@
 
 namespace SSC::INI {
   Map parse (const String& source);
+  Map parse (const String& source, const String& keyPathSeparator);
 }
 #endif

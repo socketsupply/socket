@@ -795,11 +795,11 @@ extern "C" {
    * @param format - Format string for formatted output
    * @param ...    - `format` argument values
    */
-  #define sapi_printf(ctx, format, ...) ({                                      \
-    char _buffer[BUFSIZ] = {0};                                                 \
-    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                   \
-    snprintf(_buffer, _size, format, ##__VA_ARGS__);                            \
-    sapi_log(ctx, _buffer);                                                     \
+  #define sapi_printf(ctx, format, ...) ({                                     \
+    char _buffer[BUFSIZ] = {0};                                                \
+    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                  \
+    snprintf(_buffer, _size, format, ##__VA_ARGS__);                           \
+    sapi_log(ctx, _buffer);                                                    \
   })
 
   /**
