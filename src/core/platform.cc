@@ -43,6 +43,7 @@ namespace SSC {
     .os = "linux",
     #endif
 
+    .android = true,
     .linux = true,
 
     #if defined(__unix__) || defined(unix) || defined(__unix)
