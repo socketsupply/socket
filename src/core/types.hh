@@ -2,6 +2,7 @@
 #define SSC_CORE_TYPES_H
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -32,6 +33,7 @@ namespace SSC {
   using Lock = std::lock_guard<Mutex>;
   using Thread = std::thread;
 
+  template <typename T> using Atomic = std::atomic<T>;
   template <typename T, int k> using Array = std::array<T, k>;
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
