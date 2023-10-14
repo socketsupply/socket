@@ -19,20 +19,18 @@ bool sapi_ipc_router_map (
     return false;
   }
 
-  auto router = ctx->router;
-  auto context = sapi_context_create(ctx, true);
-
-  if (context == nullptr) {
-    return false;
-  }
-
-  context->data = data;
-  ctx->router->map(name, [context, data, callback](
+  ctx->router->map(name, [ctx, data, callback](
     auto& message,
     auto router,
     auto reply
   ) mutable {
     auto msg = SSC::IPC::Message(message);
+    auto context = sapi_context_create(ctx, true);
+    if (context == nullptr) {
+      return;
+    }
+
+    context->data = data;
     context->internal = new SSC::IPC::Router::ReplyCallback(reply);
     callback(
       context,
