@@ -139,12 +139,19 @@ namespace SSC {
   }
 
   void Extension::Context::retain () {
-    this->retained = true;
+    this->retain_count++;
   }
 
-  void Extension::Context::release () {
-    this->retained = false;
-    this->memory.release();
+  bool Extension::Context::release () {
+    if (this->retain_count == 0) {
+      debug("WARN - Double release of SSC extension context");
+      return false;
+    }
+    if (--this->retain_count == 0) {
+      this->memory.release();
+      return true;
+    }
+    return false;
   }
 
   Extension::Context* Extension::getContext (const String& name) {

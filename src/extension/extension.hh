@@ -84,7 +84,7 @@ namespace SSC {
         Memory memory;
         State state = State::None;
         Error error;
-        std::atomic<bool> retained = false;
+        std::atomic<unsigned int> retain_count = 0;
         PolicyMap policies;
         Map config;
 
@@ -96,7 +96,7 @@ namespace SSC {
         Context (const Context& context, IPC::Router* router);
 
         void retain ();
-        void release ();
+        bool release ();
 
         void setPolicy (const String& name, bool allowed);
         const Policy& getPolicy (const String& name) const;
