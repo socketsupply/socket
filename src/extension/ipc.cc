@@ -137,8 +137,7 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   }
 
   // if retained, then then caller must eventually call `sapi_context_release()`
-  if (!context->retained) {
-    context->release();
+  if (context->release()) {
     delete context;
   }
 
