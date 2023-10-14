@@ -160,6 +160,9 @@ bool sapi_ipc_send_chunk (
   }
   auto send_chunk_ptr = result->post.chunk_stream;
   if (send_chunk_ptr == nullptr) {
+    debug(
+        "Cannot use 'sapi_ipc_send_chunk' before setting the \"Transfer-Encoding\""
+        " header to \"chunked\"");
     return false;
   }
   bool success = (*send_chunk_ptr)(chunk, chunk_size, finished);
@@ -185,6 +188,9 @@ bool sapi_ipc_send_event (
   }
   auto send_event_ptr = result->post.event_stream;
   if (send_event_ptr == nullptr) {
+    debug(
+        "Cannot use 'sapi_ipc_send_event' before setting the \"Content-Type\""
+        " header to \"text/event-stream\"");
     return false;
   }
   bool success = (*send_event_ptr)(name, data, finished);
