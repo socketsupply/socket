@@ -1,7 +1,8 @@
 import test from 'socket:test'
 import URL from 'socket:url'
 
-const dirname = URL.resolve(import.meta.url, './router-resolution')
+const basePath = 'router-resolution'
+const dirname = URL.resolve(import.meta.url, basePath)
 
 test('router-resolution', async (t) => {
   const response = await fetch(dirname + '/invalid')
@@ -25,7 +26,7 @@ test('router-resolution', async (t) => {
       bodyTest: '/a-conflict-index/index.html',
       expectedRelPath: '/a-conflict-index/',
       redirect: true,
-      redirectBodyTest: ''
+      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/a-conflict-index/'\" />"
     },
     {
       url: '/another-file',
@@ -50,7 +51,7 @@ test('router-resolution', async (t) => {
       bodyTest: '/an-index-file/index.html',
       expectedRelPath: '/an-index-file/',
       redirect: true,
-      redirectBodyTest: ''
+      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/an-index-file/'\" />"
     },
     {
       url: '/an-index-file/a-html-file',
@@ -71,18 +72,38 @@ test('router-resolution', async (t) => {
     const response = await fetch(requestUrl)
     const responseBody = (await response.text()).trim()
 
-    const relPath = response.url.split(dirname)[1] || response.url.split('/router-resolution')[1]
-
     t.ok(response.ok, `response is ok for ${testCase.url}`)
     t.ok(response.status, `response status is 200 for ${testCase.url}`)
-    t.equal(response.url, `${dirname}${testCase.expectedRelPath}`, `response url is fully qualified for ${testCase.url}`)
-    // t.equal(testCase.expectedRelPath, relPath, `Relpath matchs ${testCase.expectedRelPath}`)
+    t.ok(response.url.startsWith(dirname), `response url is fully qualified for ${testCase.url} (actual: ${response.url})`)
 
     if (testCase.redirect) {
-      t.equal(testCase.redirectBodyTest, responseBody, `response body matches ${testCase.redirectBodyTest}`)
-      // TODO: resolve the redirect URL and make asserts
+      t.equal(responseBody, testCase.redirectBodyTest, `Redirect response body matches ${testCase.redirectBodyTest}`)
+      const extractedRedirectURL = extractUrl(responseBody)
+      const fqdRedirectURL = URL.resolve(dirname, extractedRedirectURL)
+      t.equal(fqdRedirectURL, `${dirname}${testCase.expectedRelPath}`, `Redirect to ${dirname}${testCase.expectedRelPath}`)
+
+      const redirectResponse = await fetch(fqdRedirectURL)
+      const redirectResponseBody = (await redirectResponse.text()).trim()
+      t.equal(redirectResponseBody, testCase.bodyTest, `Redirect response body matches ${testCase.bodyTest}`)
+      const redirectRelPath = removeStartingSubstring(redirectResponse.url, dirname)
+      t.equal(redirectRelPath, testCase.expectedRelPath, `Redirect Relpath matchs ${testCase.expectedRelPath}`)
     } else {
-      t.equal(testCase.bodyTest, responseBody, `response body matches ${testCase.bodyTest}`)
+      t.equal(responseBody, testCase.bodyTest, `response body matches ${testCase.bodyTest}`)
+      const relPath = removeStartingSubstring(response.url, dirname)
+      t.equal(relPath, testCase.expectedRelPath, `Relpath matchs ${testCase.expectedRelPath}`)
     }
   }
 })
+
+function removeStartingSubstring (mainString, startString) {
+  if (mainString.startsWith(startString)) {
+    return mainString.slice(startString.length)
+  }
+  return mainString
+}
+
+function extractUrl (content) {
+  const regex = /url\s*=\s*(["'])([^"']+)\1/i
+  const match = content.match(regex)
+  return match ? match[2] : null
+}
