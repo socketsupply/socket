@@ -167,7 +167,10 @@ bool sapi_ipc_send_chunk (
   }
   bool success = (*send_chunk_ptr)(chunk, chunk_size, finished);
   if (finished) {
-    sapi_context_release(result->context);
+    auto context = result->context;
+    if (context->release()) {
+      delete context;
+    }
   }
   return success;
 }
@@ -195,7 +198,10 @@ bool sapi_ipc_send_event (
   }
   bool success = (*send_event_ptr)(name, data, finished);
   if (finished) {
-    sapi_context_release(result->context);
+    auto context = result->context;
+    if (context->release()) {
+      delete context;
+    }
   }
   return success;
 }
@@ -663,6 +669,7 @@ void sapi_ipc_result_set_header (
   #if !defined(_WIN32)
     if (strcasecmp(name, "content-type") == 0 &&
         strcasecmp(value, "text/event-stream") == 0) {
+      result->context->retain();
       result->post = SSC::Post();
       result->post.event_stream =
           std::make_shared<std::function<bool(const char*, const char*, bool)>>(
@@ -671,6 +678,7 @@ void sapi_ipc_result_set_header (
               });
     } else if (strcasecmp(name, "transfer-encoding") == 0 &&
                strcasecmp(value, "chunked") == 0) {
+      result->context->retain();
       result->post = SSC::Post();
       result->post.chunk_stream =
           std::make_shared<std::function<bool(const char*, size_t, bool)>>(
