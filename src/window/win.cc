@@ -944,14 +944,6 @@ namespace SSC {
 
                             auto ext = fs::path(path).extension().string();
 
-                            if (path == "/" || path.size() == 0) {
-                              path = "/index.html";
-                              ext = ".html";
-                            } else if (path.ends_with("/")) {
-                              path += "index.html";
-                              ext = ".html";
-                            }
-
                             if (ext.size() > 0 && !ext.starts_with(".")) {
                               ext = "." + ext;
                             }
@@ -1015,28 +1007,34 @@ namespace SSC {
                               }
                             } else {
                               auto rootPath = this->modulePath.parent_path();
+                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
+                              path = resolved.path;
 
-                              if (ext.size() == 0) {
+                              if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+                                path = userConfig["webview_default_index"];
+                              } else if (resolved.redirect) {
                                 uri += "/";
-                                app.dispatch([&, uri, path, args, deferral, env] {
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(uri) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(uri) + L"\n"
+                                      convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
                                     ).c_str(),
                                     &res
                                   );
+
                                   args->put_Response(res);
                                   deferral->Complete();
-                                });
-                                return S_OK;
+                                  return S_OK;
                               }
 
-                              path = fs::absolute(rootPath / path.substr(1)).string();
+                              if (path.size() > 0) {
+                                path = fs::absolute(rootPath / path.substr(1)).string();
+                              }
+
                               LARGE_INTEGER fileSize;
                               auto handle = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
                               auto getSizeResult = GetFileSizeEx(handle, &fileSize);
