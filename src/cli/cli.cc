@@ -1754,12 +1754,6 @@ optionsAndEnv parseCommandLineOptions (
       continue;
     }
 
-    if (optionsWithValue.count(key) > 0 || optionsWithoutValue.find(key) != optionsWithoutValue.end()) {
-      std::cerr << "ERROR: Option '" << key << "' is used more than once." << std::endl;
-      printHelp(subcommand);
-      exit(1);
-    }
-
     // find option
     Option recognizedOption;
     bool found = false;
@@ -1799,6 +1793,12 @@ optionsAndEnv parseCommandLineOptions (
 
     if (!found) {
       std::cerr << "ERROR: unrecognized option '" << key << "'" << std::endl;
+      printHelp(subcommand);
+      exit(1);
+    }
+
+    if (optionsWithValue.count(key) > 0 || optionsWithoutValue.find(key) != optionsWithoutValue.end()) {
+      std::cerr << "ERROR: Option '" << key << "' is used more than once." << std::endl;
       printHelp(subcommand);
       exit(1);
     }
