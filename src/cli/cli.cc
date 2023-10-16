@@ -1720,8 +1720,6 @@ optionsAndEnv parseCommandLineOptions (
     size_t equalPos = arg.find('=');
     String key;
     String value;
-    bool shouldHaveValue = false;
-    bool isOptional = false;
 
     if (arg == "-h" || arg == "--help") {
       printHelp(subcommand);
