@@ -4510,7 +4510,7 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["permissions_allow_push_notifications"] != "false") {
+      if (settings["permissions_allow_push_notifications"] == "true") {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
           "  <true/>\n"
