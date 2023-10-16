@@ -4510,9 +4510,14 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["permissions_allow_notifications"] != "false") {
+      if (settings["permissions_allow_push_notifications"] != "false") {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
+          "  <true/>\n"
+        );
+        
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.developer.location.push</key>\n"
           "  <true/>\n"
         );
       }
@@ -4520,11 +4525,6 @@ int main (const int argc, const char* argv[]) {
       if (settings["permissions_allow_geolocation"] != "false") {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.security.personal-information.location</key>\n"
-          "  <true/>\n"
-        );
-
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>com.apple.developer.location.push</key>\n"
           "  <true/>\n"
         );
       }
