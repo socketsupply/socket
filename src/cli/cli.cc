@@ -1692,63 +1692,12 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
   exit(1);
 }
 
-void handleOption(
-  Map& optionsWithValue,
-  std::unordered_set<String>& optionsWithoutValue,
-  const String& key,
-  const String& value,
-  const String& subcommand
-) {
-  if (optionsWithValue.count(key) > 0 || optionsWithoutValue.find(key) != optionsWithoutValue.end()) {
-    std::cerr << "ERROR: Option '" << key << "' is used more than once." << std::endl;
-    printHelp(subcommand);
-    exit(1);
-  }
-  if (!value.empty()) {
-    optionsWithValue[key] = value;
-  } else {
-    optionsWithoutValue.insert(key);
-  }
-}
-
 struct Option {
   std::vector<String> aliases;
   bool isOptional;
   bool shouldHaveValue;
 };
 using Options = std::vector<Option>;
-
-String validateOption (
-  const String& key,
-  const String& value,
-  const Options& availableOptions,
-  const String& subcommand
-) {
-  bool recognized = false;
-  bool shouldHaveValue = false;
-  String result;
-  for (const auto& option : availableOptions) {
-    auto aliases = option.aliases;
-    shouldHaveValue = option.shouldHaveValue;
-    auto it = std::find(aliases.begin(), aliases.end(), key);
-    if (it != aliases.end()) {
-      recognized = true;
-      result = aliases[0];
-      break;
-    }
-  }
-  if (!recognized) {
-    std::cerr << "ERROR: unrecognized option '" << key << "'" << std::endl;
-    printHelp(subcommand);
-    exit(1);
-  }
-  if (shouldHaveValue && value.empty()) {
-    std::cerr << "ERROR: option '" << key << "' requires a value" << std::endl;
-    printHelp(subcommand);
-    exit(1);
-  }
-  return result;
-}
 
 struct optionsAndEnv {
   Map optionsWithValue;
@@ -1771,39 +1720,89 @@ optionsAndEnv parseCommandLineOptions (
     size_t equalPos = arg.find('=');
     String key;
     String value;
+    bool shouldHaveValue = false;
+    bool isOptional = false;
 
     if (arg == "-h" || arg == "--help") {
       printHelp(subcommand);
       exit(0);
     }
 
-    if (equal(key, "--verbose")) {
+    if (equal(arg, "--verbose")) {
       flagVerboseMode = true;
       Env::set("SSC_VERBOSE", "1");
       continue;
     }
 
-    if (equal(key, "--debug")) {
+    if (equal(arg, "--debug")) {
       Env::set("SSC_DEBUG", "1");
       continue;
     }
 
+    bool hasEqualSignDelimiter = equalPos != String::npos;
     // Option in the form "--key=value" or "-k=value"
-    if (equalPos != String::npos) {
+    if (hasEqualSignDelimiter) {
       key = arg.substr(0, equalPos);
       value = arg.substr(equalPos + 1);
     } else {
       key = arg;
-      // Option in the form "--key value" or "-k value"
-      if (i + 1 < options.size() && options[i + 1][0] != '-') {
-        value = options[++i];
-      } else {
-        // Option in the form "--key" or "-k"
-        value = "";
-        if (i + 1 < options.size() && options[i + 1][0] != '-') {
-          targetPath = fs::absolute(options[i + 1]).lexically_normal();
+    }
+
+    // path
+    if (key.size() && !key.starts_with("-")) {
+      targetPath = fs::absolute(key).lexically_normal();
+      value = "";
+      key = "";
+      continue;
+    }
+
+    if (optionsWithValue.count(key) > 0 || optionsWithoutValue.find(key) != optionsWithoutValue.end()) {
+      std::cerr << "ERROR: Option '" << key << "' is used more than once." << std::endl;
+      printHelp(subcommand);
+      exit(1);
+    }
+
+    // find option
+    Option recognizedOption;
+    bool found = false;
+    for (const auto option : availableOptions) {
+      for (const auto alias : option.aliases) {
+        if (alias == key) {
+          recognizedOption = option;
+          found = true;
+          key = recognizedOption.aliases[0];
+          if (!recognizedOption.shouldHaveValue && value.size() > 0) {
+            std::cerr << "ERROR: option '" << key << "' does not require a value" << std::endl;
+            printHelp(subcommand);
+            exit(1);
+          }
+          if (!hasEqualSignDelimiter && recognizedOption.shouldHaveValue) {
+            // Option in the form "--key value" or "-k value"
+            if (i + 1 < options.size() && options[i + 1][0] != '-') {
+              value = options[++i];
+            // Option in the form "--key" or "-k"
+            } else {
+              value = "";
+              if (i + 1 < options.size() && options[i + 1][0] != '-') {
+                targetPath = fs::absolute(options[i + 1]).lexically_normal();
+              }
+            }
+          }
+          if (!recognizedOption.isOptional && value.empty()) {
+            std::cerr << "ERROR: option '" << key << "' requires a value" << std::endl;
+            printHelp(subcommand);
+            exit(1);
+          }
+          break;
         }
       }
+      if (found) break;
+    }
+
+    if (!found) {
+      std::cerr << "ERROR: unrecognized option '" << key << "'" << std::endl;
+      printHelp(subcommand);
+      exit(1);
     }
 
     if (value.size() == 0) {
@@ -1820,15 +1819,10 @@ optionsAndEnv parseCommandLineOptions (
       continue;
     }
 
-    if (key.size() && !key.starts_with("-")) {
-      targetPath = fs::absolute(key).lexically_normal();
-      value = "";
-      key = "";
-    }
-
-    if (key.size() > 0) {
-      auto option = validateOption(key, value, availableOptions, subcommand);
-      handleOption(optionsWithValue, optionsWithoutValue, option, value, subcommand);
+    if (!value.empty()) {
+      optionsWithValue[key] = value;
+    } else {
+      optionsWithoutValue.insert(key);
     }
   }
 
