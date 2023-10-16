@@ -2333,7 +2333,18 @@ static void registerSchemeHandler (Router *router) {
 
 #if defined(__APPLE__)
 @implementation SSCIPCSchemeHandler
-- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
+{
+  NSMutableSet<Task>* _tasks;
+}
+- (instancetype) init {
+  if (self = [super init]) {
+    _tasks = [NSMutableSet set];
+  }
+  return self;
+}
+- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
+  [_tasks removeObject: task];
+}
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
@@ -2614,7 +2625,15 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
+  auto tasks = _tasks;
+  [tasks addObject: task];
+
   auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
+    // @TODO Communicate task cancellation to the route, so it can cancel its work.
+    if (![tasks containsObject: task]) {
+      return;
+    }
+
     auto headers = [NSMutableDictionary dictionary];
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
@@ -2629,6 +2648,9 @@ static void registerSchemeHandler (Router *router) {
     if (result.post.event_stream != nullptr) {
       *result.post.event_stream = [task](const char* name, const char* data,
                                          bool finished) {
+        if (![tasks containsObject: task]) {
+          return false;
+        }
         auto event_name = [NSString stringWithUTF8String:name];
         auto event_data = [NSString stringWithUTF8String:data];
         if (event_name.length > 0 || event_data.length > 0) {
@@ -2644,6 +2666,7 @@ static void registerSchemeHandler (Router *router) {
         }
         if (finished) {
           [task didFinish];
+          [tasks removeObject:task];
         }
         return true;
       };
@@ -2652,9 +2675,13 @@ static void registerSchemeHandler (Router *router) {
     } else if (result.post.chunk_stream != nullptr) {
       *result.post.chunk_stream = [task](const char* chunk, size_t chunk_size,
                                          bool finished) {
+        if (![tasks containsObject: task]) {
+          return false;
+        }
         [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
         if (finished) {
           [task didFinish];
+          [tasks removeObject:task];
         }
         return true;
       };
@@ -2687,6 +2714,7 @@ static void registerSchemeHandler (Router *router) {
     if (data != nullptr) {
       [task didReceiveData: data];
       [task didFinish];
+      [tasks removeObject:task];
     }
 
   #if !__has_feature(objc_arc)
