@@ -2646,7 +2646,7 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [task](const char* name, const char* data,
+      *result.post.event_stream = [task, tasks](const char* name, const char* data,
                                          bool finished) {
         if (![tasks containsObject: task]) {
           return false;
@@ -2673,7 +2673,7 @@ static void registerSchemeHandler (Router *router) {
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
     } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [task](const char* chunk, size_t chunk_size,
+      *result.post.chunk_stream = [task, tasks](const char* chunk, size_t chunk_size,
                                          bool finished) {
         if (![tasks containsObject: task]) {
           return false;
