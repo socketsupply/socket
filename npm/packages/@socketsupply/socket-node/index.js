@@ -1,5 +1,6 @@
 // @ts-check
 import { EventEmitter } from 'node:events'
+import { promisify } from 'node:util'
 
 const MAX_MESSAGE_KB = 512 * 1024
 
@@ -33,7 +34,7 @@ class API {
     function overrideStreamWrite (stream, write) {
       const protoWrite = Object.getPrototypeOf(stream).write
       stream.write = write
-      return protoWrite.bind(stream)
+      return promisify(protoWrite.bind(stream))
     }
 
     this.#writeStdout = overrideStreamWrite(
@@ -155,7 +156,7 @@ class API {
 
   /**
    * @param {string} s
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    * @ignore
    */
@@ -172,7 +173,7 @@ class API {
       this.#writeStderr('RAW MESSAGE: ' + s.slice(0, 512) + '...\n')
     }
 
-    return new Promise((resolve) => this.#writeStdout(s + '\n', resolve))
+    return this.#writeStdout(s + '\n')
   }
 
   //
@@ -184,7 +185,7 @@ class API {
    * @param {number} options.window - window index to send event to
    * @param {string} options.event - event name
    * @param {any=} options.value - data to send
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    */
   async send (options) {
@@ -214,7 +215,7 @@ class API {
 
   /**
    * Send the heartbeat event to the webview.
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    */
   async heartbeat () {
