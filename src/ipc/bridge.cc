@@ -1,4 +1,5 @@
 #include <regex>
+#include <unordered_map>
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -2334,16 +2335,17 @@ static void registerSchemeHandler (Router *router) {
 #if defined(__APPLE__)
 @implementation SSCIPCSchemeHandler
 {
-  NSMutableSet<Task>* _tasks;
+  // Map tasks to a block that prevents future didReceiveData/didFinish calls.
+  std::unordered_map<Task, std::function<void()>> _tasks;
 }
-- (instancetype) init {
-  if (self = [super init]) {
-    _tasks = [NSMutableSet set];
-  }
-  return self;
+- (void) taskHasEnded: (Task) task {
+  auto taskEndedCallback = _tasks.at(task);
+  _tasks.erase(task);
+
+  taskEndedCallback();
 }
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
-  [_tasks removeObject: task];
+  [self taskHasEnded: task];
 }
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
   static auto userConfig = SSC::getUserConfig();
@@ -2625,12 +2627,14 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  auto tasks = _tasks;
-  [tasks addObject: task];
+  std::atomic<bool> taskEnded = false;
+  _tasks.emplace(task, [&taskEnded]() {
+    taskEnded = true;
+  });
 
-  auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
+  auto invoked = self.router->invoke(message, body, bufsize, [=, &taskEnded](Result result) {
     // @TODO Communicate task cancellation to the route, so it can cancel its work.
-    if (![tasks containsObject: task]) {
+    if (taskEnded) {
       return;
     }
 
@@ -2646,9 +2650,9 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [task, tasks](const char* name, const char* data,
+      *result.post.event_stream = [self, task, &taskEnded](const char* name, const char* data,
                                          bool finished) {
-        if (![tasks containsObject: task]) {
+        if (taskEnded) {
           return false;
         }
         auto event_name = [NSString stringWithUTF8String:name];
@@ -2666,22 +2670,22 @@ static void registerSchemeHandler (Router *router) {
         }
         if (finished) {
           [task didFinish];
-          [tasks removeObject:task];
+          [self taskHasEnded:task];
         }
         return true;
       };
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
     } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [task, tasks](const char* chunk, size_t chunk_size,
+      *result.post.chunk_stream = [self, task, &taskEnded](const char* chunk, size_t chunk_size,
                                          bool finished) {
-        if (![tasks containsObject: task]) {
+        if (taskEnded) {
           return false;
         }
         [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
         if (finished) {
           [task didFinish];
-          [tasks removeObject:task];
+          [self taskHasEnded:task];
         }
         return true;
       };
@@ -2714,7 +2718,7 @@ static void registerSchemeHandler (Router *router) {
     if (data != nullptr) {
       [task didReceiveData: data];
       [task didFinish];
-      [tasks removeObject:task];
+      [self taskHasEnded:task];
     }
 
   #if !__has_feature(objc_arc)
