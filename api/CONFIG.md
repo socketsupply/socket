@@ -33,7 +33,7 @@ provisioning_profile = "johndoe.mobileprovision"
 simulator_device = "iPhone 15"
 ```
 
-# Section `build`
+# `build`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -45,13 +45,13 @@ name |  |  The name of the program and executable to be output. Can't contain sp
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
 script |  |  The build script. It runs before the `[build] copy` phase.
 
-# Section `build.watch`
+# `build.watch`
 
 Key | Default Value | Description
 :--- | :--- | :---
 sources |  | 
 
-# Section `webview`
+# `webview`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -59,7 +59,7 @@ root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
 watch | false |  Enable watch mode
 
-# Section `permissions`
+# `permissions`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -75,13 +75,13 @@ allow_bluetooth | true |  Allow/Disallow bluetooth in application
 allow_data_access | true |  Allow/Disallow data access in application
 allow_airplay | true |  Allow/Disallow AirPlay access in application (macOS/iOS) only
 
-# Section `debug`
+# `debug`
 
 Key | Default Value | Description
 :--- | :--- | :---
 flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 
-# Section `meta`
+# `meta`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -95,7 +95,7 @@ title |  |  The title of the app used in metadata files. This is NOT a window ti
 type | "" |  Builds an extension when set to "extension".
 version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
 
-# Section `android`
+# `android`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -109,7 +109,7 @@ native_sources |  |
 native_makefile |  | 
 sources |  | 
 
-# Section `ios`
+# `ios`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -118,7 +118,7 @@ distribution_method |  |  Describes how Xcode should export the archive. Availab
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
 simulator_device |  |  which device to target when building for the simulator
 
-# Section `linux`
+# `linux`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -126,7 +126,7 @@ categories |  |  Helps to make your app searchable in Linux desktop environments
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app in Linux desktop environments.
 
-# Section `mac`
+# `mac`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -137,14 +137,14 @@ icon |  |  The icon to use for identifying your app on MacOS.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
 
-# Section `native`
+# `native`
 
 Key | Default Value | Description
 :--- | :--- | :---
 files |  |  Files that should be added to the compile step.
 headers |  |  Extra Headers
 
-# Section `win`
+# `win`
 
 Key | Default Value | Description
 :--- | :--- | :---
@@ -153,14 +153,14 @@ icon |  |  The icon to use for identifying your app on Windows.
 logo |  |  The icon to use for identifying your app on Windows.
 pfx |  |  A relative path to the pfx file used for signing.
 
-# Section `window`
+# `window`
 
 Key | Default Value | Description
 :--- | :--- | :---
 height |  |  The initial height of the first window.
 width |  |  The initial width of the first window.
 
-# Section `headless`
+# `headless`
 
 Key | Default Value | Description
 :--- | :--- | :---

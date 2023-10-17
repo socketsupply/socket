@@ -110,7 +110,7 @@ fi
 declare android_abis=()
 
 
-if (( only_top_level )); then
+if (( !only_platforms || only_top_level )); then
   npm run gen
 elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
   echo "warn - Android not supported on $platform-"$(uname -m)""

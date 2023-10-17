@@ -72,7 +72,7 @@ simulator_device = "iPhone 15"
 `
   md += '\n'
   Object.entries(sections).forEach(([sectionName, settings]) => {
-    md += `# Section \`${sectionName}\`\n`
+    md += `# \`${sectionName}\`\n`
     md += '\n'
     md += 'Key | Default Value | Description\n'
     md += ':--- | :--- | :---\n'
