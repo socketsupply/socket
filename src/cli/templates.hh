@@ -1158,28 +1158,6 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
 
-  <key>UIBackgroundModes</key>
-  <array>
-    <string>fetch</string>
-    <string>processing</string>
-    <string>location</string>
-    <string>bluetooth-central</string>
-    <string>bluetooth-peripheral</string>
-    <string>remote-notification</string>
-  </array>
-
-  <key>UIRequiredDeviceCapabilities</key>
-  <array>
-    <string>accelerometer</string>
-    <string>bluetooth-le</string>
-    <string>gps</string>
-    <string>gyroscope</string>
-    <string>location-services</string>
-    <string>microphone</string>
-    <string>peer-to-peer</string>
-    <string>video-camera</string>
-  </array>
-
 
   <!-- Permission usage descriptions -->
   <key>NSAppDataUsageDescription</key>

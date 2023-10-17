@@ -4217,6 +4217,79 @@ int main (const int argc, const char* argv[]) {
         settings["ios_info_plist_data"] = "";
       }
 
+      settings["ios_info_plist_data"] += (
+        "  <key>UIBackgroundModes</key>\n"
+        "  <array>\n"
+        "    <string>fetch</string>\n"
+        "    <string>processing</string>\n"
+      );
+
+      if (settings["permissions_allow_bluetooth"] != "false") {
+        settings["ios_info_plist_data"] += (
+          "    <string>bluetooth-central</string>\n"
+          "    <string>bluetooth-peripheral</string>\n"
+        );
+      }
+
+      if (settings["permissions_allow_geolocation"] != "false") {
+        settings["ios_info_plist_data"] += (
+          "    <string>location</string>\n"
+        );
+      }
+
+      if (settings["permissions_allow_push_notifications"] == "true") {
+        settings["ios_info_plist_data"] += (
+          "    <string>remote-notification</string>\n"
+        );
+      }
+
+      settings["ios_info_plist_data"] += (
+        "  </array>\n"
+      );
+
+      settings["ios_info_plist_data"] += (
+        "  <key>UIRequiredDeviceCapabilities</key>\n"
+        "  <array>\n"
+      );
+
+      if (settings["permissions_allow_bluetooth"] != "false") {
+        settings["ios_info_plist_data"] += (
+          "     <string>bluetooth-le</string>\n"
+        );
+      }
+
+      if (settings["permissions_allow_geolocation"] != "false") {
+        settings["ios_info_plist_data"] += (
+          "     <string>gps</string>\n"
+          "     <string>location-services</string>\n"
+        );
+      }
+
+      if (settings["permissions_allow_sensors"] != "false") {
+        settings["ios_info_plist_data"] += (
+          "     <string>accelerometer</string>\n"
+          "     <string>gyroscope</string>\n"
+        );
+      }
+
+      if (settings["permission_allow_user_media"] != "false") {
+        if (settings["permissions_allow_microphone"] != "false") {
+          settings["ios_info_plist_data"] += (
+            "     <string>microphone</string>\n"
+          );
+        }
+
+        if (settings["permissions_allow_camera"] != "false") {
+          settings["ios_info_plist_data"] += (
+            "     <string>video-camera</string>\n"
+          );
+        }
+      }
+
+      settings["ios_info_plist_data"] += (
+        "  </array>\n"
+      );
+
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));
@@ -4617,6 +4690,9 @@ int main (const int argc, const char* argv[]) {
 
         if (rExport.exitCode != 0) {
           log("ERROR: failed to export project");
+          if (flagVerboseMode) {
+            log(rExport.output);
+          }
           fs::current_path(oldCwd);
           exit(1);
         }
