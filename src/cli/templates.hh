@@ -1243,6 +1243,8 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <true/>
   <key>com.apple.security.inherit</key>
   <true/>
+  <key>com.apple.security.files.bookmarks.app-scope</key>
+  <true/>
 
   <!-- Generated entitlements given plist data -->
 {{configured_entitlements}}

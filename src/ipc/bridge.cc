@@ -428,6 +428,21 @@ static void initRouterTable (Router *router) {
     }
   });
 
+  router->listen("*", [](auto message, auto router, auto reply) {
+  #if defined(__APPLE__)
+    if (message.name.starts_with("fs.")) {
+      const auto path = message.get("path");
+      const auto src = message.get("src");
+      const auto dest = message.get("dest");
+      debug("path=%s", path.c_str());
+      if (path.size() > 0) {
+        const auto url = [NSURL fileURLWithPath: @(path.c_str())];
+        [url startAccessingSecurityScopedResource];
+      }
+    }
+  #endif
+  });
+
   /**
    * Checks if current user can access file at `path` with `mode`.
    * @param path
