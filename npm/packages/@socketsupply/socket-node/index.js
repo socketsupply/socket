@@ -28,7 +28,7 @@ class API {
       this.#write(`ipc://process.exit?value=${exitCode}`)
     })
     process.on('uncaughtException', (err) => {
-      this.#write(`ipc://stderr?value=${encodeURIComponent(String(err))}`)
+      this.#write(`ipc://stderr?value=${encodeURIComponent(err.stack || String(err))}`)
     })
 
     function overrideStreamWrite (stream, write) {
