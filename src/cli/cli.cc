@@ -3180,24 +3180,24 @@ int main (const int argc, const char* argv[]) {
 
       manifestContext["android_manifest_xml_permissions"] = "";
 
-      if (settings["permission_allow_notifications"] != "false") {
+      if (settings["permissions_allow_notifications"] != "false") {
         manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n";
       }
 
-      if (settings["permission_allow_geolocation"] != "false") {
+      if (settings["permissions_allow_geolocation"] != "false") {
         manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n";
         manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n";
-        if (settings["permission_allow_geolocation_in_background"] != "false") {
+        if (settings["permissions_allow_geolocation_in_background"] != "false") {
           manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />\n";
         }
       }
 
-      if (settings["permission_allow_user_media"] != "false") {
-        if (settings["permission_allow_camera"] != "false") {
+      if (settings["permissions_allow_user_media"] != "false") {
+        if (settings["permissions_allow_camera"] != "false") {
           manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAMERA\" />\n";
         }
 
-        if (settings["permission_allow_microphone"] != "false") {
+        if (settings["permissions_allow_microphone"] != "false") {
           manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAPTURE_AUDIO_OUTPUT\" />\n";
         }
       }
@@ -4280,7 +4280,7 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["permission_allow_user_media"] != "false") {
+      if (settings["permissions_allow_user_media"] != "false") {
         if (settings["permissions_allow_microphone"] != "false") {
           settings["ios_info_plist_data"] += (
             "     <string>microphone</string>\n"
@@ -4568,15 +4568,15 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["permission_allow_user_media"] != "false") {
-        if (settings["permission_allow_camera"] != "false") {
+      if (settings["permissions_allow_user_media"] != "false") {
+        if (settings["permissions_allow_camera"] != "false") {
           entitlementSettings["configured_entitlements"] += (
               "  <key>com.apple.security.device.camera</key>\n"
               "  <true/>\n"
               );
         }
 
-        if (settings["permission_allow_microphone"] != "false") {
+        if (settings["permissions_allow_microphone"] != "false") {
           entitlementSettings["configured_entitlements"] += (
               "  <key>com.apple.security.device.microphone</key>\n"
               "  <true/>\n"
@@ -5614,15 +5614,15 @@ int main (const int argc, const char* argv[]) {
       Map entitlementSettings;
       extendMap(entitlementSettings, settings);
 
-      if (settings["permission_allow_user_media"] != "false") {
-        if (settings["permission_allow_camera"] != "false") {
+      if (settings["permissions_allow_user_media"] != "false") {
+        if (settings["permissions_allow_camera"] != "false") {
           entitlementSettings["configured_entitlements"] += (
             "  <key>com.apple.security.device.camera</key>\n"
             "  <true/>\n"
           );
         }
 
-        if (settings["permission_allow_microphone"] != "false") {
+        if (settings["permissions_allow_microphone"] != "false") {
           entitlementSettings["configured_entitlements"] += (
             "  <key>com.apple.security.device.microphone</key>\n"
             "  <true/>\n"
