@@ -3448,6 +3448,8 @@ int main (const int argc, const char* argv[]) {
           std::unordered_set<String> cflags;
           std::unordered_set<String> cppflags;
 
+          compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+
           if (path.size() > 0) {
             fs::current_path(targetPath);
             fs::current_path(path);
@@ -4029,6 +4031,8 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
               settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
+
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
 
             // --platform=ios should always build for arm64 even on Darwin x86_64
             if (!flagBuildForSimulator) {
@@ -5176,6 +5180,8 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_" + os + "_compiler_debug_flags"] + " "
             );
 
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+
             if (platform.mac) {
               compilerFlags += " -framework UniformTypeIdentifiers";
               compilerFlags += " -framework CoreBluetooth";
@@ -5189,7 +5195,15 @@ int main (const int argc, const char* argv[]) {
 
             if (platform.linux) {
               compilerFlags += " -std=c++2a";
-              compilerFlags += " " + exec("pkg-config --cflags gtk+-3.0 webkit2gtk-4.1").output;
+              compilerFlags += " " + trim(exec("pkg-config --cflags gtk+-3.0 webkit2gtk-4.1").output);
+            }
+
+            if (platform.win) {
+              auto prefix = prefixFile();
+              compilerFlags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
+              compilerFlags += " -I\"" + prefix + "include\"";
+              compilerFlags += " -I\"" + prefix + "src\"";
+              compilerFlags += " -L\"" + prefix + "lib\"";
             }
 
             if (platform.win && debugBuild) {
