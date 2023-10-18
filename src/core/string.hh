@@ -25,9 +25,11 @@ namespace SSC {
   String convertWStringToString (const String& source);
 
   // vector parsers
-  const Vector<String> split (const String& source, const char& character);
-  const Vector<String> splitc (const String& source, const char& character);
+  const Vector<String> splitc (const String& source, const char character);
+  const Vector<String> split (const String& source, const char character);
+  const Vector<String> split (const String& source, const String& needle);
   const String join (const Vector<String>& vector, const String& separator);
+  const String join (const Vector<String>& vector, const char separator);
   Vector<String> parseStringList (const String& string, const Vector<char>& separators);
   Vector<String> parseStringList (const String& string, const char separator);
   Vector<String> parseStringList (const String& string);
