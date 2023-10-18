@@ -2561,6 +2561,7 @@ int main (const int argc, const char* argv[]) {
     { { "--headless", "-H" }, true, false },
     { { "--debug", "-D" }, true, false },
     { { "--verbose", "-V" }, true, false },
+    { { "--env", "-E" }, true, true }
   };
 
   Options buildOptions = {
@@ -2574,7 +2575,8 @@ int main (const int argc, const char* argv[]) {
     { { "--package", "-p" }, true, false },
     { { "--package-format", "-f" }, true, true },
     { { "--codesign", "-c" }, true, false },
-    { { "--notarize", "-n" }, true, false }
+    { { "--notarize", "-n" }, true, false },
+    { { "--env", "-E" }, true, true }
   };
 
   // Insert the elements of runOptions into buildOptions
@@ -5194,7 +5196,6 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (platform.linux) {
-              compilerFlags += " -std=c++2a";
               compilerFlags += " " + trim(exec("pkg-config --cflags gtk+-3.0 webkit2gtk-4.1").output);
             }
 
