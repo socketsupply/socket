@@ -3,46 +3,50 @@
 #include "./ok.hh"
 
 namespace SSC::Tests {
-  static Harness::Mutex mutex;
-  static Atomic<int> pending = 0;
-
-  Harness::Harness () {
-    mutex.unlock();
-  }
-
   Harness::Harness (const Options& options) : options(options) {
-    mutex.unlock();
+    this->pending = this->options.pending;
+    this->isAsync = this->options.isAsync;
   }
 
-  bool Harness::run (TestRunner runner) const {
-    return run(false, "", runner);
+  bool Harness::run (TestRunner runner) {
+    return this->run(false, "", runner);
   }
 
-  bool Harness::run (bool isAsync, TestRunner runner) const {
-    return run(isAsync, "", runner);
+  bool Harness::run (bool isAsync, TestRunner runner) {
+    return this->run(isAsync, "", runner);
   }
 
-  bool Harness::run (bool isAsync, const String& label, TestRunner runner) const {
+  bool Harness::run (bool isAsync, const String& label, TestRunner runner) {
     if (label.size() > 0) {
-      mutex.lock();
+      this->mutex.lock();
       this->label(label);
       if (this->options.resetContextAfterEachRun) {
         ok_reset();
       }
     }
 
-    pending++;
-    runner(*this);
-    pending--;
+    this->pending++;
+    Harness harness(Options {
+      .resetContextAfterEachRun = this->options.resetContextAfterEachRun,
+      .isAsync = isAsync,
+      .pending = this->pending.load()
+    });
+
+    runner(harness);
+    this->pending--;
 
     if (label.size() > 0 ) {
-      if (!isAsync) {
-        mutex.unlock();
+      if (!this->isAsync) {
+        this->mutex.unlock();
       }
     }
 
-    if (pending == 0) {
-      if (ok_count() > 0 || ok_failed() > 0 || ok_expected() > 0) {
+    if (harness.isAsync) {
+      harness.wait();
+    }
+
+    if (this->pending == 0) {
+      if (ok_count() > 0 || ok_failed() > 0) {
         auto success = ok_done();
         ok_reset();
         return success;
@@ -52,15 +56,31 @@ namespace SSC::Tests {
     return false;
   }
 
-  void Harness::end () const {
-    mutex.unlock();
+  void Harness::end () {
+    this->mutex.unlock();
   }
 
-  bool Harness::test (const String& label, bool isAsync, TestRunner scope) const {
+  void Harness::wait () {
+    this->mutex.lock();
+    this->mutex.unlock();
+  }
+
+  void Harness::plan (unsigned int planned) {
+    if (planned > 0) {
+      this->isAsync = true;
+      this->mutex.lock();
+    } else if (planned == 0 && this->isAsync) {
+      this->isAsync = false;
+    }
+
+    this->planned = planned;
+  }
+
+  bool Harness::test (const String& label, bool isAsync, TestRunner scope) {
     return this->run(isAsync, label, scope);
   }
 
-  bool Harness::test (const String& label, TestRunner scope) const {
+  bool Harness::test (const String& label, TestRunner scope) {
     return this->run(false, label, scope);
   }
 
@@ -77,6 +97,36 @@ namespace SSC::Tests {
     sapi_log(0, message.c_str());
   }
 
+  void Harness::log (const Map& message) const {
+    if (message.size() == 0) {
+      return this->log("Map {}");
+    }
+
+    auto size = message.size();
+    int i = 0;
+    this->log("Map {");
+    for (const auto& tuple : message) {
+      const auto postfix = ++i < size ? "," : "";
+      this->log("  \"" + tuple.first + "\" = \"" + tuple.second + "\""+ postfix);
+    }
+    this->log("}");
+  }
+
+  void Harness::log (const Vector<String>& message) const {
+    if (message.size() == 0) {
+      return this->log("Vector<String> {}");
+    }
+
+    auto size = message.size();
+    int i = 0;
+    this->log("Vector<String> {");
+    for (const auto& item: message) {
+      const auto postfix = ++i < size ? "," : "";
+      this->log("  " + item + postfix);
+    }
+    this->log("}");
+  }
+
   bool Harness::assert (bool assertion, const String& message) const {
     if (assertion) {
       ok("%s",  message.c_str());
@@ -88,23 +138,23 @@ namespace SSC::Tests {
   }
 
   bool Harness::assert (int64_t value, const String& message) const {
-    return assert(value != 0, message);
+    return this->assert(value != 0, message);
   }
 
   bool Harness::assert (double value, const String& message) const {
-    return assert(value != 0.0, message);
+    return this->assert(value != 0.0, message);
   }
 
   bool Harness::assert (void* value, const String& message) const {
-    return assert(value != 0, message);
+    return this->assert(value != 0, message);
   }
 
   bool Harness::assert (const String& value, const String& message) const {
-    return assert(value.size() != 0, message);
+    return this->assert(value.size() != 0, message);
   }
 
   bool Harness::equals (const char* left, const char* right, const String& message) const {
-    return equals(String(left), String(right), message);
+    return this->equals(String(left), String(right), message);
   }
 
   bool Harness::equals (const String& left, const String& right, const String& message) const {
@@ -147,6 +197,16 @@ namespace SSC::Tests {
     }
   }
 
+  bool Harness::equals (const size_t left, const size_t right, const String& message) const {
+    if (left == right) {
+      ok("%zu equals %zu: %s",  left, right, message.c_str());
+      return true;
+    } else {
+      notok("%zu does not equal %zu: %s", left, right, message.c_str());
+      return false;
+    }
+  }
+
   bool Harness::notEquals (const String& left, const String& right, const String& message) const {
     if (left == right) {
       notok("'%s' equals '%s': %s",  left.c_str(), right.c_str(), message.c_str());
@@ -158,7 +218,7 @@ namespace SSC::Tests {
   }
 
   bool Harness::notEquals (const char* left, const char* right, const String& message) const {
-    return notEquals(String(left), String(right), message);
+    return this->notEquals(String(left), String(right), message);
   }
 
   bool Harness::notEquals (const int64_t left, const int64_t right, const String& message) const {
@@ -177,6 +237,16 @@ namespace SSC::Tests {
       return false;
     } else {
       ok("%f does not equal %f: %s", left, right, message.c_str());
+      return true;
+    }
+  }
+
+  bool Harness::notEquals (const size_t left, const size_t right, const String& message) const {
+    if (left == right) {
+      notok("%zu equals %zu: %s",  left, right, message.c_str());
+      return false;
+    } else {
+      ok("%zu does not equal %zu: %s", left, right, message.c_str());
       return true;
     }
   }

@@ -1,7 +1,7 @@
 import extension from 'socket:extension'
 import process from 'socket:process'
 
-const EXIT_TIMEOUT = 250
+const EXIT_TIMEOUT = 500
 
 try {
   await extension.load('runtime-core-tests')

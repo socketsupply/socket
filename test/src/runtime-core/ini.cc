@@ -1,7 +1,7 @@
 #include "tests.hh"
 
 namespace SSC::Tests {
-  void ini (const Harness& t) {
+  void ini (Harness& t) {
     t.test("SSC::INI::parse", [] (auto t) {
       auto simple = SSC::INI::parse(R"INI(
         key = "value"
@@ -57,7 +57,7 @@ namespace SSC::Tests {
 
         [strings]
         array[] = "hello"
-        array[] = "world"
+        array[] = world
       )INI");
 
       t.equals(arrays["numbers_array"], "1 2 3", "arrays[numbers_array] == 1 2 3");

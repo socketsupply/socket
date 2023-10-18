@@ -11,6 +11,7 @@ static bool initialize (sapi_context_t* context, const void *data) {
     t.run(SSC::Tests::json);
     t.run(SSC::Tests::platform);
     t.run(SSC::Tests::preload);
+    t.run(SSC::Tests::string);
     t.run(SSC::Tests::version);
   });
 }

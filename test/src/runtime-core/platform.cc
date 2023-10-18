@@ -2,7 +2,7 @@
 #include "src/core/platform.hh"
 
 namespace SSC::Tests {
-  void platform (const Harness& t) {
+  void platform (Harness& t) {
     t.test("SSC::platform.arch", [](auto t) {
       t.assert(SSC::platform.arch, "SSC::platform.arch is not empty");
     #if defined(__x86_64__) || defined(_M_X64)
