@@ -70,8 +70,11 @@
 #include <shlobj_core.h>
 #include <shobjidl.h>
 
+#if !defined(SOCKET_RUNTIME_EXTENSION)
 #include <WebView2.h>
 #include <WebView2EnvironmentOptions.h>
+#endif
+
 #include <shellapi.h>
 
 #pragma comment(lib, "advapi32.lib")
