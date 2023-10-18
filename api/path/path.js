@@ -621,8 +621,10 @@ export class Path {
       i = this.pathname.lastIndexOf('\\')
     }
 
-    if (i === -1) return ''
-    const pathname = this.pathname.slice(i)
+    const pathname = (i > -1)
+      ? this.pathname.slice(i)
+      : this.pathname
+
     i = pathname.lastIndexOf('.')
     if (i === -1) return ''
     return pathname.slice(i >= 0 ? i : undefined)

@@ -34,7 +34,6 @@ test('path.posix.join', (t) => {
   t.equal(path.posix.join('/a', 'b', 'c'), '/a/b/c', 'join(/a, b, c)')
 })
 
-/*
 test('path.posix.dirname', (t) => {
   t.equal(path.posix.dirname('a/b/c'), 'a/b', 'a/b')
   t.equal(path.posix.dirname('a/b/c/d.js'), 'a/b/c', 'a/b/c')
@@ -64,7 +63,6 @@ test('path.posix.extname', (t) => {
   t.equal(path.posix.extname('/a.js'), '.js', '.js')
   t.equal(path.posix.extname('a.js'), '.js', '.js')
 })
-*/
 
 test('path.win32.resolve', (t) => {
   const cwd = '\\'
