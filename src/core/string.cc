@@ -3,6 +3,10 @@
 
 #include <regex>
 
+#if defined(min)
+#undef min
+#endif
+
 namespace SSC {
   String replace (const String& source, const std::regex& regex, const String& value) {
     return std::regex_replace(source, regex, value);
