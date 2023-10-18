@@ -27,7 +27,7 @@ namespace SSC::Tests {
       Atomic<int> pending = 0;
       Atomic<unsigned int> planned = 0;
 
-      Harness () = default;
+      Harness ();
       Harness (const Options& options);
 
       bool assert (bool assertion, const String& message = "") const;

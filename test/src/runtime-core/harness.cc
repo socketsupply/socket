@@ -3,6 +3,8 @@
 #include "./ok.hh"
 
 namespace SSC::Tests {
+  Harness::Harness () : options() {}
+
   Harness::Harness (const Options& options) : options(options) {
     this->pending = this->options.pending;
     this->isAsync = this->options.isAsync;
