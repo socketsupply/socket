@@ -5189,7 +5189,7 @@ int main (const int argc, const char* argv[]) {
 
             if (platform.linux) {
               compilerFlags += " -std=c++2a";
-              compilerFlags += " " + exec("pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1").output;
+              compilerFlags += " " + exec("pkg-config --cflags gtk+-3.0 webkit2gtk-4.1").output;
             }
 
             if (platform.win && debugBuild) {
