@@ -65,11 +65,15 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
     cflags+=("-arch arm64")
     cflags+=("-target arm64-apple-ios")
     cflags+=("-Wno-unguarded-availability-new")
-    cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
+    if [ -n "$IPHONEOS_VERSION_MIN" ]; then
+      cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
+    fi
   elif (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphonesimulator -show-sdk-path)"
     cflags+=("-arch $arch")
-    cflags+=("-mios-simulator-version-min=$IPHONEOS_VERSION_MIN")
+    if [ -n "$IOS_SIMULATOR_VERSION_MIN" ]; then
+      cflags+=("-mios-simulator-version-min=$IOS_SIMULATOR_VERSION_MIN")
+    fi
   fi
 
   cflags+=("-iframeworkwithsysroot /System/Library/Frameworks")
