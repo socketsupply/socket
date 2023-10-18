@@ -2,7 +2,7 @@
 #include "src/core/codec.hh"
 
 namespace SSC::Tests {
-  void codec (const Harness& t) {
+  void codec (Harness& t) {
     t.test("SSC::encodeURIComponent", [](auto t) {
       const auto encoded = SSC::encodeURIComponent(
         "a % encoded string with foo@bar.com, $100, & #tag"
