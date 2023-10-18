@@ -1319,7 +1319,7 @@ Joins path components. This function may not return an absolute path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L200)
+## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L206)
 
 Computes directory name of path.
 
@@ -1332,7 +1332,7 @@ Computes directory name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L236)
+## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L242)
 
 Computes base name of path.
 
@@ -1345,7 +1345,7 @@ Computes base name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L248)
+## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L254)
 
 Computes extension name of path.
 
@@ -1358,7 +1358,7 @@ Computes extension name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L259)
+## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L265)
 
 Computes normalized path
 
@@ -1371,7 +1371,7 @@ Computes normalized path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L309)
+## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L315)
 
 Formats `Path` object into a string.
 
@@ -1384,7 +1384,7 @@ Formats `Path` object into a string.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L325)
+## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L331)
 
 Parses input `path` into a `Path` instance.
 
@@ -1396,11 +1396,11 @@ Parses input `path` into a `Path` instance.
 | :---         | :--- | :---        |
 | Not specified | object |  |
 
-## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L353)
+## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L359)
 
 A container for a parsed Path.
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L375)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L381)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1409,7 +1409,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | input | PathComponent |  | false |  |
 | cwd | string |  | true |  |
 
-### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L398)
+### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L404)
 
 `Path` class constructor.
 
@@ -1418,47 +1418,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | pathname | string |  | false |  |
 | cwd | string | Path.cwd() | true |  |
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L467)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L473)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L474)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L480)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L508)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L514)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L516)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L522)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L535)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L541)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L556)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L562)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L591)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L597)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L603)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L609)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L611)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L617)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L629)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L637)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L636)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L644)
 
 
 
@@ -1466,7 +1466,7 @@ The computed drive, if given in the path.
 | :---         | :--- | :---        |
 | Not specified | URL |  |
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L644)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L652)
 
 Converts this `Path` instance to a string.
 

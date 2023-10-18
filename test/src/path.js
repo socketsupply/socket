@@ -80,7 +80,6 @@ test('path.win32.resolve', (t) => {
   t.equal(a___, cwd + 'a', 'path.win32.resolve() resolves path with 5 component')
 })
 
-/*
 test('path.win32.join', (t) => {
   t.equal(path.win32.join('a', 'b', 'c'), 'a\\b\\c', 'join(a, b, c)')
   t.equal(path.win32.join('a', 'b', 'c', '..\\d'), 'a\\b\\d', 'join(a, b, c, ..\\d)')
@@ -262,4 +261,3 @@ test('path.relative', (t) => {
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d'), 'd', 'd')
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d\\e'), 'd\\e', 'd\\e')
 })
-*/
