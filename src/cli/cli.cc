@@ -333,7 +333,7 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
   NSDate* latest = nil;
   NSError* error = nil;
 
-  int pollsAfterTermination = 4;
+  int pollsAfterTermination = 16;
   int backoffIndex = 0;
 
   // lucas series of backoffs
