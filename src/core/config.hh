@@ -57,25 +57,35 @@ namespace SSC {
      */
     Map map;
     public:
-      using Iterator = Map::iterator;
+      using Iterator = Map::const_iterator;
+      using Path = Vector<String>;
+
+      /**
+       * The configuration prefix.
+       */
+      const String prefix;
 
       /**
        * `Config` class constructors.
        */
       Config () = default;
-      Config (const Map& source);
       Config (const String& source);
+      Config (const Map& source);
       Config (const Config& source);
+      Config (const String& prefix, const Map& source);
+      Config (const String& prefix, const Config& source);
 
       /**
        * Get a configuration value by name or `.` path.
+       *
        * @param key The configuration name or key path
        * @return The value at `key` or an empty string.
        */
-      const String get (const String& key) const;
+      const String get (const String& key) const noexcept;
 
       /**
        * Get a configuration value reference by name.
+       *
        * @param key The configuration name or key path
        * @return `String&` The reference at `key` or an empty string.
        */
@@ -83,46 +93,74 @@ namespace SSC {
 
       /**
        * Set a configuration `value` by `key`.
+       *
        * @param key The configuration name of `value` to set
        * @param value The value of `key` to set
        */
-      void set (const String& key, const String& value);
+      void set (const String& key, const String& value) noexcept;
 
       /**
        * Returns `true` if `key` exists in configuration and is not empty.
+       *
        * @param key The key to check for existence.
        * @return `true` if it exists, otherwise `false`
        */
-      bool contains (const String& key) const;
+      bool contains (const String& key) const noexcept;
 
       /**
        * Erase a configuration value by `key`.
-       * @param key The key to erase a value for..
+       *
+       * @param key The key to erase a value for. Can be valid input for `query`
        * @return `true` if erased, otherwise `false`
        */
-      bool erase (const String& key);
+      bool erase (const String& key) noexcept;
 
       /**
        * Get a const reference to the underlying data map
        * of this configuration.
+       *
        * @return `Map&` A reference to the internal data map
        */
-      const Map& data () const;
+      const Map& data () const noexcept;
 
       /**
        * Get a `Config` instance as a "slice" of this configuration, such as
-       * a subsection using `.` syntax or configuration section prefixes.
+       * a subsection using `.` syntax or configuration section prefixes. The
+       * returned `Config` instance is read-only.
+       *
        * @param key The key to filter on
-       * @return The value at `key`
+       * @return A `const Config` with section starting or matching `key`
+       *
        * @example
        *   const auto config = Config::getUserConfig();
        *   const auto build = config.slice("build");
        *   const auto script = build["script"];
        */
-      const Config slice (const String& key) const;
+      const Config slice (const String& key) const noexcept;
+
+      /**
+       * Query for sections in this `Config` instance. The `query` can contain
+       * valid regular expression useful for matching sections, keys, and values.
+       *
+       * @param query The query to filter sections, keys, and values
+       * @return A `const Config` with sections, keys, and values matched by `query`
+       *
+       * @example
+       *   const auto config = Config::getUserConfig();
+       *   const auto icons = config.query("*icon=");
+       */
+      const Config query (const String& query) const noexcept;
+
+      /**
+       * Get a vector all configuration keys.
+       *
+       * @return A `const Vector` of all configuration keys.
+       */
+      const Vector<String> keys () const noexcept;
 
       /**
        * Get a configuration value by name or `.` path using `[]` notation.
+       *
        * @param key The key to look up a value for.
        * @return The value at `key`
        */
@@ -131,6 +169,7 @@ namespace SSC {
       /**
        * Get a configuration value reference by name or `.` path
        * using `[]` notation.
+       *
        * @param key The key to look up a value for.
        * @return A reference to the value at `key`
        */
@@ -138,15 +177,37 @@ namespace SSC {
 
       /**
        * Get the beginning of iterator to the configuration tuples.
+       *
        * @return `Iterator`
        */
-      Iterator begin ();
+      const Iterator begin () const noexcept;
 
       /**
        * Get the end of iterator to the configuration tuples.
+       *
        * @return `Iterator`
        */
-      Iterator end ();
+      const Iterator end () const noexcept;
+
+      /**
+       * Get the number of entries in the configuration.
+       *
+       * @return The number of entires in the configuration.
+       */
+      const std::size_t size () const noexcept;
+
+      /**
+       * Clears all entries in the configuration.
+       * @return `true` upon success, otherwise `false`.
+       */
+      const bool clear () noexcept;
+
+      /**
+       * Get a vector of configuration children as "slices".
+       *
+       * @return Child configuration for this configuration.
+       */
+      const Vector<Config> children () const noexcept;
   };
 }
 #endif
