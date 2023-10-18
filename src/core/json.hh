@@ -55,7 +55,7 @@ namespace SSC::JSON {
       Type type = t;
       D data;
 
-      auto typeof () const {
+      const SSC::String typeof () const {
         switch (this->type) {
           case Type::Empty: return SSC::String("empty");
           case Type::Raw: return SSC::String("raw");
@@ -69,14 +69,14 @@ namespace SSC::JSON {
         }
       }
 
-      auto isRaw() const { return this->type == Type::Raw; }
-      auto isArray () const { return this->type == Type::Array; }
-      auto isBoolean () const { return this->type == Type::Boolean; }
-      auto isNumber () const { return this->type == Type::Number; }
-      auto isNull () const { return this->type == Type::Null; }
-      auto isObject () const { return this->type == Type::Object; }
-      auto isString () const { return this->type == Type::String; }
-      auto isEmpty () const { return this->type == Type::Empty; }
+      bool isRaw() const { return this->type == Type::Raw; }
+      bool isArray () const { return this->type == Type::Array; }
+      bool isBoolean () const { return this->type == Type::Boolean; }
+      bool isNumber () const { return this->type == Type::Number; }
+      bool isNull () const { return this->type == Type::Null; }
+      bool isObject () const { return this->type == Type::Object; }
+      bool isString () const { return this->type == Type::String; }
+      bool isEmpty () const { return this->type == Type::Empty; }
   };
 
   class Null : public Value<std::nullptr_t, Type::Null> {
