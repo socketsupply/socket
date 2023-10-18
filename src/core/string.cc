@@ -1,4 +1,6 @@
 #include "string.hh"
+#include "debug.hh"
+
 #include <regex>
 
 namespace SSC {
@@ -22,7 +24,28 @@ namespace SSC {
     return output;
   }
 
-  const Vector<String> split (const String& source, const char& character) {
+  const Vector<String> split (const String& source, const String& needle) {
+    Vector<String> result;
+    String current = source;
+    size_t position = 0;
+
+    while (current.size() > 0 && position < source.size()) {
+      position = current.find(needle);
+      if (position == std::string::npos) {
+        result.push_back(current);
+        break;
+      }
+
+      const auto string = current.substr(0, position);
+      current = current.substr(std::min(current.size(), position + needle.size()));
+      result.push_back(string);
+      position += needle.size();
+    }
+
+    return result;
+  }
+
+  const Vector<String> split (const String& source, const char character) {
     String buffer;
     Vector<String> result;
 
@@ -42,7 +65,7 @@ namespace SSC {
     return result;
   }
 
-  const Vector<String> splitc (const String& source, const char& character) {
+  const Vector<String> splitc (const String& source, const char character) {
     String buffer;
     Vector<String> result;
 
@@ -93,11 +116,15 @@ namespace SSC {
     for (const auto& item : vector) {
       joined << item;
       if (--missing > 0) {
-        joined << separator << " ";
+        joined << separator;
       }
     }
 
     return trim(joined.str());
+  }
+
+  const String join (const Vector<String>& vector, const char separator) {
+    return join(vector, String(1, separator));
   }
 
   Vector<String> parseStringList (const String& string, const Vector<char>& separators) {
