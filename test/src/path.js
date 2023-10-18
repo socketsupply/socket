@@ -31,6 +31,7 @@ test('path.posix.join', (t) => {
   t.equal(path.posix.join('a', 'b', 'c'), 'a/b/c', 'join(a, b, c)')
   t.equal(path.posix.join('a', 'b', 'c', '../d'), 'a/b/d', 'join(a, b, c, ../d)')
   t.equal(path.posix.join('a', 'b', 'c', '../d', '../../b'), 'a/b', 'join(a, b, c, ../d, ../../b)')
+  t.equal(path.posix.join('/a', 'b', 'c'), '/a/b/c', 'join(/a, b, c)')
 })
 
 /*
