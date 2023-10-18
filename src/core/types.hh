@@ -32,6 +32,7 @@ namespace SSC {
   using Mutex = std::recursive_mutex;
   using Lock = std::lock_guard<Mutex>;
   using Thread = std::thread;
+  using Exception = std::exception;
 
   template <typename T> using Atomic = std::atomic<T>;
   template <typename T, int k> using Array = std::array<T, k>;
