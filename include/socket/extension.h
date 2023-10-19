@@ -1148,6 +1148,8 @@ extern "C" {
    *
    * ⚠️ You must call `sapi_ipc_reply` before calling this function.
    *
+   * ⚠️ This must be called on the main thread (using `sapi_context_dispatch` if necessary).
+   *
    * Supported on iOS/macOS only.
    *
    * @param result      - An IPC request result
@@ -1173,6 +1175,8 @@ extern "C" {
    *
    * ⚠️ The `name` and `data` arguments must be null-terminated strings. Either
    * can be empty as long as it's null-terminated and the other is not empty.
+   *
+   * ⚠️ This must be called on the main thread (using `sapi_context_dispatch` if necessary).
    *
    * Supported on iOS/macOS only.
    *
