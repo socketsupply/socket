@@ -2627,12 +2627,12 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  std::atomic<bool> taskEnded = false;
+  bool taskEnded = false;
   _tasks.emplace(task, [&taskEnded]() {
     taskEnded = true;
   });
 
-  auto invoked = self.router->invoke(message, body, bufsize, [=, &taskEnded](Result result) {
+  auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
     // @TODO Communicate task cancellation to the route, so it can cancel its work.
     if (taskEnded) {
       return;
@@ -2650,8 +2650,9 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [self, task, &taskEnded](const char* name, const char* data,
-                                         bool finished) {
+      *result.post.event_stream = [self, task, &taskEnded](const char* name,
+                                                           const char* data,
+                                                           bool finished) {
         if (taskEnded) {
           return false;
         }
@@ -2661,7 +2662,7 @@ static void registerSchemeHandler (Router *router) {
           auto event =
               event_name.length > 0 && event_data.length > 0
                   ? [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
-                                              event_name, event_data]
+                                               event_name, event_data]
               : event_data.length > 0
                   ? [NSString stringWithFormat:@"data: %@\n\n", event_data]
                   : [NSString stringWithFormat:@"event: %@\n\n", event_name];
@@ -2677,8 +2678,9 @@ static void registerSchemeHandler (Router *router) {
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
     } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [self, task, &taskEnded](const char* chunk, size_t chunk_size,
-                                         bool finished) {
+      *result.post.chunk_stream = [self, task, &taskEnded](const char* chunk,
+                                                           size_t chunk_size,
+                                                           bool finished) {
         if (taskEnded) {
           return false;
         }
