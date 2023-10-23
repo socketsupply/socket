@@ -5,13 +5,22 @@
 
 namespace SSC {
   /**
-   * Encodes input by replacing certain characters by
+   * Encodes input string by replacing certain characters by
    * one, two, three, or four escape sequences representing the UTF-8
    * encoding of the character.
    * @param input The input string to encode
    * @return An encoded string value
    */
   String encodeURIComponent (const String& input);
+
+  /**
+   * Encodes input map into `<key>=<value>&` by replacing certain characters by
+   * one, two, three, or four escape sequences representing the UTF-8
+   * encoding of the character.
+   * @param input The input map to encode
+   * @return An encoded string value
+   */
+  String encodeURIComponent (const Map& input);
 
   /**
    * Decodes a value encoded with `encodeURIComponent`

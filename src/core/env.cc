@@ -6,9 +6,9 @@
 
 namespace SSC {
   bool Env::has (const char* name) {
-    static auto userConfig = getUserConfig();
+    static const auto userConfig = getUserConfig();
 
-    if (userConfig[String("env_") + name].size() > 0) {
+    if (userConfig.slice("env").contains(name)) {
       return true;
     }
 
@@ -43,10 +43,10 @@ namespace SSC {
   }
 
   String Env::get (const char* name) {
-    static auto userConfig = getUserConfig();
+    static const auto userConfig = getUserConfig();
 
-    if (userConfig[String("env_") + name].size() > 0) {
-      return userConfig[String("env_") + name];
+    if (userConfig.slice("env").contains(name)) {
+      return userConfig.slice("env").get(name);
     }
 
     #if defined(_WIN32)

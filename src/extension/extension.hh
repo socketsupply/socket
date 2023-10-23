@@ -86,7 +86,7 @@ namespace SSC {
         Error error;
         std::atomic<unsigned int> retain_count = 0;
         PolicyMap policies;
-        Map config;
+        Config config;
 
         Context () = default;
         Context (const Extension* extension);

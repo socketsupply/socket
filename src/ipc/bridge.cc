@@ -11,9 +11,6 @@
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
 #define IPC_JSON_CONTENT_TYPE "text/json"
 
-extern const SSC::Map SSC::getUserConfig ();
-extern bool SSC::isDebugEnabled ();
-
 using namespace SSC;
 using namespace SSC::IPC;
 
@@ -134,10 +131,10 @@ static String getcwd () {
 }
 
 static void initRouterTable (Router *router) {
-  static auto userConfig = SSC::getUserConfig();
+  static const auto userConfig = SSC::getUserConfig();
+  static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
 #if defined(__APPLE__)
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  static const auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     "socket.runtime.mobile"
   #else
@@ -1588,7 +1585,7 @@ static void initRouterTable (Router *router) {
   });
 
   router->map("permissions.request", [](auto message, auto router, auto reply) {
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1610,7 +1607,7 @@ static void initRouterTable (Router *router) {
           }
 
           auto error = [NSError
-            errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+            errorWithDomain: @(userConfig.get("meta.bundle_identifier").c_str())
             code: -1
             userInfo: @{
               NSLocalizedDescriptionKey: reason
@@ -2107,8 +2104,8 @@ static void registerSchemeHandler (Router *router) {
   // prevent this function from registering the `ipc://`
   // URI scheme handler twice
   static std::atomic<bool> registered = false;
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto userConfig = SSC::getUserConfig();
+  static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
   if (registered) return;
   registered = true;
 
@@ -2242,8 +2239,8 @@ static void registerSchemeHandler (Router *router) {
     auto resolved = Router::resolveURLPathForWebView(path, cwd);
     path = resolved.path;
 
-    if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-      path = userConfig["webview_default_index"];
+    if (path.size() == 0 && userConfig.contains("webview.default_index")) {
+      path = userConfig.get("webview.default_index");
     } else if (resolved.redirect) {
       auto redirectURL = path;
       auto redirectSource = String(
@@ -2335,8 +2332,8 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto userConfig = SSC::getUserConfig();
+  static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
   static auto fileManager = [[NSFileManager alloc] init];
 
   auto request = task.request;
@@ -2400,8 +2397,8 @@ static void registerSchemeHandler (Router *router) {
       path = resolved.path;
 
       if (path.size() == 0) {
-        if (userConfig.contains("webview_default_index")) {
-          path = userConfig["webview_default_index"];
+        if (userConfig.contains("webview.default_index")) {
+          path = userConfig.get("webview.default_index");
         } else {
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: request.URL
@@ -2810,7 +2807,7 @@ static void registerSchemeHandler (Router *router) {
 
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion {
   return [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
     if (!isAuthorized) {
       auto reason = @("Location observer could not be activated");
 
@@ -2821,7 +2818,7 @@ static void registerSchemeHandler (Router *router) {
       }
 
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig.get("meta.bundle_identifier").c_str())
         code: -1
         userInfo: @{
           NSLocalizedDescriptionKey: reason
@@ -2864,10 +2861,10 @@ static void registerSchemeHandler (Router *router) {
   }
 
   auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
     if (!isAuthorized) {
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig.get("meta.bundle_identifier").c_str())
         code: -1
         userInfo: @{
           @"Error reason": @("Location observer could not be activated")
@@ -3115,7 +3112,7 @@ static void registerSchemeHandler (Router *router) {
 
 namespace SSC::IPC {
   Bridge::Bridge (Core *core) : router() {
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
 
     this->core = core;
     this->router.core = core;
@@ -3137,7 +3134,7 @@ namespace SSC::IPC {
     };
 
   #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-    if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
+    if (isDebugEnabled() && userConfig.get("webview.watch") == "true") {
       this->fileSystemWatcher = new FileSystemWatcher(getcwd());
       this->fileSystemWatcher->start([=, this](
         const auto& path,
@@ -3284,7 +3281,7 @@ namespace SSC::IPC {
   };
 
   Router::Router () {
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
 
     initRouterTable(this);
     registerSchemeHandler(this);
@@ -3304,7 +3301,7 @@ namespace SSC::IPC {
   #if defined(__APPLE__)
     [this->networkStatusObserver start];
 
-    if (userConfig["permissions_allow_notifications"] != "false") {
+    if (userConfig.get("permissions.allow_notifications") != "false") {
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
       if (!notificationCenter.delegate) {

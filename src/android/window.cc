@@ -17,11 +17,7 @@ namespace SSC::android {
     this->config = SSC::getUserConfig();
     this->pointer = reinterpret_cast<jlong>(this);
 
-    StringStream stream;
-
-    for (auto const &var : parseStringList(this->config["build_env"])) {
-      auto key = trim(var);
-
+    for (const auto& key : this->config.list("build.env")) {
       if (!Env::has(key)) {
         continue;
       }
@@ -29,7 +25,6 @@ namespace SSC::android {
       auto value = Env::get(key.c_str());
 
       if (value.size() > 0) {
-        stream << key << "=" << encodeURIComponent(value) << "&";
         envvars[key] = value;
       }
     }
@@ -41,19 +36,17 @@ namespace SSC::android {
       "()Ljava/lang/String;"
     ));
 
-    const auto argv = this->config["ssc_argv"];
+    const auto argv = this->config["ssc.argv"];
 
-    options.headless = this->config["build_headless"] == "true";
+    options.headless = this->config["build.headless"] == "true";
     options.debug = isDebugEnabled() ? true : false;
-    options.env = stream.str();
+    options.env = encodeURIComponent(envvars);
     options.cwd = rootDirectory.str();
-    options.appData = this->config;
+    options.userConfig = this->config;
     options.argv = argv;
     options.isTest = argv.find("--test") != -1;
 
-    preloadSource = createPreload(options, PreloadOptions {
-      .module = false
-    });
+    preloadSource = createPreload(options);
   }
 
   Window::~Window () {
@@ -133,7 +126,7 @@ extern "C" {
       return nullptr;
     }
 
-    auto filename = window->config["webview_root"];
+    auto filename = window->config["webview.root"];
 
     if (filename.size() > 0) {
       return env->NewStringUTF(filename.c_str());

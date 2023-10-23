@@ -184,12 +184,12 @@ namespace SSC {
     );
 
 
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
     auto webContext = webkit_web_context_get_default();
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
     auto policies = webkit_website_policies_new_with_policies(
-      "autoplay", userConfig["permission_allow_autoplay"] != "false" ? WEBKIT_AUTOPLAY_ALLOW : WEBKIT_AUTOPLAY_DENY,
+      "autoplay", userConfig.get("permissions.allow_autoplay") != "false" ? WEBKIT_AUTOPLAY_ALLOW : WEBKIT_AUTOPLAY_DENY,
       NULL
     );
 
@@ -211,7 +211,7 @@ namespace SSC {
         gpointer userData
       ) {
         static auto userConfig = SSC::getUserConfig();
-        static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+        static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
 
         auto uri = "socket://" + bundleIdentifier;
         auto origin = webkit_security_origin_new_for_uri(uri.c_str());
@@ -221,7 +221,7 @@ namespace SSC {
         webkit_security_origin_ref(origin);
 
         if (origin && allowed && disallowed) {
-          if (userConfig["permissions_allow_notifications"] == "false") {
+          if (userConfig.get("permissions.allow_notifications") == "false") {
             disallowed = g_list_append(disallowed, (gpointer) origin);
           } else {
             allowed = g_list_append(allowed, (gpointer) origin);
@@ -259,8 +259,8 @@ namespace SSC {
         WebKitNotification* notification,
         gpointer userData
       ) -> bool {
-        static auto userConfig = SSC::getUserConfig();
-        return userConfig["permissions_allow_notifications"] == "false";
+        static const auto userConfig = SSC::getUserConfig();
+        return userConfig.get("permissions.allow_notifications") == "false";
       }),
       this
     );
@@ -274,13 +274,13 @@ namespace SSC {
         WebKitPermissionStateQuery* query,
         gpointer user_data
       ) -> bool {
-        static auto userConfig = SSC::getUserConfig();
+        static const auto userConfig = SSC::getUserConfig();
         auto name = String(webkit_permission_state_query_get_name(query));
 
         if (name == "geolocation") {
           webkit_permission_state_query_finish(
             query,
-            userConfig["permissions_allow_geolocation"] == "false"
+            userConfig.get("permissions.allow_geolocation") == "false"
               ? WEBKIT_PERMISSION_STATE_DENIED
               : WEBKIT_PERMISSION_STATE_PROMPT
           );
@@ -289,7 +289,7 @@ namespace SSC {
         if (name == "notifications") {
           webkit_permission_state_query_finish(
             query,
-            userConfig["permissions_allow_notifications"] == "false"
+            userConfig.get("permissions.allow_notifications") == "false"
               ? WEBKIT_PERMISSION_STATE_DENIED
               : WEBKIT_PERMISSION_STATE_PROMPT
           );
@@ -313,47 +313,47 @@ namespace SSC {
         gpointer userData
       ) -> bool {
         Window* window = reinterpret_cast<Window*>(userData);
-        static auto userConfig = SSC::getUserConfig();
+        static const auto userConfig = SSC::getUserConfig();
         auto result = false;
         String name = "";
-        String description = "{{meta_title}} would like permission to use a an unknown feature.";
+        String description = "{{meta.title}} would like permission to use a an unknown feature.";
 
         if (WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST(request)) {
           name = "geolocation";
-          result = userConfig["permissions_allow_geolocation"] != "false";
-          description = "{{meta_title}} would like access to your location.";
+          result = userConfig.get("permissions.allow_geolocation") != "false";
+          description = "{{meta.title}} would like access to your location.";
         } else if (WEBKIT_IS_NOTIFICATION_PERMISSION_REQUEST(request)) {
           name = "notifications";
-          result = userConfig["permissions_allow_notifications"] != "false";
-          description = "{{meta_title}} would like display notifications.";
+          result = userConfig.get("permissions.allow_notifications") != "false";
+          description = "{{meta.title}} would like display notifications.";
         } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
           if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
             name = "microphone";
-            result = userConfig["permissions_allow_microphone"] == "false";
-            description = "{{meta_title}} would like access to your microphone.";
+            result = userConfig.get("permissions.allow_microphone") == "false";
+            description = "{{meta.title}} would like access to your microphone.";
           }
 
           if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
             name = "camera";
-            result = userConfig["permissions_allow_camera"] == "false";
-            description = "{{meta_title}} would like access to your camera.";
+            result = userConfig.get("permissions.allow_camera") == "false";
+            description = "{{meta.title}} would like access to your camera.";
           }
 
-          result = userConfig["permissions_allow_user_media"] == "false";
+          result = userConfig.get("permissions.allow_user_media") == "false";
         } else if (WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST(request)) {
           name = "storage-access";
-          result = userConfig["permissions_allow_data_access"] != "false";
-          description = "{{meta_title}} would like access to local storage.";
+          result = userConfig.get("permissions.allow_data_access") != "false";
+          description = "{{meta.title}} would like access to local storage.";
         } else if (WEBKIT_IS_DEVICE_INFO_PERMISSION_REQUEST(request)) {
-          result = userConfig["permissions_allow_device_info"] != "false";
-          description = "{{meta_title}} would like access to your device information.";
+          result = userConfig.get("permissions.allow_device_info") != "false";
+          description = "{{meta.title}} would like access to your device information.";
         } else if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST(request)) {
-          result = userConfig["permissions_allow_media_key_system"] != "false";
-          description = "{{meta_title}} would like access to your media key system.";
+          result = userConfig.get("permissions.allow_media_key_system") != "false";
+          description = "{{meta.title}} would like access to your media key system.";
         }
 
         if (result) {
-          auto title = userConfig["meta_title"];
+          const auto title = userConfig.get("meta.title");
           GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(window->window),
             GTK_DIALOG_MODAL,
@@ -803,37 +803,37 @@ namespace SSC {
 
     webkit_settings_set_enable_media_stream(
       settings,
-      userConfig["permissions_allow_user_media"] != "false"
+      userConfig.get("permissions.allow_user_media") != "false"
     );
 
     webkit_settings_set_enable_media_capabilities(
       settings,
-      userConfig["permissions_allow_user_media"] != "false"
+      userConfig.get("permissions.allow_user_media") != "false"
     );
 
     webkit_settings_set_enable_webrtc(
       settings,
-      userConfig["permissions_allow_user_media"] != "false"
+      userConfig.get("permissions.allow_user_media") != "false"
     );
 
     webkit_settings_set_javascript_can_access_clipboard(
       settings,
-      userConfig["permissions_allow_clipboard"] != "false"
+      userConfig.get("permissions.allow_clipboard") != "false"
     );
 
     webkit_settings_set_enable_fullscreen(
       settings,
-      userConfig["permissions_allow_fullscreen"] != "false"
+      userConfig.get("permissions.allow_fullscreen") != "false"
     );
 
     webkit_settings_set_enable_html5_local_storage(
       settings,
-      userConfig["permissions_allow_data_access"] != "false"
+      userConfig.get("permissions.allow_data_access") != "false"
     );
 
     webkit_settings_set_enable_html5_database(
       settings,
-      userConfig["permissions_allow_data_access"] != "false"
+      userConfig.get("permissions.allow_data_access") != "false"
     );
 
     GdkRGBA rgba = {0};
@@ -1017,7 +1017,7 @@ namespace SSC {
     GtkContainer *content = GTK_CONTAINER(body);
 
     String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      app.appData["build_name"] +
+      app.userConfig.get("build.name") +
       ".png";
 
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
@@ -1034,7 +1034,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.appData["build_name"] + " v" + app.appData["meta_version"]);
+    String title_value(app.userConfig.get("build.name") + " v" + app.userConfig.get("meta.version"));
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
     GtkWidget *label_title = gtk_label_new("");
@@ -1046,7 +1046,7 @@ namespace SSC {
     gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["meta_copyright"].c_str());
+    gtk_label_set_markup(GTK_LABEL(label_copyright), app.userConfig.get("meta.copyright").c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(
@@ -1150,7 +1150,7 @@ namespace SSC {
 
               if (accelerator.size() > 1) {
                 if (accelerator[1].find("Meta") != -1) {
-                  mask = (GdkModifierType)(mask | GDK_META_MASK);
+                  mask = (GdkModifierType)(mask | GDK_meta.MASK);
                 }
 
                 if (accelerator[1].find("CommandOrControl") != -1) {

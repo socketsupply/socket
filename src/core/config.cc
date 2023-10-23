@@ -29,11 +29,19 @@ namespace SSC {
   }
 
   const String Config::get (const String& key) const noexcept {
-    if (this->contains(key)) {
+    if (this->contains(key) && this->at(key).size() > 0) {
       return this->at(key);
     }
 
     return "";
+  }
+
+  const Vector<String> Config::list (const String& key) const noexcept {
+    Vector<String> results;
+    for (const auto& item : parseStringList(this->get(key))) {
+      results.push_back(trim(item));
+    }
+    return results;
   }
 
   const String& Config::at (const String& key) const {
@@ -42,6 +50,32 @@ namespace SSC {
 
   void Config::set (const String& key, const String& value) noexcept {
     this->map.insert_or_assign(key, value);
+  }
+
+  void Config::set (const String& key, const Map& value) noexcept {
+    for (const auto& tuple : value) {
+      this->map.insert_or_assign(key + "." + tuple.first, tuple.second);
+    }
+  }
+
+  void Config::set (const String& key, bool value) noexcept {
+    this->map.insert_or_assign(key, value ? "true" : "false");
+  }
+
+  void Config::set (const String& key, double value) noexcept {
+    try {
+      this->map.insert_or_assign(key, std::to_string(value));
+    } catch (Exception& e) {}
+  }
+
+  void Config::set (const String& key, int64_t value) noexcept {
+    try {
+      this->map.insert_or_assign(key, std::to_string(value));
+    } catch (Exception& e) {}
+  }
+
+  void Config::append (const String& key, const String& value) noexcept {
+    this->map[key] += value;
   }
 
   const std::size_t Config::size () const noexcept {
@@ -265,8 +299,14 @@ namespace SSC {
     return this->map.at(key);
   }
 
-  const String& Config::operator [] (const String& key) {
+  String& Config::operator [] (const String& key) {
     return this->map[key];
+  }
+
+  Config& Config::operator = (const Config& other) {
+    const_cast<String*>(&this->prefix)->assign(other.prefix);
+    this->map = other.data();
+    return *this;
   }
 
   const Config::Iterator Config::begin () const noexcept {
@@ -298,5 +338,19 @@ namespace SSC {
       }
     }
     return children;
+  }
+
+  const Config& Config::extend (const Config& config) noexcept {
+    for (const auto& tuple : config.data()) {
+      this->map.insert_or_assign(tuple.first, tuple.second);
+    }
+    return *this;
+  }
+
+  const Config& Config::extend (const Map& config) noexcept {
+    for (const auto& tuple : config) {
+      this->map.insert_or_assign(tuple.first, tuple.second);
+    }
+    return *this;
   }
 }

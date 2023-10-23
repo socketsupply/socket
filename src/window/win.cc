@@ -699,7 +699,7 @@ namespace SSC {
               window,
               Microsoft::WRL::Callback<IConHandler>(
                 [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                  static auto userConfig = SSC::getUserConfig();
+                  static const auto userConfig = SSC::getUserConfig();
                   if (c != nullptr) {
                     controller = c;
                     controller->get_CoreWebView2(&webview);
@@ -783,8 +783,8 @@ namespace SSC {
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
-                        static auto userConfig = SSC::getUserConfig();
-                        static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+                        static const auto userConfig = SSC::getUserConfig();
+                        static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
 
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
 
@@ -1010,8 +1010,8 @@ namespace SSC {
                               auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
                               path = resolved.path;
 
-                              if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-                                path = userConfig["webview_default_index"];
+                              if (path.size() == 0 && userConfig.contains("webview.default_index")) {
+                                path = userConfig.get("webview.default_index");
                               } else if (resolved.redirect) {
                                 uri += "/";
                                   ICoreWebView2WebResourceResponse* res = nullptr;
@@ -1226,14 +1226,14 @@ namespace SSC {
                       ICoreWebView2 *webview,
                       ICoreWebView2PermissionRequestedEventArgs *args
                     ) -> HRESULT {
-                      static auto userConfig = SSC::getUserConfig();
+                      static const auto userConfig = SSC::getUserConfig();
                       COREWEBVIEW2_PERMISSION_KIND kind;
                       args->get_PermissionKind(&kind);
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE)  {
                         if (
-                          userConfig["permissions_allow_microphone"] == "false" ||
-                          userConfig["permissions_allow_user_media"] == "false"
+                          userConfig.get("permissions.allow_microphone") == "false" ||
+                          userConfig.get("permissions.allow_user_media") == "false"
                           ) {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
@@ -1243,8 +1243,8 @@ namespace SSC {
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA)  {
                         if (
-                          userConfig["permissions_allow_camera"] == "false" ||
-                          userConfig["permissions_allow_user_media"] == "false"
+                          userConfig.get("permissions.allow_camera") == "false" ||
+                          userConfig.get("permissions.allow_user_media") == "false"
                         ) {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
@@ -1253,7 +1253,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_GEOLOCATION)  {
-                        if (userConfig["permissions_allow_geolocation"] == "false") {
+                        if (userConfig.get("permissions.allow_geolocation") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1261,7 +1261,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS)  {
-                        if (userConfig["permissions_allow_notifications"] == "false") {
+                        if (userConfig.get("permissions.allow_notifications") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1269,7 +1269,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS)  {
-                        if (userConfig["permissions_allow_sensors"] == "false") {
+                        if (userConfig.get("permissions.allow_sensors") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1277,7 +1277,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
-                        if (userConfig["permissions_allow_clipboard"] == "false") {
+                        if (userConfig.get("permissions.allow_clipboard") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1285,7 +1285,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_AUTOPLAY) {
-                        if (userConfig["permissions_allow_autoplay"] == "false") {
+                        if (userConfig.get("permissions.allow_autoplay") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1293,7 +1293,7 @@ namespace SSC {
                       }
 
                       if (kind == COREWEBVIEW2_PERMISSION_KIND_LOCAL_FONTS) {
-                        if (userConfig["permissions_allow_local_fonts"] == "false") {
+                        if (userConfig.get("permissions.allow_local_fonts") == "false") {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
                         } else {
                           args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
@@ -1332,10 +1332,10 @@ namespace SSC {
 
   void Window::about () {
     auto text = SSC::String(
-      app.appData["build_name"] + " " +
-      "v" + app.appData["meta_version"] + "\n" +
+      app.userConfig.get("build.name") + " " +
+      "v" + app.userConfig.get("meta.version") + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
-      app.appData["meta_copyright"]
+      app.userConfig.get("meta.copyright")
     );
 
     MSGBOXPARAMS mbp;
@@ -1343,7 +1343,7 @@ namespace SSC {
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.appData["build_name"].c_str();
+    mbp.lpszCaption = app.userConfig.get("build.name").c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;

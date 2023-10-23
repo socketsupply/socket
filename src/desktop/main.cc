@@ -97,7 +97,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = SSC::getUserConfig();
+  app.userConfig = SSC::getUserConfig();
 
   SSC::String suffix = "";
 
@@ -106,7 +106,7 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isHeadless = app.appData["build_headless"] == "true" ? true : false;
+  bool isHeadless = app.userConfig.get("build.headless") == "true" ? true : false;
   bool isTest = false;
 
   int exitCode = 0;
@@ -185,40 +185,27 @@ MAIN {
     }
   }
 
-  if (isDebugEnabled()) {
-    app.appData["build_name"] += "-dev";
+  if (app.userConfig.contains("build.name")) {
+    const auto buildName = isDebugEnabled()
+      ? app.userConfig.get("build.name") + "-dev"
+      : app.userConfig.get("build.name");
+
+    app.userConfig.set("build.name", buildName + suffix);
   }
 
-  app.appData["build_name"] += suffix;
-
   argvForward << " --ssc-version=v" << SSC::VERSION_STRING;
-  argvForward << " --version=v" << app.appData["meta_version"];
-  argvForward << " --name=" << app.appData["build_name"];
+  argvForward << " --version=v" << app.userConfig.get("meta.version");
+  argvForward << " --name=" << app.userConfig.get("build.name");
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
-  SSC::StringStream env;
-  for (auto const &envKey : parseStringList(app.appData["build_env"])) {
-    auto cleanKey = trim(envKey);
-
-    if (!Env::has(cleanKey)) {
-      continue;
-    }
-
-    auto envValue = Env::get(cleanKey.c_str());
-
-    env << SSC::String(
-      cleanKey + "=" + encodeURIComponent(envValue) + "&"
-    );
-  }
-
   SSC::String cmd;
   if (platform.os == "win32") {
-    cmd = app.appData["win_cmd"];
+    cmd = app.userConfig.get("win.cmd");
   } else {
-    cmd = app.appData[platform.os + "_cmd"];
+    cmd = app.userConfig.slice(platform.os).get("cmd");
   }
 
   if (cmd[0] == '.') {
@@ -301,8 +288,8 @@ MAIN {
   }
 
 #if defined(__APPLE__)
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto userConfig = SSC::getUserConfig();
+  static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
   static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     "socket.runtime.mobile"
@@ -423,7 +410,7 @@ MAIN {
 
       if (message.name == "config") {
         auto key = message.get("key");
-        window->resolvePromise(seq, OK_STATE, app.appData[key]);
+        window->resolvePromise(seq, OK_STATE, app.userConfig.get(key));
         return;
       }
 
@@ -1018,9 +1005,9 @@ MAIN {
   app.onExit = shutdownHandler;
 
   Vector<String> properties = {
-    "window_width", "window_height",
-    "window_min_width", "window_min_height",
-    "window_max_width", "window_max_height"
+    "window.width", "window.height",
+    "window.min_width", "window.min_height",
+    "window.max_width", "window.max_height"
   };
 
   auto setDefaultValue = [&](String property) {
@@ -1037,38 +1024,44 @@ MAIN {
   std::regex validPattern("^\\d*\\.?\\d+%?$");
 
   for (const auto& property : properties) {
-    if (app.appData[property].size() > 0) {
-      auto value = app.appData[property];
+    if (app.userConfig.contains(property)) {
+      const auto value = app.userConfig.get(property);
       if (!std::regex_match(value, validPattern)) {
-        app.appData[property] = setDefaultValue(property);
-        debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.appData[property].c_str());
+        const auto defaultValue = String(setDefaultValue(property));
+        app.userConfig.set(property, defaultValue);
+        debug(
+          "Invalid value for %s: \"%s\". Setting it to \"%s\"",
+          property.c_str(),
+          value.c_str(),
+          defaultValue.c_str()
+        );
       }
-    // set default value if it's not set in socket.ini
     } else {
-      app.appData[property] = setDefaultValue(property);
+      // set default value if it's not set in socket.ini
+      app.userConfig.set(property, setDefaultValue(property));
     }
   }
 
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight = app.appData["window_height"],
-    .defaultWidth = app.appData["window_width"],
-    .defaultMinWidth = app.appData["window_min_width"],
-    .defaultMinHeight = app.appData["window_min_height"],
-    .defaultMaxWidth = app.appData["window_max_width"],
-    .defaultMaxHeight = app.appData["window_max_height"],
+    .defaultHeight = app.userConfig.get("window.height"),
+    .defaultWidth = app.userConfig.get("window.width"),
+    .defaultMinWidth = app.userConfig.get("window.min_width"),
+    .defaultMinHeight = app.userConfig.get("window.min_height"),
+    .defaultMaxWidth = app.userConfig.get("window.max_width"),
+    .defaultMaxHeight = app.userConfig.get("window.max_height"),
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,
-    .appData = app.appData,
+    .userConfig = app.userConfig,
     .onMessage = onMessage,
     .onExit = shutdownHandler
   });
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
-    .resizable = app.appData["window_resizable"] == "false" ? false : true,
-    .frameless = app.appData["window_frameless"] == "true" ? true : false,
-    .utility = app.appData["window_utility"] == "true" ? true : false
+    .resizable = app.userConfig.get("window.resizable") == "false" ? false : true,
+    .frameless = app.userConfig.get("window.frameless") == "true" ? true : false,
+    .utility = app.userConfig.get("window.utility") == "true" ? true : false
   });
 
   defaultWindow->show(EMPTY_SEQ);
@@ -1082,15 +1075,15 @@ MAIN {
       ";"
     ));
   } else {
-    if (app.appData["webview_root"].size() != 0) {
+    if (app.userConfig.contains("webview.root")) {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_root"]
+        "socket://" + app.userConfig.get("meta.bundle_identifier") + app.userConfig.get("webview.root")
       );
     } else {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + (fs::path(app.appData["meta_bundle_identifier"])  / "index.html").string()
+        "socket://" + (Path(app.userConfig.get("meta.bundle_identifier"))  / "index.html").string()
       );
     }
   }

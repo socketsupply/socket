@@ -36,16 +36,11 @@
 #define PORT 0
 #endif
 
+// gaurd in case this file is indirectly included in a C/ObjC file
 #if defined(__cplusplus)
 #include "types.hh"
 
 namespace SSC {
-  // implemented in `init.cc`
-  extern const Map getUserConfig ();
-  extern bool isDebugEnabled ();
-  extern const char* getDevHost ();
-  extern int getDevPort ();
-
   /**
    * A container for configuration that can be mutated and queried using
    * `.` syntax. Configuration can be created from an INI source string.
@@ -84,6 +79,14 @@ namespace SSC {
       const String get (const String& key) const noexcept;
 
       /**
+       * List values at `key`
+       *
+       * @param key The key to list values for
+       * @return A `Vector<String>` of values for `key`
+       */
+      const Vector<String> list (const String& key) const noexcept;
+
+      /**
        * Get a configuration value reference by name.
        *
        * @param key The configuration name or key path
@@ -98,6 +101,18 @@ namespace SSC {
        * @param value The value of `key` to set
        */
       void set (const String& key, const String& value) noexcept;
+      void set (const String& key, const Map& value) noexcept;
+      void set (const String& key, bool value) noexcept;
+      void set (const String& key, double value) noexcept;
+      void set (const String& key, int64_t value) noexcept;
+
+      /**
+       * Append a value to a key.
+       *
+       * @param key The configuration name of `value` to append to
+       * @param value The value of `key` to to append
+       */
+      void append (const String& key, const String& value) noexcept;
 
       /**
        * Returns `true` if `key` exists in configuration and is not empty.
@@ -173,19 +188,27 @@ namespace SSC {
        * @param key The key to look up a value for.
        * @return A reference to the value at `key`
        */
-      const String& operator [] (const String& key);
+      String& operator [] (const String& key);
+
+      /**
+       * Copy assignment implementation.
+       *
+       * @param other The `Config` instance to copy from
+       * @return A reference to this `Config` instance
+       */
+      Config& operator = (const Config& other);
 
       /**
        * Get the beginning of iterator to the configuration tuples.
        *
-       * @return `Iterator`
+       * @return `Config::Iterator`
        */
       const Iterator begin () const noexcept;
 
       /**
        * Get the end of iterator to the configuration tuples.
        *
-       * @return `Iterator`
+       * @return `Config::Iterator`
        */
       const Iterator end () const noexcept;
 
@@ -208,7 +231,29 @@ namespace SSC {
        * @return Child configuration for this configuration.
        */
       const Vector<Config> children () const noexcept;
+
+      /**
+       * Extend this configuration with another configuration.
+       *
+       * @param config The configuration to extend this configuration with
+       * @return A reference to this configuration.
+       */
+      const Config& extend (const Config& config) noexcept;
+
+      /**
+       * Extend this configuration with another configuration map.
+       *
+       * @param config The configuration map to extend this configuration with
+       * @return A reference to this configuration.
+       */
+      const Config& extend (const Map& config) noexcept;
   };
+
+  // implemented in `init.cc`
+  extern const Config& getUserConfig ();
+  extern bool isDebugEnabled ();
+  extern const char* getDevHost ();
+  extern int getDevPort ();
 }
 #endif
 

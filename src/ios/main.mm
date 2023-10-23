@@ -193,30 +193,24 @@ static dispatch_queue_t queue = dispatch_queue_create(
   viewController.view.frame = appFrame;
   self.window.rootViewController = viewController;
 
-  auto userConfig = SSC::getUserConfig();
+  static const auto userConfig = SSC::getUserConfig();
 
-  StringStream env;
+  Map env = {
+    {"width", std::to_string(appFrame.size.width)},
+    {"height", std::to_string(appFrame.size.height)}
+  };
 
-  for (auto const &envKey : parseStringList(userConfig["build_env"])) {
-    auto cleanKey = trim(envKey);
-
-    if (!Env::has(cleanKey)) {
+  for (const auto& key : userConfig.list("build.env")) {
+    if (!Env::has(key)) {
       continue;
     }
 
-    auto envValue = Env::get(cleanKey.c_str());
-
-    env << String(
-      cleanKey + "=" + encodeURIComponent(envValue) + "&"
-    );
+    env[key] = Env::get(key);
   }
-
-  env << String("width=" + std::to_string(appFrame.size.width) + "&");
-  env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
   NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
   NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
-  const auto argv = userConfig["ssc_argv"];
+  const auto argv = userConfig.get("ssc.argv");
 
   uv_chdir(cwd.UTF8String);
 
@@ -224,8 +218,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
     .debug = isDebugEnabled(),
     .isTest = argv.find("--test") != -1,
     .argv = argv,
-    .env = env.str(),
-    .appData = userConfig
+    .env = encodeURIComponent(env),
+    .userConfig = userConfig
   };
 
   // Note: you won't see any logs in the preload script before the
@@ -270,7 +264,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
       forKey: @"javaScriptEnabled"
   ];
 
-  if (userConfig["permissions_allow_fullscreen"] == "false") {
+  if (userConfig.get("permissions.allow_fullscreen") == "false") {
     [prefs setValue: @NO forKey: @"fullScreenEnabled"];
   } else {
     [prefs setValue: @YES forKey: @"fullScreenEnabled"];
@@ -283,25 +277,25 @@ static dispatch_queue_t queue = dispatch_queue_create(
     }
   }
 
-  if (userConfig["permissions_allow_clipboard"] == "false") {
+  if (userConfig.get("permissions.allow_clipboard") == "false") {
     [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
   } else {
     [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
   }
 
-  if (userConfig["permissions_allow_data_access"] == "false") {
+  if (userConfig.get("permissions.allow_data_access") == "false") {
     [prefs setValue: @NO forKey: @"storageAPIEnabled"];
   } else {
     [prefs setValue: @YES forKey: @"storageAPIEnabled"];
   }
 
-  if (userConfig["permissions_allow_device_orientation"] == "false") {
+  if (userConfig.get("permissions.allow_device_orientation") == "false") {
     [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
   } else {
     [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
   }
 
-  if (userConfig["permissions_allow_notifications"] == "false") {
+  if (userConfig.get("permissions.allow_notifications") == "false") {
     [prefs setValue: @NO forKey: @"appBadgeEnabled"];
     [prefs setValue: @NO forKey: @"notificationsEnabled"];
     [prefs setValue: @NO forKey: @"notificationEventEnabled"];
@@ -347,10 +341,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
       [self.webview loadRequest: [NSURLRequest requestWithURL: url]];
     }
   } else {
-    if (userConfig["webview_root"].size() != 0) {
-      url = [NSURL URLWithString: @(("socket://" + userConfig["meta_bundle_identifier"] + userConfig["webview_root"]).c_str())];
+    if (userConfig.contains("webview.root")) {
+      url = [NSURL URLWithString: @(("socket://" + userConfig.get("meta.bundle_identifier") + userConfig.get("webview.root")).c_str())];
     } else {
-      url = [NSURL URLWithString: @(("socket://" + userConfig["meta_bundle_identifier"] + "/index.html").c_str())];
+      url = [NSURL URLWithString: @(("socket://" + userConfig.get("meta.bundle_identifier") + "/index.html").c_str())];
     }
 
     auto request = [NSMutableURLRequest requestWithURL: url];

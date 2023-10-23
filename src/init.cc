@@ -10,12 +10,15 @@ namespace SSC {
     return DEBUG == 1;
   }
 
-  const Map getUserConfig () {
+  const Config& getUserConfig () {
     #include "user-config-bytes.hh" // NOLINT
-    return INI::parse(std::string(
+                                    //
+    static const auto config = Config(std::string(
       (const char*) __ssc_config_bytes,
       sizeof(__ssc_config_bytes)
     ));
+
+    return config;
   }
 
   const char* getDevHost () {

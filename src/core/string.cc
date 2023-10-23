@@ -131,6 +131,52 @@ namespace SSC {
     return join(vector, String(1, separator));
   }
 
+  const String join (const Set<String>& set, const String& separator) {
+    return join(Vector<String>(set.begin(), set.end()), separator);
+  }
+
+  const String join (const Set<String>& set, const char separator) {
+    return join(Vector<String>(set.begin(), set.end()), separator);
+  }
+
+  const String concat (const String& left, const String& right) {
+    return left + right;
+  }
+
+  const String concat (const String& left, const char right) {
+    return left + String(1, right);
+  }
+
+  const Vector<String> concat (const Vector<String>& left, const Vector<String>& right) {
+    auto result = Vector<String>(left.begin(), left.end());
+    result.insert(
+      result.end(),
+      std::make_move_iterator(right.begin()),
+      std::make_move_iterator(right.end())
+    );
+    return result;
+  }
+
+  const Set<String> concat (const Set<String>& left, const Set<String>& right) {
+    Set<String> result;
+    for (const auto& item : left) {
+      result.insert(item);
+    }
+
+    for (const auto& item : right) {
+      result.insert(item);
+    }
+    return result;
+  }
+
+  const Vector<String> concat (const Vector<String>& left, const Set<String>& right) {
+    return concat(left, Vector<String>(right.begin(), right.end()));
+  }
+
+  const Set<String> concat (const Set<String>& left, const Vector<String>& right) {
+    return concat(left, Set<String>(right.begin(), right.end()));
+  }
+
   Vector<String> parseStringList (const String& string, const Vector<char>& separators) {
     auto list = Vector<String>();
     for (const auto& separator : separators) {

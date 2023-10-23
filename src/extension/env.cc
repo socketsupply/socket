@@ -5,18 +5,18 @@ const char* sapi_env_get (
   const char* name
 ) {
   if (ctx == nullptr || name == nullptr)  return nullptr;
-  if (!ctx->isAllowed("env_get")) {
-    sapi_debug(ctx, "'env_get' is not allowed.");
+  if (!ctx->isAllowed("env.get")) {
+    sapi_debug(ctx, "'env.get' is not allowed.");
     return nullptr;
   }
 
   static const auto userConfig = SSC::getUserConfig();
 
-  if (!userConfig.contains("build_env")) {
+  if (!userConfig.contains("build.env")) {
     return nullptr;
   }
 
-  static const auto allowed = SSC::split(userConfig.at("build_env"), ' ');
+  static const auto allowed = SSC::split(userConfig.at("build.env"), ' ');
 
   if (std::find(allowed.begin(), allowed.end(), name) == allowed.end()) {
     return nullptr;

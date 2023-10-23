@@ -412,9 +412,9 @@ int lastY = 0;
  requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
                                      initiatedByFrame: (WKFrameInfo*) frame
                                       decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = SSC::getUserConfig();
+  static const auto userConfig = SSC::getUserConfig();
 
-  if (userConfig["permissions_allow_device_orientation"] == "false") {
+  if (userConfig.get("permissions.allow_device_orientation") == "false") {
     decisionHandler(WKPermissionDecisionDeny);
     return;
   }
@@ -427,17 +427,17 @@ int lastY = 0;
                        initiatedByFrame: (WKFrameInfo*) frame
                                    type: (WKMediaCaptureType) type
                         decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = SSC::getUserConfig();
+  static const auto userConfig = SSC::getUserConfig();
 
-  if (userConfig["permissions_allow_user_media"] == "false") {
+  if (userConfig.get("permissions.allow_user_media") == "false") {
     decisionHandler(WKPermissionDecisionDeny);
     return;
   }
 
   if (type == WKMediaCaptureTypeCameraAndMicrophone) {
     if (
-      userConfig["permissions_allow_camera"] == "false" ||
-      userConfig["permissions_allow_microphone"] == "false"
+      userConfig.get("permissions.allow_camera") == "false" ||
+      userConfig.get("permissions.allow_microphone") == "false"
     ) {
       decisionHandler(WKPermissionDecisionDeny);
       return;
@@ -446,7 +446,7 @@ int lastY = 0;
 
   if (
     type == WKMediaCaptureTypeCamera &&
-    userConfig["permissions_allow_camera"] == "false"
+    userConfig.get("permissions.allow_camera") == "false"
   ) {
     decisionHandler(WKPermissionDecisionDeny);
     return;
@@ -454,7 +454,7 @@ int lastY = 0;
 
   if (
     type == WKMediaCaptureTypeMicrophone &&
-    userConfig["permissions_allow_microphone"] == "false"
+    userConfig.get("permissions.allow_microphone") == "false"
   ) {
     decisionHandler(WKPermissionDecisionDeny);
     return;
@@ -667,7 +667,7 @@ namespace SSC {
     prefs.javaScriptCanOpenWindowsAutomatically = NO;
 
     @try {
-      if (userConfig["permissions_allow_fullscreen"] == "false") {
+      if (userConfig.get("permissions.allow_fullscreen") == "false") {
         [prefs setValue: @NO forKey: @"fullScreenEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"fullScreenEnabled"];
@@ -684,7 +684,7 @@ namespace SSC {
     }
 
     @try {
-      if (userConfig["permissions_allow_clipboard"] == "false") {
+      if (userConfig.get("permissions.allow_clipboard") == "false") {
         [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
       } else {
         [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
@@ -694,7 +694,7 @@ namespace SSC {
     }
 
     @try {
-      if (userConfig["permissions_allow_data_access"] == "false") {
+      if (userConfig.get("permissions.allow_data_access") == "false") {
         [prefs setValue: @NO forKey: @"storageAPIEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"storageAPIEnabled"];
@@ -704,7 +704,7 @@ namespace SSC {
     }
 
     @try {
-      if (userConfig["permissions_allow_device_orientation"] == "false") {
+      if (userConfig.get("permissions.allow_device_orientation") == "false") {
         [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
@@ -713,7 +713,7 @@ namespace SSC {
       debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
     }
 
-    if (userConfig["permissions_allow_notifications"] == "false") {
+    if (userConfig.get("permissions.allow_notifications") == "false") {
       @try {
         [prefs setValue: @NO forKey: @"appBadgeEnabled"];
       } @catch (NSException *error) {
@@ -743,7 +743,7 @@ namespace SSC {
     @try {
       [prefs setValue: @YES forKey: @"cookieEnabled"];
 
-      if (userConfig["permissions_allow_user_media"] == "false") {
+      if (userConfig.get("permissions.allow_user_media") == "false") {
         [prefs setValue: @NO forKey: @"mediaStreamEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"mediaStreamEnabled"];
@@ -754,7 +754,7 @@ namespace SSC {
   #endif
 
     @try {
-      if (userConfig["permissions_allow_airplay"] == "false") {
+      if (userConfig.get("permissions.allow_airplay") == "false") {
         config.allowsAirPlayForMediaPlayback = NO;
       } else {
         config.allowsAirPlayForMediaPlayback = YES;

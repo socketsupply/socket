@@ -4,7 +4,6 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 
-
 namespace SSC {
   class WindowManager;
 
@@ -26,7 +25,7 @@ namespace SSC {
       bool shouldExit = false;
       bool fromSSC = false;
       bool w32ShowConsole = false;
-      Map appData;
+      Config userConfig;
       Core *core;
 
 #ifdef _WIN32

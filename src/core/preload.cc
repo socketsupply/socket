@@ -73,12 +73,12 @@ namespace SSC {
     }
 
     // fill in the config
-    for (auto const &tuple : opts.appData) {
+    for (auto const &tuple : opts.userConfig) {
       auto key = trim(tuple.first);
       auto value = trim(tuple.second);
 
-      // skip empty key/value and comments
-      if (key.size() == 0 || value.size() == 0 || key.rfind(";", 0) == 0) {
+      // skip empty values
+      if (value.size() == 0) {
         continue;
       }
 
@@ -89,7 +89,7 @@ namespace SSC {
         "    )                                                               \n"
       );
 
-      if (key.starts_with("env_")) {
+      if (key.starts_with("env.")) {
         preload += (
           "    const k = key.slice(4);                                       \n"
           "    const value = `" + value + "`;                                \n"
@@ -98,19 +98,17 @@ namespace SSC {
         );
       } else if (value == "true" || value == "false") {
         preload += (
-          "    const k = key.toLowerCase();                                  \n"
-          "    globalThis.__args.config[k] = " + value + "                   \n"
+          "    globalThis.__args.config[key] = " + value + "                 \n"
         );
       } else {
         preload += (
-          "    const k = key.toLowerCase();                                  \n"
           "    const value = '" + encodeURIComponent(value) + "'             \n"
           "    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {      \n"
-          "      globalThis.__args.config[k] = parseFloat(value) ;           \n"
+          "      globalThis.__args.config[key] = parseFloat(value) ;         \n"
           "    } else {                                                      \n"
           "      let val = decodeURIComponent(value);                        \n"
           "      try { val = JSON.parse(val) } catch (err) {}                \n"
-          "      globalThis.__args.config[k] = val;                          \n"
+          "      globalThis.__args.config[key] = val;                        \n"
           "    }                                                             \n"
         );
       }

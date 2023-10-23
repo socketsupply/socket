@@ -18,15 +18,19 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 // wrap `os_log*` functions for global debugger
 #define ssc_os_debug(format, fmt, ...) ({                                      \
   if (!SSC_OS_LOG_DEBUG_BUNDLE) {                                              \
-    static auto userConfig = SSC::getUserConfig();                             \
-    static auto bundleIdentifier = userConfig["meta_bundle_identifier"];       \
+    static const auto userConfig = SSC::getUserConfig();                       \
+    static const auto bundleIdentifier = userConfig.get(                       \
+      "meta.bundle_identifier"                                                 \
+    );                                                                         \
+                                                                               \
     SSC_OS_LOG_DEBUG_BUNDLE = os_log_create(                                   \
       bundleIdentifier.c_str(),                                                \
       "socket.runtime.debug"                                                   \
     );                                                                         \
   }                                                                            \
                                                                                \
-  auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
+  const auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];        \
+                                                                               \
   os_log_error(                                                                \
     SSC_OS_LOG_DEBUG_BUNDLE,                                                   \
     "%{public}s",                                                              \

@@ -257,7 +257,7 @@ namespace SSC::android {
       jobject self = nullptr;
       jlong pointer = 0;
       Bridge* bridge = nullptr;
-      Map config;
+      Config config;
       String preloadSource;
       WindowOptions options;
       Map envvars;

@@ -8,6 +8,7 @@
 #include <map>
 #include <mutex>
 #include <queue>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -38,6 +39,7 @@ namespace SSC {
   template <typename T, int k> using Array = std::array<T, k>;
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
+  template <typename T> using Set = std::set<T>;
 
   using ExitCallback = std::function<void(int code)>;
   using MessageCallback = std::function<void(const String)>;

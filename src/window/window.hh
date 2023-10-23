@@ -6,6 +6,7 @@
 #include "../ipc/ipc.hh"
 #include "../app/app.hh"
 #include "../core/env.hh"
+#include "../core/config.hh"
 
 #include "options.hh"
 
@@ -233,7 +234,7 @@ namespace SSC {
     bool isTest;
     String argv = "";
     String cwd = "";
-    Map appData;
+    Config userConfig;
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
   };
@@ -391,7 +392,7 @@ namespace SSC {
         this->options.defaultMaxWidth = configuration.defaultMaxWidth;
         this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
-        this->options.appData = configuration.appData;
+        this->options.userConfig = configuration.userConfig;
         this->options.onExit = configuration.onExit;
         this->options.headless = configuration.headless;
         this->options.isTest = configuration.isTest;
@@ -494,40 +495,26 @@ namespace SSC {
       ManagedWindow* createWindow (WindowOptions opts) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return nullptr;
-        StringStream env;
+        Map env;
 
         if (inits[opts.index] && windows[opts.index] != nullptr) {
           return windows[opts.index];
         }
 
-        if (opts.appData.size() > 0) {
-          for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
-            auto cleanKey = trim(envKey);
-
-            if (!Env::has(cleanKey)) {
-              continue;
-            }
-
-            auto envValue = Env::get(cleanKey.c_str());
-
-            env << String(
-              cleanKey + "=" + encodeURIComponent(envValue) + "&"
-            );
+        for (auto const& key : this->options.userConfig.list("build.env")) {
+          if (!Env::has(key)) {
+            continue;
           }
-        } else {
-          for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
-            auto cleanKey = trim(envKey);
 
-            if (!Env::has(cleanKey)) {
-              continue;
-            }
+          env[key] = Env::get(key);
+        }
 
-            auto envValue = Env::get(cleanKey);
-
-            env << String(
-              cleanKey + "=" + encodeURIComponent(envValue) + "&"
-            );
+        for (auto const& key : opts.userConfig.list("build.env")) {
+          if (!Env::has(key)) {
+            continue;
           }
+
+          env[key] = Env::get(key);
         }
 
         auto screen = Window::getScreenSize();
@@ -565,15 +552,15 @@ namespace SSC {
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
-          .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
+          .headless = this->options.headless || opts.headless || opts.userConfig.get("build.headless") == "true",
 
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
-          .env = env.str(),
-          .appData = this->options.appData
+          .env = encodeURIComponent(env),
+          .userConfig = this->options.userConfig
         };
 
         if (isDebugEnabled()) {
@@ -604,7 +591,7 @@ namespace SSC {
       #ifdef PORT
           .port = PORT,
       #endif
-          .appData = opts.appData
+          .userConfig = opts.userConfig
         });
       }
 

@@ -3,7 +3,7 @@
 
 namespace SSC::Tests {
   void codec (Harness& t) {
-    t.test("SSC::encodeURIComponent", [](auto t) {
+    t.test("SSC::encodeURIComponent(String)", [](auto t) {
       const auto encoded = SSC::encodeURIComponent(
         "a % encoded string with foo@bar.com, $100, & #tag"
       );
@@ -15,6 +15,19 @@ namespace SSC::Tests {
         "a%20%25%20encoded%20string%20with%20foo%40bar%2Ecom%2C%20%24100%2C%20%26%20%23tag",
         "encoded value is correct"
       );
+    });
+
+    t.test("SSC::encodeURIComponent(Map)", [](auto t) {
+      const auto encoded = SSC::encodeURIComponent(
+        Map {
+        {"a", "1"},
+        {"b", "2"},
+        {"key", "a value with spaces and symbols !@#$%^&*()_-=+``"},
+        }
+      );
+
+      t.assert(encodeURIComponent(Map {}).size() == 0, "Empty map returns empty string");
+      t.equals(encoded, "a%20value%20with%20spaces%20and%20symbols%20!%40%23%24%25%5E%26*()_-%3D%2B%60%60");
     });
 
     t.test("SSC::decodeURIComponent", [](auto t) {

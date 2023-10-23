@@ -263,4 +263,12 @@ namespace SSC::Tests {
       return true;
     }
   }
+
+  void Harness::pass (const String& message) const {
+    ok("%s", message.c_str());
+  }
+
+  void Harness::fail (const String& message) const {
+    notok("%s", message.c_str());
+  }
 }

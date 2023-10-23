@@ -163,16 +163,16 @@ namespace SSC {
     if (this->hasPolicy(name)) {
       auto policy = this->getPolicy(name);
       policy.allowed = allowed;
-      policy.name = name;
     } else {
-      this->policies.insert_or_assign(name, Policy { name, allowed });
+      const auto policy = Policy { replace(name, "_", "."), allowed };
+      this->policies.insert_or_assign(policy.name, policy);
     }
   }
 
   const Extension::Context::Policy& Extension::Context::getPolicy (
     const String& name
   ) const {
-    return this->policies.at(name);
+    return this->policies.at(replace(name, "_", "."));
   }
 
   bool Extension::Context::hasPolicy (const String& name) const {
@@ -181,20 +181,20 @@ namespace SSC {
 
   bool Extension::Context::isAllowed (const String& name) const {
     if (this->policies.size() == 0) return true;
-    auto names = SSC::split(name, ',');
+    auto names = SSC::split(replace(name, "_", "."), ',');
 
     // parse each comma (',') separated policy
     for (const auto& value: names) {
-      auto parts = SSC::split(SSC::trim(value), '_');
+      auto parts = SSC::split(SSC::trim(value), '.');
       String current = "";
-      // try each part of the policy (ipc, ipc_router, ipc_router_map)
+      // try each part of the policy (ipc, ipc.router, ipc.router.map)
       for (const auto& part : parts) {
         current += part;
         if (this->hasPolicy(current) && this->getPolicy(current).allowed) {
           return true;
         }
 
-        current += "_";
+        current += ".";
       }
     }
 
@@ -233,17 +233,8 @@ namespace SSC {
   Extension::Extension (const String& name, const Initializer initializer)
     : name(name), initializer(initializer)
   {
-    static auto userConfig = getUserConfig();
-    this->context.extension = this;
-    for (const auto& tuple : userConfig) {
-      auto& key = tuple.first;
-      auto& value = tuple.second;
-      auto prefix = "extensions_" + name + "_";
-      if (key.starts_with(prefix)) {
-        auto name = replace(key, prefix, "");
-        this->context.config[name] = value;
-      }
-    }
+    static const auto userConfig = getUserConfig();
+    this->context.config = userConfig.slice("extensions").slice(name);
   }
 
   Extension::Extension (Extension& extension) {
@@ -306,7 +297,7 @@ namespace SSC {
   bool Extension::load (const String& name) {
     Lock lock(mutex);
 
-    static auto userConfig = SSC::getUserConfig();
+    static const auto userConfig = SSC::getUserConfig();
     // check if extension is already known
     if (isLoaded(name)) return true;
 
@@ -335,7 +326,7 @@ namespace SSC {
       if (registration != nullptr) {
         auto abi = registration->abi;
         if (abi != SOCKET_RUNTIME_EXTENSION_ABI_VERSION) {
-          if (userConfig["build_extensions_abi_strict"] != "false") {
+          if (userConfig.get("build.extensions.abi.strict") != "false") {
             debug(
               "Failed to load extension: %s - Extension ABI %lu does not match runtime ABI %lu",
               registration->name,
@@ -582,8 +573,8 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
 #endif
 
 #if defined(__APPLE__)
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto userConfig = SSC::getUserConfig();
+  static const auto bundleIdentifier = userConfig.get("meta.bundle_identifier");
   static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
       "socket.runtime.mobile"

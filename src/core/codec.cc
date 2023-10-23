@@ -98,6 +98,16 @@ namespace SSC {
     return result;
   }
 
+  String encodeURIComponent (const Map& input) {
+    Vector<String> pairs;
+
+    for (const auto& tuple : input) {
+      pairs.push_back(tuple.first + "=" + encodeURIComponent(tuple.second));
+    }
+
+    return join(pairs, "&");
+  }
+
   String decodeURIComponent (const String& input) {
     // Note from RFC1630:  "Sequences which start with a percent sign
     // but are not followed by two hexadecimal characters (0-9, A-F) are reserved
