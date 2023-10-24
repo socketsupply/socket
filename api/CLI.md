@@ -33,11 +33,7 @@ ssc build [options] [<project-dir>]
 ## options
 | Option | Description |
 | --- | --- |
-| --platform=<platform> | platform target to build application for (defaults to host):
-- android
-- android-emulator
-- ios
-- ios-simulator |
+| --platform=<platform> | platform target to build application for (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
 | --port=<port> | load "index.html" from "http://localhost:<port>" |
 | --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
 | --headless | build application to run in headless mode (without frame or window) |
@@ -53,27 +49,21 @@ ssc build [options] [<project-dir>]
 ## Linux options
 | Option | Description |
 | --- | --- |
-| -f, --package-format=<format> | package a Linux application in a specified format for distribution:
-- deb (default)
-- zip |
+| -f, --package-format=<format> | package a Linux application in a specified format for distribution:<br>- deb (default)<br>- zip |
 ## macOS options
 | Option | Description |
 | --- | --- |
 | -c | code sign application with 'codesign' |
 | -n | notarize application with 'notarytool' |
-| -f, --package-format=<format> | package a macOS application in a specified format for distribution:
-- zip (default)
-- pkg |
+| -f, --package-format=<format> | package a macOS application in a specified format for distribution:<br>- zip (default)<br>- pkg |
 ## iOS options
 | Option | Description |
 | --- | --- |
-| -c | code sign application during xcoddbuild
-(requires '[ios] provisioning_profile' in 'socket.ini') |
+| -c | code sign application during xcoddbuild<br>(requires '[ios] provisioning_profile' in 'socket.ini') |
 ## Windows options
 | Option | Description |
 | --- | --- |
-| -f, --package-format=<format> | package a Windows application in a specified format for distribution:
-- appx (default) |
+| -f, --package-format=<format> | package a Windows application in a specified format for distribution:<br>- appx (default) |
 # ssc list-devices
 Get the list of connected devices.
 ## Usage
@@ -83,9 +73,7 @@ ssc list-devices [options] --platform=<platform>
 ## options
 | Option | Description |
 | --- | --- |
-| --platform=<platform> | platform target to list devices for:
-- android
-- ios |
+| --platform=<platform> | platform target to list devices for:<br>- android<br>- ios |
 | --ecid | show device ECID (ios only) |
 | --udid | show device UDID (ios only) |
 | --only | only show ECID or UDID of the first device (ios only) |
@@ -110,18 +98,14 @@ ssc install-app [--platform=<platform>] [--device=<identifier>] [options]
 | Option | Description |
 | --- | --- |
 | -D, --debug | enable debug output |
-| --device[=identifier] | identifier (ecid, ID) of the device to install to
-if not specified, tries to run on the current device |
-| --platform=<platform> | platform to install application to device (defaults to host)::
-- android
-- ios |
+| --device[=identifier] | identifier (ecid, ID) of the device to install to<br>if not specified, tries to run on the current device |
+| --platform=<platform> | platform to install application to device (defaults to host)::<br>- android<br>- ios |
 | --prod | install production application |
 | -V, --verbose | enable verbose output |
 ## macOS options
 | Option | Description |
 | --- | --- |
-| --target=<target> | installation target for macOS application (defaults to '/')
-the application is installed into '$target/Applications' |
+| --target=<target> | installation target for macOS application (defaults to '/')<br>the application is installed into '$target/Applications' |
 # ssc print-build-dir
 Create a new project (in the current directory)
 ## Usage
@@ -131,11 +115,7 @@ ssc print-build-dir [--platform=<platform>] [--prod] [--root] [<project-dir>]
 ## options
 | Option | Description |
 | --- | --- |
-| --platform | platform to print build directory for (defaults to host):
-- android
-- android-emulator
-- ios
-- ios-simulator |
+| --platform | platform to print build directory for (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
 | --prod | indicate production build directory |
 | --root | print the root build directory |
 # ssc run
@@ -149,11 +129,7 @@ ssc run [options] [<project-dir>]
 | --- | --- |
 | -D, --debug | enable debug mode |
 | --headless | run application in headless mode (without frame or window) |
-| --platform=<platform> | platform target to run application on (defaults to host):
-- android
-- android-emulator
-- ios
-- ios-simulator |
+| --platform=<platform> | platform target to run application on (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
 | --prod | build for production (disables debugging info, inspector, etc.) |
 | --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
 | -V, --verbose | enable verbose output |
@@ -167,8 +143,6 @@ ssc setup [options] --platform=<platform> [-y|--yes]
 ## options
 | Option | Description |
 | --- | --- |
-| --platform=<platform> | platform target to run setup for (defaults to host):
-- android
-- ios |
+| --platform=<platform> | platform target to run setup for (defaults to host):<br>- android<br>- ios |
 | -q, --quiet | hint for less log output |
 | -y, --yes | answer yes to any prompts |
