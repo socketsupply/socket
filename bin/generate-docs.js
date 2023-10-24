@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { generateApiModuleDoc } from './docs-generator/api-module.js'
 import { generateConfig } from './docs-generator/config.js'
+import { generateCli } from './docs-generator/cli.js'
 
 const VERSION = `v${(await fs.readFile('./VERSION.txt', 'utf8')).trim()}`
 const isCurrentTag = execSync('git describe --tags --always').toString().trim() === VERSION
@@ -95,11 +96,17 @@ External docs: https://nodejs.org/api/events.html
   fs.writeFile(destFile, content)
 }
 
+const templateFilePath = path.relative(process.cwd(), 'src/cli/templates.hh')
+const templateFileSource = await fs.readFile(templateFilePath, 'utf8')
+
 // socket/api/CONFIG.md
 {
-  const src = path.relative(process.cwd(), 'src/cli/templates.hh')
-  const source = await fs.readFile(src, 'utf8')
-
-  const config = generateConfig(source)
+  const config = generateConfig(templateFileSource)
   fs.writeFile('api/CONFIG.md', config)
+}
+
+// socket/api/CLI.md
+{
+  const cli = generateCli(templateFileSource)
+  fs.writeFile('api/CLI.md', cli)
 }
