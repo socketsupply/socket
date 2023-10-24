@@ -27,6 +27,8 @@ general options:
 constexpr auto gHelpTextBuild = R"TEXT(
 ssc v{{ssc_version}}
 
+Build Socket application.
+
 usage:
   ssc build [options] [<project-dir>]
 
@@ -143,6 +145,8 @@ options:
 
 constexpr auto gHelpTextRun = R"TEXT(
 ssc v{{ssc_version}}
+
+Run application.
 
 usage:
   ssc run [options] [<project-dir>]
