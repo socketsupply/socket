@@ -4,8 +4,9 @@
  *
  * Provides ApplicationWindow class and methods
  *
- * Usaully you don't need to use this module directly, instance of ApplicationWindow
- * are returned by the methods of the {@link module:Application Application} module.
+ * Don't use this module directly, get instances of ApplicationWindow with
+ * `socket:application` methods like `getCurrentWindow`, `createWindow`,
+ * `getWindow`, and `getWindows`.
  */
 
 import { isValidPercentageValue } from './util.js'
@@ -260,7 +261,9 @@ export class ApplicationWindow {
   }
 
   /**
-   * Sends an IPC message to the window or to qthe backend.
+   * This is a high-level API that you should use instead of `ipc.send` when
+   * you want to send a message to another window or to the backend.
+   *
    * @param {object} options - an options object
    * @param {number=} options.window - the window to send the message to
    * @param {boolean=} [options.backend = false] - whether to send the message to the backend
