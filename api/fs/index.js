@@ -396,7 +396,7 @@ export function mkdir (path, options, callback) {
   }
 
   const mode = options.mode || 0o777
-  const recursive = options.recursive === true
+  const recursive = options.recursive === false
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
