@@ -2392,7 +2392,11 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     bool isModule = false;
-    auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String);
+  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    const auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String) + "/ui";
+  #else
+    const auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String);
+  #endif
     auto path = String(components.path.UTF8String);
 
     auto ext = String(
