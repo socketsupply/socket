@@ -4,6 +4,10 @@
  * This is a low-level API that you don't need unless you are implementing
  * a library on top of Socket SDK. A Socket SDK app has two or three processes.
  *
+ * When you need to send a message to another window or to the backend, you
+ * should use the `application` module to get a reference to the window and
+ * use the `send` method to send a message.
+ *
  * - The `Render` process, is the UI where the HTML, CSS, and JS are run.
  * - The `Bridge` process, is the thin layer of code that manages everything.
  * - The `Main` process, is for apps that need to run heavier compute jobs. And

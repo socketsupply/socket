@@ -3289,7 +3289,9 @@ declare module "socket:window" {
          */
         showDirectoryFilePicker(options: object): Promise<string[]>;
         /**
-         * Sends an IPC message to the window or to qthe backend.
+         * This is a high-level API that you should use instead of `ipc.send` when
+         * you want to send a message to another window or to the backend.
+         *
          * @param {object} options - an options object
          * @param {number=} options.window - the window to send the message to
          * @param {boolean=} [options.backend = false] - whether to send the message to the backend
