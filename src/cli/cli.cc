@@ -852,6 +852,22 @@ void signalHandler (int signal) {
   appMutex.unlock();
 }
 
+void checkIosSimulatorDeviceAvailability (const String& device) {
+  if (device.size() == 0) {
+    log("ERROR: [ios] simulator_device option is empty");
+    exit(1);
+  }
+  auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
+  auto isDeviceFound = rDevices.output.find(device) != String::npos;
+
+  if (!isDeviceFound) {
+    log("ERROR: [ios] simulator_device option is invalid: " + device);
+    log("available devices:\n" + rDevices.output);
+    log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
+    exit(1);
+  }
+}
+
 int runApp (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
@@ -1007,10 +1023,8 @@ int runApp (const Path& path, const String& args) {
 
 void runIOSSimulator (const Path& path, Map& settings) {
   #ifndef _WIN32
-  if (settings["ios_simulator_device"].size() == 0) {
-    log("ERROR: [ios] simulator_device option is empty");
-    exit(1);
-  }
+  checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
+
   String deviceType;
   StringStream listDeviceTypesCommand;
   listDeviceTypesCommand
@@ -4522,14 +4536,10 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForIOS) {
-      if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
-        log("ERROR: [ios] simulator_device option is empty");
-        exit(1);
-      }
-
       if (flagBuildForSimulator) {
+        checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
         log("building for iOS Simulator");
-      } else {
+      }  else {
         log("building for iOS");
       }
 
@@ -4667,14 +4677,6 @@ int main (const int argc, const char* argv[]) {
       auto rArchive = exec(archiveCommand.str().c_str());
 
       if (rArchive.exitCode != 0) {
-        auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
-        if (noDevice != String::npos) {
-          log("ERROR: [ios] simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
-          auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
-          log("available devices:\n" + rDevices.output);
-          log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
-          exit(1);
-        }
         log("ERROR: failed to archive project");
         log(rArchive.output);
         fs::current_path(oldCwd);
