@@ -1841,53 +1841,85 @@ namespace SSC {
     });
   }
 
-  void Core::FS::mkdir (
+  static void mkdirRecursive(
+    const String& path,
+    int mode,
+    uv_loop_t* loop,
+    std::function<void(int)> callback
+  ) {
+    auto filename = path.c_str();
+
+    uv_fs_t stat_req;
+    uv_fs_stat(loop, &stat_req, filename, nullptr);
+
+    if (stat_req.result == 0) {
+        uv_fs_req_cleanup(&stat_req);
+        callback(0);
+        return;
+    }
+    uv_fs_req_cleanup(&stat_req);
+
+    size_t last_slash = path.rfind('/');
+    if (last_slash == String::npos) {
+        callback(UV_ENOENT);
+        return;
+    }
+
+    mkdirRecursive(path.substr(0, last_slash), mode, loop, [=](int result) {
+        if (result < 0) {
+            callback(result);
+            return;
+        }
+
+        uv_fs_t req;
+        uv_fs_mkdir(loop, &req, filename, mode, nullptr);
+        callback(req.result);
+        uv_fs_req_cleanup(&req);
+    });
+  }
+
+  void Core::FS::mkdir(
     const String seq,
     const String path,
     int mode,
-    Module::Callback cb
+    Module::Callback cb,
+    bool recursive
   ) {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
-      auto req = &ctx->req;
-      auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
-        auto ctx = (RequestContext *) req->data;
-        auto json = JSON::Object {};
+      auto callback = [=](int result) {
+          auto json = JSON::Object {};
 
-        if (uv_fs_get_result(req) < 0) {
-          json = JSON::Object::Entries {
-            {"source", "fs.mkdir"},
-            {"err", JSON::Object::Entries {
-              {"code", req->result},
-              {"message", String(uv_strerror((int) req->result))}
-            }}
-          };
-        } else {
-          json = JSON::Object::Entries {
-            {"source", "fs.mkdir"},
-            {"data", JSON::Object::Entries {
-              {"result", req->result},
-            }}
-          };
-        }
+          if (result < 0) {
+              json = JSON::Object::Entries {
+                  {"source", "fs.mkdir"},
+                  {"err", JSON::Object::Entries {
+                      {"code", result},
+                      {"message", String(uv_strerror(result))}
+                  }}
+              };
+          } else {
+              json = JSON::Object::Entries {
+                  {"source", "fs.mkdir"},
+                  {"data", JSON::Object::Entries {
+                      {"result", result},
+                  }}
+              };
+          }
 
-        ctx->cb(ctx->seq, json, Post{});
-        delete ctx;
-      });
+          ctx->cb(ctx->seq, json, Post{});
+          delete ctx;
+      };
 
-      if (err < 0) {
-        auto json = JSON::Object::Entries {
-          {"source", "fs.mkdir"},
-          {"err", JSON::Object::Entries {
-            {"code", err},
-            {"message", String(uv_strerror(err))}
-          }}
-        };
-
-        ctx->cb(ctx->seq, json, Post{});
-        delete ctx;
+      if (recursive) {
+        mkdirRecursive(path, mode, loop, callback);
+      } else {
+        uv_fs_t req;
+        uv_fs_mkdir(loop, &req, path.c_str(), mode, nullptr);
+        callback(req.result);
+        uv_fs_req_cleanup(&req);
       }
     });
   }
