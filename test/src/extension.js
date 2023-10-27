@@ -1,3 +1,3 @@
-import './extensions/simple.js'
-import './extensions/sqlite3.js'
-import './extensions/feature-policies.js'
+await import('./extensions/simple.js')
+await import('./extensions/sqlite3.js')
+await import('./extensions/feature-policies.js')

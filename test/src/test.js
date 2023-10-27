@@ -1,1 +1,1 @@
-import './test/dom-helpers.js'
+await import('./test/dom-helpers.js')

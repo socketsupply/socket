@@ -1,3 +1,3 @@
-import './fs/index.js'
-import './fs/promises.js'
-import './fs/flags.js'
+await import('./fs/index.js')
+await import('./fs/promises.js')
+await import('./fs/flags.js')

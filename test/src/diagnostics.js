@@ -1,2 +1,2 @@
-// import './diagnostics/channels.js'
-import './diagnostics/window.js'
+// await import ('./diagnostics/channels.js')
+await import('./diagnostics/window.js')
