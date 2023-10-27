@@ -2339,10 +2339,13 @@ static void registerSchemeHandler (Router *router) {
   std::unordered_map<Task, std::function<void()>> _tasks;
 }
 - (void) taskHasEnded: (Task) task {
-  auto taskEndedCallback = _tasks.at(task);
-  _tasks.erase(task);
-
-  taskEndedCallback();
+  if (task != nullptr && _tasks.contains(task)) {
+    auto taskEndedCallback = _tasks.at(task);
+    _tasks.erase(task);
+    if (taskEndedCallback != nullptr) {
+      taskEndedCallback();
+    }
+  }
 }
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
   [self taskHasEnded: task];
