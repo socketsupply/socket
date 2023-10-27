@@ -41,6 +41,12 @@ if (process.platform !== 'ios') {
       const dirname = FIXTURES + Math.random().toString(16).slice(2)
       await fs.mkdir(dirname, {})
     })
+
+    test('fs.promises.mkdir recursive', async (t) => {
+      const randomDirName = () => Math.random().toString(16).slice(2)
+      const dirname = path.join(FIXTURES, randomDirName(), randomDirName(), randomDirName())
+      await fs.mkdir(dirname, { recursive: true })
+    })
   }
 
   test('fs.promises.open', async (t) => {
