@@ -181,6 +181,21 @@ if (process.platform !== 'ios') {
         })
       })
     })
+
+    test('fs.mkdir recursive', async (t) => {
+      const randomDirSegment = () => Math.random().toString(16).slice(2)
+      const dirname = path.join(FIXTURES, randomDirSegment(), randomDirSegment(), randomDirSegment())
+      await new Promise((resolve, reject) => {
+        fs.mkdir(dirname, {}, (err) => {
+          if (err) reject(err)
+
+          fs.stat(dirname, (err) => {
+            if (err) reject(err)
+            resolve()
+          })
+        })
+      })
+    })
   }
   test('fs.open', async (t) => {})
   test('fs.opendir', async (t) => {})
