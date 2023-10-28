@@ -10,6 +10,7 @@ The `Socket runtime CLI` outputs hybrid native-web apps that combine your code w
 
 * Any backend &mdash; Business logic can be written in any language, Python, Rust, Node.js, etc. The backend is even completely optional.
 * Any frontend &mdash; Use your favorite frontend framework to create your UIs: React, Svelte, Vue, and more.
+* Batteries Included &mdash; Native Add-ons are supported, but we ship everything you need for the majority of use cases.
 * Local-first &mdash; A full-featured, familiar File system API, native add-ons and full cross platform support for Bluetooth.
 * Not just Cloud &mdash; P2P helps you reliably move work out of the cloud, beyond the edge, and onto the devices that can communicate directly with each other.
 * Maintainable &mdash; Socket runtime has Zero external dependencies, and a smaller code base than any other competing project.
