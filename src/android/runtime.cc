@@ -14,7 +14,7 @@ namespace SSC::android {
 
   bool Runtime::isPermissionAllowed (const String& name) const {
     static const auto config = SSC::getUserConfig();
-    const auto permission = String("permissions_allow_") + name;
+    const auto permission = String("permissions_allow_") + replace(name, "-", "_");
 
     // `true` by default
     if (!config.contains(permission)) {
@@ -176,5 +176,21 @@ extern "C" {
     }
 
     return runtime->isPermissionAllowed(name);
+  }
+
+  jboolean external(Runtime, setIsEmulator)(
+    JNIEnv *env,
+    jobject self,
+    jboolean value
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->isEmulator = value;
+    return true;
   }
 }

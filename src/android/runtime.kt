@@ -81,4 +81,7 @@ open class Runtime (
 
   @Throws(java.lang.Exception::class)
   external fun isPermissionAllowed (permission: String): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun setIsEmulator (value: Boolean): Boolean;
 }

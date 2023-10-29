@@ -1,6 +1,6 @@
 // @ts-check
-import { format } from 'node:util'
 import { EventEmitter } from 'node:events'
+import { promisify } from 'node:util'
 
 const MAX_MESSAGE_KB = 512 * 1024
 
@@ -16,6 +16,8 @@ class API {
 
   #buf = ''
   #emitter = new EventEmitter()
+  #writeStdout
+  #writeStderr
 
   constructor () {
     process.stdin.resume()
@@ -26,20 +28,41 @@ class API {
       this.#write(`ipc://process.exit?value=${exitCode}`)
     })
     process.on('uncaughtException', (err) => {
-      this.#write(`ipc://stderr?value=${err}`)
+      this.#write(`ipc://stderr?value=${encodeURIComponent(err.stack || String(err))}`)
     })
 
-    // redirect console
-    console.log = (...args) => {
-      const s = args.map(v => format(v)).join(' ')
-      const enc = encodeURIComponent(s)
-      this.#write(`ipc://stdout?value=${enc}`)
+    function overrideStreamWrite (stream, write) {
+      const protoWrite = Object.getPrototypeOf(stream).write
+      stream.write = write
+      return promisify(protoWrite.bind(stream))
     }
-    console.error = (...args) => {
-      const s = args.map(v => format(v)).join(' ')
-      const enc = encodeURIComponent(s)
-      this.#write(`ipc://stderr?value=${enc}`)
-    }
+
+    this.#writeStdout = overrideStreamWrite(
+      process.stdout,
+      (data, encoding, callback) => {
+        if (typeof data !== 'string') {
+          this.#writeStdout(data, encoding, callback)
+          return
+        }
+        if (!data.startsWith('ipc://')) {
+          data = 'ipc://stdout?value=' + encodeURIComponent(data)
+        }
+        this.#write(data)
+      }
+    )
+    this.#writeStderr = overrideStreamWrite(
+      process.stderr,
+      (data, encoding, callback) => {
+        if (typeof data !== 'string') {
+          this.#writeStderr(data, encoding, callback)
+          return
+        }
+        if (!data.startsWith('ipc://')) {
+          data = 'ipc://stderr?value=' + encodeURIComponent(data)
+        }
+        this.#write(data)
+      }
+    )
 
     for (const arg of process.argv) {
       if (arg.startsWith(API.#sscVersionPrefix)) {
@@ -85,10 +108,10 @@ class API {
 
     if (data.length > MAX_MESSAGE_KB) {
       const len = Math.ceil(data.length / 1024)
-      process.stderr.write(
+      this.#writeStderr(
         'WARNING: Receiving large message from webview: ' + len + 'kb\n'
       )
-      process.stderr.write('RAW MESSAGE: ' + data.slice(0, 512) + '...\n')
+      this.#writeStderr('RAW MESSAGE: ' + data.slice(0, 512) + '...\n')
     }
 
     try {
@@ -133,7 +156,7 @@ class API {
 
   /**
    * @param {string} s
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    * @ignore
    */
@@ -144,13 +167,13 @@ class API {
 
     if (s.length > MAX_MESSAGE_KB) {
       const len = Math.ceil(s.length / 1024)
-      process.stderr.write('WARNING: Sending large message to webview: ' + len + 'kb\n')
-      process.stderr.write('RAW MESSAGE: ' + s.slice(0, 512) + '...\n')
+      this.#writeStderr(
+        'WARNING: Sending large message to webview: ' + len + 'kb\n'
+      )
+      this.#writeStderr('RAW MESSAGE: ' + s.slice(0, 512) + '...\n')
     }
 
-    return new Promise(resolve =>
-      process.stdout.write(s + '\n', resolve)
-    )
+    return this.#writeStdout(s + '\n')
   }
 
   //
@@ -162,7 +185,7 @@ class API {
    * @param {number} options.window - window index to send event to
    * @param {string} options.event - event name
    * @param {any=} options.value - data to send
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    */
   async send (options) {
@@ -192,7 +215,7 @@ class API {
 
   /**
    * Send the heartbeat event to the webview.
-   * @returns {Promise<Error | undefined>}
+   * @returns {Promise<void>}
    * @throws {Error}
    */
   async heartbeat () {

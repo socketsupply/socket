@@ -1,6 +1,31 @@
 #include "core.hh"
 
+#define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
+#define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
+
 namespace SSC {
+  uint64_t rand64 () {
+    uint64_t r = 0;
+    static bool init = false;
+
+    if (!init) {
+      init = true;
+      srand(time(0));
+    }
+
+    for (int i = 0; i < 64; i += RAND_MAX_WIDTH) {
+      r <<= RAND_MAX_WIDTH;
+      r ^= (unsigned) rand();
+    }
+    return r;
+  }
+
+
+  void msleep (uint64_t ms) {
+    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  }
+
   Headers::Header::Header (const Header& header) {
     this->key = header.key;
     this->value = header.value;

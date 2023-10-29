@@ -15,6 +15,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
   val activity = WeakReference(activity)
   val runtime = WeakReference(runtime)
   val pointer = alloc(bridge.pointer)
+  var isLoading = false
 
   fun evaluateJavaScript (source: String) {
     this.activity.get()?.evaluateJavaScript(source)
@@ -24,6 +25,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     return this.activity.get()?.getRootDirectory() ?: ""
   }
 
+  fun injectPreload (view: android.webkit.WebView) {
+    view.pauseTimers()
+    val source = this.getJavaScriptPreloadSource()
+    this.activity.get()?.evaluateJavaScript(source)
+    view.resumeTimers()
+  }
+
   fun load () {
     val runtime = this.runtime.get() ?: return
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
@@ -31,7 +39,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val activity = this.activity.get() ?: return
 
     val rootDirectory = this.getRootDirectory()
-    this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
+    this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (_: Result) {
       activity.applicationContext
         .getSharedPreferences("WebSettings", android.app.Activity.MODE_PRIVATE)
         .edit()
@@ -63,7 +71,10 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
           activity.client.putRootDirectory(rootDirectory)
+
+          // clients
           webViewClient = activity.client
+          webChromeClient = WebChromeClient(activity)
 
           addJavascriptInterface(userMessageHandler, "external")
           loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
@@ -113,10 +124,27 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    val source = this.getJavaScriptPreloadSource()
-    view.pauseTimers()
-    this.activity.get()?.evaluateJavaScript(source)
-    view.resumeTimers()
+    if (!this.isLoading) {
+      this.isLoading = true
+      this.injectPreload(view)
+    }
+  }
+
+  open fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    this.isLoading = false
+  }
+
+  open fun onProgressChanged (
+    view: android.webkit.WebView,
+    progress: Int
+  ) {
+   if (!this.isLoading && progress > 10) {
+      this.isLoading = true
+      this.injectPreload(view)
+    }
   }
 
   @Throws(java.lang.Exception::class)

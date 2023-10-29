@@ -50,9 +50,9 @@ namespace SSC::IPC {
 @end
 
 @interface SSCIPCNetworkStatusObserver : NSObject
-@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-@property (nonatomic) SSC::IPC::Router* router;
-@property (retain) nw_path_monitor_t monitor;
+@property (nonatomic, assign) dispatch_queue_t monitorQueue;
+@property (nonatomic, assign) SSC::IPC::Router* router;
+@property (nonatomic, assign) nw_path_monitor_t monitor;
 - (id) init;
 - (void) start;
 @end
@@ -77,6 +77,8 @@ namespace SSC::IPC {
 - (void) locationManager: (CLLocationManager*) locationManager
                 didVisit: (CLVisit*) visit;
 
+-       (void) locationManager: (CLLocationManager*) locationManager
+  didChangeAuthorizationStatus: (CLAuthorizationStatus) status;
 - (void) locationManagerDidChangeAuthorization: (CLLocationManager*) locationManager;
 @end
 
@@ -94,13 +96,23 @@ namespace SSC::IPC {
 @property (atomic, retain) NSMutableArray* locationRequestCompletions;
 @property (atomic, retain) NSMutableArray* locationWatchers;
 @property (nonatomic) SSC::IPC::Router* router;
-@property (atomic, assign) BOOL isActivated;
+@property (atomic, assign) BOOL isAuthorized;
 - (BOOL) attemptActivation;
 - (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion;
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion;
 - (int) watchPositionForIdentifier: (NSInteger) identifier
                         completion: (void (^)(NSError*, CLLocation*)) completion;
 - (BOOL) clearWatch: (NSInteger) identifier;
+@end
+
+@interface SSCUserNotificationCenterDelegate : NSObject<UNUserNotificationCenterDelegate>
+-  (void) userNotificationCenter: (UNUserNotificationCenter*) center
+  didReceiveNotificationResponse: (UNNotificationResponse*) response
+           withCompletionHandler: (void (^)(void)) completionHandler;
+
+- (void) userNotificationCenter: (UNUserNotificationCenter*) center
+        willPresentNotification: (UNNotification*) notification
+          withCompletionHandler: (void (^)(UNNotificationPresentationOptions options)) completionHandler;
 @end
 #endif
 
@@ -134,6 +146,7 @@ namespace SSC::IPC {
       int index = -1;
       Seq seq = "";
       Map args;
+      bool isHTTP = false;
 
       Message () = default;
       Message (const Message& message);
@@ -215,6 +228,13 @@ namespace SSC::IPC {
       using Table = std::map<String, MessageCallbackContext>;
       using Listeners = std::map<String, std::vector<MessageCallbackListenerContext>>;
 
+      struct WebViewURLPathResolution {
+        String path = "";
+        bool redirect = false;
+      };
+
+      static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
+
     private:
       Table preserved;
 
@@ -233,6 +253,7 @@ namespace SSC::IPC {
       SSCLocationObserver* locationObserver = nullptr;
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
+      NSTimer* notificationPollTimer = nullptr;
     #endif
 
       Router ();
@@ -263,6 +284,12 @@ namespace SSC::IPC {
         size_t size,
         ResultCallback callback
       );
+      bool invoke (
+        const Message& msg,
+        const char *bytes,
+        size_t size,
+        ResultCallback callback
+      );
   };
 
   class Bridge {
@@ -272,6 +299,10 @@ namespace SSC::IPC {
       Core *core = nullptr;
     #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
       FileSystemWatcher* fileSystemWatcher = nullptr;
+    #endif
+
+    #if defined(__ANDROID__)
+      bool isAndroidEmulator = false;
     #endif
 
       Bridge (Core *core);

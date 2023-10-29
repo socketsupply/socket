@@ -83,7 +83,7 @@ export const MAGIC_BYTES_PREFIX = [0x03, 0x05, 0x0b, 0x11]
 /**
  * The version of the protocol.
  */
-export const VERSION = 3
+export const VERSION = 4
 
 /**
  * The size in bytes of the prefix magic bytes.
@@ -279,8 +279,8 @@ export const decode = buf => {
   o.packetId = trim(buf.slice(offset, offset += MESSAGE_ID_BYTES)).toString('hex')
   o.previousId = trim(buf.slice(offset, offset += PREVIOUS_ID_BYTES)).toString('hex')
   o.nextId = trim(buf.slice(offset, offset += NEXT_ID_BYTES)).toString('hex')
-  o.streamTo = trim(buf.slice(offset, offset += STREAM_TO_BYTES)).toString()
-  o.streamFrom = trim(buf.slice(offset, offset += STREAM_FROM_BYTES)).toString()
+  o.streamTo = trim(buf.slice(offset, offset += STREAM_TO_BYTES)).toString('hex')
+  o.streamFrom = trim(buf.slice(offset, offset += STREAM_FROM_BYTES)).toString('hex')
 
   // extract 32-byte public-key (if any) and encode as base64 string
   // @ts-ignore
@@ -382,6 +382,7 @@ export class Packet {
     this.type = options?.type || 0
     this.version = VERSION
     this.clock = options?.clock || 0
+    this.hops = options?.hops || 0
     this.index = typeof options?.index === 'undefined' ? -1 : options.index
     this.clusterId = options?.clusterId || ''
     this.subclusterId = options?.subclusterId || ''
@@ -403,6 +404,8 @@ export class Packet {
     p = { ...p }
 
     const buf = Buffer.alloc(PACKET_BYTES) // buf length bust be < UDP MTU (usually ~1500)
+    if (!p.message) return buf
+
     const isBuffer = isBufferLike(p.message)
     const isObject = typeof p.message === 'object'
 
@@ -412,7 +415,7 @@ export class Packet {
       p.message = String(p.message)
     }
 
-    if (p.message.length > Packet.MESSAGE_BYTES) throw new Error('ETOOBIG')
+    if (p.message?.length > Packet.MESSAGE_BYTES) throw new Error('ETOOBIG')
 
     // we only have p.nextId when we know ahead of time, if it's empty that's fine.
     p.packetId = p.packetId || await sha256(p.previousId + p.message + p.nextId)
@@ -435,8 +438,8 @@ export class Packet {
     Buffer.from(p.packetId, 'hex').copy(buf, offset); offset += MESSAGE_ID_BYTES
     Buffer.from(p.previousId, 'hex').copy(buf, offset); offset += PREVIOUS_ID_BYTES
     Buffer.from(p.nextId, 'hex').copy(buf, offset); offset += NEXT_ID_BYTES
-    Buffer.from(p.streamTo).copy(buf, offset); offset += STREAM_TO_BYTES
-    Buffer.from(p.streamFrom).copy(buf, offset); offset += STREAM_FROM_BYTES
+    Buffer.from(p.streamTo, 'hex').copy(buf, offset); offset += STREAM_TO_BYTES
+    Buffer.from(p.streamFrom, 'hex').copy(buf, offset); offset += STREAM_FROM_BYTES
 
     Buffer.from(p.clusterId, 'base64').copy(buf, offset); offset += CLUSTER_ID_BYTES
     Buffer.from(p.subclusterId, 'base64').copy(buf, offset); offset += SUBCLUSTER_ID_BYTES
@@ -480,6 +483,7 @@ export class PacketPing extends Packet {
       isConnection: { type: 'boolean' },
       isReflection: { type: 'boolean' },
       isProbe: { type: 'boolean' },
+      isDebug: { type: 'boolean' },
       timestamp: { type: 'number' }
     })
   }
@@ -503,6 +507,8 @@ export class PacketPong extends Packet {
       isHeartbeat: { type: 'number' },
       isConnection: { type: 'boolean' },
       reflectionId: { type: 'string' },
+      pingId: { type: 'string' },
+      isDebug: { type: 'boolean' },
       isProbe: { type: 'boolean' },
       rejected: { type: 'boolean' }
     })
@@ -511,8 +517,8 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ clock, message }) {
-    super({ type: PacketIntro.type, clock, message })
+  constructor ({ clock, hops, clusterId, subclusterId, message }) {
+    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, message })
 
     validatePacket(message, {
       subclusterId: { type: 'string' },
@@ -529,15 +535,16 @@ export class PacketIntro extends Packet {
 
 export class PacketJoin extends Packet {
   static type = 4
-  constructor ({ clock, clusterId, message }) {
-    super({ type: PacketJoin.type, clock, clusterId, message })
+  constructor ({ clock, hops, clusterId, subclusterId, message }) {
+    super({ type: PacketJoin.type, clock, hops, clusterId, subclusterId, message })
 
     validatePacket(message, {
-      rendezvousDeadline: { type: 'number' },
       rendezvousAddress: { type: 'string' },
       rendezvousPort: { type: 'number' },
       rendezvousType: { type: 'number' },
       rendezvousPeerId: { type: 'string' },
+      rendezvousDeadline: { type: 'number' },
+      rendezvousRequesterPeerId: { type: 'string' },
       subclusterId: { type: 'string' },
       requesterPeerId: { required: true, type: 'string' },
       natType: { required: true, type: 'number' },
@@ -550,8 +557,8 @@ export class PacketJoin extends Packet {
 
 export class PacketPublish extends Packet {
   static type = 5 // no need to validatePacket, message is whatever you want
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, ttl, previousId }) {
-    super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, previousId })
+  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }) {
+    super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId })
   }
 }
 

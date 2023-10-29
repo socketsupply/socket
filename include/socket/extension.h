@@ -64,7 +64,7 @@
     };                                                                         \
                                                                                \
     SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
-    unsigned int __sapi_extension_abi () {                               \
+    unsigned long __sapi_extension_abi () {                                    \
       return __sapi_extension__.abi;                                           \
     }                                                                          \
                                                                                \
@@ -92,6 +92,51 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+  typedef struct sapi_extension_registration sapi_extension_registration_t;
+
+  /**
+   * Internal APIs
+   */
+
+  /**
+   * Internal ABI version getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  unsigned long __sapi_extension_abi ();
+
+  /**
+   * Internal name getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_name ();
+
+  /**
+   * Internal description getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_description ();
+
+  /**
+   * Internal version getter for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const char* __sapi_extension_version ();
+
+  /**
+   * Internal initializer for a registered extension.
+   * @ignore
+   * @private
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  const sapi_extension_registration_t* __sapi_extension_init ();
 
   /**
    * Context API
@@ -407,6 +452,55 @@ extern "C" {
     (SAPI_JSON_TYPE_STRING == sapi_json_typeof((sapi_json_any_t*) (value)))
 
   /**
+   * Set JSON `value` for JSON `object` at `key`. Generally, an alias to the
+   * `sapi_json_object_set_value` function.
+   * @param object - The object to set a value on
+   * @param key    - The key of the value to set
+   * @param value  - The JSON value to set
+   */
+  #define sapi_json_object_set(object, key, value)                             \
+    sapi_json_object_set_value(                                                \
+      (sapi_json_object_t*) (object),                                          \
+      (const char*)(key),                                                      \
+      (sapi_json_any((value)))                                                 \
+    )
+
+  /**
+   * Set JSON `value` for JSON `array` at `index`. Generally, an alias to the
+   * `sapi_json_array_set` function.
+   * @param array - The array to set a value on
+   * @param index - The index of the value to set
+   * @param value - The JSON value to set
+   */
+  #define sapi_json_array_set(array, index, value)                             \
+    sapi_json_array_set_value(                                                 \
+      (sapi_json_array_t*) (array),                                            \
+      (unsigned int) (index),                                                  \
+      (sapi_json_any((value)))                                                 \
+    )
+
+  /**
+   * Push a JSON `value` to the end of a JSON `array`. Generally, an alias to
+   * the `sapi_json_array_push_value` function.
+   * @param array - The array to set a value on
+   * @param value - The JSON value to set
+   */
+  #define sapi_json_array_push(array, value)                                   \
+    sapi_json_array_push_value (                                               \
+      (sapi_json_array_t*) (array),                                            \
+      sapi_json_any((value))                                                   \
+    )
+
+  /**
+   * Convert JSON `value` to a string. Generally, an alias to the
+   * `sapi_json_string_create` function.
+   * @param value - The JSON value to convert to a string
+   * @return The JSON value as a string
+   */
+  #define sapi_json_stringify(value)                                           \
+    sapi_json_stringify_value(sapi_json_any(value))
+
+  /**
    * An opaque JSON type that represents "any" JSON value
    */
   typedef struct sapi_json_any sapi_json_any_t;
@@ -541,7 +635,7 @@ extern "C" {
    * @param value  - The JSON value to set
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_json_object_set (
+  void sapi_json_object_set_value (
     sapi_json_object_t* object,
     const char* key,
     sapi_json_any_t* value
@@ -566,7 +660,7 @@ extern "C" {
    * @param value - The JSON value to set
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_json_array_set (
+  void sapi_json_array_set_value (
     sapi_json_array_t* array,
     unsigned int index,
     sapi_json_any_t* value
@@ -590,9 +684,9 @@ extern "C" {
    * @param value - The JSON value to set
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  void sapi_json_array_push (
-    sapi_json_array_t* json,
-    sapi_json_any_t* any
+  void sapi_json_array_push_value (
+    sapi_json_array_t* array,
+    sapi_json_any_t* value
   );
 
   /**
@@ -611,7 +705,7 @@ extern "C" {
    * @return The JSON value as a string
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  const char * sapi_json_stringify (const sapi_json_any_t*);
+  const char * sapi_json_stringify_value (const sapi_json_any_t*);
 
 
   /**
@@ -643,7 +737,6 @@ extern "C" {
   /**
    * A container for an extension registration.
    */
-  typedef struct sapi_extension_registration sapi_extension_registration_t;
   struct sapi_extension_registration {
     unsigned long abi;
     // required
@@ -702,11 +795,11 @@ extern "C" {
    * @param format - Format string for formatted output
    * @param ...    - `format` argument values
    */
-  #define sapi_printf(ctx, format, ...) ({                                      \
-    char _buffer[BUFSIZ] = {0};                                                 \
-    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                   \
-    snprintf(_buffer, _size, format, ##__VA_ARGS__);                            \
-    sapi_log(ctx, _buffer);                                                     \
+  #define sapi_printf(ctx, format, ...) ({                                     \
+    char _buffer[BUFSIZ] = {0};                                                \
+    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                  \
+    snprintf(_buffer, _size, format, ##__VA_ARGS__);                           \
+    sapi_log(ctx, _buffer);                                                    \
   })
 
   /**
@@ -1006,7 +1099,7 @@ extern "C" {
    * @return The size of the IPC result bytes
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
-  unsigned int sapi_ipc_result_get_bytes_size (
+  size_t sapi_ipc_result_get_bytes_size (
     const sapi_ipc_result_t* result
   );
 
@@ -1048,12 +1141,74 @@ extern "C" {
   );
 
   /**
+   * Write a chunk to the HTTP response associated with the IPC result.
+   *
+   * ⚠️ You must have called `sapi_ipc_result_set_header` with a `Transfer-Encoding`
+   * header of `chunked` to use this function.
+   *
+   * ⚠️ You must call `sapi_ipc_reply` before calling this function.
+   *
+   * ⚠️ This must be called on the main thread (using `sapi_context_dispatch` if necessary).
+   *
+   * Supported on iOS/macOS only.
+   *
+   * @param result      - An IPC request result
+   * @param chunk       - The chunk to write
+   * @param chunk_size  - The size of the chunk
+   * @param finished    - `true` if this is the last chunk to write
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_chunk (
+    sapi_ipc_result_t* result,
+    const char* chunk,
+    size_t chunk_size,
+    bool finished
+  );
+
+  /**
+   * Write an event to the HTTP response associated with the IPC result.
+   *
+   * ⚠️ You must have called `sapi_ipc_result_set_header` with a `Content-Type`
+   * header of `text/event-stream` to use this function.
+   *
+   * ⚠️ You must call `sapi_ipc_reply` before calling this function.
+   *
+   * ⚠️ The `name` and `data` arguments must be null-terminated strings. Either
+   * can be empty as long as it's null-terminated and the other is not empty.
+   *
+   * ⚠️ This must be called on the main thread (using `sapi_context_dispatch` if necessary).
+   *
+   * Supported on iOS/macOS only.
+   *
+   * @param result   - An IPC request result
+   * @param name     - The event name
+   * @param data     - The event data
+   * @param finished - `true` if this is the last event to write
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_send_event (
+    sapi_ipc_result_t* result,
+    const char* name,
+    const char* data,
+    bool finished
+  );
+
+  /**
    * Creates a "reply" for an IPC route request.
    * @param result - An IPC request result
    * @return `true` if successful, otherwise `false`
    */
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_reply (const sapi_ipc_result_t* result);
+
+  /**
+   * Convenience method for replying with an error message.
+    * @param result - An IPC request result
+    * @param error  - An error message to include in the result
+    * @return `true` if successful, otherwise `false`
+    */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_reply_with_error (sapi_ipc_result_t* result, const char* error);
 
   /**
    * Send JSON to the bridge to propagate to the WebView.
@@ -1117,6 +1272,38 @@ extern "C" {
     unsigned int size,
     unsigned char* bytes,
     const char* headers
+  );
+
+  /**
+   * Emit IPC `event` with `data`
+   * @param context - An extension context
+   * @param name    - The event name to emit on the webview `globalThis` object
+   * @param data    - Event data to emit
+   * @return `true` if successful, otherwise `false`
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_emit (
+    sapi_context_t* context,
+    const char* name,
+    const char* data
+  );
+
+  /**
+   * Invoke an IPC route with optional `bytes` and `size`. IPC paramters should
+   * be included in the URI (eg `ipc://domain.command?key=&value&key=value`)
+   * @param context - An extension context
+   * @param url     - IPC URI to invoke
+   * @param size    - Optional size of `bytes`
+   * @param bytes   - IPC bytes to include in message
+   * @return `true` if successful, otherwise `false`
+   */
+  SOCKET_RUNTIME_EXTENSION_EXPORT
+  bool sapi_ipc_invoke (
+    sapi_context_t* context,
+    const char* url,
+    unsigned int size,
+    const char* bytes,
+    sapi_ipc_router_result_callback_t callback
   );
 
   /**

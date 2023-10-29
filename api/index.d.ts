@@ -17,7 +17,7 @@ declare module "socket:errors" {
     export class AbortError extends Error {
         /**
          * The code given to an `ABORT_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -154,7 +154,7 @@ declare module "socket:errors" {
     export class InvalidAccessError extends Error {
         /**
          * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -173,7 +173,7 @@ declare module "socket:errors" {
     export class NetworkError extends Error {
         /**
          * The code given to an `NETWORK_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -192,7 +192,7 @@ declare module "socket:errors" {
     export class NotAllowedError extends Error {
         /**
          * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -211,7 +211,7 @@ declare module "socket:errors" {
     export class NotFoundError extends Error {
         /**
          * The code given to an `NOT_FOUND_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -230,7 +230,7 @@ declare module "socket:errors" {
     export class NotSupportedError extends Error {
         /**
          * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -278,7 +278,7 @@ declare module "socket:errors" {
     export class TimeoutError extends Error {
         /**
          * The code given to an `TIMEOUT_ERR` `DOMException`
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
         static get code(): number;
         /**
@@ -471,8 +471,8 @@ declare module "socket:url/url/url" {
 }
 declare module "socket:url/index" {
     export function resolve(from: any, to: any): any;
-    export default URL;
     export const parse: any;
+    export default URL;
     export const URL: any;
     import { URLPattern } from "socket:url/urlpattern/urlpattern";
     export const URLSearchParams: any;
@@ -481,8 +481,8 @@ declare module "socket:url/index" {
 }
 declare module "socket:url" {
     export * from "socket:url/index";
-    export default exports;
-    import * as exports from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
 }
 declare module "socket:util" {
     export function hasOwnProperty(object: any, property: any): any;
@@ -704,15 +704,45 @@ declare module "socket:os" {
      * @returns {string} - The operating system's default directory for temporary files.
      */
     export function tmpdir(): string;
+    /**
+     * Get resource usage.
+     */
     export function rusage(): any;
     /**
      * Returns the system uptime in seconds.
      * @returns {number} - The system uptime in seconds.
      */
     export function uptime(): number;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - The operating system name.
+     */
     export function uname(): string;
+    /**
+     * It's implemented in process.hrtime.bigint()
+     * @ignore
+     */
     export function hrtime(): any;
+    /**
+     * Node.js doesn't have this method.
+     * @ignore
+     */
     export function availableMemory(): any;
+    /**
+     * The host operating system. This value can be one of:
+     * - android
+     * - android-emulator
+     * - iphoneos
+     * - iphone-simulator
+     * - linux
+     * - macosx
+     * - unix
+     * - unknown
+     * - win32
+     * @ignore
+     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+     */
+    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
     /**
      * @type {string}
      * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
@@ -723,7 +753,11 @@ declare module "socket:os" {
     
 }
 declare module "socket:process" {
-    export function nextTick(callback: any): void;
+    /**
+     * Adds callback to the 'nextTick' queue.
+     * @param {Function} callback
+     */
+    export function nextTick(callback: Function): void;
     /**
      * @returns {string} The home directory of the current user.
      */
@@ -741,9 +775,11 @@ declare module "socket:process" {
      * @param {number=} [code=0] - The exit code. Default: 0.
      */
     export function exit(code?: number | undefined): Promise<void>;
-    export function memoryUsage(): {
-        rss: any;
-    };
+    /**
+     * Returns an object describing the memory usage of the Node.js process measured in bytes.
+     * @returns {Object}
+     */
+    export function memoryUsage(): any;
     export namespace memoryUsage {
         function rss(): any;
     }
@@ -1951,7 +1987,7 @@ declare module "socket:fs/handle" {
     /**
      * A container for a descriptor tracked in `fds` and opened in the native layer.
      * This class implements the Node.js `FileHandle` interface
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-filehandle}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-filehandle}
      */
     export class FileHandle extends EventEmitter {
         static get DEFAULT_ACCESS_MODE(): any;
@@ -1973,7 +2009,7 @@ declare module "socket:fs/handle" {
         static access(path: string, mode?: number, options?: object | undefined): boolean;
         /**
          * Asynchronously open a file.
-         * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
+         * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
          * @param {string | Buffer | URL} path
          * @param {string=} [flags = 'r']
          * @param {string=} [mode = 0o666]
@@ -2227,7 +2263,7 @@ declare module "socket:fs/dir" {
      * A containerr for a directory and its entries. This class supports scanning
      * a directory entry by entry with a `read()` method. The `Symbol.asyncIterator`
      * interface is exposed along with an AsyncGenerator `entries()` method.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdir}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdir}
      */
     export class Dir {
         static from(fdOrHandle: any, options: any): exports.Dir;
@@ -2266,7 +2302,7 @@ declare module "socket:fs/dir" {
     }
     /**
      * A container for a directory entry.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#class-fsdirent}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdirent}
      */
     export class Dirent {
         static get UNKNOWN(): any;
@@ -2332,7 +2368,7 @@ declare module "socket:fs/dir" {
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesaccesspath-mode}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode}
      * @param {string | Buffer | URL} path
      * @param {string?} [mode]
      * @param {object?} [options]
@@ -2390,7 +2426,7 @@ declare module "socket:fs/promises" {
      */
     export function opendir(path: string | Buffer | URL, options?: object | null): Promise<Dir>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreaddirpath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} options
      * @param {string?} [options.encoding = 'utf8']
@@ -2398,7 +2434,7 @@ declare module "socket:fs/promises" {
      */
     export function readdir(path: string | Buffer | URL, options: object | null): Promise<any[]>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesreadfilepath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
      * @param {string} path
      * @param {object?} [options]
      * @param {(string|null)?} [options.encoding = null]
@@ -2440,7 +2476,7 @@ declare module "socket:fs/promises" {
      */
     export function unlink(path: any): Promise<void>;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
      * @param {string|Buffer|Array|DataView|TypedArray} data
      * @param {object?} [options]
@@ -2472,7 +2508,7 @@ declare module "socket:fs/index" {
     /**
      * Asynchronously check access a file for a given mode calling `callback`
      * upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?|function(Error?)?} [mode = F_OK(0)]
      * @param {function(Error?)?} [callback]
@@ -2500,21 +2536,29 @@ declare module "socket:fs/index" {
     export function chown(path: any, uid: any, gid: any, callback: any): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsclosefd-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
      * @param {number} fd
      * @param {function(Error?)?} [callback]
      */
     export function close(fd: number, callback?: ((arg0: Error | null) => any) | null): void;
-    export function copyFile(src: any, dest: any, flags: any, callback: any): void;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @param {function(Error=)=} [callback] - The function to call after completion.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     */
+    export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
+    /**
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {ReadStream}
      */
     export function createReadStream(path: string | Buffer | URL, options?: object | null): ReadStream;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {WriteStream}
@@ -2524,7 +2568,7 @@ declare module "socket:fs/index" {
      * Invokes the callback with the <fs.Stats> for the file descriptor. See
      * the POSIX fstat(2) documentation for more detail.
      *
-     * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback}
      *
      * @param {number} fd - A file descriptor.
      * @param {object?|function?} [options] - An options object.
@@ -2545,7 +2589,7 @@ declare module "socket:fs/index" {
     export function mkdir(path: any, options: any, callback: any): void;
     /**
      * Asynchronously open a file calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?} [flags = 'r']
      * @param {string?} [mode = 0o666]
@@ -2555,7 +2599,7 @@ declare module "socket:fs/index" {
     export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
     /**
      * Asynchronously open a directory calling `callback` upon success or error.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
      * @param {object?|function(Error?, Dir?)} [options]
      * @param {string?} [options.encoding = 'utf8']
@@ -2565,7 +2609,7 @@ declare module "socket:fs/index" {
     export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
     /**
      * Asynchronously read from an open file descriptor.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
      * @param {number} fd
      * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
      * @param {number} offset - The position in buffer to write the data to.
@@ -2576,7 +2620,7 @@ declare module "socket:fs/index" {
     export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
     /**
      * Asynchronously read all entries in a directory.
-     * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL } path
      * @param {object?|function(Error?, object[])} [options]
      * @param {string?} [options.encoding ? 'utf8']
@@ -2628,7 +2672,7 @@ declare module "socket:fs/index" {
      */
     export function unlink(path: any, callback: any): void;
     /**
-     * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
+     * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {string | Buffer | TypedArray | DataView | object } data
      * @param {object?} options
@@ -2676,7 +2720,11 @@ declare module "socket:crypto" {
      * @return {TypedArray}
      */
     export function getRandomValues(buffer: TypedArray, ...args: any[]): TypedArray;
-    export function rand64(): bigint;
+    /**
+     * Generate a random 64-bit number.
+     * @returns {BigInt} - A random 64-bit number.
+     */
+    export function rand64(): BigInt;
     /**
      * Generate `size` random bytes.
      * @param {number} size - The number of bytes to generate. The size must not be larger than 2**31 - 1.
@@ -2694,7 +2742,7 @@ declare module "socket:crypto" {
      */
     /**
      * WebCrypto API
-     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
      */
     export let webcrypto: any;
     /**
@@ -2757,12 +2805,12 @@ declare module "socket:ipc" {
      * Sends a synchronous IPC command over XHR returning a `Result`
      * upon success or error.
      * @param {string} command
-     * @param {object|string?} [params]
+     * @param {any?} [value]
      * @param {object?} [options]
      * @return {Result}
      * @ignore
      */
-    export function sendSync(command: string, params?: object | (string | null), options?: object | null): Result;
+    export function sendSync(command: string, value?: any | null, options?: object | null): Result;
     /**
      * Emit event to be dispatched on `window` object.
      * @param {string} name
@@ -2791,21 +2839,21 @@ declare module "socket:ipc" {
     /**
      * Sends an async IPC command request with parameters and buffered bytes.
      * @param {string} command
-     * @param {object=} params
+     * @param {any=} value
      * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
      * @param {object=} options
      * @ignore
      */
-    export function write(command: string, params?: object | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
+    export function write(command: string, value?: any | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
     /**
      * Sends an async IPC command request with parameters requesting a response
      * with buffered bytes.
      * @param {string} command
-     * @param {object=} params
+     * @param {any=} value
      * @param {object=} options
      * @ignore
      */
-    export function request(command: string, params?: object | undefined, options?: object | undefined): Promise<any>;
+    export function request(command: string, value?: any | undefined, options?: object | undefined): Promise<any>;
     /**
      * Factory for creating a proxy based IPC API.
      * @param {string} domain
@@ -3241,7 +3289,9 @@ declare module "socket:window" {
          */
         showDirectoryFilePicker(options: object): Promise<string[]>;
         /**
-         * Sends an IPC message to the window or to qthe backend.
+         * This is a high-level API that you should use instead of `ipc.send` when
+         * you want to send a message to another window or to the backend.
+         *
          * @param {object} options - an options object
          * @param {number=} options.window - the window to send the message to
          * @param {boolean=} [options.backend = false] - whether to send the message to the backend
@@ -3307,6 +3357,9 @@ declare module "socket:window" {
         #private;
     }
     export default ApplicationWindow;
+    /**
+     * @ignore
+     */
     export const constants: typeof statuses;
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
@@ -3352,11 +3405,11 @@ declare module "socket:application" {
     export function getScreenSize(): Promise<ipc.Result>;
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
-     * @param {number[]|undefined} indices - the indices of the windows
+     * @param {number[]} [indices] - the indices of the windows
      * @return {Promise<Object.<number, ApplicationWindow>>}
      * @throws {Error} - if indices is not an array of integer numbers
      */
-    export function getWindows(indices: number[] | undefined): Promise<{
+    export function getWindows(indices?: number[]): Promise<{
         [x: number]: ApplicationWindow;
     }>;
     /**
@@ -3373,10 +3426,10 @@ declare module "socket:application" {
     export function getCurrentWindow(): Promise<ApplicationWindow>;
     /**
      * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-     * @param {object} code - an exit code
+     * @param {number} [code = 0] - an exit code
      * @return {Promise<ipc.Result>}
      */
-    export function exit(code: object): Promise<ipc.Result>;
+    export function exit(code?: number): Promise<ipc.Result>;
     /**
      * Set the native menu for the app.
      *
@@ -3601,7 +3654,7 @@ declare module "socket:net" {
     export class Server extends EventEmitter {
         constructor(options: any, handler: any);
         _connections: number;
-        id: bigint;
+        id: BigInt;
         onconnection(data: any): void;
         listen(port: any, address: any, cb: any): this;
         _address: {
@@ -3635,7 +3688,7 @@ declare module "socket:net" {
         pause(): this;
         resume(): this;
         connect(...args: any[]): this;
-        id: bigint;
+        id: BigInt;
         remotePort: any;
         remoteAddress: any;
         unref(): this;
@@ -3954,14 +4007,73 @@ declare module "socket:dgram" {
     import { InternalError } from "socket:errors";
     
 }
+declare module "socket:enumeration" {
+    /**
+     * @module enumeration
+     * This module provides a data structure for enumerated unique values.
+     */
+    /**
+     * A container for enumerated values.
+     */
+    export class Enumeration extends Set<any> {
+        /**
+         * Creates an `Enumeration` instance from arguments.
+         * @param {...any} values
+         * @return {Enumeration}
+         */
+        static from(...values: any[]): Enumeration;
+        /**
+         * `Enumeration` class constructor.
+         * @param {any[]} values
+         * @param {object=} [options = {}]
+         * @param {number=} [options.start = 0]
+         */
+        constructor(values: any[], options?: object | undefined);
+        /**
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Returns `true` if enumeration contains `value`. An alias
+         * for `Set.prototype.has`.
+         * @return {boolean}
+         */
+        contains(value: any): boolean;
+        /**
+         * @ignore
+         */
+        add(): void;
+        /**
+         * @ignore
+         */
+        delete(): void;
+        /**
+         * JSON represenation of a `Enumeration` instance.
+         * @ignore
+         * @return {string[]}
+         */
+        toJSON(): string[];
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageQueryResult}
+         */
+        inspect(): LanguageQueryResult;
+    }
+    export default Enumeration;
+}
 declare module "socket:extension" {
     /**
-     * Load an extension by name.
-     * @param {string} name
-     * @param {object?} [options]
-     * @return {Promise<Extension>}
+     * @typedef {{ allow: string[] | string }} ExtensionLoadOptions
      */
-    export function load(name: string, options?: object | null): Promise<Extension>;
+    /**
+     * Load an extension by name.
+     * @template {Record<string, any> T}
+     * @param {string} name
+     * @param {ExtensionLoadOptions} [options]
+     * @return {Promise<Extension<T>>}
+     */
+    export function load<T extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T>>;
     /**
      * Provides current stats about the loaded extensions.
      * @return {Promise<ExtensionStats>}
@@ -3975,15 +4087,17 @@ declare module "socket:extension" {
      */
     /**
      * A interface for a native extension.
+     * @template {Record<string, any> T}
      */
-    export class Extension extends EventTarget {
+    export class Extension<T extends Record<string, any>> extends EventTarget {
         /**
          * Load an extension by name.
+         * @template {Record<string, any> T}
          * @param {string} name
-         * @param {{ allow: string[] | string ?} [options]
-         * @return {Promise<Extension>}
+         * @param {ExtensionLoadOptions} [options]
+         * @return {Promise<Extension<T>>}
          */
-        static load(name: string, options: any): Promise<Extension>;
+        static load<T_1 extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T_1>>;
         /**
          * Provides current stats about the loaded extensions.
          * @return {Promise<ExtensionStats>}
@@ -3993,9 +4107,9 @@ declare module "socket:extension" {
          * `Extension` class constructor.
          * @param {string} name
          * @param {ExtensionInfo} info
-         * @param {object?} [options]
+         * @param {ExtensionLoadOptions} [options]
          */
-        constructor(name: string, info: ExtensionInfo, options?: object | null);
+        constructor(name: string, info: ExtensionInfo, options?: ExtensionLoadOptions);
         /**
          * The name of the extension
          * @type {string?}
@@ -4021,9 +4135,9 @@ declare module "socket:extension" {
          */
         options: object;
         /**
-         * @type {Proxy}
+         * @type {T}
          */
-        binding: ProxyConstructor;
+        binding: T;
         /**
          * `true` if the extension was loaded, otherwise `false`
          * @type {boolean}
@@ -4041,6 +4155,9 @@ declare module "socket:extension" {
         export { stats };
     }
     export default _default;
+    export type ExtensionLoadOptions = {
+        allow: string[] | string;
+    };
     export type ExtensionInfo = {
         abi: number;
         version: string;
@@ -4128,6 +4245,84 @@ declare module "socket:fetch" {
     import fetch from "socket:fetch/index";
 }
 declare module "socket:hooks" {
+    /**
+     * Wait for the global Window, Document, and Runtime to be ready.
+     * The callback function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onReady(callback: Function): Function;
+    /**
+     * Wait for the global Window and Document to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLoad(callback: Function): Function;
+    /**
+     * Wait for the runtime to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onInit(callback: Function): Function;
+    /**
+     * Calls callback when a global exception occurs.
+     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onError(callback: Function): Function;
+    /**
+     * Subscribes to the global data pipe calling callback when
+     * new data is emitted on the global Window.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onData(callback: Function): Function;
+    /**
+     * Subscribes to global messages likely from an external `postMessage`
+     * invocation.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onMessage(callback: Function): Function;
+    /**
+     * Calls callback when runtime is working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOnline(callback: Function): Function;
+    /**
+     * Calls callback when runtime is not working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOffline(callback: Function): Function;
+    /**
+     * Calls callback when runtime user preferred language has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLanguageChange(callback: Function): Function;
+    /**
+     * Calls callback when an application permission has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onPermissionChange(callback: Function): Function;
+    /**
+     * Calls callback in response to a presented `Notification`.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationResponse(callback: Function): Function;
+    /**
+     * Calls callback when a `Notification` is presented.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationPresented(callback: Function): Function;
     /**
      * An event dispatched when the runtime has been initialized.
      */
@@ -4255,10 +4450,247 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onOffline(callback: Function): Function;
+        /**
+         * Calls callback when runtime user preferred language has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLanguageChange(callback: Function): Function;
+        /**
+         * Calls callback when an application permission has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onPermissionChange(callback: Function): Function;
+        /**
+         * Calls callback in response to a displayed `Notification`.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationResponse(callback: Function): Function;
+        /**
+         * Calls callback when a `Notification` is presented.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationPresented(callback: Function): Function;
         #private;
     }
-    const _default: Hooks;
+    export default hooks;
+    /**
+     * `Hooks` single instance.
+     * @ignore
+     */
+    const hooks: Hooks;
+}
+declare module "socket:language" {
+    /**
+     * Look up a language name or code by query.
+     * @param {string} query
+     * @param {object=} [options]
+     * @param {boolean=} [options.strict = false]
+     * @return {?LanguageQueryResult[]}
+     */
+    export function lookup(query: string, options?: object | undefined, ...args: any[]): LanguageQueryResult[] | null;
+    /**
+     * Describe a language by tag
+     * @param {string} query
+     * @param {object=} [options]
+     * @param {boolean=} [options.strict = true]
+     * @return {?LanguageDescription[]}
+     */
+    export function describe(query: string, options?: object | undefined): LanguageDescription[] | null;
+    /**
+     * A list of ISO 639-1 language names.
+     * @type {string[]}
+     */
+    export const names: string[];
+    /**
+     * A list of ISO 639-1 language codes.
+     * @type {string[]}
+     */
+    export const codes: string[];
+    /**
+     * A list of RFC 5646 language tag identifiers.
+     * @see {@link http://tools.ietf.org/html/rfc5646}
+     */
+    export const tags: Enumeration;
+    /**
+     * A list of RFC 5646 language tag titles corresponding
+     * to language tags.
+     * @see {@link http://tools.ietf.org/html/rfc5646}
+     */
+    export const descriptions: Enumeration;
+    /**
+     * A container for a language query response containing an ISO language
+     * name and code.
+     * @see {@link https://www.sitepoint.com/iso-2-letter-language-codes}
+     */
+    export class LanguageQueryResult {
+        /**
+         * `LanguageQueryResult` class constructor.
+         * @param {string} code
+         * @param {string} name
+         * @param {string[]} [tags]
+         */
+        constructor(code: string, name: string, tags?: string[]);
+        /**
+         * The language code corresponding to the query.
+         * @type {string}
+         */
+        get code(): string;
+        /**
+         * The language name corresponding to the query.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The language tags corresponding to the query.
+         * @type {string[]}
+         */
+        get tags(): string[];
+        /**
+         * JSON represenation of a `LanguageQueryResult` instance.
+         * @return {{
+         *   code: string,
+         *   name: string,
+         *   tags: string[]
+         * }}
+         */
+        toJSON(): {
+            code: string;
+            name: string;
+            tags: string[];
+        };
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageQueryResult}
+         */
+        inspect(): LanguageQueryResult;
+        #private;
+    }
+    /**
+     * A container for a language code, tag, and description.
+     */
+    export class LanguageDescription {
+        /**
+         * `LanguageDescription` class constructor.
+         * @param {string} code
+         * @param {string} tag
+         * @param {string} description
+         */
+        constructor(code: string, tag: string, description: string);
+        /**
+         * The language code corresponding to the language
+         * @type {string}
+         */
+        get code(): string;
+        /**
+         * The language tag corresponding to the language.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * The language description corresponding to the language.
+         * @type {string}
+         */
+        get description(): string;
+        /**
+         * JSON represenation of a `LanguageDescription` instance.
+         * @return {{
+         *   code: string,
+         *   tag: string,
+         *   description: string
+         * }}
+         */
+        toJSON(): {
+            code: string;
+            tag: string;
+            description: string;
+        };
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageDescription}
+         */
+        inspect(): LanguageDescription;
+        #private;
+    }
+    namespace _default {
+        export { codes };
+        export { describe };
+        export { lookup };
+        export { names };
+        export { tags };
+    }
     export default _default;
+    import Enumeration from "socket:enumeration";
+}
+declare module "socket:i18n" {
+    /**
+     * Get messages for `locale` pattern. This function could return many results
+     * for various locales given a `locale` pattern. such as `fr`, which could
+     * return results for `fr`, `fr-FR`, `fr-BE`, etc.
+     * @ignore
+     * @param {string} locale
+     * @return {object[]}
+     */
+    export function getMessagesForLocale(locale: string): object[];
+    /**
+     * Returns user preferred ISO 639 language codes or RFC 5646 language tags.
+     * @return {string[]}
+     */
+    export function getAcceptLanguages(): string[];
+    /**
+     * Returns the current user ISO 639 language code or RFC 5646 language tag.
+     * @return {?string}
+     */
+    export function getUILanguage(): string | null;
+    /**
+     * Gets a localized message string for the specified message name.
+     * @param {string} messageName
+     * @param {object|string[]=} [substitutions = []]
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     * @see {@link https://www.ibm.com/docs/en/rbd/9.5.1?topic=syslib-getmessage}
+     * @return {?string}
+     */
+    export function getMessage(messageName: string, substitutions?: (object | string[]) | undefined, options?: object | undefined): string | null;
+    /**
+     * Gets a localized message description string for the specified message name.
+     * @param {string} messageName
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @return {?string}
+     */
+    export function getMessageDescription(messageName: string, options?: object | undefined): string | null;
+    /**
+     * A cache of loaded locale messages.
+     * @type {Map}
+     */
+    export const cache: Map<any, any>;
+    /**
+     * Default location of i18n locale messages
+     * @type {string}
+     */
+    export const DEFAULT_LOCALES_LOCATION: string;
+    /**
+     * An enumeration of supported ISO 639 language codes or RFC 5646 language tags.
+     * @type {Enumeration}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/i18n/LanguageCode}
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     */
+    export const LanguageCode: Enumeration;
+    namespace _default {
+        export { LanguageCode };
+        export { getAcceptLanguages };
+        export { getMessage };
+        export { getUILanguage };
+    }
+    export default _default;
+    import Enumeration from "socket:enumeration";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
@@ -4412,6 +4844,16 @@ declare module "socket:test/index" {
          */
         name: string;
         /**
+         * @type {null|number}
+         * @ignore
+         */
+        _planned: null | number;
+        /**
+         * @type {null|number}
+         * @ignore
+         */
+        _actual: null | number;
+        /**
          * @type {TestFn}
          * @ignore
          */
@@ -4444,6 +4886,13 @@ declare module "socket:test/index" {
          * @returns {void}
          */
         comment(msg: string): void;
+        /**
+         * Plan the number of assertions.
+         *
+         * @param {number} n
+         * @returns {void}
+         */
+        plan(n: number): void;
         /**
          * @template T
          * @param {T} actual
@@ -4876,6 +5325,9 @@ declare module "socket:test/index" {
             fail: number;
         }) => void): void;
     }
+    /**
+     * @ignore
+     */
     export const GLOBAL_TEST_RUNNER: TestRunner;
     export default test;
     export type testWithProperties = {
@@ -4924,7 +5376,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
-        url: typeof url;
+        url: any;
     };
     export const builtinModules: {
         buffer: typeof buffer;
@@ -4948,7 +5400,7 @@ declare module "socket:module" {
         stream: typeof stream;
         test: typeof test;
         util: typeof util;
-        url: typeof url;
+        url: any;
     };
     /**
      * CommonJS module scope source wrapper.
@@ -5118,7 +5570,6 @@ declare module "socket:module" {
     import stream from "socket:stream";
     import test from "socket:test";
     import util from "socket:util";
-    import url from "socket:url";
     
 }
 declare module "socket:stream-relay/packets" {
@@ -5132,7 +5583,7 @@ declare module "socket:stream-relay/packets" {
     /**
      * The version of the protocol.
      */
-    export const VERSION: 3;
+    export const VERSION: 4;
     /**
      * The size in bytes of the prefix magic bytes.
      */
@@ -5295,22 +5746,27 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketIntro extends Packet {
         static type: number;
-        constructor({ clock, message }: {
+        constructor({ clock, hops, clusterId, subclusterId, message }: {
             clock: any;
+            hops: any;
+            clusterId: any;
+            subclusterId: any;
             message: any;
         });
     }
     export class PacketJoin extends Packet {
         static type: number;
-        constructor({ clock, clusterId, message }: {
+        constructor({ clock, hops, clusterId, subclusterId, message }: {
             clock: any;
+            hops: any;
             clusterId: any;
+            subclusterId: any;
             message: any;
         });
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, to, usr1, usr2, ttl, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5318,6 +5774,7 @@ declare module "socket:stream-relay/packets" {
             subclusterId: any;
             nextId: any;
             clock: any;
+            hops: any;
             to: any;
             usr1: any;
             usr2: any;
@@ -5364,9 +5821,9 @@ declare module "socket:stream-relay/packets" {
 declare module "socket:stream-relay/encryption" {
     export class Encryption {
         static createSharedKey(seed: any): Promise<any>;
-        static createClusterId(sharedKey: any): Promise<any>;
         static createKeyPair(seed: any): Promise<any>;
         static createId(str?: Buffer): Promise<string>;
+        static createClusterId(value: any): Promise<any>;
         static createSubclusterId(value: any): Promise<any>;
         /**
          * @param {Buffer} b - The message to sign
@@ -5759,7 +6216,9 @@ declare module "socket:stream-relay/index" {
             isListening: boolean;
             ctime: number;
             lastUpdate: number;
+            lastSync: number;
             closing: boolean;
+            clock: number;
             unpublished: {};
             cache: any;
             uptime: number;
@@ -5771,6 +6230,16 @@ declare module "socket:stream-relay/index" {
             rates: Map<any, any>;
             streamBuffer: Map<any, any>;
             controlPackets: Map<any, any>;
+            metrics: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+            };
             peers: any;
             encryption: Encryption;
             config: any;
@@ -5844,20 +6313,20 @@ declare module "socket:stream-relay/index" {
              * @return {Array<RemotePeer>}
              * @ignore
              */
-            getPeers(packet: any, peers: any, n?: number, filter?: (o: any) => any): Array<RemotePeer>;
+            getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
             /**
              * Send an eventually consistent packet to a selection of peers (fanout)
              * @return {undefined}
              * @ignore
              */
-            mcast(packet: any, packetId: any, isTaxed: any, ignorelist?: any[]): undefined;
+            mcast(packet: any, isTaxed: any, ignorelist?: any[]): undefined;
             /**
              * The process of determining this peer's NAT behavior (firewall and dependentness)
              * @return {undefined}
              * @ignore
              */
             requestReflection(): undefined;
-            probeReflectionTimeout: number;
+            probeReflectionTimeout: any;
             /**
              * Ping another peer
              * @return {PacketPing}
@@ -5884,11 +6353,11 @@ declare module "socket:stream-relay/index" {
              * This should be called at least once when an app starts to multicast
              * this peer, and starts querying the network to discover peers.
              * @param {object} keys - Created by `Encryption.createKeyPair()`.
-             * @param {object=} opts - Options
-             * @param {number=MAX_BANDWIDTH} opts.rateLimit - How many requests per second to allow for this subclusterId.
+             * @param {object=} args - Options
+             * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
              * @return {RemotePeer}
              */
-            join(sharedKey: any, opts?: object | undefined): RemotePeer;
+            join(sharedKey: any, args?: object | undefined): RemotePeer;
             /**
              * @param {Packet} T - The constructor to be used to create packets.
              * @param {Any} message - The message to be split and packaged.
@@ -5957,6 +6426,7 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             _onIntro(packet: any, port: any, address: any): undefined;
+            socketPool: any[];
             /**
              * Received an Join Packet
              * @return {undefined}
@@ -5996,7 +6466,7 @@ declare module "socket:stream-relay/index" {
             _onMessage(data: Buffer | Uint8Array, { port, address }: {
                 port: number;
                 address: string;
-            }): undefined;
+            }): Promise<undefined>;
         };
     };
     export default wrap;
@@ -6027,19 +6497,478 @@ declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
     export default resolve;
 }
+declare module "socket:internal/permissions" {
+    /**
+     * Query for a permission status.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function query(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * Request a permission to be granted.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function request(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * An enumeration of the permission types.
+     * - 'geolocation'
+     * - 'notifications'
+     * - 'push'
+     * - 'persistent-storage'
+     * - 'midi'
+     * - 'storage-access'
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const types: Enumeration;
+    const _default: any;
+    export default _default;
+    export type PermissionDescriptor = {
+        name: string;
+    };
+    /**
+     * A container that provides the state of an object and an event handler
+     * for monitoring changes permission changes.
+     * @ignore
+     */
+    class PermissionStatus extends EventTarget {
+        /**
+         * `PermissionStatus` class constructor.
+         * @param {string} name
+         * @param {string} initialState
+         * @param {object=} [options]
+         * @param {?AbortSignal} [options.signal = null]
+         */
+        constructor(name: string, initialState: string, options?: object | undefined);
+        /**
+         * The name of this permission this status is for.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The current state of the permission status.
+         * @type {string}
+         */
+        get state(): string;
+        set onchange(arg: (arg0: Event) => any);
+        /**
+         * Level 0 event target 'change' event listener accessor
+         * @type {function(Event)}
+         */
+        get onchange(): (arg0: Event) => any;
+        /**
+         * Non-standard method for unsubscribing to status state updates.
+         * @ignore
+         */
+        unsubscribe(): void;
+        /**
+         * String tag for `PermissionStatus`.
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    import Enumeration from "socket:enumeration";
+}
+declare module "socket:notification" {
+    /**
+     * Show a notification. Creates a `Notification` instance and displays
+     * it to the user.
+     * @param {string} title
+     * @param {NotificationOptions=} [options]
+     * @param {function(Event)=} [onclick]
+     * @param {function(Event)=} [onclose]
+     * @return {Promise}
+     */
+    export function showNotification(title: string, options?: NotificationOptions | undefined, onclick?: ((arg0: Event) => any) | undefined, onshow?: any): Promise<any>;
+    /**
+     * The global event dispatched when a `Notification` is presented to
+     * the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_PRESENTED_EVENT: string;
+    /**
+     * The global event dispatched when a `Notification` has a response
+     * from the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_RESPONSE_EVENT: string;
+    /**
+     * An enumeratino of notification test directions:
+     * - 'auto'  Automatically determined by the operating system
+     * - 'ltr'   Left-to-right text direction
+     * - 'rtl'   Right-to-left text direction
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationDirection: Enumeration;
+    /**
+     * An enumeration of permission types granted by the user for the current
+     * origin to display notifications to the end user.
+     * - 'granted'  The user has explicitly granted permission for the current
+     *              origin to display system notifications.
+     * - 'denied'   The user has explicitly denied permission for the current
+     *              origin to display system notifications.
+     * - 'default'  The user decision is unknown; in this case the application
+     *              will act as if permission was denied.
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationPermission: Enumeration;
+    /**
+     * A validated notification action object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationAction {
+        /**
+         * `NotificationAction` class constructor.
+         * @ignore
+         * @param {object} options
+         * @param {string} options.action
+         * @param {string} options.title
+         * @param {string|URL=} [options.icon = '']
+         */
+        constructor(options: {
+            action: string;
+            title: string;
+            icon?: (string | URL) | undefined;
+        });
+        /**
+         * A string identifying a user action to be displayed on the notification.
+         * @type {string}
+         */
+        get action(): string;
+        /**
+         * A string containing action text to be shown to the user.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * A string containing the URL of an icon to display with the action.
+         * @type {string}
+         */
+        get icon(): string;
+        #private;
+    }
+    /**
+     * A validated notification options object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationOptions {
+        /**
+         * `NotificationOptions` class constructor.
+         * @ignore
+         * @param {object} [options = {}]
+         * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+         * @param {NotificationAction[]=} [options.actions = []]
+         * @param {string|URL=} [options.badge = '']
+         * @param {string=} [options.body = '']
+         * @param {?any=} [options.data = null]
+         * @param {string|URL=} [options.icon = '']
+         * @param {string|URL=} [options.image = '']
+         * @param {string=} [options.lang = '']
+         * @param {string=} [options.tag = '']
+         * @param {boolean=} [options.boolean = '']
+         * @param {boolean=} [options.requireInteraction = false]
+         * @param {boolean=} [options.silent = false]
+         * @param {number[]=} [options.vibrate = []]
+         */
+        constructor(options?: object);
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        #private;
+    }
+    /**
+     * The Notification interface is used to configure and display
+     * desktop and mobile notifications to the user.
+     */
+    export class Notification extends EventTarget {
+        /**
+         * A read-only property that indicates the current permission granted
+         * by the user to display notifications.
+         * @type {'prompt'|'granted'|'denied'}
+         */
+        static get permission(): "denied" | "granted" | "prompt";
+        /**
+         * The maximum number of actions supported by the device.
+         * @type {number}
+         */
+        static get maxActions(): number;
+        /**
+         * Requests permission from the user to display notifications.
+         * @return {Promise<'granted'|'default'|'denied'>}
+         */
+        static requestPermission(): Promise<'granted' | 'default' | 'denied'>;
+        /**
+         * `Notification` class constructor.
+         * @param {string} title
+         * @param {NotificationOptions=} [options]
+         */
+        constructor(title: string, options?: NotificationOptions | undefined, ...args: any[]);
+        /**
+         * A unique identifier for this notification.
+         * @type {string}
+         */
+        get id(): string;
+        set onclick(arg: Function);
+        /**
+         * The click event is dispatched when the user clicks on
+         * displayed notification.
+         * @type {?function}
+         */
+        get onclick(): Function;
+        set onclose(arg: Function);
+        /**
+         * The close event is dispatched when the notification closes.
+         * @type {?function}
+         */
+        get onclose(): Function;
+        set onerror(arg: Function);
+        /**
+         * The eror event is dispatched when the notification fails to display
+         * or encounters an error.
+         * @type {?function}
+         */
+        get onerror(): Function;
+        set onshow(arg: Function);
+        /**
+         * The click event is dispatched when the notification is displayed.
+         * @type {?function}
+         */
+        get onshow(): Function;
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        /**
+         * The timestamp of the notification.
+         * @type {number}
+         */
+        get timestamp(): number;
+        /**
+         * The title read-only property of the `Notification` instace indicates
+         * the title of the notification, as specified in the `title` parameter
+         * of the `Notification` constructor.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * Closes the notification programmatically.
+         */
+        close(): Promise<any>;
+        #private;
+    }
+    export default Notification;
+    import { Enumeration } from "socket:enumeration";
+    import URL from "socket:url";
+}
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
 }
 declare module "socket:internal/geolocation" {
-    export function getCurrentPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): Promise<any>;
-    export function watchPosition(onSuccess: any, onError: any, options?: {}, ...args: any[]): any;
-    export function clearWatch(id: any, ...args: any[]): any;
+    /**
+     * Get the current position of the device.
+     * @param {function(GeolocationPosition)} onSuccess
+     * @param {onError(Error)} onError
+     * @param {object=} options
+     * @param {number=} options.timeout
+     * @return {Promise}
+     */
+    export function getCurrentPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: any, options?: object | undefined, ...args: any[]): Promise<any>;
+    /**
+     * Register a handler function that will be called automatically each time the
+     * position of the device changes. You can also, optionally, specify an error
+     * handling callback function.
+     * @param {function(GeolocationPosition)} onSuccess
+     * @param {function(Error)} onError
+     * @param {object=} [options]
+     * @param {number=} [options.timeout = null]
+     * @return {number}
+     */
+    export function watchPosition(onSuccess: (arg0: GeolocationPosition) => any, onError: (arg0: Error) => any, options?: object | undefined, ...args: any[]): number;
+    /**
+     * Unregister location and error monitoring handlers previously installed
+     * using `watchPosition`.
+     * @param {number} id
+     */
+    export function clearWatch(id: number, ...args: any[]): any;
     export namespace platform {
-        let getCurrentPosition: any;
-        let watchPosition: any;
-        let clearWatch: any;
+        let getCurrentPosition: Function;
+        let watchPosition: Function;
+        let clearWatch: Function;
     }
     namespace _default {
         export { getCurrentPosition };
@@ -6068,9 +6997,7 @@ declare module "socket:internal/globals" {
 }
 declare module "socket:internal/monkeypatch" {
     export function init(): void;
-    namespace _default {
-        export { init };
-    }
+    const _default: void;
     export default _default;
 }
 declare module "socket:internal/init" {
@@ -6197,4 +7124,26 @@ declare module "socket:test/harness" {
     };
     import * as exports from "socket:test/harness";
     
+}
+type MenuItemSelection = {
+    title: string
+    parent: string
+    state: '0'
+}
+declare interface Window {
+    addEventListener(
+        type: "menuItemSelected",
+        listener: (event: CustomEvent<MenuItemSelection>) => void,
+        options?: boolean | AddEventListenerOptions
+    ): void;
+    addEventListener(
+        type: "process-error",
+        listener: (event: CustomEvent<string>) => void,
+        options?: boolean | AddEventListenerOptions
+    ): void;
+    addEventListener(
+        type: "backend-exit",
+        listener: (event: CustomEvent<string>) => void,
+        options?: boolean | AddEventListenerOptions
+    ): void;
 }

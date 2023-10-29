@@ -299,6 +299,10 @@ export const EOL = (() => {
   return '\n'
 })()
 
+// FIXME: should be process.resourceUsage()
+/**
+ * Get resource usage.
+ */
 export function rusage () {
   const { err, data } = ipc.sendSync('os.rusage')
   if (err) throw err
@@ -315,6 +319,11 @@ export function uptime () {
   return data
 }
 
+// FIXME: should be os.machine() + os.release() + os.type() + os.version()
+/**
+ * Returns the operating system name.
+ * @returns {string} - The operating system name.
+ */
 export function uname () {
   if (!cache.uname) {
     const { err, data } = ipc.sendSync('os.uname')
@@ -325,6 +334,10 @@ export function uname () {
   return cache.uname
 }
 
+/**
+ * It's implemented in process.hrtime.bigint()
+ * @ignore
+ */
 export function hrtime () {
   const result = ipc.sendSync('os.hrtime', {}, {
     desiredResponseType: 'arraybuffer'
@@ -334,6 +347,10 @@ export function hrtime () {
   return result.data.readBigUInt64BE(0)
 }
 
+/**
+ * Node.js doesn't have this method.
+ * @ignore
+ */
 export function availableMemory () {
   const result = ipc.sendSync('os.availableMemory', {}, {
     desiredResponseType: 'arraybuffer'
@@ -341,6 +358,24 @@ export function availableMemory () {
 
   if (result.err) throw result.err
   return result.data.readBigUInt64BE(0)
+}
+
+/**
+ * The host operating system. This value can be one of:
+ * - android
+ * - android-emulator
+ * - iphoneos
+ * - iphone-simulator
+ * - linux
+ * - macosx
+ * - unix
+ * - unknown
+ * - win32
+ * @ignore
+ * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+ */
+export function host () {
+  return primordials['host-operating-system'] || 'unknown'
 }
 
 // eslint-disable-next-line

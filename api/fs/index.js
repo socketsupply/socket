@@ -76,7 +76,7 @@ async function visit (path, options, callback) {
 /**
  * Asynchronously check access a file for a given mode calling `callback`
  * upon success or error.
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
  * @param {string?|function(Error?)?} [mode = F_OK(0)]
  * @param {function(Error?)?} [callback]
@@ -159,7 +159,7 @@ export function chown (path, uid, gid, callback) {
 
 /**
  * Asynchronously close a file descriptor calling `callback` upon success or error.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsclosefd-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
  * @param {number} fd
  * @param {function(Error?)?} [callback]
  */
@@ -179,6 +179,14 @@ export function close (fd, callback) {
   }
 }
 
+/**
+ * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+ * @param {string} src - The source file path.
+ * @param {string} dest - The destination file path.
+ * @param {number} flags - Modifiers for copy operation.
+ * @param {function(Error=)=} [callback] - The function to call after completion.
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+ */
 export function copyFile (src, dest, flags, callback) {
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
@@ -202,7 +210,7 @@ export function copyFile (src, dest, flags, callback) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
  * @returns {ReadStream}
@@ -242,7 +250,7 @@ export function createReadStream (path, options) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
  * @returns {WriteStream}
@@ -285,7 +293,7 @@ export function createWriteStream (path, options) {
  * Invokes the callback with the <fs.Stats> for the file descriptor. See
  * the POSIX fstat(2) documentation for more detail.
  *
- * @see {@link https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback}
  *
  * @param {number} fd - A file descriptor.
  * @param {object?|function?} [options] - An options object.
@@ -389,7 +397,7 @@ export function mkdir (path, options, callback) {
 
 /**
  * Asynchronously open a file calling `callback` upon success or error.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
  * @param {string?} [flags = 'r']
  * @param {string?} [mode = 0o666]
@@ -442,7 +450,7 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
 
 /**
  * Asynchronously open a directory calling `callback` upon success or error.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL} path
  * @param {object?|function(Error?, Dir?)} [options]
  * @param {string?} [options.encoding = 'utf8']
@@ -467,7 +475,7 @@ export function opendir (path, options = {}, callback) {
 
 /**
  * Asynchronously read from an open file descriptor.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
  * @param {number} fd
  * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
  * @param {number} offset - The position in buffer to write the data to.
@@ -502,7 +510,7 @@ export function read (fd, buffer, offset, length, position, options, callback) {
 
 /**
  * Asynchronously read all entries in a directory.
- * @see {https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsreaddirpath-options-callback}
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL } path
  * @param {object?|function(Error?, object[])} [options]
  * @param {string?} [options.encoding ? 'utf8']
@@ -765,7 +773,7 @@ export function unlink (path, callback) {
 }
 
 /**
- * @see {@url https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fswritefilefile-data-options-callback}
+ * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {string | Buffer | TypedArray | DataView | object } data
  * @param {object?} options

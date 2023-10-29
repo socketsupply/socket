@@ -1,4 +1,7 @@
+#include <regex>
+
 #include "json.hh"
+#include "string.hh"
 
 namespace SSC::JSON {
   Null null;
@@ -71,6 +74,11 @@ namespace SSC::JSON {
 
   String::String (const Number& number) {
     this->data = number.str();
+  }
+
+  SSC::String String::str () const {
+    auto escaped = replace(this->data, "\"", "\\\"");
+    return "\"" + replace(escaped, "\n", "\\n") + "\"";
   }
 
   Any::Any (const Null null) {

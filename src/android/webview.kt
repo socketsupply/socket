@@ -25,13 +25,73 @@ fun isAssetUri (uri: android.net.Uri): Boolean {
 }
 
 /**
- * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
  */
 open class WebView (context: android.content.Context) : android.webkit.WebView(context)
 
 /**
- * @TODO
+ * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
+ */
+open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeClient() {
+  protected val activity = WeakReference(activity)
+
+  override fun onGeolocationPermissionsShowPrompt (
+    origin: String,
+    callback: android.webkit.GeolocationPermissions.Callback
+  ) {
+    val runtime = this.activity.get()?.runtime ?: return callback(origin, false, false)
+    val allowed = runtime.isPermissionAllowed("geolocation")
+
+    callback(origin, allowed, allowed)
+  }
+
+  override fun onPermissionRequest (request: android.webkit.PermissionRequest) {
+    val runtime = this.activity.get()?.runtime ?: return request.deny()
+    val resources = request.resources
+    var grants = mutableListOf<String>()
+    for (resource in resources) {
+      when (resource) {
+        android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+          if (runtime.isPermissionAllowed("microphone") || runtime.isPermissionAllowed("user_media")) {
+            grants.add(android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+          }
+        }
+
+        android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+          if (runtime.isPermissionAllowed("camera") || runtime.isPermissionAllowed("user_media")) {
+            grants.add(android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+          }
+        }
+
+        // auto grant EME
+        android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+          grants.add(android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)
+        }
+      }
+    }
+
+    if (grants.size > 0) {
+      request.grant(grants.toTypedArray())
+    } else {
+      request.deny()
+    }
+  }
+
+  override fun onProgressChanged (
+    webview: android.webkit.WebView,
+    progress: Int
+  ) {
+    val activity = this.activity.get() ?: return;
+    activity.window.onProgressChanged(webview, progress)
+  }
+}
+
+final class WebViewURLPathResolution (path: String, redirect: Boolean = false) {
+  val path = path
+  val redirect = redirect
+}
+
+/**
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
@@ -85,6 +145,67 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     return true
   }
 
+  fun resolveURLPathForWebView (input: String? = null): WebViewURLPathResolution? {
+    var path = input ?: return null
+    val activity = this.activity.get() ?: return null
+    val assetManager = activity.getAssetManager() ?: return null
+    val root = activity.getRootDirectory()
+
+    if (path == "/") {
+      try {
+        val htmlPath = "index.html"
+        val stream = assetManager.open(htmlPath)
+        stream.close()
+        return WebViewURLPathResolution("/" + htmlPath)
+      } catch (_: Exception) {}
+    }
+
+    if (path.startsWith("/")) {
+      path = path.substring(1, path.length)
+    } else if (path.startsWith("./")) {
+      path = path.substring(2, path.length)
+    }
+
+    try {
+      val htmlPath = path
+      val stream = assetManager.open(htmlPath)
+      stream.close()
+      return WebViewURLPathResolution("/" + htmlPath)
+    } catch (_: Exception) {}
+
+    if (path.endsWith("/")) {
+      try {
+        val list = assetManager.list(path)
+        if (list != null && list.size > 0) {
+          try {
+            val htmlPath = path + "index.html"
+            val stream = assetManager.open(htmlPath)
+            stream.close()
+            return WebViewURLPathResolution("/" + htmlPath)
+          } catch (_: Exception) {}
+        }
+      } catch (_: Exception) {}
+
+      return null
+    } else {
+      try {
+        val htmlPath = path + "/index.html"
+        val stream = assetManager.open(htmlPath)
+        stream.close()
+        return WebViewURLPathResolution("/" + htmlPath, true)
+      } catch (_: Exception) {}
+    }
+
+    try {
+      val htmlPath = path + ".html"
+      val stream = assetManager.open(htmlPath)
+      stream.close()
+      return WebViewURLPathResolution("/" + htmlPath)
+    } catch (_: Exception) {}
+
+    return null
+  }
+
   override fun shouldInterceptRequest (
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
@@ -101,18 +222,18 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       var path = url.path
       val regex = Regex("(\\.[a-z|A-Z|0-9|_|-]+)$")
       var redirect = false
+      val resolved = resolveURLPathForWebView(path)
 
-      if (path != null && !regex.containsMatchIn(path)) {
-        if (path.endsWith("/")) {
-          path += "index.html"
-        } else {
-          path += "/"
-          redirect = true
-        }
+      if (resolved != null) {
+        path = resolved.path
       }
 
-      if (redirect) {
-        val redirectURL = "${url.scheme}://${url.host}${path}"
+      if (resolved != null && resolved.redirect) {
+        redirect = true
+      }
+
+      if (redirect && resolved != null) {
+        val redirectURL = "${url.scheme}://${url.host}${resolved.path}"
         val redirectSource = """
           <meta http-equiv="refresh" content="0; url='${redirectURL}'" />"
         """
@@ -301,6 +422,13 @@ export default module
   ) {
     this.activity.get()?.onPageStarted(view, url, bitmap)
   }
+
+  override fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    this.activity.get()?.onPageFinished(view, url)
+  }
 }
 
 /**
@@ -323,6 +451,15 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     }
   }
 
+  fun getAssetManager (): android.content.res.AssetManager {
+    return this.applicationContext.resources.assets
+  }
+
+  open fun getRootDirectory (): String {
+    return getExternalFilesDir(null)?.absolutePath
+      ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files"
+  }
+
   /**
    * Called when the `WebViewActivity` is first created
    * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
@@ -342,6 +479,13 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     bitmap: android.graphics.Bitmap?
   ) {
     console.log("WebViewActivity is loading: $url")
+  }
+
+  open fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    console.log("WebViewActivity finished loading: $url")
   }
 
   open fun onSchemeRequest (

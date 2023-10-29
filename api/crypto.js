@@ -22,7 +22,7 @@ import * as exports from './crypto.js'
 
 /**
  * WebCrypto API
- * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
  */
 export let webcrypto = globalThis.crypto?.webcrypto ?? globalThis.crypto
 
@@ -57,8 +57,8 @@ export const ready = Promise.all(pending)
 
 /**
  * libsodium API
- * @see {https://doc.libsodium.org/}
- * @see {https://github.com/jedisct1/libsodium.js}
+ * @see {@link https://doc.libsodium.org/}
+ * @see {@link https://github.com/jedisct1/libsodium.js}
  */
 export { sodium }
 
@@ -87,6 +87,10 @@ export function getRandomValues (buffer, ...args) {
 // so this is re-used instead of creating new one each rand64() call
 const tmp = new Uint32Array(2)
 
+/**
+ * Generate a random 64-bit number.
+ * @returns {BigInt} - A random 64-bit number.
+ */
 export function rand64 () {
   getRandomValues(tmp)
   return (BigInt(tmp[0]) << 32n) | BigInt(tmp[1])

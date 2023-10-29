@@ -153,8 +153,10 @@ export function relative (options, from, to) {
 export function join (options, ...components) {
   const { sep } = options
   const queries = []
-  const joined = []
+  const resolved = []
   let protocol = null
+
+  const isAbsolute = components[0].trim().startsWith(sep)
 
   while (components.length) {
     let component = String(components.shift() || '')
@@ -175,20 +177,24 @@ export function join (options, ...components) {
   }
 
   for (const query of queries) {
-    if (query === '..' && joined.length > 1 && joined[0] !== '..') {
-      joined.pop()
+    if (query === '..' && resolved.length > 1 && resolved[0] !== '..') {
+      resolved.pop()
     } else if (query !== '.') {
       if (query.startsWith(sep)) {
-        joined.push(query.slice(1))
+        resolved.push(query.slice(1))
       } else if (query.endsWith(sep)) {
-        joined.push(query.slice(0, query.length - 1))
+        resolved.push(query.slice(0, query.length - 1))
       } else {
-        joined.push(query)
+        resolved.push(query)
       }
     }
   }
 
-  return joined.join(sep)
+  const joined = resolved.join(sep)
+
+  return isAbsolute
+    ? sep + joined
+    : joined
 }
 
 /**
@@ -615,8 +621,10 @@ export class Path {
       i = this.pathname.lastIndexOf('\\')
     }
 
-    if (i === -1) return ''
-    const pathname = this.pathname.slice(i)
+    const pathname = (i > -1)
+      ? this.pathname.slice(i)
+      : this.pathname
+
     i = pathname.lastIndexOf('.')
     if (i === -1) return ''
     return pathname.slice(i >= 0 ? i : undefined)

@@ -1,8 +1,12 @@
 #ifndef SSC_WINDOW_WINDOW_H
 #define SSC_WINDOW_WINDOW_H
 
+#include <iostream>
+
 #include "../ipc/ipc.hh"
 #include "../app/app.hh"
+#include "../core/env.hh"
+
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
@@ -10,6 +14,16 @@
 #endif
 
 #if defined(__APPLE__)
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@interface SSCWindowDelegate : NSObject
+@end
+#else
+@interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
+- (void) userContentController: (WKUserContentController*) userContentController
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
+@end
+#endif
+
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 @interface SSCBridgedWebView : WKWebView<WKUIDelegate>
 #else
@@ -80,6 +94,11 @@ namespace SSC {
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
   };
 
+  struct ScreenSize {
+    int height = 0;
+    int width = 0;
+  };
+
   class Window {
     public:
       App& app;
@@ -100,6 +119,8 @@ namespace SSC {
       NSWindow* window;
 #endif
       SSCBridgedWebView* webview;
+      SSCWindowDelegate* windowDelegate = nullptr;
+      SSCNavigationDelegate *navigationDelegate = nullptr;
 #elif defined(__linux__) && !defined(__ANDROID__)
       GtkSelectionData *selectionData = nullptr;
       GtkAccelGroup *accelGroup = nullptr;
@@ -128,6 +149,9 @@ namespace SSC {
 #endif
 
       Window (App&, WindowOptions);
+    #if defined(__APPLE__)
+      ~Window ();
+    #endif
 
       static ScreenSize getScreenSize ();
 
@@ -146,9 +170,9 @@ namespace SSC {
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();
-#if defined(__linux__) && !defined(__ANDROID__)
+    #if defined(__linux__) && !defined(__ANDROID__)
       void closeContextMenu (GtkWidget *, const String&);
-#endif
+    #endif
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& menu);
@@ -424,7 +448,7 @@ namespace SSC {
       WindowStatus getWindowStatus (int index) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (this->destroyed) return WindowStatus::WINDOW_NONE;
-        if (index >= 0 && inits[index]) {
+        if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return windows[index]->status;
         }
 
@@ -480,11 +504,11 @@ namespace SSC {
           for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
             auto cleanKey = trim(envKey);
 
-            if (!hasEnv(cleanKey)) {
+            if (!Env::has(cleanKey)) {
               continue;
             }
 
-            auto envValue = getEnv(cleanKey.c_str());
+            auto envValue = Env::get(cleanKey.c_str());
 
             env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -494,11 +518,11 @@ namespace SSC {
           for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
             auto cleanKey = trim(envKey);
 
-            if (!hasEnv(cleanKey)) {
+            if (!Env::has(cleanKey)) {
               continue;
             }
 
-            auto envValue = getEnv(cleanKey.c_str());
+            auto envValue = Env::get(cleanKey);
 
             env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"

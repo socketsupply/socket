@@ -13,19 +13,25 @@ export class Encryption {
     return sodium.randombytes_buf(32)
   }
 
-  static async createClusterId (sharedKey) {
-    const key = sharedKey || await Encryption.createSharedKey()
-    return Buffer.from(key || '').toString('base64')
-  }
-
   static async createKeyPair (seed) {
     await sodium.ready
-    seed = seed || await Encryption.createSharedKey()
+    seed = seed || sodium.randombytes_buf(32)
+
+    if (typeof seed === 'string') {
+      seed = sodium.crypto_generichash(32, seed)
+    }
+
     return sodium.crypto_sign_seed_keypair(seed)
   }
 
   static async createId (str = randomBytes(32)) {
     return (await sha256(str)).toString('hex')
+  }
+
+  static async createClusterId (value) {
+    await sodium.ready
+    value = value || sodium.randombytes_buf(32)
+    return Buffer.from(value).toString('base64')
   }
 
   static async createSubclusterId (value) {

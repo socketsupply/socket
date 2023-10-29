@@ -32,6 +32,7 @@ namespace SSC::IPC {
     this->seq = message.seq;
     this->uri = message.uri;
     this->args = message.args;
+    this->isHTTP = message.isHTTP;
   }
 
   Message::Message (const String& source, char *bytes, size_t size)
@@ -85,7 +86,7 @@ namespace SSC::IPC {
         try {
           index = std::stoi(pair[1].size() > 0 ? pair[1] : "0");
         } catch (...) {
-          std::cout << "Warning: received non-integer index" << std::endl;
+          debug("Warning: received non-integer index");
         }
       }
 
@@ -106,7 +107,10 @@ namespace SSC::IPC {
   }
 
   bool Message::has (const String& key) const {
-    return this->args.find(key) != this->args.end();
+    return (
+      this->args.find(key) != this->args.end() &&
+      this->args.at(key).size() > 0
+    );
   }
 
   String Message::get (const String& key) const {

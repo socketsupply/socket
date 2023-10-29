@@ -20,7 +20,7 @@ using namespace Microsoft::WRL;
 
 namespace SSC {
   static inline void alert (const SSC::WString &ws) {
-    MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+    MessageBoxA(nullptr, SSC::convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
   static inline void alert (const SSC::String &s) {
@@ -654,8 +654,8 @@ namespace SSC {
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
     auto file = (fs::path { modulefile }).filename();
-    auto filename = SSC::StringToWString(file.string());
-    auto path = SSC::StringToWString(getEnv("APPDATA"));
+    auto filename = SSC::convertStringToWString(file.string());
+    auto path = SSC::convertStringToWString(Env::get("APPDATA"));
     this->modulePath = fs::path(modulefile);
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
@@ -744,7 +744,7 @@ namespace SSC {
                       wchar_t* buf = new wchar_t[l+1];
                       GetWindowTextW(hWnd, buf, l+1);
 
-                      if (SSC::WStringToString(buf).find("Chrome") != SSC::String::npos) {
+                      if (SSC::convertWStringToString(buf).find("Chrome") != SSC::String::npos) {
                         RevokeDragDrop(hWnd);
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         w->drop->childWindow = hWnd;
@@ -763,7 +763,7 @@ namespace SSC {
                       [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
                         PWSTR uri;
                         e->get_Uri(&uri);
-                        SSC::String url(SSC::WStringToString(uri));
+                        SSC::String url(SSC::convertWStringToString(uri));
 
                         if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find("http://localhost") != 0) {
                           e->put_Cancel(true);
@@ -803,11 +803,11 @@ namespace SSC {
                         args->get_Request(&req);
 
                         req->get_Uri(&req_uri);
-                        uri = WStringToString(req_uri);
+                        uri = convertWStringToString(req_uri);
                         CoTaskMemFree(req_uri);
 
                         req->get_Method(&req_method);
-                        method = WStringToString(req_method);
+                        method = convertWStringToString(req_method);
                         CoTaskMemFree(req_method);
 
                         bool ipc_scheme = false;
@@ -853,6 +853,7 @@ namespace SSC {
                             DWORD actual;
                             HRESULT r;
                             auto msg = IPC::Message(uri);
+                            msg.isHTTP = true;
                             // TODO(trevnorris): Make sure index and seq are set.
                             if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
                               IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
@@ -911,7 +912,7 @@ namespace SSC {
                                 bytes,
                                 200,
                                 L"OK",
-                                StringToWString(headers).c_str(),
+                                convertStringToWString(headers).c_str(),
                                 &res
                               );
                               args->put_Response(res);
@@ -942,14 +943,6 @@ namespace SSC {
                             );
 
                             auto ext = fs::path(path).extension().string();
-
-                            if (path == "/" || path.size() == 0) {
-                              path = "/index.html";
-                              ext = ".html";
-                            } else if (path.ends_with("/")) {
-                              path += "index.html";
-                              ext = ".html";
-                            }
 
                             if (ext.size() > 0 && !ext.starts_with(".")) {
                               ext = "." + ext;
@@ -988,7 +981,7 @@ namespace SSC {
                                   nullptr,
                                   200,
                                   L"OK",
-                                  StringToWString(headers).c_str(),
+                                  convertStringToWString(headers).c_str(),
                                   &res
                                 );
                                 args->put_Response(res);
@@ -1004,7 +997,7 @@ namespace SSC {
                                     bytes,
                                     200,
                                     L"OK",
-                                    StringToWString(headers).c_str(),
+                                    convertStringToWString(headers).c_str(),
                                     &res
                                   );
                                   args->put_Response(res);
@@ -1014,28 +1007,34 @@ namespace SSC {
                               }
                             } else {
                               auto rootPath = this->modulePath.parent_path();
+                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
+                              path = resolved.path;
 
-                              if (ext.size() == 0) {
+                              if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+                                path = userConfig["webview_default_index"];
+                              } else if (resolved.redirect) {
                                 uri += "/";
-                                app.dispatch([&, uri, path, args, deferral, env] {
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      StringToWString("Location: ") + StringToWString(uri) + L"\n" +
-                                      StringToWString("Content-Location: ") + StringToWString(uri) + L"\n"
+                                      convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
                                     ).c_str(),
                                     &res
                                   );
+
                                   args->put_Response(res);
                                   deferral->Complete();
-                                });
-                                return S_OK;
+                                  return S_OK;
                               }
 
-                              path = fs::absolute(rootPath / path.substr(1)).string();
+                              if (path.size() > 0) {
+                                path = fs::absolute(rootPath / path.substr(1)).string();
+                              }
+
                               LARGE_INTEGER fileSize;
                               auto handle = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
                               auto getSizeResult = GetFileSizeEx(handle, &fileSize);
@@ -1079,11 +1078,11 @@ namespace SSC {
                                   } else if (path.ends_with(".ogv")) {
                                     mimeType = (wchar_t*) L"video/ogg";
                                   } else {
-                                    FindMimeFromData(0, StringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
+                                    FindMimeFromData(0, convertStringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
                                   }
 
                                   headers = "Content-Type: ";
-                                  headers += WStringToString(mimeType) + "\n";
+                                  headers += convertWStringToString(mimeType) + "\n";
                                   headers += "Connection: keep-alive\n";
                                   headers += "Access-Control-Allow-Headers: *\n";
                                   headers += "Access-Control-Allow-Origin: *\n";
@@ -1096,7 +1095,7 @@ namespace SSC {
                                       stream,
                                       200,
                                       L"OK",
-                                      StringToWString(headers).c_str(),
+                                      convertStringToWString(headers).c_str(),
                                       &res
                                     );
                                   } else {
@@ -1154,7 +1153,7 @@ namespace SSC {
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires
                     // Consider using w->preloadJavascript, but apps work without this
-                    SSC::StringToWString(preload).c_str(),
+                    SSC::convertStringToWString(preload).c_str(),
                     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {
                         return S_OK;
@@ -1171,7 +1170,7 @@ namespace SSC {
                       SSC::WString message_w(messageRaw);
                       CoTaskMemFree(messageRaw);
                       if (onMessage != nullptr) {
-                        SSC::String message = SSC::WStringToString(message_w);
+                        SSC::String message = SSC::convertWStringToString(message_w);
                         auto msg = IPC::Message{message};
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         ICoreWebView2_2* webview2 = nullptr;
@@ -1201,7 +1200,7 @@ namespace SSC {
                           cshr = webView18->PostSharedBufferToScript(
                             sharedBuffer,
                             COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
-                            StringToWString(additionalData).c_str()
+                            convertStringToWString(additionalData).c_str()
                           );
                           IPC::MessageBuffer msg_buf(sharedBuffer, size);
                           // TODO(trevnorris): This will leak memory if the buffer is created and
@@ -1435,7 +1434,7 @@ namespace SSC {
       }
 
       this->webview->ExecuteScript(
-        SSC::StringToWString(s).c_str(),
+        SSC::convertStringToWString(s).c_str(),
         nullptr
       );
     });
@@ -1467,7 +1466,7 @@ namespace SSC {
         &token
       );
 
-      webview->Navigate(SSC::StringToWString(value).c_str());
+      webview->Navigate(SSC::convertStringToWString(value).c_str());
     });
   }
 
@@ -1475,7 +1474,7 @@ namespace SSC {
     int len = GetWindowTextLength(window) + 1;
     LPTSTR title = new TCHAR[len];
     GetWindowText(window, title, len);
-    String title_s = WStringToString(title);
+    String title_s = convertWStringToString(title);
     delete[] title;
     return title_s;
   }
@@ -1907,7 +1906,7 @@ namespace SSC {
         return;
       }
 
-      result_paths.push_back(SSC::WStringToString(SSC::WString(buf)));
+      result_paths.push_back(SSC::convertWStringToString(SSC::WString(buf)));
       single_result->Release();
 
       CoTaskMemFree(buf);
@@ -1940,7 +1939,7 @@ namespace SSC {
           return;
         }
 
-        result_paths.push_back(SSC::WStringToString(SSC::WString(buf)));
+        result_paths.push_back(SSC::convertWStringToString(SSC::WString(buf)));
         path->Release();
         CoTaskMemFree(buf);
       }

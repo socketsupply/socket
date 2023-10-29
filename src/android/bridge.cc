@@ -20,6 +20,8 @@ namespace SSC::android {
         callback();
       }
     };
+
+    this->isAndroidEmulator = this->runtime->isEmulator;
   }
 
   Bridge::~Bridge () {
@@ -188,5 +190,33 @@ extern "C" {
     }
 
     return routed;
+  }
+
+  jboolean external(Bridge, emit)(
+    JNIEnv *env,
+    jobject self,
+    jstring eventNameString,
+    jstring eventDataString
+  ) {
+    auto bridge = Bridge::from(env, self);
+
+    if (bridge == nullptr) {
+      Throw(env, BridgeNotInitializedException);
+      return false;
+    }
+
+    JavaVM* jvm = nullptr;
+    auto jniVersion = env->GetVersion();
+    env->GetJavaVM(&jvm);
+    auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
+
+    if (attachment.hasException()) {
+      return false;
+    }
+
+    auto event = StringWrap(env, eventNameString);
+    auto data = StringWrap(env, eventDataString);
+
+    return bridge->router.emit(event.str(), data.str());
   }
 }

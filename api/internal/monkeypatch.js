@@ -1,7 +1,9 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
+import Notification from '../notification.js'
 import geolocation from './geolocation.js'
+import permissions from './permissions.js'
 
 import ipc from '../ipc.js'
 
@@ -10,6 +12,52 @@ let applied = false
 export function init () {
   if (applied || !globalThis.window) return
 
+  function install (implementations, target = globalThis, prefix) {
+    for (let name in implementations) {
+      const implementation = implementations[name]
+
+      if (typeof prefix === 'string') {
+        name = `${prefix}.${name}`
+      }
+
+      const actualName = name.split('.').slice(-1)[0]
+
+      if (typeof target[actualName] === 'object' && target[actualName] !== null) {
+        for (const key in implementation) {
+          const nativeImplementation = target[actualName][key] || null
+          // let this fail, the environment implementation may not be writable
+          try {
+            target[actualName][key] = implementation[key]
+          } catch {}
+
+          if (nativeImplementation !== null) {
+            const nativeName = ['_', 'native', ...name.split('.'), key].join('_')
+            Object.defineProperty(globalThis, nativeName, {
+              enumerable: false,
+              configurable: false,
+              value: nativeImplementation
+            })
+          }
+        }
+      } else {
+        const nativeImplementation = target[actualName] || null
+        // let this fail, the environment implementation may not be writable
+        try {
+          target[actualName] = implementation
+        } catch {}
+
+        if (nativeImplementation !== null) {
+          const nativeName = ['_', 'native', ...name.split('.')].join('_')
+          Object.defineProperty(globalThis, nativeName, {
+            enumerable: false,
+            configurable: false,
+            value: nativeImplementation
+          })
+        }
+      }
+    }
+  }
+
   if (
     typeof globalThis.webkitSpeechRecognition === 'function' &&
     typeof globalThis.SpeechRecognition !== 'function'
@@ -17,7 +65,8 @@ export function init () {
     globalThis.SpeechRecognition = globalThis.webkitSpeechRecognition
   }
 
-  Object.assign(globalThis, {
+  // globals
+  install({
     // url
     URL,
     URLPattern,
@@ -27,10 +76,14 @@ export function init () {
     fetch,
     Headers,
     Request,
-    Response
+    Response,
+
+    // notifications
+    Notification
   })
 
-  Object.assign(globalThis.navigator?.geolocation ?? {}, geolocation)
+  // navigator
+  install({ geolocation, permissions }, globalThis.navigator, 'navigator')
 
   applied = true
   // create <title> tag in document if it doesn't exist
@@ -65,6 +118,4 @@ export function init () {
   }
 }
 
-export default {
-  init
-}
+export default init()

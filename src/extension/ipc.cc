@@ -19,25 +19,18 @@ bool sapi_ipc_router_map (
     return false;
   }
 
-  auto router = ctx->router;
-  auto context = sapi_context_create(ctx, true);
-
-  if (context == nullptr) {
-    return false;
-  }
-
-  context->data = data;
-  ctx->router->map(name, [context, data, callback](
+  ctx->router->map(name, [ctx, data, callback](
     auto& message,
     auto router,
     auto reply
   ) mutable {
-    auto msg = SSC::IPC::Message(
-      message.uri,
-      true, // decode parameter values AOT in `message.uri`
-      message.buffer.bytes,
-      message.buffer.size
-    );
+    auto msg = SSC::IPC::Message(message);
+    auto context = sapi_context_create(ctx, true);
+    if (context == nullptr) {
+      return;
+    }
+
+    context->data = data;
     context->internal = new SSC::IPC::Router::ReplyCallback(reply);
     callback(
       context,
@@ -112,6 +105,15 @@ bool sapi_ipc_router_unlisten (
   return ctx->router->unlisten(name, token);
 }
 
+bool sapi_ipc_reply_with_error (sapi_ipc_result_t* result, const char* error) {
+  sapi_context* context = sapi_ipc_result_get_context(result);
+  sapi_json_string* errorJson = sapi_json_string_create(context, error);
+  sapi_json_object* errorObject = sapi_json_object_create(context);
+  sapi_json_object_set(errorObject, "message", errorJson);
+  sapi_ipc_result_set_json_error(result, ((sapi_json_any*)errorObject));
+  return sapi_ipc_reply(result);
+}
+
 bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   if (result == nullptr) return false;
   if (result->context == nullptr) return false;
@@ -133,11 +135,72 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   }
 
   // if retained, then then caller must eventually call `sapi_context_release()`
-  if (!context->retained) {
-    context->release();
+  if (context->release()) {
     delete context;
   }
 
+  return success;
+}
+
+bool sapi_ipc_send_chunk (
+  sapi_ipc_result_t* result,
+  const char* chunk,
+  size_t chunk_size,
+  bool finished
+) {
+  if (result == nullptr) {
+    return false;
+  }
+  if (!result->message.isHTTP) {
+    std::string error =
+        "IPC method '" + result->message.name + "' must be invoked with HTTP";
+    return sapi_ipc_reply_with_error(result, error.c_str());
+  }
+  auto send_chunk_ptr = result->post.chunk_stream;
+  if (send_chunk_ptr == nullptr) {
+    debug(
+        "Cannot use 'sapi_ipc_send_chunk' before setting the \"Transfer-Encoding\""
+        " header to \"chunked\"");
+    return false;
+  }
+  bool success = (*send_chunk_ptr)(chunk, chunk_size, finished);
+  if (finished) {
+    auto context = result->context;
+    if (context->release()) {
+      delete context;
+    }
+  }
+  return success;
+}
+
+bool sapi_ipc_send_event (
+  sapi_ipc_result_t* result,
+  const char* name,
+  const char* data,
+  bool finished
+) {
+  if (result == nullptr) {
+    return false;
+  }
+  if (!result->message.isHTTP) {
+    std::string error =
+        "IPC method '" + result->message.name + "' must be invoked with HTTP";
+    return sapi_ipc_reply_with_error(result, error.c_str());
+  }
+  auto send_event_ptr = result->post.event_stream;
+  if (send_event_ptr == nullptr) {
+    debug(
+        "Cannot use 'sapi_ipc_send_event' before setting the \"Content-Type\""
+        " header to \"text/event-stream\"");
+    return false;
+  }
+  bool success = (*send_event_ptr)(name, data, finished);
+  if (finished) {
+    auto context = result->context;
+    if (context->release()) {
+      delete context;
+    }
+  }
   return success;
 }
 
@@ -587,7 +650,7 @@ unsigned char* sapi_ipc_result_get_bytes (
     : nullptr;
 }
 
-unsigned int sapi_ipc_result_get_bytes_size (
+size_t sapi_ipc_result_get_bytes_size (
   const sapi_ipc_result_t* result
 ) {
   return result ? result->post.length : 0;
@@ -600,6 +663,28 @@ void sapi_ipc_result_set_header (
 ) {
   if (result && name && value) {
     result->headers.set(name, value);
+
+  #if !defined(_WIN32)
+    if (strcasecmp(name, "content-type") == 0 &&
+        strcasecmp(value, "text/event-stream") == 0) {
+      result->context->retain();
+      result->post = SSC::Post();
+      result->post.event_stream =
+          std::make_shared<std::function<bool(const char*, const char*, bool)>>(
+              [result](const char* name, const char* data, bool finished) {
+                return false;
+              });
+    } else if (strcasecmp(name, "transfer-encoding") == 0 &&
+               strcasecmp(value, "chunked") == 0) {
+      result->context->retain();
+      result->post = SSC::Post();
+      result->post.chunk_stream =
+          std::make_shared<std::function<bool(const char*, size_t, bool)>>(
+              [result](const char* chunk, size_t chunk_size, bool finished) {
+                return false;
+              });
+    }
+  #endif
   }
 }
 

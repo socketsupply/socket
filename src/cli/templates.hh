@@ -9,49 +9,67 @@ usage:
   ssc [SUBCOMMAND] -h
 
 subcommands:
-  build               build project
-  list-devices        get the list of connected devices
-  init                create a new project (in the current directory)
-  install-app         install app to the device
-  print-build-dir     print build path to stdout
-  run                 run application
-  env                 print relavent environment variables
-  setup               install build dependencies
+  build                                build project
+  list-devices                         get the list of connected devices
+  init                                 create a new project (in the current directory)
+  install-app                          install app to the device
+  print-build-dir                      print build path to stdout
+  run                                  run application
+  env                                  print relavent environment variables
+  setup                                install build dependencies
 
 general options:
-  -h, --help          print help message
-  -v, --version       print program version
-  --prefix            print install path
-  --debug             enable debug mode
-  --verbose           enable verbose output
+  -h, --help                           print help message
+  --prefix                             print install path
+  -v, --version                        print program version
 )TEXT";
 
 constexpr auto gHelpTextBuild = R"TEXT(
 ssc v{{ssc_version}}
 
+Build Socket application.
+
 usage:
   ssc build [options] [<project-dir>]
 
 options:
-  --platform=<platform> target (android, android-emulator, ios, ios-simulator)
-  --port=<port>         load "index.html" from "http://localhost:<port>"
-  -o, --only-build      only run build step,
-  -r, --run             run after building
-  -w, --watch           watch for changes to rerun build step
-  --headless            run headlessly
-  --stdin               read from stdin (emitted in window 0)
-  --test[=path]         indicate test mode, optionally importing a test file
+  --platform=<platform>                platform target to build application for (defaults to host):
+                                         - android
+                                         - android-emulator
+                                         - ios
+                                         - ios-simulator
+  --port=<port>                        load "index.html" from "http://localhost:<port>"
+  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
+  --headless                           build application to run in headless mode (without frame or window)
+  --prod                               build for production (disables debugging info, inspector, etc.)
+  --stdin                              read from stdin (dispacted as 'process.stdin' event to window #0)
+  -D, --debug                          enable debug mode
+  -o, --only-build                     only run build step,
+  -p, --package                        package the app for distribution
+  -q, --quiet                          hint for less log output
+  -r, --run                            run after building
+  -V, --verbose                        enable verbose output
+  -w, --watch                          watch for changes to rerun build step
 
-options:
-  --prod  disable debugging info, inspector, etc.
+Linux options:
+  -f, --package-format=<format>        package a Linux application in a specified format for distribution:
+                                         - deb (default)
+                                         - zip
 
-  -p  package the app
-  -c  code sign
-  -s  prep for App Store
+macOS options:
+  -c                                   code sign application with 'codesign'
+  -n                                   notarize application with 'notarytool'
+  -f, --package-format=<format>        package a macOS application in a specified format for distribution:
+                                         - zip (default)
+                                         - pkg
 
-macOS-specific options:
-  -e  specify entitlements
-  -n  notarize
+iOS options:
+  -c                                   code sign application during xcoddbuild
+                                       (requires '[ios] provisioning_profile' in 'socket.ini')
+
+Windows options:
+  -f, --package-format=<format>        package a Windows application in a specified format for distribution:
+                                         - appx (default)
 )TEXT";
 
 constexpr auto gHelpTextListDevices = R"TEXT(
@@ -63,10 +81,12 @@ usage:
   ssc list-devices [options] --platform=<platform>
 
 options:
-  --platform    android|ios
-  --ecid        show device ECID (ios only)
-  --udid        show device UDID (ios only)
-  --only        only show ECID or UDID of the first device
+  --platform=<platform>                platform target to list devices for:
+                                         - android
+                                         - ios
+  --ecid                               show device ECID (ios only)
+  --udid                               show device UDID (ios only)
+  --only                               only show ECID or UDID of the first device (ios only)
 )TEXT";
 
 constexpr auto gHelpTextInit = R"TEXT(
@@ -78,22 +98,31 @@ usage:
   ssc init [<project-dir>]
 
 options:
-  --config  only create the config file
-  --name    project name
+  -C, --config                         only create the config file
+  -n, --name                           project name
 )TEXT";
 
 constexpr auto gHelpTextInstallApp = R"TEXT(
 ssc v{{ssc_version}}
 
-Install the app to the device. We only support iOS at the moment.
+Install the app to the device or host target.
 
 usage:
-  ssc install-app --platform=<platform> [--device=<identifier>]
+  ssc install-app [--platform=<platform>] [--device=<identifier>] [options]
 
 options:
-  --platform=<platform>    android|ios
-  --device=<identifier>    identifier (ecid, ID) of the device to install to
-                           if not specified, tries to run on the current device
+  -D, --debug                          enable debug output
+  --device[=identifier]                identifier (ecid, ID) of the device to install to
+                                       if not specified, tries to run on the current device
+  --platform=<platform>                platform to install application to device (defaults to host)::
+                                         - android
+                                         - ios
+  --prod                               install production application
+  -V, --verbose                        enable verbose output
+
+macOS options:
+  --target=<target>                    installation target for macOS application (defaults to '/')
+                                       the application is installed into '$target/Applications'
 )TEXT";
 
 constexpr auto gHelpTextPrintBuildDir = R"TEXT(
@@ -102,38 +131,55 @@ ssc v{{ssc_version}}
 Create a new project (in the current directory)
 
 usage:
-  ssc print-build-dir [--platform=<platform>] [--prod] [<project-dir>]
+  ssc print-build-dir [--platform=<platform>] [--prod] [--root] [<project-dir>]
 
 options:
-  --platform  android|android-emulator|ios|ios-simulator; if not specified, runs on the current platform
-  --root      print root build directory
+  --platform                           platform to print build directory for (defaults to host):
+                                         - android
+                                         - android-emulator
+                                         - ios
+                                         - ios-simulator
+  --prod                               indicate production build directory
+  --root                               print the root build directory
 )TEXT";
 
 constexpr auto gHelpTextRun = R"TEXT(
 ssc v{{ssc_version}}
 
+Run application.
+
 usage:
   ssc run [options] [<project-dir>]
 
 options:
-  --platform     android|ios|ios-simulator; if not specified, runs on the current platform
-  --prod         run production build
-  --test=path    indicate test mode
+  -D, --debug                          enable debug mode
+  --headless                           run application in headless mode (without frame or window)
+  --platform=<platform>                platform target to run application on (defaults to host):
+                                         - android
+                                         - android-emulator
+                                         - ios
+                                         - ios-simulator
+  --prod                               build for production (disables debugging info, inspector, etc.)
+  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
+  -V, --verbose                        enable verbose output
 )TEXT";
 
 constexpr auto gHelpTextSetup = R"TEXT(
 ssc v{{ssc_version}}
 
-Setup build tools for target <platform>
+Setup build tools for host or target platform.
 
 Platforms not listed below can be setup using instructions at https://socketsupply.co/guides
 
 usage:
-  ssc setup [options] --platform=<platform>
+  ssc setup [options] --platform=<platform> [-y|--yes]
 
 options:
-  --platform       android|linux|windows
-  -y, --yes        answer yes to any prompts
+  --platform=<platform>                platform target to run setup for (defaults to host):
+                                         - android
+                                         - ios
+  -q, --quiet                          hint for less log output
+  -y, --yes                            answer yes to any prompts
 
 )TEXT";
 
@@ -169,135 +215,203 @@ constexpr auto gHelloWorld = R"HTML(
 )HTML";
 
 //
-// Darwin config
+// macOS 'Info.plist' file
 //
-constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
+constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!--- Metadata -->
+  <key>CFBundleDisplayName</key>
+  <string>{{build_name}}</string>
+
   <key>CFBundleName</key>
   <string>{{build_name}}</string>
-  <key>DTSDKName</key>
-  <string>macosx10.13</string>
-  <key>DTXcode</key>
-  <string>0941</string>
-  <key>NSHumanReadableCopyright</key>
-  <string>{{meta_copyright}}</string>
-  <key>DTSDKBuild</key>
-  <string>10.13</string>
+
+  <key>CFBundleIconFile</key>
+  <string>icon.icns</string>
+
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+
   <key>CFBundleVersion</key>
   <string>{{meta_version}}</string>
-  <key>BuildMachineOSBuild</key>
-  <string>17D102</string>
-  <key>NSCameraUsageDescription</key>
-  <string>This app needs access to the camera</string>
-  <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>The app would like to discover and connect to peers</string>
 
-  <key>NSLocationUsageDescription</key>
-  <string>{{meta_title}} would like access to your location</string>
+  <key>CFBundleShortVersionString</key>
+  <string>{{meta_version}}</string>
 
-  <key>NSLocationWhenInUseUsageDescription</key>
-  <string>{{meta_title}} would like access to your location while open</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
 
-  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-  <string>{{meta_title}} would like access to your location</string>
+  <key>CFBundleExecutable</key>
+  <string>{{build_name}}</string>
 
-  <key>NSSpeechRecognitionUsageDescription</key>
-  <string>{{meta_title}} would like to access Speech Recognition</string>
+  <key>CFBundleIdentifier</key>
+  <string>{{meta_bundle_identifier}}</string>
 
-  <key>NSMicrophoneUsageDescription</key>
-  <string>{{meta_title}} would like to access to your microphone</string>
+  <key>LSApplicationCategoryType</key>
+  <string>{{mac_category}}</string>
 
-  <key>NSCameraUsageDescription</key>
-  <string>{{meta_title}} would like to access to your camera</string>
-
-  <key>NSMotionUsageDescription</key>
-  <string>{{meta_title}} would like to access to detect your device motion</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>{{meta_copyright}}</string>
 
   <key>NSMainNibFile</key>
   <string>MainMenu</string>
+
+  <key>NSPrincipalClass</key>
+  <string>AtomApplication</string>
+
+
+  <!-- Application configuration -->
+  <key>NSLocationDefaultAccuracyReduced</key>
+  <true/>
+
+  <key>LSMinimumSystemVersion</key>
+  <string>{{mac_minimum_supported_version}}</string>
+
   <key>LSMultipleInstancesProhibited</key>
   <true/>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
-  <key>CFBundleShortVersionString</key>
-  <string>{{meta_version}}</string>
+
   <key>NSHighResolutionCapable</key>
   <true/>
+
+  <key>NSRequiresAquaSystemAppearance</key>
+  <false/>
+
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+
+  <key>SoftResourceLimits</key>
+  <dict>
+      <key>NumberOfFiles</key>
+      <integer>{{meta_file_limit}}</integer>
+  </dict>
+
+  <key>WKAppBoundDomains</key>
+  <array>
+      <string>localhost</string>
+      <string>{{meta_bundle_identifier}}</string>
+  </array>
+
+
+  <!-- Permission usage descriptions -->
+  <key>NSAppDataUsageDescription</key>
+  <string>
+    {{meta_title}} would like shared app data access
+  </string>
+
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>
+    {{meta_title}} would like to discover and connect to peers using Bluetooth
+  </string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access to your camera
+  </string>
+
+  <key>NSLocationAlwaysUsageDescription</key>
+  <string>
+    {{meta_title}} would like access to your location
+  </string>
+
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>
+    {{meta_title}} would like access to your location when in use
+  </string>
+
+  <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+  <string>
+    {{meta_title}} would like temporary access to your location
+  </string>
+
   <key>NSMicrophoneUsageDescription</key>
-  <string>This app needs access to the microphone</string>
+  <string>
+    {{meta_title}} would like to access to your microphone
+  </string>
+
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access Speech Recognition
+  </string>
+
+  <key>NSMotionUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access to detect your device motion
+  </string>
+
+
+  <!-- Security configuration -->
   <key>NSAppTransportSecurity</key>
   <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+
     <key>NSExceptionDomains</key>
     <dict>
       <key>127.0.0.1</key>
       <dict>
         <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
         <true/>
+
         <key>NSTemporaryExceptionRequiresForwardSecrecy</key>
         <false/>
+
         <key>NSIncludesSubdomains</key>
         <false/>
+
         <key>NSTemporaryExceptionMinimumTLSVersion</key>
         <string>1.0</string>
+
         <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>
         <false/>
       </dict>
+
       <key>localhost</key>
       <dict>
         <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
         <true/>
+
         <key>NSTemporaryExceptionRequiresForwardSecrecy</key>
         <false/>
+
         <key>NSIncludesSubdomains</key>
         <false/>
+
         <key>NSTemporaryExceptionMinimumTLSVersion</key>
         <string>1.0</string>
+
         <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>
         <false/>
       </dict>
     </dict>
-    <key>NSAllowsArbitraryLoads</key>
-    <false/>
-    <key>NSAllowsLocalNetworking</key>
-    <true/>
   </dict>
-  <key>CFBundleInfoDictionaryVersion</key>
-  <string>6.0</string>
-  <key>CFBundleExecutable</key>
-  <string>{{build_name}}</string>
-  <key>DTCompiler</key>
-  <string>com.apple.compilers.llvm.clang.1_0</string>
-  <key>NSPrincipalClass</key>
-  <string>AtomApplication</string>
-  <key>NSRequiresAquaSystemAppearance</key>
-  <false/>
-  <key>CFBundleIdentifier</key>
-  <string>{{meta_bundle_identifier}}</string>
-  <key>LSApplicationCategoryType</key>
-  <string>{{mac_category}}</string>
-  <key>DTXcodeBuild</key>
-  <string>9F2000</string>
-  <key>LSMinimumSystemVersion</key>
-  <string>10.10.0</string>
-  <key>CFBundleDisplayName</key>
-  <string>{{build_name}}</string>
-  <key>NSSupportsAutomaticGraphicsSwitching</key>
-  <true/>
-  <key>SoftResourceLimits</key>
-  <dict>
-      <key>NumberOfFiles</key>
-      <integer>{{meta_file_limit}}</integer>
-  </dict>
-  <key>WKAppBoundDomains</key>
-  <array>
-      <string>localhost</string>
-  </array>
 
-  {{mac_info_plist_data}}
+
+  <!-- Debug information -->
+  <key>BuildMachineOSBuild</key>
+  <string>{{__xcode_macosx_sdk_build_version}}</string>
+
+  <key>BuildMachineOSBuild</key>
+  <string>{{__xcode_macosx_sdk_build_version}}</string>
+
+  <key>DTSDKName</key>
+  <string>macosx{{__xcode_macosx_sdk_version}}</string>
+
+  <key>DTXcode</key>
+  <string>{{__xcode_version}}</string>
+
+  <key>DTSDKBuild</key>
+  <string>{{__xcode_macosx_sdk_version}}</string>
+
+  <key>DTXcodeBuild</key>
+  <string>{{__xcode_build_version}}</string>
+
+  <!-- User given plist data -->
+{{mac_info_plist_data}}
   </dict>
 </plist>
 )XML";
@@ -321,7 +435,7 @@ constexpr auto gAndroidManifest = R"XML(
 >
   <uses-sdk
     android:minSdkVersion="26"
-    android:targetSdkVersion="33"
+    android:targetSdkVersion="34"
   />
 
   <uses-permission android:name="android.permission.INTERNET" />
@@ -391,7 +505,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap3 rescap"
 >
-  <Identity Name="{bundle_identifier}"
+  <Identity Name="{{meta_bundle_identifier}}"
     ProcessorArchitecture="neutral"
     Publisher="{{win_publisher}}"
     Version="{{win_version}}"
@@ -523,13 +637,16 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXFileReference section */
     {{__ios_native_extensions_build_context_refs}}
 		171C1C2A2AC38A70005F587F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		1790CE4D2AD78CCF00AA7E5B /* ini.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ini.hh; sourceTree = "<group>"; };
+		1790CE4E2AD78CCF00AA7E5B /* string.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = string.hh; sourceTree = "<group>"; };
+		1790CE4F2AD78CCF00AA7E5B /* config.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = config.hh; sourceTree = "<group>"; };
+		1790CE502AD78CCF00AA7E5B /* types.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = types.hh; sourceTree = "<group>"; };
 		179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
 		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
 		17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
 		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
 		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -567,6 +684,17 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1790CE4C2AD78CCF00AA7E5B /* core */ = {
+			isa = PBXGroup;
+			children = (
+				1790CE4D2AD78CCF00AA7E5B /* ini.hh */,
+				1790CE4E2AD78CCF00AA7E5B /* string.hh */,
+				1790CE4F2AD78CCF00AA7E5B /* config.hh */,
+				1790CE502AD78CCF00AA7E5B /* types.hh */,
+			);
+			path = core;
+			sourceTree = "<group>";
+		};
 		17A7F8EF29358D180051D146 /* objects */ = {
 			isa = PBXGroup;
 			children = (
@@ -586,9 +714,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				1790CE512AD792B600AA7E5B /* core */,
 				17A7F8EE29358D180051D146 /* init.cc */,
 				17A7F8EF29358D180051D146 /* objects */,
-				17E73FDA28FCC9320087604F /* common.hh */,
 				290F7F86276BC2B000486988 /* lib */,
 				294A3C9027677424007B5B9A /* socket.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
@@ -760,6 +888,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "DEBUG=1",
           "SSC_VERSION={{SSC_VERSION}}",
           "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
+          "WAS_CODESIGNED={{WAS_CODESIGNED}}",
           "$(inherited)",
         );
         GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -847,7 +976,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = "{{apple_team_id}}";
+        DEVELOPMENT_TEAM = "{{apple_team_identifier}}";
         ENABLE_BITCODE = NO;
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
@@ -897,7 +1026,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "iPhone Distribution";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = "{{apple_team_id}}";
+        DEVELOPMENT_TEAM = "{{apple_team_identifier}}";
         ENABLE_BITCODE = NO;
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
@@ -970,7 +1099,7 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
   <key>method</key>
   <string>{{ios_distribution_method}}</string>
   <key>teamID</key>
-  <string>{{apple_team_id}}</string>
+  <string>{{apple_team_identifier}}</string>
   <key>uploadBitcode</key>
   <true/>
   <key>compileBitcode</key>
@@ -989,52 +1118,20 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 </dict>
 </plist>)XML";
 
-constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
+//
+// iOS 'Info.plist' file
+//
+constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!--- Metadata -->
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
+
   <key>CFBundleIconFile</key>
   <string>ui/icon.png</string>
-  <key>NSAppTransportSecurity</key>
-  <dict>
-    <key>NSAllowsArbitraryLoads</key>
-    <true/>
-  </dict>
-  <key>NSHighResolutionCapable</key>
-  <true/>
 
-  <key>NSLocalNetworkUsageDescription</key>
-  <string>{{meta_title}} would like to discover and connect to peers</string>
-  <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>{{meta_title}} would like to discover and connect to peers</string>
-  <key>NSBluetoothPeripheralUsageDescription</key>
-  <string>{{meta_title}} would like to discover and connect to peers</string>
-
-  <key>NSLocationUsageDescription</key>
-  <string>{{meta_title}} would like access to your location</string>
-  <key>NSLocationWhenInUseUsageDescription</key>
-  <string>{{meta_title}} would like access to your location while open</string>
-  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-  <string>{{meta_title}} would like access to your location</string>
-
-  <key>NSSpeechRecognitionUsageDescription</key>
-  <string>{{meta_title}} would like to access Speech Recognition</string>
-
-  <key>NSMicrophoneUsageDescription</key>
-  <string>{{meta_title}} would like to access to your microphone</string>
-
-  <key>NSCameraUsageDescription</key>
-  <string>{{meta_title}} would like to access to your camera</string>
-
-  <key>NSMotionUsageDescription</key>
-  <string>{{meta_title}} would like to access to detect your device motion</string>
-
-  <key>NSRequiresAquaSystemAppearance</key>
-  <false/>
-  <key>NSSupportsAutomaticGraphicsSwitching</key>
-  <true/>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
@@ -1046,17 +1143,93 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
       </array>
     </dict>
   </array>
+
+  <!-- Application configuration -->
   <key>LSApplicationQueriesSchemes</key>
   <array>
     <string>{{ios_protocol}}</string>
   </array>
-  <key>UIBackgroundModes</key>
-  <array>
-    <string>fetch</string>
-    <string>processing</string>
-  </array>
 
-  {{ios_info_plist_data}}
+  <key>NSHighResolutionCapable</key>
+  <true/>
+
+  <key>NSLocationDefaultAccuracyReduced</key>
+  <false/>
+
+  <key>NSRequiresAquaSystemAppearance</key>
+  <false/>
+
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+
+
+  <!-- Permission usage descriptions -->
+  <key>NSAppDataUsageDescription</key>
+  <string>
+    {{meta_title}} would like shared app data access
+  </string>
+
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>
+    {{meta_title}} would like to discover and connect to peers using Bluetooth
+  </string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access to your camera
+  </string>
+
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>
+    {{meta_title}} would like to discover and connect to peers using your local network
+  </string>
+
+  <key>NSLocationAlwaysUsageDescription</key>
+  <string>
+    {{meta_title}} would like access to your location
+  </string>
+
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>
+    {{meta_title}} would like access to your location when in use
+  </string>
+
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+  <string>
+    {{meta_title}} would like access to your location
+  </string>
+
+  <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+  <string>
+    {{meta_title}} would like temporary access to your location
+  </string>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access to your microphone
+  </string>
+
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access Speech Recognition
+  </string>
+
+  <key>NSMotionUsageDescription</key>
+  <string>
+    {{meta_title}} would like to access to detect your device motion
+  </string>
+
+
+  <!-- Security configuration -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+  </dict>
+
+
+  <!-- User given plist data -->
+{{ios_info_plist_data}}
 </dict>
 </plist>)XML";
 
@@ -1064,16 +1237,19 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>get-task-allow</key>
-  <{{apple_instruments}}/>
-  <key>com.apple.security.app-sandbox</key>
-  <true/>
   <key>com.apple.security.network.server</key>
   <true/>
   <key>com.apple.security.network.client</key>
   <true/>
-  <key>com.apple.security.device.bluetooth</key>
+  <key>com.apple.security.cs.allow-jit</key>
   <true/>
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <key>com.apple.security.inherit</key>
+  <true/>
+
+  <!-- Generated entitlements given plist data -->
+{{configured_entitlements}}
 </dict>
 </plist>)XML";
 
@@ -1082,7 +1258,7 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 //
 constexpr auto gGradleBuild = R"GROOVY(
 buildscript {
-  ext.kotlin_version = '1.7.0'
+  ext.kotlin_version = '1.9.10'
   repositories {
     google()
     mavenCentral()
@@ -1114,15 +1290,24 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  compileSdkVersion 33
-  ndkVersion "25.0.8775105"
+  compileSdkVersion 34
+  ndkVersion "26.0.10792818"
   flavorDimensions "default"
   namespace '{{meta_bundle_identifier}}'
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+
+  kotlinOptions {
+    jvmTarget = 17
+  }
 
   defaultConfig {
     applicationId "{{meta_bundle_identifier}}"
     minSdkVersion 26
-    targetSdkVersion 33
+    targetSdkVersion 34
     versionCode {{meta_revision}}
     versionName "{{meta_version}}"
 
@@ -1169,10 +1354,11 @@ android {
 
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
-  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
-  implementation 'androidx.appcompat:appcompat:1.5.0'
-  implementation 'androidx.webkit:webkit:1.4.0'
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+  implementation 'androidx.appcompat:appcompat:1.6.1'
+  implementation 'androidx.core:core-ktx:1.12.0'
+  implementation 'androidx.webkit:webkit:1.8.0'
 }
 )GROOVY";
 
@@ -1195,7 +1381,7 @@ org.gradle.parallel=true
 
 android.useAndroidX=true
 android.enableJetifier=true
-android.suppressUnsupportedCompileSdk=33
+android.suppressUnsupportedCompileSdk=34
 android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
@@ -1312,7 +1498,7 @@ constexpr auto gAndroidLayoutWebviewActivity = R"XML(
 
 constexpr auto gAndroidValuesStrings = R"XML(
 <resources>
-  <string name="app_name">{{build_name}}</string>
+  <string name="app_name">{{meta_title}}</string>
 </resources>
 )XML";
 
@@ -1483,6 +1669,11 @@ root = "/"
 ; default value: ""
 ; default_index  = ""
 
+; Enable watch mode
+; default value: false
+watch = false
+
+
 [permissions]
 ; Allow/Disallow fullscreen in application
 ; default value: true
@@ -1527,10 +1718,6 @@ root = "/"
 ; Allow/Disallow AirPlay access in application (macOS/iOS) only
 ; default value: true
 ; allow_airplay = true
-
-; Enable watch mode
-; default value: false
-watch = false
 
 
 [debug]
@@ -1636,11 +1823,10 @@ category = ""
 icon = ""
 
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
-sign = ""
-
 codesign_identity = ""
 
-sign_paths = ""
+; Additional paths to codesign
+codesign_paths = ""
 
 
 [native]

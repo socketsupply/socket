@@ -1,7 +1,7 @@
 #ifndef SSC_SOCKET_JSON_HH
 #define SSC_SOCKET_JSON_HH
 
-#include "../common.hh"
+#include "types.hh"
 
 namespace SSC::JSON {
   // forward
@@ -14,27 +14,19 @@ namespace SSC::JSON {
   class Number;
   class String;
 
-  using ObjectEntries = std::map<std::string, Any>;
+  using ObjectEntries = std::map<SSC::String, Any>;
   using ArrayEntries = std::vector<Any>;
-
-  inline auto replace (
-    const std::string &source,
-    const std::string &pattern,
-    const std::string &value
-  ) {
-    return std::regex_replace(source, std::regex(pattern), value);
-  }
 
   class Error : public std::invalid_argument {
     public:
-      std::string name;
-      std::string message;
-      std::string location;
+      SSC::String name;
+      SSC::String message;
+      SSC::String location;
 
       Error (
-        const std::string& name,
-        const std::string& message,
-        const std::string& location
+        const SSC::String& name,
+        const SSC::String& message,
+        const SSC::String& location
       ) : std::invalid_argument(name + ": " + message + " (from " + location + ")") {
         this->name = name;
         this->message = message;
@@ -42,7 +34,7 @@ namespace SSC::JSON {
       }
 
       auto str () const {
-        return std::string(name + ": " + message + " (from " + location + ")");
+        return SSC::String(name + ": " + message + " (from " + location + ")");
       }
   };
 
@@ -63,28 +55,28 @@ namespace SSC::JSON {
       Type type = t;
       D data;
 
-      auto typeof () const {
+      const SSC::String typeof () const {
         switch (this->type) {
-          case Type::Empty: return std::string("empty");
-          case Type::Raw: return std::string("raw");
-          case Type::Any: return std::string("any");
-          case Type::Array: return std::string("array");
-          case Type::Boolean: return std::string("boolean");
-          case Type::Number: return std::string("number");
-          case Type::Null: return std::string("null");
-          case Type::Object: return std::string("object");
-          case Type::String: return std::string("string");
+          case Type::Empty: return SSC::String("empty");
+          case Type::Raw: return SSC::String("raw");
+          case Type::Any: return SSC::String("any");
+          case Type::Array: return SSC::String("array");
+          case Type::Boolean: return SSC::String("boolean");
+          case Type::Number: return SSC::String("number");
+          case Type::Null: return SSC::String("null");
+          case Type::Object: return SSC::String("object");
+          case Type::String: return SSC::String("string");
         }
       }
 
-      auto isRaw() const { return this->type == Type::Raw; }
-      auto isArray () const { return this->type == Type::Array; }
-      auto isBoolean () const { return this->type == Type::Boolean; }
-      auto isNumber () const { return this->type == Type::Number; }
-      auto isNull () const { return this->type == Type::Null; }
-      auto isObject () const { return this->type == Type::Object; }
-      auto isString () const { return this->type == Type::String; }
-      auto isEmpty () const { return this->type == Type::Empty; }
+      bool isRaw() const { return this->type == Type::Raw; }
+      bool isArray () const { return this->type == Type::Array; }
+      bool isBoolean () const { return this->type == Type::Boolean; }
+      bool isNumber () const { return this->type == Type::Number; }
+      bool isNull () const { return this->type == Type::Null; }
+      bool isObject () const { return this->type == Type::Object; }
+      bool isString () const { return this->type == Type::String; }
+      bool isEmpty () const { return this->type == Type::Empty; }
   };
 
   class Null : public Value<std::nullptr_t, Type::Null> {
@@ -95,7 +87,7 @@ namespace SSC::JSON {
         return nullptr;
       }
 
-      std::string str () const {
+      SSC::String str () const {
         return "null";
       }
   };
@@ -141,7 +133,7 @@ namespace SSC::JSON {
       Any (const Number);
       Any (const char);
       Any (const char *);
-      Any (const std::string);
+      Any (const SSC::String);
       Any (const String);
       Any (const Object);
       Any (const ObjectEntries);
@@ -149,7 +141,7 @@ namespace SSC::JSON {
       Any (const ArrayEntries);
       Any (const Raw source);
 
-      std::string str () const;
+      SSC::String str () const;
 
       template <typename T> T& as () const {
         auto ptr = this->pointer.get();
@@ -162,13 +154,13 @@ namespace SSC::JSON {
       }
   };
 
-  class Raw : public Value<std::string, Type::Raw> {
+  class Raw : public Value<SSC::String, Type::Raw> {
     public:
       Raw (const Raw& raw) { this->data = raw.data; }
       Raw (const Raw* raw) { this->data = raw->data; }
-      Raw (const std::string& source) { this->data = source; }
+      Raw (const SSC::String& source) { this->data = source; }
 
-      const std::string str () const {
+      const SSC::String str () const {
         return this->data;
       }
   };
@@ -183,7 +175,7 @@ namespace SSC::JSON {
     public:
       using Entries = ObjectEntries;
       Object () = default;
-      Object (std::map<std::string, int> entries) {
+      Object (std::map<SSC::String, int> entries) {
         for (auto const &tuple : entries) {
           auto key = tuple.first;
           auto value = tuple.second;
@@ -191,7 +183,7 @@ namespace SSC::JSON {
         }
       }
 
-      Object (std::map<std::string, bool> entries) {
+      Object (std::map<SSC::String, bool> entries) {
         for (auto const &tuple : entries) {
           auto key = tuple.first;
           auto value = tuple.second;
@@ -199,7 +191,7 @@ namespace SSC::JSON {
         }
       }
 
-      Object (std::map<std::string, double> entries) {
+      Object (std::map<SSC::String, double> entries) {
         for (auto const &tuple : entries) {
           auto key = tuple.first;
           auto value = tuple.second;
@@ -207,7 +199,7 @@ namespace SSC::JSON {
         }
       }
 
-      Object (std::map<std::string, int64_t> entries) {
+      Object (std::map<SSC::String, int64_t> entries) {
         for (auto const &tuple : entries) {
           auto key = tuple.first;
           auto value = tuple.second;
@@ -227,7 +219,7 @@ namespace SSC::JSON {
         this->data = object.value();
       }
 
-      Object (const std::map<std::string, std::string> map) {
+      Object (const std::map<SSC::String, SSC::String> map) {
         for (const auto& tuple : map) {
           auto key = tuple.first;
           auto value = Any(tuple.second);
@@ -235,13 +227,13 @@ namespace SSC::JSON {
         }
       }
 
-      std::string str () const;
+      SSC::String str () const;
 
       const Object::Entries value () const {
         return this->data;
       }
 
-      Any& get (const std::string key) {
+      Any& get (const SSC::String key) {
         if (this->data.find(key) != this->data.end()) {
           return this->data.at(key);
         }
@@ -249,15 +241,15 @@ namespace SSC::JSON {
         return anyNull;
       }
 
-      void set (const std::string key, Any value) {
+      void set (const SSC::String key, Any value) {
         this->data[key] = value;
       }
 
-      bool has (const std::string& key) const {
+      bool has (const SSC::String& key) const {
         return this->data.find(key) != this->data.end();
       }
 
-      Any operator [] (const std::string& key) const {
+      Any operator [] (const SSC::String& key) const {
         if (this->data.find(key) != this->data.end()) {
           return this->data.at(key);
         }
@@ -265,7 +257,7 @@ namespace SSC::JSON {
         return nullptr;
       }
 
-      Any &operator [] (const std::string& key) {
+      Any &operator [] (const SSC::String& key) {
         return this->data[key];
       }
 
@@ -288,7 +280,7 @@ namespace SSC::JSON {
         }
       }
 
-      std::string str () const;
+      SSC::String str () const;
 
       Array::Entries value () const {
         return this->data;
@@ -376,7 +368,7 @@ namespace SSC::JSON {
         this->data = data != nullptr;
       }
 
-      Boolean (std::string string) {
+      Boolean (SSC::String string) {
         this->data = string.size() > 0;
       }
 
@@ -384,7 +376,7 @@ namespace SSC::JSON {
         return this->data;
       }
 
-      std::string str () const {
+      SSC::String str () const {
         return this->data ? "true" : "false";
       }
   };
@@ -422,26 +414,26 @@ namespace SSC::JSON {
         return this->data;
       }
 
-      std::string str () const;
+      SSC::String str () const;
   };
 
-  class String : public Value<std::string, Type::String> {
+  class String : public Value<SSC::String, Type::String> {
     public:
       String () = default;
       String (const String& data) {
-        this->data = std::string(data.value());
+        this->data = SSC::String(data.value());
       }
 
-      String (const std::string data) {
+      String (const SSC::String data) {
         this->data = data;
       }
 
       String (const char data) {
-        this->data = std::string(1, data);
+        this->data = SSC::String(1, data);
       }
 
       String (const char *data) {
-        this->data = std::string(data);
+        this->data = SSC::String(data);
       }
 
       String (const Any& any) {
@@ -454,12 +446,9 @@ namespace SSC::JSON {
         this->data = boolean.str();
       }
 
-      std::string str () const {
-        auto escaped = replace(this->data, "\"", "\\\"");
-        return "\"" + replace(escaped, "\n", "\\n") + "\"";
-      }
+      SSC::String str () const;
 
-      std::string value () const {
+      SSC::String value () const {
         return this->data;
       }
 

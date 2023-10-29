@@ -1,7 +1,14 @@
 #include "../app/app.hh"
+#include "../cli/cli.hh"
+#include "../ipc/ipc.hh"
+#include "../core/core.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
-#include "../ipc/ipc.hh"
+
+#include <iostream>
+#include <ostream>
+#include <regex>
+#include <span>
 
 //
 // A cross platform MAIN macro that
@@ -20,6 +27,10 @@
 #define MAIN                                   \
   const int instanceId = 0;                    \
   int main (int argc, char** argv)
+#endif
+
+#if defined(__APPLE__)
+#include <os/log.h>
 #endif
 
 #define InvalidWindowIndexError(index) \
@@ -46,6 +57,17 @@ SSC::String getNavigationError (const String &cwd, const String &value) {
   }
 
   return SSC::String("");
+}
+
+inline const Vector<int> splitToInts (const String& s, const char& c) {
+  Vector<int> result;
+  String token;
+  std::istringstream ss(s);
+
+  while (std::getline(ss, token, c)) {
+    result.push_back(std::stoi(token));
+  }
+  return result;
 }
 
 //
@@ -182,11 +204,11 @@ MAIN {
   for (auto const &envKey : parseStringList(app.appData["build_env"])) {
     auto cleanKey = trim(envKey);
 
-    if (!hasEnv(cleanKey)) {
+    if (!Env::has(cleanKey)) {
       continue;
     }
 
-    auto envValue = getEnv(cleanKey.c_str());
+    auto envValue = Env::get(cleanKey.c_str());
 
     env << SSC::String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -247,15 +269,15 @@ MAIN {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
-          stdWrite(decodeURIComponent(message.get("value")), false);
+          IO::write(message.get("value"), false);
         }
       },
-      [](SSC::String const &out) { stdWrite(out, true); },
+      [](SSC::String const &out) { IO::write(out, true); },
       [](SSC::String const &code){ exit(std::stoi(code)); }
     );
 
     if (cmd.size() == 0) {
-      stdWrite("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
+      IO::write("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
       exit(1);
     }
 
@@ -279,7 +301,24 @@ MAIN {
     return exitCode;
   }
 
+#if defined(__APPLE__)
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    "socket.runtime.mobile"
+  #else
+    "socket.runtime.desktop"
+  #endif
+  );
+#endif
+
   auto onStdErr = [&](auto err) {
+  #if defined(__APPLE__)
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", err.c_str());
+  #endif
+    std::cerr << "\033[31m" + err + "\033[0m";
+
     for (auto w : windowManager.windows) {
       if (w != nullptr) {
         auto window = windowManager.getWindow(w->opts.index);
@@ -293,45 +332,64 @@ MAIN {
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   auto onStdOut = [&](SSC::String const &out) {
+    IPC::Message message(out);
+
+    if (message.index > 0 && message.name.size() == 0) {
+      // @TODO: print warning
+      return;
+    }
+
+    if (message.index > SSC_MAX_WINDOWS) {
+      // @TODO: print warning
+      return;
+    }
+
+    auto value = message.get("value");
+
+    if (message.name == "stdout") {
+#if defined(__APPLE__)
+      dispatch_async(dispatch_get_main_queue(), ^{
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
+      });
+#endif
+      std::cout << value;
+      return;
+    }
+
+    if (message.name == "stderr") {
+#if defined(__APPLE__)
+      dispatch_async(dispatch_get_main_queue(), ^{
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
+      });
+#endif
+      std::cerr << "\033[31m" + value + "\033[0m";
+      return;
+    }
+
     //
     // ## Dispatch
     // Messages from the backend process may be sent to the render process. If they
     // are parsable commands, try to do something with them, otherwise they are
     // just stdout and we can write the data to the pipe.
     //
-    app.dispatch([&, out] {
-      IPC::Message message(out);
-
-      auto value = message.get("value");
+    app.dispatch([&, message, value] {
       auto seq = message.get("seq");
 
-      if (message.index > 0 && message.name.size() == 0) {
-        // @TODO: print warning
-        return;
-      }
-
-      if (message.index > SSC_MAX_WINDOWS) {
-        // @TODO: print warning
-        return;
-      }
-
       if (message.name == "send") {
+        SSC::String script = getEmitToRenderProcessJavaScript(
+          message.get("event"),
+          value
+        );
         if (message.index >= 0) {
           auto window = windowManager.getWindow(message.index);
           if (window) {
-            window->eval(getEmitToRenderProcessJavaScript(
-              decodeURIComponent(message.get("event")),
-              value
-            ));
+            window->eval(script);
           }
         } else {
           for (auto w : windowManager.windows) {
             if (w != nullptr) {
               auto window = windowManager.getWindow(w->opts.index);
-              window->eval(getEmitToRenderProcessJavaScript(
-                decodeURIComponent(message.get("event")),
-                value
-              ));
+              window->eval(script);
             }
           }
         }
@@ -408,7 +466,7 @@ MAIN {
   //
   auto onMessage = [&](auto out) {
     // debug("onMessage %s", out.c_str());
-    IPC::Message message(out);
+    IPC::Message message(out, true);
 
     auto window = windowManager.getWindow(message.index);
     auto value = message.get("value");
@@ -471,7 +529,7 @@ MAIN {
 
     if (message.name == "window.send") {
       const auto event = message.get("event");
-      const auto value = decodeURIComponent(message.get("value"));
+      const auto value = message.get("value");
       const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       const auto currentWindow = windowManager.getWindow(message.index);
@@ -485,14 +543,14 @@ MAIN {
 
     if (message.name == "application.exit") {
       try {
-        exitCode = std::stoi(decodeURIComponent(value));
+        exitCode = std::stoi(value);
       } catch (...) {
       }
 
     #if defined(__APPLE__)
       if (app.fromSSC) {
         debug("__EXIT_SIGNAL__=%d", exitCode);
-        notifyCli();
+        CLI::notify();
       }
     #endif
       window->exit(exitCode);
@@ -517,7 +575,7 @@ MAIN {
     if (message.name == "application.getWindows") {
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
-      auto indices = SSC::splitToInts(value, ',');
+      auto indices = splitToInts(value, ',');
       if (indices.size() == 0) {
         for (auto w : windowManager.windows) {
           if (w != nullptr) {
@@ -549,7 +607,7 @@ MAIN {
         return;
       }
 
-      SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("url")));
+      SSC::String error = getNavigationError(cwd, message.get("url"));
       if (error.size() > 0) {
         const JSON::Object json = SSC::JSON::Object::Entries {
           {"err", JSON::Object::Entries {
@@ -734,7 +792,7 @@ MAIN {
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       const auto url = message.get("url");
-      const auto error = getNavigationError(cwd, decodeURIComponent(url));
+      const auto error = getNavigationError(cwd, url);
 
       if (error.size() > 0) {
         JSON::Object json = JSON::Object::Entries {
@@ -853,7 +911,7 @@ MAIN {
 
     if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
-      window->setSystemMenu(seq, decodeURIComponent(value));
+      window->setSystemMenu(seq, value);
       return;
     }
 
@@ -889,9 +947,9 @@ MAIN {
       bool bDirs = message.get("allowDirs").compare("true") == 0;
       bool bFiles = message.get("allowFiles").compare("true") == 0;
       bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = decodeURIComponent(message.get("defaultName"));
-      SSC::String defaultPath = decodeURIComponent(message.get("defaultPath"));
-      SSC::String title = decodeURIComponent(message.get("title"));
+      SSC::String defaultName = message.get("defaultName");
+      SSC::String defaultPath = message.get("defaultPath");
+      SSC::String title = message.get("title");
 
       window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
@@ -899,7 +957,7 @@ MAIN {
 
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
-      window->setContextMenu(seq, decodeURIComponent(value));
+      window->setContextMenu(seq, value);
       window->resolvePromise(
         message.seq,
         OK_STATE,
@@ -950,7 +1008,7 @@ MAIN {
   #if defined(__APPLE__)
     if (app_ptr->fromSSC) {
       debug("__EXIT_SIGNAL__=%d", 0);
-      notifyCli();
+      CLI::notify();
     }
   #endif
 

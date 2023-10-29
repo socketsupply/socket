@@ -4,6 +4,10 @@
  * This is a low-level API that you don't need unless you are implementing
  * a library on top of Socket SDK. A Socket SDK app has two or three processes.
  *
+ * When you need to send a message to another window or to the backend, you
+ * should use the `application` module to get a reference to the window and
+ * use the `send` method to send a message.
+ *
  * - The `Render` process, is the UI where the HTML, CSS, and JS are run.
  * - The `Bridge` process, is the thin layer of code that manages everything.
  * - The `Main` process, is for apps that need to run heavier compute jobs. And
@@ -171,7 +175,7 @@ function getErrorClass (type, fallback) {
   if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
-      const object = Object.create(globalThis[type].prototype, {
+      const object = Object.create(globalThis[${type}].prototype, {
         code: { value: null }
       })
 
@@ -993,7 +997,7 @@ export async function ready () {
       if (Date.now() - startReady > 10000) {
         reject(new Error('failed to resolve globalThis.__args'))
       } else if (globalThis.__args) {
-        queueMicrotask(resolve)
+        queueMicrotask(() => resolve())
       } else {
         queueMicrotask(loop)
       }
@@ -1001,16 +1005,46 @@ export async function ready () {
   })
 }
 
+const { toString } = Object.prototype
+
+class IPCSearchParams extends URLSearchParams {
+  constructor (params, nonce) {
+    let value
+    if (params !== undefined && toString.call(params) !== '[object Object]') {
+      value = params
+      params = null
+    }
+
+    super({
+      ...params,
+      index: globalThis.__args?.index ?? 0,
+      seq: 'R' + nextSeq++
+    })
+
+    if (value !== undefined) {
+      this.set('value', value)
+    }
+
+    if (nonce) {
+      this.set('nonce', nonce)
+    }
+  }
+
+  toString () {
+    return super.toString().replace(/\+/g, '%20')
+  }
+}
+
 /**
  * Sends a synchronous IPC command over XHR returning a `Result`
  * upon success or error.
  * @param {string} command
- * @param {object|string?} [params]
+ * @param {any?} [value]
  * @param {object?} [options]
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, params = {}, options = {}) {
+export function sendSync (command, value, options = {}) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1021,23 +1055,15 @@ export function sendSync (command, params = {}, options = {}) {
   }
 
   const request = new globalThis.XMLHttpRequest()
-  const index = globalThis.__args?.index ?? 0
-  const seq = nextSeq++
-  const uri = `ipc://${command}`
-
-  params = new URLSearchParams(params)
-  params.set('index', index)
-  params.set('seq', 'R' + seq)
-  params.set('nonce', Date.now())
-
-  const query = `?${params}`
+  const params = new IPCSearchParams(value, Date.now())
+  const uri = `ipc://${command}?${params}`
 
   if (debug.enabled) {
-    debug.log('ipc.sendSync: %s', uri + query)
+    debug.log('ipc.sendSync: %s', uri)
   }
 
   request.responseType = options?.responseType ?? ''
-  request.open('GET', uri + query, false)
+  request.open('GET', uri, false)
   request.send()
 
   const response = getRequestResponse(request, options)
@@ -1132,36 +1158,17 @@ export async function send (command, value, options) {
     debug.log('ipc.send:', command, value)
   }
 
-  const seq = 'R' + nextSeq++
-  const index = value?.index ?? globalThis.__args?.index ?? 0
-  let serialized = ''
-
-  try {
-    if (value !== undefined && ({}).toString.call(value) !== '[object Object]') {
-      value = { value }
-    }
-
-    const params = {
-      ...value,
-      index,
-      seq
-    }
-
-    serialized = new URLSearchParams(params).toString()
-    serialized = serialized.replace(/\+/g, '%20')
-  } catch (err) {
-    console.error(`${err.message} (${serialized})`)
-    return Promise.reject(err.message)
-  }
+  const params = new IPCSearchParams(value)
+  const uri = `ipc://${command}?${params}`
 
   if (options?.bytes) {
-    postMessage(`ipc://${command}?${serialized}`, options?.bytes)
+    postMessage(uri, options.bytes)
   } else {
-    postMessage(`ipc://${command}?${serialized}`)
+    postMessage(uri)
   }
 
   return await new Promise((resolve) => {
-    const event = `resolve-${index}-${seq}`
+    const event = `resolve-${params.get('index')}-${params.get('seq')}`
     globalThis.addEventListener(event, onresolve, { once: true })
     function onresolve (event) {
       const result = Result.from(event.detail, null, command)
@@ -1181,12 +1188,12 @@ export async function send (command, value, options) {
 /**
  * Sends an async IPC command request with parameters and buffered bytes.
  * @param {string} command
- * @param {object=} params
+ * @param {any=} value
  * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
  * @param {object=} options
  * @ignore
  */
-export async function write (command, params, buffer, options) {
+export async function write (command, value, buffer, options) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1196,9 +1203,8 @@ export async function write (command, params, buffer, options) {
 
   const signal = options?.signal
   const request = new globalThis.XMLHttpRequest()
-  const index = globalThis?.__args?.index ?? 0
-  const seq = nextSeq++
-  const uri = `ipc://${command}`
+  const params = new IPCSearchParams(value, Date.now())
+  const uri = `ipc://${command}?${params}`
 
   let resolved = false
   let aborted = false
@@ -1217,19 +1223,12 @@ export async function write (command, params, buffer, options) {
     })
   }
 
-  params = new URLSearchParams(params)
-  params.set('index', index)
-  params.set('seq', 'R' + seq)
-  params.set('nonce', Date.now())
-
-  const query = `?${params}`
-
   request.responseType = options?.responseType ?? ''
-  request.open('POST', uri + query, true)
+  request.open('POST', uri, true)
   await request.send(buffer || null)
 
   if (debug.enabled) {
-    debug.log('ipc.write:', uri + query, buffer || null)
+    debug.log('ipc.write:', uri, buffer || null)
   }
 
   return await new Promise((resolve) => {
@@ -1283,11 +1282,11 @@ export async function write (command, params, buffer, options) {
  * Sends an async IPC command request with parameters requesting a response
  * with buffered bytes.
  * @param {string} command
- * @param {object=} params
+ * @param {any=} value
  * @param {object=} options
  * @ignore
  */
-export async function request (command, params, options) {
+export async function request (command, value, options) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1299,10 +1298,9 @@ export async function request (command, params, options) {
 
   await ready()
 
-  const request = new globalThis.XMLHttpRequest()
   const signal = options?.signal
-  const index = globalThis?.__args?.index ?? 0
-  const seq = nextSeq++
+  const request = new globalThis.XMLHttpRequest()
+  const params = new IPCSearchParams(value, Date.now())
   const uri = `ipc://${command}`
 
   let resolved = false
@@ -1321,11 +1319,6 @@ export async function request (command, params, options) {
       }
     })
   }
-
-  params = new URLSearchParams(params)
-  params.set('index', index)
-  params.set('seq', 'R' + seq)
-  params.set('nonce', Date.now())
 
   const query = `?${params}`
 

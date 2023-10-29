@@ -237,6 +237,10 @@ function main () {
     fi
   fi
 
+  if [[ "$host" = "Linux" ]] && [[ "$platform" = "desktop" ]]; then
+    "$root/bin/generate-socket-runtime-pkg-config.sh"
+  fi
+
   if [[ "$platform" == "android" ]]; then
     # This is a sanity check to confirm that the static_library is > 8 bytes
     # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.

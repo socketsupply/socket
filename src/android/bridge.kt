@@ -151,7 +151,10 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     bytes: ByteArray? = null,
     callback: RouteCallback
   ): Boolean {
+    val activity = this.runtime.get()?.activity?.get() ?: return false
+    val runtime = activity.runtime
     val message = Message(value)
+
     message.bytes = bytes
 
     if (buffers.contains(message.seq)) {
@@ -160,6 +163,346 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     }
 
     when (message.command) {
+      "permissions.request" -> {
+        if (!message.has("name")) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "Expecting 'name' in parameters" }
+          }"""))
+          return true
+        }
+
+        val name = message.get("name")
+        val permissions = mutableListOf<String>()
+
+        when (name) {
+          "geolocation" -> {
+            if (
+              activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
+              activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
+            ) {
+              callback(Result(0, message.seq, message.command, "{}"))
+              return true
+            }
+
+            permissions.add("android.permission.ACCESS_COARSE_LOCATION")
+            permissions.add("android.permission.ACCESS_FINE_LOCATION")
+          }
+
+          "push", "notifications" -> {
+            if (activity.checkPermission("android.permission.POST_NOTIFICATIONS")) {
+              callback(Result(0, message.seq, message.command, "{}"))
+              return true
+            }
+
+            permissions.add("android.permission.POST_NOTIFICATIONS")
+          }
+
+          else -> {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "Unknown permission requested: '$name'"
+              }
+            }"""))
+            return true
+          }
+        }
+
+        activity.requestPermissions(permissions.toTypedArray(), fun (granted: Boolean) {
+          if (granted) {
+            callback(Result(0, message.seq, message.command, "{}"))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permission request for '$name'"
+              }
+            }"""))
+          }
+        })
+
+        return true
+      }
+
+      "permissions.query" -> {
+        if (!message.has("name")) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "Expecting 'name' in parameters" }
+          }"""))
+          return true
+        }
+
+        val name = message.get("name")
+
+        if (name == "geolocation") {
+          if (!runtime.isPermissionAllowed("geolocation")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions to access the device's location"
+              }
+            }"""))
+          } else if (
+            activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
+            activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
+          ) {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "granted"
+              }
+            }"""))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "prompt"
+              }
+            }"""))
+          }
+        }
+
+        if (name == "notifications" || name == "push") {
+          if (!runtime.isPermissionAllowed("notifications")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions to show notifications"
+              }
+            }"""))
+          } else if (
+            activity.checkPermission("android.permission.POST_NOTIFICATIONS") &&
+            androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
+          ) {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "granted"
+              }
+            }"""))
+          } else {
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "state": "prompt"
+              }
+            }"""))
+          }
+        }
+
+        if (name == "persistent-storage" || name == "storage-access") {
+          if (!runtime.isPermissionAllowed("data_access")) {
+            callback(Result(0, message.seq, message.command, """{
+              "err": {
+                "message": "User denied permissions for ${name.replace('-', ' ')}"
+              }
+            }"""))
+          }
+        }
+
+        return true
+      }
+
+      "notification.show" -> {
+        if (
+          !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
+          !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
+        ) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "User denied permissions for 'notifications'" }
+          }"""))
+          return true
+        }
+
+        if (!message.has("id")) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "Expecting 'id' in parameters" }
+          }"""))
+          return true
+        }
+
+        if (!message.has("title")) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "Expecting 'title' in parameters" }
+          }"""))
+          return true
+        }
+
+        val id = message.get("id")
+        val channel = message.get("channel", "default").replace("default", "__BUNDLE_IDENTIFIER__");
+        val vibrate = message.get("vibrate")
+          .split(",")
+          .filter({ it.length > 0 })
+          .map({ it.toInt().toLong() })
+          .toTypedArray()
+
+        val identifier = id.toLongOrNull()?.toInt() ?: (0..16384).random().toInt()
+
+        val contentIntent = android.content.Intent(activity, MainActivity::class.java).apply {
+          flags = (
+            android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+            android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+          )
+        }
+
+        val deleteIntent = android.content.Intent(activity, MainActivity::class.java).apply {
+          flags = (
+            android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+            android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+          )
+        }
+
+        contentIntent.setAction("notification.response.default")
+        contentIntent.putExtra("id", id)
+
+        deleteIntent.setAction("notification.response.dismiss")
+        deleteIntent.putExtra("id", id)
+
+        val pendingContentIntent: android.app.PendingIntent = android.app.PendingIntent.getActivity(
+          activity,
+          identifier,
+          contentIntent,
+          (
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+            android.app.PendingIntent.FLAG_IMMUTABLE or
+            android.app.PendingIntent.FLAG_ONE_SHOT
+          )
+        )
+
+        val pendingDeleteIntent: android.app.PendingIntent = android.app.PendingIntent.getActivity(
+          activity,
+          identifier,
+          deleteIntent,
+          (
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+            android.app.PendingIntent.FLAG_IMMUTABLE
+          )
+        )
+
+        val builder = androidx.core.app.NotificationCompat.Builder(
+          activity,
+          channel
+        )
+
+        builder
+          .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+          .setContentTitle(message.get("title", "Notification"))
+          .setContentIntent(pendingContentIntent)
+          .setDeleteIntent(pendingDeleteIntent)
+          .setAutoCancel(true)
+
+        if (message.has("body")) {
+          builder.setContentText(message.get("body"))
+        }
+
+        if (message.has("icon")) {
+          val url = message.get("icon")
+            .replace("socket://__BUNDLE_IDENTIFIER__", "https://appassets.androidplatform.net/assets")
+            .replace("https://__BUNDLE_IDENTIFIER__", "https://appassets.androidplatform.net/assets")
+
+          val icon = androidx.core.graphics.drawable.IconCompat.createWithContentUri(url)
+          builder.setSmallIcon(icon)
+        } else {
+          val icon = androidx.core.graphics.drawable.IconCompat.createWithResource(
+            activity,
+            R.mipmap.ic_launcher_round
+          )
+          builder.setSmallIcon(icon)
+        }
+
+        if (message.has("image")) {
+          val url = message.get("image")
+            .replace("socket://__BUNDLE_IDENTIFIER__", "https://appassets.androidplatform.net/assets")
+            .replace("https://__BUNDLE_IDENTIFIER__", "https://appassets.androidplatform.net/assets")
+
+          val icon = android.graphics.drawable.Icon.createWithContentUri(url)
+          builder.setLargeIcon(icon)
+        }
+
+        if (message.has("category")) {
+          var category = message.get("category")
+            .replace("msg", "message")
+            .replace("-", "_")
+
+          builder.setCategory(category)
+        }
+
+        if (message.get("silent") == "true") {
+          builder.setSilent(true)
+        }
+
+        val notification = builder.build()
+        with (androidx.core.app.NotificationManagerCompat.from(activity)) {
+          notify(
+            message.get("tag"),
+            identifier,
+            notification
+          )
+        }
+
+        callback(Result(0, message.seq, message.command, """{
+          "data": {
+            "id": "$id"
+          }
+        }"""))
+
+        activity.runOnUiThread {
+          this.emit("notificationpresented", """{
+            "id": "$id"
+          }""")
+        }
+
+        return true
+      }
+
+      "notification.close" -> {
+        if (
+          !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
+          !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
+        ) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "User denied permissions for 'notifications'" }
+          }"""))
+          return true
+        }
+
+        if (!message.has("id")) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "Expecting 'id' in parameters" }
+          }"""))
+          return true
+        }
+
+        val id = message.get("id")
+        with (androidx.core.app.NotificationManagerCompat.from(activity)) {
+          cancel(
+            message.get("tag"),
+            id.toLongOrNull()?.toInt() ?: (0..16384).random().toInt()
+          )
+        }
+
+        callback(Result(0, message.seq, message.command, """{
+          "data": {
+            "id": "$id"
+          }
+        }"""))
+
+        activity.runOnUiThread {
+          this.emit("notificationresponse", """{
+            "id": "$id",
+            "action": "dismiss"
+          }""")
+        }
+
+        return true
+      }
+
+      "notification.list" -> {
+        if (
+          !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
+          !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
+        ) {
+          callback(Result(0, message.seq, message.command, """{
+            "err": { "message": "User denied permissions for 'notifications'" }
+          }"""))
+          return true
+        }
+
+        return true
+      }
+
       "buffer.map" -> {
         if (bytes != null) {
           buffers[message.seq] = bytes
@@ -209,6 +552,11 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       if (message.has("dest")) {
         var dest = message.get("dest")
         message.set("dest", root.resolve(java.nio.file.Paths.get(dest)).toString())
+      }
+
+      if (message.has("dst")) {
+        var dest = message.get("dst")
+        message.set("dst", root.resolve(java.nio.file.Paths.get(dest)).toString())
       }
     }
 
@@ -276,4 +624,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
   @Throws(java.lang.Exception::class)
   external fun route (msg: String, bytes: ByteArray?, requestId: Long): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun emit (event: String, data: String = ""): Boolean;
 }

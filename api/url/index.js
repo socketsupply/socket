@@ -9,14 +9,13 @@ const {
   serializeHost
 } = url
 
-export default URL
-export { URLPattern, URL, URLSearchParams, parseURL }
-
 for (const key in globalThis.URL) {
   if (!URL[key]) {
     URL[key] = globalThis.URL[key].bind(globalThis.URL)
   }
 }
+
+URL.resolve = resolve
 
 export const parse = parseURL
 
@@ -41,3 +40,6 @@ url.serializeURLOrigin = function (input) {
 
   return serializeURLOrigin(input)
 }
+
+export default URL
+export { URLPattern, URL, URLSearchParams, parseURL }

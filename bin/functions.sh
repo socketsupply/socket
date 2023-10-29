@@ -92,7 +92,7 @@ function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$command" "$@"
     "$command" "$@"
-  else  
+  else
     "$command" "$@" > /dev/null 2>&1
   fi
 
@@ -557,6 +557,10 @@ function determine_cxx () {
 function first_time_experience_setup() {
   export BUILD_ANDROID="1"
   local target="$1"
+
+  if [[ -n "$NO_ANDROID" ]]; then
+    unset BUILD_ANDROID
+  fi
 
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then

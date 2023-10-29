@@ -1,6 +1,10 @@
 #ifndef SSC_PROCESS_PROCESS_H
 #define SSC_PROCESS_PROCESS_H
 
+#include <iostream>
+
+#include "../core/core.hh"
+
 #ifndef WIFEXITED
 #define WIFEXITED(w) ((w) & 0x7f)
 #endif
@@ -8,8 +12,6 @@
 #ifndef WEXITSTATUS
 #define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
 #endif
-
-#include "../common.hh"
 
 namespace SSC {
   struct ExecOutput {

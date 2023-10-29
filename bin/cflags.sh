@@ -41,7 +41,6 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
 else
   source "$root/bin/android-functions.sh"
   android_fte > /dev/null
-  cflags+=("-stdlib=libstdc++")
   cflags+=("-DANDROID -pthreads -fexceptions -fPIC -frtti -fsigned-char -D_FILE_OFFSET_BITS=64 -Wno-invalid-command-line-argument -Wno-unused-command-line-argument")
   cflags+=("-I$(dirname $NDK_BUILD)/sources/cxx-stl/llvm-libc++/include")
   cflags+=("-I$(dirname $NDK_BUILD)/sources/cxx-stl/llvm-libc++abi/include")
@@ -66,11 +65,15 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
     cflags+=("-arch arm64")
     cflags+=("-target arm64-apple-ios")
     cflags+=("-Wno-unguarded-availability-new")
-    cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
+    if [ -n "$IPHONEOS_VERSION_MIN" ]; then
+      cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
+    fi
   elif (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphonesimulator -show-sdk-path)"
     cflags+=("-arch $arch")
-    cflags+=("-mios-simulator-version-min=$IPHONEOS_VERSION_MIN")
+    if [ -n "$IOS_SIMULATOR_VERSION_MIN" ]; then
+      cflags+=("-mios-simulator-version-min=$IOS_SIMULATOR_VERSION_MIN")
+    fi
   fi
 
   cflags+=("-iframeworkwithsysroot /System/Library/Frameworks")
@@ -82,6 +85,7 @@ fi
 if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
   if [[ "$host" = "Darwin" ]]; then
     cflags+=("-ObjC++")
+    cflags+=("-fPIC")
   elif [[ "$host" = "Linux" ]]; then
     cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.1) -fPIC)
   elif [[ "$host" = "Win32" ]]; then

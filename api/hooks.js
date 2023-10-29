@@ -41,6 +41,22 @@
  * hooks.onOffline((event) => {
  *   // called when 'offline' events are dispatched on the global object
  * })
+ *
+ * hooks.onLanguageChange((event) => {
+ *   // called when 'languagechange' events are dispatched on the global object
+ * })
+ *
+ * hooks.onPermissionChange((event) => {
+ *   // called when 'permissionchange' events are dispatched on the global object
+ * })
+ *
+ * hooks.onNotificationResponse((event) => {
+ *   // called when 'notificationresponse' events are dispatched on the global object
+ * })
+ *
+ * hooks.onNotificationPresented((event) => {
+ *   // called when 'notificationpresented' events are dispatched on the global object
+ * })
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
@@ -74,13 +90,17 @@ function dispatchReadyEvent (target) {
 function proxyGlobalEvents (global, target) {
   const GLOBAL_EVENTS = [
     'data',
+    'error',
     'init',
+    'languagechange',
     'load',
     'message',
-    'online',
-    'offline',
-    'error',
     'messageerror',
+    'notificationpresented',
+    'notificationresponse',
+    'offline',
+    'online',
+    'permissionchange',
     'unhandledrejection'
   ]
 
@@ -243,14 +263,15 @@ export class Hooks extends EventTarget {
     // prior to hook initialization
     if (isRuntimeInitialized) {
       dispatchLoadEvent(this)
-      dispatchReadyEvent(this)
       dispatchInitEvent(this)
+      dispatchReadyEvent(this)
       return
     }
 
     addEventListenerOnce(global, RUNTIME_INIT_EVENT_NAME, () => {
       isRuntimeInitialized = true
       dispatchInitEvent(this)
+      dispatchReadyEvent(this)
     })
 
     if (!isWorkerContext && readyState !== 'complete') {
@@ -259,7 +280,6 @@ export class Hooks extends EventTarget {
 
     isGlobalLoaded = true
     dispatchLoadEvent(this)
-    dispatchReadyEvent(this)
   }
 
   /**
@@ -368,6 +388,166 @@ export class Hooks extends EventTarget {
     this.addEventListener('offline', callback)
     return () => this.removeEventListener('offline', callback)
   }
+
+  /**
+   * Calls callback when runtime user preferred language has changed.
+   * @param {function} callback
+   * @return {function}
+   */
+  onLanguageChange (callback) {
+    this.addEventListener('languagechange', callback)
+    return () => this.removeEventListener('languagechange', callback)
+  }
+
+  /**
+   * Calls callback when an application permission has changed.
+   * @param {function} callback
+   * @return {function}
+   */
+  onPermissionChange (callback) {
+    this.addEventListener('permissionchange', callback)
+    return () => this.removeEventListener('permissionchange', callback)
+  }
+
+  /**
+   * Calls callback in response to a displayed `Notification`.
+   * @param {function} callback
+   * @return {function}
+   */
+  onNotificationResponse (callback) {
+    this.addEventListener('notificationresponse', callback)
+    return () => this.removeEventListener('notificationresponse', callback)
+  }
+
+  /**
+   * Calls callback when a `Notification` is presented.
+   * @param {function} callback
+   * @return {function}
+   */
+  onNotificationPresented (callback) {
+    this.addEventListener('notificationpresented', callback)
+    return () => this.removeEventListener('notificationpresented', callback)
+  }
 }
 
-export default new Hooks()
+/**
+ * `Hooks` single instance.
+ * @ignore
+ */
+const hooks = new Hooks()
+
+/**
+ * Wait for the global Window, Document, and Runtime to be ready.
+ * The callback function is called exactly once.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onReady (callback) {
+  return hooks.onReady(callback)
+}
+
+/**
+ * Wait for the global Window and Document to be ready. The callback
+ * function is called exactly once.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onLoad (callback) {
+  return hooks.onLoad(callback)
+}
+
+/**
+ * Wait for the runtime to be ready. The callback
+ * function is called exactly once.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onInit (callback) {
+  return hooks.onInit(callback)
+}
+
+/**
+ * Calls callback when a global exception occurs.
+ * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onError (callback) {
+  return hooks.onError(callback)
+}
+
+/**
+ * Subscribes to the global data pipe calling callback when
+ * new data is emitted on the global Window.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onData (callback) {
+  return hooks.onData(callback)
+}
+
+/**
+ * Subscribes to global messages likely from an external `postMessage`
+ * invocation.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onMessage (callback) {
+  return hooks.onMessage(callback)
+}
+
+/**
+ * Calls callback when runtime is working online.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onOnline (callback) {
+  return hooks.onOnline(callback)
+}
+
+/**
+ * Calls callback when runtime is not working online.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onOffline (callback) {
+  return hooks.onOffline(callback)
+}
+
+/**
+ * Calls callback when runtime user preferred language has changed.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onLanguageChange (callback) {
+  return hooks.onLanguageChange(callback)
+}
+
+/**
+ * Calls callback when an application permission has changed.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onPermissionChange (callback) {
+  return hooks.onPermissionChange(callback)
+}
+
+/**
+ * Calls callback in response to a presented `Notification`.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onNotificationResponse (callback) {
+  return hooks.onNotificationResponse(callback)
+}
+
+/**
+ * Calls callback when a `Notification` is presented.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onNotificationPresented (callback) {
+  return hooks.onNotificationPresented(callback)
+}
+
+export default hooks

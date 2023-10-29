@@ -31,9 +31,9 @@ test('path.posix.join', (t) => {
   t.equal(path.posix.join('a', 'b', 'c'), 'a/b/c', 'join(a, b, c)')
   t.equal(path.posix.join('a', 'b', 'c', '../d'), 'a/b/d', 'join(a, b, c, ../d)')
   t.equal(path.posix.join('a', 'b', 'c', '../d', '../../b'), 'a/b', 'join(a, b, c, ../d, ../../b)')
+  t.equal(path.posix.join('/a', 'b', 'c'), '/a/b/c', 'join(/a, b, c)')
 })
 
-/*
 test('path.posix.dirname', (t) => {
   t.equal(path.posix.dirname('a/b/c'), 'a/b', 'a/b')
   t.equal(path.posix.dirname('a/b/c/d.js'), 'a/b/c', 'a/b/c')
@@ -63,7 +63,6 @@ test('path.posix.extname', (t) => {
   t.equal(path.posix.extname('/a.js'), '.js', '.js')
   t.equal(path.posix.extname('a.js'), '.js', '.js')
 })
-*/
 
 test('path.win32.resolve', (t) => {
   const cwd = '\\'
@@ -81,7 +80,6 @@ test('path.win32.resolve', (t) => {
   t.equal(a___, cwd + 'a', 'path.win32.resolve() resolves path with 5 component')
 })
 
-/*
 test('path.win32.join', (t) => {
   t.equal(path.win32.join('a', 'b', 'c'), 'a\\b\\c', 'join(a, b, c)')
   t.equal(path.win32.join('a', 'b', 'c', '..\\d'), 'a\\b\\d', 'join(a, b, c, ..\\d)')
@@ -263,4 +261,3 @@ test('path.relative', (t) => {
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d'), 'd', 'd')
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d\\e'), 'd\\e', 'd\\e')
 })
-*/

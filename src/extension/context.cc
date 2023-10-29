@@ -15,7 +15,7 @@ sapi_context_t* sapi_context_create (
     : parent->memory.alloc<sapi_context_t>(parent, parent);
 
   if (retained || parent == nullptr) {
-    context->retained = true;
+    context->retain();
   }
 
   return context;
@@ -62,7 +62,7 @@ void sapi_context_retain (sapi_context_t* ctx) {
 
 bool sapi_context_retained (const sapi_context_t* ctx) {
   if (ctx == nullptr) return false;
-  return ctx->retained;
+  return ctx->retain_count > 0;
 }
 
 void sapi_context_release (sapi_context_t* ctx) {
@@ -71,8 +71,9 @@ void sapi_context_release (sapi_context_t* ctx) {
     sapi_debug(ctx, "'context_release' is not allowed.");
     return;
   }
-  ctx->release();
-  delete ctx;
+  if (ctx->release()) {
+    delete ctx;
+  }
 }
 
 uv_loop_t* sapi_context_get_loop (const sapi_context_t* ctx) {

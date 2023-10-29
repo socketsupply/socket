@@ -234,7 +234,6 @@ function _build_cli {
   local test_headers=()
   if [[ -z "$ignore_header_mtimes" ]]; then
     test_headers+=("$(find "$src"/cli/*.hh 2>/dev/null)")
-    test_headers+=("$(ls "$src"/*.hh)")
   fi
   test_headers+=("$src"/../VERSION.txt)
   local newest_mtime=0
@@ -354,7 +353,7 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1901.177 --output "$tmp/webview2.zip"
+  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2045.28 --output "$tmp/webview2.zip"
   cd "$tmp" || exit 1
   unzip -q "$tmp/webview2.zip"
   mkdir -p "$BUILD_DIR/include"
@@ -487,10 +486,10 @@ function _prebuild_ios_simulator_main () {
 function _prepare {
   echo "# preparing directories..."
   local arch="$(host_arch)"
-  rm -rf "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
+  rm -rf "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api,pkgconfig}
   rm -rf "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
-  mkdir -p "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
+  mkdir -p "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api,pkgconfig}
   mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
   if [[ "$host" = "Darwin" ]]; then
@@ -570,6 +569,13 @@ function _install {
   else
     echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
     exit 1
+  fi
+
+  if [ "$host" == "Linux" ]; then
+    echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
+    rm -rf "$SOCKET_HOME/pkgconfig"
+    mkdir -p "$SOCKET_HOME/pkgconfig"
+    cp -rfp "$BUILD_DIR/$arch-$platform/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
   fi
 
   if [ "$platform" == "desktop" ]; then
@@ -880,7 +886,7 @@ function _check_compiler_features {
   cflags+=("-I$root")
 
   $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
-    #include "src/common.hh"
+    #include "src/core/core.hh"
     int main () { return 0; }
 EOF_CC
 
@@ -897,7 +903,6 @@ function onsignal () {
   exit "$status"
 }
 
-_check_compiler_features
 _prepare
 cd "$BUILD_DIR" || exit 1
 
@@ -966,6 +971,7 @@ if [[ "$host" == "Win32" ]]; then
   wait $_compile_libuv_pid
 fi
 
+_check_compiler_features
 _build_runtime_library
 _build_cli & pids+=($!)
 

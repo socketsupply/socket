@@ -1,47 +1,22 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
-#include "../common.hh"
-#include <uv.h>
-
-#if defined(__APPLE__)
-#import <Webkit/Webkit.h>
-#import <Network/Network.h>
-#import <Foundation/Foundation.h>
-#import <CoreLocation/CoreLocation.h>
-#import <CoreBluetooth/CoreBluetooth.h>
-#import <UserNotifications/UserNotifications.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-#import <UIKit/UIKit.h>
-#else
-#import <Cocoa/Cocoa.h>
-#endif
-#elif defined(__linux__) && !defined(__ANDROID__)
-#include <JavaScriptCore/JavaScript.h>
-#include <webkit2/webkit2.h>
-#include <gtk/gtk.h>
-#elif defined(_WIN32)
-#include <WebView2.h>
-#include <WebView2EnvironmentOptions.h>
-#include <shellapi.h>
-
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "version.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "WebView2LoaderStatic.lib")
-#pragma comment(lib, "Ws2_32.lib")
-#pragma comment(lib, "iphlpapi.lib")
-#pragma comment(lib, "psapi.lib")
-#pragma comment(lib, "userenv.lib")
-#pragma comment(lib, "libuv.lib")
-#pragma comment(lib, "dbghelp.lib")
-#endif
-
+#include "codec.hh"
+#include "config.hh"
+#include "debug.hh"
+#include "env.hh"
+#include "ini.hh"
+#include "io.hh"
 #include "json.hh"
-#include "runtime-preload.hh"
+#include "platform.hh"
+#include "preload.hh"
+#include "string.hh"
+#include "types.hh"
+#include "version.hh"
+
+#if !defined(__ANDROID__)
+#include "file_system_watcher.hh"
+#endif
 
 #if defined(__APPLE__)
 @interface SSCBluetoothController : NSObject<
@@ -65,6 +40,14 @@
 namespace SSC {
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
 
+  uint64_t rand64 ();
+  void msleep (uint64_t ms);
+
+#if defined(_WIN32)
+  String FormatError (DWORD error, String source);
+#endif
+
+   
   // forward
   class Core;
 
@@ -126,6 +109,8 @@ namespace SSC {
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
+    std::shared_ptr<std::function<bool(const char*, const char*, bool)>> event_stream;
+    std::shared_ptr<std::function<bool(const char*, size_t, bool)>> chunk_stream;
   };
 
   using Posts = std::map<uint64_t, Post>;

@@ -110,7 +110,7 @@ fi
 declare android_abis=()
 
 
-if (( only_top_level )); then
+if (( !only_platforms || only_top_level )); then
   npm run gen
 elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
   echo "warn - Android not supported on $platform-"$(uname -m)""
@@ -148,8 +148,8 @@ if (( !only_platforms || only_top_level )); then
   cp -rf "$root/npm/bin/ssc.js" "$SOCKET_HOME/packages/$package/bin/ssc.js"
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
-  cp -f "$root/CONTRIBUTING.md" "$SOCKET_HOME/packages/$package/CONTRIBUTING.md"
   cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  rm "$SOCKET_HOME/packages/$package/global.d.ts"
 fi
 
 if (( !only_top_level )); then
@@ -173,6 +173,10 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/bin"/* "$SOCKET_HOME/packages/$package/bin"
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"
     cp -rf "$SOCKET_HOME/include"/* "$SOCKET_HOME/packages/$package/include"
+
+    if test -d "$SOCKET_HOME/pkgconfig"; then
+      cp -rf "$SOCKET_HOME/pkgconfig" "$SOCKET_HOME/packages/$package/pkgconfig"
+    fi
 
     # don't copy debug files, too large
     rm -rf $SOCKET_HOME/lib/*-android/objs-debug
@@ -199,7 +203,7 @@ if (( !only_top_level )); then
     _publish
 
     if (( do_global_link )); then
-      npm link --no-fund --no-audit --offline
+      npm link --no-fund --no-audit --offline --force
     fi
   done
 fi
@@ -213,9 +217,9 @@ if (( !only_platforms || only_top_level )); then
   if (( do_global_link )); then
     for arch in "${archs[@]}"; do
       declare package="@socketsupply/socket-$platform-${arch/x86_64/x64}"
-      npm link --no-fund --no-audit --offline "$package"
+      npm link --no-fund --no-audit --offline --force "$package"
     done
 
-    npm link --no-fund --no-audit --offline
+    npm link --no-fund --no-audit --offline --force
   fi
 fi

@@ -28,7 +28,6 @@ import {
   PacketSync,
   PacketJoin,
   PacketQuery,
-  addHops,
   sha256,
   VERSION
 } from './packets.js'
@@ -59,7 +58,7 @@ export const PROBE_WAIT = 512
  * Default keep alive timeout.
  * @type {number}
  */
-export const DEFAULT_KEEP_ALIVE = 28_000
+export const DEFAULT_KEEP_ALIVE = 30_000
 
 /**
  * Default rate limit threshold in milliseconds.
@@ -103,9 +102,11 @@ const isReplicatable = type => (
 export function rateLimit (rates, type, port, address, subclusterIdQuota) {
   const R = isReplicatable(type)
   const key = (R ? 'R' : 'C') + ':' + address + ':' + port
-  const quota = subclusterIdQuota || R ? 64 : 1024
-  const time = Math.floor(Date.now() / 1000)
+  const quota = subclusterIdQuota || R ? 512 : 4096
+  const time = Math.floor(Date.now() / 60000)
   const rate = rates.get(key) || { time, quota, used: 0 }
+
+  rate.mtime = Date.now() // checked by mainLoop for garabge collection
 
   if (time !== rate.time) {
     rate.time = time
@@ -188,9 +189,13 @@ export class RemotePeer {
 
     const packets = await this.localPeer._message2packets(PacketStream, args.message, args)
 
+    if (this.proxy) {
+      debug(this.localPeer.peerId, `>> WRITE STREAM HAS PROXY ${this.proxy.address}:${this.proxy.port}`)
+    }
+
     for (const packet of packets) {
-      debug(args.streamFrom, '>> WRITE STREAM', args.streamFrom, '->', args.streamTo, packet)
-      this.localPeer.send(await Packet.encode(packet), rinfo.port, rinfo.address)
+      debug(args.streamFrom, `>> WRITE STREAM (from=${args.streamFrom.slice(0, 6)}, to=${args.streamTo.slice(0, 6)}, via=${rinfo.address}:${rinfo.port})`)
+      this.localPeer.send(await Packet.encode(packet), rinfo.port, rinfo.address, this.socket)
     }
   }
 }
@@ -214,7 +219,9 @@ export const wrap = dgram => {
     isListening = false
     ctime = Date.now()
     lastUpdate = 0
+    lastSync = Date.now()
     closing = false
+    clock = 0
     unpublished = {}
     cache = null
     uptime = 0
@@ -228,6 +235,8 @@ export const wrap = dgram => {
     rates = new Map()
     streamBuffer = new Map()
     controlPackets = new Map()
+
+    metrics = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 }
 
     peers = JSON.parse(/* snapshot_start=1691579150299, filter=easy,static */`[
       {"address":"3.70.160.181","port":41141,"peerId":"707c07171ac9371b2f1de23e78dad15d29b56d47abed5e5a187944ed55fc8483"},
@@ -273,7 +282,6 @@ export const wrap = dgram => {
       this.config = {
         keepalive: DEFAULT_KEEP_ALIVE,
         lastGroupBroadcast: -1,
-        clock: 0,
         ...config
       }
 
@@ -423,13 +431,15 @@ export const wrap = dgram => {
       for (const [k, packet] of [...this.cache.data]) {
         const p = Packet.from(packet)
         if (!p) continue
+        if (!p.timestamp) p.timestamp = ts
 
-        const ttl = Math.min(p.ttl, Packet.ttl)
-        const deadline = (p.timestamp ?? 0) + ttl
+        const ttl = (p.ttl < Packet.ttl) ? p.ttl : Packet.ttl
+        const deadline = p.timestamp + ttl
 
         if (deadline <= ts) {
-          this.mcast(p, p.packetId, true)
+          this.mcast(p)
           this.cache.delete(k)
+          debug(this.peerId, '-- DELETE', k, this.cache.size)
           if (this.onDelete) this.onDelete(p)
         }
       }
@@ -454,8 +464,7 @@ export const wrap = dgram => {
         this.ping(peer, false, {
           requesterPeerId: this.peerId,
           natType: this.natType,
-          cacheSize: this.cache.size,
-          isHeartbeat: Date.now()
+          cacheSize: this.cache.size
         })
       }
 
@@ -466,6 +475,7 @@ export const wrap = dgram => {
           this.join(subcluster.sharedKey, subcluster)
         }
       }
+      return true
     }
 
     /**
@@ -482,7 +492,7 @@ export const wrap = dgram => {
         if (err) return this._onError(err)
         const packet = Packet.decode(data)
         if (this.onSend) this.onSend(packet, port, address)
-        debug(`${this.peerId} -> SEND (T=${packet.type})`, port, address)
+        debug(this.peerId, `>> SEND (from=${this.address}:${this.port}, to=${address}:${port}, type=${packet.type})`)
       })
     }
 
@@ -494,7 +504,7 @@ export const wrap = dgram => {
     async sendUnpublished () {
       for (const [packetId] of Object.entries(this.unpublished)) {
         const packet = this.cache.get(packetId)
-        if (packet) this.mcast(packet, packetId)
+        if (packet) this.mcast(packet)
       }
     }
 
@@ -515,11 +525,13 @@ export const wrap = dgram => {
      * @return {Array<RemotePeer>}
      * @ignore
      */
-    getPeers (packet, peers, n = 3, filter = o => o) {
+    getPeers (packet, peers, ignorelist, filter = o => o) {
+      const n = 3
       const rand = () => Math.random() - 0.5
 
       const base = p => {
-        if (p.lastUpdate === 0) return false
+        if (ignorelist.findIndex(ilp => ilp.peerId === p.peerId) > -1) return false
+        if (p.lastUpdate !== 0 && p.lastUpdate > this.keepalive) return false
         if (this.peerId === p.peerId) return false // same as introducer
         if (packet.message.requesterPeerId === p.peerId) return false // same as requester
         if (!p.port || (!p.indexed && !NAT.isValid(p.natType))) return false
@@ -527,21 +539,21 @@ export const wrap = dgram => {
       }
 
       const candidates = peers
-        .filter(base)
         .filter(filter)
+        .filter(base)
         .sort(rand)
 
       const list = candidates.filter(peer => peer.clusters && peer.clusters[packet.clusterId])
 
-      if (!list.length) {
-        list.push(...candidates.filter(p => !p.indexed).slice(0, n))
+      if (list.length < n) {
+        list.push(...candidates.filter(p => !p.indexed).slice(0, n - list.length))
       }
 
-      if (!list.length) {
-        list.push(...candidates.filter(p => p.indexed).slice(0, n))
+      if (list.length < n) {
+        list.push(...candidates.filter(p => p.indexed).slice(0, n - list.length))
       }
 
-      return list.slice(0, 1).concat(candidates.sort(rand).slice(0, 2))
+      return list
     }
 
     /**
@@ -549,23 +561,13 @@ export const wrap = dgram => {
      * @return {undefined}
      * @ignore
      */
-    async mcast (packet, packetId, isTaxed, ignorelist = []) {
-      const list = this.peers
+    async mcast (packet, isTaxed, ignorelist = []) {
+      const peers = this.getPeers(packet, this.peers, ignorelist)
 
-      /* if (Array.isArray(packet.message?.history)) {
-        // TODO dedupe and trim
-        ignorelist = [...ignorelist, packet.message.history]
-      }
+      packet.hops += 1
 
-      if (ignorelist.length) {
-        list = list.filter(p => !ignorelist.find(peer => {
-          return p.address === peer.address && p.port === peer.port
-        }))
-      } */
-
-      for (const peer of this.getPeers(packet, list)) {
-        const data = await Packet.encode(packet)
-        this.send(isTaxed ? addHops(data) : data, peer.port, peer.address)
+      for (const peer of peers) {
+        this.send(await Packet.encode(packet), peer.port, peer.address)
       }
 
       if (this.controlPackets.has(packet.packetId)) return
@@ -579,9 +581,14 @@ export const wrap = dgram => {
      */
     async requestReflection () {
       if (this.onConnecting) this.onConnecting({ code: -2 })
-      if (this.closing || this.indexed || this.reflectionId) return
+
+      if (this.closing || this.indexed || this.reflectionId) {
+        debug(this.peerId, '<> REFLECT ABORTED', this.reflectionId)
+        return
+      }
+
+      debug(this.peerId, '-> REQ REFLECT', this.reflectionId, this.reflectionStage)
       if (this.onConnecting) this.onConnecting({ code: -1 })
-      debug(this.peerId, '-- NAT REQ REF')
 
       const peers = [...this.peers]
         .filter(p => p.lastUpdate !== 0)
@@ -589,7 +596,7 @@ export const wrap = dgram => {
 
       if (peers.length < 2) {
         if (this.onConnecting) this.onConnecting({ code: 0 })
-        debug(this.peerId, 'XX NOT ENOUGH PINGABLE PEERS - RETRYING')
+        debug(this.peerId, 'XX REFLECT NOT ENOUGH PINGABLE PEERS - RETRYING')
         return this._setTimeout(() => this.requestReflection(), 256)
       }
 
@@ -618,8 +625,9 @@ export const wrap = dgram => {
 
         // we expect onMessageProbe to fire and clear this timer or it will timeout
         this.probeReflectionTimeout = this._setTimeout(() => {
+          this.probeReflectionTimeout = null
           if (this.reflectionStage !== 1) return
-          debug(this.peerId, 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId, this.reflectionTimeout)
+          debug(this.peerId, 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId)
 
           this.reflectionStage = 1
           this.reflectionId = null
@@ -646,7 +654,7 @@ export const wrap = dgram => {
         const peer2 = list.sort(() => Math.random() - 0.5)[0]
 
         if (!peer2) { // how did it advance?
-          debug(this.peerId, 'XX NAT REFLECT - STAGE2: NO PEERS HAVE BEEN PROBED YET - RETRYING', this.peers)
+          debug(this.peerId, 'XX NAT REFLECT - STAGE2: NO PEERS HAVE BEEN PROBED YET - RETRYING')
           return this._setTimeout(() => this.requestReflection(), 256)
         }
 
@@ -661,12 +669,15 @@ export const wrap = dgram => {
         this.ping(peer1, false, { ...opts, probeExternalPort })
         this.ping(peer2, false, { ...opts, probeExternalPort })
 
-        if (this.reflectionTimeout) this._clearTimeout(this.reflectionTimeout)
+        if (this.reflectionTimeout) {
+          this._clearTimeout(this.reflectionTimeout)
+          this.reflectionTimeout = null
+        }
 
         this.reflectionTimeout = this._setTimeout(ts => {
+          this.reflectionTimeout = null
           if (this.reflectionStage !== 2) return
           debug(this.peerId, 'XX NAT REFLECT - STAGE2: TIMEOUT', this.reflectionId)
-          this.reflectionStage = 1
           return this.requestReflection()
         }, 2048)
       }
@@ -723,11 +734,7 @@ export const wrap = dgram => {
      */
     addPeer (args) {
       const existingPeer = this.getPeer(args.peerId)
-
-      if (existingPeer) {
-        existingPeer.lastUpdate = Date.now()
-        return existingPeer
-      }
+      if (existingPeer) return this.updatePeer(existingPeer)
 
       if (this.peers.length > 1024) {
         this.peers
@@ -739,7 +746,10 @@ export const wrap = dgram => {
       if (!args.peerId) return null
 
       const peer = new RemotePeer(args, this)
-      peer.lastUpdate = Date.now()
+      if (args.connected) peer.lastUpdate = Date.now()
+
+      if (args.clusterId) peer.clusters[args.clusterId] ??= {}
+      if (args.subclusterId) peer.clusters[args.subclusterId] = MAX_BANDWIDTH
       this.peers.push(peer)
       return peer
     }
@@ -760,9 +770,9 @@ export const wrap = dgram => {
       const existingPeer = this.getPeer(args.peerId)
       if (!existingPeer) return this.addPeer(args)
 
-      existingPeer.lastUpdate = Date.now()
+      if (args.connected) existingPeer.lastUpdate = Date.now()
 
-      if (args.clock && existingPeer.clock > args.clock) {
+      if (isNaN(args.clock) || existingPeer.clock > args.clock) {
         return existingPeer
       }
 
@@ -770,8 +780,17 @@ export const wrap = dgram => {
 
       if (args.pingId) existingPeer.pingId = args.pingId
 
-      existingPeer.clusters[args.clusterId] ??= {}
+      if (args.clusterId) existingPeer.clusters[args.clusterId] ??= {}
       if (args.subclusterId) existingPeer.clusters[args.subclusterId] = MAX_BANDWIDTH
+
+      debug(this.peerId, `<- PEER UPDATE (peerId=${args.peerId.slice(0, 6)}, clock=${args.clock}, address=${args.address}:${args.port})`)
+
+      args.connected ||= existingPeer.connected
+
+      if (!existingPeer.port) {
+        delete args.port
+        delete args.address
+      }
 
       Object.assign(existingPeer, args)
       return existingPeer
@@ -781,26 +800,28 @@ export const wrap = dgram => {
      * This should be called at least once when an app starts to multicast
      * this peer, and starts querying the network to discover peers.
      * @param {object} keys - Created by `Encryption.createKeyPair()`.
-     * @param {object=} opts - Options
-     * @param {number=MAX_BANDWIDTH} opts.rateLimit - How many requests per second to allow for this subclusterId.
+     * @param {object=} args - Options
+     * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
      * @return {RemotePeer}
      */
-    async join (sharedKey, opts = { rateLimit: MAX_BANDWIDTH }) {
+    async join (sharedKey, args = { rateLimit: MAX_BANDWIDTH }) {
       const keys = await Encryption.createKeyPair(sharedKey)
       this.encryption.add(keys.publicKey, keys.privateKey)
 
       if (!this.port || !this.natType || this.indexed) return
 
-      opts.sharedKey = sharedKey
+      args.sharedKey = sharedKey
 
-      const clusterId = opts.clusterId || this.config.clusterId
+      const clusterId = args.clusterId || this.config.clusterId
       const subclusterId = Buffer.from(keys.publicKey).toString('base64')
 
       this.clusters[clusterId] ??= {}
-      this.clusters[clusterId][subclusterId] = opts
+      this.clusters[clusterId][subclusterId] = args
+
+      this.clock += 1
 
       const packet = new PacketJoin({
-        clock: this.config.clock++,
+        clock: this.clock,
         clusterId,
         subclusterId,
         message: {
@@ -811,10 +832,9 @@ export const wrap = dgram => {
         }
       })
 
-      debug(this.peerId, '-> JOIN', this.clusters)
-
+      debug(this.peerId, `-> JOIN (clusterId=${clusterId}, clock=${packet.clock}/${this.clock})`)
       if (this.onState) await this.onState(this.getState())
-      this.mcast(packet, packet.packetId, true)
+      this.mcast(packet)
       this.controlPackets.set(packet.packetId, 1)
     }
 
@@ -829,8 +849,7 @@ export const wrap = dgram => {
 
       let messages = [message]
       const len = message?.byteLength ?? message?.length ?? 0
-
-      let clock = packet ? packet.clock : 0
+      let clock = packet?.clock || 0
 
       const siblings = [...this.cache.data.values()]
         .filter(Boolean)
@@ -843,6 +862,8 @@ export const wrap = dgram => {
         const sib = siblings.sort(sort).reverse()[0]
         clock = Math.max(clock, sib.clock) + 1
       }
+
+      clock += 1
 
       if (len > 1024) { // Split packets that have messages bigger than Packet.maxLength
         messages = [{
@@ -860,7 +881,7 @@ export const wrap = dgram => {
         subclusterId,
         streamTo: args.streamTo,
         streamFrom: args.streamFrom,
-        clock: ++clock,
+        clock,
         message,
         usr1,
         usr2,
@@ -923,14 +944,12 @@ export const wrap = dgram => {
         const p = Packet.from(packet)
         this.cache.insert(packet.packetId, p)
 
-        if (this.onPacket) {
-          this.onPacket(p, this.port, this.address)
-        }
+        if (this.onPacket) this.onPacket(p, this.port, this.address, true)
 
         this.unpublished[packet.packetId] = Date.now()
         if (globalThis.navigator && !globalThis.navigator.onLine) continue
 
-        this.mcast(packet, packet.packetId)
+        this.mcast(packet)
       }
 
       return packets
@@ -972,11 +991,13 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onConnection (packet, peer, port, address) {
-      if (this.closing || this.indexed) return
-      debug(this.peerId, '<- CONNECTION', peer.peerId, packet.type)
+      if (this.closing) return
+
+      debug(this.peerId, '<- CONNECTION', peer.peerId, address, port, packet.type)
       if (!peer.localPeer) peer.localPeer = this
 
       this.sync(peer, packet, port, address)
+
       if (this.onConnection) this.onConnection(packet, peer, port, address)
     }
 
@@ -986,14 +1007,19 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onSync (packet, port, address) {
+      this.metrics[packet.type]++
+
       if (!isBufferLike(packet.message)) return
 
-      debug(this.peerId, '<< SYNC', port, address)
+      debug(this.peerId, '<< SYNC CACHE', port, address, this.cache.size)
 
       const remote = Cache.decodeSummary(packet.message)
 
       const local = await this.cache.summarize(remote.prefix)
-      if (local.hash === remote.hash) return // caches are sync'd
+      if (local.hash === remote.hash) {
+        if (this.onSyncFinished) this.onSyncFinished()
+        return
+      }
 
       for (let i = 0; i < local.buckets.length; i++) {
         //
@@ -1017,7 +1043,7 @@ export const wrap = dgram => {
               if (this.onWarn) this.onWarn(err)
               continue
             }
-            this.send(data, port, address)
+            this._setTimeout(() => this.send(data, port, address), 2048)
           }
         } else if (remote.buckets[i] !== local.buckets[i]) {
           //
@@ -1028,7 +1054,7 @@ export const wrap = dgram => {
           const data = await Packet.encode(new PacketSync({
             message: encoded
           }))
-          this.send(data, port, address)
+          this._setTimeout(() => this.send(data, port, address), 2048)
         }
       }
     }
@@ -1039,11 +1065,11 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onQuery (packet, port, address) {
+      this.metrics[packet.type]++
+
       debug(this.peerId, '<- QUERY', port, address)
       if (this.controlPackets.has(packet.packetId)) return
       this.controlPackets.set(packet.packetId, 1)
-
-      const { packetId } = packet
 
       if (this.onEvaluateQuery) await this.onEvaluateQuery(packet, port, address)
 
@@ -1054,7 +1080,7 @@ export const wrap = dgram => {
       packet.message.history.push({ address: this.address, port: this.port })
       if (packet.message.history.length >= 16) packet.message.history.shift()
 
-      return await this.mcast(packet, packetId, true)
+      return await this.mcast(packet)
     }
 
     /**
@@ -1063,12 +1089,14 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onPing (packet, port, address) {
+      this.metrics[packet.type]++
+
       this.lastUpdate = Date.now()
+      debug(this.peerId, `<- PING (from=${address}:${port})`)
       const { reflectionId, isReflection, isConnection, isHeartbeat } = packet.message
       if (packet.message.requesterPeerId === this.peerId) return
-      debug(this.peerId, '<- PING', port, address)
 
-      const { probeExternalPort, isProbe } = packet.message
+      const { probeExternalPort, isProbe, pingId } = packet.message
 
       let peer = this.getPeer(packet.message.requesterPeerId)
 
@@ -1080,7 +1108,6 @@ export const wrap = dgram => {
         const peerId = packet.message.requesterPeerId
         const natType = packet.message.natType
         peer = this.addPeer({ peerId, natType, port, address })
-        if (!peer) return
       }
 
       if (isHeartbeat) return
@@ -1101,6 +1128,10 @@ export const wrap = dgram => {
 
       if (reflectionId) message.reflectionId = reflectionId
       if (isHeartbeat) message.isHeartbeat = Date.now()
+      if (pingId) {
+        message.pingId = pingId
+        message.isDebug = true
+      }
 
       if (isReflection) {
         message.isReflection = true
@@ -1136,17 +1167,20 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onPong (packet, port, address) {
+      this.metrics[packet.type]++
+
       this.lastUpdate = Date.now()
 
       const { reflectionId, pingId, isReflection, responderPeerId } = packet.message
-      debug(this.peerId, '<- PONG', port, address, reflectionId)
+
+      debug(this.peerId, '<- PONG', port, address)
+      const peer = this.updatePeer({ peerId: packet.message.responderPeerId, port, address })
+      if (!peer) return
+
+      peer.lastUpdate = Date.now()
 
       if (packet.message.isConnection) {
-        const peer = this.getPeer(responderPeerId)
-        if (!peer) return
         if (pingId) peer.pingId = pingId
-
-        peer.lastUpdate = Date.now()
 
         this._onConnection(packet, peer, packet.message.port, packet.message.address)
         return
@@ -1190,14 +1224,19 @@ export const wrap = dgram => {
             if (NAT.isValid(natType)) {
               const oldType = this.natType
               this.natType = natType
+              this.reflectionId = null
+              this.reflectionStage = 0
 
               if (natType !== oldType) {
                 // alert both peers of our new NAT type
-                [
+                const peersToUpdate = [
                   this.getPeer(responderPeerId),
                   this.getPeer(this.reflectionFirstResponder.responderPeerId)
-                ].forEach(peer => {
+                ]
+
+                peersToUpdate.forEach(peer => {
                   if (!peer) return
+                  peer.lastRequest = Date.now()
 
                   this.ping(peer, false, {
                     requesterPeerId: this.peerId,
@@ -1225,9 +1264,6 @@ export const wrap = dgram => {
         this.port = packet.message.port
         debug(this.peerId, `++ NAT UPDATE STATE (address=${this.address}, port=${this.port})`)
       }
-
-      const peer = this.getPeer(responderPeerId)
-      if (peer) peer.lastUpdate = Date.now()
     }
 
     /**
@@ -1236,10 +1272,19 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onIntro (packet, port, address) {
+      this.metrics[packet.type]++
+
       if (packet.message.timestamp + this.config.keepalive < Date.now()) return
       if (packet.message.requesterPeerId === this.peerId) return // intro to myself?
       if (packet.message.responderPeerId === this.peerId) return // intro from myself?
       if (packet.hops > this.maxHops) return
+
+      debug(this.peerId, '<- INTRO (' +
+        `isRendezvous=${packet.message.isRendezvous}, ` +
+        `from=${address}:${port}, ` +
+        `to=${packet.message.address}:${packet.message.port}, ` +
+        `clustering=${packet.clusterId.slice(0, 4)}/${packet.subclusterId.slice(0, 4)}` +
+      ')')
 
       const { clusterId, subclusterId, clock } = packet
 
@@ -1248,12 +1293,17 @@ export const wrap = dgram => {
       const peerPort = packet.message.port
       const peerAddress = packet.message.address
       const natType = packet.message.natType
-      const peer = this.updatePeer({ peerId, natType, port: peerPort, address: peerAddress, clock, clusterId, subclusterId })
+      // update the info about the peer that is introducing us
+      // this.updatePeer({ peerId: packet.message.responderPeerId, port, address })
 
-      if (peer.connected || peer.connecting) return // already connecting
+      // update the info about the peer we are being introduced to
+
+      const peer = this.updatePeer({ peerId, natType, port: peerPort, address: peerAddress, clock, clusterId, subclusterId })
+      if (!peer) return // not enough information provided to create a peer
+      if (peer.connecting) return // already connecting
 
       const pingId = Math.random().toString(16).slice(2)
-      const { hash } = await this.cache.summarize()
+      const { hash } = await this.cache.summarize('')
 
       const props = {
         natType: this.natType,
@@ -1262,28 +1312,25 @@ export const wrap = dgram => {
         requesterPeerId: this.peerId
       }
 
-      const makePacket = async () => await Packet.encode(new PacketPing({
-        message: {
-          requesterPeerId: this.peerId,
-          cacheSummaryHash: hash || null,
-          natType: this.natType,
-          uptime: this.uptime,
-          isConnection: true,
-          timestamp: Date.now(),
-          pingId
-        }
-      }))
+      const strategy = NAT.connectionStrategy(this.natType, packet.message.natType)
 
-      let strategy = NAT.connectionStrategy(this.natType, packet.message.natType)
-
-      debug(this.peerId, `++ NAT STRATEGY=${NAT.toStringStrategy(strategy)} (from=${this.address}/${NAT.toString(this.natType)}, to=${packet.message.address}/${NAT.toString(packet.message.natType)})`)
+      debug(this.peerId, `++ NAT INTRO (strategy=${NAT.toStringStrategy(strategy)}, from=${this.address}:${this.port} [${NAT.toString(this.natType)}], to=${packet.message.address}:${packet.message.port} [${NAT.toString(packet.message.natType)}])`)
 
       if (strategy === NAT.STRATEGY_TRAVERSAL_CONNECT) {
-        this.send(await makePacket(), port, packet.message.address)
+        if (peer.connecting) return
+
+        debug(this.peerId, `## NAT CONNECT (from=${this.address}:${this.port}, to=${peerAddress}:${peerPort}, pingId=${pingId})`)
+
+        this.ping(peer, true)
+
         const portCache = new Set()
         peer.connecting = true
 
         let i = 0
+
+        if (!this.socketPool) {
+          this.socketPool = Array.from({ length: 1024 }, () => dgram.createSocket('udp4', null, this))
+        }
 
         // A probes 1 target port on B from 1024 source ports
         //   (this is 1.59% of the search clusterId)
@@ -1292,16 +1339,15 @@ export const wrap = dgram => {
         //
         // Probability of successful traversal: 98.35%
         //
-        const interval = this._setInterval(() => {
+        const interval = setInterval(async () => { // TODO should be this._setInterval
           // send messages until we receive a message from them. giveup after sending ±1024
           // packets and fall back to using the peer that sent this as the initial proxy.
-          if (i++ > 1024) {
+          if (i++ >= 1024) {
             this._clearInterval(interval)
+            clearInterval(interval)
             peer.connecting = false
 
-            strategy = NAT.STRATEGY_PROXY
-            peer.proxy = this.peers.find(p => p.address === address && p.port === port)
-            this._onConnection(packet, peer, port, address)
+            this._setTimeout(() => this._onIntro(packet, port, address), 2048)
             return false
           }
 
@@ -1314,51 +1360,120 @@ export const wrap = dgram => {
             peer.connecting = false
             pair.connected = true
             this._onConnection(packet, pair, pair.port, pair.address)
+
+            if (this.onJoin && this.clusters[packet.clusterId]) {
+              this.onJoin(packet, peer, peerPort, peerAddress)
+            }
+
             this._clearInterval(interval)
+            clearInterval(interval)
             return false
           }
 
-          const to = i === 0 ? packet.message.port : getRandomPort(portCache)
-          ;(async () => this.send(await makePacket(), to, packet.message.address))()
+          const to = getRandomPort(portCache)
+          const data = await Packet.encode(new PacketPing({
+            message: {
+              requesterPeerId: this.peerId,
+              cacheSummaryHash: hash || null,
+              natType: this.natType,
+              uptime: this.uptime,
+              isConnection: true,
+              timestamp: Date.now(),
+              pingId
+            }
+          }))
+
+          const rand = () => Math.random() - 0.5
+          const pooledSocket = this.socketPool.sort(rand).find(s => !s.socket)
+          if (!pooledSocket) return // TODO recover from exausted socket pool
+
+          try {
+            pooledSocket.send(data, to, packet.message.address)
+          } catch (err) {
+          }
+
+          pooledSocket.on('message', (...args) => {
+            clearTimeout(pooledSocket.expire)
+            const remote = this.peers.find(r => r.peerId === peerId)
+            remote.socket = pooledSocket
+
+            clearInterval(interval)
+            this._onMessage(...args)
+          })
+
+          if (!pooledSocket.socket) {
+            pooledSocket.expire = setTimeout(() => {
+              if (pooledSocket._bindState === 2) {
+                try {
+                  pooledSocket.close()
+                } catch (err) {}
+              }
+              this.socketPool[i] = dgram.createSocket('udp4', null, this)
+            }, 2048)
+          }
         }, 10)
 
         return
       }
 
-      if (strategy === NAT.STRATEGY_PROXY) {
-        peer.proxy = this.peers.find(p => p.address === address && p.port === port)
+      if (strategy === NAT.STRATEGY_PROXY && !peer.proxy) {
+        // TODO could allow multiple proxies
+        let proxy = this.peers.find(p => p.address === address && p.port === port)
+
+        if (!proxy) {
+          proxy = this.addPeer({ peerId: packet.message.responderPeerId, port, address, natType: NAT.UNRESTRICTED })
+          debug(this.peerId, '++ INTRO CRAETED PROXY', packet.message.responderPeerId)
+        }
+
+        if (proxy) {
+          peer.proxy = proxy
+          debug(this.peerId, '++ INTRO CHOSE PROXY STRATEGY', peer.proxy.address)
+        }
       }
 
       if (strategy === NAT.STRATEGY_TRAVERSAL_OPEN) {
+        if (peer.opening) return
+        peer.opening = true
+
         if (!this.bdpCache.length) {
-          this.bdpCache = Array.from({ length: 256 }, () => getRandomPort())
+          globalThis.bdpCache = this.bdpCache = Array.from({ length: 256 }, () => getRandomPort())
         }
 
         this.ping(peer, true, props)
 
         for (const port of this.bdpCache) {
-          this.send(await makePacket(), port, packet.message.address)
+          const data = await Packet.encode(new PacketPing({
+            message: {
+              requesterPeerId: this.peerId,
+              cacheSummaryHash: hash || null,
+              natType: this.natType,
+              uptime: this.uptime,
+              isConnection: true,
+              timestamp: Date.now()
+            }
+          }))
+          this.send(data, port, packet.message.address)
         }
 
         return
       }
 
-      if (strategy === NAT.STRATEGY_PROXY) {
-        debug(this.peerId, '++ SET PROXY', peer.peerId)
-      }
-
       if (strategy === NAT.STRATEGY_DIRECT_CONNECT) {
-        peer.connected = true
+        peer.connected = true // TODO this could be req/res
         debug(this.peerId, '++ NAT STRATEGY_DIRECT_CONNECT')
       }
 
       if (strategy === NAT.STRATEGY_DEFER) {
+        peer.connected = true // TODO this could be req/res
         debug(this.peerId, '++ NAT STRATEGY_DEFER')
-        peer.connected = true
       }
 
       this.ping(peer, true, props)
-      this._onConnection(packet, peer, port, address)
+      if (packet.hops === 1) this._onConnection(packet, peer, port, address)
+
+      if (this.onJoin && this.clusters[packet.clusterId]) {
+        this.onJoin(packet, peer, port, address)
+      }
     }
 
     /**
@@ -1367,10 +1482,10 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onJoin (packet, port, address, data) {
-      debug(this.peerId, '<- JOIN', packet.hops, port, address)
+      this.metrics[packet.type]++
+
       if (packet.message.requesterPeerId === this.peerId) return
       if (!packet.clusterId) return
-      if (packet.hops > this.maxHops) return
 
       this.lastUpdate = Date.now()
 
@@ -1378,22 +1493,47 @@ export const wrap = dgram => {
       const natType = packet.message.natType
       const subclusterId = packet.subclusterId
       const clusterId = packet.clusterId
+      const clock = packet.clock
+      const peerAddress = packet.message.address
+      const peerPort = packet.message.port
 
-      const peer = this.updatePeer({ peerId, natType, port, address, subclusterId, clusterId })
-      this.sync(peer, packet, port, address)
+      debug(this.peerId, '<- JOIN (' +
+        `peerId=${peerId.slice(0, 6)}, ` +
+        `clock=${packet.clock}, ` +
+        `hops=${packet.hops}, ` +
+        `clusterId=${packet.clusterId}, ` +
+        `address=${address}:${port})`
+      )
 
-      let peers = this.getPeers(packet, this.peers)
+      this.updatePeer({
+        peerId,
+        natType,
+        port: natType === NAT.ENDPOINT_RESTRICTED ? port : packet.message.port,
+        clock,
+        connected: packet.hops === 1,
+        address: peerAddress,
+        subclusterId,
+        clusterId
+      })
 
-      if (packet.message.rendezvousDeadline) {
-        if (packet.message.rendezvousDeadline < Date.now()) return
+      const filter = p => p.connected || p.natType === NAT.UNRESTRICTED // you can't intro a peer who aren't connecteds
+      let peers = this.getPeers(packet, this.peers, [{ port, address }], filter)
 
-        if (this.clusters[packet.clusterId]) {
+      //
+      // This packet represents a peer who wants to join the network and is a
+      // member of our cluster. The packet was replicated though the network
+      // and contains the details about where the peer can be reached, in this
+      // case we want to ping that peer so we can be introduced to them.
+      //
+      if (packet.message.rendezvousDeadline && !packet.message.rendezvousRequesterPeerId) {
+        if (packet.message.rendezvousDeadline > Date.now() && this.clusters[packet.clusterId]) {
           // TODO it would tighten up the transition time between dropped peers
           // if we check strategy from (packet.message.natType, this.natType) and
           // make introductions that create more mutually known peers.
+          debug(this.peerId, '<- INTRO JOIN RENDEZVOUS INTERCEPTED')
 
           const data = await Packet.encode(new PacketJoin({
-            clock: this.config.clock++,
+            clock: packet.clock,
             subclusterId: packet.subclusterId,
             clusterId: packet.clusterId,
             message: {
@@ -1402,7 +1542,7 @@ export const wrap = dgram => {
               address: this.address,
               port: this.port,
               rendezvousType: packet.message.natType,
-              rendezvousPeerId: packet.message.peerId
+              rendezvousRequesterPeerId: packet.message.requesterPeerId
             }
           }))
 
@@ -1411,16 +1551,26 @@ export const wrap = dgram => {
             packet.message.rendezvousPort,
             packet.message.rendezvousAddress
           )
-          return
         }
       }
 
-      if (packet.message.rendezvousPeerId) {
-        debug(this.peerId, '<- RENDEZVOUS')
-        const peer = this.peers.find(p => p.peerId === packet.message.rendezvousPeerId)
+      //
+      // A peer who belongs to the same cluster as the peer who's replicated
+      // join was discovered, sent us a join that has a specification for who
+      // they want to be introduced to.
+      //
+      if (packet.message.rendezvousRequesterPeerId && this.peerId === packet.message.rendezvousPeerId) {
+        const peer = this.peers.find(p => p.peerId === packet.message.rendezvousRequesterPeerId)
+
+        if (!peer) {
+          debug(this.peerId, '<- INTRO JOIN RENDEZVOUS FAILED', packet)
+          return
+        }
+
         peer.natType = packet.message.rendezvousType
-        if (!peer) return
         peers = [peer]
+
+        debug(this.peerId, '<- INTRO JOIN RENDEZVOUS')
       }
 
       for (const peer of peers) {
@@ -1430,7 +1580,6 @@ export const wrap = dgram => {
           requesterPeerId: peer.peerId,
           responderPeerId: this.peerId,
           isRendezvous: !!packet.message.rendezvousPeerId,
-          timestamp: Date.now(),
           natType: peer.natType,
           address: peer.address,
           port: peer.port
@@ -1440,43 +1589,54 @@ export const wrap = dgram => {
           requesterPeerId: packet.message.requesterPeerId,
           responderPeerId: this.peerId,
           isRendezvous: !!packet.message.rendezvousPeerId,
-          timestamp: Date.now(),
           natType: packet.message.natType,
           address: packet.message.address,
           port: packet.message.port
         }
 
-        const clock = packet.message?.clock || 0
-
-        const opts = {
-          clusterId,
-          subclusterId,
-          clock: clock + 1
+        const opts1 = {
+          hops: packet.hops + 1
         }
 
-        const intro1 = await Packet.encode(new PacketIntro({ ...opts, message: message1 }))
-        const intro2 = await Packet.encode(new PacketIntro({ ...opts, message: message2 }))
+        if (peer.clusters && peer.clusters[clusterId]) {
+          opts1.clusterId = clusterId
+          if (peer.clusters[clusterId][subclusterId]) opts1.subclusterId = subclusterId
+        }
+
+        const opts2 = {
+          hops: packet.hops + 1,
+          clusterId,
+          subclusterId
+        }
+
+        const intro1 = await Packet.encode(new PacketIntro({ ...opts1, message: message1 }))
+        const intro2 = await Packet.encode(new PacketIntro({ ...opts2, message: message2 }))
 
         //
         // Send intro1 to the peer described in the message
         // Send intro2 to the peer in this loop
         //
-        debug(this.peerId, `>> INTRO ${peer.address}:${peer.port} -> ${packet.message.address}:${packet.message.port}`)
-        debug(this.peerId, `>> INTRO ${packet.message.address}:${packet.message.port} -> ${peer.address}:${peer.port}`)
+        debug(this.peerId, `>> INTRO SEND (from=${peer.address}:${peer.port}, to=${packet.message.address}:${packet.message.port})`)
+        debug(this.peerId, `>> INTRO SEND (from=${packet.message.address}:${packet.message.port}, to=${peer.address}:${peer.port})`)
 
         this.send(intro2, peer.port, peer.address)
         this.send(intro1, packet.message.port, packet.message.address)
       }
 
       if (this.indexed && !packet.clusterId) return
-      if (packet.message.rendezvousPeerId) return
+      if (packet.hops > this.maxHops) return
 
-      packet.message.rendezvousAddress = this.address
-      packet.message.rendezvousPort = this.port
-      packet.message.rendezvousDeadline = Date.now() + this.config.keepalive
+      if (this.natType === NAT.UNRESTRICTED && !packet.message.rendezvousDeadline) {
+        packet.message.rendezvousAddress = this.address
+        packet.message.rendezvousPort = this.port
+        packet.message.rendezvousType = this.natType
+        packet.message.rendezvousPeerId = this.peerId
+        packet.message.rendezvousDeadline = Date.now() + this.config.keepalive
+      }
 
-      if (packet.hops++ > this.maxHops) return
-      this.mcast(packet, packet.packetId, true)
+      debug(this.peerId, `-> JOIN RELAY (peerId=${peerId.slice(0, 6)}, from=${peerAddress}:${peerPort})`)
+      this.mcast(packet, [{ port, address }, { port: peerPort, address: peerAddress }])
+      this.controlPackets.set(packet.packetId, 2)
     }
 
     /**
@@ -1485,13 +1645,17 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onPublish (packet, port, address, data) {
-      debug(this.peerId, '<- PUBLISH', port, address)
+      this.metrics[packet.type]++
+
+      debug(this.peerId, '<- PUBLISH', packet.clusterId, packet.subclusterId, port, address)
       // const subclusterId = this.clusters[packet.clusterId]
 
       // only cache if this packet if i am part of this subclusterId
       // if (subclusterId && subclusterId[packet.subclusterId]) {
       if (this.cache.has(packet.packetId)) return
       this.cache.insert(packet.packetId, packet)
+
+      const ignorelist = [{ address, port }]
 
       if (!this.indexed && this.encryption.has(packet.subclusterId)) {
         let p = { ...packet }
@@ -1501,8 +1665,9 @@ export const wrap = dgram => {
           if (this.onPacket && p.index === -1) this.onPacket(p, port, address)
         } else {
           // if we cant find the packet, sync with some more peers
-          for (const peer of this.getPeers(packet, this.peers)) {
-            this.sync(peer, packet, peer.port, peer.address)
+          for (const peer of this.getPeers(packet, this.peers, ignorelist)) {
+            // const peer = this.peers.find(p => p.address === address && p.port === port)
+            if (peer) this.sync(peer, packet, peer.port, peer.address)
           }
         }
       }
@@ -1510,7 +1675,7 @@ export const wrap = dgram => {
 
       if (packet.hops > this.maxHops) return
       if (this.onMulticast) this.onMulticast(packet)
-      this.mcast(packet, packet.packetId, true, [{ address, port }])
+      this.mcast(packet, ignorelist)
     }
 
     /**
@@ -1519,43 +1684,59 @@ export const wrap = dgram => {
      * @ignore
      */
     async _onStream (packet, port, address, data) {
-      debug(this.peerId, '<- ON STREAM', address, port)
+      this.metrics[packet.type]++
+
       const { streamTo, streamFrom } = packet
+
+      // only help packets with a higher hop count if they are in our cluster
+      // if (packet.hops > 2 && !this.clusters[packet.cluster]) return
 
       const peerFrom = this.peers.find(p => p.peerId === streamFrom)
       if (!peerFrom) return
 
       // stream message is for this peer
-      if (streamTo === this.peerId && this.encryption.has(packet.subclusterId)) {
-        let p = Packet.from(packet) // clone the packet so it's not modified
+      if (streamTo === this.peerId) {
+        if (this.encryption.has(packet.subclusterId)) {
+          let p = Packet.from(packet) // clone the packet so it's not modified
 
-        if (p.index > -1) { // if it needs to be composed...
-          packet.timestamp = Date.now()
-          this.streamBuffer.set(packet.packetId, packet) // cache the partial
+          if (p.index > -1) { // if it needs to be composed...
+            packet.timestamp = Date.now()
+            this.streamBuffer.set(packet.packetId, packet) // cache the partial
 
-          p = await this.cache.compose(p, this.streamBuffer) // try to compose
-          if (!p) return // could not compose
+            p = await this.cache.compose(p, this.streamBuffer) // try to compose
+            if (!p) return // could not compose
 
-          if (p) { // if successful, delete the artifacts
-            const previousId = packet.index === 0 ? packet.packetId : packet.previousId
+            if (p) { // if successful, delete the artifacts
+              const previousId = packet.index === 0 ? packet.packetId : packet.previousId
 
-            this.streamBuffer.forEach((v, k) => {
-              if (k === previousId) this.streamBuffer.delete(k)
-              if (v.previousId === previousId) this.streamBuffer.delete(k)
-            })
+              this.streamBuffer.forEach((v, k) => {
+                if (k === previousId) this.streamBuffer.delete(k)
+                if (v.previousId === previousId) this.streamBuffer.delete(k)
+              })
+            }
           }
+
+          if (this.onStream) this.onStream(p, peerFrom, port, address)
         }
 
-        if (this.onStream) this.onStream(p, peerFrom, port, address)
         return
       }
 
       // stream message is for another peer
       const peerTo = this.peers.find(p => p.peerId === streamTo)
-      if (!peerTo) return
-      if (packet.hops > this.maxHops) return
+      if (!peerTo) {
+        debug(this.peerId, `XX STREAM RELAY FORWARD DESTINATION NOT REACHABLE (to=${streamTo})`)
+        return
+      }
 
-      return this.send(addHops(data), peerTo.port, peerTo.address)
+      if (packet.hops > this.maxHops) {
+        debug(this.peerId, `XX STREAM RELAY MAX HOPS EXCEEDED (to=${streamTo})`)
+        return
+      }
+
+      debug(this.peerId, `>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
+      this.send(await Packet.encode(packet), peerTo.port, peerTo.address)
+      if (packet.hops <= 2 && this.natType === NAT.UNRESTRICTED) this.mcast(packet)
     }
 
     /**
@@ -1625,7 +1806,7 @@ export const wrap = dgram => {
      * @param {Buffer|Uint8Array} data
      * @param {{ port: number, address: string }} info
      */
-    _onMessage (data, { port, address }) {
+    async _onMessage (data, { port, address }) {
       const packet = Packet.decode(data)
       if (!packet || packet.version < VERSION) return
 
@@ -1646,7 +1827,7 @@ export const wrap = dgram => {
 
       if (!this.config.limitExempt) {
         if (rateLimit(this.rates, packet.type, port, address, subclusterId)) {
-          debug(this.peerId, 'XX RATE LIMITED', packet.type, packet.hops, packet.packetId, 'FROM', address)
+          debug(this.peerId, `XX RATE LIMIT HIT (from=${address}, type=${packet.type})`)
           return
         }
         if (this.onLimit && !this.onLimit(packet, port, address)) return
@@ -1663,7 +1844,7 @@ export const wrap = dgram => {
       }
 
       const peer = this.peers.find(p => p.address === address && p.port === port)
-      if (peer) peer.lastUpdate = Date.now()
+      if (peer && packet.hops === 1) peer.lastUpdate = Date.now()
 
       if (!this.natType && !this.indexed) return
 

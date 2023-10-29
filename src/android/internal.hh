@@ -215,6 +215,7 @@ namespace SSC::android {
       jobject self = nullptr;
       jlong pointer = 0;
       String rootDirectory = "";
+      bool isEmulator = false;
 
       Runtime (JNIEnv* env, jobject self, String rootDirectory);
       ~Runtime ();
