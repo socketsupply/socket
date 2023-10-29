@@ -76,7 +76,7 @@ namespace SSC {
        * @param key The configuration name or key path
        * @return The value at `key` or an empty string.
        */
-      const String get (const String& key) const noexcept;
+      const String get (const String& key, const String& fallback = "") const noexcept;
 
       /**
        * List values at `key`
@@ -247,6 +247,57 @@ namespace SSC {
        * @return A reference to this configuration.
        */
       const Config& extend (const Map& config) noexcept;
+  };
+
+  class UserConfig : public Config {
+    public:
+      using Config::Config;
+  };
+
+  class ExtensionConfig : public Config {
+    public:
+      class CompilerConfig : public Config {
+        public:
+          using Config::Config;
+          struct Options {
+            bool debug = false;
+          };
+
+          const Vector<String> flags () const;
+          const Vector<String> flags (const String& targetPlatform) const;
+          const Vector<String> flags (
+            const String& targetPlatform,
+            const Options& options
+          ) const;
+      };
+
+      class LinkerConfig : public Config {
+        public:
+          using Config::Config;
+          const Vector<String> flags (const String& targetPlatform) const;
+      };
+
+      class ConfigureConfig : public Config {
+        public:
+          using Config::Config;
+          const String script () const;
+      };
+
+      class BuildConfig : public Config {
+        public:
+          using Config::Config;
+          const String script () const;
+          const Vector<String> copy () const;
+      };
+
+      using Config::Config;
+      const CompilerConfig& compiler () const;
+      const LinkerConfig& linker () const;
+      const ConfigureConfig& configure () const;
+      const BuildConfig& build () const;
+      const Vector<String> sources () const;
+      const String source () const;
+      const String path () const;
   };
 
   // implemented in `init.cc`

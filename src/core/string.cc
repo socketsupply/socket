@@ -197,4 +197,14 @@ namespace SSC {
   Vector<String> parseStringList (const String& string) {
     return parseStringList(string, { ' ', ',' });
   }
+
+  bool contains (const String& source, const String& search) {
+    return source.find(search) != String::npos;
+  }
+
+  bool contains (const Vector<String>& source, const String& search) {
+    const auto cursor = std::find(source.begin(), source.end(), search);
+    return cursor != source.end();
+  }
+
 }

@@ -15,6 +15,9 @@ declare only_top_level=0
 declare no_rebuild=0
 declare remove_socket_home=1
 declare do_global_link=0
+declare only_desktop=0
+declare verbose=0
+declare debug=0
 
 function _publish () {
   if (( !dry_run && !do_global_link )); then
@@ -70,6 +73,21 @@ while (( $# > 0 )); do
     continue
   fi
 
+  if [[ "$arg" = "--debug" ]]; then
+    debug=1
+    continue
+  fi
+
+  if [[ "$arg" = "--verbose" ]]; then
+    verbose=1
+    continue
+  fi
+
+  if [[ "$arg" = "--only-desktop" ]]; then
+    only_desktop=1
+    continue
+  fi
+
   args+=("$arg")
 done
 
@@ -82,9 +100,21 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
+if (( only_desktop )); then
+  export NO_ANDROID=1
+  export NO_IOS=1
+fi
+
+if (( verbose )); then
+  export VERBOSE=1
+fi
+
+if (( debug )); then
+  export DEBUG=1
+fi
+
 if (( !only_top_level && !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
-
 fi
 
 if (( do_global_link && !dry_run )); then
@@ -110,7 +140,7 @@ fi
 declare android_abis=()
 
 
-if (( !only_platforms || only_top_level )); then
+if (( !do_global_link )) && (( !only_platforms || only_top_level )); then
   npm run gen
 elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
   echo "warn - Android not supported on $platform-"$(uname -m)""

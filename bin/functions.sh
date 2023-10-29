@@ -562,6 +562,13 @@ function first_time_experience_setup() {
     unset BUILD_ANDROID
   fi
 
+  if [[ "$(host_os)" == "Darwin" ]]; then
+    if [ -z "$target" ] || [[ "$target" == "ios" ]] || [[ "$target" == "darwin" ]]; then
+      sudo xcodebuild -license || return $?
+      xcode-select --install || return $?
+    fi
+  fi
+
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
       local package_manager="$(determine_package_manager)"
@@ -615,18 +622,32 @@ function first_time_experience_setup() {
       return 0
     fi
 
-    "$root/bin/android-functions.sh" --android-fte || return $?
+    "$root/bin/android-functions.sh" --android-fte "$@" || return $?
   fi
 }
 
 function main() {
+  local rc=0
+  local arg
   while (( $# > 0 )); do
-    declare arg="$1"; shift
-    [[ "$arg" == "--fte" ]] && first_time_experience_setup $@
-    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
-    return $?
+    arg="$1"; shift
+
+    if [[ "$arg" == "--fte" ]]; then
+      first_time_experience_setup "$@"
+      rc=$?
+    fi
+
+    if [[ "$arg" == "--update-env-data" ]]; then
+      update_env_data "$@"
+      rc=$?
+    fi
+
+    if (( rc != 0 )); then
+      break
+    fi
   done
-  return 0
+
+  return $rc
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

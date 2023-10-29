@@ -1,8 +1,8 @@
 #include "config.hh"
-#include "ini.hh"
-#include "string.hh"
-
 #include "debug.hh"
+#include "ini.hh"
+#include "platform.hh"
+#include "string.hh"
 
 namespace SSC {
   static constexpr char NAMESPACE_SEPARATOR = '.';
@@ -28,12 +28,12 @@ namespace SSC {
     this->map = source.data();
   }
 
-  const String Config::get (const String& key) const noexcept {
+  const String Config::get (const String& key, const String& fallback) const noexcept {
     if (this->contains(key) && this->at(key).size() > 0) {
-      return this->at(key);
+      return tmpl(this->at(key), this->map);
     }
 
-    return "";
+    return fallback;
   }
 
   const Vector<String> Config::list (const String& key) const noexcept {
@@ -296,7 +296,7 @@ namespace SSC {
   }
 
   const String Config::operator [] (const String& key) const {
-    return this->map.at(key);
+    return this->get(key);
   }
 
   String& Config::operator [] (const String& key) {
@@ -353,4 +353,58 @@ namespace SSC {
     }
     return *this;
   }
+
+   const Vector<String> ExtensionConfig::CompilerConfig::flags () const {
+     return this->flags(platform.os);
+   }
+
+   const Vector<String> ExtensionConfig::CompilerConfig::flags (
+    const String& targetPlatform
+   ) const {
+     static const auto isDebugEnabled = SSC::isDebugEnabled();
+     return this->flags(targetPlatform, CompilerConfig::Options {
+       .debug = isDebugEnabled
+     });
+   }
+
+   const Vector<String> ExtensionConfig::CompilerConfig::flags (
+    const String& targetPlatform,
+    const CompilerConfig::Options& options
+   ) const {
+     Vector<String> flags = this->list("compiler.flags");
+
+     flags.push_back("-DSOCKET_RUNTIME_EXTENSION");
+
+     if (options.debug) {
+       flags = concat(flags, this->list("compiler.debug.flags"));
+     }
+
+     if (targetPlatform == "mac") {
+     }
+
+     if (targetPlatform == "linux") {
+     }
+
+     if (targetPlatform == "win") {
+     }
+
+     if (targetPlatform == "android" || targetPlatform == "android-emulator") {
+       for (int i = 0; i < flags.size(); ++i) {
+         flags[i] = replace(flags[i], "-I", "-I$(LOCAL_PATH");
+       }
+     }
+
+     if (targetPlatform == "ios" || targetPlatform == "ios-simulator") {
+     }
+
+     return flags;
+   }
+
+   const String ExtensionConfig::path () const {
+     return this->get("path");
+   }
+
+   const String ExtensionConfig::source () const {
+     return this->get("source");
+   }
 }

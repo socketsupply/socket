@@ -45,7 +45,7 @@ namespace SSC {
   String Env::get (const char* name) {
     static const auto userConfig = getUserConfig();
 
-    if (userConfig.slice("env").contains(name)) {
+    if (userConfig.contains("env") && userConfig.slice("env").contains(name)) {
       return userConfig.slice("env").get(name);
     }
 

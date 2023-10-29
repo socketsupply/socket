@@ -233,7 +233,7 @@ function _build_cli {
 
   local test_headers=()
   if [[ -z "$ignore_header_mtimes" ]]; then
-    test_headers+=("$(find "$src"/cli/*.hh 2>/dev/null)")
+    test_headers+=("$(find "$src"/cli -name "*.hh" 2>/dev/null)")
   fi
   test_headers+=("$src"/../VERSION.txt)
   local newest_mtime=0
@@ -241,7 +241,7 @@ function _build_cli {
 
   local win_static_libs=()
   local static_libs=()
-  local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
+  local test_sources=($(find "$src"/cli -name "*.cc" 2>/dev/null))
   local sources=()
   local outputs=()
 
@@ -260,17 +260,21 @@ function _build_cli {
     fi
   done
 
-  for (( i = 0; i < ${#sources[@]}; i++ )); do
+  local pids=()
+  for (( i = 0; i < ${#sources[@]}; i++ )); do {
     mkdir -p "$(dirname "${outputs[$i]}")"
     quiet "$CXX" "${cflags[@]}"  \
-      -c "${sources[$i]}"      \
+      -c "${sources[$i]}"        \
       -o "${outputs[$i]}"
     die $? "$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
+  } & pids+=($!)
   done
+
+  wait "${pids[@]}"
 
   local exe=""
   local static_libs=""
-  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
+  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d -name "*$d.o" 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     declare d=""
     if [[ -n "$DEBUG" ]]; then
@@ -300,12 +304,12 @@ function _build_cli {
     # TODO "$static_libs" where it was doesn't work, if windows requires it to
     # be where it was, there should be a separate branch for windows.
     #
-    quiet "$CXX"                                 \
-      "${win_static_libs[@]}"                    \
-      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
-      "${static_libs[@]}"                        \
-      "${cflags[@]}"                             \
-      "${ldflags[@]}"                            \
+    quiet "$CXX"                                                    \
+      "${win_static_libs[@]}"                                       \
+      $(find "$BUILD_DIR/$arch-$platform/cli$d" -name "*$d.o")      \
+      "${static_libs[@]}"                                           \
+      "${cflags[@]}"                                                \
+      "${ldflags[@]}"                                               \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""

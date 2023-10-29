@@ -141,7 +141,7 @@ const Config& SSC::getUserConfig () {
 }
 
 bool SSC::isDebugEnabled () {
-  return DEBUG == 1;
+  return flagDebugMode;
 }
 
 void printHelp (const String& command) {
@@ -713,22 +713,22 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
         auto key = tuple.first;
         auto& value = tuple.second;
 
-        if (key.starts_with("win_")) {
+        if (key.starts_with("win.")) {
           if (!platform.win) continue;
           key = key.substr(4, key.size() - 4);
         }
 
-        if (key.starts_with("mac_")) {
+        if (key.starts_with("mac.")) {
           if (!platform.mac) continue;
           key = key.substr(4, key.size() - 4);
         }
 
-        if (key.starts_with("ios_")) {
+        if (key.starts_with("ios.")) {
           if (!platform.mac || !targetPlatform.starts_with("ios")) continue;
           key = key.substr(4, key.size() - 4);
         }
 
-        if (key.starts_with("linux_")) {
+        if (key.starts_with("linux.")) {
           if (!platform.linux) continue;
           key = key.substr(6, key.size() - 6);
         }
@@ -1028,7 +1028,7 @@ void runIOSSimulator (const Path& path, const Config& userConfig) {
     auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
     log(
       "failed to find device type: " + userConfig.get("ios.simulator_device") + ". "
-      "Please provide correct device name for the \"ios_simulator_device\". "
+      "Please provide correct device name for the \"ios.simulator_device\". "
       "The list of available devices:\n" + rListDevices.output
     );
     if (rListDevices.output.size() > 0) {
@@ -1610,7 +1610,7 @@ void initializeRC (Path targetPath) {
       }
 
       // auto set environment variables
-      if (key.starts_with("env_")) {
+      if (key.starts_with("env.")) {
         key = key.substr(4, key.size() - 4);
         Env::set(key, value);
       }
@@ -3328,7 +3328,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       // custom native sources
-      for (const auto& file : userConfig.list("android.native_sources")) {
+      for (const auto& file : userConfig.list("android.native.sources")) {
         auto filename = Path(file).filename();
         writeFile(
           jni / "src" / filename,
@@ -3669,19 +3669,19 @@ int main (const int argc, const char* argv[]) {
 
       if (userConfig["android.native_makefile"].size() > 0) {
         makefileContext["android.native_make_context"] =
-          trim(tmpl(tmpl(convertWStringToString(readFile(targetPath / userConfig["android.native_makefile"])), settings), makefileContext));
+          trim(tmpl(tmpl(convertWStringToString(readFile(targetPath / userConfig["android.native.makefile"])), userConfig.data()), makefileContext));
       } else {
         makefileContext["android.native_make_context"] = "";
       }
 
       writeFile(
         jni / "Application.mk",
-        trim(tmpl(tmpl(gAndroidApplicationMakefile, makefileContext), settings))
+        trim(tmpl(tmpl(gAndroidApplicationMakefile, makefileContext), userConfig.data()))
       );
 
       writeFile(
         jni / "Android.mk",
-        trim(tmpl(tmpl(gAndroidMakefile, makefileContext), settings))
+        trim(tmpl(tmpl(gAndroidMakefile, makefileContext), userConfig.data()))
       );
 
       // Android Source
@@ -3748,7 +3748,7 @@ int main (const int argc, const char* argv[]) {
             convertWStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
             bundle_identifier
-          ), settings)
+          ), userConfig.data())
         );
       }
     }
@@ -3763,7 +3763,7 @@ int main (const int argc, const char* argv[]) {
       auto schemeName = (userConfig["build.name"] + ".xcscheme");
       auto pathToProject = paths.platformSpecificOutputPath / projectName;
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-      auto pathToProfile = targetPath / userConfig["ios_provisioning_profile"];
+      auto pathToProfile = targetPath / userConfig["ios.provisioning_profile"];
 
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
@@ -3820,16 +3820,16 @@ int main (const int argc, const char* argv[]) {
           fs::copy(pathToProfile, pathToInstalledProfile);
         }
 
-        userConfig["ios_provisioning_specifier"] = provSpec;
-        userConfig["ios_provisioning_profile"] = uuid;
-        userConfig["apple_team_identifier"] = team;
+        userConfig["ios.provisioning_specifier"] = provSpec;
+        userConfig["ios.provisioning_profile"] = uuid;
+        userConfig["apple.team_identifier"] = team;
       }
 
       if (flagBuildForSimulator) {
-        userConfig["ios_provisioning_specifier"] = "";
-        userConfig["ios_provisioning_profile"] = "";
-        userConfig["ios_codesign_identity"] = "";
-        userConfig["apple_team_identifier"] = "";
+        userConfig["ios.provisioning_specifier"] = "";
+        userConfig["ios.provisioning_profile"] = "";
+        userConfig["ios.codesign_identity"] = "";
+        userConfig["apple.team_identifier"] = "";
       }
 
       // --platform=ios should always build for arm64 even on Darwin x86_64
@@ -3874,8 +3874,8 @@ int main (const int argc, const char* argv[]) {
         userConfig["ini_code"]
       );
 
-      Map xCodeProjectVariables = settings;
-      extendMap(xCodeProjectVariables, Map {
+      auto xCodeProjectVariables = userConfig;
+      xCodeProjectVariables.extend(Map {
         {"ssc.version", VERSION_STRING},
         {"ssc.version_hash", VERSION_HASH_STRING},
         {"WAS_CODESIGNED", flagCodeSign ? "1" : "0"},
@@ -3892,7 +3892,7 @@ int main (const int argc, const char* argv[]) {
       );
 
       auto extensions = Vector<String>();
-      for (const auto& tuple : settings) {
+      for (const auto& tuple : userConfig) {
         auto& key = tuple.first;
         if (tuple.second.size() == 0) continue;
         if (key.starts_with("build.extensions_")) {
@@ -3901,8 +3901,8 @@ int main (const int argc, const char* argv[]) {
           if (key.find("linker_flags") != String::npos) continue;
           if (key.find("linker_debug_flags") != String::npos) continue;
           if (key.find("configure_script") != String::npos) continue;
-          if (key.starts_with("build.extensions_mac_")) continue;
-          if (key.starts_with("build.extensions_linux_")) continue;
+          if (key.starts_with("build.extensions_mac.")) continue;
+          if (key.starts_with("build.extensions_linux.")) continue;
           if (key.starts_with("build.extensions_win_")) continue;
           if (key.starts_with("build.extensions_android_")) continue;
           if (key.ends_with("_path")) continue;
@@ -4228,18 +4228,18 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      if (userConfig.contains("ios_info_plist_file")) {
-        const auto files = parseStringList(userConfig["ios_info_plist_file"]);
+      if (userConfig.contains("ios.info_plist_file")) {
+        const auto files = parseStringList(userConfig["ios.info_plist_file"]);
         for (const auto file : files) {
-          userConfig["ios_info_plist_data"] += readFile(file);
+          userConfig["ios.info_plist_data"] += readFile(file);
         }
       }
 
-      if (!userConfig.contains("ios_info_plist_data")) {
-        userConfig["ios_info_plist_data"] = "";
+      if (!userConfig.contains("ios.info_plist_data")) {
+        userConfig["ios.info_plist_data"] = "";
       }
 
-      userConfig["ios_info_plist_data"] += (
+      userConfig["ios.info_plist_data"] += (
         "  <key>UIBackgroundModes</key>\n"
         "  <array>\n"
         "    <string>fetch</string>\n"
@@ -4247,48 +4247,48 @@ int main (const int argc, const char* argv[]) {
       );
 
       if (userConfig["permissions.allow_bluetooth"] != "false") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "    <string>bluetooth-central</string>\n"
           "    <string>bluetooth-peripheral</string>\n"
         );
       }
 
       if (userConfig["permissions.allow_geolocation"] != "false") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "    <string>location</string>\n"
         );
       }
 
       if (userConfig["permissions.allow_push_notifications"] == "true") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "    <string>remote-notification</string>\n"
         );
       }
 
-      userConfig["ios_info_plist_data"] += (
+      userConfig["ios.info_plist_data"] += (
         "  </array>\n"
       );
 
-      userConfig["ios_info_plist_data"] += (
+      userConfig["ios.info_plist_data"] += (
         "  <key>UIRequiredDeviceCapabilities</key>\n"
         "  <array>\n"
       );
 
       if (userConfig["permissions.allow_bluetooth"] != "false") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "     <string>bluetooth-le</string>\n"
         );
       }
 
       if (userConfig["permissions.allow_geolocation"] != "false") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "     <string>gps</string>\n"
           "     <string>location-services</string>\n"
         );
       }
 
       if (userConfig["permissions.allow_sensors"] != "false") {
-        userConfig["ios_info_plist_data"] += (
+        userConfig["ios.info_plist_data"] += (
           "     <string>accelerometer</string>\n"
           "     <string>gyroscope</string>\n"
         );
@@ -4296,26 +4296,26 @@ int main (const int argc, const char* argv[]) {
 
       if (userConfig["permissions.allow_user_media"] != "false") {
         if (userConfig["permissions.allow_microphone"] != "false") {
-          userConfig["ios_info_plist_data"] += (
+          userConfig["ios.info_plist_data"] += (
             "     <string>microphone</string>\n"
           );
         }
 
         if (userConfig["permissions.allow_camera"] != "false") {
-          userConfig["ios_info_plist_data"] += (
+          userConfig["ios.info_plist_data"] += (
             "     <string>video-camera</string>\n"
           );
         }
       }
 
-      userConfig["ios_info_plist_data"] += (
+      userConfig["ios.info_plist_data"] += (
         "  </array>\n"
       );
 
-      writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-      writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
-      writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));
-      writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
+      writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, userConfig.data()));
+      writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, userConfig.data()));
+      writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables.data()));
+      writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, userConfig.data()));
 
       pathResources = paths.platformSpecificOutputPath / "ui";
       fs::create_directories(pathResources);
@@ -4375,8 +4375,8 @@ int main (const int argc, const char* argv[]) {
         userConfig["build.name"];
 
       // internal settings
-      userConfig["linux_executable_path"] = linuxExecPath.string();
-      userConfig["linux_icon_path"] = (
+      userConfig["linux.executable_path"] = linuxExecPath.string();
+      userConfig["linux.icon_path"] = (
         Path("/usr") /
         "share" /
         "icons" /
@@ -4386,11 +4386,10 @@ int main (const int argc, const char* argv[]) {
         (userConfig["build.name"] + ".png")
       ).string();
 
-      writeFile(pathManifestFile / (userConfig["build.name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+      writeFile(pathManifestFile / (userConfig["build.name"] + ".desktop"), tmpl(gDestkopManifest, userConfig.data()));
+      writeFile(pathControlFile / "control", tmpl(gDebianManifest, userConfig.data()));
 
-      writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
-
-      auto pathToIconSrc = (targetPath / userConfig["linux_icon"]).string();
+      auto pathToIconSrc = (targetPath / userConfig["linux.icon"]).string();
       auto pathToIconDest = (pathIcons / (userConfig["build.name"] + ".png")).string();
 
       if (!fs::exists(pathToIconDest)) {
@@ -4486,21 +4485,21 @@ int main (const int argc, const char* argv[]) {
         auto version = userConfig["meta.version"];
         auto winversion = split(version, '-')[0];
 
-        userConfig["win_version"] = winversion + ".0";
+        userConfig["win.version"] = winversion + ".0";
       } else {
-        userConfig["win_version"] = "0.0.0.0";
+        userConfig["win.version"] = "0.0.0.0";
       }
 
       // internal, a path to win executable, used in the manifest
-      userConfig["win_exe"] = executable.string();
+      userConfig["win.exe"] = executable.string();
 
-      writeFile(p, tmpl(gWindowsAppManifest, settings));
+      writeFile(p, tmpl(gWindowsAppManifest, userConfig.data()));
 
       // TODO Copy the files into place
     }
 
     handleBuildPhaseForUserScript(
-      settings,
+      userConfig,
       targetPlatform,
       pathResourcesRelativeToUserBuild,
       oldCwd,
@@ -4509,7 +4508,7 @@ int main (const int argc, const char* argv[]) {
     );
 
     auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
-      settings,
+      userConfig,
       targetPlatform,
       pathResourcesRelativeToUserBuild
     );
@@ -4536,7 +4535,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForIOS) {
-      if (flagBuildForSimulator && userConfig["ios_simulator_device"].size() == 0) {
+      if (flagBuildForSimulator && userConfig["ios.simulator_device"].size() == 0) {
         log("ERROR: [ios] simulator_device option is empty");
         exit(1);
       }
@@ -4567,16 +4566,15 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
 
-      Map entitlementSettings;
-      extendMap(entitlementSettings, settings);
+      auto entitlementConfig = userConfig;
 
       if (flagDebugMode) {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>get-task-allow</key>\n"
           "  <true/>\n "
         );
 
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.cs.debugger</key>\n"
           "  <true/>\n "
         );
@@ -4584,14 +4582,14 @@ int main (const int argc, const char* argv[]) {
 
       if (userConfig["permissions.allow_user_media"] != "false") {
         if (userConfig["permissions.allow_camera"] != "false") {
-          entitlementuserConfig["__apple_entitlements"] += (
+          entitlementConfig["__apple_entitlements"] += (
               "  <key>com.apple.security.device.camera</key>\n"
               "  <true/>\n"
               );
         }
 
         if (userConfig["permissions.allow_microphone"] != "false") {
-          entitlementuserConfig["__apple_entitlements"] += (
+          entitlementConfig["__apple_entitlements"] += (
               "  <key>com.apple.security.device.microphone</key>\n"
               "  <true/>\n"
               );
@@ -4599,33 +4597,33 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (userConfig["permissions.allow_bluetooth"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.device.bluetooth</key>\n"
           "  <true/>\n"
         );
       }
 
       if (userConfig["permissions.allow_push_notifications"] == "true") {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
           "  <true/>\n"
         );
-        
-        entitlementuserConfig["__apple_entitlements"] += (
+
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.developer.location.push</key>\n"
           "  <true/>\n"
         );
       }
 
       if (userConfig["permissions.allow_geolocation"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.personal-information.location</key>\n"
           "  <true/>\n"
         );
       }
 
-      if (userConfig["ios_sandbox"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+      if (userConfig["ios.sandbox"] != "false") {
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.app-sandbox</key>\n"
           "  <true/>\n"
         );
@@ -4633,7 +4631,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(
         pathToDist / "socket.entitlements",
-        tmpl(gXcodeEntitlements, entitlementSettings)
+        tmpl(gXcodeEntitlements, entitlementConfig.data())
       );
 
       //
@@ -4642,13 +4640,13 @@ int main (const int argc, const char* argv[]) {
       //
       StringStream archiveCommand;
       String destination = flagBuildForSimulator
-        ? "platform=iOS Simulator,OS=latest,name=" + userConfig["ios_simulator_device"]
+        ? "platform=iOS Simulator,OS=latest,name=" + userConfig["ios.simulator_device"]
         : "generic/platform=iOS";
       String deviceType;
 
       // TODO: should be "iPhone Distribution: <name/provisioning specifier>"?
-      if (userConfig["ios_codesign_identity"].size() == 0) {
-        userConfig["ios_codesign_identity"] = "iPhone Distribution";
+      if (userConfig["ios.codesign_identity"].size() == 0) {
+        userConfig["ios.codesign_identity"] = "iPhone Distribution";
       }
 
       auto sup = String("archive");
@@ -4683,7 +4681,7 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != String::npos) {
-          log("ERROR: [ios] simulator_device " + userConfig["ios_simulator_device"] + " from your socket.ini was not found");
+          log("ERROR: [ios] simulator_device " + userConfig["ios.simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
           log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
@@ -4934,9 +4932,10 @@ int main (const int argc, const char* argv[]) {
       fs::current_path(cwd);
     }
 
-    auto extraFlags = flagDebugMode
-      ? userConfig.count("debug_flags") ? userConfig["debug_flags"] : ""
-      : userConfig.count("build.flags") ? userConfig["build.flags"] : "";
+    auto extraFlags = userConfig.get("build.flags");
+    if (flagDebugMode) {
+      extraFlags += " " + userConfig.get("debug.flags");
+    }
 
     quote = "";
     if (platform.win && Env::get("CXX").find(" ") != SSC::String::npos) {
@@ -4954,7 +4953,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(paths.pathResourcesRelativeToUserBuild / "socket" / "extensions");
 
       auto extensions = Vector<String>();
-      for (const auto& tuple : settings) {
+      for (const auto& tuple : userConfig) {
         auto& key = tuple.first;
         if (tuple.second.size() == 0) continue;
         if (key.starts_with("build.extensions_")) {
@@ -4969,8 +4968,8 @@ int main (const int argc, const char* argv[]) {
           if (key.ends_with("_path")) continue;
 
           if (!platform.win && key.starts_with("build.extensions_win_")) continue;
-          if (!platform.mac && key.starts_with("build.extensions_mac_")) continue;
-          if (!platform.linux && key.starts_with("build.extensions_linux_")) continue;
+          if (!platform.mac && key.starts_with("build.extensions_mac.")) continue;
+          if (!platform.linux && key.starts_with("build.extensions_linux.")) continue;
 
           String extension;
           auto os = replace(replace(platform.os, "win32", "win"), "macos", "mac");;
@@ -5441,7 +5440,7 @@ int main (const int argc, const char* argv[]) {
 
           if (platform.mac) {
             if (isForDesktop) {
-              userConfig["mac_codesign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + RUNTIME_EXTENSION_FILE_EXT)).string() + ";";
+              userConfig["mac.codesign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + RUNTIME_EXTENSION_FILE_EXT)).string() + ";";
             }
           }
 
@@ -5513,7 +5512,7 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.linux && isForDesktop) {
-      auto packageFormat = userConfig["build.linux_package_format"];
+      auto packageFormat = userConfig["build.linux.package_format"];
 
       if (optionsWithValue["--package-format"].size()) {
         packageFormat = optionsWithValue["--package-format"];
@@ -5624,19 +5623,18 @@ int main (const int argc, const char* argv[]) {
       StringStream signCommand;
       String entitlements = "";
 
-      Map entitlementSettings;
-      extendMap(entitlementSettings, settings);
+      Map entitlementConfig;
 
       if (userConfig["permissions.allow_user_media"] != "false") {
         if (userConfig["permissions.allow_camera"] != "false") {
-          entitlementuserConfig["__apple_entitlements"] += (
+          entitlementConfig["__apple_entitlements"] += (
             "  <key>com.apple.security.device.camera</key>\n"
             "  <true/>\n"
           );
         }
 
         if (userConfig["permissions.allow_microphone"] != "false") {
-          entitlementuserConfig["__apple_entitlements"] += (
+          entitlementConfig["__apple_entitlements"] += (
             "  <key>com.apple.security.device.microphone</key>\n"
             "  <true/>\n"
             "  <key>com.apple.security.device.audio-input</key>\n"
@@ -5646,34 +5644,34 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (userConfig["permissions.allow_bluetooth"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.device.bluetooth</key>\n"
           "  <true/>\n"
         );
       }
 
       if (userConfig["permissions.allow_geolocation"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.personal-information.location</key>\n"
           "  <true/>\n"
         );
       }
 
-      if (userConfig["apple_team_identifier"].size() > 0) {
+      if (userConfig["apple.team_identifier"].size() > 0) {
         auto identifier = (
-          userConfig["apple_team_identifier"] +
+          userConfig["apple.team_identifier"] +
           "." +
           userConfig["meta.bundle_identifier"]
         );
 
-        entitlementuserConfig["__apple_entitlements"] += (
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.application-identifier</key>\n"
           "  <string>" + identifier  + "</string>\n"
         );
       }
 
-      if (userConfig["mac_sandbox"] != "false") {
-        entitlementuserConfig["__apple_entitlements"] += (
+      if (userConfig["mac.sandbox"] != "false") {
+        entitlementConfig["__apple_entitlements"] += (
           "  <key>com.apple.security.app-sandbox</key>\n"
           "  <true/>\n"
         );
@@ -5681,10 +5679,10 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(
         paths.platformSpecificOutputPath / "socket.entitlements",
-        tmpl(gXcodeEntitlements, entitlementSettings)
+        tmpl(gXcodeEntitlements, entitlementConfig)
       );
 
-      if (userConfig.count("mac_codesign_identity") == 0) {
+      if (!userConfig.contains("mac.codesign_identity")) {
         log("'[mac.codesign] identity' key/value is required");
         exit(1);
       }
@@ -5697,12 +5695,12 @@ int main (const int argc, const char* argv[]) {
         << " --timestamp"
         << " --entitlements " << (paths.platformSpecificOutputPath / "socket.entitlements").string()
         << " --identifier '" << userConfig["meta.bundle_identifier"] << "'"
-        << " --sign '" << userConfig["mac_codesign_identity"] << "'"
+        << " --sign '" << userConfig["mac.codesign_identity"] << "'"
         << " "
       ;
 
-      if (userConfig["mac_codesign_paths"].size() > 0) {
-        auto paths = split(userConfig["mac_codesign_paths"], ';');
+      if (userConfig["mac.codesign_paths"].size() > 0) {
+        auto paths = split(userConfig["mac.codesign_paths"], ';');
 
         for (int i = 0; i < paths.size(); i++) {
           String prefix = (i > 0) ? ";" : "";
@@ -5750,7 +5748,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (platform.mac && isForDesktop) {
-      auto packageFormat = userConfig["build.mac_package_format"];
+      auto packageFormat = userConfig["build.mac.package_format"];
 
       if (optionsWithValue["--package-format"].size()) {
         packageFormat = optionsWithValue["--package-format"];
@@ -5758,7 +5756,7 @@ int main (const int argc, const char* argv[]) {
 
       if (packageFormat.size() == 0) {
         packageFormat = "zip";
-        userConfig["build.mac_package_format"] = packageFormat;
+        userConfig["build.mac.package_format"] = packageFormat;
       }
 
       pathToArchive = paths.platformSpecificOutputPath / (userConfig["build.name"] + "." + packageFormat);
@@ -5772,7 +5770,7 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.mac && isForDesktop) {
-      auto packageFormat = userConfig["build.mac_package_format"];
+      auto packageFormat = userConfig["build.mac.package_format"];
 
       if (optionsWithValue["--package-format"].size()) {
         packageFormat = optionsWithValue["--package-format"];
@@ -5802,8 +5800,8 @@ int main (const int argc, const char* argv[]) {
         }
       } else if (packageFormat == "pkg") {
         StringStream productBuildCommand;
-        auto identity = userConfig["mac_productbuild_identity"];
-        auto productBuildInstallPath = userConfig["mac_productbuild_install_path"];
+        auto identity = userConfig["mac.productbuild_identity"];
+        auto productBuildInstallPath = userConfig["mac.productbuild_install_path"];
 
         if (identity.size() == 0) {
           log("ERROR: Missing '[mac.productbuild] identity = ...' in 'socket.ini'");
@@ -5873,7 +5871,7 @@ int main (const int argc, const char* argv[]) {
       String password = Env::get("APPLE_ID_PASSWORD");
 
       if (username.size() == 0) {
-        username = userConfig["apple_identifier"];
+        username = userConfig["apple.identifier"];
       }
 
       if (username.size() == 0) {
@@ -5906,8 +5904,8 @@ int main (const int argc, const char* argv[]) {
         << " --apple-id \"" << username << "\""
         << " --password \"" << password << "\"";
 
-      if (userConfig["apple_team_identifier"].size() > 0) {
-        notarizeCommand << " --team-id " << userConfig["apple_team_identifier"];
+      if (userConfig["apple.team_identifier"].size() > 0) {
+        notarizeCommand << " --team-id " << userConfig["apple.team_identifier"];
       }
 
       notarizeCommand << " \"" << pathToArchive.string() << "\"";
@@ -6252,7 +6250,7 @@ int main (const int argc, const char* argv[]) {
         << "\"" << pathToSignTool << "\""
         << " sign"
         << " /debug"
-        << " /f " << userConfig["win_pfx"]
+        << " /f " << userConfig["win.pfx"]
         << " /p \"" << password << "\""
         << " /v"
         << " /tr http://timestamp.digicert.com"
@@ -6292,11 +6290,10 @@ int main (const int argc, const char* argv[]) {
         const Vector<FileSystemWatcher::Event>& events,
         const FileSystemWatcher::Context& context
       ) {
-        auto settingsForSourcesWatcher = settings;
-        extendMap(
-          settingsForSourcesWatcher,
-          INI::parse(readFile(targetPath / "socket.ini"))
-        );
+        auto settingsForSourcesWatcher = userConfig;
+        settingsForSourcesWatcher.extend(Config {
+          readFile(targetPath / "socket.ini")
+        });
 
         handleBuildPhaseForUserScript(
           settingsForSourcesWatcher,
@@ -6326,7 +6323,7 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      run(targetPlatform, settings, paths, flagDebugMode, flagRunHeadless, argvForward, androidState);
+      run(targetPlatform, userConfig, paths, flagDebugMode, flagRunHeadless, argvForward, androidState);
     }
 
     exit(exitCode);
@@ -6382,13 +6379,13 @@ int main (const int argc, const char* argv[]) {
         }
       }
     }
-    userConfig.insert(std::make_pair("host", devHost));
+    userConfig.set("host", devHost);
 
     String devPort = "0";
     if (optionsWithValue.count("--port") > 0) {
       devPort = optionsWithValue["--port"];
     }
-    userConfig.insert(std::make_pair("port", devPort));
+    userConfig.set("port", devPort);
 
     const bool debugEnv = (
       Env::get("SSC_DEBUG").size() > 0 ||
@@ -6417,7 +6414,7 @@ int main (const int argc, const char* argv[]) {
     androidState.quote = quote;
     androidState.slash = slash;
 
-    run(targetPlatform, settings, paths, false, flagRunHeadless, argvForward, androidState);
+    run(targetPlatform, userConfig, paths, false, flagRunHeadless, argvForward, androidState);
   });
 
   // first flag indicating whether option is optional
@@ -6582,8 +6579,8 @@ int main (const int argc, const char* argv[]) {
 
     // gather all evironemnt variables relevant to project in the `socket.ini`
     // file, which may overload the variables above
-    for (const auto& entry : settings) {
-      if (entry.first.starts_with("env_")) {
+    for (const auto& entry : userConfig) {
+      if (entry.first.starts_with("env.")) {
         auto key = entry.first.substr(4, entry.first.size() - 4);
         auto value = trim(entry.second);
 
@@ -6603,7 +6600,7 @@ int main (const int argc, const char* argv[]) {
     // gather all evironemnt variables relevant to local `.sscrc` files
     // file, which may overload the variables above
     for (const auto& entry : rc) {
-      if (entry.first.starts_with("env_")) {
+      if (entry.first.starts_with("env.")) {
         auto key = entry.first.substr(4, entry.first.size() - 4);
         auto value = trim(entry.second);
 

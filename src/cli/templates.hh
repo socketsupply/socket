@@ -1,3 +1,6 @@
+#ifndef SSC_CLI_TEMPLATES_HH
+#define SSC_CLI_TEMPLATES_HH
+
 //
 // Cli Help
 //
@@ -1915,3 +1918,5 @@ build/
 *.o
 
 )GITIGNORE";
+
+#endif

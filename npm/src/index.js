@@ -27,6 +27,7 @@ export const bin = {
 
 // Modifying this function requires full FTE testing (From fresh install) on all build OS's before signing off (Individual arch testing not required)
 export const firstTimeExperienceSetup = async () => {
+  return true
   const installPath = path.dirname(path.dirname(bin.ssc))
   if (fs.existsSync(path.join(installPath, '.ssc.env'))) {
     return true

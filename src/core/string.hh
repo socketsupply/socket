@@ -28,10 +28,10 @@ namespace SSC {
   const Vector<String> splitc (const String& source, const char character);
   const Vector<String> split (const String& source, const char character);
   const Vector<String> split (const String& source, const String& needle);
-  const String join (const Vector<String>& vector, const String& separator);
-  const String join (const Vector<String>& vector, const char separator);
-  const String join (const Set<String>& vector, const String& separator);
-  const String join (const Set<String>& vector, const char separator);
+  const String join (const Vector<String>& vector, const String& separator = " ");
+  const String join (const Vector<String>& vector, const char separator = ' ');
+  const String join (const Set<String>& vector, const String& separator = " ");
+  const String join (const Set<String>& vector, const char separator = ' ');
   Vector<String> parseStringList (const String& string, const Vector<char>& separators);
   Vector<String> parseStringList (const String& string, const char separator);
   Vector<String> parseStringList (const String& string);
@@ -43,6 +43,10 @@ namespace SSC {
   const Set<String> concat (const Set<String>& left, const Set<String>& right);
   const Vector<String> concat (const Vector<String>& left, const Set<String>& right);
   const Set<String> concat (const Set<String>& left, const Vector<String>& right);
+
+  // lookup
+  bool contains (const String& source, const String& search);
+  bool contains (const Vector<String>& source, const String& search);
 }
 
 #endif

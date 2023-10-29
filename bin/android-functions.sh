@@ -849,6 +849,7 @@ function main() {
       android_fte "$@"
       exit $?
     fi
+
     [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }
