@@ -365,6 +365,11 @@ static dispatch_queue_t queue = dispatch_queue_create(
 @end
 
 int main (int argc, char *argv[]) {
+  struct rlimit limit;
+  getrlimit(RLIMIT_NOFILE, &limit);
+  limit.rlim_cur = 2048;
+  setrlimit(RLIMIT_NOFILE, &limit);
+
   @autoreleasepool {
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }

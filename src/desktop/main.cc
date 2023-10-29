@@ -76,6 +76,14 @@ inline const Vector<int> splitToInts (const String& s, const char& c) {
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
+
+  #if defined(__APPLE__)
+    struct rlimit limit;
+    getrlimit(RLIMIT_NOFILE, &limit);
+    limit.rlim_cur = 2048;
+    setrlimit(RLIMIT_NOFILE, &limit);
+  #endif
+
   // Singletons should be static to remove some possible race conditions in
   // their instantiation and destruction.
   static App app(instanceId);
