@@ -55,13 +55,6 @@ SSC::String getNavigationError (const String &cwd, const String &value) {
 //
 MAIN {
 
-  #if defined(__APPLE__)
-    struct rlimit limit;
-    getrlimit(RLIMIT_NOFILE, &limit);
-    limit.rlim_cur = 2048;
-    setrlimit(RLIMIT_NOFILE, &limit);
-  #endif
-
   // Singletons should be static to remove some possible race conditions in
   // their instantiation and destruction.
   static App app(instanceId);
