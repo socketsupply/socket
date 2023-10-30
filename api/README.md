@@ -1025,7 +1025,7 @@ Unlinks (removes) file at `path`.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
 
-## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L860)
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L861)
 
 Watch for changes at `path` calling `callback`
 
@@ -1033,6 +1033,7 @@ Watch for changes at `path` calling `callback`
 | :---     | :--- | :---:   | :---:    | :---        |
 | (Position 0) | string |  | false |  |
 | options | function \| object |  | true |  |
+| options.encoding | string | utf8 | true |  |
 | callback | ?function |  | true |  |
 
 | Return Value | Type | Description |
@@ -1330,7 +1331,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L496)
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L497)
 
 Watch for changes at `path` calling `callback`
 
@@ -1338,6 +1339,7 @@ Watch for changes at `path` calling `callback`
 | :---     | :--- | :---:   | :---:    | :---        |
 | (Position 0) | string |  | false |  |
 | options | function \| object |  | true |  |
+| options.encoding | string | utf8 | true |  |
 | options.signal | AbortSignal |  | true |  |
 
 | Return Value | Type | Description |

@@ -854,6 +854,7 @@ export function writeFile (path, data, options, callback) {
  * Watch for changes at `path` calling `callback`
  * @param {string}
  * @param {function|object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
  * @param {?function} [callback]
  * @return {Watcher}
  */

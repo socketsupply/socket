@@ -1,8 +1,29 @@
 import { EventEmitter } from '../events.js'
+import { AbortError } from '../errors.js'
 import { rand64 } from '../crypto.js'
+import { Buffer } from '../buffer.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
+
+/**
+ * Encodes filename based on encoding preference.
+ * @ignore
+ * @param {Watcher} watcher
+ * @param {string} filename
+ * @return {string|Buffer}
+ */
+function encodeFilename (watcher, filename) {
+  if (!watcher.encoding || watcher.encoding === 'utf8') {
+    return filename.toString()
+  }
+
+  if (watcher.encoding === 'buffer') {
+    return Buffer.from(filename.toString())
+  }
+
+  return filename
+}
 
 /**
  * Starts the `fs.Watcher`
@@ -24,7 +45,7 @@ async function start (watcher) {
 /**
  * Internal watcher data event listeer.
  * @ignore
- * @param {Watcher}
+ * @param {Watcher} watcher
  * @return {function}
  */
 function listen (watcher) {
@@ -40,7 +61,7 @@ function listen (watcher) {
 
     const { path, events } = data
 
-    watcher.emit('change', events[0], path)
+    watcher.emit('change', events[0], encodeFilename(watcher, path))
   })
 }
 
@@ -68,6 +89,24 @@ export class Watcher extends EventEmitter {
   closed = false
 
   /**
+   * `true` if aborted, otherwise `false`.
+   * @type {boolean}
+   */
+  aborted = false
+
+  /**
+   * The encoding of the `filename`
+   * @type {'utf8'|'buffer'}
+   */
+  encoding = 'utf8'
+
+  /**
+   * A `AbortController` `AbortSignal` for async aborts.
+   * @type {AbortSignal?}
+   */
+  signal = null
+
+  /**
    * Internal event listener cancellation.
    * @ignore
    * @type {function?}
@@ -79,15 +118,35 @@ export class Watcher extends EventEmitter {
    * @ignore
    * @param {string} path
    * @param {object=} [options]
+   * @param {AbortSignal=} [options.signal}
    * @param {string|number|bigint=} [options.id]
+   * @param {string=} [options.encoding = 'utf8']
    */
-  constructor (path, options = {}) {
+  constructor (path, options = null) {
     super()
 
     this.id = options?.id || String(rand64())
     this.path = path
+    this.signal = options?.signal || null
+    this.aborted = this.signal?.aborted === true
+    this.encoding = options?.encoding || this.encoding
 
     gc.ref(this)
+
+    if (this.signal?.aborted) {
+      throw new AbortError(this.signal)
+    }
+
+    if (typeof this.signal?.addEventListener === 'function') {
+      this.signal.addEventListener('abort', async () => {
+        this.aborted = true
+        try {
+          await this.close()
+        } catch (err) {
+          console.warn('Failed to close fs.Watcher in AbortSignal:', err.message)
+        }
+      })
+    }
 
     // internal
     if (options?.start !== false) {
@@ -155,14 +214,20 @@ export class Watcher extends EventEmitter {
    * @return {AsyncIterator<{ eventType: string, filename: string }>}
    */
   [Symbol.asyncIterator] () {
+    let watcher = this
     return {
       async next () {
-        if (this.closed) {
+        if (watcher?.aborted) {
+          throw new AbortError(watcher.signal)
+        }
+
+        if (watcher.closed) {
+          watcher = null
           return { done: true, value: null }
         }
 
         const event = await new Promise((resolve) => {
-          this.once('change', (eventType, filename) => {
+          watcher.once('change', (eventType, filename) => {
             resolve({ eventType, filename })
           })
         })

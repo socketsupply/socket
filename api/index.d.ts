@@ -2628,7 +2628,9 @@ declare module "socket:fs/watcher" {
          * @ignore
          * @param {string} path
          * @param {object=} [options]
+         * @param {AbortSignal=} [options.signal}
          * @param {string|number|bigint=} [options.id]
+         * @param {string=} [options.encoding = 'utf8']
          */
         constructor(path: string, options?: object | undefined);
         /**
@@ -2647,6 +2649,21 @@ declare module "socket:fs/watcher" {
          * @type {boolean}
          */
         closed: boolean;
+        /**
+         * `true` if aborted, otherwise `false`.
+         * @type {boolean}
+         */
+        aborted: boolean;
+        /**
+         * The encoding of the `filename`
+         * @type {'utf8'|'buffer'}
+         */
+        encoding: 'utf8' | 'buffer';
+        /**
+         * A `AbortController` `AbortSignal` for async aborts.
+         * @type {AbortSignal?}
+         */
+        signal: AbortSignal | null;
         /**
          * Internal event listener cancellation.
          * @ignore
@@ -2831,6 +2848,7 @@ declare module "socket:fs/promises" {
      * Watch for changes at `path` calling `callback`
      * @param {string}
      * @param {function|object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
      * @param {AbortSignal=} [options.signal]
      * @return {Watcher}
      */
@@ -3060,6 +3078,7 @@ declare module "socket:fs/index" {
      * Watch for changes at `path` calling `callback`
      * @param {string}
      * @param {function|object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
      * @param {?function} [callback]
      * @return {Watcher}
      */
