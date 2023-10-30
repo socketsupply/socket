@@ -224,7 +224,7 @@ export async function link (src, dest) {
  */
 export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
-  const recursive = options.recurisve ?? false
+  const recursive = Boolean(options.recurisve)
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')

@@ -744,7 +744,7 @@ static void initRouterTable (Router *router) {
    * @see mkdir(2)
    */
   router->map("fs.mkdir", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"path", "mode", "recursive"});  // Added "recursive" here
+    auto err = validateMessageParameters(message, {"path", "mode", "recursive"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
@@ -753,9 +753,9 @@ static void initRouterTable (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    bool recursive = false;  // Default value
-    if (message.has("recursive")) {  // Check if the "recursive" key exists in the message
-      recursive = message.get("recursive").asBool();  // Assuming your library has a way to extract boolean values
+    bool recursive = false;
+    if (message.has("recursive")) {
+      recursive = message.get("recursive") // Convert this to bool
     }
 
     router->core->fs.mkdir(

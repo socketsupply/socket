@@ -1859,7 +1859,12 @@ namespace SSC {
     }
     uv_fs_req_cleanup(&stat_req);
 
-    size_t last_slash = path.rfind('/');
+    #if defined(_WIN32)
+    size_t last_slash = path.find("\\");
+    #else
+    size_t last_slash = path.find("/");
+    #endif
+
     if (last_slash == String::npos) {
         callback(UV_ENOENT);
         return;
