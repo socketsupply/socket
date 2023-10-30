@@ -1,5 +1,6 @@
 #include <regex>
 #include <unordered_map>
+#include <set>
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -2335,21 +2336,33 @@ static void registerSchemeHandler (Router *router) {
 #if defined(__APPLE__)
 @implementation SSCIPCSchemeHandler
 {
-  // Map tasks to a block that prevents future didReceiveData/didFinish calls.
-  std::unordered_map<Task, std::function<void()>> _tasks;
+  SSC::Mutex mutex;
+  std::set<Task> tasks;
 }
-- (void) taskHasEnded: (Task) task {
-  if (task != nullptr && _tasks.contains(task)) {
-    auto taskEndedCallback = _tasks.at(task);
-    _tasks.erase(task);
-    if (taskEndedCallback != nullptr) {
-      taskEndedCallback();
-    }
+
+- (void) enqueueTask: (Task) task {
+  Lock lock(mutex);
+  if (task != nullptr && !tasks.contains(task)) {
+    tasks.insert(task);
   }
 }
-- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
-  [self taskHasEnded: task];
+
+- (void) finalizeTask: (Task) task {
+  Lock lock(mutex);
+  if (task != nullptr && tasks.contains(task)) {
+    tasks.erase(task);
+  }
 }
+
+- (bool) waitingForTask: (Task) task {
+  Lock lock(mutex);
+  return task != nullptr && tasks.contains(task);
+}
+
+- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
+  [self finalizeTask: task];
+}
+
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
@@ -2431,7 +2444,6 @@ static void registerSchemeHandler (Router *router) {
           ];
 
           [task didReceiveResponse: response];
-          [task didReceiveData: data];
           [task didFinish];
 
         #if !__has_feature(objc_arc)
@@ -2634,17 +2646,15 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  bool taskEnded = false;
-  _tasks.emplace(task, [&taskEnded]() {
-    taskEnded = true;
-  });
+  [self enqueueTask: task];
 
   auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
     // @TODO Communicate task cancellation to the route, so it can cancel its work.
-    if (taskEnded) {
+    if (![self waitingForTask: task]) {
       return;
     }
 
+    auto id = result.id;
     auto headers = [NSMutableDictionary dictionary];
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
@@ -2657,14 +2667,18 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [self, task, &taskEnded](const char* name,
-                                                           const char* data,
-                                                           bool finished) {
-        if (taskEnded) {
+      *result.post.event_stream = [=](
+        const char* name,
+        const char* data,
+        bool finished
+      ) {
+        if (![self waitingForTask: task]) {
           return false;
         }
-        auto event_name = [NSString stringWithUTF8String:name];
-        auto event_data = [NSString stringWithUTF8String:data];
+
+        auto event_name = [NSString stringWithUTF8String: name];
+        auto event_data = [NSString stringWithUTF8String: data];
+
         if (event_name.length > 0 || event_data.length > 0) {
           auto event =
               event_name.length > 0 && event_data.length > 0
@@ -2674,27 +2688,33 @@ static void registerSchemeHandler (Router *router) {
                   ? [NSString stringWithFormat:@"data: %@\n\n", event_data]
                   : [NSString stringWithFormat:@"event: %@\n\n", event_name];
 
-          [task didReceiveData:[event dataUsingEncoding:NSUTF8StringEncoding]];
+          [task didReceiveData: [event dataUsingEncoding:NSUTF8StringEncoding]];
         }
+
         if (finished) {
           [task didFinish];
-          [self taskHasEnded:task];
+          [self finalizeTask: task];
         }
+
         return true;
       };
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
     } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [self, task, &taskEnded](const char* chunk,
-                                                           size_t chunk_size,
-                                                           bool finished) {
-        if (taskEnded) {
+      *result.post.chunk_stream = [=](
+        const char* chunk,
+        size_t chunk_size,
+        bool finished
+      ) {
+        if (![self waitingForTask: task]) {
           return false;
         }
+
         [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
+
         if (finished) {
           [task didFinish];
-          [self taskHasEnded:task];
+          [self finalizeTask: task];
         }
         return true;
       };
@@ -2727,7 +2747,7 @@ static void registerSchemeHandler (Router *router) {
     if (data != nullptr) {
       [task didReceiveData: data];
       [task didFinish];
-      [self taskHasEnded:task];
+      [self finalizeTask: task];
     }
 
   #if !__has_feature(objc_arc)
@@ -3293,13 +3313,21 @@ namespace SSC::IPC {
     fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
 
     // 1. Try the given path if it's a file
+  #if defined(__APPLE__)
+    if ([NSFileManager.defaultManager fileExistsAtPath: @(fullPath.string().c_str())]) {
+  #else
     if (fs::is_regular_file(fullPath)) {
+  #endif
       return Router::WebViewURLPathResolution{"/" + fs::relative(fullPath, basePath).string()};
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
     fs::path indexPath = fullPath / fs::path("index.html");
+  #if defined(__APPLE__)
+    if ([NSFileManager.defaultManager fileExistsAtPath: @(indexPath.string().c_str())]) {
+  #else
     if (fs::is_regular_file(indexPath)) {
+  #endif
       if (fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
           .path = "/" + fs::relative(indexPath, basePath).string(),
@@ -3316,7 +3344,11 @@ namespace SSC::IPC {
     // 3. Check if appending a .html file extension gives a valid file
     fs::path htmlPath = fullPath;
     htmlPath.replace_extension(".html");
+  #if defined(__APPLE__)
+    if ([NSFileManager.defaultManager fileExistsAtPath: @(htmlPath.string().c_str())]) {
+  #else
     if (fs::is_regular_file(htmlPath)) {
+  #endif
       return Router::WebViewURLPathResolution{"/" + fs::relative(htmlPath, basePath).string()};
     }
 
