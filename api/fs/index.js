@@ -360,7 +360,7 @@ export function lchown (path, uid, gid, callback) {
 }
 
 /**
- * Creates a link to `dest` from `dest`.
+ * Creates a link to `dest` from `src`.
  * @param {string} src
  * @param {string} dest
  * @param {function}

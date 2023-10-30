@@ -2286,7 +2286,7 @@ declare module "socket:fs/dir" {
          */
         get closed(): boolean;
         /**
-         * `true` if closeing, otherwise `false`.
+         * `true` if closing, otherwise `false`.
          * @ignore
          * @type {boolean}
          */
@@ -2955,7 +2955,7 @@ declare module "socket:fs/index" {
      */
     export function lchown(path: string, uid: number, gid: number, callback: Function): void;
     /**
-     * Creates a link to `dest` from `dest`.
+     * Creates a link to `dest` from `src`.
      * @param {string} src
      * @param {string} dest
      * @param {function}

@@ -70,12 +70,12 @@ export class Dir {
   }
 
   /**
-   * `true` if closeing, otherwise `false`.
+   * `true` if closing, otherwise `false`.
    * @ignore
    * @type {boolean}
    */
   get closing () {
-    return Boolean(this.handle?.closig)
+    return Boolean(this.handle?.closing)
   }
 
   /**
