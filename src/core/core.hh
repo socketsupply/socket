@@ -510,8 +510,8 @@ namespace SSC {
             const String seq,
             const String path,
             int mode,
-            Module::Callback cb,
-            bool recursive = false
+            bool recursive,
+            Module::Callback cb
           );
           void readlink (
             const String seq,
