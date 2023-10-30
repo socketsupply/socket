@@ -1,4 +1,5 @@
 import { EventEmitter } from '../events.js'
+import { FileHandle } from './handle.js'
 import { AbortError } from '../errors.js'
 import { rand64 } from '../crypto.js'
 import { Buffer } from '../buffer.js'
@@ -32,6 +33,13 @@ function encodeFilename (watcher, filename) {
  * @return {Promise}
  */
 async function start (watcher) {
+  // throws if not accessible
+  await FileHandle.access(watcher.path)
+
+  if (!watcher.id || typeof watcher.id !== 'string') {
+    throw new TypeError('Expectig fs.Watcher to have a id.')
+  }
+
   const result = await ipc.send('fs.watch', {
     path: watcher.path,
     id: watcher.id

@@ -868,7 +868,7 @@ Chages ownership of link at `path` with `uid` and `gid.
 
 ## [`link(src, dest, )`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L368)
 
-Creates a link to `dest` from `dest`.
+Creates a link to `dest` from `src`.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
