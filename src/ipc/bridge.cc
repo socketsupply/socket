@@ -996,6 +996,27 @@ static void initRouterTable (Router *router) {
   });
 
   /**
+   * Stops a already started watcher
+   */
+  router->map("fs.stopWatch", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.watch(
+      message.seq,
+      id,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
    * Removes a file or empty directory at `path`.
    * @param path
    * @see unlink(2)
@@ -1009,6 +1030,27 @@ static void initRouterTable (Router *router) {
 
     router->core->fs.unlink(
       message.seq,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * TODO
+   */
+  router->map("fs.watch", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "path"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.watch(
+      message.seq,
+      id,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -3313,21 +3355,13 @@ namespace SSC::IPC {
     fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
 
     // 1. Try the given path if it's a file
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(fullPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(fullPath)) {
-  #endif
       return Router::WebViewURLPathResolution{"/" + fs::relative(fullPath, basePath).string()};
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
     fs::path indexPath = fullPath / fs::path("index.html");
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(indexPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(indexPath)) {
-  #endif
       if (fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
           .path = "/" + fs::relative(indexPath, basePath).string(),
@@ -3344,11 +3378,7 @@ namespace SSC::IPC {
     // 3. Check if appending a .html file extension gives a valid file
     fs::path htmlPath = fullPath;
     htmlPath.replace_extension(".html");
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(htmlPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(htmlPath)) {
-  #endif
       return Router::WebViewURLPathResolution{"/" + fs::relative(htmlPath, basePath).string()};
     }
 

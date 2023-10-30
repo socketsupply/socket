@@ -29,6 +29,7 @@ import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
 import * as constants from './constants.js'
+import { Watcher } from './watcher.js'
 import { Stats } from './stats.js'
 import fds from './fds.js'
 
@@ -44,6 +45,7 @@ export {
   FileHandle,
   ReadStream,
   Stats,
+  Watcher,
   WriteStream
 }
 
@@ -110,7 +112,11 @@ export async function chmod (path, mode) {
 }
 
 /**
- * @ignore
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @return {Promise}
  */
 export async function chown (path, uid, gid) {
   if (typeof path !== 'string') {
@@ -133,7 +139,11 @@ export async function chown (path, uid, gid) {
 }
 
 /**
- * @ignore
+ * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+ * @param {string} src - The source file path.
+ * @param {string} dest - The destination file path.
+ * @param {number} flags - Modifiers for copy operation.
+ * @return {Promise}
  */
 export async function copyFile (src, dest, flags) {
   if (typeof src !== 'string') {
@@ -156,7 +166,11 @@ export async function copyFile (src, dest, flags) {
 }
 
 /**
- * @ignore
+ * Chages ownership of link at `path` with `uid` and `gid.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @return {Promise}
  */
 export async function lchown (path, uid, gid) {
   if (typeof path !== 'string') {
@@ -179,7 +193,10 @@ export async function lchown (path, uid, gid) {
 }
 
 /**
- * @ignore
+ * Creates a link to `dest` from `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
 export async function link (src, dest) {
   if (typeof src !== 'string') {
@@ -303,7 +320,9 @@ export async function readFile (path, options) {
 }
 
 /**
- * @ignore
+ * Reads link at `path`
+ * @param {string} path
+ * @return {Promise<string>}
  */
 export async function readlink (path) {
   if (typeof path !== 'string') {
@@ -320,7 +339,9 @@ export async function readlink (path) {
 }
 
 /**
- * @ignore
+ * Computes real path for `path`
+ * @param {string} path
+ * @return {Promise<string>}
  */
 export async function realpath (path) {
   if (typeof path !== 'string') {
@@ -337,18 +358,21 @@ export async function realpath (path) {
 }
 
 /**
- * @ignore
+ * Renames file or directory at `src` to `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
-export async function rename (oldPath, newPath) {
-  if (typeof oldPath !== 'string') {
+export async function rename (src, dest) {
+  if (typeof src !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
 
-  if (typeof newPath !== 'string') {
+  if (typeof dest !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
 
-  const result = await ipc.send('fs.rename', { oldPath, newPath })
+  const result = await ipc.send('fs.rename', { src, dest })
 
   if (result.err) {
     throw result.err
@@ -356,7 +380,9 @@ export async function rename (oldPath, newPath) {
 }
 
 /**
- * @ignore
+ * Removes directory at `path`.
+ * @param {string} path
+ * @return {Promise}
  */
 export async function rmdir (path) {
   if (typeof path !== 'string') {
@@ -384,7 +410,10 @@ export async function stat (path, options) {
 }
 
 /**
- * @ignore
+ * Creates a symlink of `src` at `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
 export async function symlink (src, dest, type = null) {
   let flags = 0
@@ -417,7 +446,9 @@ export async function symlink (src, dest, type = null) {
 }
 
 /**
- * @ignore
+ * Unlinks (removes) file at `path`.
+ * @param {string} path
+ * @return {Promise}
  */
 export async function unlink (path) {
   if (typeof path !== 'string') {
@@ -453,6 +484,17 @@ export async function writeFile (path, data, options) {
   return await visit(path, options, async (handle) => {
     return await handle.writeFile(data, options)
   })
+}
+
+/**
+ * Watch for changes at `path` calling `callback`
+ * @param {string}
+ * @param {function|object=} [options]
+ * @param {AbortSignal=} [options.signal]
+ * @return {Watcher}
+ */
+export function watch (path, options) {
+  return new Watcher(path, options)
 }
 
 export default exports

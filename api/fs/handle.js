@@ -85,7 +85,7 @@ export class FileHandle extends EventEmitter {
    * @param {string} path
    * @param {number} [mode = 0o666]
    * @param {object=} [options]
-   * @return {boolean}
+   * @return {Promise<boolean>}
    */
   static async access (path, mode, options) {
     if (mode !== null && typeof mode === 'object') {
@@ -112,7 +112,7 @@ export class FileHandle extends EventEmitter {
    * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
    * @param {string | Buffer | URL} path
    * @param {string=} [flags = 'r']
-   * @param {string=} [mode = 0o666]
+   * @param {string|number=} [mode = 0o666]
    * @param {object=} [options]
    */
   static async open (path, flags, mode, options) {
@@ -137,7 +137,7 @@ export class FileHandle extends EventEmitter {
 
   /**
    * `FileHandle` class constructor
-   * @private
+   * @ignore
    * @param {object} options
    */
   constructor (options) {
@@ -207,7 +207,7 @@ export class FileHandle extends EventEmitter {
       args: [this.id, options],
       async handle (id) {
         if (fds.has(id)) {
-          console.warn('Closing FileHandle on garbage collection')
+          console.warn('Closing fs.FileHandle on garbage collection')
           await ipc.send('fs.close', { id }, options)
           fds.release(id, false)
         }
@@ -420,9 +420,9 @@ export class FileHandle extends EventEmitter {
    * Reads `length` bytes starting from `position` into `buffer` at
    * `offset`.
    * @param {Buffer|object} buffer
-   * @param {number} offset
-   * @param {number} length
-   * @param {number} position
+   * @param {number=} [offset]
+   * @param {number=} [length]
+   * @param {number=} [position]
    * @param {object=} [options]
    */
   async read (buffer, offset, length, position, options) {
@@ -914,7 +914,7 @@ export class DirectoryHandle extends EventEmitter {
       args: [this.id, options],
       async handle (id) {
         if (fds.has(id)) {
-          console.warn('Closing DirectoryHandle on garbage collection')
+          console.warn('Closing fs.DirectoryHandle on garbage collection')
           await ipc.send('fs.closedir', { id }, options)
           fds.release(id, false)
         }

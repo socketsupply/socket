@@ -1052,6 +1052,77 @@ namespace SSC {
     });
   }
 
+  void Core::FS::watch (
+    const String seq,
+    uint64_t id,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      FileSystemWatcher* watcher;
+      {
+        Lock lock(this->mutex);
+        watcher = this->watchers[id];
+      }
+
+      if (watcher == nullptr) {
+        watcher = new FileSystemWatcher(path);
+        const auto started = watcher->start([=, this](
+          const auto& changed,
+          const auto& events,
+          const auto& context
+        ) mutable {
+          JSON::Array::Entries eventNames;
+
+          if (std::find(events.begin(), events.end(), FileSystemWatcher::Event::RENAME) != events.end()) {
+            eventNames.push_back("rename");
+          }
+
+          if (std::find(events.begin(), events.end(), FileSystemWatcher::Event::CHANGE) != events.end()) {
+            eventNames.push_back("change");
+          }
+
+          auto json = JSON::Object::Entries {
+            {"source", "fs.watch"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(id)},
+              {"events",eventNames},
+              {"path", std::filesystem::relative(changed, path).string()}
+            }}
+          };
+
+          cb("-1", json, Post{});
+        });
+
+        if (!started) {
+          auto json = JSON::Object::Entries {
+            {"source", "fs.watch"},
+            {"err", JSON::Object::Entries {
+              {"message", "Failed to start 'fs.Watcher'"}
+            }}
+          };
+
+          cb(seq, json, Post{});
+          return;
+        }
+
+        {
+          Lock lock(this->mutex);
+          this->watchers.insert_or_assign(id, watcher);
+        }
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "fs.watch"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(id)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
+
   void Core::FS::write (
     const String seq,
     uint64_t id,
@@ -1167,6 +1238,38 @@ namespace SSC {
 
         ctx->cb(ctx->seq, json, Post{});
         delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::stopWatch (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto watcher = this->core->fs.watchers[id];
+      if (watcher != nullptr) {
+        watcher->stop();
+        delete watcher;
+        this->core->fs.watchers.erase(id);
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stopWatch"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+          }}
+        };
+        cb(seq, json, Post{});
+      } else {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"err", JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "fs.Watcher does not exist"}
+          }}
+        };
+
+        cb(seq, json, Post{});
       }
     });
   }

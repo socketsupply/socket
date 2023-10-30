@@ -33,6 +33,7 @@ import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
 import * as constants from './constants.js'
 import * as promises from './promises.js'
+import { Watcher } from './watcher.js'
 import { Stats } from './stats.js'
 import fds from './fds.js'
 
@@ -47,7 +48,7 @@ function defaultCallback (err) {
   if (err) throw err
 }
 
-async function visit (path, options, callback) {
+async function visit (path, options = null, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
@@ -133,7 +134,11 @@ export function chmod (path, mode, callback) {
 }
 
 /**
- * @ignore
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @param {function} callback
  */
 export function chown (path, uid, gid, callback) {
   if (typeof path !== 'string') {
@@ -230,7 +235,9 @@ export function createReadStream (path, options) {
   if (options?.fd) {
     handle = FileHandle.from(options.fd)
   } else {
+    // @ts-ignore
     handle = new FileHandle({ flags: 'r', path, ...options })
+    // @ts-ignore
     handle.open(options).catch((err) => stream.emit('error', err))
   }
 
@@ -239,6 +246,7 @@ export function createReadStream (path, options) {
       try {
         await handle.close(options)
       } catch (err) {
+        // @ts-ignore
         stream.emit('error', err)
       }
     }
@@ -271,6 +279,7 @@ export function createWriteStream (path, options) {
     handle = FileHandle.from(options.fd)
   } else {
     handle = new FileHandle({ flags: 'w', path, ...options })
+    // @ts-ignore
     handle.open(options).catch((err) => stream.emit('error', err))
   }
 
@@ -279,6 +288,7 @@ export function createWriteStream (path, options) {
       try {
         await handle.close(options)
       } catch (err) {
+        // @ts-ignore
         stream.emit('error', err)
       }
     }
@@ -321,7 +331,11 @@ export function fstat (fd, options, callback) {
 }
 
 /**
- * @ignore
+ * Chages ownership of link at `path` with `uid` and `gid.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @param {function} callback
  */
 export function lchown (path, uid, gid, callback) {
   if (typeof path !== 'string') {
@@ -346,7 +360,10 @@ export function lchown (path, uid, gid, callback) {
 }
 
 /**
- * @ignore
+ * Creates a link to `dest` from `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @param {function}
  */
 export function link (src, dest, callback) {
   if (typeof src !== 'string') {
@@ -607,7 +624,9 @@ export function readFile (path, options = {}, callback) {
 }
 
 /**
- * @ignore
+ * Reads link at `path`
+ * @param {string} path
+ * @param {function(err, string)} callback
  */
 export function readlink (path, callback) {
   if (typeof path !== 'string') {
@@ -624,7 +643,9 @@ export function readlink (path, callback) {
 }
 
 /**
- * @ignore
+ * Computes real path for `path`
+ * @param {string} path
+ * @param {function(err, string)} callback
  */
 export function realpath (path, callback) {
   if (typeof path !== 'string') {
@@ -641,7 +662,10 @@ export function realpath (path, callback) {
 }
 
 /**
- * @ignore
+ * Renames file or directory at `src` to `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @param {function} callback
  */
 export function rename (src, dest, callback) {
   if (typeof src !== 'string') {
@@ -662,7 +686,9 @@ export function rename (src, dest, callback) {
 }
 
 /**
- * @ignore
+ * Removes directory at `path`.
+ * @param {string} path
+ * @param {function} callback
  */
 export function rmdir (path, callback) {
   if (typeof path !== 'string') {
@@ -697,7 +723,7 @@ export function stat (path, options, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  visit(path, async (err, handle) => {
+  visit(path, {}, async (err, handle) => {
     let stats = null
 
     if (err) {
@@ -717,7 +743,9 @@ export function stat (path, options, callback) {
 }
 
 /**
- * @ignore
+ * Creates a symlink of `src` at `dest`.
+ * @param {string} src
+ * @param {string} dest
  */
 export function symlink (src, dest, type = null, callback) {
   let flags = 0
@@ -756,7 +784,9 @@ export function symlink (src, dest, type = null, callback) {
 }
 
 /**
- * @ignore
+ * Unlinks (removes) file at `path`.
+ * @param {string} path
+ * @param {function} callback
  */
 export function unlink (path, callback) {
   if (typeof path !== 'string') {
@@ -820,6 +850,23 @@ export function writeFile (path, data, options, callback) {
   })
 }
 
+/**
+ * Watch for changes at `path` calling `callback`
+ * @param {string}
+ * @param {function|object=} [options]
+ * @param {?function} [callback]
+ * @return {Watcher}
+ */
+export function watch (path, options, callback = null) {
+  if (typeof options === 'function') {
+    callback = options
+  }
+
+  const watcher = new Watcher(path, options)
+  watcher.on('change', callback)
+  return watcher
+}
+
 // re-exports
 export {
   constants,
@@ -831,6 +878,7 @@ export {
   promises,
   ReadStream,
   Stats,
+  Watcher,
   WriteStream
 }
 

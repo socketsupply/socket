@@ -61,11 +61,29 @@ export class Dir {
   }
 
   /**
+   * `true` if closed, otherwise `false`.
+   * @ignore
+   * @type {boolean}
+   */
+  get closed () {
+    return Boolean(this.handle?.closed)
+  }
+
+  /**
+   * `true` if closeing, otherwise `false`.
+   * @ignore
+   * @type {boolean}
+   */
+  get closing () {
+    return Boolean(this.handle?.closig)
+  }
+
+  /**
    * Closes container and underlying handle.
    * @param {object|function} options
    * @param {function=} callback
    */
-  async close (options, callback) {
+  async close (options = null, callback) {
     if (typeof options === 'function') {
       callback = options
       options = {}

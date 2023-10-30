@@ -18,7 +18,7 @@ export const DEFAULT_STREAM_HIGH_WATER_MARK = 64 * 1024
 export class ReadStream extends Readable {
   /**
    * `ReadStream` class constructor
-   * @private
+   * @ignore
    */
   constructor (options) {
     super(options)
@@ -170,7 +170,7 @@ export class ReadStream extends Readable {
 export class WriteStream extends Writable {
   /**
    * `WriteStream` class constructor
-   * @private
+   * @ignore
    */
   constructor (options) {
     super(options)
