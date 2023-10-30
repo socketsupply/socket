@@ -3815,9 +3815,11 @@ int main (const int argc, const char* argv[]) {
           "Provisioning Profiles" /
           (uuid + ".mobileprovision");
 
-        if (!fs::exists(pathToInstalledProfile)) {
-          fs::copy(pathToProfile, pathToInstalledProfile);
+        if (fs::exists(pathToInstalledProfile)) {
+          fs::remove_all(pathToInstalledProfile);
         }
+
+        fs::copy(pathToProfile, pathToInstalledProfile);
 
         settings["ios_provisioning_specifier"] = provSpec;
         settings["ios_provisioning_profile"] = uuid;
@@ -4566,39 +4568,9 @@ int main (const int argc, const char* argv[]) {
       Map entitlementSettings;
       extendMap(entitlementSettings, settings);
 
+      entitlementSettings["configured_entitlements"] = "";
+
       if (flagDebugMode) {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>get-task-allow</key>\n"
-          "  <true/>\n "
-        );
-
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>com.apple.security.cs.debugger</key>\n"
-          "  <true/>\n "
-        );
-      }
-
-      if (settings["permissions_allow_user_media"] != "false") {
-        if (settings["permissions_allow_camera"] != "false") {
-          entitlementSettings["configured_entitlements"] += (
-              "  <key>com.apple.security.device.camera</key>\n"
-              "  <true/>\n"
-              );
-        }
-
-        if (settings["permissions_allow_microphone"] != "false") {
-          entitlementSettings["configured_entitlements"] += (
-              "  <key>com.apple.security.device.microphone</key>\n"
-              "  <true/>\n"
-              );
-        }
-      }
-
-      if (settings["permissions_allow_bluetooth"] != "false") {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>com.apple.security.device.bluetooth</key>\n"
-          "  <true/>\n"
-        );
       }
 
       if (settings["permissions_allow_push_notifications"] == "true") {
@@ -4606,25 +4578,14 @@ int main (const int argc, const char* argv[]) {
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
           "  <true/>\n"
         );
-        
+
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.developer.location.push</key>\n"
           "  <true/>\n"
         );
       }
 
-      if (settings["permissions_allow_geolocation"] != "false") {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>com.apple.security.personal-information.location</key>\n"
-          "  <true/>\n"
-        );
-      }
-
       if (settings["ios_sandbox"] != "false") {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>com.apple.security.app-sandbox</key>\n"
-          "  <true/>\n"
-        );
       }
 
       writeFile(
@@ -4657,6 +4618,7 @@ int main (const int argc, const char* argv[]) {
       archiveCommand
         << "xcodebuild"
         << " build " << sup
+        << " -allowProvisioningUpdates"
         << " -configuration " << configuration
         << " -scheme " << settings["build_name"]
         << " -destination '" << destination << "'";
@@ -4671,6 +4633,10 @@ int main (const int argc, const char* argv[]) {
           << " CODE_SIGNING_REQUIRED=\"NO\""
           << " CODE_SIGN_ENTITLEMENTS=\"\""
           << " CODE_SIGNING_ALLOWED=\"NO\"";
+      } else {
+        archiveCommand
+          << " CODE_SIGN_IDENTITY=\"" + settings["ios_codesign_identity"] + "\""
+          << " CODE_SIGN_ENTITLEMENTS=\"" + (pathToDist.string() + "/socket.entitlements") +  "\"";
       }
 
       // log(archiveCommand.str().c_str());
@@ -4683,6 +4649,40 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
+      if (flagCodeSign) {
+        StringStream stream;
+        stream
+          << "codesign"
+          << " -vvv"
+          << " --force"
+          << " --sign '" << settings["ios_codesign_identity"] << "'"
+          << " --entitlements '" << pathToDist.string() << "/socket.entitlements'"
+          << " --generate-entitlement-der"
+          << " --preserve-metadata=identifier,flags,runtime";
+
+
+        if (flagShouldPackage) {
+          stream
+            << " " << pathToDist.string()
+            << "/build/"
+            << settings["build_name"] << ".xcarchive"
+            << "/Products/Applications/" << settings["build_name"] << ".app";
+        } else {
+          stream << " " << pathToDist.string() << "/" << settings["build_name"] << ".app";
+        }
+
+        const auto command = stream.str();
+        // log(command);
+        auto result= exec(command.c_str());
+        if (result.exitCode != 0) {
+          log("ERROR: failed to export project");
+          if (flagVerboseMode) {
+            log(result.output);
+          }
+          exit(1);
+        }
+      }
+
       log("created archive");
 
       if (flagShouldPackage && !flagBuildForSimulator) {
@@ -4691,6 +4691,7 @@ int main (const int argc, const char* argv[]) {
         exportCommand
           << "xcodebuild"
           << " -exportArchive"
+          << " -allowProvisioningUpdates"
           << " -archivePath build/" << settings["build_name"] << ".xcarchive"
           << " -exportPath build/" << settings["build_name"] << ".ipa"
           << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
@@ -5616,6 +5617,17 @@ int main (const int argc, const char* argv[]) {
       Map entitlementSettings;
       extendMap(entitlementSettings, settings);
 
+      entitlementSettings["configured_entitlements"] += (
+        "  <key>com.apple.security.network.server</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.network.client</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.cs.allow-jit</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.files.user-selected.read-write</key>\n"
+        "  <true/>\n"
+      );
+
       if (settings["permissions_allow_user_media"] != "false") {
         if (settings["permissions_allow_camera"] != "false") {
           entitlementSettings["configured_entitlements"] += (
@@ -5665,6 +5677,20 @@ int main (const int argc, const char* argv[]) {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.security.app-sandbox</key>\n"
           "  <true/>\n"
+          "  <key>com.apple.security.inherit</key>\n"
+          "  <true/>\n"
+        );
+      }
+
+      if (flagDebugMode) {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>get-task-allow</key>\n"
+          "  <true/>\n "
+        );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.cs.debugger</key>\n"
+          "  <true/>\n "
         );
       }
 
