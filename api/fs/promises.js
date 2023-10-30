@@ -216,7 +216,6 @@ export async function link (src, dest) {
 
 /**
  * Asynchronously creates a directory.
- * @todo recursive option is not implemented yet.
  *
  * @param {String} path - The path to create
  * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.

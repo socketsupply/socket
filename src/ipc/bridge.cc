@@ -736,7 +736,7 @@ static void initRouterTable (Router *router) {
     );
   });
 
-    /**
+ /**
    * Creates a directory at `path` with an optional mode and an optional recursive flag.
    * @param path
    * @param mode
@@ -744,7 +744,7 @@ static void initRouterTable (Router *router) {
    * @see mkdir(2)
    */
   router->map("fs.mkdir", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"path", "mode", "recursive"});
+    auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
@@ -753,16 +753,11 @@ static void initRouterTable (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    bool recursive = false;
-    if (message.has("recursive")) {
-      recursive = message.get("recursive") // Convert this to bool
-    }
-
     router->core->fs.mkdir(
       message.seq,
       message.get("path"),
       mode,
-      recursive,  // Pass the recursive value here
+      message.get("recursive") == "true",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
