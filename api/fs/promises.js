@@ -217,13 +217,15 @@ export async function link (src, dest) {
 /**
  * Asynchronously creates a directory.
  *
- * @param {String} path - The path to create
- * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+ * @param {string} path - The path to create
+ * @param {object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+ * @param {boolean} [options.recursive]
+ * @param {number} [options.mode]
  * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
  */
 export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
-  const recursive = Boolean(options.recurisve)
+  const recursive = Boolean(options.recursive)
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
