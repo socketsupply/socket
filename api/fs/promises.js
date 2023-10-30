@@ -490,6 +490,7 @@ export async function writeFile (path, data, options) {
  * Watch for changes at `path` calling `callback`
  * @param {string}
  * @param {function|object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
  * @param {AbortSignal=} [options.signal]
  * @return {Watcher}
  */
