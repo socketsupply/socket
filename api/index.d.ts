@@ -2004,24 +2004,24 @@ declare module "socket:fs/handle" {
          * @param {string} path
          * @param {number} [mode = 0o666]
          * @param {object=} [options]
-         * @return {boolean}
+         * @return {Promise<boolean>}
          */
-        static access(path: string, mode?: number, options?: object | undefined): boolean;
+        static access(path: string, mode?: number, options?: object | undefined): Promise<boolean>;
         /**
          * Asynchronously open a file.
          * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
          * @param {string | Buffer | URL} path
          * @param {string=} [flags = 'r']
-         * @param {string=} [mode = 0o666]
+         * @param {string|number=} [mode = 0o666]
          * @param {object=} [options]
          */
-        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: string | undefined, options?: object | undefined): Promise<exports.FileHandle>;
+        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: (string | number) | undefined, options?: object | undefined): Promise<exports.FileHandle>;
         /**
          * `FileHandle` class constructor
-         * @private
+         * @ignore
          * @param {object} options
          */
-        private constructor();
+        constructor(options: object);
         flags: any;
         path: any;
         mode: any;
@@ -2077,12 +2077,12 @@ declare module "socket:fs/handle" {
          * Creates a `ReadStream` for the underlying file.
          * @param {object=} [options] - An options object
          */
-        createReadStream(options?: object | undefined): any;
+        createReadStream(options?: object | undefined): ReadStream;
         /**
          * Creates a `WriteStream` for the underlying file.
          * @param {object=} [options] - An options object
          */
-        createWriteStream(options?: object | undefined): any;
+        createWriteStream(options?: object | undefined): WriteStream;
         /**
          * @param {object=} [options]
          */
@@ -2096,12 +2096,12 @@ declare module "socket:fs/handle" {
          * Reads `length` bytes starting from `position` into `buffer` at
          * `offset`.
          * @param {Buffer|object} buffer
-         * @param {number} offset
-         * @param {number} length
-         * @param {number} position
+         * @param {number=} [offset]
+         * @param {number=} [length]
+         * @param {number=} [position]
          * @param {object=} [options]
          */
-        read(buffer: Buffer | object, offset: number, length: number, position: number, options?: object | undefined): Promise<{
+        read(buffer: Buffer | object, offset?: number | undefined, length?: number | undefined, position?: number | undefined, options?: object | undefined): Promise<{
             bytesRead: number;
             buffer: any;
         }>;
@@ -2247,6 +2247,8 @@ declare module "socket:fs/handle" {
     import { EventEmitter } from "socket:events";
     import { Buffer } from "socket:buffer";
     import * as exports from "socket:fs/handle";
+    import { ReadStream } from "socket:fs/stream";
+    import { WriteStream } from "socket:fs/stream";
     import { Stats } from "socket:fs/stats";
     
 }
@@ -2278,11 +2280,23 @@ declare module "socket:fs/dir" {
         encoding: any;
         withFileTypes: boolean;
         /**
+         * `true` if closed, otherwise `false`.
+         * @ignore
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if closeing, otherwise `false`.
+         * @ignore
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
          * Closes container and underlying handle.
          * @param {object|function} options
          * @param {function=} callback
          */
-        close(options: object | Function, callback?: Function | undefined): Promise<any>;
+        close(options?: object | Function, callback?: Function | undefined): Promise<any>;
         /**
          * Reads and returns directory entry.
          * @param {object|function} options
@@ -2365,6 +2379,303 @@ declare module "socket:fs/dir" {
     import * as exports from "socket:fs/dir";
     
 }
+declare module "socket:hooks" {
+    /**
+     * Wait for the global Window, Document, and Runtime to be ready.
+     * The callback function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onReady(callback: Function): Function;
+    /**
+     * Wait for the global Window and Document to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLoad(callback: Function): Function;
+    /**
+     * Wait for the runtime to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onInit(callback: Function): Function;
+    /**
+     * Calls callback when a global exception occurs.
+     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onError(callback: Function): Function;
+    /**
+     * Subscribes to the global data pipe calling callback when
+     * new data is emitted on the global Window.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onData(callback: Function): Function;
+    /**
+     * Subscribes to global messages likely from an external `postMessage`
+     * invocation.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onMessage(callback: Function): Function;
+    /**
+     * Calls callback when runtime is working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOnline(callback: Function): Function;
+    /**
+     * Calls callback when runtime is not working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOffline(callback: Function): Function;
+    /**
+     * Calls callback when runtime user preferred language has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLanguageChange(callback: Function): Function;
+    /**
+     * Calls callback when an application permission has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onPermissionChange(callback: Function): Function;
+    /**
+     * Calls callback in response to a presented `Notification`.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationResponse(callback: Function): Function;
+    /**
+     * Calls callback when a `Notification` is presented.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationPresented(callback: Function): Function;
+    /**
+     * An event dispatched when the runtime has been initialized.
+     */
+    export class InitEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime global has been loaded.
+     */
+    export class LoadEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime is considered ready.
+     */
+    export class ReadyEvent {
+        constructor();
+    }
+    /**
+     * An interface for registering callbacks for various hooks in
+     * the runtime.
+     */
+    export class Hooks extends EventTarget {
+        /**
+         * Reference to global object
+         * @type {object}
+         */
+        get global(): any;
+        /**
+         * Returns `document` in global.
+         * @type {Document}
+         */
+        get document(): Document;
+        /**
+         * Returns `document` in global.
+         * @type {Window}
+         */
+        get window(): Window;
+        /**
+         * Predicate for determining if the global document is ready.
+         * @type {boolean}
+         */
+        get isDocumentReady(): boolean;
+        /**
+         * Predicate for determining if the global object is ready.
+         * @type {boolean}
+         */
+        get isGlobalReady(): boolean;
+        /**
+         * Predicate for determining if the runtime is ready.
+         * @type {boolean}
+         */
+        get isRuntimeReady(): boolean;
+        /**
+         * Predicate for determining if everything is ready.
+         * @type {boolean}
+         */
+        get isReady(): boolean;
+        /**
+         * Predicate for determining if the runtime is working online.
+         * @type {boolean}
+         */
+        get isOnline(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Worker context.
+         * @type {boolean}
+         */
+        get isWorkerContext(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Window context.
+         * @type {boolean}
+         */
+        get isWindowContext(): boolean;
+        /**
+         * Wait for the global Window, Document, and Runtime to be ready.
+         * The callback function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onReady(callback: Function): Function;
+        /**
+         * Wait for the global Window and Document to be ready. The callback
+         * function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLoad(callback: Function): Function;
+        /**
+         * Wait for the runtime to be ready. The callback
+         * function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onInit(callback: Function): Function;
+        /**
+         * Calls callback when a global exception occurs.
+         * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+         * @param {function} callback
+         * @return {function}
+         */
+        onError(callback: Function): Function;
+        /**
+         * Subscribes to the global data pipe calling callback when
+         * new data is emitted on the global Window.
+         * @param {function} callback
+         * @return {function}
+         */
+        onData(callback: Function): Function;
+        /**
+         * Subscribes to global messages likely from an external `postMessage`
+         * invocation.
+         * @param {function} callback
+         * @return {function}
+         */
+        onMessage(callback: Function): Function;
+        /**
+         * Calls callback when runtime is working online.
+         * @param {function} callback
+         * @return {function}
+         */
+        onOnline(callback: Function): Function;
+        /**
+         * Calls callback when runtime is not working online.
+         * @param {function} callback
+         * @return {function}
+         */
+        onOffline(callback: Function): Function;
+        /**
+         * Calls callback when runtime user preferred language has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLanguageChange(callback: Function): Function;
+        /**
+         * Calls callback when an application permission has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onPermissionChange(callback: Function): Function;
+        /**
+         * Calls callback in response to a displayed `Notification`.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationResponse(callback: Function): Function;
+        /**
+         * Calls callback when a `Notification` is presented.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationPresented(callback: Function): Function;
+        #private;
+    }
+    export default hooks;
+    /**
+     * `Hooks` single instance.
+     * @ignore
+     */
+    const hooks: Hooks;
+}
+declare module "socket:fs/watcher" {
+    /**
+     * A container for a file system path watcher.
+     */
+    export class Watcher extends EventEmitter {
+        /**
+         * `Watcher` class constructor.
+         * @ignore
+         * @param {string} path
+         * @param {object=} [options]
+         * @param {string|number|bigint=} [options.id]
+         */
+        constructor(path: string, options?: object | undefined);
+        /**
+         * The underlying `fs.Watcher` resource id.
+         * @ignore
+         * @type {string}
+         */
+        id: string;
+        /**
+         * The path the `fs.Watcher` is watching
+         * @type {string}
+         */
+        path: string;
+        /**
+         * `true` if closed, otherwise `false.
+         * @type {boolean}
+         */
+        closed: boolean;
+        /**
+         * Internal event listener cancellation.
+         * @ignore
+         * @type {function?}
+         */
+        stopListening: Function | null;
+        /**
+         * Internal starter for watcher.
+         * @ignore
+         */
+        start(): Promise<void>;
+        /**
+         * Closes watcher and stops listening for changes.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Implements the `AsyncIterator` (`Symbol.asyncIterator`) iterface.
+         * @ignore
+         * @return {AsyncIterator<{ eventType: string, filename: string }>}
+         */
+        [Symbol.asyncIterator](): AsyncIterator<{
+            eventType: string;
+            filename: string;
+        }>;
+    }
+    export default Watcher;
+    import { EventEmitter } from "socket:events";
+}
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
@@ -2382,21 +2693,36 @@ declare module "socket:fs/promises" {
      */
     export function chmod(path: string | Buffer | URL, mode: number): Promise<void>;
     /**
-     * @ignore
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @return {Promise}
      */
-    export function chown(path: any, uid: any, gid: any): Promise<void>;
+    export function chown(path: string, uid: number, gid: number): Promise<any>;
     /**
-     * @ignore
+     * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @return {Promise}
      */
-    export function copyFile(src: any, dest: any, flags: any): Promise<void>;
+    export function copyFile(src: string, dest: string, flags: number): Promise<any>;
     /**
-     * @ignore
+     * Chages ownership of link at `path` with `uid` and `gid.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @return {Promise}
      */
-    export function lchown(path: any, uid: any, gid: any): Promise<void>;
+    export function lchown(path: string, uid: number, gid: number): Promise<any>;
     /**
-     * @ignore
+     * Creates a link to `dest` from `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function link(src: any, dest: any): Promise<void>;
+    export function link(src: string, dest: string): Promise<any>;
     /**
      * Asynchronously creates a directory.
      * @todo recursive option is not implemented yet.
@@ -2444,21 +2770,30 @@ declare module "socket:fs/promises" {
      */
     export function readFile(path: string, options?: object | null): Promise<Buffer | string>;
     /**
-     * @ignore
+     * Reads link at `path`
+     * @param {string} path
+     * @return {Promise<string>}
      */
-    export function readlink(path: any): Promise<any>;
+    export function readlink(path: string): Promise<string>;
     /**
-     * @ignore
+     * Computes real path for `path`
+     * @param {string} path
+     * @return {Promise<string>}
      */
-    export function realpath(path: any): Promise<any>;
+    export function realpath(path: string): Promise<string>;
     /**
-     * @ignore
+     * Renames file or directory at `src` to `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function rename(oldPath: any, newPath: any): Promise<void>;
+    export function rename(src: string, dest: string): Promise<any>;
     /**
-     * @ignore
+     * Removes directory at `path`.
+     * @param {string} path
+     * @return {Promise}
      */
-    export function rmdir(path: any): Promise<void>;
+    export function rmdir(path: string): Promise<any>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
@@ -2468,13 +2803,18 @@ declare module "socket:fs/promises" {
      */
     export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
-     * @ignore
+     * Creates a symlink of `src` at `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function symlink(src: any, dest: any, type?: any): Promise<void>;
+    export function symlink(src: string, dest: string, type?: any): Promise<any>;
     /**
-     * @ignore
+     * Unlinks (removes) file at `path`.
+     * @param {string} path
+     * @return {Promise}
      */
-    export function unlink(path: any): Promise<void>;
+    export function unlink(path: string): Promise<any>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
@@ -2487,6 +2827,14 @@ declare module "socket:fs/promises" {
      * @return {Promise<void>}
      */
     export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray, options?: object | null): Promise<void>;
+    /**
+     * Watch for changes at `path` calling `callback`
+     * @param {string}
+     * @param {function|object=} [options]
+     * @param {AbortSignal=} [options.signal]
+     * @return {Watcher}
+     */
+    export function watch(path: any, options?: (Function | object) | undefined): Watcher;
     export type Stats = any;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
@@ -2495,6 +2843,7 @@ declare module "socket:fs/promises" {
     import { FileHandle } from "socket:fs/handle";
     import { Dir } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
+    import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
     import { Dirent } from "socket:fs/dir";
@@ -2502,7 +2851,7 @@ declare module "socket:fs/promises" {
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     
-    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, WriteStream };
+    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, Watcher, WriteStream };
 }
 declare module "socket:fs/index" {
     /**
@@ -2531,9 +2880,13 @@ declare module "socket:fs/index" {
      */
     export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
     /**
-     * @ignore
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @param {function} callback
      */
-    export function chown(path: any, uid: any, gid: any, callback: any): void;
+    export function chown(path: string, uid: number, gid: number, callback: Function): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
@@ -2576,13 +2929,20 @@ declare module "socket:fs/index" {
      */
     export function fstat(fd: number, options: any, callback?: Function | null): void;
     /**
-     * @ignore
+     * Chages ownership of link at `path` with `uid` and `gid.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @param {function} callback
      */
-    export function lchown(path: any, uid: any, gid: any, callback: any): void;
+    export function lchown(path: string, uid: number, gid: number, callback: Function): void;
     /**
-     * @ignore
+     * Creates a link to `dest` from `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @param {function}
      */
-    export function link(src: any, dest: any, callback: any): void;
+    export function link(src: string, dest: string, callback: any): void;
     /**
      * @ignore
      */
@@ -2638,21 +2998,30 @@ declare module "socket:fs/index" {
      */
     export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
-     * @ignore
+     * Reads link at `path`
+     * @param {string} path
+     * @param {function(err, string)} callback
      */
-    export function readlink(path: any, callback: any): void;
+    export function readlink(path: string, callback: (arg0: err, arg1: string) => any): void;
     /**
-     * @ignore
+     * Computes real path for `path`
+     * @param {string} path
+     * @param {function(err, string)} callback
      */
-    export function realpath(path: any, callback: any): void;
+    export function realpath(path: string, callback: (arg0: err, arg1: string) => any): void;
     /**
-     * @ignore
+     * Renames file or directory at `src` to `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @param {function} callback
      */
-    export function rename(src: any, dest: any, callback: any): void;
+    export function rename(src: string, dest: string, callback: Function): void;
     /**
-     * @ignore
+     * Removes directory at `path`.
+     * @param {string} path
+     * @param {function} callback
      */
-    export function rmdir(path: any, callback: any): void;
+    export function rmdir(path: string, callback: Function): void;
     /**
      *
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2664,13 +3033,17 @@ declare module "socket:fs/index" {
      */
     export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
     /**
-     * @ignore
+     * Creates a symlink of `src` at `dest`.
+     * @param {string} src
+     * @param {string} dest
      */
-    export function symlink(src: any, dest: any, type: any, callback: any): void;
+    export function symlink(src: string, dest: string, type: any, callback: any): void;
     /**
-     * @ignore
+     * Unlinks (removes) file at `path`.
+     * @param {string} path
+     * @param {function} callback
      */
-    export function unlink(path: any, callback: any): void;
+    export function unlink(path: string, callback: Function): void;
     /**
      * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2683,6 +3056,14 @@ declare module "socket:fs/index" {
      * @param {function(Error?)} callback
      */
     export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
+    /**
+     * Watch for changes at `path` calling `callback`
+     * @param {string}
+     * @param {function|object=} [options]
+     * @param {?function} [callback]
+     * @return {Watcher}
+     */
+    export function watch(path: any, options?: (Function | object) | undefined, callback?: Function | null): Watcher;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
@@ -2691,6 +3072,7 @@ declare module "socket:fs/index" {
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
+    import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
     import { Dirent } from "socket:fs/dir";
@@ -2698,7 +3080,7 @@ declare module "socket:fs/index" {
     import { FileHandle } from "socket:fs/handle";
     import * as promises from "socket:fs/promises";
     
-    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, WriteStream };
+    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
 }
 declare module "socket:fs" {
     export * from "socket:fs/index";
@@ -4243,245 +4625,6 @@ declare module "socket:fetch" {
     export * from "socket:fetch/index";
     export default fetch;
     import fetch from "socket:fetch/index";
-}
-declare module "socket:hooks" {
-    /**
-     * Wait for the global Window, Document, and Runtime to be ready.
-     * The callback function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onReady(callback: Function): Function;
-    /**
-     * Wait for the global Window and Document to be ready. The callback
-     * function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onLoad(callback: Function): Function;
-    /**
-     * Wait for the runtime to be ready. The callback
-     * function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onInit(callback: Function): Function;
-    /**
-     * Calls callback when a global exception occurs.
-     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onError(callback: Function): Function;
-    /**
-     * Subscribes to the global data pipe calling callback when
-     * new data is emitted on the global Window.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onData(callback: Function): Function;
-    /**
-     * Subscribes to global messages likely from an external `postMessage`
-     * invocation.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onMessage(callback: Function): Function;
-    /**
-     * Calls callback when runtime is working online.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onOnline(callback: Function): Function;
-    /**
-     * Calls callback when runtime is not working online.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onOffline(callback: Function): Function;
-    /**
-     * Calls callback when runtime user preferred language has changed.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onLanguageChange(callback: Function): Function;
-    /**
-     * Calls callback when an application permission has changed.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onPermissionChange(callback: Function): Function;
-    /**
-     * Calls callback in response to a presented `Notification`.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onNotificationResponse(callback: Function): Function;
-    /**
-     * Calls callback when a `Notification` is presented.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onNotificationPresented(callback: Function): Function;
-    /**
-     * An event dispatched when the runtime has been initialized.
-     */
-    export class InitEvent {
-        constructor();
-    }
-    /**
-     * An event dispatched when the runtime global has been loaded.
-     */
-    export class LoadEvent {
-        constructor();
-    }
-    /**
-     * An event dispatched when the runtime is considered ready.
-     */
-    export class ReadyEvent {
-        constructor();
-    }
-    /**
-     * An interface for registering callbacks for various hooks in
-     * the runtime.
-     */
-    export class Hooks extends EventTarget {
-        /**
-         * Reference to global object
-         * @type {object}
-         */
-        get global(): any;
-        /**
-         * Returns `document` in global.
-         * @type {Document}
-         */
-        get document(): Document;
-        /**
-         * Returns `document` in global.
-         * @type {Window}
-         */
-        get window(): Window;
-        /**
-         * Predicate for determining if the global document is ready.
-         * @type {boolean}
-         */
-        get isDocumentReady(): boolean;
-        /**
-         * Predicate for determining if the global object is ready.
-         * @type {boolean}
-         */
-        get isGlobalReady(): boolean;
-        /**
-         * Predicate for determining if the runtime is ready.
-         * @type {boolean}
-         */
-        get isRuntimeReady(): boolean;
-        /**
-         * Predicate for determining if everything is ready.
-         * @type {boolean}
-         */
-        get isReady(): boolean;
-        /**
-         * Predicate for determining if the runtime is working online.
-         * @type {boolean}
-         */
-        get isOnline(): boolean;
-        /**
-         * Predicate for determining if the runtime is in a Worker context.
-         * @type {boolean}
-         */
-        get isWorkerContext(): boolean;
-        /**
-         * Predicate for determining if the runtime is in a Window context.
-         * @type {boolean}
-         */
-        get isWindowContext(): boolean;
-        /**
-         * Wait for the global Window, Document, and Runtime to be ready.
-         * The callback function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onReady(callback: Function): Function;
-        /**
-         * Wait for the global Window and Document to be ready. The callback
-         * function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onLoad(callback: Function): Function;
-        /**
-         * Wait for the runtime to be ready. The callback
-         * function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onInit(callback: Function): Function;
-        /**
-         * Calls callback when a global exception occurs.
-         * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
-         * @param {function} callback
-         * @return {function}
-         */
-        onError(callback: Function): Function;
-        /**
-         * Subscribes to the global data pipe calling callback when
-         * new data is emitted on the global Window.
-         * @param {function} callback
-         * @return {function}
-         */
-        onData(callback: Function): Function;
-        /**
-         * Subscribes to global messages likely from an external `postMessage`
-         * invocation.
-         * @param {function} callback
-         * @return {function}
-         */
-        onMessage(callback: Function): Function;
-        /**
-         * Calls callback when runtime is working online.
-         * @param {function} callback
-         * @return {function}
-         */
-        onOnline(callback: Function): Function;
-        /**
-         * Calls callback when runtime is not working online.
-         * @param {function} callback
-         * @return {function}
-         */
-        onOffline(callback: Function): Function;
-        /**
-         * Calls callback when runtime user preferred language has changed.
-         * @param {function} callback
-         * @return {function}
-         */
-        onLanguageChange(callback: Function): Function;
-        /**
-         * Calls callback when an application permission has changed.
-         * @param {function} callback
-         * @return {function}
-         */
-        onPermissionChange(callback: Function): Function;
-        /**
-         * Calls callback in response to a displayed `Notification`.
-         * @param {function} callback
-         * @return {function}
-         */
-        onNotificationResponse(callback: Function): Function;
-        /**
-         * Calls callback when a `Notification` is presented.
-         * @param {function} callback
-         * @return {function}
-         */
-        onNotificationPresented(callback: Function): Function;
-        #private;
-    }
-    export default hooks;
-    /**
-     * `Hooks` single instance.
-     * @ignore
-     */
-    const hooks: Hooks;
 }
 declare module "socket:language" {
     /**

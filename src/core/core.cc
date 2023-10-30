@@ -618,6 +618,18 @@ namespace SSC {
             this->core->fs.descriptors.erase(tuple.first);
           }
         }
+
+        #if !defined(__ANDROID__)
+        for (auto const &tuple : this->core->fs.watchers) {
+          auto watcher = tuple.second;
+          if (watcher != nullptr) {
+            watcher->stop();
+            delete watcher;
+          }
+        }
+
+        this->core->fs.watchers.clear();
+        #endif
       }
 
       auto json = JSON::Object::Entries {

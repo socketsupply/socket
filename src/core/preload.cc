@@ -72,6 +72,19 @@ namespace SSC {
       }
     }
 
+    if (opts.appData.contains("webview_watch") && opts.appData.at("webview_watch") == "true") {
+      if (
+        !opts.appData.contains("webview_watch_reload") ||
+        opts.appData.at("webview_watch_reload") != "false"
+      ) {
+          preload += (
+            "  document.addEventListener('filedidchange', () => {              \n"
+            "  location.reload()                                               \n"
+            "  });                                                             \n"
+        );
+      }
+    }
+
     // fill in the config
     for (auto const &tuple : opts.appData) {
       auto key = trim(tuple.first);

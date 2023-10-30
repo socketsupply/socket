@@ -754,7 +754,7 @@ External docs: https://nodejs.org/api/events.html
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
+## [`access(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L85)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously check access a file for a given mode calling `callback`
@@ -766,7 +766,7 @@ Asynchronously check access a file for a given mode calling `callback`
 | mode | string? \| function(Error?)? | F_OK(0) | true |  |
 | callback | function(Error?)? |  | true |  |
 
-## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L117)
+## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L118)
 
 External docs: https://nodejs.org/api/fs.html#fschmodpath-mode-callback
 Asynchronously changes the permissions of a file.
@@ -780,7 +780,18 @@ Asynchronously changes the permissions of a file.
 | mode | number |  | false |  |
 | callback | function(Error?) |  | false |  |
 
-## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L166)
+## [`chown(path, uid, gid, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L143)
+
+Changes ownership of file or directory at `path` with `uid` and `gid`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+| callback | function |  | false |  |
+
+## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L171)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback
 Asynchronously close a file descriptor calling `callback` upon success or error.
@@ -790,7 +801,7 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | fd | number |  | false |  |
 | callback | function(Error?)? |  | true |  |
 
-## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L190)
+## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L195)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback
 Asynchronously copies `src` to `dest` calling `callback` upon success or error.
@@ -802,7 +813,7 @@ Asynchronously copies `src` to `dest` calling `callback` upon success or error.
 | flags | number |  | false | Modifiers for copy operation. |
 | callback | function(Error=) |  | true | The function to call after completion. |
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L218)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L223)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -816,7 +827,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | ReadStream |  |
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L258)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L266)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -830,7 +841,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | WriteStream |  |
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L302)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L312)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback
 Invokes the callback with the <fs.Stats> for the file descriptor. See
@@ -844,7 +855,28 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | options | object? \| function? |  | true | An options object. |
 | callback | function? |  | true | The function to call after completion. |
 
-## [`open(path, flags, mode, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L407)
+## [`lchown(path, uid, gid, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L340)
+
+Chages ownership of link at `path` with `uid` and `gid.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+| callback | function |  | false |  |
+
+## [`link(src, dest, )`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L368)
+
+Creates a link to `dest` from `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+| (Position 0) | function |  | false |  |
+
+## [`open(path, flags, mode, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L424)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously open a file calling `callback` upon success or error.
@@ -857,7 +889,7 @@ Asynchronously open a file calling `callback` upon success or error.
 | options | object? \| function? |  | true |  |
 | callback | function(Error?, number?)? |  | true |  |
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L460)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L477)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously open a directory calling `callback` upon success or error.
@@ -870,7 +902,7 @@ Asynchronously open a directory calling `callback` upon success or error.
 | options.withFileTypes | boolean? | false | true |  |
 | callback | function(Error?, Dir?)? |  | false |  |
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L486)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L503)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback
 Asynchronously read from an open file descriptor.
@@ -884,7 +916,7 @@ Asynchronously read from an open file descriptor.
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
 | callback | function(Error?, number?, Buffer?) |  | false |  |
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L520)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L537)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously read all entries in a directory.
@@ -897,7 +929,7 @@ Asynchronously read all entries in a directory.
 | options.withFileTypes ? false | boolean? |  | true |  |
 | callback | function(Error?, object) |  | false |  |
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L571)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L588)
 
 
 
@@ -910,7 +942,44 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Buffer?) |  | false |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L690)
+## [`readlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L631)
+
+Reads link at `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function(err, string) |  | false |  |
+
+## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L650)
+
+Computes real path for `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function(err, string) |  | false |  |
+
+## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L670)
+
+Renames file or directory at `src` to `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L693)
+
+Removes directory at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L716)
 
 
 
@@ -923,7 +992,25 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L786)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L750)
+
+Creates a symlink of `src` at `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L791)
+
+Unlinks (removes) file at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L816)
 
 
 
@@ -937,6 +1024,20 @@ Asynchronously read all entries in a directory.
 | options.flag ? w | string? |  | true |  |
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
+
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L860)
+
+Watch for changes at `path` calling `callback`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| (Position 0) | string |  | false |  |
+| options | function \| object |  | true |  |
+| callback | ?function |  | true |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Watcher |  |
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
@@ -966,7 +1067,7 @@ Asynchronously read all entries in a directory.
  import fs from 'socket:fs/promises'
  ```
 
-## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L86)
+## [`access(path, mode, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L88)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode
 Asynchronously check access a file.
@@ -977,7 +1078,7 @@ Asynchronously check access a file.
 | mode | string? |  | true |  |
 | options | object? |  | true |  |
 
-## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L96)
+## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L98)
 
 External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 
@@ -991,7 +1092,62 @@ External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L208)
+## [`chown(path, uid, gid)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L121)
+
+Changes ownership of file or directory at `path` with `uid` and `gid`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`copyFile(src, dest, flags)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L148)
+
+Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false | The source file path. |
+| dest | string |  | false | The destination file path. |
+| flags | number |  | false | Modifiers for copy operation. |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`lchown(path, uid, gid)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L175)
+
+Chages ownership of link at `path` with `uid` and `gid.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`link(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L201)
+
+Creates a link to `dest` from `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L225)
 
 Asynchronously creates a directory.
 
@@ -1005,7 +1161,7 @@ Asynchronously creates a directory.
 | :---         | :--- | :---        |
 | Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L236)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L253)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 Asynchronously open a file.
@@ -1021,7 +1177,7 @@ Asynchronously open a file.
 | :---         | :--- | :---        |
 | Not specified | Promise<FileHandle> |  |
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L248)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L265)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -1037,7 +1193,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L260)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L277)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1049,7 +1205,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | true |  |
 | options.withFileTypes | boolean? | false | true |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L293)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L310)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1066,7 +1222,56 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L380)
+## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L327)
+
+Reads link at `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<string> |  |
+
+## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L346)
+
+Computes real path for `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<string> |  |
+
+## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L366)
+
+Renames file or directory at `src` to `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L387)
+
+Removes directory at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L406)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1081,7 +1286,32 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L446)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L418)
+
+Creates a symlink of `src` at `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L453)
+
+Unlinks (removes) file at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L477)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1099,6 +1329,20 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
+
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L496)
+
+Watch for changes at `path` calling `callback`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| (Position 0) | string |  | false |  |
+| options | function \| object |  | true |  |
+| options.signal | AbortSignal |  | true |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Watcher |  |
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->

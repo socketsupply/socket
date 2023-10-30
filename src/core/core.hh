@@ -432,6 +432,10 @@ namespace SSC {
             uint32_t getBufferSize ();
           };
 
+        #if !defined(__ANDROID__)
+          std::map<uint64_t, FileSystemWatcher*> watchers;
+        #endif
+
           std::map<uint64_t, Descriptor*> descriptors;
           Mutex mutex;
 
@@ -566,8 +570,19 @@ namespace SSC {
             const String path,
             Module::Callback cb
           );
+          void stopWatch (
+            const String seq,
+            uint64_t id,
+            Module::Callback cb
+          );
           void unlink (
             const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void watch (
+            const String seq,
+            uint64_t id,
             const String path,
             Module::Callback cb
           );
