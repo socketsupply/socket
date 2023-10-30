@@ -1903,7 +1903,7 @@ int main (const int argc, const char* argv[]) {
   if (subcommand[0] == '-') {
     log("unknown option: " + String(subcommand));
     printHelp("ssc");
-    exit(0);
+    exit(1);
   }
 
   auto const lastOption = argv[argc-1];
@@ -2327,7 +2327,7 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     } else {
       log("list-devices is only supported for iOS devices on macOS.");
-      exit(0);
+      exit(1);
     }
   });
 
