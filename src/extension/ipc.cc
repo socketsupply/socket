@@ -142,6 +142,20 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   return success;
 }
 
+bool sapi_ipc_set_cancellation_handler (
+  sapi_ipc_result_t* result,
+  void (*handler)(void*),
+  void* data
+) {
+  if (result == nullptr || !result->message.isHTTP) {
+    return false;
+  }
+  auto message = result->message;
+  message.cancel = handler;
+  message.cancel_data = data;
+  return true;
+}
+
 bool sapi_ipc_send_chunk (
   sapi_ipc_result_t* result,
   const char* chunk,

@@ -1,6 +1,5 @@
 #include <regex>
 #include <unordered_map>
-#include <set>
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -2379,13 +2378,13 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 {
   SSC::Mutex mutex;
-  std::set<Task> tasks;
+  std::unordered_map<Task, IPC::Message> tasks;
 }
 
-- (void) enqueueTask: (Task) task {
+- (void) enqueueTask: (Task) task withMessage: (IPC::Message) message {
   Lock lock(mutex);
   if (task != nullptr && !tasks.contains(task)) {
-    tasks.insert(task);
+    tasks.emplace(task, message);
   }
 }
 
@@ -2402,6 +2401,14 @@ static void registerSchemeHandler (Router *router) {
 }
 
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
+  Lock lock(mutex);
+  if (tasks.contains(task)) {
+    auto message = tasks[task];
+    if (message.cancel != nullptr) {
+      message.cancel(message.cancel_data);
+      message.cancel = nullptr;
+    }
+  }
   [self finalizeTask: task];
 }
 
@@ -2688,7 +2695,7 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  [self enqueueTask: task];
+  [self enqueueTask: task withMessage: message];
 
   auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
     // @TODO Communicate task cancellation to the route, so it can cancel its work.

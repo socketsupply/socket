@@ -147,6 +147,8 @@ namespace SSC::IPC {
       Seq seq = "";
       Map args;
       bool isHTTP = false;
+      void (*cancel)(void*) = nullptr;
+      void *cancel_data = nullptr;
 
       Message () = default;
       Message (const Message& message);

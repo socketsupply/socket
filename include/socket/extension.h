@@ -1194,6 +1194,20 @@ extern "C" {
   );
 
   /**
+   * When an IPC route is triggered through HTTP, you can set a cancellation
+   * handler for cleanup if the HTTP request is aborted.
+   *
+   * @param result  - An IPC request result
+   * @param handler - The cancellation handler
+   * @param data    - Optional user data
+   */
+  bool sapi_ipc_set_cancellation_handler (
+    sapi_ipc_result_t* result,
+    void (*handler)(void*),
+    void* data
+  );
+
+  /**
    * Creates a "reply" for an IPC route request.
    * @param result - An IPC request result
    * @return `true` if successful, otherwise `false`
