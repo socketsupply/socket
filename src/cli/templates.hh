@@ -811,7 +811,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				290F7F87276BC2B000486988 /* lib in Resources */,
 				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
 				294A3C852764EAB7007B5B9A /* ui in Resources */,
 			);
@@ -897,7 +896,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
         GCC_WARN_UNUSED_FUNCTION = YES;
         GCC_WARN_UNUSED_VARIABLE = YES;
-        IPHONEOS_DEPLOYMENT_TARGET = 12.2;
+        IPHONEOS_DEPLOYMENT_TARGET = 13.0;
         MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
         MTL_FAST_MATH = YES;
         ONLY_ACTIVE_ARCH = YES;
@@ -957,7 +956,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
           "$(inherited)",
         );
-        IPHONEOS_DEPLOYMENT_TARGET = 12.2;
+        IPHONEOS_DEPLOYMENT_TARGET = 13.0;
         MTL_ENABLE_DEBUG_INFO = NO;
         MTL_FAST_MATH = YES;
         SDKROOT = iphoneos;
@@ -972,7 +971,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         ARCHS = "$(ARCHS_STANDARD)";
         ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-        CODE_SIGN_ENTITLEMENTS = socket.entitlements;
+        CODE_SIGN_ENTITLEMENTS = "$(PROJECT_DIR)/socket.entitlements";
         CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
@@ -1022,7 +1021,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         ARCHS = "$(ARCHS_STANDARD)";
         ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-        CODE_SIGN_ENTITLEMENTS = socket.entitlements;
+        CODE_SIGN_ENTITLEMENTS = "$(PROJECT_DIR)/socket.entitlements";
         CODE_SIGN_IDENTITY = "iPhone Distribution";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
@@ -1237,17 +1236,6 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>com.apple.security.network.server</key>
-  <true/>
-  <key>com.apple.security.network.client</key>
-  <true/>
-  <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.files.user-selected.read-write</key>
-  <true/>
-  <key>com.apple.security.inherit</key>
-  <true/>
-
   <!-- Generated entitlements given plist data -->
 {{configured_entitlements}}
 </dict>
@@ -1508,6 +1496,7 @@ constexpr auto gAndroidValuesStrings = R"XML(
 constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1310"
+
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
