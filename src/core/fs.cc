@@ -1856,7 +1856,6 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-
       const auto callback = [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
@@ -1887,25 +1886,26 @@ namespace SSC {
       } else {
         const auto sep = String(1, std::filesystem::path::preferred_separator);
         const auto components = split(path, sep);
-        auto currentComponents = Vector<String>();
         auto queue = std::queue(std::deque(components.begin(), components.end()));
+        auto currentComponents = Vector<String>();
         while (queue.size() > 0) {
           uv_fs_t req;
           const auto currentComponent = queue.front();
           queue.pop();
           currentComponents.push_back(currentComponent);
-          const auto currentPath = join(currentComponents, sep);
-          err = uv_fs_mkdir(loop, &req, currentPath.c_str(), mode, nullptr);
-          if (err == 0 || err == EEXIST) {
+          const auto joinedComponents = join(currentComponents, sep);
+          const auto currentPath = joinedComponents.empty() ? sep : joinedComponents;
+          if (queue.size() == 0) {
+            err = uv_fs_mkdir(loop, &ctx->req, currentPath.c_str(), mode, callback);
+          } else {
+            err = uv_fs_mkdir(loop, &req, currentPath.c_str(), mode, nullptr);
+          }
+          if (err == 0 || err == -EEXIST) {
             err = 0;
             continue;
           } else {
             break;
           }
-        }
-
-        if (queue.size() == 0) {
-          callback(&ctx->req);
         }
       }
 
