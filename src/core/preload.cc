@@ -78,7 +78,7 @@ namespace SSC {
         opts.appData.at("webview_watch_reload") != "false"
       ) {
           preload += (
-            "  document.addEventListener('filedidchange', () => {              \n"
+            "  globalThis.addEventListener('filedidchange', () => {            \n"
             "  location.reload()                                               \n"
             "  });                                                             \n"
         );
