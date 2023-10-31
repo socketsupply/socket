@@ -235,6 +235,7 @@ export async function mkdir (path, options = {}) {
     throw new RangeError('mode must be a positive finite number.')
   }
 
+  console.log({ mode, path, recursive })
   const result = await ipc.request('fs.mkdir', { mode, path, recursive })
 
   if (result.err) {
