@@ -45,11 +45,12 @@ ssc build [options] [<project-dir>]
 | --- | --- |
 | --platform=<platform> | platform target to build application for (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
 | --port=<port> | load "index.html" from "http://localhost:<port>" |
+| --host=<host> | load "index.html" from "http://<host>" |
 | --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
 | --headless | build application to run in headless mode (without frame or window) |
 | --prod | build for production (disables debugging info, inspector, etc.) |
-| --stdin | read from stdin (dispacted as 'process.stdin' event to window #0) |
 | -D, --debug | enable debug mode |
+| -E, --env | add environment variables |
 | -o, --only-build | only run build step, |
 | -p, --package | package the app for distribution |
 | -q, --quiet | hint for less log output |
@@ -65,19 +66,40 @@ ssc build [options] [<project-dir>]
 ### macOS options
 | Option | Description |
 | --- | --- |
-| -c | code sign application with 'codesign' |
-| -n | notarize application with 'notarytool' |
+| -c, --codesign | code sign application with 'codesign' |
+| -n, --notarize | notarize application with 'notarytool' |
 | -f, --package-format=<format> | package a macOS application in a specified format for distribution:<br>- zip (default)<br>- pkg |
 
 ### iOS options
 | Option | Description |
 | --- | --- |
-| -c | code sign application during xcoddbuild<br>(requires '[ios] provisioning_profile' in 'socket.ini') |
+| -c, --codesign | code sign application during xcoddbuild<br>(requires '[ios] provisioning_profile' in 'socket.ini') |
 
 ### Windows options
 | Option | Description |
 | --- | --- |
 | -f, --package-format=<format> | package a Windows application in a specified format for distribution:<br>- appx (default) |
+
+## ssc run
+Run application.
+
+### Usage
+```bash
+ssc run [options] [<project-dir>]
+```
+
+### options
+| Option | Description |
+| --- | --- |
+| --headless | run application in headless mode (without frame or window) |
+| --platform=<platform> | platform target to run application on (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
+| --port=<port> | load "index.html" from "http://localhost:<port>" |
+| --host=<host> | load "index.html" from "http://<host>" |
+| --prod | build for production (disables debugging info, inspector, etc.) |
+| --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
+| -D, --debug | enable debug mode |
+| -E, --env | add environment variables |
+| -V, --verbose | enable verbose output |
 
 ## ssc list-devices
 Get the list of connected devices.
@@ -145,24 +167,6 @@ ssc print-build-dir [--platform=<platform>] [--prod] [--root] [<project-dir>]
 | --platform | platform to print build directory for (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
 | --prod | indicate production build directory |
 | --root | print the root build directory |
-
-## ssc run
-Run application.
-
-### Usage
-```bash
-ssc run [options] [<project-dir>]
-```
-
-### options
-| Option | Description |
-| --- | --- |
-| -D, --debug | enable debug mode |
-| --headless | run application in headless mode (without frame or window) |
-| --platform=<platform> | platform target to run application on (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
-| --prod | build for production (disables debugging info, inspector, etc.) |
-| --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
-| -V, --verbose | enable verbose output |
 
 ## ssc setup
 Setup build tools for host or target platform.

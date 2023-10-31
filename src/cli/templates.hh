@@ -39,11 +39,12 @@ options:
                                          - ios
                                          - ios-simulator
   --port=<port>                        load "index.html" from "http://localhost:<port>"
+  --host=<host>                        load "index.html" from "http://<host>"
   --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
   --headless                           build application to run in headless mode (without frame or window)
   --prod                               build for production (disables debugging info, inspector, etc.)
-  --stdin                              read from stdin (dispacted as 'process.stdin' event to window #0)
   -D, --debug                          enable debug mode
+  -E, --env                            add environment variables
   -o, --only-build                     only run build step,
   -p, --package                        package the app for distribution
   -q, --quiet                          hint for less log output
@@ -57,19 +58,43 @@ Linux options:
                                          - zip
 
 macOS options:
-  -c                                   code sign application with 'codesign'
-  -n                                   notarize application with 'notarytool'
+  -c, --codesign                       code sign application with 'codesign'
+  -n, --notarize                       notarize application with 'notarytool'
   -f, --package-format=<format>        package a macOS application in a specified format for distribution:
                                          - zip (default)
                                          - pkg
 
 iOS options:
-  -c                                   code sign application during xcoddbuild
+  -c, --codesign                       code sign application during xcoddbuild
                                        (requires '[ios] provisioning_profile' in 'socket.ini')
 
 Windows options:
   -f, --package-format=<format>        package a Windows application in a specified format for distribution:
                                          - appx (default)
+)TEXT";
+
+constexpr auto gHelpTextRun = R"TEXT(
+ssc v{{ssc_version}}
+
+Run application.
+
+usage:
+  ssc run [options] [<project-dir>]
+
+options:
+  --headless                           run application in headless mode (without frame or window)
+  --platform=<platform>                platform target to run application on (defaults to host):
+                                         - android
+                                         - android-emulator
+                                         - ios
+                                         - ios-simulator
+  --port=<port>                        load "index.html" from "http://localhost:<port>"
+  --host=<host>                        load "index.html" from "http://<host>"
+  --prod                               build for production (disables debugging info, inspector, etc.)
+  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
+  -D, --debug                          enable debug mode
+  -E, --env                            add environment variables
+  -V, --verbose                        enable verbose output
 )TEXT";
 
 constexpr auto gHelpTextListDevices = R"TEXT(
@@ -141,27 +166,6 @@ options:
                                          - ios-simulator
   --prod                               indicate production build directory
   --root                               print the root build directory
-)TEXT";
-
-constexpr auto gHelpTextRun = R"TEXT(
-ssc v{{ssc_version}}
-
-Run application.
-
-usage:
-  ssc run [options] [<project-dir>]
-
-options:
-  -D, --debug                          enable debug mode
-  --headless                           run application in headless mode (without frame or window)
-  --platform=<platform>                platform target to run application on (defaults to host):
-                                         - android
-                                         - android-emulator
-                                         - ios
-                                         - ios-simulator
-  --prod                               build for production (disables debugging info, inspector, etc.)
-  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
-  -V, --verbose                        enable verbose output
 )TEXT";
 
 constexpr auto gHelpTextSetup = R"TEXT(
