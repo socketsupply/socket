@@ -219,8 +219,8 @@ export async function link (src, dest) {
  *
  * @param {string} path - The path to create
  * @param {object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
- * @param {boolean} [options.recursive]
- * @param {number} [options.mode]
+ * @param {boolean} [options.recursive=false]
+ * @param {number} [options.mode=0o777]
  * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
  */
 export async function mkdir (path, options = {}) {
@@ -235,7 +235,6 @@ export async function mkdir (path, options = {}) {
     throw new RangeError('mode must be a positive finite number.')
   }
 
-  console.log({ mode, path, recursive })
   const result = await ipc.request('fs.mkdir', { mode, path, recursive })
 
   if (result.err) {
