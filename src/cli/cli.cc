@@ -2575,7 +2575,9 @@ int main (const int argc, const char* argv[]) {
     { { "--headless", "-H" }, true, false },
     { { "--debug", "-D" }, true, false },
     { { "--verbose", "-V" }, true, false },
-    { { "--env", "-E" }, true, true }
+    { { "--env", "-E" }, true, true },
+    { { "--port" }, true, true },
+    { { "--host"}, true, true }
   };
 
   Options buildOptions = {
@@ -2583,14 +2585,10 @@ int main (const int argc, const char* argv[]) {
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
     { { "--watch", "-W" }, true, false },
-    { { "--debug", "-D" }, true, false },
-    { { "--verbose", "-V" }, true, false },
-    { { "--prod", "-P" }, true, false },
     { { "--package", "-p" }, true, false },
     { { "--package-format", "-f" }, true, true },
     { { "--codesign", "-c" }, true, false },
-    { { "--notarize", "-n" }, true, false },
-    { { "--env", "-E" }, true, true }
+    { { "--notarize", "-n" }, true, false }
   };
 
   // Insert the elements of runOptions into buildOptions
