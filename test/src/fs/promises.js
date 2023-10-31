@@ -37,14 +37,14 @@ if (process.platform !== 'ios') {
       t.equal(chmod, undefined, 'file.txt is chmod 777')
     })
 
-    test.only('fs.promises.mkdir', async (t) => {
+    test('fs.promises.mkdir', async (t) => {
       const dirname = FIXTURES + Math.random().toString(16).slice(2)
       await fs.mkdir(dirname, {})
       await fs.stat(dirname)
       t.pass('fs.promises.mkdir made a directory and stat\'d it')
     })
 
-    test.only('fs.promises.mkdir recursive', async (t) => {
+    test('fs.promises.mkdir recursive', async (t) => {
       const randomDirName = () => Math.random().toString(16).slice(2)
       const dirname = path.join(FIXTURES, randomDirName(), randomDirName(), randomDirName())
       await fs.mkdir(dirname, { recursive: true })
