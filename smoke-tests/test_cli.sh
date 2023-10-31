@@ -231,3 +231,6 @@ fi
 # TODO: interactive mode
 # output=$(ssc init 2>&1)
 # exit_status=$?
+
+# TODO: path in a wrong position
+# TODO: wrong paths
