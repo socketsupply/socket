@@ -1,6 +1,4 @@
 #include "core.hh"
-#include "uv.h"
-#include <sys/_types/_s_ifmt.h>
 
 namespace SSC {
   #define SET_CONSTANT(c) constants[#c] = (c);
