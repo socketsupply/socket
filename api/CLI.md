@@ -44,8 +44,8 @@ ssc build [options] [<project-dir>]
 | Option | Description |
 | --- | --- |
 | --platform=<platform> | platform target to build application for (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
-| --port=<port> | load "index.html" from "http://localhost:<port>" |
-| --host=<host> | load "index.html" from "http://<host>" |
+| --port=<port> | load "index.html" from a specific port (if host is not specified, defaults to localhost) |
+| --host=<host> | load "index.html" from a specific host (if port is not specified, defaults to 80) |
 | --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
 | --headless | build application to run in headless mode (without frame or window) |
 | --prod | build for production (disables debugging info, inspector, etc.) |
@@ -93,8 +93,8 @@ ssc run [options] [<project-dir>]
 | --- | --- |
 | --headless | run application in headless mode (without frame or window) |
 | --platform=<platform> | platform target to run application on (defaults to host):<br>- android<br>- android-emulator<br>- ios<br>- ios-simulator |
-| --port=<port> | load "index.html" from "http://localhost:<port>" |
-| --host=<host> | load "index.html" from "http://<host>" |
+| --port=<port> | load "index.html" from a specific port (if host is not specified, defaults to localhost) |
+| --host=<host> | load "index.html" from a specific host (if port is not specified, defaults to 80) |
 | --prod | build for production (disables debugging info, inspector, etc.) |
 | --test[=path] | indicate test mode, optionally importing a test file relative to resource files |
 | -D, --debug | enable debug mode |
