@@ -1059,6 +1059,17 @@ namespace SSC {
     Module::Callback cb
   ) {
     this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      auto json = JSON::Object::Entries {
+        {"source", "fs.watch"},
+        {"err", JSON::Object::Entries {
+          {"message", "Not supported"}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    #else
       FileSystemWatcher* watcher;
       {
         Lock lock(this->mutex);
@@ -1120,6 +1131,7 @@ namespace SSC {
       };
 
       cb(seq, json, Post{});
+    #endif
     });
   }
 
@@ -1248,6 +1260,17 @@ namespace SSC {
     Module::Callback cb
   ) {
     this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      auto json = JSON::Object::Entries {
+        {"source", "fs.stopWatch"},
+        {"err", JSON::Object::Entries {
+          {"message", "Not supported"}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    #else
       auto watcher = this->core->fs.watchers[id];
       if (watcher != nullptr) {
         watcher->stop();
@@ -1271,6 +1294,7 @@ namespace SSC {
 
         cb(seq, json, Post{});
       }
+    #endif
     });
   }
 
