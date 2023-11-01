@@ -737,9 +737,10 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * Creates a directory at `path` with an optional mode.
+   * Creates a directory at `path` with an optional mode and an optional recursive flag.
    * @param path
    * @param mode
+   * @param recursive
    * @see mkdir(2)
    */
   router->map("fs.mkdir", [](auto message, auto router, auto reply) {
@@ -756,9 +757,11 @@ static void initRouterTable (Router *router) {
       message.seq,
       message.get("path"),
       mode,
+      message.get("recursive") == "true",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
+
 
   /**
    * Opens a file descriptor at `path` for `id` with `flags` and `mode`
