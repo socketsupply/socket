@@ -186,7 +186,7 @@ if (process.platform !== 'ios') {
       const randomDirSegment = () => Math.random().toString(16).slice(2)
       const dirname = path.join(FIXTURES, randomDirSegment(), randomDirSegment(), randomDirSegment())
       await new Promise((resolve, reject) => {
-        fs.mkdir(dirname, {}, (err) => {
+        fs.mkdir(dirname, { recursive: true }, (err) => {
           if (err) reject(err)
 
           fs.stat(dirname, (err) => {
