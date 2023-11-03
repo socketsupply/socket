@@ -3483,7 +3483,11 @@ namespace SSC::IPC {
 
   static const Map getWebViewNavigatorMounts () {
     static const auto userConfig = getUserConfig();
+  #if defined(_WIN32)
+    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #else
     static const auto HOME = String(getpwuid(getuid())->pw_dir);
+  #endif
 
     static Map mounts;
 
