@@ -486,7 +486,6 @@ void handleBuildPhaseForUserScript (
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
   const Path& cwd,
-  const String& additionalArgs,
   bool performAfterLifeCycle
 ) {
   do {
@@ -512,7 +511,6 @@ void handleBuildPhaseForUserScript (
 
   if (shouldPassBuildArgs) {
     buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-    buildArgs << " " << additionalArgs;
   }
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
@@ -2625,7 +2623,6 @@ int main (const int argc, const char* argv[]) {
 
     String argvForward = "";
     String targetPlatform = optionsWithValue["--platform"];
-    String additionalBuildArgs = "";
 
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagCodeSign = optionsWithoutValue.find("--codesign") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
@@ -2814,16 +2811,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
-
-    const bool shouldPassBuildArgs = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
-
-    if (flagDebugMode && shouldPassBuildArgs) {
-      additionalBuildArgs += " --debug=true";
-    }
-
-    if (flagBuildTest && shouldPassBuildArgs) {
-      additionalBuildArgs += " --test=true";
-    }
 
     String flags;
     String files;
@@ -4518,7 +4505,6 @@ int main (const int argc, const char* argv[]) {
       targetPlatform,
       pathResourcesRelativeToUserBuild,
       oldCwd,
-      additionalBuildArgs,
       true
     );
 
@@ -6369,7 +6355,6 @@ int main (const int argc, const char* argv[]) {
           targetPlatform,
           pathResourcesRelativeToUserBuild,
           targetPath,
-          additionalBuildArgs,
           false
         );
 
