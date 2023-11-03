@@ -506,7 +506,7 @@ void handleBuildPhaseForUserScript (
 #endif
   } while (0);
 
-  const bool shouldPassBuildArgs = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
+  const bool shouldPassBuildArgs = settings.contains("build.script.forward_arguments") && settings.at("build.script.forward_arguments") == "true";
   String scriptArgs = shouldPassBuildArgs ? (" " + pathResourcesRelativeToUserBuild.string()) : "";
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {

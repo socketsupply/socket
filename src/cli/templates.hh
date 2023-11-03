@@ -1650,7 +1650,7 @@ output = "build"
 
 ; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 ; default value: false
-; pass.build.arguments = true
+; build.script.forward_arguments = true
 
 
 [build.watch]
