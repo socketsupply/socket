@@ -47,7 +47,7 @@ headless | false |  If true, the window will never be displayed.
 name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
 script |  |  The build script. It runs before the `[build] copy` phase.
-pass.build.arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+build.script.forward_arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 
 # `build.watch`
 
