@@ -546,11 +546,7 @@ void handleBuildPhaseForUserScript (
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      if (shouldPassBuildArgs) {
-        scriptArgs =  " /c \"" + buildScript + " " + scriptArgs + "\"";
-      } else {
-        scriptArgs =  " /c \"" + buildScript + "\"";
-      }
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
