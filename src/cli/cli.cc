@@ -5629,8 +5629,6 @@ int main (const int argc, const char* argv[]) {
         "  <true/>\n"
         "  <key>com.apple.security.files.user-selected.read-write</key>\n"
         "  <true/>\n"
-        "  <key>com.apple.security.files.user-selected.read-only</key>\n"
-        "  <true/>\n"
         "  <key>com.apple.security.files.bookmarks.app-scope</key>\n"
         "  <true/>\n"
         "  <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>\n"
