@@ -507,24 +507,15 @@ void handleBuildPhaseForUserScript (
   } while (0);
 
   const bool shouldPassBuildArgs = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
-  StringStream buildArgs;
-
-  if (shouldPassBuildArgs) {
-    buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-  }
+  String scriptArgs = shouldPassBuildArgs ? (" " + pathResourcesRelativeToUserBuild.string()) : "";
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      if (shouldPassBuildArgs) {
-        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
-      } else {
-        scriptArgs =  " /c \"" + buildScript + "\"";
-      }
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
@@ -550,7 +541,6 @@ void handleBuildPhaseForUserScript (
 
   // runs async, does not block
   if (performAfterLifeCycle && settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script_after");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
