@@ -136,6 +136,11 @@ namespace SSC::IPC {
     MessageBuffer() = default;
   };
 
+  struct MessageCancellation {
+    void (*handler)(void*) = nullptr;
+    void *data = nullptr;
+  };
+
   class Message {
     public:
       using Seq = String;
@@ -147,8 +152,7 @@ namespace SSC::IPC {
       Seq seq = "";
       Map args;
       bool isHTTP = false;
-      void (*cancel)(void*) = nullptr;
-      void *cancel_data = nullptr;
+      std::shared_ptr<MessageCancellation> cancel;
 
       Message () = default;
       Message (const Message& message);

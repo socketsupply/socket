@@ -2407,9 +2407,8 @@ static void registerSchemeHandler (Router *router) {
   Lock lock(mutex);
   if (tasks.contains(task)) {
     auto message = tasks[task];
-    if (message.cancel != nullptr) {
-      message.cancel(message.cancel_data);
-      message.cancel = nullptr;
+    if (message.cancel->handler != nullptr) {
+      message.cancel->handler(message.cancel->data);
     }
   }
   [self finalizeTask: task];
@@ -2424,6 +2423,7 @@ static void registerSchemeHandler (Router *router) {
   auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message(url, true);
   message.isHTTP = true;
+  message.cancel = std::make_shared<MessageCancellation>();
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
