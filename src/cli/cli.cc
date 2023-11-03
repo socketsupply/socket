@@ -507,9 +507,13 @@ void handleBuildPhaseForUserScript (
 #endif
   } while (0);
 
+  const bool isLegacyBuildMode = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
   StringStream buildArgs;
-  buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-  buildArgs << " " << additionalArgs;
+
+  if (isLegacyBuildMode) {
+    buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+    buildArgs << " " << additionalArgs;
+  }
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
     auto scriptArgs = buildArgs.str();
@@ -518,7 +522,11 @@ void handleBuildPhaseForUserScript (
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      if (isLegacyBuildMode) {
+        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      } else {
+        scriptArgs =  " /c \"" + buildScript + "\"";
+      }
       buildScript = "cmd.exe";
     }
 
@@ -550,7 +558,11 @@ void handleBuildPhaseForUserScript (
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      if (isLegacyBuildMode) {
+        scriptArgs =  " /c \"" + buildScript + " " + scriptArgs + "\"";
+      } else {
+        scriptArgs =  " /c \"" + buildScript + "\"";
+      }
       buildScript = "cmd.exe";
     }
 
@@ -995,7 +1007,7 @@ int runApp (const Path& path, const String& args, bool headless) {
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
   appProcess = new SSC::Process(
-     headlessCommand + prefix + cmd,
+    headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
     [](SSC::String const &out) { std::cout << out << std::endl; },
@@ -2803,11 +2815,13 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
 
-    if (flagDebugMode) {
+    const bool isLegacyBuildMode = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
+
+    if (flagDebugMode && isLegacyBuildMode) {
       additionalBuildArgs += " --debug=true";
     }
 
-    if (flagBuildTest) {
+    if (flagBuildTest && isLegacyBuildMode) {
       additionalBuildArgs += " --test=true";
     }
 
