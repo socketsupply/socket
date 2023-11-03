@@ -507,10 +507,10 @@ void handleBuildPhaseForUserScript (
 #endif
   } while (0);
 
-  const bool isLegacyBuildMode = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
+  const bool shouldPassBuildArgs = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
   StringStream buildArgs;
 
-  if (isLegacyBuildMode) {
+  if (shouldPassBuildArgs) {
     buildArgs << " " << pathResourcesRelativeToUserBuild.string();
     buildArgs << " " << additionalArgs;
   }
@@ -522,7 +522,7 @@ void handleBuildPhaseForUserScript (
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      if (isLegacyBuildMode) {
+      if (shouldPassBuildArgs) {
         scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
       } else {
         scriptArgs =  " /c \"" + buildScript + "\"";
@@ -558,7 +558,7 @@ void handleBuildPhaseForUserScript (
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      if (isLegacyBuildMode) {
+      if (shouldPassBuildArgs) {
         scriptArgs =  " /c \"" + buildScript + " " + scriptArgs + "\"";
       } else {
         scriptArgs =  " /c \"" + buildScript + "\"";
@@ -2815,13 +2815,13 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
 
-    const bool isLegacyBuildMode = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
+    const bool shouldPassBuildArgs = settings.contains("build_pass.build.arguments") && settings.at("build_pass.build.arguments") == "true";
 
-    if (flagDebugMode && isLegacyBuildMode) {
+    if (flagDebugMode && shouldPassBuildArgs) {
       additionalBuildArgs += " --debug=true";
     }
 
-    if (flagBuildTest && isLegacyBuildMode) {
+    if (flagBuildTest && shouldPassBuildArgs) {
       additionalBuildArgs += " --test=true";
     }
 
