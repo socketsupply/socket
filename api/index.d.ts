@@ -6834,7 +6834,7 @@ declare module "socket:notification" {
          * `NotificationOptions` class constructor.
          * @ignore
          * @param {object} [options = {}]
-         * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+         * @param {string=} [options.dir = 'auto']
          * @param {NotificationAction[]=} [options.actions = []]
          * @param {string|URL=} [options.badge = '']
          * @param {string=} [options.body = '']
@@ -6848,7 +6848,21 @@ declare module "socket:notification" {
          * @param {boolean=} [options.silent = false]
          * @param {number[]=} [options.vibrate = []]
          */
-        constructor(options?: object);
+        constructor(options?: {
+            dir?: string | undefined;
+            actions?: NotificationAction[] | undefined;
+            badge?: (string | URL) | undefined;
+            body?: string | undefined;
+            data?: (any | null) | undefined;
+            icon?: (string | URL) | undefined;
+            image?: (string | URL) | undefined;
+            lang?: string | undefined;
+            tag?: string | undefined;
+            boolean?: boolean | undefined;
+            requireInteraction?: boolean | undefined;
+            silent?: boolean | undefined;
+            vibrate?: number[] | undefined;
+        });
         /**
          * An array of actions to display in the notification.
          * @type {NotificationAction[]}
