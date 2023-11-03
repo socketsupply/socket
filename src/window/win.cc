@@ -1008,7 +1008,7 @@ namespace SSC {
                             } else {
                               auto rootPath = this->modulePath.parent_path();
                               auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
-                              auto mount = Router::resolveNavigatorMountForWebView(path);
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
                               path = resolved.path;
 
                               if (mount.path.size() > 0) {
