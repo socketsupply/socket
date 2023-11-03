@@ -74,6 +74,7 @@ class NativeNotificationProxy extends NativeNotification {
 
     this.#notification = notification
 
+    // @ts-ignore
     this.onerror = (event) => {
       error = true
       notification.dispatchEvent(new ErrorEvent('error', {
@@ -85,6 +86,7 @@ class NativeNotificationProxy extends NativeNotification {
       }))
     }
 
+    // @ts-ignore
     this.onclose = (event) => {
       if (error) return
       if (!clicked) {
@@ -99,6 +101,7 @@ class NativeNotificationProxy extends NativeNotification {
       }
     }
 
+    // @ts-ignore
     this.onclick = () => {
       if (error) return
       clicked = true
@@ -112,6 +115,7 @@ class NativeNotificationProxy extends NativeNotification {
       globalThis.dispatchEvent(event)
     }
 
+    // @ts-ignore
     this.onshow = () => {
       if (error) return
       const event = new CustomEvent(NOTIFICATION_PRESENTED_EVENT, {
@@ -245,7 +249,7 @@ export class NotificationOptions {
    * `NotificationOptions` class constructor.
    * @ignore
    * @param {object} [options = {}]
-   * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+   * @param {string=} [options.dir = 'auto']
    * @param {NotificationAction[]=} [options.actions = []]
    * @param {string|URL=} [options.badge = '']
    * @param {string=} [options.body = '']
@@ -261,6 +265,7 @@ export class NotificationOptions {
    */
   constructor (options = {}) {
     if ('dir' in options) {
+      // @ts-ignore
       if (!(options.dir in NotificationDirection)) {
         throw new TypeError(
           'Failed to read the \'dir\' property from \'NotificationOptions\': ' +
@@ -269,10 +274,12 @@ export class NotificationOptions {
         )
       }
 
+      // @ts-ignore
       this.#dir = options.dir
     }
 
     if ('actions' in options) {
+      // @ts-ignore
       if (!(Symbol.iterator in options.actions)) {
         throw new TypeError(
           'Failed to read the \'actions\' property from ' +
@@ -281,6 +288,7 @@ export class NotificationOptions {
         )
       }
 
+      // @ts-ignore
       for (const action of options.actions) {
         try {
           this.#actions.push(new NotificationAction(action))
@@ -489,6 +497,7 @@ export async function showNotification (title, options, onclick = null, onshow =
     notification.onclick = onclick
     notification.onshow = onshow
     notification.onerror = (e) => reject(e.error)
+    // @ts-ignore
     notification.onshow = () => resolve()
   })
 }
@@ -531,7 +540,9 @@ export class Notification extends EventTarget {
    */
   static async requestPermission () {
     if (isLinux) {
+      // @ts-ignore
       if (typeof NativeNotification?.requestPermission === 'function') {
+        // @ts-ignore
         return await NativeNotification.requestPermission()
       }
 
@@ -539,8 +550,12 @@ export class Notification extends EventTarget {
     }
 
     const status = await permissions.request({ name: 'notifications' })
-    status.unsubscribe()
-    return status.state
+    return new Promise((resolve) => {
+      status.onchange = (event) => {
+        status.unsubscribe()
+        resolve(event.detail.state)
+      }
+    })
   }
 
   #onclick = null
@@ -591,12 +606,15 @@ export class Notification extends EventTarget {
       )
     }
 
+    // @ts-ignore
     this.#id = (rand64() & 0xFFFFn).toString()
 
     if (isLinux) {
       const proxy = new NativeNotificationProxy(this)
       const request = new Promise((resolve) => {
+        // @ts-ignore
         proxy.addEventListener('show', () => resolve({}))
+        // @ts-ignore
         proxy.addEventListener('error', (e) => resolve({ err: e.error }))
       })
 
@@ -640,6 +658,7 @@ export class Notification extends EventTarget {
     // propagate error to caller
     this[Symbol.for('Notification.request')].then((result) => {
       if (result?.err) {
+        // @ts-ignore
         state.pending.delete(this.id, this)
         removeNotificationPresentedListener()
         removeNotificationResponseListener()
