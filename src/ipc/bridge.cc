@@ -3520,7 +3520,20 @@ namespace SSC::IPC {
 
     for (const auto& tuple : userConfig) {
       if (tuple.first.starts_with("webview_navigator_mounts_")) {
-        const auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+        auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+
+        if (key.starts_with("android") && !platform.android) continue;
+        if (key.starts_with("ios") && !platform.ios) continue;
+        if (key.starts_with("linux") && !platform.linux) continue;
+        if (key.starts_with("mac") && !platform.mac) continue;
+        if (key.starts_with("win") && !platform.win) continue;
+
+        key = replace(key, "android_", "");
+        key = replace(key, "ios_", "");
+        key = replace(key, "linux_", "");
+        key = replace(key, "mac_", "");
+        key = replace(key, "win_", "");
+
         const auto path = replace(replace(key, "$HOST_HOME", ""), "~", HOME);
         const auto& value = tuple.second;
         mounts.insert_or_assign(path, value);

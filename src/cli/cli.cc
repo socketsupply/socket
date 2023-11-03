@@ -5697,7 +5697,21 @@ int main (const int argc, const char* argv[]) {
 
         for (const auto& tuple : settings) {
           if (tuple.first.starts_with("webview_navigator_mounts_")) {
-            const auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+            const auto key = replace(
+              replace(tuple.first, "webview_navigator_mounts_", ""),
+              "mac_",
+              ""
+            );
+
+            if (
+              key.starts_with("android") ||
+              key.starts_with("ios") ||
+              key.starts_with("linux") ||
+              key.starts_with("win")
+            ) {
+              continue;
+            }
+
             if (key.starts_with("$HOST_HOME") || key.starts_with("~")) {
               const auto path = replace(replace(key, "$HOST_HOME", ""), "~", "");
               entitlementSettings["configured_entitlements"] += (
