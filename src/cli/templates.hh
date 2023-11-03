@@ -1648,6 +1648,10 @@ output = "build"
 ; The build script. It runs before the `[build] copy` phase.
 ; script = "npm run build"
 
+; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+; default value: false
+; pass.build.arguments = true
+
 
 [build.watch]
 sources = "src"
