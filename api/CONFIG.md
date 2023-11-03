@@ -62,6 +62,14 @@ root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
 watch | false |  Enable watch mode
 
+# `webview.navigator.mounts`
+
+Key | Default Value | Description
+:--- | :--- | :---
+$HOST_HOME/directory-in-home-folder/ |  | 
+$HOST_CONTAINER/directory-app-container/ |  | 
+$HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  | 
+
 # `permissions`
 
 Key | Default Value | Description

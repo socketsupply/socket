@@ -1666,6 +1666,11 @@ root = "/"
 ; default value: false
 watch = false
 
+; Mount file system paths in webview navigator
+[webview.navigator.mounts]
+; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
+; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
+; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
 [permissions]
 ; Allow/Disallow fullscreen in application
@@ -1887,8 +1892,8 @@ runner_win32_flags = ""
 )INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
-# Logs
 logs
+# Logs
 *.log
 *.dat
 npm-debug.log*

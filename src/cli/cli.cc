@@ -4583,8 +4583,13 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["ios_sandbox"] != "false") {
+      if (flagDebugMode) {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>get-task-allow</key>\n"
+          "  <true/>\n "
+        );
       }
+
 
       writeFile(
         pathToDist / "socket.entitlements",
@@ -5624,6 +5629,12 @@ int main (const int argc, const char* argv[]) {
         "  <true/>\n"
         "  <key>com.apple.security.files.user-selected.read-write</key>\n"
         "  <true/>\n"
+        "  <key>com.apple.security.files.user-selected.read-only</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.files.bookmarks.app-scope</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>\n"
+        "  <true/>\n"
       );
 
       if (settings["permissions_allow_user_media"] != "false") {
@@ -5678,14 +5689,30 @@ int main (const int argc, const char* argv[]) {
           "  <key>com.apple.security.inherit</key>\n"
           "  <true/>\n"
         );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>\n"
+          "  <array>\n"
+        );
+
+        for (const auto& tuple : settings) {
+          if (tuple.first.starts_with("webview_navigator_mounts_")) {
+            const auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+            if (key.starts_with("$HOST_HOME") || key.starts_with("~")) {
+              const auto path = replace(replace(key, "$HOST_HOME", ""), "~", "");
+              entitlementSettings["configured_entitlements"] += (
+                "    <string>" + (path.ends_with("/") ? path : path + "/") + "</string>\n"
+              );
+            }
+          }
+        }
+
+        entitlementSettings["configured_entitlements"] += (
+          "  </array>\n"
+        );
       }
 
       if (flagDebugMode) {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>get-task-allow</key>\n"
-          "  <true/>\n "
-        );
-
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.security.cs.debugger</key>\n"
           "  <true/>\n "
