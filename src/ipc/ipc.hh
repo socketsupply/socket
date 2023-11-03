@@ -239,7 +239,14 @@ namespace SSC::IPC {
         bool redirect = false;
       };
 
+      struct WebViewNavigatorMount {
+        WebViewURLPathResolution resolution; // absolute URL resolution
+        String path; // root path on host file system
+        String route; // root path in webview navigator
+      };
+
       static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
+      static WebViewNavigatorMount resolveNavigatorMountForWebView (const String& path);
 
     private:
       Table preserved;
