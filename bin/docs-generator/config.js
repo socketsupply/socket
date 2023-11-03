@@ -44,6 +44,7 @@ The file is read on startup and the values are used to configure the project.
 Sometimes it's useful to overide the values in \`socket.ini\` or keep some of the values local (e.g. \`[ios] simulator_device\`)
 or secret (e.g. \`[ios] codesign_identity\`, \`[ios] provisioning_profile\`, etc.)
 This can be done by creating a file called \`.ssrc\` in the root of the project.
+It is possible to ovveride both Command Line Interface (CLI) and Configuration File (INI) options.
 
 Example:
 
@@ -62,9 +63,10 @@ headless = false
 \`\`\`ini
 [build]
 
-headless = true
+platform = ios ; override the \`--platform\` CLI option
 
-[ios]
+
+[settings.ios] ; override the \`[ios]\` section in \`socket.ini\`
 
 codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
 distribution_method = "ad-hoc"
