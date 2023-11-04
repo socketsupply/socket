@@ -1203,16 +1203,26 @@ namespace SSC {
 
     for (auto m : menus) {
       auto menu = split(m, '\n');
-      auto line = trim(menu[0]);
-      if (line.empty()) continue;
+      auto i = -1;
+
+      // find the first non-empty line
+      std::string line = "";
+      while (line.empty() && ++i < menu.size()) {
+        line = trim(menu[i]);
+      }
+      if (i == menu.size()) {
+        continue;
+      }
+
       auto menuTitle = split(line, ':')[0];
       NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
       dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
       bool isDisabled = false;
 
-      for (int i = 1; i < menu.size(); i++) {
-        auto line = trim(menu[i]);
+      while (++i < menu.size()) {
+        line = trim(menu[i]);
         if (line.empty()) continue;
+
         auto parts = split(line, ':');
         auto title = parts[0];
         NSUInteger mask = 0;
