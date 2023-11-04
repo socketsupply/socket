@@ -1228,16 +1228,17 @@ namespace SSC {
             auto accelerator = split(parts[1], '+');
             key = trim(accelerator[0]);
 
-            if (accelerator[1].find("CommandOrControl") != -1) {
-              mask |= NSEventModifierFlagCommand;
-            } else if (accelerator[1].find("Meta") != -1) {
-              mask |= NSEventModifierFlagCommand;
-            } else if (accelerator[1].find("Control") != -1) {
-              mask |= NSEventModifierFlagControl;
-            }
-
-            if (accelerator[1].find("Alt") != -1) {
-              mask |= NSEventModifierFlagOption;
+            for (int i = 1; i < accelerator.size(); i++) {
+              auto modifier = trim(accelerator[i]);
+              if (modifier.compare("CommandOrControl") == 0) {
+                mask |= NSEventModifierFlagCommand;
+              } else if (modifier.compare("Meta") == 0) {
+                mask |= NSEventModifierFlagCommand;
+              } else if (modifier.compare("Control") == 0) {
+                mask |= NSEventModifierFlagControl;
+              } else if (modifier.compare("Alt") == 0) {
+                mask |= NSEventModifierFlagOption;
+              }
             }
           } else {
             key = trim(parts[1]);
