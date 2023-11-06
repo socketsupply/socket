@@ -510,6 +510,7 @@ namespace SSC {
             const String seq,
             const String path,
             int mode,
+            bool recursive,
             Module::Callback cb
           );
           void readlink (

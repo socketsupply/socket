@@ -486,7 +486,6 @@ void handleBuildPhaseForUserScript (
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
   const Path& cwd,
-  const String& additionalArgs,
   bool performAfterLifeCycle
 ) {
   do {
@@ -507,18 +506,16 @@ void handleBuildPhaseForUserScript (
 #endif
   } while (0);
 
-  StringStream buildArgs;
-  buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-  buildArgs << " " << additionalArgs;
+  const bool shouldPassBuildArgs = settings.contains("build_script_forward_arguments") && settings.at("build_script_forward_arguments") == "true";
+  String scriptArgs = shouldPassBuildArgs ? (" " + pathResourcesRelativeToUserBuild.string()) : "";
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
@@ -544,13 +541,12 @@ void handleBuildPhaseForUserScript (
 
   // runs async, does not block
   if (performAfterLifeCycle && settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script_after");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
@@ -995,7 +991,7 @@ int runApp (const Path& path, const String& args, bool headless) {
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
   appProcess = new SSC::Process(
-     headlessCommand + prefix + cmd,
+    headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
     [](SSC::String const &out) { std::cout << out << std::endl; },
@@ -2613,7 +2609,6 @@ int main (const int argc, const char* argv[]) {
 
     String argvForward = "";
     String targetPlatform = optionsWithValue["--platform"];
-    String additionalBuildArgs = "";
 
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagCodeSign = optionsWithoutValue.find("--codesign") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
@@ -2802,14 +2797,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
-
-    if (flagDebugMode) {
-      additionalBuildArgs += " --debug=true";
-    }
-
-    if (flagBuildTest) {
-      additionalBuildArgs += " --test=true";
-    }
 
     String flags;
     String files;
@@ -4504,7 +4491,6 @@ int main (const int argc, const char* argv[]) {
       targetPlatform,
       pathResourcesRelativeToUserBuild,
       oldCwd,
-      additionalBuildArgs,
       true
     );
 
@@ -4583,8 +4569,13 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["ios_sandbox"] != "false") {
+      if (flagDebugMode) {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>get-task-allow</key>\n"
+          "  <true/>\n "
+        );
       }
+
 
       writeFile(
         pathToDist / "socket.entitlements",
@@ -5624,6 +5615,10 @@ int main (const int argc, const char* argv[]) {
         "  <true/>\n"
         "  <key>com.apple.security.files.user-selected.read-write</key>\n"
         "  <true/>\n"
+        "  <key>com.apple.security.files.bookmarks.app-scope</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>\n"
+        "  <true/>\n"
       );
 
       if (settings["permissions_allow_user_media"] != "false") {
@@ -5678,14 +5673,44 @@ int main (const int argc, const char* argv[]) {
           "  <key>com.apple.security.inherit</key>\n"
           "  <true/>\n"
         );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>\n"
+          "  <array>\n"
+        );
+
+        for (const auto& tuple : settings) {
+          if (tuple.first.starts_with("webview_navigator_mounts_")) {
+            const auto key = replace(
+              replace(tuple.first, "webview_navigator_mounts_", ""),
+              "mac_",
+              ""
+            );
+
+            if (
+              key.starts_with("android") ||
+              key.starts_with("ios") ||
+              key.starts_with("linux") ||
+              key.starts_with("win")
+            ) {
+              continue;
+            }
+
+            if (key.starts_with("$HOST_HOME") || key.starts_with("~")) {
+              const auto path = replace(replace(key, "$HOST_HOME", ""), "~", "");
+              entitlementSettings["configured_entitlements"] += (
+                "    <string>" + (path.ends_with("/") ? path : path + "/") + "</string>\n"
+              );
+            }
+          }
+        }
+
+        entitlementSettings["configured_entitlements"] += (
+          "  </array>\n"
+        );
       }
 
       if (flagDebugMode) {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>get-task-allow</key>\n"
-          "  <true/>\n "
-        );
-
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.security.cs.debugger</key>\n"
           "  <true/>\n "
@@ -6316,7 +6341,6 @@ int main (const int argc, const char* argv[]) {
           targetPlatform,
           pathResourcesRelativeToUserBuild,
           targetPath,
-          additionalBuildArgs,
           false
         );
 
