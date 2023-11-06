@@ -69,7 +69,6 @@ static String getcwd () {
 #elif defined(__APPLE__)
   NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
   cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
-
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
@@ -3504,8 +3503,14 @@ namespace SSC::IPC {
     static const auto userConfig = getUserConfig();
   #if defined(_WIN32)
     static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    static const auto HOME = String(NSHomeDirectory().UTF8String);
   #else
-    static const auto HOME = String(getpwuid(getuid())->pw_dir);
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
   #endif
 
     static Map mounts;
@@ -3520,9 +3525,13 @@ namespace SSC::IPC {
 
       {"$HOST_CONTAINER",
     #if defined(__APPLE__)
+      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
+      #else
         // `homeDirectoryForCurrentUser` resolves to sandboxed container
         // directory when in "sandbox" mode, otherwise the user's HOME directory
         NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
+      #endif
     #elif defined(__linux__)
         // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux
         getcwd(),
