@@ -2742,13 +2742,17 @@ declare module "socket:fs/promises" {
     export function link(src: string, dest: string): Promise<any>;
     /**
      * Asynchronously creates a directory.
-     * @todo recursive option is not implemented yet.
      *
-     * @param {String} path - The path to create
-     * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+     * @param {string} path - The path to create
+     * @param {object} [options] - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+     * @param {boolean} [options.recursive=false] - Recursively create missing path segments.
+     * @param {number} [options.mode=0o777] - Set the mode of directory, or missing path segments when recursive is true.
      * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
      */
-    export function mkdir(path: string, options?: any): Promise<any>;
+    export function mkdir(path: string, options?: {
+        recursive?: boolean;
+        mode?: number;
+    }): Promise<any>;
     /**
      * Asynchronously open a file.
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
@@ -6830,7 +6834,7 @@ declare module "socket:notification" {
          * `NotificationOptions` class constructor.
          * @ignore
          * @param {object} [options = {}]
-         * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+         * @param {string=} [options.dir = 'auto']
          * @param {NotificationAction[]=} [options.actions = []]
          * @param {string|URL=} [options.badge = '']
          * @param {string=} [options.body = '']
@@ -6844,7 +6848,21 @@ declare module "socket:notification" {
          * @param {boolean=} [options.silent = false]
          * @param {number[]=} [options.vibrate = []]
          */
-        constructor(options?: object);
+        constructor(options?: {
+            dir?: string | undefined;
+            actions?: NotificationAction[] | undefined;
+            badge?: (string | URL) | undefined;
+            body?: string | undefined;
+            data?: (any | null) | undefined;
+            icon?: (string | URL) | undefined;
+            image?: (string | URL) | undefined;
+            lang?: string | undefined;
+            tag?: string | undefined;
+            boolean?: boolean | undefined;
+            requireInteraction?: boolean | undefined;
+            silent?: boolean | undefined;
+            vibrate?: number[] | undefined;
+        });
         /**
          * An array of actions to display in the notification.
          * @type {NotificationAction[]}
@@ -6949,9 +6967,14 @@ declare module "socket:notification" {
         static get maxActions(): number;
         /**
          * Requests permission from the user to display notifications.
+         * @param {object=} [options]
+         * @param {boolean=} [options.alert = true] - (macOS/iOS only)
+         * @param {boolean=} [options.sound = false] - (macOS/iOS only)
+         * @param {boolean=} [options.badge = false] - (macOS/iOS only)
+         * @param {boolean=} [options.force = false]
          * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(): Promise<'granted' | 'default' | 'denied'>;
+        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
         /**
          * `Notification` class constructor.
          * @param {string} title

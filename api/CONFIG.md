@@ -8,6 +8,7 @@ The file is read on startup and the values are used to configure the project.
 Sometimes it's useful to overide the values in `socket.ini` or keep some of the values local (e.g. `[ios] simulator_device`)
 or secret (e.g. `[ios] codesign_identity`, `[ios] provisioning_profile`, etc.)
 This can be done by creating a file called `.ssrc` in the root of the project.
+It is possible to override both Command Line Interface (CLI) and Configuration File (INI) options.
 
 Example:
 
@@ -26,9 +27,10 @@ headless = false
 ```ini
 [build]
 
-headless = true
+platform = ios ; override the `ssc build --platform` CLI option
 
-[ios]
+
+[settings.ios] ; override the `[ios]` section in `socket.ini`
 
 codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
 distribution_method = "ad-hoc"
@@ -48,6 +50,12 @@ name |  |  The name of the program and executable to be output. Can't contain sp
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
 script |  |  The build script. It runs before the `[build] copy` phase.
 
+# `build.script`
+
+Key | Default Value | Description
+:--- | :--- | :---
+forward_arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+
 # `build.watch`
 
 Key | Default Value | Description
@@ -61,6 +69,14 @@ Key | Default Value | Description
 root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
 watch | false |  Enable watch mode
+
+# `webview.navigator.mounts`
+
+Key | Default Value | Description
+:--- | :--- | :---
+$HOST_HOME/directory-in-home-folder/ |  | 
+$HOST_CONTAINER/directory-app-container/ |  | 
+$HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  | 
 
 # `permissions`
 

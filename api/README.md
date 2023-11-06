@@ -1148,21 +1148,23 @@ Creates a link to `dest` from `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L225)
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L226)
 
 Asynchronously creates a directory.
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | String |  | false | The path to create |
-| options | Object |  | false | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false. |
+| path | string |  | false | The path to create |
+| options | object |  | true | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false. |
+| options.recursive | boolean | false | true | Recursively create missing path segments. |
+| options.mode | number | 0o777 | true | Set the mode of directory, or missing path segments when recursive is true. |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L253)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L254)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 Asynchronously open a file.
@@ -1178,7 +1180,7 @@ Asynchronously open a file.
 | :---         | :--- | :---        |
 | Not specified | Promise<FileHandle> |  |
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L265)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L266)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -1194,7 +1196,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L277)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L278)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1206,7 +1208,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | true |  |
 | options.withFileTypes | boolean? | false | true |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L310)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L311)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1223,7 +1225,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L327)
+## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L328)
 
 Reads link at `path`
 
@@ -1235,7 +1237,7 @@ Reads link at `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L346)
+## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L347)
 
 Computes real path for `path`
 
@@ -1247,7 +1249,7 @@ Computes real path for `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L366)
+## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L367)
 
 Renames file or directory at `src` to `dest`.
 
@@ -1260,7 +1262,7 @@ Renames file or directory at `src` to `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L387)
+## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L388)
 
 Removes directory at `path`.
 
@@ -1272,7 +1274,7 @@ Removes directory at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L406)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L407)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1287,7 +1289,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L418)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L419)
 
 Creates a symlink of `src` at `dest`.
 
@@ -1300,7 +1302,7 @@ Creates a symlink of `src` at `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L453)
+## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L454)
 
 Unlinks (removes) file at `path`.
 
@@ -1312,7 +1314,7 @@ Unlinks (removes) file at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L477)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L478)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1331,7 +1333,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L497)
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L498)
 
 Watch for changes at `path` calling `callback`
 

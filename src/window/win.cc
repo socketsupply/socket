@@ -1008,30 +1008,51 @@ namespace SSC {
                             } else {
                               auto rootPath = this->modulePath.parent_path();
                               auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
                               path = resolved.path;
 
-                              if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-                                path = userConfig["webview_default_index"];
-                              } else if (resolved.redirect) {
-                                uri += "/";
+                              if (mount.path.size() > 0) {
+                                if (mount.resolution.redirect) {
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
-                                    ).c_str(),
+                                      convertStringToWString("Location: ") + convertStringToWString(mount.resolution.path) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(mount.resolution.path) + L"\n"
+                                      ).c_str(),
                                     &res
                                   );
 
                                   args->put_Response(res);
                                   deferral->Complete();
                                   return S_OK;
+                                }
+                              } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+                                path = userConfig["webview_default_index"];
+                              } else if (resolved.redirect) {
+                                uri += "/";
+                                ICoreWebView2WebResourceResponse* res = nullptr;
+                                env->CreateWebResourceResponse(
+                                  nullptr,
+                                  301,
+                                  L"Moved Permanently",
+                                  WString(
+                                    convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
+                                    ).c_str(),
+                                  &res
+                                  );
+
+                                args->put_Response(res);
+                                deferral->Complete();
+                                return S_OK;
                               }
 
-                              if (path.size() > 0) {
+                              if (mount.path.size() > 0) {
+                                path = mount.path;
+                              } else if (path.size() > 0) {
                                 path = fs::absolute(rootPath / path.substr(1)).string();
                               }
 

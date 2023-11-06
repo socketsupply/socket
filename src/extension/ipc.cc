@@ -147,12 +147,14 @@ bool sapi_ipc_set_cancellation_handler (
   void (*handler)(void*),
   void* data
 ) {
-  if (result == nullptr || !result->message.isHTTP) {
+  if (result == nullptr || result->message.cancel == nullptr) {
     return false;
   }
   auto message = result->message;
-  message.cancel = handler;
-  message.cancel_data = data;
+  *message.cancel = {
+    .handler = handler,
+    .data = data
+  };
   return true;
 }
 

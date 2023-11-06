@@ -32,21 +32,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "socket.runtime.ipc.bridge.queue",
   qos
 );
-
-static String getMIMEType (String path) {
-  auto url = [NSURL
-    fileURLWithPath: [NSString stringWithUTF8String: path.c_str()]
-  ];
-
-  auto extension = [url pathExtension];
-  auto utt = [UTType typeWithFilenameExtension: extension];
-
-  if (utt.preferredMIMEType.UTF8String != nullptr) {
-    return String(utt.preferredMIMEType.UTF8String);
-  }
-
-  return "";
-}
 #endif
 
 static JSON::Any validateMessageParameters (
@@ -737,9 +722,10 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * Creates a directory at `path` with an optional mode.
+   * Creates a directory at `path` with an optional mode and an optional recursive flag.
    * @param path
    * @param mode
+   * @param recursive
    * @see mkdir(2)
    */
   router->map("fs.mkdir", [](auto message, auto router, auto reply) {
@@ -756,9 +742,11 @@ static void initRouterTable (Router *router) {
       message.seq,
       message.get("path"),
       mode,
+      message.get("recursive") == "true",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
+
 
   /**
    * Opens a file descriptor at `path` for `id` with `flags` and `mode`
@@ -1100,7 +1088,12 @@ static void initRouterTable (Router *router) {
 
     auto performedActivation = [router->locationObserver getCurrentPositionWithCompletion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+         );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1147,7 +1140,12 @@ static void initRouterTable (Router *router) {
 
     const int identifier = [router->locationObserver watchPositionForIdentifier: id  completion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1310,8 +1308,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1353,8 +1351,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1405,9 +1403,12 @@ static void initRouterTable (Router *router) {
       ];
 
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {
-          { "message", String(error.localizedFailureReason.UTF8String) }
-        };
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
 
         return reply(Result::Err { message, err });
       }
@@ -1434,8 +1435,8 @@ static void initRouterTable (Router *router) {
     [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1717,8 +1718,14 @@ static void initRouterTable (Router *router) {
             return reply(Result::Data { message, data });
           } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
             if (error) {
+              auto message = String(
+                error.localizedDescription.UTF8String != nullptr
+                  ? error.localizedDescription.UTF8String
+                  : "An unknown error occurred"
+              );
+
               auto err = JSON::Object::Entries {
-                { "message", String(error.localizedFailureReason.UTF8String) }
+                { "message", message }
               };
 
               return reply(Result::Err { message, err });
@@ -2283,9 +2290,33 @@ static void registerSchemeHandler (Router *router) {
     }
 
     auto resolved = Router::resolveURLPathForWebView(path, cwd);
+    auto mount = Router::resolveNavigatorMountForWebView(path);
     path = resolved.path;
 
-    if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+    if (mount.path.size() > 0) {
+      if (mount.resolution.redirect) {
+        auto redirectURL = path;
+        auto redirectSource = String(
+          "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+        );
+
+        auto size = redirectSource.size();
+        auto bytes = redirectSource.data();
+        auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+        auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+        auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+
+        soup_message_headers_append(headers, "location", redirectURL.c_str());
+        soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+
+        webkit_uri_scheme_response_set_http_headers(response, headers);
+        webkit_uri_scheme_response_set_content_type(response, "text/html");
+        webkit_uri_scheme_request_finish_with_response(request, response);
+
+        g_object_unref(stream);
+        return;
+      }
+    } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
       path = userConfig["webview_default_index"];
     } else if (resolved.redirect) {
       auto redirectURL = path;
@@ -2310,7 +2341,9 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    if (path.size() > 0) {
+    if (mount.path.size() > 0) {
+      path = mount.path;
+    } else if (path.size() > 0) {
       path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
     }
 
@@ -2404,9 +2437,8 @@ static void registerSchemeHandler (Router *router) {
   Lock lock(mutex);
   if (tasks.contains(task)) {
     auto message = tasks[task];
-    if (message.cancel != nullptr) {
-      message.cancel(message.cancel_data);
-      message.cancel = nullptr;
+    if (message.cancel->handler != nullptr) {
+      message.cancel->handler(message.cancel->data);
     }
   }
   [self finalizeTask: task];
@@ -2421,6 +2453,7 @@ static void registerSchemeHandler (Router *router) {
   auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message(url, true);
   message.isHTTP = true;
+  message.cancel = std::make_shared<MessageCancellation>();
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
@@ -2474,14 +2507,89 @@ static void registerSchemeHandler (Router *router) {
       ext = "." + ext;
     }
 
+    // assumes `import 'socket:<bundle_identifier>/module'` syntax
+    if (host == nullptr && path.starts_with(bundleIdentifier)) {
+      host = @(path.substr(0, bundleIdentifier.size()).c_str());
+      path = path.substr(bundleIdentifier.size());
+
+      if (ext.size() == 0 && !path.ends_with(".js")) {
+        path += ".js";
+      }
+
+      components.path = @(path.c_str());
+    }
+
     if (
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
       auto resolved = Router::resolveURLPathForWebView(path, basePath);
+      auto mount = Router::resolveNavigatorMountForWebView(path);
       path = resolved.path;
 
-      if (path.size() == 0) {
+      if (mount.path.size() > 0) {
+        if (mount.resolution.redirect) {
+          auto redirectURL = mount.resolution.path;
+          auto redirectSource = String(
+            "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+          );
+
+          data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+
+          auto response = [[NSHTTPURLResponse alloc]
+            initWithURL: [NSURL URLWithString: @(redirectURL.c_str())]
+             statusCode: 200
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didReceiveData: data];
+          [task didFinish];
+
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        } else {
+          auto url = [NSURL fileURLWithPath: @(mount.path.c_str())];
+          auto types = [UTType
+                typesWithTag: components.URL.pathExtension
+                    tagClass: UTTagClassFilenameExtension
+            conformingToType: nullptr
+          ];
+
+          headers[@"access-control-allow-origin"] = @"*";
+          headers[@"access-control-allow-methods"] = @"*";
+          headers[@"access-control-allow-headers"] = @"*";
+
+          if (types.count > 0 && types.firstObject.preferredMIMEType) {
+            headers[@"content-type"] = types.firstObject.preferredMIMEType;
+          }
+
+
+          [url startAccessingSecurityScopedResource];
+          const auto data = [NSData dataWithContentsOfURL: url];
+          headers[@"content-length"] = [@(data.length) stringValue];
+          [url stopAccessingSecurityScopedResource];
+
+          auto response = [[NSHTTPURLResponse alloc]
+            initWithURL: request.URL
+             statusCode: 200
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didReceiveData: data];
+          [task didFinish];
+
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+      } else if (path.size() == 0) {
         if (userConfig.contains("webview_default_index")) {
           path = userConfig["webview_default_index"];
         } else {
@@ -2608,7 +2716,6 @@ static void registerSchemeHandler (Router *router) {
         if (types.count > 0 && types.firstObject.preferredMIMEType) {
           headers[@"content-type"] = types.firstObject.preferredMIMEType;
         }
-
       }
     }
 
@@ -3392,6 +3499,103 @@ namespace SSC::IPC {
     // If no valid path is found, return empty string
     return Router::WebViewURLPathResolution{};
   };
+
+  static const Map getWebViewNavigatorMounts () {
+    static const auto userConfig = getUserConfig();
+  #if defined(_WIN32)
+    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #else
+    static const auto HOME = String(getpwuid(getuid())->pw_dir);
+  #endif
+
+    static Map mounts;
+
+    if (mounts.size() > 0) {
+      return mounts;
+    }
+
+    Map mappings = {
+      {"$HOST_HOME", HOME},
+      {"~", HOME},
+
+      {"$HOST_CONTAINER",
+    #if defined(__APPLE__)
+        // `homeDirectoryForCurrentUser` resolves to sandboxed container
+        // directory when in "sandbox" mode, otherwise the user's HOME directory
+        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
+    #elif defined(__linux__)
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux
+        getcwd(),
+    #elif defined(_WIN32)
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
+        getcwd(),
+    #endif
+      },
+
+      {"$HOST_PROCESS_WORKING_DIRECTORY",
+    #if defined(__APPLE__)
+        NSBundle.mainBundle.resourcePath.UTF8String
+    #else
+        getcwd(),
+    #endif
+      }
+    };
+
+    for (const auto& tuple : userConfig) {
+      if (tuple.first.starts_with("webview_navigator_mounts_")) {
+        auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+
+        if (key.starts_with("android") && !platform.android) continue;
+        if (key.starts_with("ios") && !platform.ios) continue;
+        if (key.starts_with("linux") && !platform.linux) continue;
+        if (key.starts_with("mac") && !platform.mac) continue;
+        if (key.starts_with("win") && !platform.win) continue;
+
+        key = replace(key, "android_", "");
+        key = replace(key, "ios_", "");
+        key = replace(key, "linux_", "");
+        key = replace(key, "mac_", "");
+        key = replace(key, "win_", "");
+
+        const auto path = replace(replace(key, "$HOST_HOME", ""), "~", HOME);
+        const auto& value = tuple.second;
+        mounts.insert_or_assign(path, value);
+      }
+    }
+
+    return mounts;
+  }
+
+  Router::WebViewNavigatorMount Router::resolveNavigatorMountForWebView (const String& path) {
+    static const auto mounts = getWebViewNavigatorMounts();
+
+    for (const auto& tuple : mounts) {
+      if (path.starts_with(tuple.second)) {
+        const auto relative = replace(path, tuple.second, "");
+        const auto resolution = resolveURLPathForWebView(relative, tuple.first);
+        if (resolution.path.size() > 0) {
+          const auto resolved = Path(tuple.first) / resolution.path.substr(1);
+          return WebViewNavigatorMount {
+            resolution,
+            resolved.string(),
+            path
+          };
+        } else {
+          const auto resolved = relative.starts_with("/")
+            ? Path(tuple.first) / relative.substr(1)
+            : Path(tuple.first) / relative;
+
+          return WebViewNavigatorMount {
+            resolution,
+            resolved.string(),
+            path
+          };
+        }
+      }
+    }
+
+    return WebViewNavigatorMount {};
+  }
 
   Router::Router () {
     static auto userConfig = SSC::getUserConfig();
