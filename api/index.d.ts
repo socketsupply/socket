@@ -6967,9 +6967,14 @@ declare module "socket:notification" {
         static get maxActions(): number;
         /**
          * Requests permission from the user to display notifications.
+         * @param {object=} [options]
+         * @param {boolean=} [options.alert = true] - (macOS/iOS only)
+         * @param {boolean=} [options.sound = false] - (macOS/iOS only)
+         * @param {boolean=} [options.badge = false] - (macOS/iOS only)
+         * @param {boolean=} [options.force = false]
          * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(): Promise<'granted' | 'default' | 'denied'>;
+        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
         /**
          * `Notification` class constructor.
          * @param {string} title
