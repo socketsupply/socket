@@ -1063,7 +1063,7 @@ export class Socket extends EventEmitter {
   async setRecvBufferSize (size) {
     if (size > 0) {
       this.state.recvBufferSize = size
-      const result = await ipc.send('os.bufferSize', { id: this.id, size })
+      const result = await ipc.send('os.bufferSize', { id: this.id, size, buffer: 1 })
       if (result.err) {
         throw result.err
       }
@@ -1080,7 +1080,7 @@ export class Socket extends EventEmitter {
   async setSendBufferSize (size) {
     if (size > 0) {
       this.state.sendBufferSize = size
-      const result = await ipc.send('os.bufferSize', { id: this.id, size })
+      const result = await ipc.send('os.bufferSize', { id: this.id, size, buffer: 0 })
       if (result.err) {
         throw result.err
       }
