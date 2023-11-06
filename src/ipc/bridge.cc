@@ -1088,7 +1088,12 @@ static void initRouterTable (Router *router) {
 
     auto performedActivation = [router->locationObserver getCurrentPositionWithCompletion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+         );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1135,7 +1140,12 @@ static void initRouterTable (Router *router) {
 
     const int identifier = [router->locationObserver watchPositionForIdentifier: id  completion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1298,8 +1308,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1341,8 +1351,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1393,9 +1403,12 @@ static void initRouterTable (Router *router) {
       ];
 
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {
-          { "message", String(error.localizedFailureReason.UTF8String) }
-        };
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
 
         return reply(Result::Err { message, err });
       }
@@ -1422,8 +1435,8 @@ static void initRouterTable (Router *router) {
     [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1705,8 +1718,14 @@ static void initRouterTable (Router *router) {
             return reply(Result::Data { message, data });
           } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
             if (error) {
+              auto message = String(
+                error.localizedDescription.UTF8String != nullptr
+                  ? error.localizedDescription.UTF8String
+                  : "An unknown error occurred"
+              );
+
               auto err = JSON::Object::Entries {
-                { "message", String(error.localizedFailureReason.UTF8String) }
+                { "message", message }
               };
 
               return reply(Result::Err { message, err });
