@@ -536,9 +536,14 @@ export class Notification extends EventTarget {
 
   /**
    * Requests permission from the user to display notifications.
+   * @param {object=} [options]
+   * @param {boolean=} [options.alert = true] - (macOS/iOS only)
+   * @param {boolean=} [options.sound = false] - (macOS/iOS only)
+   * @param {boolean=} [options.badge = false] - (macOS/iOS only)
+   * @param {boolean=} [options.force = false]
    * @return {Promise<'granted'|'default'|'denied'>}
    */
-  static async requestPermission () {
+  static async requestPermission (options = null) {
     if (isLinux) {
       // @ts-ignore
       if (typeof NativeNotification?.requestPermission === 'function') {
@@ -549,11 +554,49 @@ export class Notification extends EventTarget {
       return 'denied'
     }
 
-    const status = await permissions.request({ name: 'notifications' })
+    // explicitly unsubscribe with `AbortController` to prevent
+    // any result state changes further updates
+    const controller = new AbortController()
+    // query for 'granted' status and return early
+    const query = await permissions.query({
+      signal: controller.signal,
+      name: 'notifications'
+    })
+
+    // if already granted, return early
+    // any non-standard macOS/iOS options given will be ignored as they
+    // must be configured by the user unless the request is "forced"
+    if (options?.force !== true && query.state === 'granted') {
+      controller.abort()
+      return query.state
+    }
+
+    // request permission and resolve the normalized `state.permission` value
+    // when the query status changes
+    const request = await permissions.request({
+      signal: controller.signal,
+      name: 'notifications',
+
+      // macOS/iOS only options
+      alert: Boolean(options?.alert !== false), // (defaults to `true`)
+      badge: Boolean(options?.badge),
+      sound: Boolean(options?.sound)
+    })
+
+    if (request.state === 'granted') {
+      controller.abort()
+      return request.state
+    }
+
     return new Promise((resolve) => {
-      status.onchange = (event) => {
-        status.unsubscribe()
-        resolve(event.detail.state)
+      request.onchange = () => {
+        controller.abort()
+        resolve(state.permission)
+      }
+
+      query.onchange = () => {
+        controller.abort()
+        resolve(state.permission)
       }
     })
   }
