@@ -542,9 +542,9 @@ namespace SSC {
     int buffer,
     Module::Callback cb
   ) {
-    if (buffer < 0) {
+    if (buffer == 0) {
       buffer = Core::OS::SEND_BUFFER;
-    } else if (buffer > 1) {
+    } else if (buffer == 1) {
       buffer = Core::OS::RECV_BUFFER;
     }
 
