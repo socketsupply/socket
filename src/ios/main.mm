@@ -93,18 +93,25 @@ static dispatch_queue_t queue = dispatch_queue_create(
   }
 }
 
-- (void) keyboardWillHide {
+- (void) keyboardWillHide: (NSNotification*) notification {
+  NSDictionary *info = [notification userInfo];
+  NSValue* keyboardFrameBegin = [info valueForKey: UIKeyboardFrameEndUserInfoKey];
+  CGRect rect = [keyboardFrameBegin CGRectValue];
+  CGFloat height = rect.size.height;
+
   JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
-      {"event", "will-hide"}
-    }}
+      {"event", "will-hide"},
+      {"height", height}
+    }} 
   };
 
   self.webview.scrollView.scrollEnabled = YES;
   bridge->router.emit("keyboard", json.str());
 }
 
-- (void) keyboardDidHide {
+- (void) keyboardDidHide: (NSNotification*) notification {
+
   JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "did-hide"}
@@ -114,10 +121,16 @@ static dispatch_queue_t queue = dispatch_queue_create(
   bridge->router.emit("keyboard", json.str());
 }
 
-- (void) keyboardWillShow {
+- (void) keyboardWillShow: (NSNotification*) notification {
+  NSDictionary *info = [notification userInfo];
+  NSValue* keyboardFrameBegin = [info valueForKey: UIKeyboardFrameEndUserInfoKey];
+  CGRect rect = [keyboardFrameBegin CGRectValue];
+  CGFloat height = rect.size.height;
+
   JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
-      {"event", "will-show"}
+      {"event", "will-show"},
+      {"height", height},
     }}
   };
 
@@ -125,7 +138,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   bridge->router.emit("keyboard", json.str());
 }
 
-- (void) keyboardDidShow {
+- (void) keyboardDidShow: (NSNotification*) notification {
   JSON::Object json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "did-show"}
@@ -312,10 +325,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
   }
 
   NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
-  [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardWillShow) name: UIKeyboardWillShowNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardDidShow:) name: UIKeyboardDidShowNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardDidHide:) name: UIKeyboardDidHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillShow:) name: UIKeyboardWillShowNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillHide:) name: UIKeyboardWillHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
   self.navDelegate = [[SSCNavigationDelegate alloc] init];
