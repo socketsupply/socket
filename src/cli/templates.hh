@@ -1618,6 +1618,9 @@ constexpr auto gDefaultConfig = R"INI(
 ; do all the heavy lifting and should handle 99.9% of your use cases for moving
 ; files into place or tweaking platform-specific build artifacts. If you don't
 ; specify it, ssc will just copy everything in your project to the build target.
+;
+; Note that "~" alias won't expand to the home directory in any of the configuration files.
+; Use the full path instead.
 
 [build]
 

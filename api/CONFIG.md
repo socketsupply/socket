@@ -38,6 +38,13 @@ provisioning_profile = "johndoe.mobileprovision"
 simulator_device = "iPhone 15"
 ```
 
+<tonic-toaster-inline
+  title="Note"
+  type="info">
+    Note that "~" alias won't expand to the home directory in any of the configuration files.
+    Use the full path instead.
+</tonic-toaster-inline>
+
 # `build`
 
 Key | Default Value | Description
