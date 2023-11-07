@@ -1610,14 +1610,8 @@ constexpr auto gDefaultConfig = R"INI(
 ; /__  /  / /   /_/  /_   /
 ; __/ /__/ /__ /  \ /__  /
 ;
-; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
+; Socket ⚡︎ Runtime · For Industrial Strength Distributed Web Apps · v{{ssc_version}}
 ;
-
-; The value of the "script" property in a build section will be interpreted as a shell command when
-; you run "ssc build". This is the most important command in this file. It will
-; do all the heavy lifting and should handle 99.9% of your use cases for moving
-; files into place or tweaking platform-specific build artifacts. If you don't
-; specify it, ssc will just copy everything in your project to the build target.
 
 [build]
 
@@ -1648,16 +1642,21 @@ output = "build"
 ; The build script. It runs before the `[build] copy` phase.
 ; script = "npm run build"
 
+
 [build.script]
+
 ; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 ; default value: false
 forward_arguments = false
 
+
 [build.watch]
+
 sources = "src"
 
 
 [webview]
+
 ; Make root open index.html
 ; default value: "/"
 root = "/"
@@ -1670,13 +1669,18 @@ root = "/"
 ; default value: false
 watch = false
 
-; Mount file system paths in webview navigator
+
 [webview.navigator.mounts]
+; Mount file system paths in webview navigator
+
 ; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
 ; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
 ; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
+
 [permissions]
+; Allow the app to ask the user for various permissions
+
 ; Allow/Disallow fullscreen in application
 ; default value: true
 ; allow_fullscreen = true
@@ -1724,6 +1728,7 @@ watch = false
 
 [debug]
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+
 flags = "-g"
 
 
@@ -1800,6 +1805,7 @@ simulator_device = "iPhone 14"
 
 
 [linux]
+
 ; Helps to make your app searchable in Linux desktop environments.
 categories = "Developer Tools"
 
@@ -1865,6 +1871,7 @@ height = 50%
 
 ; The initial width of the first window.
 width = 50%
+
 
 [headless]
 
