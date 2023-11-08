@@ -7526,6 +7526,16 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
+declare module "socket:internal/pickers" {
+    /**
+     * TODO
+     */
+    export function showOpenFilePicker(options?: any): Promise<void>;
+    namespace _default {
+        export { showOpenFilePicker };
+    }
+    export default _default;
+}
 declare module "socket:internal/monkeypatch" {
     export function init(): void;
     const _default: void;

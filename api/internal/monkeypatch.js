@@ -5,6 +5,10 @@ import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 
+import {
+  showOpenFilePicker
+} from './pickers.js'
+
 import ipc from '../ipc.js'
 
 let applied = false
@@ -79,7 +83,10 @@ export function init () {
     Response,
 
     // notifications
-    Notification
+    Notification,
+
+    // pickers
+    showOpenFilePicker
   })
 
   // navigator
