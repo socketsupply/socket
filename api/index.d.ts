@@ -4858,6 +4858,71 @@ declare module "socket:i18n" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @return {Promise<Array<{ name: string, mime: string }>>}
+     */
+    export function lookup(query: any): Promise<Array<{
+        name: string;
+        mime: string;
+    }>>;
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name.
+         * @param {string} query
+         * @return {Promise<{ name: string, mime: string}>}
+         */
+        lookup(query: string): Promise<{
+            name: string;
+            mime: string;
+        }>;
+    }
+    export const application: Database;
+    export const audio: Database;
+    export const font: Database;
+    export const image: Database;
+    export const model: Database;
+    export const multipart: Database;
+    export const text: Database;
+    export const video: Database;
+    namespace _default {
+        export { application };
+        export { Database };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
 }
