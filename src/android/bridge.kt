@@ -163,6 +163,32 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     }
 
     when (message.command) {
+      "os.paths" -> {
+        val storage = android.os.Environment.getExternalStorageDirectory().absolutePath
+        val Environment.getExternalStoragePublicDirectory
+
+        var downloads = "$storage/Downloads"
+        var documents = android.os.Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath
+        var pictures = "$storage/Pictures"
+        var desktop = activity.getExternalFilesDir(null).absolutePath
+        var videos = "$storage/DCIM/Camera/"
+        var music = "$storage/Music"
+        var home = desktop
+
+        callback(Result(0, message.seq, message.command, """{
+          "data": {
+            "downloads": "$downloads",
+            "documents": "$documents",
+            "pictures": "$pictures",
+            "desktop": "$desktop",
+            "videos": "$videos",
+            "music": "$music",
+            "home": "$home"
+          }
+        }"""))
+        return true
+      }
+
       "permissions.request" -> {
         if (!message.has("name")) {
           callback(Result(0, message.seq, message.command, """{

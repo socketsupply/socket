@@ -1,3 +1,4 @@
+#include <format>
 #include <regex>
 #include <unordered_map>
 
@@ -1573,6 +1574,125 @@ static void initRouterTable (Router *router) {
 
   router->map("os.availableMemory", [](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("os.paths", [](auto message, auto router, auto reply) {
+    JSON::Object data;
+
+    // paths
+    String downloads;
+    String documents;
+    String pictures;
+    String desktop;
+    String videos;
+    String music;
+    String home;
+
+  #if defined(__APPLE__)
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto fileManager = NSFileManager.defaultManager;
+
+  #define DIRECTORY_PATH_FROM_FILE_MANAGER(type) (                             \
+    String([fileManager                                                        \
+        URLForDirectory: type                                                  \
+               inDomain: NSUserDomainMask                                      \
+      appropriateForURL: nil                                                   \
+                 create: NO                                                    \
+                  error: nil                                                   \
+      ].path.UTF8String)                                                       \
+    )
+
+    downloads = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDownloadsDirectory);
+    documents = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDocumentDirectory);
+    pictures = DIRECTORY_PATH_FROM_FILE_MANAGER(NSPicturesDirectory);
+    desktop = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory);
+    videos = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory);
+    music = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory);
+    home = String(NSHomeDirectory().UTF8String);
+
+  #undef DIRECTORY_PATH_FROM_FILE_MANAGER
+
+  #elif defined(__linux__)
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto XDG_DOCUMENTS_DIR = Env::get("XDG_DOCUMENTS_DIR");
+    static const auto XDG_DOWNLOAD_DIR = Env::get("XDG_DOWNLOAD_DIR");
+    static const auto XDG_PICTURES_DIR = Env::get("XDG_PICTURES_DIR");
+    static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
+    static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
+    static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+
+    if (XDG_DOCUMENTS_DIR.size() > 0) {
+      documents = XDG_DOCUMENTS_DIR;
+    } else {
+      documents = (Path(HOME) / "Documents").string();
+    }
+
+    if (XDG_DOWNLOAD_DIR.size() > 0) {
+      downloads = XDG_DOWNLOAD_DIR;
+    } else {
+      downloads = (Path(HOME) / "Downloads").string();
+    }
+
+    if (XDG_DESKTOP_DIR.size() > 0) {
+      desktop = XDG_DESKTOP_DIR;
+    } else {
+      desktop = (Path(HOME) / "Desktop").string();
+    }
+
+    if (XDG_PICTURES_DIR.size() > 0) {
+      pictures = XDG_PICTURES_DIR;
+    } else if (fs::exists(Path(HOME) / "Images")) {
+      pictures = (Path(HOME) / "Images").string();
+    } else if (fs::exists(Path(HOME) / "Photos")) {
+      pictures = (Path(HOME) / "Photos").string();
+    } else {
+      pictures = (Path(HOME) / "Pictures").string();
+    }
+
+    if (XDG_VIDEOS_DIR.size() > 0) {
+      videos = XDG_VIDEOS_DIR
+    } else {
+      videos = (Path(HOME) / "Videos").string();
+    }
+
+    if (XDG_MUSIC_DIR.size() > 0) {
+      music = XDG_MUSIC_DIR;
+    } else {
+      music = (Path(HOME) / "Music").string();
+    }
+
+    home = Path(HOME).string();
+  #elif defined(_WIN32)
+    static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
+    static const auto USERPROFILE = Env::get("USERPROFILE", HOME)
+    downloads = (Path(USERPROFILE) / "Downloads").string();
+    documents = (Path(USERPROFILE) / "Documents").string();
+    desktop = (Path(USERPROFILE) / "Desktop").string();
+    pictures = (Path(USERPROFILE) / "Pictures").string();
+    videos = (Path(USERPROFILE) / "Videos").string();
+    music = (Path(USERPROFILE) / "Music").string();
+    home = Path(USERPROFILE).string();
+  #endif
+
+    data["downloads"] = downloads;
+    data["documents"] = documents;
+    data["pictures"] = pictures;
+    data["desktop"] = desktop;
+    data["videos"] = videos;
+    data["music"] = music;
+    data["home"] = home;
+
+    return reply(Result::Data { message, data });
   });
 
   router->map("permissions.query", [](auto message, auto router, auto reply) {
