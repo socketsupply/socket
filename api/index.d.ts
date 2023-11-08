@@ -7530,7 +7530,7 @@ declare module "socket:internal/pickers" {
     /**
      * TODO
      */
-    export function showOpenFilePicker(options?: any): Promise<void>;
+    export function showOpenFilePicker(options?: any): Promise<any[]>;
     namespace _default {
         export { showOpenFilePicker };
     }
