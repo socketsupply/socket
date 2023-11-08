@@ -1177,17 +1177,64 @@ declare module "socket:path/posix" {
     
     export { win32, Path };
 }
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { MUSIC };
+    }
+    export default _default;
+}
 declare module "socket:path/index" {
     export * as _default from "socket:path/index";
     
     import * as posix from "socket:path/posix";
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
-    export { posix, win32, Path };
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
+    export { posix, win32, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
-    export const delimiter: ";";
+    export const delimiter: ":" | ";";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
     export const dirname: typeof posix.win32.dirname;
@@ -1204,7 +1251,13 @@ declare module "socket:path" {
     import { posix } from "socket:path/index";
     import { Path } from "socket:path/index";
     import { win32 } from "socket:path/index";
-    export { Path, posix, win32 };
+    import { DOWNLOADS } from "socket:path/index";
+    import { DOCUMENTS } from "socket:path/index";
+    import { PICTURES } from "socket:path/index";
+    import { DESKTOP } from "socket:path/index";
+    import { VIDEOS } from "socket:path/index";
+    import { MUSIC } from "socket:path/index";
+    export { Path, posix, win32, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:diagnostics/channels" {
     /**
