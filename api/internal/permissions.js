@@ -23,7 +23,7 @@ const PERMISSION_CHANGE_EVENT = 'permissionchange'
  */
 
 const isAndroid = os.platform() === 'android'
-const isApple = os.platform() === 'darwin'
+const isApple = os.platform() === 'darwin' || os.platform() === 'ios'
 const isLinux = os.platform() === 'linux'
 
 /**
