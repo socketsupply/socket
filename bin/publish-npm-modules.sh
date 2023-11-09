@@ -196,8 +196,8 @@ if (( !only_top_level )); then
       fi
       ## Install arm64-iPhone files for x86_64 too
       if [ "$(uname -m)" == "x86_64" ]; then
-        cp -rf "$SOCKET_HOME/lib/arm64-iPhone" "$SOCKET_HOME/packages/$package/lib"
-        cp -rf "$SOCKET_HOME/objects/arm64-iPhone" "$SOCKET_HOME/packages/$package/objects"
+        cp -rf "$SOCKET_HOME/lib/arm64-iPhoneOS" "$SOCKET_HOME/packages/$package/lib"
+        cp -rf "$SOCKET_HOME/objects/arm64-iPhoneOS" "$SOCKET_HOME/packages/$package/objects"
       fi
     fi
 
