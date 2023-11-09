@@ -188,11 +188,16 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
 
-    ## Install x86_64-iPhoneSimulator files for arm64 too
     if [ "$platform" = "darwin" ]; then
+      ## Install x86_64-iPhoneSimulator files for arm64 too
       if [ "$(uname -m)" == "arm64" ]; then
         cp -rf "$SOCKET_HOME/lib/x86_64-iPhoneSimulator" "$SOCKET_HOME/packages/$package/lib"
         cp -rf "$SOCKET_HOME/objects/x86_64-iPhoneSimulator" "$SOCKET_HOME/packages/$package/objects"
+      fi
+      ## Install arm64-iPhone files for x86_64 too
+      if [ "$(uname -m)" == "x86_64" ]; then
+        cp -rf "$SOCKET_HOME/lib/arm64-iPhone" "$SOCKET_HOME/packages/$package/lib"
+        cp -rf "$SOCKET_HOME/objects/arm64-iPhone" "$SOCKET_HOME/packages/$package/objects"
       fi
     fi
 
