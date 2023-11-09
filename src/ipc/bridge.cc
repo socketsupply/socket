@@ -1660,7 +1660,7 @@ static void initRouterTable (Router *router) {
     }
 
     if (XDG_VIDEOS_DIR.size() > 0) {
-      videos = XDG_VIDEOS_DIR
+      videos = XDG_VIDEOS_DIR;
     } else {
       videos = (Path(HOME) / "Videos").string();
     }
@@ -1674,7 +1674,7 @@ static void initRouterTable (Router *router) {
     home = Path(HOME).string();
   #elif defined(_WIN32)
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
-    static const auto USERPROFILE = Env::get("USERPROFILE", HOME)
+    static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
     downloads = (Path(USERPROFILE) / "Downloads").string();
     documents = (Path(USERPROFILE) / "Documents").string();
     desktop = (Path(USERPROFILE) / "Desktop").string();
