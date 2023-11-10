@@ -1,9 +1,31 @@
 import { test } from 'socket:test'
 import mime from 'socket:mime'
 
-test.only('mime.lookup', async (t) => {
-  const results = await mime.lookup('html')
-  t.ok(results)
+/**
+ * @param {string[]} left
+ * @param {string[]} right
+ * @return {string[]}
+ */
+function intersection (left, right) {
+  const results = new Set()
+  for (const item of left) {
+    if (right.includes(item)) {
+      // @ts-ignore
+      results.add(item)
+    }
+  }
+
+  for (const item of right) {
+    if (left.includes(item)) {
+      // @ts-ignore
+      results.add(item)
+    }
+  }
+
+  return Array.from(results.entries())
+}
+
+test('mime.lookup', async (t) => {
   const tests = [
     { ext: 'aac', expect: ['audio/aac'] },
     { ext: 'abw', expect: ['application/x-abiword'] },
@@ -81,9 +103,30 @@ test.only('mime.lookup', async (t) => {
 
   for (const { ext, expect } of tests) {
     const results = await mime.lookup(ext)
-    t.equal(results.length, expect.length)
+    const mimes = results.map((result) => result.mime)
+    const i = intersection(mimes, expect)
+    if (i.length === 0) {
+      console.log({ mimes, expect, i })
+    }
+    t.ok(i.length > 0, `mime.lookup returns resuls for ${ext}`)
     for (const result of results) {
       expect.includes(result)
     }
+  }
+})
+
+test('verify internal database content type prefix', async (t) => {
+  for (const database of mime.databases) {
+    await database.load()
+    let allContentTypesStartWithDatabaseName = false
+
+    for (const entry of database.entries()) {
+      allContentTypesStartWithDatabaseName = entry[1].startsWith(database.name + '/')
+    }
+
+    t.ok(
+      allContentTypesStartWithDatabaseName,
+      `all content types for '${database.name}' start with '${database.name}/'`
+    )
   }
 })

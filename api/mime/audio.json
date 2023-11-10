@@ -85,6 +85,7 @@
   "mp3": "audio/mpeg",
   "mpeg": "audio/mpeg",
   "mpeg4-generic": "audio/mpeg4-generic",
+  "oga": "audio/ogg",
   "ogg": "audio/ogg",
   "opus": "audio/opus",
   "parityfec": "audio/parityfec",

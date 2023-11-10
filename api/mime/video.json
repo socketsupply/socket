@@ -1,5 +1,7 @@
 {
   "1d-interleaved-parityfec": "video/1d-interleaved-parityfec",
+  "3g2": "video/3gpp2",
+  "3gp": "video/3gpp",
   "3gpp": "video/3gpp",
   "3gpp2": "video/3gpp2",
   "3gpp-tt": "video/3gpp-tt",
@@ -35,7 +37,7 @@
   "mp4": "video/mp4",
   "MP4V-ES": "video/MP4V-ES",
   "MPV": "video/MPV",
-  "mpeg": "vidoe/MPEG",
+  "mpeg": "video/MPEG",
   "mpeg4-generic": "video/mpeg4-generic",
   "nv": "video/nv",
   "ogg": "video/ogg",
