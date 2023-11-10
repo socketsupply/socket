@@ -22,7 +22,7 @@ function intersection (left, right) {
     }
   }
 
-  return Array.from(results.entries())
+  return Array.from(results.values())
 }
 
 test('mime.lookup', async (t) => {
@@ -105,9 +105,6 @@ test('mime.lookup', async (t) => {
     const results = await mime.lookup(ext)
     const mimes = results.map((result) => result.mime)
     const i = intersection(mimes, expect)
-    if (i.length === 0) {
-      console.log({ mimes, expect, i })
-    }
     t.ok(i.length > 0, `mime.lookup returns resuls for ${ext}`)
     for (const result of results) {
       expect.includes(result)
