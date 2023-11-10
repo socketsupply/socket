@@ -15,13 +15,6 @@ function intersection (left, right) {
     }
   }
 
-  for (const item of right) {
-    if (left.includes(item)) {
-      // @ts-ignore
-      results.add(item)
-    }
-  }
-
   return Array.from(results.values())
 }
 
