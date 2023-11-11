@@ -6,7 +6,9 @@ import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 
 import {
-  showOpenFilePicker
+  showDirectoryPicker,
+  showOpenFilePicker,
+  showSaveFilePicker
 } from './pickers.js'
 
 import ipc from '../ipc.js'
@@ -86,7 +88,9 @@ export function init () {
     Notification,
 
     // pickers
-    showOpenFilePicker
+    showDirectoryPicker,
+    showOpenFilePicker,
+    showSaveFilePicker
   })
 
   // navigator

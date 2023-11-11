@@ -2,16 +2,19 @@ import * as exports from './errors.js'
 
 export default exports
 
-export const ABORT_ERR = 20
-export const ENCODING_ERR = 32
-export const INVALID_ACCESS_ERR = 15
-export const INDEX_SIZE_ERR = 1
-export const NETWORK_ERR = 19
-export const NOT_ALLOWED_ERR = 31
-export const NOT_FOUND_ERR = 8
-export const NOT_SUPPORTED_ERR = 9
-export const OPERATION_ERR = 30
-export const TIMEOUT_ERR = 23
+const DOMException = globalThis.DOMException ?? class DOMException extends Error {}
+
+export const ABORT_ERR = DOMException?.ABORT_ERR ?? 20
+export const ENCODING_ERR = DOMException?.ENCODING_ERR ?? 32
+export const INVALID_ACCESS_ERR = DOMException?.INVALID_ACCESS_ERR ?? 15
+export const INDEX_SIZE_ERR = DOMException?.INDEX_SIZE_ERR ?? 1
+export const NETWORK_ERR = DOMException?.NETWORK_ERR ?? 19
+export const NOT_ALLOWED_ERR = DOMException?.NOT_ALLOWED_ERR ?? 31
+export const NOT_FOUND_ERR = DOMException?.NOT_FOUND_ERR ?? 8
+export const NOT_SUPPORTED_ERR = DOMException?.NOT_SUPPORTED_ERR ?? 9
+export const OPERATION_ERR = DOMException?.OPERATION_ERR ?? 30
+export const SECURITY_ERR = DOMException?.SECURITY_ERR ?? 18
+export const TIMEOUT_ERR = DOMException?.TIMEOUT_ERR ?? 23
 
 /**
  * An `AbortError` is an error type thrown in an `onabort()` level 0
@@ -187,7 +190,7 @@ export class IllegalConstructorError extends TypeError {
  */
 export class IndexSizeError extends Error {
   /**
-   * The code given to an `NOT_FOUND_ERR` `DOMException`
+   * The code given to an `INDEX_SIZE_ERR` `DOMException`
    */
   static get code () { return INDEX_SIZE_ERR }
 
@@ -462,7 +465,7 @@ export class ModuleNotFoundError extends NotFoundError {
  */
 export class OperationError extends Error {
   /**
-   * The code given to an `NOT_FOUND_ERR` `DOMException`
+   * The code given to an `OPERATION_ERR` `DOMException`
    */
   static get code () { return OPERATION_ERR }
 
@@ -485,6 +488,38 @@ export class OperationError extends Error {
 
   get code () {
     return 'OPERATION_ERR'
+  }
+}
+
+/**
+ * An `SecurityError` is an error type thrown when an internal exception
+ * has occurred, such as in the native IPC layer.
+ */
+export class SecurityError extends Error {
+  /**
+   * The code given to an `SECURITY_ERR` `DOMException`
+   */
+  static get code () { return SECURITY_ERR }
+
+  /**
+   * `SecurityError` class constructor.
+   * @param {string} message
+   * @param {number} [code]
+   */
+  constructor (message, ...args) {
+    super(message, ...args)
+
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SecurityError)
+    }
+  }
+
+  get name () {
+    return 'SecurityError'
+  }
+
+  get code () {
+    return 'SECURITY_ERR'
   }
 }
 

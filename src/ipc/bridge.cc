@@ -7,6 +7,7 @@
 #endif
 
 #include "../extension/extension.hh"
+#include "../window/window.hh"
 #include "ipc.hh"
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
@@ -692,6 +693,55 @@ static void initRouterTable (Router *router) {
   });
 
   /**
+   * Synchronize a file's in-core state with storage device
+   * @param id
+   * @see fsync(2)
+   */
+  router->map("fs.fsync", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.fsync(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Truncates opened file
+   * @param id
+   * @param offset
+   * @see ftruncate(2)
+   */
+  router->map("fs.ftruncate", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "offset"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    int64_t offset;
+    REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoll);
+
+    router->core->fs.ftruncate(
+      message.seq,
+      id,
+      offset,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
    * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
@@ -867,7 +917,7 @@ static void initRouterTable (Router *router) {
 	/**
    * Read value of a symbolic link at 'path'
    * @param path
-   * @see unlink(2)
+   * @see readlink(2)
    */
   router->map("fs.readlink", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -2269,6 +2319,58 @@ static void initRouterTable (Router *router) {
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
+
+  router->map("window.showFileSystemPicker", [](auto message, auto router, auto reply) {
+    const auto allowMultiple = message.get("allowMultiple") == "true";
+    const auto allowFiles = message.get("allowFiles") == "true";
+    const auto allowDirs = message.get("allowDirs") == "true";
+    const auto isSave = message.get("type") == "save";
+
+    const auto contentTypeSpecs = message.get("contentTypeSpecs");
+    const auto defaultName = message.get("defaultName");
+    const auto defaultPath = message.get("defaultPath");
+    const auto title = message.get("title", isSave ? "Save" : "Open");
+
+    Dialog dialog(router);
+    auto options = Dialog::FileSystemPickerOptions {
+      .directories = allowDirs,
+      .multiple = allowMultiple,
+      .files = allowFiles,
+      .contentTypes = contentTypeSpecs,
+      .defaultName = defaultName,
+      .defaultPath = defaultPath,
+      .title = title
+    };
+
+    if (isSave) {
+      const auto result = dialog.showSaveFilePicker(options);
+
+      if (result.size() == 0) {
+        auto err = JSON::Object::Entries {{"type", "AbortError"}};
+        reply(Result::Err { message, err });
+      } else {
+        auto data = JSON::Object::Entries {{"path", result}};
+        reply(Result::Data { message, data });
+      }
+    } else {
+      JSON::Array paths;
+      const auto results = (
+        allowFiles && !allowDirs
+          ? dialog.showOpenFilePicker(options)
+          : dialog.showDirectoryPicker(options)
+      );
+
+      for (const auto& result : results) {
+        paths.push(result);
+      }
+
+      auto data = JSON::Object::Entries {
+        {"paths", paths}
+      };
+
+      reply(Result::Data { message, data });
+    }
+  });
 }
 
 static void registerSchemeHandler (Router *router) {
@@ -2685,7 +2787,6 @@ static void registerSchemeHandler (Router *router) {
           if (types.count > 0 && types.firstObject.preferredMIMEType) {
             headers[@"content-type"] = types.firstObject.preferredMIMEType;
           }
-
 
           [url startAccessingSecurityScopedResource];
           const auto data = [NSData dataWithContentsOfURL: url];

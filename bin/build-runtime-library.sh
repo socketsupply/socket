@@ -102,6 +102,7 @@ declare sources=(
   $(find "$root"/src/core/*.cc)
   $(find "$root"/src/ipc/*.cc)
   $(find "$root"/src/extension/*.cc)
+  "$root/src/window/dialog.cc"
 )
 
 declare test_headers=()

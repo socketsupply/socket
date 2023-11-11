@@ -1,15 +1,16 @@
 declare module "socket:errors" {
     export default exports;
-    export const ABORT_ERR: 20;
-    export const ENCODING_ERR: 32;
-    export const INVALID_ACCESS_ERR: 15;
-    export const INDEX_SIZE_ERR: 1;
-    export const NETWORK_ERR: 19;
-    export const NOT_ALLOWED_ERR: 31;
-    export const NOT_FOUND_ERR: 8;
-    export const NOT_SUPPORTED_ERR: 9;
-    export const OPERATION_ERR: 30;
-    export const TIMEOUT_ERR: 23;
+    export const ABORT_ERR: any;
+    export const ENCODING_ERR: any;
+    export const INVALID_ACCESS_ERR: any;
+    export const INDEX_SIZE_ERR: any;
+    export const NETWORK_ERR: any;
+    export const NOT_ALLOWED_ERR: any;
+    export const NOT_FOUND_ERR: any;
+    export const NOT_SUPPORTED_ERR: any;
+    export const OPERATION_ERR: any;
+    export const SECURITY_ERR: any;
+    export const TIMEOUT_ERR: any;
     /**
      * An `AbortError` is an error type thrown in an `onabort()` level 0
      * event handler on an `AbortSignal` instance.
@@ -19,7 +20,7 @@ declare module "socket:errors" {
          * The code given to an `ABORT_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `AbortError` class constructor.
          * @param {AbortSignal|string} reasonOrSignal
@@ -56,7 +57,7 @@ declare module "socket:errors" {
         /**
          * The code given to an `ENCODING_ERR` `DOMException`.
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `EncodingError` class constructor.
          * @param {string} message
@@ -108,9 +109,9 @@ declare module "socket:errors" {
      */
     export class IndexSizeError extends Error {
         /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * The code given to an `INDEX_SIZE_ERR` `DOMException`
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `IndexSizeError` class constructor.
          * @param {string} message
@@ -156,7 +157,7 @@ declare module "socket:errors" {
          * The code given to an `INVALID_ACCESS_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `InvalidAccessError` class constructor.
          * @param {string} message
@@ -175,7 +176,7 @@ declare module "socket:errors" {
          * The code given to an `NETWORK_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NetworkError` class constructor.
          * @param {string} message
@@ -194,7 +195,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_ALLOWED_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotAllowedError` class constructor.
          * @param {string} message
@@ -213,7 +214,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_FOUND_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotFoundError` class constructor.
          * @param {string} message
@@ -232,7 +233,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotSupportedError` class constructor.
          * @param {string} message
@@ -260,11 +261,29 @@ declare module "socket:errors" {
      */
     export class OperationError extends Error {
         /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * The code given to an `OPERATION_ERR` `DOMException`
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `OperationError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `SecurityError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class SecurityError extends Error {
+        /**
+         * The code given to an `SECURITY_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `SecurityError` class constructor.
          * @param {string} message
          * @param {number} [code]
          */
@@ -280,7 +299,7 @@ declare module "socket:errors" {
          * The code given to an `TIMEOUT_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `TimeoutError` class constructor.
          * @param {string} message
@@ -1016,6 +1035,47 @@ declare module "socket:path/path" {
     });
     import { URL } from "socket:url/index";
 }
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { MUSIC };
+    }
+    export default _default;
+}
 declare module "socket:path/win32" {
     /**
      * Computes current working directory for a path
@@ -1092,9 +1152,15 @@ declare module "socket:path/win32" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import * as posix from "socket:path/posix";
     import { Path } from "socket:path/path";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { posix, Path };
+    export { posix, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/posix" {
     /**
@@ -1173,50 +1239,15 @@ declare module "socket:path/posix" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { win32, Path };
-}
-declare module "socket:path/well-known" {
-    /**
-     * Well known path to the user's "Downloads" folder.
-     * @type {?string}
-     */
-    export const DOWNLOADS: string | null;
-    /**
-     * Well known path to the user's "Documents" folder.
-     * @type {?string}
-     */
-    export const DOCUMENTS: string | null;
-    /**
-     * Well known path to the user's "Pictures" folder.
-     * @type {?string}
-     */
-    export const PICTURES: string | null;
-    /**
-     * Well known path to the user's "Desktop" folder.
-     * @type {?string}
-     */
-    export const DESKTOP: string | null;
-    /**
-     * Well known path to the user's "Videos" folder.
-     * @type {?string}
-     */
-    export const VIDEOS: string | null;
-    /**
-     * Well known path to the user's "Music" folder.
-     * @type {?string}
-     */
-    export const MUSIC: string | null;
-    namespace _default {
-        export { DOWNLOADS };
-        export { DOCUMENTS };
-        export { PICTURES };
-        export { DESKTOP };
-        export { VIDEOS };
-        export { MUSIC };
-    }
-    export default _default;
+    export { win32, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/index" {
     export * as _default from "socket:path/index";
@@ -2067,8 +2098,9 @@ declare module "socket:fs/handle" {
          * @param {string=} [flags = 'r']
          * @param {string|number=} [mode = 0o666]
          * @param {object=} [options]
+         * @return {Promise<FileHandle>}
          */
-        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: (string | number) | undefined, options?: object | undefined): Promise<exports.FileHandle>;
+        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: (string | number) | undefined, options?: object | undefined): Promise<FileHandle>;
         /**
          * `FileHandle` class constructor
          * @ignore
@@ -2167,26 +2199,21 @@ declare module "socket:fs/handle" {
          */
         readFile(options?: object | undefined): Promise<string | Uint8Array>;
         /**
-         * @param {object=} [options]
-         */
-        readv(buffers: any, position: any): Promise<void>;
-        /**
          * Returns the stats of the underlying file.
          * @param {object=} [options]
+         * @return {Promise<Stats>}
          */
         stat(options?: object | undefined): Promise<Stats>;
         /**
-         * @param {object=} [options]
+         * Synchronize a file's in-core state with storage device
+         * @return {Promise}
          */
-        sync(): Promise<void>;
+        sync(): Promise<any>;
         /**
-         * @param {object=} [options]
+         * @param {number} [offset = 0]
+         * @return {Promise}
          */
-        truncate(length: any): Promise<void>;
-        /**
-         * @param {object=} [options]
-         */
-        utimes(atime: any, mtime: any): Promise<void>;
+        truncate(offset?: number): Promise<any>;
         /**
          * Writes `length` bytes at `offset` in `buffer` to the underlying file
          * at `position`.
@@ -2208,10 +2235,6 @@ declare module "socket:fs/handle" {
          * @param {object=} [options.signal]
          */
         writeFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void>;
-        /**
-         * @param {object=} [options]
-         */
-        writev(buffers: any, position: any): Promise<void>;
         [exports.kOpening]: any;
         [exports.kClosing]: any;
         [exports.kClosed]: boolean;
@@ -2242,8 +2265,9 @@ declare module "socket:fs/handle" {
          * Asynchronously open a directory.
          * @param {string | Buffer | URL} path
          * @param {object=} [options]
+         * @return {Promise<DirectoryHandle>}
          */
-        static open(path: string | Buffer | URL, options?: object | undefined): Promise<exports.DirectoryHandle>;
+        static open(path: string | Buffer | URL, options?: object | undefined): Promise<DirectoryHandle>;
         /**
          * `DirectoryHandle` class constructor
          * @private
@@ -2279,16 +2303,18 @@ declare module "socket:fs/handle" {
         /**
          * Opens the underlying handle for a directory.
          * @param {object=} options
+         * @return {Promise<boolean>}
          */
-        open(options?: object | undefined): Promise<any>;
+        open(options?: object | undefined): Promise<boolean>;
         /**
          * Close underlying directory handle
          * @param {object=} [options]
          */
         close(options?: object | undefined): Promise<any>;
         /**
-         * Reads
+         * Reads directory entries
          * @param {object=} [options]
+         * @param {number=} [options.entries = DirectoryHandle.MAX_ENTRIES]
          */
         read(options?: object | undefined): Promise<any>;
         [exports.kOpening]: any;
@@ -2811,11 +2837,11 @@ declare module "socket:fs/promises" {
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
      *
      * @param {string | Buffer | URL} path
-     * @param {string} flags - default: 'r'
-     * @param {string} mode - default: 0o666
+     * @param {string=} flags - default: 'r'
+     * @param {number=} mode - default: 0o666
      * @return {Promise<FileHandle>}
      */
-    export function open(path: string | Buffer | URL, flags: string, mode: string): Promise<FileHandle>;
+    export function open(path: string | Buffer | URL, flags?: string | undefined, mode?: number | undefined): Promise<FileHandle>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
      * @param {string | Buffer | URL} path
@@ -3000,9 +3026,23 @@ declare module "socket:fs/index" {
      *
      * @param {number} fd - A file descriptor.
      * @param {object?|function?} [options] - An options object.
-     * @param {function?} [callback] - The function to call after completion.
+     * @param {function?} callback - The function to call after completion.
      */
-    export function fstat(fd: number, options: any, callback?: Function | null): void;
+    export function fstat(fd: number, options: any, callback: Function | null): void;
+    /**
+     * Request that all data for the open file descriptor is flushed
+     * to the storage device.
+     * @param {number} fd - A file descriptor.
+     * @param {function} callback - The function to call after completion.
+     */
+    export function fsync(fd: number, callback: Function): void;
+    /**
+     * Truncates the file up to `offset` bytes.
+     * @param {number} fd - A file descriptor.
+     * @param {number=|function} [offset = 0]
+     * @param {function?} callback - The function to call after completion.
+     */
+    export function ftruncate(fd: number, offset: any, callback: Function | null): void;
     /**
      * Chages ownership of link at `path` with `uid` and `gid.
      * @param {string} path
@@ -7469,6 +7509,108 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
+declare module "socket:fs/web" {
+    /**
+     * Creates a new `File` instance from `filename`.
+     * @param {string} filename
+     * @param {{ fd: fs.FileHandle }} [options]
+     * @return {File}
+     */
+    export function createFile(filename: string, options?: {
+        fd: fs.FileHandle;
+    }): File;
+    /**
+     * Creates a `FileSystemWritableFileStream` instance backed
+     * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
+     * @param {string|File} file
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemWritableFileStream(handle: any, options: any): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemFileHandle` instance backed by `socket:fs:` module from
+     * a given `File` instance or filename string.
+     * @param {string|File} file
+     * @param {object} [options]
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemFileHandle(file: string | File, options?: object): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemDirectoryHandle` instance backed by `socket:fs:` module
+     * from a given directory name string.
+     * @param {string} dirname
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemDirectoryHandle(dirname: string): Promise<FileSystemFileHandle>;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    } | {
+        new (): {
+            readonly lastModifiedDate: Date;
+            readonly lastModified: number;
+            readonly name: any;
+            readonly size: number;
+            readonly type: string;
+            slice(): void;
+            arrayBuffer(): Promise<void>;
+            text(): Promise<void>;
+            stream(): void;
+        };
+    };
+    export const FileSystemHandle: {
+        new (): {
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemFileHandle: {
+        new (): FileSystemFileHandle;
+        prototype: FileSystemFileHandle;
+    } | {
+        new (): {
+            getFile(): void;
+            createWritable(options?: any): Promise<void>;
+            createSyncAccessHandle(): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemDirectoryHandle: {
+        new (): FileSystemDirectoryHandle;
+        prototype: FileSystemDirectoryHandle;
+    } | {
+        new (): {
+            entries(): AsyncGenerator<never, void, unknown>;
+            values(): AsyncGenerator<never, void, unknown>;
+            keys(): AsyncGenerator<never, void, unknown>;
+            resolve(possibleDescendant: any): Promise<void>;
+            removeEntry(name: any, options?: any): Promise<void>;
+            getDirectoryHandle(name: any, options?: any): Promise<void>;
+            getFileHandle(name: any, options?: any): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemWritableFileStream: {
+        new (underlyingSink?: UnderlyingSink<any>, strategy?: QueuingStrategy<any>): {
+            seek(position: any): Promise<void>;
+            truncate(size: any): Promise<void>;
+            write(data: any): Promise<void>;
+            readonly locked: boolean;
+            abort(reason?: any): Promise<void>;
+            close(): Promise<void>;
+            getWriter(): WritableStreamDefaultWriter<any>;
+        };
+    };
+    namespace _default {
+        export { createFileSystemWritableFileStream };
+        export { createFileSystemDirectoryHandle };
+        export { createFileSystemFileHandle };
+        export { createFile };
+    }
+    export default _default;
+    import fs from "socket:fs/promises";
+}
 declare module "socket:internal/geolocation" {
     /**
      * Get the current position of the device.
@@ -7528,13 +7670,97 @@ declare module "socket:internal/globals" {
 }
 declare module "socket:internal/pickers" {
     /**
-     * TODO
+     * @typedef {{
+     *   id?: string,
+     *   mode?: 'read' | 'readwrite'
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     * }} ShowDirectoryPickerOptions
      */
-    export function showOpenFilePicker(options?: any): Promise<any[]>;
+    /**
+     * Shows a directory picker which allows the user to select a directory.
+     * @param {ShowDirectoryPickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker}
+     * @return {Promise<FileSystemDirectoryHandle[]>}
+     */
+    export function showDirectoryPicker(options?: ShowDirectoryPickerOptions | undefined): Promise<FileSystemDirectoryHandle[]>;
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   excludeAcceptAllOption?: boolean,
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     *   types?: Array<{
+     *     description?: string,
+     *     [keyof object]?: string[]
+     *   }>
+     * }} ShowOpenFilePickerOptions
+     */
+    /**
+     * Shows a file picker that allows a user to select a file or multiple files
+     * and returns a handle for each selected file.
+     * @param {ShowOpenFilePickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker}
+     * @return {Promise<FileSystemFileHandle[]>}
+     */
+    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   excludeAcceptAllOption?: boolean,
+     *   suggestedName?: string,
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     *   types?: Array<{
+     *     description?: string,
+     *     [keyof object]?: string[]
+     *   }>
+     * }} ShowSaveFilePickerOptions
+     */
+    /**
+     * Shows a file picker that allows a user to save a file by selecting an
+     * existing file, or entering a name for a new file.
+     * @param {ShowSaveFilePickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker}
+     * @return {Promise<FileSystemHandle>}
+     */
+    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions): Promise<FileSystemHandle>;
+    /**
+     * Key-value store for general usage by the file pickers"
+     * @ignore
+     */
+    export class Database {
+        get(key: any): any;
+        set(key: any, value: any): void;
+    }
+    /**
+     * Internal database for pickers, such as mapping IDs to directory/file paths.
+     * @ignore
+     */
+    export const db: Database;
     namespace _default {
+        export { showDirectoryPicker };
         export { showOpenFilePicker };
+        export { showSaveFilePicker };
     }
     export default _default;
+    export type ShowDirectoryPickerOptions = {
+        id?: string;
+        mode?: 'read' | 'readwrite';
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+    };
+    /**
+     * ]?: string[]
+     *   }>
+     * }} ShowOpenFilePickerOptions
+     */
+    export type object = {
+        id?: string;
+        excludeAcceptAllOption?: boolean;
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+        types?: Array<{
+            description?: string;
+            [keyof];
+        }>;
+    };
+    import { FileSystemHandle } from "socket:fs/web";
 }
 declare module "socket:internal/monkeypatch" {
     export function init(): void;

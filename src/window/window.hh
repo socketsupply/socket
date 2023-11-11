@@ -13,9 +13,26 @@
 #define SSC_MAX_WINDOWS 32
 #endif
 
+namespace SSC {
+  // forward
+  class Dialog;
+}
+
 #if defined(__APPLE__)
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 @interface SSCWindowDelegate : NSObject
+@end
+
+@interface SSCUIPickerDelegate : NSObject<
+  UIDocumentPickerDelegate,
+  UIImagePickerControllerDelegate,
+  UINavigationControllerDelegate
+>
+@property (nonatomic) SSC::IPC::Router* router;
+@property (nonatomic) SSC::Dialog* dialog;
+-  (void) documentPicker: (UIDocumentPickerViewController*) controller
+  didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
+- (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller;
 @end
 #else
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
@@ -178,16 +195,6 @@ namespace SSC {
       void setSystemMenu (const String& seq, const String& menu);
       void showInspector ();
       int openExternal (const String& s);
-      void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead
-        const String&,
-        bool,
-        bool,
-        bool,
-        bool,
-        const String&,
-        const String&,
-        const String&
-      );
 
       void resolvePromise (
         const String& seq,
@@ -619,6 +626,47 @@ namespace SSC {
         }
         return result;
       }
+  };
+
+  class Dialog {
+    public:
+      struct FileSystemPickerOptions {
+        enum class Type { Open, Save };
+        bool directories = false;
+        bool multiple = false;
+        bool files = false;
+        Type type = Type::Open;
+        String contentTypes;
+        String defaultName;
+        String defaultPath;
+        String title;
+      };
+
+
+    #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+      SSCUIPickerDelegate* uiPickerDelegate = nullptr;
+      Vector<String> delegatedResults;
+      SSC::Mutex delegateMutex;
+    #endif
+
+      Dialog (IPC::Router* router);
+      ~Dialog ();
+
+      String showSaveFilePicker (
+        const FileSystemPickerOptions& options
+      );
+
+      Vector<String> showOpenFilePicker (
+        const FileSystemPickerOptions& options
+      );
+
+      Vector<String> showDirectoryPicker (
+        const FileSystemPickerOptions& options
+      );
+
+      Vector<String> showFileSystemPicker (
+        const FileSystemPickerOptions& options
+      );
   };
 
 #if defined(_WIN32)
