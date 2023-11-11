@@ -491,6 +491,13 @@ namespace SSC {
             Module::Callback cb
           );
           void fstat (const String seq, uint64_t id, Module::Callback cb);
+          void fsync (const String seq, uint64_t id, Module::Callback cb);
+          void ftruncate (
+            const String seq,
+            uint64_t id,
+            int64_t offset,
+            Module::Callback cb
+          );
           void getOpenDescriptors (const String seq, Module::Callback cb);
           void lstat (const String seq, const String path, Module::Callback cb);
 					void link (

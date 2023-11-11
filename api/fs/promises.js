@@ -247,11 +247,11 @@ export async function mkdir (path, options = {}) {
  * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
  *
  * @param {string | Buffer | URL} path
- * @param {string} flags - default: 'r'
- * @param {string} mode - default: 0o666
+ * @param {string=} flags - default: 'r'
+ * @param {number=} mode - default: 0o666
  * @return {Promise<FileHandle>}
  */
-export async function open (path, flags, mode) {
+export async function open (path, flags = 'r', mode = 0o666) {
   return await FileHandle.open(path, flags, mode)
 }
 
@@ -474,7 +474,6 @@ export async function unlink (path) {
  * @param {AbortSignal?} [options.signal]
  * @return {Promise<void>}
  */
-// FIXME: truncate file by default (support flags). Currently it fails if file exists
 export async function writeFile (path, data, options) {
   if (typeof options === 'string') {
     options = { encoding: options }

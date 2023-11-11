@@ -84,6 +84,16 @@ open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeCl
     val activity = this.activity.get() ?: return;
     activity.window.onProgressChanged(webview, progress)
   }
+
+  override fun onShowFileChooser (
+    webview: android.webkit.WebView,
+    filePathCallback: android.webkit.ValueCallback<Array<android.net.Uri>>,
+    fileChooserParams: android.webkit.WebChromeClient.FileChooserParams
+  ): Boolean {
+    // TODO(@jwerle): handle dialog
+    super.onShowFileChooser(webview, filePathCallback, fileChooserParams)
+    return true
+  }
 }
 
 final class WebViewURLPathResolution (path: String, redirect: Boolean = false) {

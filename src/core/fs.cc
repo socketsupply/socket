@@ -1298,6 +1298,139 @@ namespace SSC {
     });
   }
 
+  void Core::FS::fsync (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fsync"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_fsync(loop, req, desc->fd, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.fsync"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror((int) req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.fsync"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fsync"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::ftruncate (
+    const String seq,
+    uint64_t id,
+    int64_t offset,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.ftruncate"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_ftruncate(loop, req, desc->fd, offset, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.ftruncate"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror((int) req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.ftruncate"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.ftruncate"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
   void Core::FS::fstat (
     const String seq,
     uint64_t id,

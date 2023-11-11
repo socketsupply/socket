@@ -114,6 +114,7 @@ export class FileHandle extends EventEmitter {
    * @param {string=} [flags = 'r']
    * @param {string|number=} [mode = 0o666]
    * @param {object=} [options]
+   * @return {Promise<FileHandle>}
    */
   static async open (path, flags, mode, options) {
     if (flags === undefined) {
@@ -493,8 +494,8 @@ export class FileHandle extends EventEmitter {
       )
     }
 
-    if (isTypedArray(buffer)) {
-      buffer = Buffer.from(buffer.buffer) // from ArrayBuffer
+    if (isBufferLike(buffer)) {
+      buffer = buffer.buffer // from ArrayBuffer
     }
 
     if (length > buffer.byteLength - offset) {
@@ -583,17 +584,9 @@ export class FileHandle extends EventEmitter {
   }
 
   /**
-   * @param {object=} [options]
-   */
-  async readv (buffers, position) {
-    if (this.closing || this.closed) {
-      throw new Error('FileHandle is not opened')
-    }
-  }
-
-  /**
    * Returns the stats of the underlying file.
    * @param {object=} [options]
+   * @return {Promise<Stats>}
    */
   async stat (options) {
     if (this.closing || this.closed) {
@@ -612,29 +605,34 @@ export class FileHandle extends EventEmitter {
   }
 
   /**
-   * @param {object=} [options]
+   * Synchronize a file's in-core state with storage device
+   * @return {Promise}
    */
   async sync () {
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
-  }
 
-  /**
-   * @param {object=} [options]
-   */
-  async truncate (length) {
-    if (this.closing || this.closed) {
-      throw new Error('FileHandle is not opened')
+    const result = await ipc.request('fs.fsync', { id: this.id })
+
+    if (result.err) {
+      throw result.err
     }
   }
 
   /**
-   * @param {object=} [options]
+   * @param {number} [offset = 0]
+   * @return {Promise}
    */
-  async utimes (atime, mtime) {
+  async truncate (offset = 0) {
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
+    }
+
+    const result = await ipc.request('fs.ftruncate', { offset, id: this.id })
+
+    if (result.err) {
+      throw result.err
     }
   }
 
@@ -769,12 +767,6 @@ export class FileHandle extends EventEmitter {
       stream.once('error', reject)
     })
   }
-
-  /**
-   * @param {object=} [options]
-   */
-  async writev (buffers, position) {
-  }
 }
 
 /**
@@ -818,6 +810,7 @@ export class DirectoryHandle extends EventEmitter {
    * Asynchronously open a directory.
    * @param {string | Buffer | URL} path
    * @param {object=} [options]
+   * @return {Promise<DirectoryHandle>}
    */
   static async open (path, options) {
     const handle = new this({ path })
@@ -925,6 +918,7 @@ export class DirectoryHandle extends EventEmitter {
   /**
    * Opens the underlying handle for a directory.
    * @param {object=} options
+   * @return {Promise<boolean>}
    */
   async open (options) {
     if (this.opened) {
@@ -1010,8 +1004,9 @@ export class DirectoryHandle extends EventEmitter {
   }
 
   /**
-   * Reads
+   * Reads directory entries
    * @param {object=} [options]
+   * @param {number=} [options.entries = DirectoryHandle.MAX_ENTRIES]
    */
   async read (options) {
     if (this[kOpening]) {
@@ -1026,7 +1021,12 @@ export class DirectoryHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    const entries = clamp(options.entries, 1, DirectoryHandle.MAX_ENTRIES)
+    const entries = clamp(
+      options?.entries || DirectoryHandle.MAX_ENTRIES,
+      1, // MIN_ENTRIES
+      DirectoryHandle.MAX_ENTRIES
+    )
+
     const { id } = this
 
     const result = await ipc.request('fs.readdir', {

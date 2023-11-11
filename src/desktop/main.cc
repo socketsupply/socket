@@ -942,19 +942,6 @@ MAIN {
       return;
     }
 
-    if (message.name == "dialog") {
-      bool bSave = message.get("type").compare("save") == 0;
-      bool bDirs = message.get("allowDirs").compare("true") == 0;
-      bool bFiles = message.get("allowFiles").compare("true") == 0;
-      bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = message.get("defaultName");
-      SSC::String defaultPath = message.get("defaultPath");
-      SSC::String title = message.get("title");
-
-      window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
-      return;
-    }
-
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, value);

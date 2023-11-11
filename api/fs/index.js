@@ -307,7 +307,7 @@ export function createWriteStream (path, options) {
  *
  * @param {number} fd - A file descriptor.
  * @param {object?|function?} [options] - An options object.
- * @param {function?} [callback] - The function to call after completion.
+ * @param {function?} callback - The function to call after completion.
  */
 export function fstat (fd, options, callback) {
   if (typeof options === 'function') {
@@ -323,6 +323,55 @@ export function fstat (fd, options, callback) {
     FileHandle
       .from(fd)
       .stat(options)
+      .then(() => callback(null))
+      .catch((err) => callback(err))
+  } catch (err) {
+    callback(err)
+  }
+}
+
+/**
+ * Request that all data for the open file descriptor is flushed
+ * to the storage device.
+ * @param {number} fd - A file descriptor.
+ * @param {function} callback - The function to call after completion.
+ */
+export function fsync (fd, callback) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  try {
+    FileHandle
+      .from(fd)
+      .sync()
+      .then(() => callback(null))
+      .catch((err) => callback(err))
+  } catch (err) {
+    callback(err)
+  }
+}
+
+/**
+ * Truncates the file up to `offset` bytes.
+ * @param {number} fd - A file descriptor.
+ * @param {number=|function} [offset = 0]
+ * @param {function?} callback - The function to call after completion.
+ */
+export function ftruncate (fd, offset, callback) {
+  if (typeof offset === 'function') {
+    callback = offset
+    offset = {}
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  try {
+    FileHandle
+      .from(fd)
+      .truncate(offset)
       .then(() => callback(null))
       .catch((err) => callback(err))
   } catch (err) {
