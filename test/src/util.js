@@ -162,9 +162,9 @@ test('util.isValidPercentageValue', (t) => {
   t.equal(util.isValidPercentageValue('100%'), true, '100% is a valid percentage value')
   t.equal(util.isValidPercentageValue('0%'), true, '0% is a valid percentage value')
   t.equal(util.isValidPercentageValue('0.5%'), true, '0.5% is a valid percentage value')
-  t.equal(util.isValidPercentageValue('0.00%'), true, '0.05% is a valid percentage value')
+  t.equal(util.isValidPercentageValue('0.00%'), true, '0.00% is a valid percentage value')
 
   t.equal(util.isValidPercentageValue('-10.5%'), false, '-10.5% is not a valid percentage value')
   t.equal(util.isValidPercentageValue('100.5%'), false, '100.5% is not a valid percentage value')
-  t.equal(util.isValidPercentageValue('0x10%'), false, '0.005% is not a valid percentage value')
+  t.equal(util.isValidPercentageValue('0x10%'), false, '0x10% is not a valid percentage value')
 })
