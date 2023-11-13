@@ -47,7 +47,7 @@ jobs:
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install gcc-12 g++-12 clang-14 libwebkit2gtk-4.1-dev
+        sudo apt install gcc-12 g++-12 clang-14 libwebkit2gtk-4.1-dev at-spi2-core
 
     - name: Build Socket Runtime
       run: |
