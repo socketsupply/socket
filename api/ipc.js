@@ -593,7 +593,7 @@ export class Message extends URL {
    * `Message` class constructor.
    * @protected
    * @param {string|URL} input
-   * @param {object|Uint8Array?} [bytes]
+   * @param {(object|Uint8Array)?} [bytes]
    * @ignore
    */
   constructor (input, bytes = null) {
@@ -828,7 +828,7 @@ export class Result {
 
   /**
    * Result data if given.
-   * @type {string|object|Uint8Array?}
+   * @type {(string|object|Uint8Array)?}
    * @ignore
    */
   data = null
@@ -850,7 +850,7 @@ export class Result {
   /**
    * Creates a `Result` instance from input that may be an object
    * like `{ err?, data? }`, an `Error` instance, or just `data`.
-   * @param {object|Error|any?} result
+   * @param {(object|Error|any)?} result
    * @param {Error|object} [maybeError]
    * @param {string} [maybeSource]
    * @param {object|string|Headers} [maybeHeaders]
@@ -902,7 +902,7 @@ export class Result {
    * @param {Error?} [err = null]
    * @param {object?} [data = null]
    * @param {string?} [source = null]
-   * @param {object|string|Headers?} [headers = null]
+   * @param {(object|string|Headers)?} [headers = null]
    * @ignore
    */
   constructor (id, err, data, source, headers) {

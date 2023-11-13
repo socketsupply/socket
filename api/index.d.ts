@@ -3393,7 +3393,7 @@ declare module "socket:ipc" {
          * `Message` class constructor.
          * @protected
          * @param {string|URL} input
-         * @param {object|Uint8Array?} [bytes]
+         * @param {(object|Uint8Array)?} [bytes]
          * @ignore
          */
         protected constructor();
@@ -3519,14 +3519,14 @@ declare module "socket:ipc" {
         /**
          * Creates a `Result` instance from input that may be an object
          * like `{ err?, data? }`, an `Error` instance, or just `data`.
-         * @param {object|Error|any?} result
+         * @param {(object|Error|any)?} result
          * @param {Error|object} [maybeError]
          * @param {string} [maybeSource]
          * @param {object|string|Headers} [maybeHeaders]
          * @return {Result}
          * @ignore
          */
-        static from(result: object | Error | (any | null), maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
+        static from(result: (object | Error | any) | null, maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
         /**
          * `Result` class constructor.
          * @private
@@ -3534,7 +3534,7 @@ declare module "socket:ipc" {
          * @param {Error?} [err = null]
          * @param {object?} [data = null]
          * @param {string?} [source = null]
-         * @param {object|string|Headers?} [headers = null]
+         * @param {(object|string|Headers)?} [headers = null]
          * @ignore
          */
         private constructor();
@@ -3552,10 +3552,10 @@ declare module "socket:ipc" {
         err: Error | null;
         /**
          * Result data if given.
-         * @type {string|object|Uint8Array?}
+         * @type {(string|object|Uint8Array)?}
          * @ignore
          */
-        data: string | object | (Uint8Array | null);
+        data: (string | object | Uint8Array) | null;
         /**
          * The source of this result.
          * @type {string?}
