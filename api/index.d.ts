@@ -3862,6 +3862,156 @@ declare module "socket:window" {
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
 }
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
 declare module "socket:application" {
     /**
      * Creates a new window and returns an instance of ApplicationWindow.
@@ -3898,9 +4048,12 @@ declare module "socket:application" {
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
-     * @returns {Promise<ipc.Result>}
+     * @returns {Promise<{ width: number, height: number }>}
      */
-    export function getScreenSize(): Promise<ipc.Result>;
+    export function getScreenSize(): Promise<{
+        width: number;
+        height: number;
+    }>;
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
@@ -4950,156 +5103,6 @@ declare module "socket:i18n" {
     }
     export default _default;
     import Enumeration from "socket:enumeration";
-}
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
