@@ -13,8 +13,10 @@
 import ipc, { primordials } from './ipc.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
+import os from './os.js'
 
 import * as exports from './application.js'
+import { application } from './mime.js'
 
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
@@ -90,9 +92,15 @@ export async function createWindow (opts) {
 
 /**
  * Returns the current screen size.
- * @returns {Promise<ipc.Result>}
+ * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
+  if (os.platform() === 'ios') {
+    return {
+      width: globalThis.screen.availWidth,
+      height: globalThis.screen.availHeight
+    }
+  }
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
   if (err) {
     throw err
@@ -113,6 +121,17 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
+  if (os.platform() === 'ios') {
+    return {
+      0: new ApplicationWindow({
+        index: 0,
+        width: globalThis.screen.availWidth,
+        height: globalThis.screen.availHeight,
+        title: document.title,
+        status: 31
+      })
+    }
+  }
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
   if (!Array.isArray(resultIndices)) {
