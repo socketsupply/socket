@@ -272,7 +272,7 @@ export async function setSystemMenu (o) {
   const callerLineNo = frame.split(':').reverse()[1]
 
   // Use this link to test the regex (https://regexr.com/7lhqe)
-  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*)(.*))$/m
+  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*.*))$/m
   const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
 
   for (let i = 0; i < lines.length; i++) {
@@ -300,7 +300,8 @@ export async function setSystemMenu (o) {
       } else if (label.includes(':')) {
         err = 'Invalid label contains ":"'
       } else if (binding) {
-        const [accelerator, ...modifiers] = binding.split(/ *\+ */)
+        const [accelerator, modifiersRaw] = binding.split(/ *\+ */)
+        const modifiers = modifiersRaw?.replace(';', '').split(', ') ?? []
         if (validModifiers.test(accelerator)) {
           err = 'Missing accelerator'
         } else {
@@ -316,7 +317,7 @@ export async function setSystemMenu (o) {
 
     if (err) {
       const lineNo = Number(callerLineNo) + i
-      throw new Error(`${err} on line ${lineNo}: "${lineText}"`)
+      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
     }
   }
 
