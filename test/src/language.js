@@ -9,7 +9,7 @@ test('language.lookup(query[, options])', (t) => {
 
   for (const name of language.names) {
     const results = language.lookup(name, { strict: true })
-    pass.names = pass.name && (
+    pass.names = pass.names && (
       results.length &&
       results[0]?.name &&
       results[0]?.code &&
