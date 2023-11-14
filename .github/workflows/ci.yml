@@ -5,7 +5,7 @@ on: [push]
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-m
     timeout-minutes: 3
 
     steps:
