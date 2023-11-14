@@ -4754,7 +4754,6 @@ int main (const int argc, const char* argv[]) {
         << quote << "platform-tools" << quote << " "
         << quote << "platforms;" << androidPlatform << quote << " "
         << quote << "emulator" << quote << " "
-        << quote << "patcher;v4" << quote << " "
         << quote << "system-images;" << androidPlatform << ";google_apis;x86_64" << quote << " "
         << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
