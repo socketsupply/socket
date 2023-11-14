@@ -38,11 +38,6 @@ jobs:
       with:
         node-version: 18.x
 
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
     - name: Install Socket Runtime deps
       run: |
         sudo apt install software-properties-common
@@ -60,7 +55,6 @@ jobs:
       env:
         CI: true
         VERBOSE: 1
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   mac:
     name: macOS
@@ -75,11 +69,6 @@ jobs:
       uses: actions/setup-node@v3.6.0
       with:
         node-version: 18.x
-
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: install Socket Runtime deps
       run: |
@@ -96,7 +85,6 @@ jobs:
       env:
         CI: true
         VERBOSE: 1
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   windows:
     name: Windows
