@@ -25,22 +25,26 @@ export class Encryption {
   }
 
   static async createId (str = randomBytes(32)) {
-    return (await sha256(str)).toString('hex')
+    return await sha256(str)
   }
 
   static async createClusterId (value) {
     await sodium.ready
     value = value || sodium.randombytes_buf(32)
-    return Buffer.from(value).toString('base64')
+    return Buffer.from(value)
   }
 
   static async createSubclusterId (value) {
-    return Buffer.from(value).toString('base64')
+    return Encryption.createClusterId(value)
   }
 
   add (publicKey, privateKey) {
     const to = Buffer.from(publicKey).toString('base64')
     this.keys[to] = { publicKey, privateKey, ts: Date.now() }
+  }
+
+  remove (publicKey) {
+    delete this.keys[Buffer.from(publicKey).toString('base64')]
   }
 
   has (to) {
@@ -105,6 +109,19 @@ export class Encryption {
     }
 
     return Buffer.from(sodium.crypto_box_seal_open(ct, pk, sk))
+  }
+
+  openMessage (message, v) {
+    if (typeof v === 'string') v = this.keys[v]
+    if (!v) throw new Error(`ENOKEY (key=${v})`)
+
+    const pk = toPK(v.publicKey)
+    const sk = toSK(v.privateKey)
+    return Buffer.from(sodium.crypto_box_seal_open(message, pk, sk))
+  }
+
+  sealMessage (message, publicKey) {
+    return sodium.crypto_box_seal(toUint8Array(message), toPK(publicKey))
   }
 
   /**

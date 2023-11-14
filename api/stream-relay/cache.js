@@ -1,7 +1,7 @@
 import { isBufferLike, toBuffer } from '../util.js'
 import { Buffer } from '../buffer.js'
 import { createDigest } from '../crypto.js'
-import { Packet, PacketPublish } from './packets.js'
+import { Packet, PacketPublish, PACKET_BYTES, sha256 } from './packets.js'
 
 export const trim = (/** @type {Buffer} */ buf) => {
   return buf.toString().split('~')[0].split('\x00')[0]
@@ -24,7 +24,7 @@ function toBufferMaybe (m) {
 /**
  * Default max size of a `Cache` instance.
  */
-export const DEFAULT_MAX_SIZE = Math.ceil((16 * 1024 * 1024) / 1158)
+export const DEFAULT_MAX_SIZE = Math.ceil(16_000_000 / PACKET_BYTES)
 
 /**
  * @typedef {Packet} CacheEntry
@@ -48,11 +48,43 @@ export function defaultSiblingResolver (a, b) {
 export class CacheData extends Map {}
 
 /**
- * A class for storing a cache of packets by ID.
+ * A class for storing a cache of packets by ID. This class includes a scheme
+ * for reconciling disjointed packet caches in a large distributed system. The
+ * following are key design characteristics.
+ *
+ * Space Efficiency: This scheme can be space-efficient because it summarizes
+ * the cache's contents in a compact binary format. By sharing these summaries,
+ * two computers can quickly determine whether their caches have common data or
+ * differences.
+ *
+ * Bandwidth Efficiency: Sharing summaries instead of the full data can save
+ * bandwidth. If the differences between the caches are small, sharing summaries
+ * allows for more efficient data synchronization.
+ *
+ * Time Efficiency: The time efficiency of this scheme depends on the size of
+ * the cache and the differences between the two caches. Generating summaries
+ * and comparing them can be faster than transferring and comparing the entire
+ * dataset, especially for large caches.
+ *
+ * Complexity: The scheme introduces some complexity due to the need to encode
+ * and decode summaries. In some cases, the overhead introduced by this
+ * complexity might outweigh the benefits, especially if the caches are
+ * relatively small. In this case, you should be using a query.
+ *
+ * Data Synchronization Needs: The efficiency also depends on the data
+ * synchronization needs. If the data needs to be synchronized in real-time,
+ * this scheme might not be suitable. It's more appropriate for cases where
+ * periodic or batch synchronization is acceptable.
+ *
+ * Scalability: The scheme's efficiency can vary depending on the scalability
+ * of the system. As the number of cache entries or computers involved
+ * increases, the complexity of generating and comparing summaries will stay
+ * bound to a maximum of 16Mb.
+ *
  */
 export class Cache {
   data = new CacheData()
-  maxSize = Math.ceil((16 * 1024 * 1024) / 1158)
+  maxSize = DEFAULT_MAX_SIZE
 
   static HASH_SIZE_BYTES = 20
 
@@ -83,6 +115,14 @@ export class Cache {
   }
 
   /**
+   * Readonly size of the cache in bytes.
+   * @type {number}
+   */
+  get bytes () {
+    return this.data.size * PACKET_BYTES
+  }
+
+  /**
    * Inserts a `CacheEntry` value `v` into the cache at key `k`.
    * @param {string} k
    * @param {CacheEntry} v
@@ -93,11 +133,19 @@ export class Cache {
     if (this.has(k)) return false
 
     if (this.data.size === this.maxSize) {
-      const oldest = [...this.data.values()].sort(this.siblingResolver).pop()
-      this.data.delete(oldest.packetId)
+      const oldest = [...this.data.values()]
+        .sort((a, b) => a.timestamp - b.timestamp)
+        // take a slice of 128 of the oldest candidates and
+        // eject 32 that are mostly from non-related clusters,
+        // some random and cluster-related.
+        .pop()
+
+      this.data.delete(oldest.packetId.toString('hex'))
+      if (this.onEjected) this.onEjected(oldest)
     }
 
     v.timestamp = Date.now()
+    if (!v.ttl) v.ttl = Packet.ttl // use default TTL if none provided
 
     this.data.set(k, v)
     if (this.onInsert) this.onInsert(k, v)
@@ -139,25 +187,30 @@ export class Cache {
   async compose (packet, source = this.data) {
     let previous = packet
 
-    if (packet?.index > 0) previous = source.get(packet.previousId)
+    if (packet?.index > 0) previous = source.get(packet.previousId.toString('hex'))
     if (!previous) return null
 
-    const { meta, size, indexes } = previous.message
+    const { meta, size, indexes, ts } = previous.message
 
     // follow the chain to get the buffers in order
     const bufs = [...source.values()]
-      .filter(p => p.previousId === previous.packetId)
+      .filter(p => p.previousId.toString('hex') === previous.packetId.toString('hex'))
       .sort((a, b) => a.index - b.index)
 
     if (!indexes || bufs.length < indexes) return null
 
-    // sort by index, concat and then hash, the original should match
+    // concat and then hash, the original should match
     const messages = bufs.map(p => p.message)
     const buffers = messages.map(toBufferMaybe).filter(Boolean)
     const message = Buffer.concat(buffers, size)
 
+    if (!meta.ts) meta.ts = ts
+    // generate a new packet ID
+    const packetId = await sha256(Buffer.concat([packet.previousId, message]), { bytes: true })
+
     return Packet.from({
       ...packet,
+      packetId,
       message,
       isComposed: true,
       index: -1,
@@ -172,29 +225,30 @@ export class Cache {
   }
 
   /**
-   * summarize returns a terse yet comparable summary of the cache contents.
    *
-   * thinking of the cache as a trie of hex characters, the summary returns
-   * a checksum for the current level of the trie and for its 16 children.
+   * The summarize method returns a terse yet comparable summary of the cache
+   * contents.
    *
-   * this is similar to a merkel tree as equal subtrees can easily be detected
+   * Think of the cache as a trie of hex characters, the summary returns a
+   * checksum for the current level of the trie and for its 16 children.
+   *
+   * This is similar to a merkel tree as equal subtrees can easily be detected
    * without the need for further recursion. When the subtree checksums are
    * inequivalent then further negotiation at lower levels may be required, this
    * process continues until the two trees become synchonized.
    *
-   * when the prefix is empty, the summary will return an array of 16 checksums
+   * When the prefix is empty, the summary will return an array of 16 checksums
    * these checksums provide a way of comparing that subtree with other peers.
    *
-   * when a variable-length hexidecimal prefix is provided, then only cache
+   * When a variable-length hexidecimal prefix is provided, then only cache
    * member hashes sharing this prefix will be considered.
    *
-   * for each hex character provided in the prefix, the trie will decend by one
-   * level, each level divides the 2^128 address space by 16.
+   * For each hex character provided in the prefix, the trie will decend by one
+   * level, each level divides the 2^128 address space by 16. For exmaple...
    *
-   * example:
-   *
-   * level  0   1   2
-   * --------------------------
+   * ```
+   * Level  0   1   2
+   * ----------------
    * 2b00
    * aa0e  ━┓  ━┓
    * aa1b   ┃   ┃
@@ -207,18 +261,21 @@ export class Cache {
    * abef   ┃   ┃
    * abf0  ━┛  ━┛
    * bff9
+   * ```
    *
    * @param {string} prefix - a string of lowercased hexidecimal characters
    * @return {Object}
+   *
    */
-  async summarize (prefix = '') {
+  async summarize (prefix = '', predicate = o => false) {
     // each level has 16 children (0x0-0xf)
     const children = new Array(16).fill(null).map(_ => [])
 
     // partition the cache into children
-    for (const key of this.data.keys()) {
+    for (const [key, packet] of this.data.entries()) {
       if (!key || !key.slice) continue
       if (prefix.length && !key.startsWith(prefix)) continue
+      if (!predicate(packet)) continue
       const hex = key.slice(prefix.length, prefix.length + 1)
       if (children[parseInt(hex, 16)]) children[parseInt(hex, 16)].push(key)
     }
@@ -229,14 +286,21 @@ export class Cache {
       return child.length ? this.sha1(child.sort().join(''), true) : Promise.resolve(null)
     }))
 
+    let hash
     // compute a summary hash (checksum of all other hashes)
-    const hash = await this.sha1(buckets.join(''), true)
+
+    if (!buckets.every(b => b === null)) {
+      hash = await this.sha1(buckets.join(''), true)
+    } else {
+      hash = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+    }
 
     return { prefix, hash, buckets }
   }
 
   /**
-   * encodeSummary provide a compact binary encoding of the output of summary()
+   * The encodeSummary method provides a compact binary encoding of the output
+   * of summary()
    *
    * @param {Object} summary - the output of calling summary()
    * @return {Buffer}
@@ -267,7 +331,7 @@ export class Cache {
   }
 
   /**
-   * decodeSummary decodes the output of encodeSummary()
+   * The decodeSummary method decodes the output of encodeSummary()
    *
    * @param {Buffer} bin - the output of calling encodeSummary()
    * @return {Object} summary
