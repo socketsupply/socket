@@ -1,6 +1,9 @@
 name: Socket CI
 
-on: [push]
+on:
+  push:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 jobs:
   lint:
@@ -85,6 +88,7 @@ jobs:
       env:
         CI: true
         VERBOSE: 1
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   windows:
     name: Windows
