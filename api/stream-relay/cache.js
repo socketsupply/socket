@@ -26,6 +26,8 @@ function toBufferMaybe (m) {
  */
 export const DEFAULT_MAX_SIZE = Math.ceil(16_000_000 / PACKET_BYTES)
 
+const EMPTY_HASH = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+
 /**
  * @typedef {Packet} CacheEntry
  * @typedef {function(CacheEntry, CacheEntry): number} CacheEntrySiblingResolver
@@ -292,7 +294,7 @@ export class Cache {
     if (!buckets.every(b => b === null)) {
       hash = await this.sha1(buckets.join(''), true)
     } else {
-      hash = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+      hash = EMPTY_HASH
     }
 
     return { prefix, hash, buckets }
