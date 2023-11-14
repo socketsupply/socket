@@ -9,11 +9,11 @@
  *
  */
 import sugar from './stream-relay/sugar.js'
-import { Cache, sha256, Encryption, NAT } from './stream-relay/index.js'
+import { Cache, Packet, sha256, Encryption, NAT } from './stream-relay/index.js'
 import events from './events.js'
 import dgram from './dgram.js'
 
 const network = sugar(dgram, events)
 
-export { network, Cache, sha256, Encryption, NAT }
+export { network, Cache, sha256, Encryption, Packet, NAT }
 export default network

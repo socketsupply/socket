@@ -5942,7 +5942,6 @@ declare module "socket:module" {
     
 }
 declare module "socket:stream-relay/packets" {
-    export function trim(buf: Buffer): any;
     /**
      * The magic bytes prefixing every packet. They are the
      * 2nd, 3rd, 5th, and 7th, prime numbers.
@@ -5952,95 +5951,148 @@ declare module "socket:stream-relay/packets" {
     /**
      * The version of the protocol.
      */
-    export const VERSION: 4;
+    export const VERSION: 6;
     /**
      * The size in bytes of the prefix magic bytes.
      */
     export const MAGIC_BYTES: 4;
     /**
-     * The size in bytes of the `type` field.
-     */
-    export const TYPE_BYTES: 1;
-    /**
-     * The size in bytes of the `version` field.
-     */
-    export const VERSION_BYTES: 1;
-    /**
-     * The size in bytes of the `gops` field.
-     */
-    export const HOPS_BYTES: 1;
-    /**
-     * The size in bytes of the `clock` field.
-     */
-    export const CLOCK_BYTES: 4;
-    /**
-     * The size in bytes of the `index` field.
-     */
-    export const INDEX_BYTES: 4;
-    /**
-     * The size in bytes of the `message_id` field.
-     */
-    export const MESSAGE_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `clusterId` field.
-     */
-    export const CLUSTER_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `cluster_id` field.
-     */
-    export const SUBCLUSTER_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `previous_id` field.
-     */
-    export const PREVIOUS_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `next_id` field.
-     */
-    export const NEXT_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `usr1` field.
-     */
-    export const USR1_BYTES: 32;
-    /**
-     * The size in bytes of the `usr2` field.
-     */
-    export const USR2_BYTES: 32;
-    /**
-     * The size in bytes of the `ttl` field.
-     */
-    export const TTL_BYTES: 4;
-    /**
-     * The size in bytes of the `stream_to` field.
-     */
-    export const STREAM_TO_BYTES: 32;
-    /**
-     * The size in bytes of the `stream_from` field.
-     */
-    export const STREAM_FROM_BYTES: 32;
-    /**
-     * The size in bytes of the `message_length` field.
-     */
-    export const MESSAGE_LENGTH_BYTES: 2;
-    /**
-     * The size in bytes of the `message_length` field.
-     */
-    export const MESSAGE_SIG_BYTES: 64;
-    /**
-     * The size in bytes of the `message` field.
+     * The maximum size of the user message.
      */
     export const MESSAGE_BYTES: 1024;
     /**
-     * The size in bytes of the total packet frame.
+     * The cache TTL in milliseconds.
      */
-    export const FRAME_BYTES: number;
+    export const CACHE_TTL: number;
+    export namespace PACKET_SPEC {
+        namespace type {
+            let bytes: number;
+            let encoding: string;
+        }
+        namespace version {
+            let bytes_1: number;
+            export { bytes_1 as bytes };
+            let encoding_1: string;
+            export { encoding_1 as encoding };
+            export { VERSION as default };
+        }
+        namespace clock {
+            let bytes_2: number;
+            export { bytes_2 as bytes };
+            let encoding_2: string;
+            export { encoding_2 as encoding };
+            let _default: number;
+            export { _default as default };
+        }
+        namespace hops {
+            let bytes_3: number;
+            export { bytes_3 as bytes };
+            let encoding_3: string;
+            export { encoding_3 as encoding };
+            let _default_1: number;
+            export { _default_1 as default };
+        }
+        namespace index {
+            let bytes_4: number;
+            export { bytes_4 as bytes };
+            let encoding_4: string;
+            export { encoding_4 as encoding };
+            let _default_2: number;
+            export { _default_2 as default };
+            export let signed: boolean;
+        }
+        namespace ttl {
+            let bytes_5: number;
+            export { bytes_5 as bytes };
+            let encoding_5: string;
+            export { encoding_5 as encoding };
+            export { CACHE_TTL as default };
+        }
+        namespace clusterId {
+            let bytes_6: number;
+            export { bytes_6 as bytes };
+            let encoding_6: string;
+            export { encoding_6 as encoding };
+            let _default_3: any[];
+            export { _default_3 as default };
+        }
+        namespace subclusterId {
+            let bytes_7: number;
+            export { bytes_7 as bytes };
+            let encoding_7: string;
+            export { encoding_7 as encoding };
+            let _default_4: any[];
+            export { _default_4 as default };
+        }
+        namespace previousId {
+            let bytes_8: number;
+            export { bytes_8 as bytes };
+            let encoding_8: string;
+            export { encoding_8 as encoding };
+            let _default_5: any[];
+            export { _default_5 as default };
+        }
+        namespace packetId {
+            let bytes_9: number;
+            export { bytes_9 as bytes };
+            let encoding_9: string;
+            export { encoding_9 as encoding };
+            let _default_6: any[];
+            export { _default_6 as default };
+        }
+        namespace nextId {
+            let bytes_10: number;
+            export { bytes_10 as bytes };
+            let encoding_10: string;
+            export { encoding_10 as encoding };
+            let _default_7: any[];
+            export { _default_7 as default };
+        }
+        namespace usr1 {
+            let bytes_11: number;
+            export { bytes_11 as bytes };
+            let _default_8: any[];
+            export { _default_8 as default };
+        }
+        namespace usr2 {
+            let bytes_12: number;
+            export { bytes_12 as bytes };
+            let _default_9: any[];
+            export { _default_9 as default };
+        }
+        namespace usr3 {
+            let bytes_13: number;
+            export { bytes_13 as bytes };
+            let _default_10: any[];
+            export { _default_10 as default };
+        }
+        namespace usr4 {
+            let bytes_14: number;
+            export { bytes_14 as bytes };
+            let _default_11: any[];
+            export { _default_11 as default };
+        }
+        namespace message {
+            let bytes_15: number;
+            export { bytes_15 as bytes };
+            let _default_12: any[];
+            export { _default_12 as default };
+        }
+        namespace sig {
+            let bytes_16: number;
+            export { bytes_16 as bytes };
+            let _default_13: any[];
+            export { _default_13 as default };
+        }
+    }
     /**
      * The size in bytes of the total packet frame and message.
      */
     export const PACKET_BYTES: number;
     /**
-     * The cache TTL in milliseconds.
+     * The maximum distance that a packet can be replicated.
      */
-    export const CACHE_TTL: number;
+    export const MAX_HOPS: 16;
     export function validatePacket(o: any, constraints: {
         [key: string]: {
             required: boolean;
@@ -6053,7 +6105,7 @@ declare module "socket:stream-relay/packets" {
      */
     export const sha256: (arg0: string | Buffer | Uint8Array) => Promise<string>;
     export function decode(buf: Buffer): Packet;
-    export function addHops(buf: any, offset?: number): any;
+    export function getTypeFromBytes(buf: any): any;
     export class Packet {
         static ttl: number;
         static maxLength: number;
@@ -6082,35 +6134,29 @@ declare module "socket:stream-relay/packets" {
          * @param {Packet|object?} options
          */
         constructor(options?: Packet | (object | null));
-        type: number;
-        version: number;
-        clock: number;
-        hops: number;
-        index: number;
-        previousId: string;
-        packetId: string;
-        nextId: string;
-        clusterId: string;
-        subclusterId: string;
-        streamTo: string;
-        streamFrom: string;
-        usr1: string;
-        usr2: string;
-        ttl: number;
-        message: string;
-        sig: any;
-        #private;
+        /**
+         * @param {Packet} packet
+         * @return {Packet}
+         */
+        copy(): Packet;
+        timestamp: any;
+        isComposed: any;
+        meta: any;
     }
     export class PacketPing extends Packet {
         static type: number;
-        constructor({ message }: {
+        constructor({ message, clusterId, subclusterId }: {
             message: any;
+            clusterId: any;
+            subclusterId: any;
         });
     }
     export class PacketPong extends Packet {
         static type: number;
-        constructor({ message }: {
+        constructor({ message, clusterId, subclusterId }: {
             message: any;
+            clusterId: any;
+            subclusterId: any;
         });
     }
     export class PacketIntro extends Packet {
@@ -6153,7 +6199,7 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketStream extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -6161,11 +6207,11 @@ declare module "socket:stream-relay/packets" {
             subclusterId: any;
             nextId: any;
             clock: any;
+            ttl: any;
             usr1: any;
             usr2: any;
-            ttl: any;
-            streamTo: any;
-            streamFrom: any;
+            usr3: any;
+            usr4: any;
             previousId: any;
         });
     }
@@ -6173,14 +6219,19 @@ declare module "socket:stream-relay/packets" {
         static type: number;
         constructor({ packetId, message }: {
             packetId: any;
-            message?: string;
+            message?: any;
         });
     }
     export class PacketQuery extends Packet {
         static type: number;
-        constructor({ packetId, subclusterId, message }: {
+        constructor({ packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message }: {
             packetId: any;
+            previousId: any;
             subclusterId: any;
+            usr1: any;
+            usr2: any;
+            usr3: any;
+            usr4: any;
             message?: {};
         });
     }
@@ -6207,6 +6258,7 @@ declare module "socket:stream-relay/encryption" {
         static verify(b: Buffer, sig: any, pk: Uint8Array): number;
         keys: {};
         add(publicKey: any, privateKey: any): void;
+        remove(publicKey: any): void;
         has(to: any): boolean;
         /**
          * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
@@ -6222,6 +6274,8 @@ declare module "socket:stream-relay/encryption" {
          * }
          */
         open(message: any, v: any): any;
+        openMessage(message: any, v: any): any;
+        sealMessage(message: any, publicKey: any): any;
         /**
          * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
          * a plaintext `message` for a `receiver` identity. This prevents repudiation
@@ -6277,19 +6331,52 @@ declare module "socket:stream-relay/cache" {
         constructor(iterable?: Iterable<readonly [any, any]>);
     }
     /**
-     * A class for storing a cache of packets by ID.
+     * A class for storing a cache of packets by ID. This class includes a scheme
+     * for reconciling disjointed packet caches in a large distributed system. The
+     * following are key design characteristics.
+     *
+     * Space Efficiency: This scheme can be space-efficient because it summarizes
+     * the cache's contents in a compact binary format. By sharing these summaries,
+     * two computers can quickly determine whether their caches have common data or
+     * differences.
+     *
+     * Bandwidth Efficiency: Sharing summaries instead of the full data can save
+     * bandwidth. If the differences between the caches are small, sharing summaries
+     * allows for more efficient data synchronization.
+     *
+     * Time Efficiency: The time efficiency of this scheme depends on the size of
+     * the cache and the differences between the two caches. Generating summaries
+     * and comparing them can be faster than transferring and comparing the entire
+     * dataset, especially for large caches.
+     *
+     * Complexity: The scheme introduces some complexity due to the need to encode
+     * and decode summaries. In some cases, the overhead introduced by this
+     * complexity might outweigh the benefits, especially if the caches are
+     * relatively small. In this case, you should be using a query.
+     *
+     * Data Synchronization Needs: The efficiency also depends on the data
+     * synchronization needs. If the data needs to be synchronized in real-time,
+     * this scheme might not be suitable. It's more appropriate for cases where
+     * periodic or batch synchronization is acceptable.
+     *
+     * Scalability: The scheme's efficiency can vary depending on the scalability
+     * of the system. As the number of cache entries or computers involved
+     * increases, the complexity of generating and comparing summaries will stay
+     * bound to a maximum of 16Mb.
+     *
      */
     export class Cache {
         static HASH_SIZE_BYTES: number;
         /**
-         * encodeSummary provide a compact binary encoding of the output of summary()
+         * The encodeSummary method provides a compact binary encoding of the output
+         * of summary()
          *
          * @param {Object} summary - the output of calling summary()
          * @return {Buffer}
         **/
         static encodeSummary(summary: any): Buffer;
         /**
-         * decodeSummary decodes the output of encodeSummary()
+         * The decodeSummary method decodes the output of encodeSummary()
          *
          * @param {Buffer} bin - the output of calling encodeSummary()
          * @return {Object} summary
@@ -6308,6 +6395,11 @@ declare module "socket:stream-relay/cache" {
          * @type {number}
          */
         get size(): number;
+        /**
+         * Readonly size of the cache in bytes.
+         * @type {number}
+         */
+        get bytes(): number;
         /**
          * Inserts a `CacheEntry` value `v` into the cache at key `k`.
          * @param {string} k
@@ -6339,29 +6431,30 @@ declare module "socket:stream-relay/cache" {
         compose(packet: Packet, source?: CacheData): Promise<Packet>;
         sha1(value: any, toHex: any): Promise<any>;
         /**
-         * summarize returns a terse yet comparable summary of the cache contents.
          *
-         * thinking of the cache as a trie of hex characters, the summary returns
-         * a checksum for the current level of the trie and for its 16 children.
+         * The summarize method returns a terse yet comparable summary of the cache
+         * contents.
          *
-         * this is similar to a merkel tree as equal subtrees can easily be detected
+         * Think of the cache as a trie of hex characters, the summary returns a
+         * checksum for the current level of the trie and for its 16 children.
+         *
+         * This is similar to a merkel tree as equal subtrees can easily be detected
          * without the need for further recursion. When the subtree checksums are
          * inequivalent then further negotiation at lower levels may be required, this
          * process continues until the two trees become synchonized.
          *
-         * when the prefix is empty, the summary will return an array of 16 checksums
+         * When the prefix is empty, the summary will return an array of 16 checksums
          * these checksums provide a way of comparing that subtree with other peers.
          *
-         * when a variable-length hexidecimal prefix is provided, then only cache
+         * When a variable-length hexidecimal prefix is provided, then only cache
          * member hashes sharing this prefix will be considered.
          *
-         * for each hex character provided in the prefix, the trie will decend by one
-         * level, each level divides the 2^128 address space by 16.
+         * For each hex character provided in the prefix, the trie will decend by one
+         * level, each level divides the 2^128 address space by 16. For exmaple...
          *
-         * example:
-         *
-         * level  0   1   2
-         * --------------------------
+         * ```
+         * Level  0   1   2
+         * ----------------
          * 2b00
          * aa0e  ━┓  ━┓
          * aa1b   ┃   ┃
@@ -6374,11 +6467,13 @@ declare module "socket:stream-relay/cache" {
          * abef   ┃   ┃
          * abf0  ━┛  ━┛
          * bff9
+         * ```
          *
          * @param {string} prefix - a string of lowercased hexidecimal characters
          * @return {Object}
+         *
          */
-        summarize(prefix?: string): any;
+        summarize(prefix?: string, predicate?: (o: any) => boolean): any;
     }
     export default Cache;
     export type CacheEntry = Packet;
@@ -6486,8 +6581,10 @@ declare module "socket:stream-relay/nat" {
 }
 declare module "socket:stream-relay/index" {
     /**
-     * Computes rate limit predicate value for a port and address pair for a given threshold
-     * updating an input rates map.
+     * Computes rate limit predicate value for a port and address pair for a given
+     * threshold updating an input rates map. This method is accessed concurrently,
+     * the rates object makes operations atomic to avoid race conditions.
+     *
      * @param {Map} rates
      * @param {number} type
      * @param {number} port
@@ -6561,7 +6658,8 @@ declare module "socket:stream-relay/index" {
         pingId: any;
         distance: number;
         connected: boolean;
-        probed: boolean;
+        opening: number;
+        probed: number;
         proxy: any;
         clock: number;
         uptime: number;
@@ -6583,7 +6681,7 @@ declare module "socket:stream-relay/index" {
             reflectionFirstResponder: any;
             peerId: string;
             isListening: boolean;
-            ctime: number;
+            sdfsactime: number;
             lastUpdate: number;
             lastSync: number;
             closing: boolean;
@@ -6595,19 +6693,36 @@ declare module "socket:stream-relay/index" {
             bdpCache: number[];
             onListening: any;
             onDelete: any;
+            sendQueue: any[];
             firewall: any;
             rates: Map<any, any>;
             streamBuffer: Map<any, any>;
-            controlPackets: Map<any, any>;
+            gate: Map<any, any>;
+            returnRoutes: Map<any, any>;
             metrics: {
-                0: number;
-                1: number;
-                2: number;
-                3: number;
-                4: number;
-                5: number;
-                6: number;
-                7: number;
+                i: {
+                    0: number;
+                    1: number;
+                    2: number;
+                    3: number;
+                    4: number;
+                    5: number;
+                    6: number;
+                    7: number;
+                    8: number;
+                    REJECTED: number;
+                };
+                o: {
+                    0: number;
+                    1: number;
+                    2: number;
+                    3: number;
+                    4: number;
+                    5: number;
+                    6: number;
+                    7: number;
+                    8: number;
+                };
             };
             peers: any;
             encryption: Encryption;
@@ -6657,7 +6772,7 @@ declare module "socket:stream-relay/index" {
              */
             _mainLoop(ts: any): undefined;
             /**
-             * Continuously evaluate the state of the peer and its network
+             * Enqueue packets to be sent to the network
              * @param {Buffer} data - An encoded packet
              * @param {number} port - The desination port of the remote host
              * @param {string} address - The destination address of the remote host
@@ -6666,6 +6781,9 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             send(data: Buffer, port: number, address: string, socket?: any): undefined;
+            _scheduleSend(): void;
+            sendTimeout: number;
+            _dequeue(): void;
             /**
              * Send any unpublished packets
              * @return {undefined}
@@ -6688,7 +6806,7 @@ declare module "socket:stream-relay/index" {
              * @return {undefined}
              * @ignore
              */
-            mcast(packet: any, isTaxed: any, ignorelist?: any[]): undefined;
+            mcast(packet: any, ignorelist?: any[]): undefined;
             /**
              * The process of determining this peer's NAT behavior (firewall and dependentness)
              * @return {undefined}
@@ -6702,22 +6820,7 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
-            /**
-             * Add a peer to this peer's known peers list
-             * @return {RemotePeer}
-             * @ignore
-             */
-            addPeer(args: any): RemotePeer;
-            /**
-             * @return {RemotePeer}
-             * @ignore
-             */
-            getPeer(id: any): RemotePeer;
-            /**
-             * @return {RemotePeer}
-             * @ignore
-             */
-            updatePeer(args: any): RemotePeer;
+            getPeer(id: any): any;
             /**
              * This should be called at least once when an app starts to multicast
              * this peer, and starts querying the network to discover peers.
@@ -6755,16 +6858,31 @@ declare module "socket:stream-relay/index" {
             }): Array<PacketPublish>;
             /**
              * @return {undefined}
-             * @ignore
              */
-            sync(peer: any, packet: any, port: any, address: any): undefined;
+            sync(peer: any): undefined;
             close(): void;
             /**
-             * A connection was made, call the onConnection if it is defined by the user.
+             * Deploy a query into the network
+             * @return {undefined}
+             *
+             */
+            query(query: any): undefined;
+            /**
+             *
+             * This is a default implementation for deciding what to summarize
+             * from the cache when receiving a request to sync. that can be overridden
+             *
+             */
+            cachePredicate(packet: any): boolean;
+            /**
+             * A connection was made, add the peer to the local list of known
+             * peers and call the onConnection if it is defined by the user.
+             *
              * @return {undefined}
              * @ignore
              */
-            _onConnection(packet: any, peer: any, port: any, address: any): undefined;
+            _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
+            connections: Map<any, any>;
             /**
              * Received a Sync Packet
              * @return {undefined}
@@ -6773,8 +6891,24 @@ declare module "socket:stream-relay/index" {
             _onSync(packet: any, port: any, address: any): undefined;
             /**
              * Received a Query Packet
+             *
+             * a -> b -> c -> (d) -> c -> b -> a
+             *
              * @return {undefined}
-             * @ignore
+             * @example
+             *
+             * ```js
+             * peer.onQuery = (packet) => {
+             *   //
+             *   // read a database or something
+             *   //
+             *   return {
+             *     message: Buffer.from('hello'),
+             *     publicKey: '',
+             *     privateKey: ''
+             *   }
+             * }
+             * ```
              */
             _onQuery(packet: any, port: any, address: any): undefined;
             /**
@@ -6794,7 +6928,9 @@ declare module "socket:stream-relay/index" {
              * @return {undefined}
              * @ignore
              */
-            _onIntro(packet: any, port: any, address: any): undefined;
+            _onIntro(packet: any, port: any, address: any, _: any, opts?: {
+                attempts: number;
+            }): undefined;
             socketPool: any[];
             /**
              * Received an Join Packet
@@ -6839,28 +6975,29 @@ declare module "socket:stream-relay/index" {
         };
     };
     export default wrap;
+    import { Packet } from "socket:stream-relay/packets";
     import { sha256 } from "socket:stream-relay/packets";
     import { Cache } from "socket:stream-relay/cache";
     import { Encryption } from "socket:stream-relay/encryption";
     import * as NAT from "socket:stream-relay/nat";
     import { Buffer } from "socket:buffer";
     import { PacketPing } from "socket:stream-relay/packets";
-    import { Packet } from "socket:stream-relay/packets";
     import { PacketPublish } from "socket:stream-relay/packets";
-    export { sha256, Cache, Encryption, NAT };
+    export { Packet, sha256, Cache, Encryption, NAT };
 }
 declare module "socket:stream-relay/sugar" {
-    function _default(dgram: any, events: any): (options: any) => Promise<any>;
+    function _default(dgram: any, events: any): (options?: {}) => Promise<any>;
     export default _default;
 }
 declare module "socket:network" {
     export default network;
-    export const network: (options: any) => Promise<any>;
+    export const network: (options?: {}) => Promise<any>;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
     import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, NAT };
+    export { Cache, sha256, Encryption, Packet, NAT };
 }
 declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;

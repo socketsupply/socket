@@ -3,13 +3,6 @@ import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
 import debug from './index.js'
 
-// trims buffer of trailing null bytes (0x00)
-export const trim = (/** @type {Buffer} */ buf) => {
-  let pos = buf.length
-  while (buf.at(pos - 1) === 0x00) pos--
-  return buf.slice(0, pos)
-}
-
 /**
  * Hash function factory.
  * @return {function(object|Buffer|string): Promise<string>}
@@ -73,6 +66,17 @@ function createHashFunction () {
   }
 }
 
+const getMethod = (type, bytes, isSigned) => {
+  const bits = bytes << 3
+  const isBigEndian = bits === 8 ? '' : 'BE'
+
+  if (![8, 16, 32].includes(bits)) {
+    throw new Error(`${bits} is invalid, expected 8, 16, or 32`)
+  }
+
+  return `${type}${isSigned ? '' : 'U'}Int${bits}${isBigEndian}`
+}
+
 /**
  * The magic bytes prefixing every packet. They are the
  * 2nd, 3rd, 5th, and 7th, prime numbers.
@@ -83,7 +87,7 @@ export const MAGIC_BYTES_PREFIX = [0x03, 0x05, 0x0b, 0x11]
 /**
  * The version of the protocol.
  */
-export const VERSION = 4
+export const VERSION = 6
 
 /**
  * The size in bytes of the prefix magic bytes.
@@ -91,102 +95,40 @@ export const VERSION = 4
 export const MAGIC_BYTES = 4
 
 /**
- * The size in bytes of the `type` field.
- */
-export const TYPE_BYTES = 1
-
-/**
- * The size in bytes of the `version` field.
- */
-export const VERSION_BYTES = 1
-
-/**
- * The size in bytes of the `gops` field.
- */
-export const HOPS_BYTES = 1
-
-/**
- * The size in bytes of the `clock` field.
- */
-export const CLOCK_BYTES = 4
-
-/**
- * The size in bytes of the `index` field.
- */
-export const INDEX_BYTES = 4
-
-/**
- * The size in bytes of the `message_id` field.
- */
-export const MESSAGE_ID_BYTES = 32
-
-/**
- * The size in bytes of the `clusterId` field.
- */
-export const CLUSTER_ID_BYTES = 32
-
-/**
- * The size in bytes of the `cluster_id` field.
- */
-export const SUBCLUSTER_ID_BYTES = 32
-
-/**
- * The size in bytes of the `previous_id` field.
- */
-export const PREVIOUS_ID_BYTES = 32
-
-/**
- * The size in bytes of the `next_id` field.
- */
-export const NEXT_ID_BYTES = 32
-
-/**
- * The size in bytes of the `usr1` field.
- */
-export const USR1_BYTES = 32
-
-/**
- * The size in bytes of the `usr2` field.
- */
-export const USR2_BYTES = 32
-
-/**
- * The size in bytes of the `ttl` field.
- */
-export const TTL_BYTES = 4
-
-/**
- * The size in bytes of the `stream_to` field.
- */
-export const STREAM_TO_BYTES = 32
-
-/**
- * The size in bytes of the `stream_from` field.
- */
-export const STREAM_FROM_BYTES = 32
-
-/**
- * The size in bytes of the `message_length` field.
- */
-export const MESSAGE_LENGTH_BYTES = 2
-
-/**
- * The size in bytes of the `message_length` field.
- */
-export const MESSAGE_SIG_BYTES = 64
-
-/**
- * The size in bytes of the `message` field.
+ * The maximum size of the user message.
  */
 export const MESSAGE_BYTES = 1024
 
 /**
- * The size in bytes of the total packet frame.
+ * The cache TTL in milliseconds.
  */
-export const FRAME_BYTES = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
-  CLOCK_BYTES + INDEX_BYTES + MESSAGE_ID_BYTES + SUBCLUSTER_ID_BYTES + PREVIOUS_ID_BYTES +
-  NEXT_ID_BYTES + CLUSTER_ID_BYTES + STREAM_TO_BYTES + STREAM_FROM_BYTES + USR1_BYTES +
-  USR2_BYTES + TTL_BYTES + MESSAGE_SIG_BYTES + MESSAGE_LENGTH_BYTES
+export const CACHE_TTL = 60_000 * 60 * 6
+
+export const PACKET_SPEC = {
+  type: { bytes: 1, encoding: 'number' },
+  version: { bytes: 2, encoding: 'number', default: VERSION },
+  clock: { bytes: 4, encoding: 'number', default: 1 },
+  hops: { bytes: 4, encoding: 'number', default: 0 },
+  index: { bytes: 4, encoding: 'number', default: -1, signed: true },
+  ttl: { bytes: 4, encoding: 'number', default: CACHE_TTL },
+  clusterId: { bytes: 32, encoding: 'base64', default: [] },
+  subclusterId: { bytes: 32, encoding: 'base64', default: [] },
+  previousId: { bytes: 32, encoding: 'hex', default: [] },
+  packetId: { bytes: 32, encoding: 'hex', default: [] },
+  nextId: { bytes: 32, encoding: 'hex', default: [] },
+  usr1: { bytes: 32, default: [] },
+  usr2: { bytes: 32, default: [] },
+  usr3: { bytes: 32, default: [] },
+  usr4: { bytes: 32, default: [] },
+  message: { bytes: 1024, default: [] },
+  sig: { bytes: 64, default: [] }
+}
+
+let FRAME_BYTES = MAGIC_BYTES
+
+for (const spec of Object.values(PACKET_SPEC)) {
+  FRAME_BYTES += spec.bytes
+}
 
 /**
  * The size in bytes of the total packet frame and message.
@@ -194,9 +136,9 @@ export const FRAME_BYTES = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES + HOPS_BYTES
 export const PACKET_BYTES = FRAME_BYTES + MESSAGE_BYTES
 
 /**
- * The cache TTL in milliseconds.
+ * The maximum distance that a packet can be replicated.
  */
-export const CACHE_TTL = 60_000 * 60 * 12
+export const MAX_HOPS = 16
 
 /**
  * @param {object} message
@@ -223,6 +165,20 @@ export const validatePacket = (o, constraints) => {
 }
 
 /**
+ * Used to store the size of each field
+ */
+const SIZE = 2
+
+const isEncodedAsJSON = ({ type, index }) => (
+  type === PacketPing.type ||
+  type === PacketPong.type ||
+  type === PacketJoin.type ||
+  type === PacketIntro.type ||
+  type === PacketQuery.type ||
+  index === 0
+)
+
+/**
  * Computes a SHA-256 hash of input returning a hex encoded string.
  * @type {function(string|Buffer|Uint8Array): Promise<string>}
  */
@@ -234,106 +190,47 @@ export const sha256 = createHashFunction()
  * @return {Packet}
  */
 export const decode = buf => {
-  let offset = 0
-  const o = {
-    type: 0,
-    version: 0,
-    hops: 0,
-    clock: 0,
-    index: -1,
-    packetId: null,
-    previousId: null,
-    nextId: null,
-    streamTo: null,
-    streamFrom: null,
-    usr1: null,
-    usr2: null,
-    ttl: 0,
-    clusterId: null,
-    subclusterId: null,
-    message: null,
-    sig: null,
-    timestamp: Date.now() // so we know when to delete if we don't subscribe to this cluster
-  }
-
-  // @ts-ignore
-  if (buf.length < FRAME_BYTES) return Packet.from(o) // > is handled by MTU
-
-  buf = Buffer.from(buf)
-
-  // magic bytes prefix check
-  if (!Packet.isPacket(buf)) {
-    return null
-  }
+  if (!Packet.isPacket(buf)) return null
 
   buf = buf.slice(MAGIC_BYTES)
 
-  // header
-  o.type = Math.max(0, buf.readUInt8(offset)); offset += TYPE_BYTES
-  o.version = Math.max(VERSION, buf.readUInt8(offset)); offset += VERSION_BYTES
-  o.hops = Math.max(0, buf.readUInt8(offset) || 0); offset += HOPS_BYTES
-  o.clock = Math.max(0, buf.readUInt32BE(offset) || 0); offset += CLOCK_BYTES
-  o.index = Math.max(-1, buf.readInt32BE(offset)); offset += INDEX_BYTES
+  const o = new Packet()
+  let offset = 0
 
-  // identifiers
-  o.packetId = trim(buf.slice(offset, offset += MESSAGE_ID_BYTES)).toString('hex')
-  o.previousId = trim(buf.slice(offset, offset += PREVIOUS_ID_BYTES)).toString('hex')
-  o.nextId = trim(buf.slice(offset, offset += NEXT_ID_BYTES)).toString('hex')
-  o.streamTo = trim(buf.slice(offset, offset += STREAM_TO_BYTES)).toString('hex')
-  o.streamFrom = trim(buf.slice(offset, offset += STREAM_FROM_BYTES)).toString('hex')
+  for (const [k, spec] of Object.entries(PACKET_SPEC)) {
+    o[k] = spec.default
 
-  // extract 32-byte public-key (if any) and encode as base64 string
-  // @ts-ignore
-  o.clusterId = trim(buf.slice(offset, offset += CLUSTER_ID_BYTES)).toString('base64')
-  o.subclusterId = trim(buf.slice(offset, offset += SUBCLUSTER_ID_BYTES)).toString('base64')
-  o.usr1 = trim(buf.slice(offset, offset += USR1_BYTES))
-  o.usr2 = trim(buf.slice(offset, offset += USR2_BYTES))
-  o.ttl = Math.max(-1, buf.readInt32BE(offset)); offset += TTL_BYTES
+    if (spec.encoding === 'number') {
+      const method = getMethod('read', spec.bytes, spec.signed)
+      o[k] = buf[method](offset)
+      offset += spec.bytes
+      continue
+    }
 
-  // extract the user message length
-  const messageLen = Math.min(buf.readUInt16BE(offset), MESSAGE_BYTES); offset += MESSAGE_LENGTH_BYTES
+    const size = buf.readUInt16BE(offset)
+    offset += SIZE
+    let value = buf.slice(offset, offset + size)
+    offset += size
 
-  // extract the user message
-  o.message = trim(buf.slice(offset, offset + messageLen)); offset += MESSAGE_BYTES
+    if (spec.encoding === 'hex') value = Buffer.from(value, 'hex')
+    if (spec.encoding === 'base64') value = Buffer.from(value, 'base64')
+    if (spec.encoding === 'utf8') value = value.toString()
 
-  if ((o.index === 0) || o.type !== 5) {
-    try { o.message = JSON.parse(o.message.toString()) } catch {}
+    if (k === 'message' && isEncodedAsJSON(o)) {
+      try { value = JSON.parse(value.toString()) } catch {}
+    }
+
+    o[k] = value
   }
 
-  o.sig = trim(buf.slice(offset, offset += MESSAGE_SIG_BYTES))
-
-  return Packet.from(o)
+  return o
 }
 
-export const addHops = (buf, offset = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES) => {
-  const hops = buf.readUInt8(offset)
-  if (hops + 1 > 255) return buf
-  buf.writeUInt8(hops + 1, offset)
-  return buf
-}
+export const getTypeFromBytes = (buf) => buf.byteLength > 4 ? buf.readUInt8(4) : 0
 
 export class Packet {
-  type = 0
-  version = VERSION
-  clock = 0
-  hops = 0
-  index = -1
-  previousId = ''
-  packetId = ''
-  nextId = ''
-  clusterId = ''
-  subclusterId = ''
-  streamTo = ''
-  streamFrom = ''
-  usr1 = ''
-  usr2 = ''
-  ttl = 0
-  message = ''
-
   static ttl = CACHE_TTL
   static maxLength = MESSAGE_BYTES
-
-  #buf = null
 
   /**
    * Returns an empty `Packet` instance.
@@ -348,11 +245,16 @@ export class Packet {
    * @return {Packet}
    */
   static from (packet) {
-    if (packet instanceof Packet) {
-      return new this(packet)
-    }
+    if (packet instanceof Packet) return packet
+    return new Packet(packet)
+  }
 
-    return Object.assign(new this({}), packet)
+  /**
+   * @param {Packet} packet
+   * @return {Packet}
+   */
+  copy () {
+    return Object.assign(new Packet({}), this)
   }
 
   /**
@@ -366,9 +268,8 @@ export class Packet {
       const magic = Buffer.from(MAGIC_BYTES_PREFIX)
       return magic.compare(prefix) === 0
     } else if (packet && typeof packet === 'object') {
-      const empty = Packet.empty()
       // check if every key on `Packet` exists in `packet`
-      return Object.keys(empty).every(k => k in packet)
+      return Object.keys(PACKET_SPEC).every(k => k in packet)
     }
 
     return false
@@ -379,23 +280,20 @@ export class Packet {
    * @param {Packet|object?} options
    */
   constructor (options = {}) {
-    this.type = options?.type || 0
-    this.version = VERSION
-    this.clock = options?.clock || 0
-    this.hops = options?.hops || 0
-    this.index = typeof options?.index === 'undefined' ? -1 : options.index
-    this.clusterId = options?.clusterId || ''
-    this.subclusterId = options?.subclusterId || ''
-    this.previousId = options?.previousId || ''
-    this.packetId = options?.packetId || ''
-    this.nextId = options?.nextId || ''
-    this.streamTo = options?.streamTo || ''
-    this.streamFrom = options?.streamFrom || ''
-    this.usr1 = options?.usr1 || ''
-    this.usr2 = options?.usr2 || ''
-    this.ttl = options?.ttl || 0
-    this.message = options?.message || ''
-    this.sig = options?.sig || ''
+    for (const [k, v] of Object.entries(PACKET_SPEC)) {
+      this[k] = typeof options[k] === 'undefined'
+        ? v.default
+        : options[k]
+
+      if (Array.isArray(this[k]) || ArrayBuffer.isView(this[k])) {
+        this[k] = Buffer.from(this[k])
+      }
+    }
+
+    // extras that might not come over the wire
+    this.timestamp = options.timestamp || Date.now()
+    this.isComposed = options.isComposed || false
+    this.meta = options.meta || {}
   }
 
   /**
@@ -418,45 +316,53 @@ export class Packet {
     if (p.message?.length > Packet.MESSAGE_BYTES) throw new Error('ETOOBIG')
 
     // we only have p.nextId when we know ahead of time, if it's empty that's fine.
-    p.packetId = p.packetId || await sha256(p.previousId + p.message + p.nextId)
-
-    let offset = 0
+    if (p.packetId.length === 0) {
+      const bufs = [p.previousId, p.message, p.nextId].map(v => Buffer.from(v))
+      p.packetId = await sha256(Buffer.concat(bufs), { bytes: true })
+    }
 
     if (p.clock === 2e9) p.clock = 0
 
-    // magic bytes
-    Buffer.from(MAGIC_BYTES_PREFIX).copy(buf, offset); offset += MAGIC_BYTES
+    const bufs = [Buffer.from(MAGIC_BYTES_PREFIX)]
 
-    // header
-    offset = buf.writeUInt8(p.type, offset)
-    offset = buf.writeUInt8(p.version, offset)
-    offset = buf.writeUInt8(p.hops, offset)
-    offset = buf.writeUInt32BE(p.clock, offset)
-    offset = buf.writeInt32BE(p.index, offset)
+    // an encoded packet has a fixed number of fields each with variable length
+    // the order of bufs will be consistent regardless of the field order in p
+    for (const [k, spec] of Object.entries(PACKET_SPEC)) {
+      // if p[k] is larger than specified in the spec, throw
 
-    // identifiers
-    Buffer.from(p.packetId, 'hex').copy(buf, offset); offset += MESSAGE_ID_BYTES
-    Buffer.from(p.previousId, 'hex').copy(buf, offset); offset += PREVIOUS_ID_BYTES
-    Buffer.from(p.nextId, 'hex').copy(buf, offset); offset += NEXT_ID_BYTES
-    Buffer.from(p.streamTo, 'hex').copy(buf, offset); offset += STREAM_TO_BYTES
-    Buffer.from(p.streamFrom, 'hex').copy(buf, offset); offset += STREAM_FROM_BYTES
+      const value = p[k] || spec.default
 
-    Buffer.from(p.clusterId, 'base64').copy(buf, offset); offset += CLUSTER_ID_BYTES
-    Buffer.from(p.subclusterId, 'base64').copy(buf, offset); offset += SUBCLUSTER_ID_BYTES
-    Buffer.from(p.usr1).copy(buf, offset); offset += USR1_BYTES
-    Buffer.from(p.usr2).copy(buf, offset); offset += USR2_BYTES
-    offset = buf.writeInt32BE(p.ttl, offset)
+      if (spec.encoding === 'number') {
+        const buf = Buffer.alloc(spec.bytes)
+        const value = typeof p[k] !== 'undefined' ? p[k] : spec.default
+        const bytesRequired = (32 - Math.clz32(value) >> 3) || 1
 
-    const msgBuf = Buffer.from(p.message)
+        if (bytesRequired > spec.bytes) {
+          throw new Error(`key=${k}, value=${value} bytes=${bytesRequired}, max-bytes=${spec.bytes}, encoding=${spec.encoding}`)
+        }
 
-    // encode message length into packet
-    buf.writeUInt16BE(msgBuf.byteLength, offset); offset += MESSAGE_LENGTH_BYTES
+        const method = getMethod('write', spec.bytes, spec.signed)
+        buf[method](value)
+        bufs.push(buf)
+        continue
+      }
 
-    // encode message into packet
-    msgBuf.copy(buf, offset); offset += MESSAGE_BYTES
-    Buffer.from(p.sig).copy(buf, offset); offset += MESSAGE_SIG_BYTES
+      // console.log(k, value, spec)
+      const encoded = Buffer.from(value || spec.default, spec.encoding)
 
-    return buf
+      if (value?.length && encoded.length > spec.bytes) {
+        throw new Error(`${k} is invalid, ${value.length} is greater than ${spec.bytes} (encoding=${spec.encoding})`)
+      }
+
+      // create a buffer from the size of the field and the actual value of p[k]
+      const bytes = value.length
+      const buf = Buffer.alloc(SIZE + bytes)
+      const offset = buf.writeUInt16BE(bytes)
+      encoded.copy(buf, offset)
+      bufs.push(buf)
+    }
+
+    return Buffer.concat(bufs)
   }
 
   static decode (buf) {
@@ -466,8 +372,8 @@ export class Packet {
 
 export class PacketPing extends Packet {
   static type = 1
-  constructor ({ message }) {
-    super({ type: PacketPing.type, message })
+  constructor ({ message, clusterId, subclusterId }) {
+    super({ type: PacketPing.type, message, clusterId, subclusterId })
 
     validatePacket(message, {
       requesterPeerId: { required: true, type: 'string' },
@@ -478,7 +384,6 @@ export class PacketPing extends Packet {
       natType: { type: 'number' },
       uptime: { type: 'number' },
       isHeartbeat: { type: 'number' },
-      subclusterId: { type: 'string' },
       cacheSize: { type: 'number' },
       isConnection: { type: 'boolean' },
       isReflection: { type: 'boolean' },
@@ -491,13 +396,13 @@ export class PacketPing extends Packet {
 
 export class PacketPong extends Packet {
   static type = 2
-  constructor ({ message }) {
-    super({ type: PacketPong.type, message })
+  constructor ({ message, clusterId, subclusterId }) {
+    super({ type: PacketPong.type, message, clusterId, subclusterId })
 
     validatePacket(message, {
       requesterPeerId: { required: true, type: 'string' },
       responderPeerId: { required: true, type: 'string' },
-      subclusterId: { type: 'string' },
+      cacheSummaryHash: { type: 'string' },
       port: { type: 'number' },
       address: { required: true, type: 'string' },
       uptime: { type: 'number' },
@@ -521,7 +426,6 @@ export class PacketIntro extends Packet {
     super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, message })
 
     validatePacket(message, {
-      subclusterId: { type: 'string' },
       requesterPeerId: { required: true, type: 'string' },
       responderPeerId: { required: true, type: 'string' },
       isRendezvous: { type: 'boolean' },
@@ -545,12 +449,12 @@ export class PacketJoin extends Packet {
       rendezvousPeerId: { type: 'string' },
       rendezvousDeadline: { type: 'number' },
       rendezvousRequesterPeerId: { type: 'string' },
-      subclusterId: { type: 'string' },
       requesterPeerId: { required: true, type: 'string' },
       natType: { required: true, type: 'number' },
       initial: { type: 'boolean' },
       address: { required: true, type: 'string' },
-      port: { required: true, type: 'number' }
+      port: { required: true, type: 'number' },
+      isConnection: { type: 'boolean' }
     })
   }
 }
@@ -564,26 +468,22 @@ export class PacketPublish extends Packet {
 
 export class PacketStream extends Packet {
   static type = 6
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId }) {
-    super({ type: PacketStream.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId })
+  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId }) {
+    super({ type: PacketStream.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId })
   }
 }
 
 export class PacketSync extends Packet {
   static type = 7
-  constructor ({ packetId, message = '' }) {
+  constructor ({ packetId, message = Buffer.from([0b0]) }) {
     super({ type: PacketSync.type, packetId, message })
   }
 }
 
 export class PacketQuery extends Packet {
   static type = 8
-  constructor ({ packetId, subclusterId, message = {} }) {
-    super({ type: PacketQuery.type, packetId, subclusterId, message })
-
-    validatePacket(message, {
-      history: { type: 'Array' }
-    })
+  constructor ({ packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message = {} }) {
+    super({ type: PacketQuery.type, packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message })
   }
 }
 
