@@ -235,7 +235,7 @@ export const wrap = dgram => {
     reflectionFirstResponder = null
     peerId = ''
     isListening = false
-    sdfsactime = Date.now()
+    ctime = Date.now()
     lastUpdate = 0
     lastSync = 0
     closing = false
@@ -514,11 +514,17 @@ export const wrap = dgram => {
       this._scheduleSend()
     }
 
+    /**
+     * @private
+     */
     _scheduleSend () {
       if (this.sendTimeout) this._clearTimeout(this.sendTimeout)
       this.sendTimeout = this._setTimeout(() => { this._dequeue() })
     }
 
+    /**
+     * @private
+     */
     _dequeue () {
       if (!this.sendQueue.length) return
       const { data, port, address, socket } = this.sendQueue.shift()

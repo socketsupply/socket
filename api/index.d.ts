@@ -6681,7 +6681,7 @@ declare module "socket:stream-relay/index" {
             reflectionFirstResponder: any;
             peerId: string;
             isListening: boolean;
-            sdfsactime: number;
+            ctime: number;
             lastUpdate: number;
             lastSync: number;
             closing: boolean;
@@ -6781,8 +6781,14 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             send(data: Buffer, port: number, address: string, socket?: any): undefined;
+            /**
+             * @private
+             */
             _scheduleSend(): void;
             sendTimeout: number;
+            /**
+             * @private
+             */
             _dequeue(): void;
             /**
              * Send any unpublished packets
