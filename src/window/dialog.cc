@@ -338,7 +338,7 @@ namespace SSC {
         const auto mimeType = String(info->mime_type);
         if (userData != nullptr) {
           const auto targetMimeType = String((char*) userData);
-          if (mimeTime.starts_with(targetMimeType)) {
+          if (mimeType.starts_with(targetMimeType)) {
             return true;
           }
         }
