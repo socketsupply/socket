@@ -333,9 +333,15 @@ namespace SSC {
     GtkWidget *dialog;
     Vector<GtkFileFilter*> filters;
 
-    const auto wildcardFilter = [](const GtkFileFilterInfo *filter_info, gpointer userData) {
-      if (filter_info->content_type && g_str_has_prefix(filter_info->content_type, userData)) {
-        return true;
+    const auto wildcardFilter = [](const GtkFileFilterInfo* info, gpointer userData) {
+      if (info != nullptr && info->mime_type != nullptr) {
+        const auto mimeType = String(info->mime_type);
+        if (userData != nullptr) {
+          const auto targetMimeType = String(userData);
+          if (mimeTime.starts_with(targetMimeType)) {
+            return true;
+          }
+        }
       }
 
       return false;
