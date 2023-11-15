@@ -648,7 +648,7 @@ namespace SSC {
       }
     }
 
-    if (isSave) {
+    if (isSavePicker) {
       result = dialog.save->Show(NULL);
     } else {
       result = dialog.open->Show(NULL);
