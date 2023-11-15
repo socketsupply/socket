@@ -209,7 +209,7 @@ export class FileHandle extends EventEmitter {
       async handle (id) {
         if (fds.has(id)) {
           console.warn('Closing fs.FileHandle on garbage collection')
-          await ipc.send('fs.close', { id }, options)
+          await ipc.request('fs.close', { id }, options)
           fds.release(id, false)
         }
       }
@@ -275,7 +275,7 @@ export class FileHandle extends EventEmitter {
 
     this[kClosing] = new InvertedPromise()
 
-    const result = await ipc.send('fs.close', { id: this.id }, options)
+    const result = await ipc.request('fs.close', { id: this.id }, options)
 
     if (result.err) {
       return this[kClosing].reject(result.err)
@@ -495,7 +495,7 @@ export class FileHandle extends EventEmitter {
     }
 
     if (isBufferLike(buffer)) {
-      buffer = buffer.buffer // from ArrayBuffer
+      buffer = buffer.buffer ?? buffer // ArrayBuffer
     }
 
     if (length > buffer.byteLength - offset) {
@@ -908,7 +908,7 @@ export class DirectoryHandle extends EventEmitter {
       async handle (id) {
         if (fds.has(id)) {
           console.warn('Closing fs.DirectoryHandle on garbage collection')
-          await ipc.send('fs.closedir', { id }, options)
+          await ipc.request('fs.closedir', { id }, options)
           fds.release(id, false)
         }
       }
@@ -982,7 +982,7 @@ export class DirectoryHandle extends EventEmitter {
 
     this[kClosing] = new InvertedPromise()
 
-    const result = await ipc.send('fs.closedir', { id }, options)
+    const result = await ipc.request('fs.closedir', { id }, options)
 
     if (result.err) {
       return this[kClosing].reject(result.err)

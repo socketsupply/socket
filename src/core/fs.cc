@@ -715,7 +715,7 @@ namespace SSC {
 
       if (desc == nullptr) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.readdir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},
@@ -729,7 +729,7 @@ namespace SSC {
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.readdir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},

@@ -38,9 +38,16 @@ export const VIDEOS = paths.data.videos || null
  */
 export const MUSIC = paths.data.music || null
 
+/**
+ * Well known path to the application's "resources" folder.
+ * @type {?string}
+ */
+export const RESOURCES = paths.data.resources || null
+
 export default {
   DOWNLOADS,
   DOCUMENTS,
+  RESOURCES,
   PICTURES,
   DESKTOP,
   VIDEOS,

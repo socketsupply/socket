@@ -404,6 +404,74 @@ int lastY = 0;
   SSC::String file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
+
+
+-             (void) webView: (WKWebView*) webView
+  runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
+            initiatedByFrame: (WKFrameInfo*) frame
+           completionHandler: (void (^)(NSArray<NSURL*>*URLs)) completionHandler
+{
+  auto acceptedFileExtensions = parameters._acceptedFileExtensions;
+  auto acceptedMIMETypes = parameters._acceptedMIMETypes;
+  SSC::StringStream contentTypesSpec;
+
+  for (NSString* acceptedMIMEType in acceptedMIMETypes) {
+    contentTypesSpec << acceptedMIMEType.UTF8String << "|";
+  }
+
+  if (acceptedFileExtensions.count > 0) {
+    contentTypesSpec << "*/*:";
+    const auto count = acceptedFileExtensions.count;
+    int seen = 0;
+    for (NSString* acceptedFileExtension in acceptedFileExtensions) {
+      const auto string = SSC::String(acceptedFileExtension.UTF8String);
+
+      if (!string.starts_with(".")) {
+        contentTypesSpec << ".";
+      }
+
+      contentTypesSpec << string;
+      if (++seen < count) {
+        contentTypesSpec << ",";
+      }
+    }
+  }
+
+  auto contentTypes = SSC::trim(contentTypesSpec.str());
+
+  if (contentTypes.size() == 0) {
+    contentTypes = "*/*";
+  }
+
+  if (contentTypes.ends_with("|")) {
+    contentTypes = contentTypes.substr(0, contentTypes.size() - 1);
+  }
+
+  const auto options = SSC::Dialog::FileSystemPickerOptions {
+    .directories = false,
+    .multiple = parameters.allowsMultipleSelection ? true : false,
+    .contentTypes = contentTypes,
+    .defaultName = "",
+    .defaultPath = "",
+    .title = "Choose a File"
+  };
+
+  SSC::Dialog dialog;
+  const auto results = dialog.showOpenFilePicker(options);
+
+  if (results.size() == 0) {
+    completionHandler(nullptr);
+    return;
+  }
+
+  auto urls = [NSMutableArray new];
+
+  for (const auto& result : results) {
+    [urls addObject: [NSURL URLWithString: @(result.c_str())]];
+  }
+
+  completionHandler(urls);
+}
 #endif
 
 #if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
@@ -664,7 +732,7 @@ namespace SSC {
                    forURLScheme: @"socket"];
 
     WKPreferences* prefs = [config preferences];
-    prefs.javaScriptCanOpenWindowsAutomatically = NO;
+    prefs.javaScriptCanOpenWindowsAutomatically = YES;
 
     @try {
       if (userConfig["permissions_allow_fullscreen"] == "false") {

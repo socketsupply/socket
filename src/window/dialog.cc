@@ -17,14 +17,33 @@
 - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller {
   self.dialog->delegateMutex.unlock();
 }
+
+-  (void) imagePickerController: (UIImagePickerController*) picker
+  didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info
+{
+  NSURL* mediaURL = info[UIImagePickerControllerMediaURL];
+  NSURL* imageURL = info[UIImagePickerControllerImageURL];
+
+  if (mediaURL != nullptr) {
+    self.dialog->delegatedResults.push_back(mediaURL.path.UTF8String);
+  } else {
+    self.dialog->delegatedResults.push_back(imageURL.path.UTF8String);
+  }
+
+  self.dialog->delegateMutex.unlock();
+  [picker dismissViewControllerAnimated: YES completion: nullptr];
+}
+
+- (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker {
+  self.dialog->delegateMutex.unlock();
+}
 @end
 #endif
 
 namespace SSC {
-  Dialog::Dialog (IPC::Router* router) {
+  Dialog::Dialog () {
   #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     this->uiPickerDelegate = [SSCUIPickerDelegate new];
-    this->uiPickerDelegate.router = router;
     this->uiPickerDelegate.dialog = this;
   #endif
   }
@@ -116,106 +135,122 @@ namespace SSC {
       directoryURL = [NSURL fileURLWithPath: @(defaultPath.c_str())];
     }
 
-    // <mime>:<ext>,<ext>|<mime>:<ext>|...
-    for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
-      const auto parts = split(contentTypeSpec, ":");
-      const auto mime = parts[0];
-      const auto classes = split(mime, "/");
-      UTType* supertype = nullptr;
+    if (allowDirectories) {
+      [contentTypes addObject: UTTypeFolder];
+    }
 
-      // malformed MIME
-      if (classes.size() != 2) {
-        continue;
-      }
+    if (allowFiles) {
+      // <mime>:<ext>,<ext>|<mime>:<ext>|...
+      for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
+        const auto parts = split(contentTypeSpec, ":");
+        const auto mime = parts[0];
+        const auto classes = split(mime, "/");
+        UTType* supertype = nullptr;
 
-      if (classes[0] == "audio") {
-        supertype = UTTypeAudio;
-        prefersMedia = true;
-      } else if (classes[0] == "font") {
-        supertype = UTTypeFont;
-        prefersMedia = false;
-      } else if (classes[0] == "image") {
-        supertype = UTTypeImage;
-        prefersMedia = true;
-      } else if (classes[0] == "text") {
-        supertype = UTTypeText;
-        prefersMedia = false;
-      } else if (classes[0] == "video") {
-        supertype = UTTypeVideo;
-        prefersMedia = true;
-      }
+        // malformed MIME
+        if (classes.size() != 2) {
+          continue;
+        }
 
-      // any file extension such that its mime type corresponds to <mime>
-      if (parts.size() == 1) {
-        if (classes[1] == "*") {
-          [contentTypes addObject: supertype];
+        if (classes[0] == "audio") {
+          supertype = UTTypeAudio;
+          prefersMedia = true;
+        } else if (classes[0] == "font") {
+          supertype = UTTypeFont;
+          prefersMedia = false;
+        } else if (classes[0] == "image") {
+          supertype = UTTypeImage;
+          prefersMedia = true;
+        } else if (classes[0] == "text") {
+          supertype = UTTypeText;
+          prefersMedia = false;
+        } else if (classes[0] == "video") {
+          supertype = UTTypeVideo;
+          prefersMedia = true;
+        } else if (classes[0] == "*") {
+          supertype = UTTypeContent;
         } else {
-          [contentTypes
-            addObjectsFromArray: [UTType
-                  typesWithTag: @(mime.c_str())
-                      tagClass: UTTagClassMIMEType
-              conformingToType: supertype
-            ]
-          ];
+          supertype = UTTypeCompositeContent;
+        }
+
+        // any file extension such that its mime type corresponds to <mime>
+        if (parts.size() == 1) {
+          if (classes[1] == "*") {
+            [contentTypes addObject: supertype];
+          } else {
+            [contentTypes
+              addObjectsFromArray: [UTType
+                    typesWithTag: @(mime.c_str())
+                        tagClass: UTTagClassMIMEType
+                conformingToType: supertype
+              ]
+            ];
+          }
+        }
+
+        // given file extensions for a given mime type
+        if (parts.size() == 2) {
+          const auto extensions = split(parts[1], ",");
+
+          for (const auto& extension : extensions) {
+            [contentTypes
+              addObjectsFromArray: [UTType
+                typesWithTag: @(extension.c_str())
+                        tagClass: UTTagClassFilenameExtension
+                conformingToType: supertype
+              ]
+            ];
+          }
         }
       }
 
-      // given file extensions for a given mime type
-      if (parts.size() == 2) {
-        const auto extensions = split(parts[1], ",");
-
-        for (const auto& extension : extensions) {
-          [contentTypes
-            addObjectsFromArray: [UTType
-                  typesWithTag: @(extension.c_str())
-                      tagClass: UTTagClassFilenameExtension
-              conformingToType: supertype
-            ]
-          ];
-        }
+      if (contentTypes.count == 0 && !allowDirectories) {
+        [contentTypes addObject: UTTypeContent];
       }
     }
 
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-    UIWindow* window = nullptr;
+    this->delegateMutex.lock();
+    dispatch_async(dispatch_get_main_queue(), ^{
+      UIWindow* window = nullptr;
 
-    if (@available(iOS 15.0, *)) {
-      auto scene = (UIWindowScene*) UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-      window = scene.windows.lastObject;
-    } else {
-      window = UIApplication.sharedApplication.windows.lastObject;
-    }
-
-    if (prefersMedia) {
-      auto picker = [UIImagePickerController new];
-      NSMutableArray<NSString*>* mediaTypes = [NSMutableArray new];
-
-      for (UTType* type in contentTypes) {
-        [mediaTypes addObject: type.identifier];
+      if (@available(iOS 15.0, *)) {
+        auto scene = (UIWindowScene*) UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        window = scene.windows.lastObject;
+      } else {
+        window = UIApplication.sharedApplication.windows.lastObject;
       }
 
-      picker.mediaTypes = mediaTypes;
-      picker.delegate = this->uiPickerDelegate;
+      if (prefersMedia) {
+        auto picker = [UIImagePickerController new];
+        NSMutableArray<NSString*>* mediaTypes = [NSMutableArray new];
 
-      [window.rootViewController
-        presentViewController: picker
-                     animated: NO
-                   completion: nullptr
-      ];
-    } else {
-      auto picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes: contentTypes];
-      picker.allowsMultipleSelection = allowMultiple ? YES : NO;
-      picker.delegate = this->uiPickerDelegate;
+        picker.delegate = this->uiPickerDelegate;
 
-      [window.rootViewController
-        presentViewController: picker
-                     animated: NO
-                   completion: nullptr
-      ];
-    }
+        [window.rootViewController
+          presentViewController: picker
+                       animated: YES
+                     completion: nullptr
+        ];
+      } else {
+        auto picker = [UIDocumentPickerViewController.alloc
+          initForOpeningContentTypes: contentTypes
+        ];
 
-    this->delegateMutex.lock();
-    this->delegateMutex.unlock();
+        picker.allowsMultipleSelection = allowMultiple ? YES : NO;
+        picker.modalPresentationStyle = UIModalPresentationFormSheet;
+        picker.directoryURL = directoryURL;
+        picker.delegate = this->uiPickerDelegate;
+
+        [window.rootViewController
+          presentViewController: picker
+                       animated: YES
+                     completion: nullptr
+        ];
+      }
+    });
+
+    std::lock_guard<std::mutex> lock(this->delegateMutex);
     paths = this->delegatedResults;
   #else
     NSAutoreleasePool* pool = [NSAutoreleasePool new];

@@ -77,7 +77,17 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           webChromeClient = WebChromeClient(activity)
 
           addJavascriptInterface(userMessageHandler, "external")
-          loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
+
+          if (isDebugEnabled) {
+            val ts = java.time.Instant.now().toEpochMilli()
+            if (filename.contains("?")) {
+              loadUrl("https://__BUNDLE_IDENTIFIER__$filename&${ts}")
+            } else {
+              loadUrl("https://__BUNDLE_IDENTIFIER__$filename?${ts}")
+            }
+          } else {
+            loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
+          }
         }
       }
     })
@@ -99,9 +109,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
       response.apply {
         setStatusCodeAndReasonPhrase(200, "OK")
-        setResponseHeaders(responseHeaders + result.headers + mapOf(
-          "content-type" to contentType
-        ))
+        setResponseHeaders(responseHeaders + result.headers)
         setMimeType(contentType)
       }
 
@@ -134,6 +142,9 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     view: android.webkit.WebView,
     url: String
   ) {
+    if (!this.isLoading) {
+      this.injectPreload(view)
+    }
     this.isLoading = false
   }
 
@@ -141,7 +152,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     view: android.webkit.WebView,
     progress: Int
   ) {
-   if (!this.isLoading && progress > 10) {
+   if (!this.isLoading && progress > 80) {
       this.isLoading = true
       this.injectPreload(view)
     }

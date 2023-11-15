@@ -3209,6 +3209,20 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      if (settings["permissions_allow_read_media"] != "false") {
+        if (settings["permissions_allow_read_media_images"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\" />\n";
+        }
+
+        if (settings["permissions_allow_read_media_video"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\" />\n";
+        }
+
+        if (settings["permissions_allow_read_media_audio"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\" />\n";
+        }
+      }
+
       if (settings["android_manifest_permissions"].size() > 0) {
         settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
         for (auto const &value: parseStringList(settings["android_manifest_permissions"])) {

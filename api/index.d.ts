@@ -1066,9 +1066,15 @@ declare module "socket:path/well-known" {
      * @type {?string}
      */
     export const MUSIC: string | null;
+    /**
+     * Well known path to the application's "resources" folder.
+     * @type {?string}
+     */
+    export const RESOURCES: string | null;
     namespace _default {
         export { DOWNLOADS };
         export { DOCUMENTS };
+        export { RESOURCES };
         export { PICTURES };
         export { DESKTOP };
         export { VIDEOS };
@@ -1152,6 +1158,7 @@ declare module "socket:path/win32" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import * as posix from "socket:path/posix";
     import { Path } from "socket:path/path";
+    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
@@ -1160,7 +1167,7 @@ declare module "socket:path/win32" {
     import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { posix, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { posix, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/posix" {
     /**
@@ -1239,6 +1246,7 @@ declare module "socket:path/posix" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
@@ -1247,7 +1255,7 @@ declare module "socket:path/posix" {
     import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { win32, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/index" {
     export * as _default from "socket:path/index";
@@ -1255,13 +1263,14 @@ declare module "socket:path/index" {
     import * as posix from "socket:path/posix";
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
-    export { posix, win32, Path, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
@@ -1282,13 +1291,14 @@ declare module "socket:path" {
     import { posix } from "socket:path/index";
     import { Path } from "socket:path/index";
     import { win32 } from "socket:path/index";
+    import { RESOURCES } from "socket:path/index";
     import { DOWNLOADS } from "socket:path/index";
     import { DOCUMENTS } from "socket:path/index";
     import { PICTURES } from "socket:path/index";
     import { DESKTOP } from "socket:path/index";
     import { VIDEOS } from "socket:path/index";
     import { MUSIC } from "socket:path/index";
-    export { Path, posix, win32, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:diagnostics/channels" {
     /**
@@ -2001,18 +2011,21 @@ declare module "socket:fs/flags" {
 }
 declare module "socket:fs/stats" {
     /**
-     * @TODO
+     * A container for various stats about a file or directory.
      */
     export class Stats {
         /**
-         * @TODO
+         * Creates a `Stats` instance from input, optionally with `BigInt` data types
+         * @param {object|Stats} [stat]
+         * @param {fromBigInt=} [fromBigInt = false]
+         * @return {Stats}
          */
-        static from(stat: any, fromBigInt: any): exports.Stats;
+        static from(stat?: object | Stats, fromBigInt?: any): Stats;
         /**
          * `Stats` class constructor.
-         * @param {object} stat
+         * @param {object|Stats} stat
          */
-        constructor(stat: object);
+        constructor(stat: object | Stats);
         dev: any;
         ino: any;
         mode: any;
@@ -2031,12 +2044,40 @@ declare module "socket:fs/stats" {
         mtime: Date;
         ctime: Date;
         birthtime: Date;
+        /**
+         * Returns `true` if stats represents a directory.
+         * @return {Boolean}
+         */
         isDirectory(): boolean;
+        /**
+         * Returns `true` if stats represents a file.
+         * @return {Boolean}
+         */
         isFile(): boolean;
+        /**
+         * Returns `true` if stats represents a block device.
+         * @return {Boolean}
+         */
         isBlockDevice(): boolean;
+        /**
+         * Returns `true` if stats represents a character device.
+         * @return {Boolean}
+         */
         isCharacterDevice(): boolean;
+        /**
+         * Returns `true` if stats represents a symbolic link.
+         * @return {Boolean}
+         */
         isSymbolicLink(): boolean;
+        /**
+         * Returns `true` if stats represents a FIFO.
+         * @return {Boolean}
+         */
         isFIFO(): boolean;
+        /**
+         * Returns `true` if stats represents a socket.
+         * @return {Boolean}
+         */
         isSocket(): boolean;
     }
     export default exports;
@@ -3862,156 +3903,6 @@ declare module "socket:window" {
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
 }
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
-}
 declare module "socket:application" {
     /**
      * Creates a new window and returns an instance of ApplicationWindow.
@@ -5103,6 +4994,156 @@ declare module "socket:i18n" {
     }
     export default _default;
     import Enumeration from "socket:enumeration";
+}
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;

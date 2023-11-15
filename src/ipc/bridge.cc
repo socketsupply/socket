@@ -64,13 +64,13 @@ static String getcwd () {
 #if defined(__linux__) && !defined(__ANDROID__)
   auto canonical = fs::canonical("/proc/self/exe");
   cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+  cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
+#elif defined(__APPLE__)
   auto fileManager = [NSFileManager defaultManager];
   auto currentDirectory = [fileManager currentDirectoryPath];
   cwd = String([currentDirectory UTF8String]);
-#elif defined(__APPLE__)
-  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
-  cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
@@ -1630,6 +1630,7 @@ static void initRouterTable (Router *router) {
     JSON::Object data;
 
     // paths
+    String resources = getcwd();
     String downloads;
     String documents;
     String pictures;
@@ -1657,6 +1658,8 @@ static void initRouterTable (Router *router) {
       ].path.UTF8String)                                                       \
     )
 
+    // overload with main bundle resources path for macos/ios
+    resources = String(NSBundle.mainBundle.resourcePath.UTF8String);
     downloads = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDownloadsDirectory);
     documents = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDocumentDirectory);
     pictures = DIRECTORY_PATH_FROM_FILE_MANAGER(NSPicturesDirectory);
@@ -1734,6 +1737,7 @@ static void initRouterTable (Router *router) {
     home = Path(USERPROFILE).string();
   #endif
 
+    data["resources"] = resources;
     data["downloads"] = downloads;
     data["documents"] = documents;
     data["pictures"] = pictures;
@@ -2331,7 +2335,7 @@ static void initRouterTable (Router *router) {
     const auto defaultPath = message.get("defaultPath");
     const auto title = message.get("title", isSave ? "Save" : "Open");
 
-    Dialog dialog(router);
+    Dialog dialog;
     auto options = Dialog::FileSystemPickerOptions {
       .directories = allowDirs,
       .multiple = allowMultiple,
@@ -2349,7 +2353,9 @@ static void initRouterTable (Router *router) {
         auto err = JSON::Object::Entries {{"type", "AbortError"}};
         reply(Result::Err { message, err });
       } else {
-        auto data = JSON::Object::Entries {{"path", result}};
+        auto data = JSON::Object::Entries {
+          {"paths", JSON::Array::Entries{result}}
+        };
         reply(Result::Data { message, data });
       }
     } else {

@@ -260,7 +260,7 @@ export class ApplicationWindow {
       throw result.err
     }
 
-    return result.data.path
+    return result.data.paths[0] ?? null
   }
 
   /**
