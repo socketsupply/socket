@@ -3296,9 +3296,9 @@ int main (const int argc, const char* argv[]) {
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
       } else {
         // create empty icons
-        std::ofstream icon((targetPath / androidIcon, res / "mipmap" / "icon.png").string());
-        std::ofstream ic_launcher((targetPath / androidIcon, res / "mipmap" / "ic_launcher.png").string());
-        std::ofstream ic_launcher_round((targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png").string());
+        std::ofstream icon((res / "mipmap" / "icon.png").string());
+        std::ofstream ic_launcher((res / "mipmap" / "ic_launcher.png").string());
+        std::ofstream ic_launcher_round((res / "mipmap" / "ic_launcher_round.png").string());
       }
 
       // allow user space to override all `res/` files

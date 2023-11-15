@@ -514,7 +514,7 @@ namespace SSC {
 
     if (FAILED(result)) {
       debug("ERR: CoInitializeEx() failed in 'openDialog()'");
-      return;
+      return paths;
     }
 
     // create IFileDialog instance (IFileOpenDialog or IFileSaveDialog)
@@ -529,7 +529,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: CoCreateInstance() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     } else {
       result = CoCreateInstance(
@@ -542,7 +542,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: CoCreateInstance() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -555,7 +555,7 @@ namespace SSC {
     if (FAILED(result)) {
       debug("ERR: IFileDialog::GetOptions() failed in 'openDialog()'");
       CoUninitialize();
-      return;
+      return paths;
     }
 
     if (allowDirectories == true && allowFiles == false) {
@@ -568,7 +568,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -578,7 +578,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -596,7 +596,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: SHCreateItemFromParsingName() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
 
       if (isSavePicker) {
@@ -608,7 +608,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetDefaultFolder() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -626,7 +626,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetTitle() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -644,7 +644,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetFileName() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
@@ -657,7 +657,7 @@ namespace SSC {
     if (FAILED(result)) {
       debug("ERR: IFileDialog::Show() failed in 'openDialog()'");
       CoUninitialize();
-      return;
+      return paths;
     }
 
     if (isSavePicker) {
@@ -666,7 +666,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::GetResult() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     } else {
       result = dialog.open->GetResults(&openResults);
@@ -674,14 +674,14 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::GetResults() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
     }
 
     if (FAILED(result)) {
       debug("ERR: IFileDialog::Show() failed in 'openDialog()'");
       CoUninitialize();
-      return;
+      return paths;
     }
 
     if (isSavePicker) {
@@ -692,7 +692,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IShellItem::GetDisplayName() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
 
       paths.push_back(SSC::convertWStringToString(WString(buf)));
@@ -705,7 +705,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IShellItemArray::GetCount() failed in 'openDialog()'");
         CoUninitialize();
-        return;
+        return paths;
       }
 
       for (DWORD i = 0; i < totalResults; i++) {
@@ -717,7 +717,7 @@ namespace SSC {
         if (FAILED(result)) {
           debug("ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'");
           CoUninitialize();
-          return;
+          return paths;
         }
 
         result = path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
@@ -725,7 +725,7 @@ namespace SSC {
         if (FAILED(result)) {
           debug("ERR: IShellItem::GetDisplayName() failed in 'openDialog()'");
           CoUninitialize();
-          return;
+          return paths;
         }
 
         paths.push_back(SSC::convertWStringToString(WString(buf)));
