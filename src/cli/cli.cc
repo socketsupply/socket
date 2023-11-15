@@ -2190,23 +2190,14 @@ int main (const int argc, const char* argv[]) {
     { { "--name", "-n" }, true, true }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
+    auto isTargetPathEmpty = fs::exists(targetPath) ? fs::is_empty(targetPath) : true;
     auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
-    auto projectName = optionsWithValue["--name"];
+    auto projectName = optionsWithValue["--name"].size() > 0 ? optionsWithValue["--name"] : targetPath.filename().string();
 
-    // create socket.ini
-    if (fs::exists(targetPath / "socket.ini")) {
-      log("socket.ini already exists in " + targetPath.string());
-    } else {
-      if (projectName.size() > 0) {
-        defaultTemplateAttrs["project_name"] = projectName;
-      }
-      writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
-      log("socket.ini created in " + targetPath.string());
-    }
+    log("project name: " + projectName);
 
     if (!configOnly) {
-      if (isCurrentPathEmpty) {
+      if (isTargetPathEmpty) {
         // create src/index.html
         fs::create_directories(targetPath / "src");
         writeFile(targetPath / "src" / "index.html", gHelloWorld);
@@ -2226,6 +2217,18 @@ int main (const int argc, const char* argv[]) {
         log(".gitignore already exists in " + targetPath.string());
       }
     }
+
+    // create socket.ini
+    if (fs::exists(targetPath / "socket.ini")) {
+      log("socket.ini already exists in " + targetPath.string());
+    } else {
+      if (projectName.size() > 0) {
+        defaultTemplateAttrs["project_name"] = projectName;
+      }
+      writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
+      log("socket.ini created in " + targetPath.string());
+    }
+
     exit(0);
   });
 
