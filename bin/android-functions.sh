@@ -86,7 +86,7 @@ function get_android_default_search_paths() {
     if [ -n "$java" ]; then
       JAVA_HOME_SEARCH_PATHS+=("$(dirname "$(dirname "$java")")")
     fi
-    
+
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
     # This search is really slow under CI
@@ -507,7 +507,7 @@ function clear_android_settings() {
 }
 
 function android_install_sdk_manager() {
-  if [[ -n "$ANDROID_SDK_MANAGER" ]]; then
+  if [[ -n "$ANDROID_SDK_MANAGER" && -f "$ANDROID_SDK_MANAGER" ]]; then
     return 0
   fi
 
@@ -595,7 +595,7 @@ function android_install_sdk_manager() {
 }
 
 function android_install_jdk() {
-  if [[ -n "$JAVA_HOME" ]]; then
+  if [[ -n "$JAVA_HOME" && -d "$JAVA_HOME" ]]; then
       return 0
   fi
 
@@ -815,7 +815,7 @@ function android_fte() {
       [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]] && [[ "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" != "n" ]] && yes="$ANDROID_SDK_MANAGER_ACCEPT_LICENSES"
       yes="$(unix_path "$yes")"
 
-      if [[ -n "$ANDROID_HOME" ]]; then
+      if [[ -n "$ANDROID_HOME" && -d "$ANDROID_HOME" ]]; then
         write_log "h" "# Ensuring Android dependencies are installed"
         write_log "d" "$yes | $(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
         # Without eval, sdk manager says there is a syntax error
