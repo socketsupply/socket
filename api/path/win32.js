@@ -4,6 +4,7 @@ import { Path } from './path.js'
 import url from '../url.js'
 
 import {
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,
@@ -20,6 +21,7 @@ export {
   posix,
   Path,
 
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,

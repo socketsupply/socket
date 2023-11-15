@@ -64,6 +64,7 @@ function resolveStartInPath (input = null, id = null) {
   }
 
   switch (input) {
+    case 'resources': return path.RESOURCES
     case 'desktop': return path.DESKTOP
     case 'documents': return path.DOCUMENTS
     case 'downloads': return path.DOWNLOADS
@@ -102,9 +103,13 @@ function resolveStartInPath (input = null, id = null) {
  */
 function normalizeShowFileSystemPickerOptions (options) {
   const contentTypeSpecs = []
+  const excludeAcceptAllOption = (
+    options?.excludeAcceptAllOption === true ||
+    (Array.isArray(options?.types) && options.types.length > 0)
+  )
 
   // <mime>:<ext>,<ext>|...
-  if (options?.excludeAcceptAllOption === true && Array.isArray(options?.types)) {
+  if (excludeAcceptAllOption === true && Array.isArray(options?.types)) {
     for (const type of options.types) {
       if (type && type?.accept && typeof type?.accept === 'object') {
         for (const mime in type.accept) {
@@ -188,14 +193,17 @@ export async function showDirectoryPicker (options = null) {
 export async function showOpenFilePicker (options = null) {
   requireUserActivation('showOpenFilePicker')
 
-  const { multiple, startIn, id } = options || {}
+  const { multiple, startIn, id, types, excludeAcceptAllOption } = options || {}
   const currentWindow = await application.getCurrentWindow()
   const filenames = await currentWindow.showOpenFilePicker(
     normalizeShowFileSystemPickerOptions({
       directories: false,
       files: true,
+
+      excludeAcceptAllOption,
       multiple,
       startIn,
+      types,
       id
     })
   )
@@ -236,14 +244,17 @@ export async function showOpenFilePicker (options = null) {
 export async function showSaveFilePicker (options = null) {
   requireUserActivation('showSaveFilePicker')
 
-  const { startIn, id } = options || {}
+  const { startIn, id, types, excludeAcceptAllOption } = options || {}
   const currentWindow = await application.getCurrentWindow()
   const [filename] = await currentWindow.showSaveFilePicker(
     normalizeShowFileSystemPickerOptions({
       directories: false,
       multiple: false,
       files: true,
+
+      excludeAcceptAllOption,
       startIn,
+      types,
       id
     })
   )

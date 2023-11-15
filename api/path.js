@@ -5,6 +5,7 @@ import {
   win32,
 
   // well known
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,
@@ -35,6 +36,7 @@ export {
   posix,
   win32,
 
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,

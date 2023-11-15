@@ -3,6 +3,7 @@ import * as posix from './posix.js'
 import * as win32 from './win32.js'
 
 import {
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,
@@ -19,6 +20,7 @@ export {
   Path,
 
   // well known
+  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
   PICTURES,

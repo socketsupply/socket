@@ -7,7 +7,7 @@ fun decodeURIComponent (string: String): String {
   return java.net.URLDecoder.decode(normalized, "UTF-8").replace("%2B", "+")
 }
 
-fun isAssetUri (uri: android.net.Uri): Boolean {
+fun isAndroidAssetsUri (uri: android.net.Uri): Boolean {
   val scheme = uri.scheme
   val host = uri.host
   // handle no path segments, not currently required but future proofing
@@ -28,6 +28,114 @@ fun isAssetUri (uri: android.net.Uri): Boolean {
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
  */
 open class WebView (context: android.content.Context) : android.webkit.WebView(context)
+
+/**
+ */
+open class WebViewFilePickerOptions (
+  params: android.webkit.WebChromeClient.FileChooserParams? = null,
+  mimeTypes: Array<String> = arrayOf<String>(),
+  multiple: Boolean = false,
+  files: Boolean = true,
+  directories: Boolean = false
+) {
+  val params = params
+  val multiple = multiple
+  val files = files
+  val directories = directories
+  var mimeTypes = mimeTypes
+
+  init {
+    if (params != null && params.acceptTypes.size > 0) {
+      this.mimeTypes += params.acceptTypes
+    }
+  }
+}
+
+open class WebViewFilePicker (
+  activity: MainActivity
+) {
+  protected val activity = WeakReference(activity)
+  var callback: ((Array<android.net.Uri>) -> Unit)? = null
+
+  val launcherForSingleItem = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    { uri -> this.handleCallback(uri) }
+  )
+
+  val launcherForMulitpleItems = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents(),
+    { uris -> this.handleCallback(uris) }
+  )
+
+  val launcherForSingleDocument = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    { uri -> this.handleCallback(uri) }
+  )
+
+  val launcherForMulitpleDocuments = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments(),
+    { uris -> this.handleCallback(uris) }
+  )
+
+  val launcherForSingleVisualMedia = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+    { uri -> this.handleCallback(uri) }
+  )
+
+  val launcherForMultipleVisualMedia = activity.registerForActivityResult(
+    androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(),
+    { uris -> this.handleCallback(uris) }
+  )
+
+  fun handleCallback (uris: Array<android.net.Uri>) {
+    val callback = this.callback
+    this.callback = null
+    if (callback != null) {
+      callback(uris)
+    }
+  }
+
+  fun handleCallback (uris: List<android.net.Uri>) {
+    return this.handleCallback(uris.toTypedArray())
+  }
+
+  fun handleCallback (uri: android.net.Uri?) {
+    return this.handleCallback(
+      if (uri != null) { arrayOf(uri) }
+      else { arrayOf<android.net.Uri>() }
+    )
+  }
+
+  fun cancel () {
+    this.handleCallback(null)
+  }
+
+  fun launch (
+    options: WebViewFilePickerOptions,
+    callback: (Array<android.net.Uri>) -> Unit
+  ) {
+    this.cancel()
+
+    val params = options.params
+    var mimeType: String = "*/*"
+
+    if (options.mimeTypes.size > 0) {
+      mimeType = options.mimeTypes[0] ?: mimeType
+    }
+
+    if (mimeType.length == 0) {
+      mimeType = "*/*"
+    }
+
+    this.callback = callback
+
+    if (options.multiple) {
+      this.launcherForMulitpleItems.launch(mimeType)
+    } else {
+      this.launcherForSingleItem.launch(mimeType)
+    }
+  }
+}
 
 /**
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
@@ -87,15 +195,24 @@ open class WebChromeClient (activity: MainActivity) : android.webkit.WebChromeCl
 
   override fun onShowFileChooser (
     webview: android.webkit.WebView,
-    filePathCallback: android.webkit.ValueCallback<Array<android.net.Uri>>,
-    fileChooserParams: android.webkit.WebChromeClient.FileChooserParams
+    callback: android.webkit.ValueCallback<Array<android.net.Uri>>,
+    params: android.webkit.WebChromeClient.FileChooserParams
   ): Boolean {
-    // TODO(@jwerle): handle dialog
-    super.onShowFileChooser(webview, filePathCallback, fileChooserParams)
+    val activity = this.activity.get() ?: return false;
+
+    super.onShowFileChooser(webview, callback, params)
+
+    val options = WebViewFilePickerOptions(params)
+    activity.showFileSystemPicker(options, fun (uris: Array<android.net.Uri>) {
+      callback.onReceiveValue(uris)
+    })
     return true
   }
 }
 
+/**
+ * A container for a resolved URL path laoded in the WebView.
+ */
 final class WebViewURLPathResolution (path: String, redirect: Boolean = false) {
   val path = path
   val redirect = redirect
@@ -133,7 +250,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       return false
     }
 
-    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAssetUri(url)) {
+    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAndroidAssetsUri(url)) {
       return true
     }
 

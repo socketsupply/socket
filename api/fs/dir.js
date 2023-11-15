@@ -121,10 +121,10 @@ export class Dir {
     } catch (err) {
       if (typeof callback === 'function') {
         callback(err)
-        return
+        return null
+      } else {
+        throw err
       }
-
-      throw err
     }
 
     results = results.map((result) => {
@@ -170,7 +170,7 @@ export class Dir {
       while (true) {
         const results = await this.read(options)
 
-        if (results === null) {
+        if (results === null || results?.length === 0) {
           break
         }
 

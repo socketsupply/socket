@@ -16,7 +16,6 @@ import { isValidPercentageValue } from './util.js'
 import os from './os.js'
 
 import * as exports from './application.js'
-import { application } from './mime.js'
 
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
