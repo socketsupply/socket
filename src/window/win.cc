@@ -1714,4 +1714,80 @@ namespace SSC {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
   }
+
+  // message is defined in WinUser.h
+  // https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/WinUser.h
+  LRESULT CALLBACK Window::WndProc(
+      HWND hWnd,
+      UINT message,
+      WPARAM wParam,
+      LPARAM lParam) {
+
+    Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    switch (message) {
+      case WM_SIZE: {
+        if (w == nullptr || w->webview == nullptr) {
+          break;
+        }
+
+        RECT bounds;
+        GetClientRect(hWnd, &bounds);
+        w->controller->put_Bounds(bounds);
+        break;
+      }
+
+      case WM_COMMAND: {
+        if (w == nullptr) {
+          break;
+        }
+
+        String meta(w->menuMap[wParam]);
+        auto parts = split(meta, '\t');
+
+        if (parts.size() > 1) {
+          auto title = parts[0];
+          auto parent = parts[1];
+
+          if (String(title).find("About") == 0) {
+            w->about();
+            break;
+          }
+
+          if (String(title).find("Quit") == 0) {
+            w->exit(0);
+            break;
+          }
+
+          w->eval(getResolveMenuSelectionJavaScript("0", title, parent));
+        }
+
+        break;
+      }
+
+      case WM_SETTINGCHANGE: {
+        // TODO(trevnorris): Dark mode
+        break;
+      }
+
+      case WM_CREATE: {
+        // TODO(trevnorris): Dark mode
+        SetWindowTheme(hWnd, L"Explorer", NULL);
+        HMENU hMenubar = CreateMenu();
+        SetMenu(hWnd, hMenubar);
+        break;
+      }
+
+      case WM_CLOSE: {
+        w->close(0);
+        break;
+      }
+
+      default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+        break;
+    }
+
+    return 0;
+  }
+
 } // namespace SSC
