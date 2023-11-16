@@ -519,7 +519,7 @@ namespace SSC {
     );
 
     if (FAILED(result)) {
-      debug("ERR: CoInitializeEx() failed in 'openDialog()'");
+      debug("ERR: CoInitializeEx() failed in 'showFileSystemPicker()'");
       return paths;
     }
 
@@ -533,7 +533,7 @@ namespace SSC {
       );
 
       if (FAILED(result)) {
-        debug("ERR: CoCreateInstance() failed in 'openDialog()'");
+        debug("ERR: CoCreateInstance() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -546,7 +546,7 @@ namespace SSC {
       );
 
       if (FAILED(result)) {
-        debug("ERR: CoCreateInstance() failed in 'openDialog()'");
+        debug("ERR: CoCreateInstance() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -559,7 +559,7 @@ namespace SSC {
     }
 
     if (FAILED(result)) {
-      debug("ERR: IFileDialog::GetOptions() failed in 'openDialog()'");
+      debug("ERR: IFileDialog::GetOptions() failed in 'showFileSystemPicker()'");
       CoUninitialize();
       return paths;
     }
@@ -572,7 +572,7 @@ namespace SSC {
       }
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'openDialog()'");
+        debug("ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -582,7 +582,7 @@ namespace SSC {
       result = dialog.open->SetOptions(dialogOptions | FOS_ALLOWMULTISELECT);
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'openDialog()'");
+        debug("ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -600,7 +600,7 @@ namespace SSC {
       );
 
       if (FAILED(result)) {
-        debug("ERR: SHCreateItemFromParsingName() failed in 'openDialog()'");
+        debug("ERR: SHCreateItemFromParsingName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -612,7 +612,7 @@ namespace SSC {
       }
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::SetDefaultFolder() failed in 'openDialog()'");
+        debug("ERR: IFileDialog::SetDefaultFolder() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -630,7 +630,7 @@ namespace SSC {
       }
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::SetTitle() failed in 'openDialog()'");
+        debug("ERR: IFileDialog::SetTitle() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -648,7 +648,7 @@ namespace SSC {
       }
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::SetFileName() failed in 'openDialog()'");
+        debug("ERR: IFileDialog::SetFileName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -661,7 +661,7 @@ namespace SSC {
     }
 
     if (FAILED(result)) {
-      debug("ERR: IFileDialog::Show() failed in 'openDialog()'");
+      debug("ERR: IFileDialog::Show() failed in 'showFileSystemPicker()'");
       CoUninitialize();
       return paths;
     }
@@ -670,7 +670,7 @@ namespace SSC {
       result = dialog.save->GetResult(&saveResult);
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::GetResult() failed in 'openDialog()'");
+        debug("ERR: IFileDialog::GetResult() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -678,14 +678,14 @@ namespace SSC {
       result = dialog.open->GetResults(&openResults);
 
       if (FAILED(result)) {
-        debug("ERR: IFileDialog::GetResults() failed in 'openDialog()'");
+        debug("ERR: IFileDialog::GetResults() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
     }
 
     if (FAILED(result)) {
-      debug("ERR: IFileDialog::Show() failed in 'openDialog()'");
+      debug("ERR: IFileDialog::Show() failed in 'showFileSystemPicker()'");
       CoUninitialize();
       return paths;
     }
@@ -696,7 +696,7 @@ namespace SSC {
       result = saveResult->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
 
       if (FAILED(result)) {
-        debug("ERR: IShellItem::GetDisplayName() failed in 'openDialog()'");
+        debug("ERR: IShellItem::GetDisplayName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -709,7 +709,7 @@ namespace SSC {
       openResults->GetCount(&totalResults);
 
       if (FAILED(result)) {
-        debug("ERR: IShellItemArray::GetCount() failed in 'openDialog()'");
+        debug("ERR: IShellItemArray::GetCount() failed in 'showFileSystemPicker()'");
         CoUninitialize();
         return paths;
       }
@@ -721,7 +721,7 @@ namespace SSC {
         result = openResults->GetItemAt(i, &path);
 
         if (FAILED(result)) {
-          debug("ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'");
+          debug("ERR: IShellItemArray::GetItemAt() failed in 'showFileSystemPicker()'");
           CoUninitialize();
           return paths;
         }
@@ -729,7 +729,7 @@ namespace SSC {
         result = path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
 
         if (FAILED(result)) {
-          debug("ERR: IShellItem::GetDisplayName() failed in 'openDialog()'");
+          debug("ERR: IShellItem::GetDisplayName() failed in 'showFileSystemPicker()'");
           CoUninitialize();
           return paths;
         }
