@@ -61,6 +61,7 @@ export const FileSystemWritableFileStream = globalThis.FileSystemWritableFileStr
 
 /**
  * Helper for creating an implementation adapters for various platform APIs.
+ * @ignore
  * @param {new () => object} Adapter
  * @return {object}
  */
@@ -75,6 +76,7 @@ function adapter (Adapter) {
 /**
  * Helper function for creating a non-construable native class with adapter
  * implementation
+ * @ignore
  * @param {new () => object|object} Super
  * @param {new () => object} Adapter
  * @return {object}
@@ -114,6 +116,7 @@ export async function createFile (filename, options = null) {
     get type () { return type }
 
     slice () {
+      console.warn('File.slice() is not supported in implementation')
       // This synchronous interface is not supported
       // An empty and ephemeral `Blob` is returned instead
       return new Blob([], { type })
@@ -315,6 +318,8 @@ export async function createFileSystemWritableFileStream (handle, options) {
  * @return {Promise<FileSystemFileHandle>}
  */
 export async function createFileSystemFileHandle (file, options = null) {
+  const { writable = true } = options || {}
+
   if (!globalThis.FileSystemFileHandle) {
     console.warn('Missing platform \'FileSystemFileHandle\' implementation')
   }
@@ -341,7 +346,11 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async isSameEntry (entry) {
-      if (this === entry || this[kFileSystemHandleFullName] === entry[kFileSystemHandleFullName]) {
+      if (this === entry) {
+        return true
+      }
+
+      if (this[kFileSystemHandleFullName] === entry[kFileSystemHandleFullName]) {
         return true
       }
 
@@ -358,7 +367,7 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async move (nameOrDestinationHandle, name = null) {
-      if (options?.writable === false) {
+      if (writable === false) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
       }
 
@@ -384,7 +393,7 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async createWritable (options = null) {
-      if (options?.writable === false) {
+      if (writable === false) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
       }
 
@@ -399,7 +408,9 @@ export async function createFileSystemFileHandle (file, options = null) {
  * @param {string} dirname
  * @return {Promise<FileSystemFileHandle>}
  */
-export async function createFileSystemDirectoryHandle (dirname) {
+export async function createFileSystemDirectoryHandle (dirname, options = null) {
+  const { writable = true } = options || {}
+
   if (!globalThis.FileSystemDirectoryHandle) {
     console.warn('Missing platform \'FileSystemDirectoryHandle\' implementation')
   }
@@ -457,6 +468,10 @@ export async function createFileSystemDirectoryHandle (dirname) {
     }
 
     async move (nameOrDestinationHandle, name = null) {
+      if (!writable) {
+        throw new NotAllowedError('FileSystemDirectoryHandle is in \'readonly\' mode')
+      }
+
       let destination = null
       if (typeof nameOrDestinationHandle === 'string') {
         name = nameOrDestinationHandle
@@ -473,12 +488,23 @@ export async function createFileSystemDirectoryHandle (dirname) {
     async * entries () {
       await lazyOpen()
       for await (const entry of fd) {
-        yield [
-          entry.name,
-          await createFileSystemDirectoryHandle(
-            path.join(dirname, entry.name)
-          )
-        ]
+        if (entry.isDirectory()) {
+          yield [
+            entry.name,
+            await createFileSystemDirectoryHandle(
+              path.join(dirname, entry.name),
+              { writable }
+            )
+          ]
+        } else if (entry.isFile()) {
+          yield [
+            entry.name,
+            await createFileSystemFileHandle(
+              path.join(dirname, entry.name),
+              { writable }
+            )
+          ]
+        }
       }
     }
 
@@ -503,13 +529,13 @@ export async function createFileSystemDirectoryHandle (dirname) {
         )
       }
 
-      const absolute = possibleDescendant[kFileSystemHandleFullName]
-      if (!absolute) {
+      const filename = possibleDescendant[kFileSystemHandleFullName]
+      if (!filename) {
         return null
       }
 
       try {
-        const hasAccess = await fs.access(absolute)
+        const hasAccess = await fs.access(filename)
         if (!hasAccess) {
           return null
         }
@@ -517,7 +543,7 @@ export async function createFileSystemDirectoryHandle (dirname) {
         return null
       }
 
-      const relative = path.relative(dirname, absolute)
+      const relative = path.relative(dirname, filename)
 
       if (relative.startsWith('.')) {
         return null
@@ -539,10 +565,10 @@ export async function createFileSystemDirectoryHandle (dirname) {
     }
 
     async getDirectoryHandle (name, options = null) {
-      const absolute = path.join(dirname, name)
+      const filename = path.join(dirname, name)
       if (options?.create) {
         try {
-          const stats = await fs.stats(absolute)
+          const stats = await fs.stats(filename)
           if (!stats.isDirectory()) {
             throw new NotAllowedError(`'${dirname}' is not a directory`)
           }
@@ -551,15 +577,15 @@ export async function createFileSystemDirectoryHandle (dirname) {
             throw err
           }
 
-          await fs.mkdir(absolute)
+          await fs.mkdir(filename)
         }
       }
 
-      return await createFileSystemDirectoryHandle(absolute)
+      return await createFileSystemDirectoryHandle(filename, { writable })
     }
 
     async getFileHandle (name, options = null) {
-      const filename = path.resolve(this[kFileSystemHandleFullName], name)
+      const filename = path.resolve(dirname, name)
       let fd = null
       if (options?.create === true) {
         try {
@@ -577,12 +603,39 @@ export async function createFileSystemDirectoryHandle (dirname) {
       }
 
       const file = await createFile(filename, { fd })
-      const handle = await createFileSystemFileHandle(file)
+      const handle = await createFileSystemFileHandle(file, { writable })
 
       return handle
     }
 
     async removeEntry (name, options = null) {
+      if (!writable) {
+        throw new NotAllowedError('FileSystemDirectoryHandle is in \'readonly\' mode')
+      }
+
+      const filename = path.resolve(dirname, name)
+      const stats = await fs.stats(filename)
+      let handle = options?.handle || null
+
+      if (!handle) {
+        if (stats.isDirectory()) {
+          handle = await createFileSystemDirectoryHandle(filename, { writable })
+        } else if (stats.isFile()) {
+          handle = await createFileSystemFileHandle(filename, { writable })
+        }
+      }
+
+      if (options?.recursive === true) {
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file') {
+            await fs.unlink(entry[kFileSystemHandleFullName])
+          } else {
+            await handle.removeEntry(entry.name, { recursive: true, handle: entry })
+          }
+        }
+      }
+
+      await fs.rmdir(dirname)
     }
   })
 

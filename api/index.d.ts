@@ -7584,7 +7584,7 @@ declare module "socket:fs/web" {
      * @param {string} dirname
      * @return {Promise<FileSystemFileHandle>}
      */
-    export function createFileSystemDirectoryHandle(dirname: string): Promise<FileSystemFileHandle>;
+    export function createFileSystemDirectoryHandle(dirname: string, options?: any): Promise<FileSystemFileHandle>;
     export const File: {
         new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
         prototype: File;
