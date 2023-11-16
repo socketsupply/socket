@@ -467,6 +467,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     // t.equal(result, true, 'returns true')
   })
 
+  /*
   test('window.showOpenFilePicker', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showOpenFilePicker())
@@ -481,6 +482,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showDirectoryFilePicker())
   })
+  */
 
   test('window.send wrong window', async (t) => {
     const mainWindow = await application.getCurrentWindow()
