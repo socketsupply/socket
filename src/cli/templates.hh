@@ -1657,7 +1657,9 @@ output = "build"
 forward_arguments = false
 
 [build.watch]
-sources = "src"
+; Configure your project to watch for sources that could change when running `ssc`.
+; Could be a string or an array of strings
+sources[] = "src"
 
 
 [webview]
@@ -1669,9 +1671,14 @@ root = "/"
 ; default value: ""
 ; default_index  = ""
 
-; Enable watch mode
+; Tell the webview to watch for changes in its resources
 ; default value: false
-watch = false
+watch = true
+
+[webview.watch]
+; Configure webview to reload when a file changes
+; default value: true
+reload = true
 
 ; Mount file system paths in webview navigator
 [webview.navigator.mounts]

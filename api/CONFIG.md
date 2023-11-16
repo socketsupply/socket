@@ -67,7 +67,7 @@ forward_arguments | false |  If true, it will pass build arguments to the build 
 
 Key | Default Value | Description
 :--- | :--- | :---
-sources |  | 
+sources[] |  |  Configure your project to watch for sources that could change when running `ssc`. Could be a string or an array of strings
 
 # `webview`
 
@@ -75,7 +75,13 @@ Key | Default Value | Description
 :--- | :--- | :---
 root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
-watch | false |  Enable watch mode
+watch | false |  Tell the webview to watch for changes in its resources
+
+# `webview.watch`
+
+Key | Default Value | Description
+:--- | :--- | :---
+reload | true |  Configure webview to reload when a file changes
 
 # `webview.navigator.mounts`
 
