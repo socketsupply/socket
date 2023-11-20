@@ -4101,7 +4101,11 @@ namespace SSC::IPC {
         return dispatched;
       } else {
         ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
-          callback(result);
+          if (result.seq == "-1") {
+            this->send(result.seq, result.str(), result.post);
+          } else {
+            callback(result);
+          }
           CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
         });
 
