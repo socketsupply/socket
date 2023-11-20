@@ -356,10 +356,12 @@ export function patchGlobalConsole (globalConsole, options = {}) {
     for (const key in globalConsole) {
       if (typeof Console.prototype[key] === 'function') {
         const original = globalConsole[key].bind(globalConsole)
-        globalConsole[key] = (...args) => {
+        globalConsole[key] = function (...args) {
           original(...args)
           defaultConsole[key](...args)
         }
+
+        globalConsole[key].platform = original
       }
     }
   }
