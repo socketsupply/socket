@@ -2070,6 +2070,7 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, false);
+    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
@@ -2080,6 +2081,7 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, true);
+    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
@@ -2261,7 +2263,9 @@ static void initRouterTable (Router *router) {
     router->core->udp.readStart(
       message.seq,
       id,
-      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
     );
   });
 
@@ -4080,7 +4084,12 @@ namespace SSC::IPC {
       if (ctx.async) {
         auto dispatched = this->dispatch([ctx, msg, callback, this]() mutable {
           ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
-            callback(result);
+            if (result.seq == "-1") {
+              this->send(result.seq, result.str(), result.post);
+            } else {
+              callback(result);
+            }
+
             CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
           });
         });
@@ -4108,31 +4117,25 @@ namespace SSC::IPC {
     const String data,
     const Post post
   ) {
-    Lock lock(this->mutex);
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
     }
 
-    // this had a sequence, we need to try to resolve it.
-    if (seq != "-1" && seq.size() > 0) {
-      auto value = encodeURIComponent(data);
-      auto script = getResolveToRenderProcessJavaScript(seq, "0", value);
-      return this->evaluateJavaScript(script);
-    }
+    auto value = encodeURIComponent(data);
+    auto script = getResolveToRenderProcessJavaScript(
+      seq.size() == 0 ? "-1" : seq,
+      "0",
+      value
+    );
 
-    if (data.size() > 0) {
-      return this->evaluateJavaScript(data);
-    }
-
-    return false;
+    return this->evaluateJavaScript(script);
   }
 
   bool Router::emit (
     const String& name,
     const String data
   ) {
-    Lock lock(this->mutex);
     auto value = encodeURIComponent(data);
     auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);
