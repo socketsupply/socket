@@ -127,9 +127,10 @@ namespace SSC::IPC {
     const Message& message
   ) {
     this->id = rand64();
+    this->seq = seq;
     this->message = message;
     this->source = message.name;
-    this->seq = seq;
+    this->post.workerId = this->message.get("runtime-worker-id");
   }
 
   Result::Result (
@@ -147,6 +148,10 @@ namespace SSC::IPC {
   ) : Result(seq, message) {
     this->post = post;
     this->headers = Headers(post.headers);
+
+    if (this->post.workerId.size() == 0) {
+      this->post.workerId = this->message.get("runtime-worker-id");
+    }
 
     if (value.type != JSON::Type::Any) {
       this->value = value;
