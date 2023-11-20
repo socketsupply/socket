@@ -60,9 +60,21 @@
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
+import location from './location.js'
+
+// primordial setup
+const EventTargetPrototype = {
+  addEventListener: Function.prototype.call.bind(EventTarget.prototype.addEventListener),
+  removeEventListener: Function.prototype.call.bind(EventTarget.prototype.removeEventListener),
+  dispatchEvent: Function.prototype.call.bind(EventTarget.prototype.dispatchEvent)
+}
+
+function addEventListener (target, type, callback) {
+  EventTargetPrototype.addEventListener(target, type, callback)
+}
 
 function addEventListenerOnce (target, type, callback) {
-  target.addEventListener(type, callback, { once: true })
+  EventTargetPrototype.addEventListener(target, type, callback, { once: true })
 }
 
 async function waitForEvent (target, type) {
@@ -72,7 +84,7 @@ async function waitForEvent (target, type) {
 }
 
 function dispatchEvent (target, event) {
-  queueMicrotask(() => target.dispatchEvent(event))
+  queueMicrotask(() => EventTargetPrototype.dispatchEvent(target, event))
 }
 
 function dispatchInitEvent (target) {
@@ -88,43 +100,46 @@ function dispatchReadyEvent (target) {
 }
 
 function proxyGlobalEvents (global, target) {
-  const GLOBAL_EVENTS = [
-    'data',
-    'error',
-    'init',
-    'languagechange',
-    'load',
-    'message',
-    'messageerror',
-    'notificationpresented',
-    'notificationresponse',
-    'offline',
-    'online',
-    'permissionchange',
-    'unhandledrejection'
-  ]
-
   for (const type of GLOBAL_EVENTS) {
-    global.addEventListener(type, (event) => {
+    addEventListener(global, type, (event) => {
       const { type, data, detail = null, error } = event
+      const { origin } = location
       if (error) {
-        target.dispatchEvent(new ErrorEvent(type, { error, detail }))
+        const { message, filename = import.meta.url } = error
+        dispatchEvent(target, new ErrorEvent(type, { message, filename, error, detail }))
       } else if (type && data) {
-        target.dispatchEvent(new MessageEvent(type, { data, detail }))
+        dispatchEvent(target, new MessageEvent(type, { origin, data, detail }))
       } else if (detail) {
-        target.dispatchEvent(new CustomEvent(type, { detail }))
+        dispatchEvent(target, new CustomEvent(type, { detail }))
       } else {
-        target.dispatchEvent(new Event(type))
+        dispatchEvent(target, new Event(type))
       }
     })
   }
 }
 
-const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
-
 // state
 let isGlobalLoaded = false
 let isRuntimeInitialized = false
+
+export const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
+
+export const GLOBAL_EVENTS = [
+  RUNTIME_INIT_EVENT_NAME,
+  'data',
+  'error',
+  'init',
+  'languagechange',
+  'load',
+  'message',
+  'messageerror',
+  'notificationpresented',
+  'notificationresponse',
+  'offline',
+  'online',
+  'permissionchange',
+  'unhandledrejection'
+]
 
 /**
  * An event dispatched when the runtime has been initialized.
@@ -148,6 +163,13 @@ export class ReadyEvent extends Event {
 }
 
 /**
+ * An event dispatched when the runtime has been initialized.
+ */
+export class RuntimeInitEvent extends Event {
+  constructor () { super(RUNTIME_INIT_EVENT_NAME) }
+}
+
+/**
  * An interface for registering callbacks for various hooks in
  * the runtime.
  */
@@ -156,9 +178,42 @@ export class Hooks extends EventTarget {
   /**
    * @ignore
    */
+  static GLOBAL_EVENTS = GLOBAL_EVENTS
+
+  /**
+   * @ignore
+   */
+  static InitEvent = InitEvent
+
+  /**
+   * @ignore
+   */
+  static LoadEvent = LoadEvent
+
+  /**
+   * @ignore
+   */
+  static ReadyEvent = ReadyEvent
+
+  /**
+   * @ignore
+   */
+  static RuntimeInitEvent = RuntimeInitEvent
+
+  /**
+   * `Hooks` class constructor
+   * @ignore
+   */
   constructor () {
     super()
     this.#init()
+  }
+
+  /**
+   * An array of all global events listened to in various hooks
+   */
+  get globalEvents () {
+    return GLOBAL_EVENTS
   }
 
   /**
