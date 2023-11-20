@@ -128,7 +128,7 @@ export function chmod (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.chmod', { mode, path }).then((result) => {
+  ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
@@ -157,7 +157,7 @@ export function chown (path, uid, gid, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.chown', { path, uid, gid }).then((result) => {
+  ipc.request('fs.chown', { path, uid, gid }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -209,7 +209,7 @@ export function copyFile (src, dest, flags, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.copyFile', { src, dest, flags }).then((result) => {
+  ipc.request('fs.copyFile', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -403,7 +403,7 @@ export function lchown (path, uid, gid, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.lchown', { path, uid, gid }).then((result) => {
+  ipc.request('fs.lchown', { path, uid, gid }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -427,7 +427,7 @@ export function link (src, dest, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.link', { src, dest }).then((result) => {
+  ipc.request('fs.link', { src, dest }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -686,7 +686,7 @@ export function readlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.readlink', { path }).then((result) => {
+  ipc.request('fs.readlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(result.data.path)
   }).catch(callback)
 }
@@ -705,7 +705,7 @@ export function realpath (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.realpath', { path }).then((result) => {
+  ipc.request('fs.realpath', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(result.data.path)
   }).catch(callback)
 }
@@ -729,7 +729,7 @@ export function rename (src, dest, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.rename', { src, dest }).then((result) => {
+  ipc.request('fs.rename', { src, dest }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
@@ -748,7 +748,7 @@ export function rmdir (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.rmdir', { path }).then((result) => {
+  ipc.request('fs.rmdir', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
@@ -827,7 +827,7 @@ export function symlink (src, dest, type = null, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.symlink', { src, dest, flags }).then((result) => {
+  ipc.request('fs.symlink', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -846,7 +846,7 @@ export function unlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.unlink', { path }).then((result) => {
+  ipc.request('fs.unlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }

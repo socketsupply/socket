@@ -40,7 +40,7 @@ async function start (watcher) {
     throw new TypeError('Expectig fs.Watcher to have a id.')
   }
 
-  const result = await ipc.send('fs.watch', {
+  const result = await ipc.request('fs.watch', {
     path: watcher.path,
     id: watcher.id
   })
@@ -191,7 +191,7 @@ export class Watcher extends EventEmitter {
     }
 
     this.closed = true
-    const result = await ipc.send('fs.stopWatch', { id: this.id })
+    const result = await ipc.request('fs.stopWatch', { id: this.id })
     if (result.err) {
       throw result.err
     }
@@ -211,7 +211,7 @@ export class Watcher extends EventEmitter {
         }
 
         console.warn('Closing fs.Watcher on garbage collection')
-        ipc.send('fs.stopWatch', { id }, options)
+        ipc.request('fs.stopWatch', { id }, options)
       }
     }
   }
