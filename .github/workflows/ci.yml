@@ -218,9 +218,9 @@ jobs:
 
       - name: install Socket Runtime deps
         run: |
-          sudo apt install software-properties-common at-spi2-core
+          sudo apt install software-properties-common
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-          sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
+          sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
 
       - name: Gradle cache
         uses: gradle/gradle-build-action@v2.4.2
@@ -269,6 +269,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: install Socket Runtime deps
+        run: |
+          sudo apt install software-properties-common
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
+
       - name: Use Node.js
         uses: actions/setup-node@v3.6.0
         with:
@@ -306,6 +312,12 @@ jobs:
         uses: actions/setup-node@v3.6.0
         with:
           node-version: 18.x
+
+      - name: install Socket Runtime deps
+        run: |
+          sudo apt install software-properties-common
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
 
       - name: Download build artifacts
         uses: actions/download-artifact@v3
