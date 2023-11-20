@@ -47,21 +47,6 @@ jobs:
         run: |
           brew install automake
 
-      - name: Android FTE
-        run: |
-          ./bin/android-functions.sh --android-fte --yes-deps
-        env:
-          VERBOSE: 1
-          DEBUG: 1
-          NO_IOS: 1
-          CI: true
-          SSC_ANDROID_CI: true
-          # Clear variables because CI supplied installs are out of date
-          ANDROID_HOME:
-          JAVA_HOME:
-          ANDROID_SUPPORTED_ABIS: x86_64
-          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
       - name: Build Socket Runtime
         run: |
           VERBOSE=1 ./bin/install.sh
@@ -162,6 +147,20 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
@@ -221,25 +220,6 @@ jobs:
           sudo apt install software-properties-common
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
-
-      - name: Gradle cache
-        uses: gradle/gradle-build-action@v2.4.2
-        with:
-          gradle-version: 7.6.1
-
-      - name: Android FTE
-        run: |
-          ./bin/android-functions.sh --android-fte --yes-deps
-        env:
-          VERBOSE: 1
-          DEBUG: 1
-          CI: true
-          SSC_ANDROID_CI: true
-          # Clear variables because CI supplied installs are out of date
-          ANDROID_HOME:
-          JAVA_HOME:
-          ANDROID_SUPPORTED_ABIS: x86_64
-          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
       - name: Build Socket Runtime
         run: |
@@ -318,6 +298,25 @@ jobs:
           sudo apt install software-properties-common
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
+
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v2.4.2
+        with:
+          gradle-version: 7.6.1
+
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
       - name: Download build artifacts
         uses: actions/download-artifact@v3
