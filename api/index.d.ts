@@ -3309,6 +3309,14 @@ declare module "socket:crypto" {
      */
     export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
     /**
+     * A murmur3 hash implementation based on https://github.com/jwerle/murmurhash.c
+     * that works on strings and `ArrayBuffer` views (typed arrays)
+     * @param {string|Uint8Array|ArrayBuffer} value
+     * @param {number=} [seed = 0]
+     * @return {number}
+     */
+    export function murmur3(value: string | Uint8Array | ArrayBuffer, seed?: number | undefined): number;
+    /**
      * @typedef {Uint8Array|Int8Array} TypedArray
      */
     /**
