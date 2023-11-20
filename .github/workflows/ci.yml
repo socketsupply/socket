@@ -24,80 +24,316 @@ jobs:
         npm run gen
         ./bin/ci_changes_check.sh
 
-  linux:
-    name: Linux
-    runs-on: ubuntu-latest-m
-    timeout-minutes: 10
-    needs: lint
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
-      with:
-        node-version: 18.x
-
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Install Socket Runtime deps
-      run: |
-        sudo apt install software-properties-common
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install gcc-12 g++-12 clang-14 libwebkit2gtk-4.1-dev at-spi2-core
-
-    - name: Build Socket Runtime
-      run: |
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
-
-    - name: test a socket api example app
-      run: |
-        npm install && npm test
-      env:
-        CI: true
-        VERBOSE: 1
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-  mac:
-    name: macOS
+  mac_build:
+    name: macOS build
     runs-on: macOS-13
-    timeout-minutes: 25
+    timeout-minutes: 15
     needs: lint
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
-      with:
-        node-version: 18.x
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
 
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: webfactory/ssh-agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: install Socket Runtime deps
-      run: |
-        brew install automake
+      - name: install Socket Runtime deps
+        run: |
+          brew install automake
 
-    - name: Build Socket Runtime
-      run: |
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          NO_IOS: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: test a socket api example app
-      run: |
-        npm install && npm test
-      env:
-        CI: true
-        VERBOSE: 1
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+      - name: Build Socket Runtime
+        run: |
+          VERBOSE=1 ./bin/install.sh
+          ./bin/ci_version_check.sh
+        env:
+          VERBOSE: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ssc_artifacts_macos
+          path: /Users/runner/.local/share/socket/
+          retention-days: 1
+
+  mac_tests:
+    name: macOS tests
+    runs-on: macOS-13
+    timeout-minutes: 15
+    needs: mac_build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ssc_artifacts_macos
+          path: /Users/runner/.local/share/socket/
+
+      - name: Link binary
+        run: |
+          sudo ln -sf /Users/runner/.local/share/socket/bin/ssc /usr/local/bin/ssc
+          chmod +x /usr/local/bin/ssc
+
+      - name: test a socket api example app
+        run: |
+          npm install && npm test
+        env:
+          CI: true
+          VERBOSE: 1
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  ios_macos_tests:
+    name: iOS (on macOS) tests
+    runs-on: macOS-13
+    timeout-minutes: 20
+    needs: mac_build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ssc_artifacts_macos
+          path: /Users/runner/.local/share/socket/
+
+      - name: Link binary
+        run: |
+          sudo ln -sf /Users/runner/.local/share/socket/bin/ssc /usr/local/bin/ssc
+          chmod +x /usr/local/bin/ssc
+
+      - name: test a socket api example app
+        run: |
+          npm install && npm run test:ios-simulator
+        env:
+          CI: true
+          VERBOSE: 1
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  android_mac_tests:
+    name: Android (on macOS) tests
+    runs-on: macos-13
+    timeout-minutes: 60
+    needs: mac_build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: webfactory/ssh-agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ssc_artifacts_macos
+          path: /Users/runner/.local/share/socket/
+
+      - name: Link binary
+        run: |
+          sudo ln -sf /Users/runner/.local/share/socket/bin/ssc /usr/local/bin/ssc
+          chmod +x /usr/local/bin/ssc
+
+      - name: Run emulator tests
+        run: |
+            npm install
+            npm run test:android-emulator
+        env:
+          VERBOSE: 1
+          NO_IOS: 1
+          CI: 1
+          SSC_ANDROID_CI: true
+          ANDROID_SUPPORTED_ABIS: x86_64
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  linux_build:
+    name: Linux build
+    runs-on: ubuntu-latest-m
+    timeout-minutes: 20
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 18
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: 18
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: webfactory/ssh-agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: install Socket Runtime deps
+        run: |
+          sudo apt install software-properties-common at-spi2-core
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
+
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v2.4.2
+        with:
+          gradle-version: 7.6.1
+
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+      - name: Build Socket Runtime
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
+          VERBOSE=1 ./bin/install.sh
+          ./bin/ci_version_check.sh
+        env:
+          CI: true
+          VERBOSE: 1
+          SSC_ANDROID_CI: true
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ssc_artifacts_linux
+          path: /home/runner/.local/share/socket/
+          retention-days: 1
+
+  linux_tests:
+    name: Linux tests
+    runs-on: ubuntu-latest-m
+    timeout-minutes: 20
+    needs: linux_build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ssc_artifacts_linux
+          path: /home/runner/.local/share/socket/
+
+      - name: Link binary
+        run: |
+          sudo ln -sf /home/runner/.local/share/socket/bin/ssc /usr/local/bin/ssc
+          chmod +x /usr/local/bin/ssc
+
+      - name: test a socket api example app
+        run: |
+          npm install && npm test
+        env:
+          CI: true
+          VERBOSE: 1
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  android_linux_tests:
+    name: Android (on Linux) tests
+    runs-on: ubuntu-latest-m
+    timeout-minutes: 60
+    needs: linux_build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ssc_artifacts_linux
+          path: /home/runner/.local/share/socket/
+
+      - name: Link binary
+        run: |
+          sudo ln -sf /home/runner/.local/share/socket/bin/ssc /usr/local/bin/ssc
+          chmod +x /usr/local/bin/ssc
+
+      - name: Run emulator tests
+        run: |
+            npm install
+            npm run test:android-emulator
+        env:
+          VERBOSE: 1
+          NO_IOS: 1
+          CI: 1
+          SSC_ANDROID_CI: true
+          ANDROID_SUPPORTED_ABIS: x86_64
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  # TODO: add Android build and split build and tests into separate jobs
   windows:
     name: Windows
     runs-on: windows-latest
@@ -149,183 +385,12 @@ jobs:
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
         GITHUB_ACTIONS_CI: 1
 
-  ios:
-    name: iOS (macOS)
-    runs-on: macOS-13
-    timeout-minutes: 25
-    needs: lint
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
       with:
-        node-version: 18.x
-
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: install Socket Runtime deps
-      run: |
-        brew install automake
-
-    - name: Build Socket Runtime
-      run: |
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
-
-    - name: test a socket api example app
-      run: |
-        npm install && npm run test:ios-simulator
-      env:
-        CI: true
-        VERBOSE: 1
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-  android_macos:
-    name: Android (macOS)
-    runs-on: macos-13
-    timeout-minutes: 60
-    needs: lint
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: install Socket Runtime deps
-      run: |
-        brew install automake
-
-    - name: Android FTE
-      run: |
-        ./bin/android-functions.sh --android-fte --yes-deps
-      env:
-        VERBOSE: 1
-        DEBUG: 1
-        NO_IOS: 1
-        CI: true
-        SSC_ANDROID_CI: true
-        # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME:
-        JAVA_HOME:
-        ANDROID_SUPPORTED_ABIS: x86_64
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: Build Socket Runtime
-      run: |
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
-      env:
-        VERBOSE: 1
-        NO_IOS: true
-        CI: true
-        SSC_ANDROID_CI: true
-        # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME:
-        ANDROID_SUPPORTED_ABIS: x86_64
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: Run emulator tests
-      run: |
-          npm install
-          npm run test:android-emulator
-      env:
-        VERBOSE: 1
-        NO_IOS: 1
-        CI: 1
-        SSC_ANDROID_CI: true
-        ANDROID_SUPPORTED_ABIS: x86_64
-        # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME:
-        JAVA_HOME:
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-  android_linux:
-    name: Android (Linux)
-    runs-on: ubuntu-latest-m
-    timeout-minutes: 60
-    needs: lint
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up JDK 18
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: 18
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-
-    - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.x
-
-    - name: install Socket Runtime deps
-      run: |
-        sudo apt install software-properties-common at-spi2-core
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
-
-    - name: Gradle cache
-      uses: gradle/gradle-build-action@v2.4.2
-      with:
-        gradle-version: 7.6.1
-
-    - name: Android FTE
-      run: |
-        ./bin/android-functions.sh --android-fte --yes-deps
-      env:
-        VERBOSE: 1
-        DEBUG: 1
-        CI: true
-        SSC_ANDROID_CI: true
-        # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME:
-        JAVA_HOME:
-        ANDROID_SUPPORTED_ABIS: x86_64
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: Build Socket Runtime
-      run: |
-        yes | sdkmanager --licenses > /dev/null
-        sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
-      env:
-        CI: true
-        VERBOSE: 1
-        SSC_ANDROID_CI: true
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: Run emulator tests
-      run: |
-          npm install
-          npm run test:android-emulator
-      env:
-        VERBOSE: 1
-        NO_IOS: 1
-        CI: 1
-        SSC_ANDROID_CI: true
-        ANDROID_SUPPORTED_ABIS: x86_64
-        # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME:
-        JAVA_HOME:
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+        name: ssc_artifacts_linux
+        path: /Users/runner/.local/share/socket/
+        retention-days: 1
 
   socket_node:
     name: socket-node tests
