@@ -175,7 +175,7 @@ function getErrorClass (type, fallback) {
   if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
-      const object = Object.create(globalThis[${type}].prototype, {
+      const object = Object.create(globalThis['${type}']?.prototype ?? {}, {
         code: { value: null }
       })
 
@@ -414,8 +414,6 @@ export function debug (enable) {
   return debug.enabled
 }
 
-debug.log = () => undefined
-
 Object.defineProperty(debug, 'enabled', {
   enumerable: false,
   set (value) {
@@ -430,6 +428,13 @@ Object.defineProperty(debug, 'enabled', {
     return debug[kDebugEnabled]
   }
 })
+
+if (debug.enabled && globalThis.__args?.env?.SOCKET_DEBUG_IPC) {
+  // eslint-disable-next-line
+  debug.log = (...args) => void globalThis.console?.log?.(...args)
+} else {
+  debug.log = () => undefined
+}
 
 /**
  * @ignore
@@ -482,7 +487,7 @@ export async function postMessage (message, ...args) {
   } else if (globalThis.postMessage) {
     // worker
     if (globalThis.self && !globalThis.window) {
-      return globalThis?.postMessage({
+      return await globalThis?.postMessage({
         __runtime_worker_ipc_request: {
           message,
           bytes: args[0] ?? null
@@ -964,7 +969,7 @@ export class Result {
    */
   toJSON () {
     return {
-      headers: this.headers ?? null,
+      headers: this.headers ? this.headers.toJSON() : null,
       source: this.source ?? null,
       data: this.data ?? null,
       err: this.err && {
@@ -1027,6 +1032,10 @@ class IPCSearchParams extends URLSearchParams {
 
     if (nonce) {
       this.set('nonce', nonce)
+    }
+
+    if (globalThis.RUNTIME_WORKER_ID) {
+      this.set('runtime-worker-id', globalThis.RUNTIME_WORKER_ID)
     }
   }
 
