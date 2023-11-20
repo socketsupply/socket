@@ -5935,13 +5935,13 @@ int main (const int argc, const char* argv[]) {
       String password = Env::get("APPLE_ID_PASSWORD");
 
       if (username.size() == 0) {
-        username = settings["apple_identifier"];
+        username = settings["apple_team_identifier"];
       }
 
       if (username.size() == 0) {
         log(
           "ERROR: AppleID identifier could not be determined. "
-          "Please set '[apple] identifier = ...' or 'APPLE_ID' environment variable."
+          "Please set '[apple] team_identifier = ...' or 'APPLE_ID' environment variable."
         );
         exit(1);
       }
