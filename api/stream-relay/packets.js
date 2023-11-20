@@ -293,6 +293,7 @@ export class Packet {
     // extras that might not come over the wire
     this.timestamp = options.timestamp || Date.now()
     this.isComposed = options.isComposed || false
+    this.isReconciled = options.isReconciled || false
     this.meta = options.meta || {}
   }
 
@@ -461,7 +462,7 @@ export class PacketJoin extends Packet {
 
 export class PacketPublish extends Packet {
   static type = 5 // no need to validatePacket, message is whatever you want
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }) {
+  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId }) {
     super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId })
   }
 }

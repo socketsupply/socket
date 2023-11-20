@@ -212,9 +212,11 @@ export class RemotePeer {
       const to = this.peerId.slice(0, 6)
       debug(this.localPeer.peerId, `>> WRITE STREAM (from=${from}, to=${to}, via=${rinfo.address}:${rinfo.port})`)
 
-      this.localPeer.gate.set(packet.packetId, 1)
+      this.localPeer.gate.set(packet.packetId.toString('hex'), 2)
       await this.localPeer.send(await Packet.encode(packet), rinfo.port, rinfo.address, this.socket)
     }
+
+    return packets
   }
 }
 
@@ -1225,7 +1227,7 @@ export const wrap = dgram => {
         let p = packet.copy()
         if (p.index > -1) p = await this.cache.compose(p)
 
-        if (p && p.index === -1) {
+        if (p.index === -1) {
           this.returnRoutes.delete(p.previousId.toString('hex'))
           p.type = PacketPublish.type
           delete p.usr3
