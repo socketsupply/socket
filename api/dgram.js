@@ -726,7 +726,9 @@ export class Socket extends EventEmitter {
       !this.knownIdWasGivenInSocketConstruction
     ) {
       const index = globalThis.__args?.index || 0
-      this.id = murmur3(options.address + options.port, index)
+      const a = murmur3(options.address + options.port)
+      const b = murmur3(options.address + options.port, index)
+      this.id = BigInt(a) * BigInt(b)
       this.knownIdWasGivenInSocketConstruction = true
     }
 
@@ -737,10 +739,13 @@ export class Socket extends EventEmitter {
           err.code === 'ERR_SOCKET_ALREADY_BOUND'
         ) {
           this.dataListener = createDataListener(this)
-          return cb(null)
+          cb(null)
+          this.emit('listening')
+        } else {
+          cb(err)
         }
 
-        return cb(err)
+        return
       }
 
       startReading(this, (err) => {
