@@ -6268,6 +6268,7 @@ declare module "socket:stream-relay/packets" {
         copy(): Packet;
         timestamp: any;
         isComposed: any;
+        isReconciled: any;
         meta: any;
     }
     export class PacketPing extends Packet {
@@ -6308,7 +6309,7 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -6317,7 +6318,6 @@ declare module "socket:stream-relay/packets" {
             nextId: any;
             clock: any;
             hops: any;
-            to: any;
             usr1: any;
             usr2: any;
             ttl: any;
@@ -6793,7 +6793,7 @@ declare module "socket:stream-relay/index" {
         lastUpdate: number;
         lastRequest: number;
         localPeer: any;
-        write(sharedKey: any, args: any): Promise<void>;
+        write(sharedKey: any, args: any): Promise<any>;
     }
     export function wrap(dgram: any): {
         new (persistedState?: object | null): {

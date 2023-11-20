@@ -99,11 +99,11 @@ export default (dgram, events) => {
       _peer.probeReflectionTimeout = null
     }
 
-    bus.sealMessage = (m, v) => _peer.encryption.sealMessage(m, v)
-    bus.openMessage = (m, v) => _peer.encryption.openMessage(m, v)
+    bus.sealMessage = (m, v = options.signingKeys) => _peer.encryption.sealMessage(m, v)
+    bus.openMessage = (m, v = options.signingKeys) => _peer.encryption.openMessage(m, v)
 
-    bus.seal = (m, v) => _peer.encryption.seal(m, v)
-    bus.open = (m, v) => _peer.encryption.open(m, v)
+    bus.seal = (m, v = options.signingKeys) => _peer.encryption.seal(m, v)
+    bus.open = (m, v = options.signingKeys) => _peer.encryption.open(m, v)
 
     bus.query = (...args) => _peer.query(...args)
     bus.state = () => _peer.getState()
@@ -204,7 +204,7 @@ export default (dgram, events) => {
         const args = await pack(eventName, value, opts)
 
         for (const p of sub.peers.values()) {
-          p._peer.write(sub.sharedKey, args)
+          await p._peer.write(sub.sharedKey, args)
         }
 
         return await _peer.publish(sub.sharedKey, args)
@@ -280,7 +280,7 @@ export default (dgram, events) => {
 
       sub._emit(eventName, opened, packet)
 
-      const ee = sub.peers.get(packet.streamFrom || peer.peerId)
+      const ee = sub.peers.get(packet.streamFrom || peer?.peerId)
       if (ee) ee._emit(eventName, opened, packet)
     }
 
