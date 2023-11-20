@@ -243,6 +243,7 @@ namespace SSC {
       "const globals = await import('socket:internal/globals');              \n"
       "const id = `" + sid + "`;                                             \n"
       "const seq = `" + seq + "`;                                            \n"
+      "const workerId = `" + post.workerId + "`.trim() || null;              \n"
       "const headers = `" + trim(post.headers) + "`                          \n"
       "  .trim()                                                             \n"
       "  .split(/[\\r\\n]+/)                                                 \n"
@@ -261,7 +262,7 @@ namespace SSC {
       "  id,                                                                 \n"
       "  seq,                                                                \n"
       "  params,                                                             \n"
-      "  headers                                                             \n"
+      "  { workerId }                                                         \n"
       ");                                                                    \n"
     );
 
@@ -988,11 +989,14 @@ namespace SSC {
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
       auto core = reinterpret_cast<SSC::Core  *>(handle->data);
       while (true) {
-        Lock lock(core->loopMutex);
-        if (core->eventLoopDispatchQueue.size() == 0) break;
-        auto dispatch = core->eventLoopDispatchQueue.front();
+        std::function<void()> dispatch;
+        {
+          Lock lock(core->loopMutex);
+          if (core->eventLoopDispatchQueue.size() == 0) break;
+          dispatch = core->eventLoopDispatchQueue.front();
+          core->eventLoopDispatchQueue.pop();
+        }
         if (dispatch != nullptr) dispatch();
-        core->eventLoopDispatchQueue.pop();
       }
     });
 
@@ -1120,9 +1124,11 @@ namespace SSC {
       Vector<uint64_t> ids;
       String msg = "";
 
-      Lock lock(core->fs.mutex);
-      for (auto const &tuple : core->fs.descriptors) {
-        ids.push_back(tuple.first);
+      {
+        Lock lock(core->fs.mutex);
+        for (auto const &tuple : core->fs.descriptors) {
+          ids.push_back(tuple.first);
+        }
       }
 
       for (auto const id : ids) {
