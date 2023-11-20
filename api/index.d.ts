@@ -2578,6 +2578,8 @@ declare module "socket:hooks" {
      * @return {function}
      */
     export function onNotificationPresented(callback: Function): Function;
+    export const RUNTIME_INIT_EVENT_NAME: "__runtime_init__";
+    export const GLOBAL_EVENTS: string[];
     /**
      * An event dispatched when the runtime has been initialized.
      */
@@ -2597,10 +2599,40 @@ declare module "socket:hooks" {
         constructor();
     }
     /**
+     * An event dispatched when the runtime has been initialized.
+     */
+    export class RuntimeInitEvent {
+        constructor();
+    }
+    /**
      * An interface for registering callbacks for various hooks in
      * the runtime.
      */
     export class Hooks extends EventTarget {
+        /**
+         * @ignore
+         */
+        static GLOBAL_EVENTS: string[];
+        /**
+         * @ignore
+         */
+        static InitEvent: typeof InitEvent;
+        /**
+         * @ignore
+         */
+        static LoadEvent: typeof LoadEvent;
+        /**
+         * @ignore
+         */
+        static ReadyEvent: typeof ReadyEvent;
+        /**
+         * @ignore
+         */
+        static RuntimeInitEvent: typeof RuntimeInitEvent;
+        /**
+         * An array of all global events listened to in various hooks
+         */
+        get globalEvents(): string[];
         /**
          * Reference to global object
          * @type {object}
@@ -3327,8 +3359,8 @@ declare module "socket:ipc" {
      */
     export function debug(enable?: (boolean)): boolean;
     export namespace debug {
-        function log(): any;
         let enabled: any;
+        function log(...args: any[]): any;
     }
     /**
      * @ignore
@@ -3658,7 +3690,9 @@ declare module "socket:ipc" {
          * @ignore
          */
         toJSON(): {
-            headers: Headers;
+            headers: {
+                [k: string]: string;
+            };
             source: string;
             data: any;
             err: {
@@ -4311,6 +4345,7 @@ declare module "socket:dgram" {
     export class Socket extends EventEmitter {
         constructor(options: any, callback: any);
         id: any;
+        knownIdWasGivenInSocketConstruction: boolean;
         type: any;
         signal: any;
         state: {
@@ -7817,8 +7852,44 @@ declare module "socket:internal/init" {
 }
 declare module "socket:internal/worker" {
     export function onWorkerMessage(event: any): any;
-    const undefined: any;
-    export default undefined;
+    export function addEventListener(eventName: any, callback: any, ...args: any[]): any;
+    export function removeEventListener(eventName: any, callback: any, ...args: any[]): any;
+    export function dispatchEvent(event: any): any;
+    export function postMessage(message: any, ...args: any[]): any;
+    /**
+     * The absolute `URL` of the internal worker initialization entry.
+     * @ignore
+     * @type {URL}
+     */
+    export const url: URL;
+    /**
+     * The worker entry source.
+     * @ignore
+     * @type {string}
+     */
+    export const source: string;
+    /**
+     * A unique identifier for this worker made available on the global scope
+     * @ignore
+     * @type {string}
+     */
+    export const RUNTIME_WORKER_ID: string;
+    /**
+     * Internally scoped event interface for a worker context.
+     * @ignore
+     * @type {object}
+     */
+    export const worker: object;
+    namespace _default {
+        export { RUNTIME_WORKER_ID };
+        export { removeEventListener };
+        export { addEventListener };
+        export { dispatchEvent };
+        export { postMessage };
+        export { source };
+        export { url };
+    }
+    export default _default;
 }
 declare module "socket:test/harness" {
     /**
