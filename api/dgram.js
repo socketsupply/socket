@@ -11,11 +11,11 @@
  */
 
 import { isArrayBufferView, isFunction, noop } from './util.js'
+import { murmur3, rand64 } from './crypto.js'
 import { InternalError } from './errors.js'
 import { EventEmitter } from './events.js'
 import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
-import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
 import process from './process.js'
 import console from './console.js'
@@ -251,8 +251,8 @@ async function bind (socket, options, callback) {
       id: socket.id,
       port: options.port || 0,
       address: options.address,
-      ipv6Only: !!options.ipv6Only,
-      reuseAddr: !!options.reuseAddr
+      ipv6Only: Boolean(socket.state.ipv6Only),
+      reuseAddr: Boolean(socket.state.reuseAddr)
     })
 
     socket.state.bindState = BIND_STATE_BOUND
@@ -718,6 +718,16 @@ export class Socket extends EventEmitter {
 
     if (typeof arg2 === 'string') {
       options.address = arg2
+    }
+
+    if (
+      options.port !== 0 &&
+      this.state.reuseAddr &&
+      !this.knownIdWasGivenInSocketConstruction
+    ) {
+      const index = globalThis.__args?.index || 0
+      this.id = murmur3(options.address + options.port, index)
+      this.knownIdWasGivenInSocketConstruction = true
     }
 
     bind(this, options, (err, info) => {
