@@ -3,7 +3,6 @@
 namespace SSC {
   void Core::resumeAllPeers () {
     dispatchEventLoop([=, this]() {
-      Lock lock(this->peersMutex);
       for (auto const &tuple : this->peers) {
         auto peer = tuple.second;
         if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
@@ -15,7 +14,6 @@ namespace SSC {
 
   void Core::pauseAllPeers () {
     dispatchEventLoop([=, this]() {
-      Lock lock(this->peersMutex);
       for (auto const &tuple : this->peers) {
         auto peer = tuple.second;
         if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
@@ -581,17 +579,22 @@ namespace SSC {
   void Peer::close (std::function<void()> onclose) {
     if (this->isClosed()) {
       this->core->removePeer(this->id);
-      onclose();
+      if (onclose != nullptr) {
+        onclose();
+      }
+      return;
+    }
+
+    if (this->isClosing()) {
+      if (onclose != nullptr) {
+        onclose();
+      }
       return;
     }
 
     if (onclose != nullptr) {
       Lock lock(this->mutex);
       this->onclose.push_back(onclose);
-    }
-
-    if (this->isClosing()) {
-      return;
     }
 
     if (this->type == PEER_TYPE_UDP) {
