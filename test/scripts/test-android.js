@@ -17,7 +17,7 @@ if (SSC_ANDROID_CI) {
     stdio: 'inherit'
   })
 } else {
-  exec('ssc build -r -o --test=./index.js --prod --headless --platform=android', {
+  exec('ssc build -r -o --test=./index.js --prod --headless --platform=android --env SOCKET_DEBUG_IPC', {
     stdio: 'inherit'
   })
 }

@@ -353,7 +353,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
     if (options?.workerId) {
       const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
       if (worker) {
-        this.postMessage({
+        worker.postMessage({
           __runtime_worker_event: {
             type: 'runtime-xhr-post-queue',
             detail: {
@@ -361,8 +361,8 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
             }
           }
         })
+        return
       }
-      return
     }
 
     const promise = new InvertedPromise()
