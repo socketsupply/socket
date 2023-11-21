@@ -38,7 +38,7 @@ test('dns.lookup', async t => {
       })
     }),
     new Promise(resolve => {
-      dns.lookup('sockets.sh', 4, (err, address, family) => {
+      dns.lookup('socketsupply.co', 4, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 4, 'is IPv4 family')
         t.ok(IPV4_REGEX.test(address), 'has valid IPv4 address')
