@@ -932,10 +932,6 @@ namespace SSC {
                               uri = uri.substr(7);
                             }
 
-                            if (uri.ends_with("/")) {
-                              uri = uri.substr(0, uri.size() - 1);
-                            }
-
                             auto path = String(
                               uri.starts_with(bundleIdentifier)
                                 ? uri.substr(bundleIdentifier.size())
@@ -949,11 +945,19 @@ namespace SSC {
                             }
 
                             if (!uri.starts_with(bundleIdentifier)) {
+                              if (path.ends_with("/")) {
+                                path = path.substr(0, path.size() - 1);
+                              }
+
                               if (ext.size() == 0 && !path.ends_with(".js")) {
                                 path += ".js";
                               }
 
-                              uri = "socket://" + bundleIdentifier + "/" + path;
+			      if (path == "/") {
+                                uri = "socket://" + bundleIdentifier + "/";
+			      } else {
+                                uri = "socket://" + bundleIdentifier + "/" + path;
+			      }
 
                               String headers;
 
@@ -1006,6 +1010,10 @@ namespace SSC {
                                 });
                               }
                             } else {
+                              if (path.ends_with("//")) {
+                                path = path.substr(0, path.size() - 2);
+                              }
+
                               auto rootPath = this->modulePath.parent_path();
                               auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
                               auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
@@ -1032,7 +1040,6 @@ namespace SSC {
                               } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
-                                uri += "/";
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
