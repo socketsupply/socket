@@ -72,7 +72,10 @@ if ((globalThis.window || globalThis.self) === globalThis) {
       }
     }
   }
+}
 
+// webview only features
+if ((globalThis.window) === globalThis) {
   globalThis.addEventListener('dragdropfiles', async (event) => {
     const { files } = event.detail
     const handles = []
