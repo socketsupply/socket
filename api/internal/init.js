@@ -19,6 +19,11 @@ import { CustomEvent, ErrorEvent } from '../events.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import { URL } from '../url.js'
+import fs from '../fs/promises.js'
+import {
+  createFileSystemDirectoryHandle,
+  createFileSystemFileHandle
+} from '../fs/web.js'
 
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
 
@@ -67,6 +72,21 @@ if ((globalThis.window || globalThis.self) === globalThis) {
       }
     }
   }
+
+  globalThis.addEventListener('dragdropfiles', async (event) => {
+    const { files } = event.detail
+    const handles = []
+    for (const file of files) {
+      const stats = await fs.stat(file)
+      if (stats.isDirectory()) {
+        handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
+      } else {
+        handles.push(await createFileSystemFileHandle(file, { writable: false }))
+      }
+    }
+
+    globalThis.dispatchEvent(new CustomEvent('dropfiles', { detail: { handles } }))
+  })
 }
 
 class RuntimeWorker extends GlobalWorker {
