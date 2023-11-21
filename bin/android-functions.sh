@@ -676,11 +676,7 @@ function android_install_gradle() {
 }
 
 function android_first_time_experience_setup() {
-  if
-    [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] &&
-    [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]] &&
-    [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]];
-  then
+  if ! _android_setup_required; then
     return 0
   fi
   # builds global search path list
