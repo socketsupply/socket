@@ -1,3 +1,4 @@
+/* global ReadableStream, WritableStream, Blob */
 import { DEFAULT_STREAM_HIGH_WATER_MARK } from './stream.js'
 import { isBufferLike, toBuffer } from '../util.js'
 import { NotAllowedError } from '../errors.js'
