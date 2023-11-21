@@ -25,13 +25,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     return this.activity.get()?.getRootDirectory() ?: ""
   }
 
-  fun injectPreload (view: android.webkit.WebView) {
-    view.pauseTimers()
-    val source = this.getJavaScriptPreloadSource()
-    this.activity.get()?.evaluateJavaScript(source)
-    view.resumeTimers()
-  }
-
   fun load () {
     val runtime = this.runtime.get() ?: return
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
@@ -39,6 +32,8 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val activity = this.activity.get() ?: return
 
     val rootDirectory = this.getRootDirectory()
+    val preload = this.getJavaScriptPreloadSource()
+
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (_: Result) {
       activity.applicationContext
         .getSharedPreferences("WebSettings", android.app.Activity.MODE_PRIVATE)
@@ -78,16 +73,41 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
           addJavascriptInterface(userMessageHandler, "external")
 
+          val assetManager = activity.applicationContext.resources.assets
+          var baseUrl = "https://__BUNDLE_IDENTIFIER__$filename"
+          val stream = assetManager.open(filename.substring(1), 2)
+          var html = String(stream.readAllBytes())
+          val script = """<script type="text/javascript">$preload</script>"""
+
+          if (html.contains("<head>")) {
+            html = html.replace("<head>", """
+              <head>
+              $script
+            """)
+          } else if (html.contains("<body>")) {
+            html = html.replace("<body>", """
+              $script
+              <body>
+            """)
+          } else if (html.contains("<html>")){
+            html = html.replace("<html>", """
+              <html>
+              $script
+            """)
+          } else {
+            html = script + html
+          }
+
           if (isDebugEnabled) {
             val ts = java.time.Instant.now().toEpochMilli()
             if (filename.contains("?")) {
-              loadUrl("https://__BUNDLE_IDENTIFIER__$filename&${ts}")
+              baseUrl += "&$ts"
             } else {
-              loadUrl("https://__BUNDLE_IDENTIFIER__$filename?${ts}")
+              baseUrl += "?$ts"
             }
-          } else {
-            loadUrl("https://__BUNDLE_IDENTIFIER__$filename")
           }
+
+          loadDataWithBaseURL(baseUrl, html, "text/html", null, null)
         }
       }
     })
@@ -132,19 +152,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    if (!this.isLoading) {
-      this.isLoading = true
-      this.injectPreload(view)
-    }
+    this.isLoading = true
   }
 
   open fun onPageFinished (
     view: android.webkit.WebView,
     url: String
   ) {
-    if (!this.isLoading) {
-      this.injectPreload(view)
-    }
     this.isLoading = false
   }
 
@@ -152,10 +166,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     view: android.webkit.WebView,
     progress: Int
   ) {
-   if (!this.isLoading && progress > 80) {
-      this.isLoading = true
-      this.injectPreload(view)
-    }
   }
 
   @Throws(java.lang.Exception::class)
