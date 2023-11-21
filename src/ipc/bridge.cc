@@ -3695,24 +3695,24 @@ namespace SSC::IPC {
     }
 
     // Resolve the full path
-    fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
+    fs::path fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
 
     // 1. Try the given path if it's a file
     if (fs::is_regular_file(fullPath)) {
-      return Router::WebViewURLPathResolution{"/" + fs::relative(fullPath, basePath).string()};
+      return Router::WebViewURLPathResolution{"/" + replace(fs::relative(fullPath, basePath).string(), "\\\\", "/")};
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
     fs::path indexPath = fullPath / fs::path("index.html");
     if (fs::is_regular_file(indexPath)) {
-      if (fullPath.string().ends_with("/")) {
+      if (fullPath.string().ends_with("\\") || fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
-          .path = "/" + fs::relative(indexPath, basePath).string(),
+          .path = "/" + replace(fs::relative(indexPath, basePath).string(), "\\\\", "/"),
           .redirect = false
         };
       } else {
         return Router::WebViewURLPathResolution{
-          .path = "/" + fs::relative(fullPath, basePath).string() + "/",
+          .path = "/" + replace(fs::relative(fullPath, basePath).string(), "\\\\", "/") + "/",
           .redirect = true
         };
       }
@@ -3722,7 +3722,7 @@ namespace SSC::IPC {
     fs::path htmlPath = fullPath;
     htmlPath.replace_extension(".html");
     if (fs::is_regular_file(htmlPath)) {
-      return Router::WebViewURLPathResolution{"/" + fs::relative(htmlPath, basePath).string()};
+      return Router::WebViewURLPathResolution{"/" + replace(fs::relative(htmlPath, basePath).string(), "\\\\", "/")};
     }
 
     // If no valid path is found, return empty string
@@ -3796,7 +3796,12 @@ namespace SSC::IPC {
         key = replace(key, "mac_", "");
         key = replace(key, "win_", "");
 
-        const auto path = replace(replace(key, "$HOST_HOME", ""), "~", HOME);
+	String path = key;
+
+	for (const auto& map : mappings) {
+          path = replace(path, map.first, map.second);
+	}
+
         const auto& value = tuple.second;
         mounts.insert_or_assign(path, value);
       }
