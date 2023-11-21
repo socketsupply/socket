@@ -116,11 +116,10 @@ open class WebViewFilePicker (
   ) {
     this.cancel()
 
-    val params = options.params
     var mimeType: String = "*/*"
 
     if (options.mimeTypes.size > 0) {
-      mimeType = options.mimeTypes[0] ?: mimeType
+      mimeType = options.mimeTypes[0]
     }
 
     if (mimeType.length == 0) {
@@ -275,8 +274,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   fun resolveURLPathForWebView (input: String? = null): WebViewURLPathResolution? {
     var path = input ?: return null
     val activity = this.activity.get() ?: return null
-    val assetManager = activity.getAssetManager() ?: return null
-    val root = activity.getRootDirectory()
+    val assetManager = activity.getAssetManager()
 
     if (path == "/") {
       try {
@@ -319,7 +317,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         val htmlPath = path + "/index.html"
         val stream = assetManager.open(htmlPath)
         stream.close()
-        return WebViewURLPathResolution("/" + htmlPath, true)
+        return WebViewURLPathResolution("/" + path + "/", true)
       } catch (_: Exception) {}
     }
 
@@ -347,7 +345,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       (url.scheme == "https" && url.host == "__BUNDLE_IDENTIFIER__")
     ) {
       var path = url.path
-      val regex = Regex("(\\.[a-z|A-Z|0-9|_|-]+)$")
       var redirect = false
       val resolved = resolveURLPathForWebView(path)
 
@@ -362,7 +359,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       if (redirect && resolved != null) {
         val redirectURL = "${url.scheme}://${url.host}${resolved.path}"
         val redirectSource = """
-          <meta http-equiv="refresh" content="0; url='${redirectURL}'" />"
+          <meta http-equiv="refresh" content="0; url='${resolved.path}'" />
         """
 
         val stream = java.io.PipedOutputStream()
