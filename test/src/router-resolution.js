@@ -75,7 +75,7 @@ test('router-resolution', async (t) => {
         const extractedRedirectURL = extractUrl(response, responseBody)
         t.equal(extractedRedirectURL, testCase.redirectUrl, `Redirect response url matches ${testCase.redirectUrl} (windows)`)
       } else {
-        t.ok(responseBody === testCase.redirectBodyTest, `Redirect response matches ${testCase.redirectBodyTest}`)
+        t.equal(responseBody, testCase.redirectBodyTest, `Redirect response matches ${testCase.redirectBodyTest}`)
         const extractedRedirectURL = extractUrl(response, responseBody)
         const redirectResponse = await fetch(extractedRedirectURL)
         const redirectResponseBody = (await redirectResponse.text()).trim()
@@ -89,13 +89,14 @@ test('router-resolution', async (t) => {
 
 function extractUrl (response, content) {
   const location = response.headers.get('content-location') || response.headers.get('location')
-  if (location) return location
   const regex = /url\s*=\s*(["'])([^"']+)\1/i
   const match = content.match(regex)
   if (match) {
-    return match[2]
+    return new URL(match[2], dirname).pathname
   } else if (response.url) {
-    return new URL(response.url).pathname
+    return new URL(response.url, dirname).pathname
+  } else if (location) {
+    return new URL(location, dirname).pathname
   } else if (content) {
     try {
       return new URL(`.${content}`, dirname).pathname
