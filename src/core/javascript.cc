@@ -61,6 +61,14 @@ namespace SSC {
       "                                                                      \n"
       "const event = new CustomEvent(name, { detail, ...options });          \n"
       "target.dispatchEvent(event);                                          \n"
+      "                                                                      \n"
+      "if (name === 'dropin' || name === 'drop') {                           \n"
+      "  globalThis.dispatchEvent(new CustomEvent('dragdropfiles', {         \n"
+      "    detail: {                                                         \n"
+      "      files: Array.from(detail?.src || detail?.files).filter(Boolean) \n"
+      "    }                                                                 \n"
+      "  }));                                                                \n"
+      "}                                                                     \n"
     );
   }
 
