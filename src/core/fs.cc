@@ -1,6 +1,6 @@
 #include "core.hh"
-
 namespace SSC {
+
   #define SET_CONSTANT(c) constants[#c] = (c);
   static std::map<String, int32_t> getFSConstantsMap () {
     std::map<String, int32_t> constants;
@@ -2031,7 +2031,8 @@ namespace SSC {
           } else {
             err = uv_fs_mkdir(loop, &req, currentPath.c_str(), mode, nullptr);
           }
-          if (err == 0 || err == -EEXIST) {
+
+          if (err == 0 || err == -EEXIST || err == -4075) { // '4075' is EEXIST on Windows
             err = 0;
             continue;
           } else {
