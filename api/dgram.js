@@ -145,7 +145,7 @@ async function startReading (socket, callback) {
   }
 
   try {
-    result = await ipc.request('udp.readStart', {
+    result = await ipc.send('udp.readStart', {
       id: socket.id
     })
 
