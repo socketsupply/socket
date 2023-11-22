@@ -1771,6 +1771,8 @@ version = 1.0.0
 
 
 [android]
+; The icon to use for identifying your app on Android.
+icon = "src/icon.png"
 
 ; Extensions of files that will not be stored compressed in the APK.
 aapt_no_compress = ""
