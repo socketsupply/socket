@@ -79,12 +79,16 @@ if ((globalThis.window) === globalThis) {
   globalThis.addEventListener('dragdropfiles', async (event) => {
     const { files } = event.detail
     const handles = []
-    for (const file of files) {
-      const stats = await fs.stat(file)
-      if (stats.isDirectory()) {
-        handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
-      } else {
-        handles.push(await createFileSystemFileHandle(file, { writable: false }))
+    if (Array.isArray(files)) {
+      for (const file of files) {
+        if (typeof file === 'string') {
+          const stats = await fs.stat(file)
+          if (stats.isDirectory()) {
+            handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
+          } else {
+            handles.push(await createFileSystemFileHandle(file, { writable: false }))
+          }
+        }
       }
     }
 
