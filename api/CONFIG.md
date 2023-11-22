@@ -131,6 +131,7 @@ version |  |  A string that indicates the version of the application. It should 
 
 Key | Default Value | Description
 :--- | :--- | :---
+icon |  |  The icon to use for identifying your app on Android.
 aapt_no_compress |  |  Extensions of files that will not be stored compressed in the APK.
 enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
 main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
