@@ -1285,7 +1285,7 @@ android {
   compileSdkVersion 34
   ndkVersion "26.0.10792818"
   flavorDimensions "default"
-  namespace '{{meta_bundle_identifier}}'
+  namespace '{{android_bundle_identifier}}'
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -1297,7 +1297,7 @@ android {
   }
 
   defaultConfig {
-    applicationId "{{meta_bundle_identifier}}"
+    applicationId "{{android_bundle_identifier}}"
     minSdkVersion 26
     targetSdkVersion 34
     versionCode {{meta_revision}}
