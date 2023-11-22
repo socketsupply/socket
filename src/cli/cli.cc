@@ -1479,7 +1479,7 @@ bool startAndroidApp (AndroidCliState& state) {
     mainActivity = String(DEFAULT_ANDROID_ACTIVITY_NAME);
   }
 
-  state.adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << mainActivity << " 2>&1";
+  state.adbShellStart << "shell am start -n " << settings["android_bundle_identifier"] << "/" << settings["android_bundle_identifier"] << mainActivity << " 2>&1";
   if (state.verbose) log(state.adbShellStart.str());
   ExecOutput adbShellStartOutput;
   while (true) {
@@ -2956,10 +2956,11 @@ int main (const int argc, const char* argv[]) {
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
 
+    settings.insert(std::make_pair("android_bundle_identifier", replace(settings["meta_bundle_identifier"], "-", "_")));
+
     if (flagBuildForAndroid) {
-      auto bundle_identifier = settings["meta_bundle_identifier"];
-      auto bundle_path = Path(replace(bundle_identifier, "\\.", "/")).make_preferred();
-      auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
+      auto bundle_path = Path(replace(settings["android_bundle_identifier"], "\\.", "/")).make_preferred();
+      auto bundle_path_underscored = replace(settings["android_bundle_identifier"], "\\.", "_");
 
       auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
@@ -3344,7 +3345,7 @@ int main (const int argc, const char* argv[]) {
           tmpl(std::regex_replace(
             convertWStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
-            bundle_identifier
+            settings["android_bundle_identifier"]
           ), settings)
         );
       }
@@ -3708,7 +3709,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/bridge.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3717,7 +3718,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3726,7 +3727,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3735,7 +3736,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/window.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3744,7 +3745,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/webview.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3756,7 +3757,7 @@ int main (const int argc, const char* argv[]) {
           tmpl(std::regex_replace(
             convertWStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
-            bundle_identifier
+            settings["android_bundle_identifier"]
           ), settings)
         );
       }
