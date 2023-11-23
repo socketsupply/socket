@@ -178,18 +178,18 @@ export class RemotePeer {
   constructor (options, peer) {
     this.localPeer = peer
 
-    if (!o.peerId) throw new Error('expected .peerId')
-    if (o.indexed) o.natType = NAT.UNRESTRICTED
-    if (o.natType && !NAT.isValid(o.natType)) throw new Error('invalid .natType')
+    if (!options.peerId) throw new Error('expected .peerId')
+    if (options.indexed) options.natType = NAT.UNRESTRICTED
+    if (options.natType && !NAT.isValid(options.natType)) throw new Error('invalid .natType')
 
-    const cid = o.clusterId?.toString('base64')
-    const scid = o.subclusterId?.toString('base64')
+    const cid = options.clusterId?.toString('base64')
+    const scid = options.subclusterId?.toString('base64')
 
     if (cid && scid) {
       this.clusters[cid] = { [scid]: { rateLimit: MAX_BANDWIDTH } }
     }
 
-    Object.assign(this, o)
+    Object.assign(this, options)
   }
 
   async write (sharedKey, args) {
