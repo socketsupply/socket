@@ -2960,7 +2960,7 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForAndroid) {
       auto bundle_path = Path(replace(settings["android_bundle_identifier"], "\\.", "/")).make_preferred();
-      auto bundle_path_underscored = replace(settings["android_bundle_identifier"], "\\.", "_");
+      auto bundle_path_underscored = replace(replace(settings["android_bundle_identifier"], "_", "_1"), "\\.", "_");
 
       auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
