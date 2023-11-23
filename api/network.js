@@ -1,6 +1,4 @@
-/*
- *
- *
+/**
  * @module Network
  *
  * Provides a higher level API over the stream-relay protocol.
