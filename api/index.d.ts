@@ -6748,35 +6748,35 @@ declare module "socket:stream-relay/index" {
     export class RemotePeer {
         /**
          * `RemotePeer` class constructor.
-         * @param {{
-         *   peerId?: string,
-         *   address?: string,
-         *   port?: number,
-         *   natType?: number,
-         *   clusters: object,
-         *   reflectionId?: string,
-         *   distance?: number,
-         *   publicKey?: string,
-         *   privateKey?: string,
-         *   clock?: number,
-         *   lastUpdate?: number,
-         *   lastRequest?: number
-         * }} o
+         * @param {object} options - an options object
+         * @param {string?} options.peerId - the peer id
+         * @param {string?} options.address - the address
+         * @param {number?} options.port - the port
+         * @param {number?} options.natType - the nat type
+         * @param {object} options.clusters - the clusters
+         * @param {string?} options.reflectionId - the reflection id
+         * @param {number?} options.distance - the distance
+         * @param {string?} options.publicKey - the public key
+         * @param {string?} options.privateKey - the private key
+         * @param {number?} options.clock - the clock
+         * @param {number?} options.lastUpdate - the last update
+         * @param {number?} options.lastRequest - the last request
+         * @param {RemotePeer} peer - the local peer
          */
-        constructor(o: {
-            peerId?: string;
-            address?: string;
-            port?: number;
-            natType?: number;
+        constructor(options: {
+            peerId: string | null;
+            address: string | null;
+            port: number | null;
+            natType: number | null;
             clusters: object;
-            reflectionId?: string;
-            distance?: number;
-            publicKey?: string;
-            privateKey?: string;
-            clock?: number;
-            lastUpdate?: number;
-            lastRequest?: number;
-        }, peer: any);
+            reflectionId: string | null;
+            distance: number | null;
+            publicKey: string | null;
+            privateKey: string | null;
+            clock: number | null;
+            lastUpdate: number | null;
+            lastRequest: number | null;
+        }, peer: RemotePeer);
         peerId: any;
         address: any;
         port: number;

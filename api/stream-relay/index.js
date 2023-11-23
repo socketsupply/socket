@@ -1,5 +1,5 @@
 /**
- * @module stream-relay
+ * @module Network
  * @status Experimental
  *
  * This module provides primitives for constructing a distributed network
@@ -8,6 +8,8 @@
  *
  * Note: The code in the module may change a lot in the next few weeks but the
  * API will continue to be backward compatible thoughout all future releases.
+ *
+ * @see {@link https://socketsupply.co/guides/#p2p-guide}
  */
 
 import { isBufferLike } from '../util.js'
@@ -136,6 +138,7 @@ export function rateLimit (rates, type, port, address, subclusterIdQuota) {
 /**
  * A `RemotePeer` represents an initial, discovered, or connected remote peer.
  * Typically, you will not need to create instances of this class directly.
+ * @ignore
  */
 export class RemotePeer {
   peerId = null
@@ -157,22 +160,22 @@ export class RemotePeer {
 
   /**
    * `RemotePeer` class constructor.
-   * @param {{
-   *   peerId?: string,
-   *   address?: string,
-   *   port?: number,
-   *   natType?: number,
-   *   clusters: object,
-   *   reflectionId?: string,
-   *   distance?: number,
-   *   publicKey?: string,
-   *   privateKey?: string,
-   *   clock?: number,
-   *   lastUpdate?: number,
-   *   lastRequest?: number
-   * }} o
+   * @param {object} options - an options object
+   * @param {string?} options.peerId - the peer id
+   * @param {string?} options.address - the address
+   * @param {number?} options.port - the port
+   * @param {number?} options.natType - the nat type
+   * @param {object} options.clusters - the clusters
+   * @param {string?} options.reflectionId - the reflection id
+   * @param {number?} options.distance - the distance
+   * @param {string?} options.publicKey - the public key
+   * @param {string?} options.privateKey - the private key
+   * @param {number?} options.clock - the clock
+   * @param {number?} options.lastUpdate - the last update
+   * @param {number?} options.lastRequest - the last request
+   * @param {RemotePeer} peer - the local peer
    */
-  constructor (o, peer) {
+  constructor (options, peer) {
     this.localPeer = peer
 
     if (!o.peerId) throw new Error('expected .peerId')
@@ -223,6 +226,7 @@ export class RemotePeer {
 /**
  * `Peer` class factory.
  * @param {{ createSocket: function('udp4', null, object?): object }} options
+ * @ignore
  */
 export const wrap = dgram => {
   class Peer {
