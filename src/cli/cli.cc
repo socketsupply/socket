@@ -2876,7 +2876,7 @@ int main (const int argc, const char* argv[]) {
         settings["mac_info_plist_data"] = "";
       }
 
-      if (flagRunHeadless) {
+      if (flagBuildHeadless) {
         settings["mac_info_plist_data"] += (
           "  <key>LSBackgroundOnly</key>\n"
           "  <true/>\n"
@@ -6388,7 +6388,7 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      run(targetPlatform, settings, paths, flagDebugMode, flagRunHeadless, argvForward, androidState);
+      run(targetPlatform, settings, paths, flagDebugMode, flagBuildHeadless || flagRunHeadless, argvForward, androidState);
     }
 
     exit(exitCode);
