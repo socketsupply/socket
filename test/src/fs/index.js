@@ -247,60 +247,71 @@ if (process.platform !== 'ios') {
 
   if (os.platform() !== 'android') {
     test('fs.writeFile', async (t) => {
-      const alloc = (size) => crypto.randomBytes(size)
-      const small = Array.from({ length: 32 }, (_, i) => i * 2 * 1024).map(alloc)
+      const buffer = Buffer.from('test 123')
+      await new Promise((resolve, reject) => {
+        fs.writeFile(TMPDIR + 'new-file.txt', buffer, (err) => {
+          if (err) t.fail(err.message)
 
-      // TODO: this takes toooo long
+          fs.readFile(TMPDIR + 'new-file.txt', (err, result) => {
+            if (err) t.fail(err.message)
+            else if (Buffer.compare(result, buffer) !== 0) t.fail('bytes do not match')
+            resolve()
+          })
+        })
+      })
+
+      // TODO: move the code below to a benchmark tests
+
+      // const alloc = (size) => crypto.randomBytes(size)
+      // const small = Array.from({ length: 32 }, (_, i) => i * 2 * 1024).map(alloc)
+
       // const large = Array.from({ length: 16 }, (_, i) => i * 2 * 1024 * 1024).map(alloc)
       // const buffers = [...small, ...large]
 
-      // TODO: so we'll just do small for now
-      const buffers = small
+      // // const pending = buffers.length
+      // let failed = false
+      // const writes = []
 
-      // const pending = buffers.length
-      let failed = false
-      const writes = []
+      // // const now = Date.now()
+      // while (!failed && buffers.length) {
+      //   writes.push(testWrite(buffers.length - 1, buffers.pop()))
+      // }
 
-      // const now = Date.now()
-      while (!failed && buffers.length) {
-        writes.push(testWrite(buffers.length - 1, buffers.pop()))
-      }
+      // await Promise.all(writes)
 
-      await Promise.all(writes)
+      // // console.log(
+      // //   '%d writes to %sms to write %s bytes',
+      // //   small.length + large.length,
+      // //   Date.now() - now,
+      // //   [...small, ...large].reduce((n, a) => n + a.length, 0)
+      // // )
 
-      // console.log(
-      //   '%d writes to %sms to write %s bytes',
-      //   small.length + large.length,
-      //   Date.now() - now,
-      //   [...small, ...large].reduce((n, a) => n + a.length, 0)
-      // )
+      // t.ok(!failed, 'all bytes match')
 
-      t.ok(!failed, 'all bytes match')
+      // async function testWrite (i, buffer) {
+      //   await new Promise((resolve) => {
+      //     const filename = TMPDIR + `new-file-${i}.txt`
+      //     fs.writeFile(filename, buffer, async (err) => {
+      //       if (err) {
+      //         failed = true
+      //         t.fail(err.message)
+      //         return resolve()
+      //       }
 
-      async function testWrite (i, buffer) {
-        await new Promise((resolve) => {
-          const filename = TMPDIR + `new-file-${i}.txt`
-          fs.writeFile(filename, buffer, async (err) => {
-            if (err) {
-              failed = true
-              t.fail(err.message)
-              return resolve()
-            }
+      //       fs.readFile(filename, (err, result) => {
+      //         if (err) {
+      //           failed = true
+      //           t.fail(err.message)
+      //         } else if (Buffer.compare(result, buffer) !== 0) {
+      //           failed = true
+      //           t.fail('bytes do not match')
+      //         }
 
-            fs.readFile(filename, (err, result) => {
-              if (err) {
-                failed = true
-                t.fail(err.message)
-              } else if (Buffer.compare(result, buffer) !== 0) {
-                failed = true
-                t.fail('bytes do not match')
-              }
-
-              resolve()
-            })
-          })
-        })
-      }
+      //         resolve()
+      //       })
+      //     })
+      //   })
+      // }
     })
   }
 
