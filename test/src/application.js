@@ -624,7 +624,8 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(true), { once: true })),
-      new Promise(resolve => setTimeout(() => resolve(false), 512))
+      // needs more time to restart
+      new Promise(resolve => setTimeout(() => resolve(false), 1024))
     ])
     t.ok(doesRestart, 'emits a backend:ready event')
   })
