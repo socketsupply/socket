@@ -2591,7 +2591,7 @@ int main (const int argc, const char* argv[]) {
     { { "--quiet", "-q" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
-    { { "--watch", "-W" }, true, false },
+    { { "--watch", "-w" }, true, false },
     { { "--package", "-p" }, true, false },
     { { "--package-format", "-f" }, true, true },
     { { "--codesign", "-c" }, true, false },
