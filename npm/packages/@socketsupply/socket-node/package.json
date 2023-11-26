@@ -1,7 +1,7 @@
 {
   "name": "@socketsupply/socket-node",
   "version": "0.4.0",
-  "description": "A Node.js adapter for the Socket SDK",
+  "description": "A Node.js adapter for the Socket runtime",
   "main": "index.js",
   "exports": {
     "import": "./index.js",
