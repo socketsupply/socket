@@ -1798,7 +1798,7 @@ sources = ""
 
 [ios]
 
-; signing guide: https://sockets.sh/guides/#ios-1
+; signing guide: https://socketsupply.co/guides/#ios-1
 codesign_identity = ""
 
 ; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.

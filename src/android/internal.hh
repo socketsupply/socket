@@ -6,7 +6,7 @@
 #include "../window/options.hh"
 
 /**
- * Defined by the Socket SDK preprocessor
+ * Defined by the Socket preprocessor
  */
 #define PACKAGE_NAME __BUNDLE_IDENTIFIER__
 
