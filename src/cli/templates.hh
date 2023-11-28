@@ -1165,6 +1165,8 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
 
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <{{ios_nonexempt_encryption}}/>
 
   <!-- Permission usage descriptions -->
   <key>NSAppDataUsageDescription</key>
@@ -1613,14 +1615,15 @@ constexpr auto gDefaultConfig = R"INI(
 ; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
 
-; The value of the "script" property in a build section will be interpreted as a shell command when
-; you run "ssc build". This is the most important command in this file. It will
-; do all the heavy lifting and should handle 99.9% of your use cases for moving
-; files into place or tweaking platform-specific build artifacts. If you don't
-; specify it, ssc will just copy everything in your project to the build target.
+; The value of the "script" property in the build section will be interpreted as
+; a shell command when  you run "ssc build". This is the most important command
+; in this file. It will do all the heavy lifting and should handle 99.9% of your
+; use cases for moving files into place or tweaking platform-specific build
+; artifacts. If you don't specify it, ssc will just copy everything in your
+; project to the build target.
 ;
-; Note that "~" alias won't expand to the home directory in any of the configuration files.
-; Use the full path instead.
+; Note that "~" alias won't expand to the home directory in any of the config
+; files. Use the full path instead.
 
 [build]
 
