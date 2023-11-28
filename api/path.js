@@ -11,7 +11,8 @@ import {
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  MUSIC,
+  HOME
 } from './path/index.js'
 
 const isWin32 = primordials.platform === 'win32'
@@ -42,7 +43,8 @@ export {
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  MUSIC,
+  HOME
 }
 
 export default isWin32 ? win32 : posix
