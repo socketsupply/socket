@@ -44,6 +44,13 @@ export const MUSIC = paths.data.music || null
  */
 export const RESOURCES = paths.data.resources || null
 
+/**
+ * Well known path to the application's "home" folder.
+ * This may be the user's HOME directory or the application container sandbox.
+ * @type {?string}
+ */
+export const HOME = paths.data.home || null
+
 export default {
   DOWNLOADS,
   DOCUMENTS,
@@ -51,5 +58,6 @@ export default {
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  MUSIC,
+  HOME
 }
