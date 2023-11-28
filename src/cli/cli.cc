@@ -4252,6 +4252,8 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      settings["ios_nonexempt_encryption"] = settings.contains("ios_nonexempt_encryption") ? "true" : "false";
+
       if (!settings.contains("ios_info_plist_data")) {
         settings["ios_info_plist_data"] = "";
       }
