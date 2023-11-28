@@ -3750,10 +3750,10 @@ namespace SSC::IPC {
     }
 
     Map mappings = {
-      {"$HOST_HOME", HOME},
+      {"\\$HOST_HOME", HOME},
       {"~", HOME},
 
-      {"$HOST_CONTAINER",
+      {"\\$HOST_CONTAINER",
     #if defined(__APPLE__)
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
         [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
@@ -3771,7 +3771,7 @@ namespace SSC::IPC {
     #endif
       },
 
-      {"$HOST_PROCESS_WORKING_DIRECTORY",
+      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
     #if defined(__APPLE__)
         NSBundle.mainBundle.resourcePath.UTF8String
     #else
@@ -3796,11 +3796,11 @@ namespace SSC::IPC {
         key = replace(key, "mac_", "");
         key = replace(key, "win_", "");
 
-	String path = key;
+        String path = key;
 
-	for (const auto& map : mappings) {
+        for (const auto& map : mappings) {
           path = replace(path, map.first, map.second);
-	}
+        }
 
         const auto& value = tuple.second;
         mounts.insert_or_assign(path, value);
