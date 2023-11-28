@@ -1810,9 +1810,11 @@ distribution_method = "ad-hoc"
 ; A path to the provisioning profile used for signing iOS app.
 provisioning_profile = ""
 
-; which device to target when building for the simulator
+; which device to target when building for the simulator.
 simulator_device = "iPhone 14"
 
+; Indicate to Apple if you are using encryption that is not exempt.
+nonexempt_encryption = "false"
 
 [linux]
 ; Helps to make your app searchable in Linux desktop environments.
