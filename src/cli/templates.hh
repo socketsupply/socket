@@ -1814,7 +1814,8 @@ provisioning_profile = ""
 simulator_device = "iPhone 14"
 
 ; Indicate to Apple if you are using encryption that is not exempt.
-nonexempt_encryption = "false"
+; default value: false
+; nonexempt_encryption = false
 
 [linux]
 ; Helps to make your app searchable in Linux desktop environments.
