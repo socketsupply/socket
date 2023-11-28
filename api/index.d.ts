@@ -1306,7 +1306,8 @@ declare module "socket:path" {
     import { DESKTOP } from "socket:path/index";
     import { VIDEOS } from "socket:path/index";
     import { MUSIC } from "socket:path/index";
-    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    import { HOME } from "socket:path/index";
+    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
 }
 declare module "socket:diagnostics/channels" {
     /**
