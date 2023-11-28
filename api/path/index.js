@@ -9,7 +9,8 @@ import {
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  MUSIC,
+  HOME
 } from './well-known.js'
 
 export * as default from './index.js'
@@ -26,5 +27,6 @@ export {
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  MUSIC,
+  HOME
 }

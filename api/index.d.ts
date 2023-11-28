@@ -1071,6 +1071,12 @@ declare module "socket:path/well-known" {
      * @type {?string}
      */
     export const RESOURCES: string | null;
+    /**
+     * Well known path to the application's "home" folder.
+     * This may be the user's HOME directory or the application container sandbox.
+     * @type {?string}
+     */
+    export const HOME: string | null;
     namespace _default {
         export { DOWNLOADS };
         export { DOCUMENTS };
@@ -1079,6 +1085,7 @@ declare module "socket:path/well-known" {
         export { DESKTOP };
         export { VIDEOS };
         export { MUSIC };
+        export { HOME };
     }
     export default _default;
 }
@@ -1270,7 +1277,8 @@ declare module "socket:path/index" {
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
-    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    import { HOME } from "socket:path/well-known";
+    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
