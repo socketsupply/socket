@@ -1000,14 +1000,18 @@ int runApp (const Path& path, const String& args, bool headless) {
 
   appPid = appProcess->open();
   appProcess->wait();
-  auto status = appProcess->status.load();
+  std::lock_guard<std::mutex> lock(appMutex);
 
-  if (status > -1) {
-    appStatus = status;
+  if (appProcess != nullptr) {
+    auto status = appProcess->status.load();
+
+    if (status > -1) {
+      appStatus = status;
+    }
+
+    delete appProcess;
+    appProcess = nullptr;
   }
-
-  delete appProcess;
-  appProcess = nullptr;
 
   log("App result: " + std::to_string(appStatus));
   return appStatus;
