@@ -53,7 +53,7 @@ namespace SSC {
 
       // uv
       HandleMap handles;
-      Loop* loop;
+      Loop* loop = nullptr;
 
       static void poll (FileSystemWatcher*);
       static void handleEventCallback (
