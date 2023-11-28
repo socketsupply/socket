@@ -95,6 +95,9 @@ namespace SSC {
     if (this->loop == nullptr) {
       this->loop = uv_loop_new();
       this->thread = new std::thread(&poll, this);
+      if (uv_loop_init(this->loop) != 0) {
+        return false;
+      }
     }
 
     for (const auto& path : this->paths) {
