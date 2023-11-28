@@ -149,7 +149,8 @@ Key | Default Value | Description
 codesign_identity |  |  signing guide: https://socketsupply.co/guides/#ios-1
 distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
-simulator_device |  |  which device to target when building for the simulator
+simulator_device |  |  which device to target when building for the simulator.
+nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.
 
 # `linux`
 
