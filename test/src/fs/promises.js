@@ -44,7 +44,7 @@ if (process.platform !== 'ios') {
       t.pass('fs.promises.mkdir made a directory and stat\'d it')
     })
 
-    test.only('fs.promises.mkdir throws on existing dir', async (t) => {
+    test('fs.promises.mkdir throws on existing dir', async (t) => {
       const dirname = FIXTURES + Math.random().toString(16).slice(2)
       await fs.mkdir(dirname, {})
       await fs.stat(dirname)
@@ -65,7 +65,7 @@ if (process.platform !== 'ios') {
       t.pass('fs.promises.mkdir recursive made a few directories and stat\'d the last one')
     })
 
-    test.only('fs.promises.mkdir recursive existing dir', async (t) => {
+    test('fs.promises.mkdir recursive existing dir', async (t) => {
       const randomDirName = () => Math.random().toString(16).slice(2)
       const dirname = path.join(FIXTURES, randomDirName(), randomDirName(), randomDirName())
       await fs.mkdir(dirname, { recursive: true })
