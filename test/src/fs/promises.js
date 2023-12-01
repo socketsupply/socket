@@ -44,12 +44,39 @@ if (process.platform !== 'ios') {
       t.pass('fs.promises.mkdir made a directory and stat\'d it')
     })
 
+    test.only('fs.promises.mkdir throws on existing dir', async (t) => {
+      const dirname = FIXTURES + Math.random().toString(16).slice(2)
+      await fs.mkdir(dirname, {})
+      await fs.stat(dirname)
+      t.pass('fs.promises.mkdir made a directory and stat\'d it')
+      try {
+        await fs.mkdir(dirname, {})
+        t.fail('The second mkdir should throw, and this assertion shouldn\'t run')
+      } catch (err) {
+        t.pass('remaking an existing directory, in non recursive mode throws')
+      }
+    })
+
     test('fs.promises.mkdir recursive', async (t) => {
       const randomDirName = () => Math.random().toString(16).slice(2)
       const dirname = path.join(FIXTURES, randomDirName(), randomDirName(), randomDirName())
       await fs.mkdir(dirname, { recursive: true })
       await fs.stat(dirname)
       t.pass('fs.promises.mkdir recursive made a few directories and stat\'d the last one')
+    })
+
+    test.only('fs.promises.mkdir recursive existing dir', async (t) => {
+      const randomDirName = () => Math.random().toString(16).slice(2)
+      const dirname = path.join(FIXTURES, randomDirName(), randomDirName(), randomDirName())
+      await fs.mkdir(dirname, { recursive: true })
+      await fs.stat(dirname)
+      t.pass('fs.promises.mkdir recursive made a few directories and stat\'d the last one')
+      try {
+        await fs.mkdir(dirname, { recursive: true })
+        t.pass('remaking a recirsive dir should not throw')
+      } catch (err) {
+        t.ifError(err, 'When remaking the same directory, no error should be thrown')
+      }
     })
   }
 
