@@ -409,6 +409,7 @@ namespace SSC {
             uv_dirent_t dirents[256];
             int offset = 0;
             int result = 0;
+            bool recursive;  // A place to stash recursive options when needed
 
             RequestContext () = default;
             RequestContext (Descriptor *desc)
@@ -421,6 +422,7 @@ namespace SSC {
               this->seq = seq;
               this->desc = desc;
               this->req.data = (void *) this;
+              this->recursive = false;
             }
 
             ~RequestContext () {

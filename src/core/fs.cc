@@ -1986,12 +1986,16 @@ namespace SSC {
       auto filename = path.c_str();
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
+      ctx->recursive = recursive;
       auto req = &ctx->req;
       const auto callback = [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (uv_fs_get_result(req) < 0) {
+        int result = uv_fs_get_result(req);
+
+        // Report recursive errors only when they are not EEXIST
+        if (result < 0 && (!ctx->recursive || (result != -EEXIST && result != -4075))) {
           json = JSON::Object::Entries {
             {"source", "fs.mkdir"},
             {"err", JSON::Object::Entries {
