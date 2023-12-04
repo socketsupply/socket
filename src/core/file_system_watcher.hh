@@ -32,6 +32,14 @@ namespace SSC {
         int debounce = 250; // in milliseconds
       };
 
+    #if defined(__linux__) && !defined(__ANDROID__)
+      struct UVSource {
+        GSource base; // should ALWAYS be first member
+        gpointer tag;
+        FileSystemWatcher* watcher;
+      };
+    #endif
+
       using EventCallback = std::function<void(
         const String&, // path
         const Vector<Event>&, // events
@@ -45,6 +53,11 @@ namespace SSC {
       ContextMap contexts;
       Vector<String> paths;
       Options options;
+
+    #if defined(__linux__) && !defined(__ANDROID__)
+      UVSource uvSource;
+      GSourceFuncs uvSourceFunctions;
+    #endif
 
       // thread state
       AtomicBool isRunning = false;
