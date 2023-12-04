@@ -26,4 +26,12 @@ child.once('error', (err) => {
   }
 })
 
+process.on('SIGTERM', () => {
+  child.kill('SIGTERM')
+})
+
+process.on('exit', () => {
+  child.kill('SIGTERM')
+})
+
 export default child
