@@ -141,7 +141,7 @@ declare module "socket:errors" {
         /**
          * @param {number|string}
          */
-        set code(arg: string | number);
+        set code(code: string | number);
         /**
          * @type {number|string}
          */
@@ -1163,8 +1163,8 @@ declare module "socket:path/win32" {
         let delimiter: ";";
     }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import * as posix from "socket:path/posix";
     import { Path } from "socket:path/path";
+    import * as posix from "socket:path/posix";
     import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
@@ -1251,8 +1251,8 @@ declare module "socket:path/posix" {
         let delimiter: ":";
     }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import * as win32 from "socket:path/win32";
     import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
@@ -1933,8 +1933,8 @@ declare module "socket:fs/stream" {
     export default exports;
     export type FileHandle = import("socket:fs/handle").FileHandle;
     import { Readable } from "socket:stream";
-    import * as exports from "socket:fs/stream";
     import { Writable } from "socket:stream";
+    import * as exports from "socket:fs/stream";
     
 }
 declare module "socket:fs/constants" {
@@ -2375,10 +2375,10 @@ declare module "socket:fs/handle" {
     export type TypedArray = Uint8Array | Int8Array;
     import { EventEmitter } from "socket:events";
     import { Buffer } from "socket:buffer";
-    import * as exports from "socket:fs/handle";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Stats } from "socket:fs/stats";
+    import * as exports from "socket:fs/handle";
     
 }
 declare module "socket:fs/dir" {
@@ -3022,7 +3022,6 @@ declare module "socket:fs/promises" {
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:fs/promises";
     import { FileHandle } from "socket:fs/handle";
     import { Dir } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
@@ -3033,6 +3032,7 @@ declare module "socket:fs/promises" {
     import fds from "socket:fs/fds";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
+    import * as exports from "socket:fs/promises";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, Watcher, WriteStream };
 }
@@ -3265,7 +3265,6 @@ declare module "socket:fs/index" {
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:fs/index";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
@@ -3277,6 +3276,7 @@ declare module "socket:fs/index" {
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
     import * as promises from "socket:fs/promises";
+    import * as exports from "socket:fs/index";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
 }
@@ -3352,11 +3352,11 @@ declare module "socket:crypto" {
     export const MAX_RANDOM_BYTES_PAGES: number;
     export default exports;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:crypto";
     import { Buffer } from "socket:buffer";
     export namespace sodium {
         let ready: Promise<any>;
     }
+    import * as exports from "socket:crypto";
     
 }
 declare module "socket:ipc" {
@@ -4597,8 +4597,8 @@ declare module "socket:dgram" {
     export default exports;
     export type SocketOptions = any;
     import { EventEmitter } from "socket:events";
-    import * as exports from "socket:dgram";
     import { InternalError } from "socket:errors";
+    import * as exports from "socket:dgram";
     
 }
 declare module "socket:enumeration" {
@@ -5926,13 +5926,13 @@ declare module "socket:module" {
      * to the "main" module and global object (if possible).
      */
     export class Module extends EventTarget {
-        static set current(arg: exports.Module);
+        static set current(module: exports.Module);
         /**
          * A reference to the currently scoped module.
          * @type {Module?}
          */
         static get current(): exports.Module;
-        static set previous(arg: exports.Module);
+        static set previous(module: exports.Module);
         /**
          * A reference to the previously scoped module.
          * @type {Module?}
@@ -7203,7 +7203,7 @@ declare module "socket:internal/permissions" {
          * @type {string}
          */
         get state(): string;
-        set onchange(arg: (arg0: Event) => any);
+        set onchange(onchange: (arg0: Event) => any);
         /**
          * Level 0 event target 'change' event listener accessor
          * @type {function(Event)}
@@ -7468,27 +7468,27 @@ declare module "socket:notification" {
          * @type {string}
          */
         get id(): string;
-        set onclick(arg: Function);
+        set onclick(onclick: Function);
         /**
          * The click event is dispatched when the user clicks on
          * displayed notification.
          * @type {?function}
          */
         get onclick(): Function;
-        set onclose(arg: Function);
+        set onclose(onclose: Function);
         /**
          * The close event is dispatched when the notification closes.
          * @type {?function}
          */
         get onclose(): Function;
-        set onerror(arg: Function);
+        set onerror(onerror: Function);
         /**
          * The eror event is dispatched when the notification fails to display
          * or encounters an error.
          * @type {?function}
          */
         get onerror(): Function;
-        set onshow(arg: Function);
+        set onshow(onshow: Function);
         /**
          * The click event is dispatched when the notification is displayed.
          * @type {?function}
