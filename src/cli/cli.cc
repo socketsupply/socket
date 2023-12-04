@@ -824,23 +824,22 @@ void signalHandler (int signal) {
 
   Lock lock(signalHandlerMutex);
 
-  if (appProcess != nullptr) {
-    auto pid = appProcess->getPID();
-    appProcess->kill(pid);
-  } else if (appPid > 0) {
-  #if !defined(_WIN32)
+#if !defined(_WIN32)
+  if (appPid > 0) {
     kill(appPid, signal);
-  #endif
+  }
+#endif
+
+  if (appProcess != nullptr) {
+    appProcess->kill();
   }
 
-  appProcess = nullptr;
-  appStatus = signal;
   appPid = 0;
 
-  appMutex.unlock();
-
 #if defined(__linux__) && !defined(__ANDROID__)
-  gtk_main_quit();
+  if (gtk_main_level() > 0) {
+    gtk_main_quit();
+  }
 #endif
 
   if (sourcesWatcher != nullptr) {
@@ -857,15 +856,13 @@ void signalHandler (int signal) {
     sourcesWatcherSupportThread = nullptr;
   }
 
-  msleep(1000);
-
-  if (appPid == 0 && signal == SIGTERM) {
-    exit(1);
-    return;
+  if (appStatus == -1) {
+    appStatus = signal;
+    log("App result: " + std::to_string(signal));
   }
 
-  if (appPid == 0 && signal == SIGINT) {
-    exit(signal);
+  if (signal == SIGTERM) {
+    exit(1);
     return;
   }
 
@@ -875,6 +872,8 @@ void signalHandler (int signal) {
     return;
   }
 #endif
+
+  exit(signal);
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
@@ -1012,8 +1011,12 @@ int runApp (const Path& path, const String& args, bool headless) {
 
     // wait for `NSRunningApplication` to terminate
     std::lock_guard<std::mutex> lock(appMutex);
-    log("App result: " + std::to_string(appStatus.load()));
-    return appStatus.load();
+    if (appStatus != -1) {
+      log("App result: " + std::to_string(appStatus.load()));
+      return appStatus.load();
+    }
+
+    return 0;
   }
 #endif
 
@@ -1028,21 +1031,17 @@ int runApp (const Path& path, const String& args, bool headless) {
   );
 
   appPid = appProcess->open();
-  appProcess->wait();
-  std::lock_guard<std::mutex> lock(appMutex);
+  const auto status = appProcess->wait();
+  if (appStatus == -1) {
+    appStatus = status;
+    log("App result: " + std::to_string(appStatus.load()));
+  }
 
   if (appProcess != nullptr) {
-    auto status = appProcess->status.load();
-
-    if (status > -1) {
-      appStatus = status;
-    }
-
     delete appProcess;
     appProcess = nullptr;
   }
 
-  log("App result: " + std::to_string(appStatus));
   return appStatus;
 }
 
