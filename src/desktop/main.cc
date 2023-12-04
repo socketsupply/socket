@@ -234,8 +234,7 @@ MAIN {
 
   auto killProcess = [&](Process* processToKill) {
     if (processToKill != nullptr) {
-      auto pid = processToKill->getPID();
-      processToKill->kill(pid);
+      processToKill->kill();
       processToKill->wait();
 
       if (processToKill == process) {
@@ -285,8 +284,7 @@ MAIN {
 
     shutdownHandler = [&](int signum) {
       if (process != nullptr) {
-        auto pid = process->getPID();
-        process->kill(pid);
+        process->kill();
       }
       exit(signum);
     };
@@ -986,8 +984,7 @@ MAIN {
   //
   shutdownHandler = [&](int code) {
     if (process != nullptr) {
-      auto pid = process->getPID();
-      process->kill(pid);
+      process->kill();
     }
 
     windowManager.destroy();
