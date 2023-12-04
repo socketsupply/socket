@@ -955,12 +955,16 @@ namespace SSC {
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
-      if (!core->isLoopAlive() || !core->isLoopRunning) {
+      if (!core->isLoopRunning) {
         return false;
       }
 
+      if (!core->isLoopAlive()) {
+        return true;
+      }
+
       *timeout = core->getEventLoopTimeout();
-      return 0 == *timeout;
+      return *timeout == 0;
     },
 
     .dispatch = [](
