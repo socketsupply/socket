@@ -104,7 +104,7 @@ namespace SSC {
   // the stdout, stderr and stdin are sent to the parent process instead.
   class Process {
   public:
-    static constexpr auto WAIT_TIMEOUT = 256;
+    static constexpr auto PROCESS_WAIT_TIMEOUT = 256;
 
   #ifdef _WIN32
     typedef unsigned long id_type; // Process id type
@@ -191,7 +191,7 @@ namespace SSC {
 
     int wait () {
       do {
-        msleep(Process::WAIT_TIMEOUT);
+        msleep(Process::PROCESS_WAIT_TIMEOUT);
       } while (this->closed == false);
 
       return this->status;
