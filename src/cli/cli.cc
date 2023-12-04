@@ -35,8 +35,8 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <fstream>
 #include <regex>
 #include <span>
 #include <unordered_set>
@@ -61,6 +61,11 @@ using namespace std::chrono;
 
 const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
 const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
+
+FileSystemWatcher* sourcesWatcher = nullptr;
+Thread* sourcesWatcherSupportThread = nullptr;
+
+Mutex signalHandlerMutex;
 
 String _settings;
 Path targetPath;
@@ -808,16 +813,6 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 }
 
 void signalHandler (int signal) {
-  if (appPid == 0 && signal == SIGTERM) {
-    exit(1);
-    return;
-  }
-
-  if (appPid == 0 && signal == SIGINT) {
-    exit(signal);
-    return;
-  }
-
 #if !defined(_WIN32)
   if (signal == SIGUSR1) {
   #if defined(__APPLE__)
@@ -825,12 +820,9 @@ void signalHandler (int signal) {
   #endif
     return;
   }
-
-  if (signal == SIGUSR2) {
-    exit(0);
-    return;
-  }
 #endif
+
+  Lock lock(signalHandlerMutex);
 
   if (appProcess != nullptr) {
     auto pid = appProcess->getPID();
@@ -846,6 +838,43 @@ void signalHandler (int signal) {
   appPid = 0;
 
   appMutex.unlock();
+
+#if defined(__linux__) && !defined(__ANDROID__)
+  gtk_main_quit();
+#endif
+
+  if (sourcesWatcher != nullptr) {
+    sourcesWatcher->stop();
+    delete sourcesWatcher;
+    sourcesWatcher = nullptr;
+  }
+
+  if (sourcesWatcherSupportThread != nullptr) {
+    if (sourcesWatcherSupportThread->joinable()) {
+      sourcesWatcherSupportThread->join();
+    }
+    delete sourcesWatcherSupportThread;
+    sourcesWatcherSupportThread = nullptr;
+  }
+
+  msleep(1000);
+
+  if (appPid == 0 && signal == SIGTERM) {
+    exit(1);
+    return;
+  }
+
+  if (appPid == 0 && signal == SIGINT) {
+    exit(signal);
+    return;
+  }
+
+#if !defined(_WIN32)
+  if (signal == SIGUSR2) {
+    exit(0);
+    return;
+  }
+#endif
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
@@ -6355,7 +6384,7 @@ int main (const int argc, const char* argv[]) {
       // allow changes to 'socket.ini' to be observed
       sources.push_back("socket.ini");
 
-      FileSystemWatcher* sourcesWatcher = new FileSystemWatcher(sources);
+      sourcesWatcher = new FileSystemWatcher(sources);
       auto watchingSources = sourcesWatcher->start([=](
         const String& path,
         const Vector<FileSystemWatcher::Event>& events,
@@ -6390,6 +6419,12 @@ int main (const int argc, const char* argv[]) {
       }
 
       log("Watching for changes in: " + join(sources, ","));
+      // `FileSystemWatcher` will use GTK event loop on linux to pump the
+      // libuv event loop when `sourcesWatcher->loop == nullptr` when `start()`
+      // is called. We use the runtime core libuv event loop in the `bridge` APIs
+    #if defined(__linux__) && !defined(__ANDROID__)
+      sourcesWatcherSupportThread = new Thread([] () { gtk_main(); });
+    #endif
     }
 
     int exitCode = 0;
