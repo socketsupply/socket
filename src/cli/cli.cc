@@ -6390,7 +6390,7 @@ int main (const int argc, const char* argv[]) {
       if (settings.contains("build_watch_sources")) {
         const auto buildWatchSources = parseStringList(trim(settings["build_watch_sources"]), ' ');
         for (const auto& source : buildWatchSources) {
-          sources.push_back(fs::current_path() / source);
+          sources.push_back((fs::current_path() / source).string());
         }
       }
 
