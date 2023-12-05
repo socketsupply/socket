@@ -187,6 +187,8 @@ options:
 
 )TEXT";
 
+// Validate CSP using Google's CSP Evaluator
+// https://csp-evaluator.withgoogle.com
 constexpr auto gHelloWorld = R"HTML(
 <!doctype html>
 <html>
@@ -195,9 +197,11 @@ constexpr auto gHelloWorld = R"HTML(
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src https: file: ipc: socket: data:;
+        connect-src https: file: ipc: socket: ws://localhost:*;
+        script-src https: socket: http://localhost:* 'unsafe-eval';
+        img-src https: data: file: http://localhost:*;
         child-src 'none';
-        img-src https: data: file: socket:;
+        object-src 'none';
       "
     >
     <style type="text/css">
