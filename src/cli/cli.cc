@@ -1634,7 +1634,9 @@ void initializeEnv (Path targetPath) {
         value = valueAsPath.string();
       }
 
-      Env::set(key, value);
+      if (!Env::has(key)) {
+        Env::set(key, value);
+      }
     }
   }
 }
@@ -4997,7 +4999,7 @@ int main (const int argc, const char* argv[]) {
 
     // build desktop extension
     if (isForDesktop) {
-      static const auto IN_GITHUB_ACTIONS_CI = Env::get("GITHUB_ACTIONS_CI").size() == 0;
+      static const auto IN_GITHUB_ACTIONS_CI = Env::get("GITHUB_ACTIONS_CI").size() > 0;
       auto oldCwd = fs::current_path();
       fs::current_path(targetPath);
 
@@ -6667,7 +6669,9 @@ int main (const int argc, const char* argv[]) {
     envs["XDG_DATA_HOME"] = Env::get("XDG_DATA_HOME");
 
     // compiler variables
+    envs["CC"] = Env::get("CC");
     envs["CXX"] = Env::get("CXX");
+    envs["CPP"] = Env::get("CPP");
     envs["PREFIX"] = Env::get("PREFIX");
     envs["CXXFLAGS"] = Env::get("CXXFLAGS");
 
