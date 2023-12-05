@@ -744,7 +744,7 @@ namespace SSC {
       uv_async_t eventLoopAsync;
       std::queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
 
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
       dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
         DISPATCH_QUEUE_SERIAL,
         QOS_CLASS_DEFAULT,
@@ -755,9 +755,9 @@ namespace SSC {
         "socket.runtime.core.loop.queue",
         eventLoopQueueAttrs
       );
-#else
+    #else
       std::thread *eventLoopThread = nullptr;
-#endif
+    #endif
 
       Core () :
         diagnostics(this),
