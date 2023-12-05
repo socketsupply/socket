@@ -6685,7 +6685,7 @@ int main (const int argc, const char* argv[]) {
 
     // apple specific platform variables
     envs["APPLE_ID"] = Env::get("APPLE_ID");
-    envs["APPLE_ID_PASSWORD"] = Env::get("APPLE_ID");
+    envs["APPLE_ID_PASSWORD"] = Env::get("APPLE_ID_PASSWORD");
 
     // windows specific platform variables
     envs["SIGNTOOL"] = Env::get("SIGNTOOL");
