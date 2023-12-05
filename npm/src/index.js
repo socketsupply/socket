@@ -36,11 +36,22 @@ export const firstTimeExperienceSetup = async () => {
   // This should also install vc_redist if it hasn't been installed
   const PLATFORM_PARAMETER = '--platform='
   let isSetupCall = false
+  let isBuildCall = false
+  let isRunCall = false
 
   let platform = ''
-  process.argv.slice(2).forEach(arg => {
+  const argv = process.argv.slice(2)
+  argv.forEach(arg => {
     if (arg === 'setup') {
       isSetupCall = true
+    }
+
+    if (arg === 'build') {
+      isBuildCall = true
+    }
+
+    if (arg === 'run') {
+      isRunCall = true
     }
 
     if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
@@ -59,44 +70,49 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   const spawnArgs = []
-  if (os.platform() === 'win32') {
-    spawnArgs.push(
-      // @ts-ignore
-      'powershell.exe',
-      ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
-      startInfo
-    )
-  } else {
-    spawnArgs.push(
-      // @ts-ignore
-      './bin/functions.sh',
-      ['--fte', platform],
-      startInfo
-    )
+  if (argv.length > 0) {
+    if (os.platform() === 'win32') {
+      spawnArgs.push(
+        // @ts-ignore
+        'powershell.exe',
+        ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
+        startInfo
+      )
+    } else if (isSetupCall || isBuildCall || isRunCall) {
+      spawnArgs.push(
+        // @ts-ignore
+        './bin/functions.sh',
+        ['--fte', platform],
+        startInfo
+      )
+    }
   }
 
-  if (spawnArgs.length) {
-    if (isSetupCall) {
-      startInfo.env.VERBOSE = 1
-      console.log('# Checking build dependencies...')
-    }
-
-    // @ts-ignore
-    const child = spawn(...spawnArgs)
-
-    await new Promise((resolve, reject) => {
-      // @ts-ignore
-      child.on('close', resolve).on('error', reject)
-    })
-
-    // If fte didn't create a configuration file, make an empty one to prevent
-    // user being prompted again
-    // @ts-ignore
-    if (!child.exitCode && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
-      fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
-    }
-  } else {
+  if (spawnArgs.length === 0) {
     return true
+  }
+
+  if (isSetupCall) {
+    startInfo.env.VERBOSE = '1'
+  }
+
+  if (isSetupCall || isBuildCall || isRunCall) {
+    console.log('# Checking build dependencies...')
+  }
+
+  // @ts-ignore
+  const child = spawn(...spawnArgs)
+
+  await new Promise((resolve, reject) => {
+    // @ts-ignore
+    child.on('close', resolve).on('error', reject)
+  })
+
+  // If fte didn't create a configuration file, make an empty one to prevent
+  // user being prompted again
+  // @ts-ignore
+  if (!child.exitCode && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
+    fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
   }
 
   return !isSetupCall
