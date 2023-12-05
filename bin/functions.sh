@@ -4,6 +4,8 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare SSC_ENV_FILENAME=".ssc.env"
 export SSC_ENV_FILENAME
 
+declare log_and_run_sudo_granted=0
+
 # BSD stat has no version argument or reliable identifier
 if stat --help 2>&1 | grep "usage: stat" >/dev/null; then
   stat_format_arg="-f"
@@ -102,6 +104,15 @@ function quiet () {
 # Always logs to terminal, but respects VERBOSE for command output
 function log_and_run () {
   write_log "h" "$@"
+
+  if [[ "$*" =~ "sudo "* ]] && (( !log_and_run_sudo_granted )); then
+    local args=($@)
+    if ! prompt_yn "'ssc' would like to use 'sudo' to run: ${args[*]:1}"; then
+      return 1
+    fi
+
+    log_and_run_sudo_granted=1
+  fi
 
   if [ -n "$VERBOSE" ]; then
     "$@"
@@ -565,6 +576,7 @@ function first_time_experience_setup() {
     if [[ "$(host_os)" == "Linux" ]]; then
       local package_manager="$(determine_package_manager)"
       echo "Installing $(host_os) dependencies..."
+
       if [[ "$package_manager" == "apt install" ]]; then
         log_and_run sudo apt update || return $?
         log_and_run sudo apt install -y   \
