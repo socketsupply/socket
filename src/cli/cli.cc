@@ -62,6 +62,7 @@ using namespace std::chrono;
 const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
 const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
 
+Process* buildAfterScriptProcess = nullptr;
 FileSystemWatcher* sourcesWatcher = nullptr;
 Thread* sourcesWatcherSupportThread = nullptr;
 
@@ -555,13 +556,20 @@ void handleBuildPhaseForUserScript (
       buildScript = "cmd.exe";
     }
 
-    SSC::Process* process = new SSC::Process(
+    if (buildAfterScriptProcess != nullptr) {
+      buildAfterScriptProcess->kill();
+      buildAfterScriptProcess->wait();
+      delete buildAfterScriptProcess;
+      buildAfterScriptProcess = nullptr;
+    }
+
+    buildAfterScriptProcess = new SSC::Process(
       buildScript,
       scriptArgs,
       (cwd / targetPath).string(),
       [](SSC::String const &out) { IO::write(out, false); },
       [](SSC::String const &out) { IO::write(out, true); },
-      [process](const auto status) {
+      [](const auto status) {
         const auto exitCode = std::atoi(status.c_str());
         if (exitCode != 0) {
           log("build after script failed with code: " + status);
@@ -569,7 +577,7 @@ void handleBuildPhaseForUserScript (
       }
     );
 
-    process->open();
+    buildAfterScriptProcess->open();
   }
 }
 
@@ -854,6 +862,13 @@ void signalHandler (int signal) {
     }
     delete sourcesWatcherSupportThread;
     sourcesWatcherSupportThread = nullptr;
+  }
+
+  if (buildAfterScriptProcess != nullptr) {
+    buildAfterScriptProcess->kill();
+    buildAfterScriptProcess->wait();
+    delete buildAfterScriptProcess;
+    buildAfterScriptProcess = nullptr;
   }
 
   if (appStatus == -1) {
@@ -6373,15 +6388,20 @@ int main (const int argc, const char* argv[]) {
       Vector<String> sources;
 
       if (settings.contains("build_watch_sources")) {
-        sources = parseStringList(trim(settings["build_watch_sources"]));
-      } else if (copyMapFiles.size() > 0) {
+        const auto buildWatchSources = parseStringList(trim(settings["build_watch_sources"]), ' ');
+        for (const auto& source : buildWatchSources) {
+          sources.push_back(fs::current_path() / source);
+        }
+      }
+
+      if (copyMapFiles.size() > 0) {
         for (const auto& file : copyMapFiles) {
-          sources.push_back(file.string());
+          sources.push_back((fs::current_path() / file).string());
         }
       }
 
       // allow changes to 'socket.ini' to be observed
-      sources.push_back("socket.ini");
+      sources.push_back((fs::current_path() / "socket.ini").string());
 
       sourcesWatcher = new FileSystemWatcher(sources);
       auto watchingSources = sourcesWatcher->start([=](
@@ -6417,11 +6437,11 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      log("Watching for changes in: " + join(sources, ","));
+      log("Watching for changes in: " + join(sourcesWatcher->watchedPaths, ", "));
+    #if defined(__linux__) && !defined(__ANDROID__)
       // `FileSystemWatcher` will use GTK event loop on linux to pump the
       // libuv event loop when `sourcesWatcher->loop == nullptr` when `start()`
       // is called. We use the runtime core libuv event loop in the `bridge` APIs
-    #if defined(__linux__) && !defined(__ANDROID__)
       sourcesWatcherSupportThread = new Thread([] () { gtk_main(); });
     #endif
     }
