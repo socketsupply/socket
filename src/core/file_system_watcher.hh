@@ -5,22 +5,36 @@
 #include "types.hh"
 
 namespace SSC {
+  class Core;
   class FileSystemWatcher {
     public:
+      // uv types
+      using EventHandle = uv_fs_event_t;
+      using PollHandle = uv_fs_poll_t;
       using Loop = uv_loop_t;
+      using Async = uv_async_t;
+      using Stat = uv_stat_t;
+
+      struct Handle {
+        EventHandle event;
+        PollHandle poll;
+      };
+
+      // std types
+      using Clock = std::chrono::high_resolution_clock;
+      using HandleMap = std::map<String, Handle>;
       using Path = std::filesystem::path;
       using Thread = std::thread;
-      using Handle = uv_fs_event_t;
-      using HandleMap = std::map<String, uv_fs_event_t>;
-      using Clock = std::chrono::high_resolution_clock;
       using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
+      // event types
       enum class Event {
         UNKNOWN,
         RENAME,
         CHANGE
       };
 
+      // callback context
       struct Context {
         String name; // filename or directory name
         FileSystemWatcher* watcher;
@@ -30,15 +44,8 @@ namespace SSC {
 
       struct Options {
         int debounce = 250; // in milliseconds
+        bool recursive = true;
       };
-
-    #if defined(__linux__) && !defined(__ANDROID__)
-      struct UVSource {
-        GSource base; // should ALWAYS be first member
-        gpointer tag;
-        FileSystemWatcher* watcher;
-      };
-    #endif
 
       using EventCallback = std::function<void(
         const String&, // path
@@ -50,30 +57,30 @@ namespace SSC {
 
       // state
       EventCallback callback = nullptr;
-      ContextMap contexts;
       Vector<String> paths;
+      Vector<String> watchedPaths;
+      ContextMap contexts;
+      HandleMap handles;
       Options options;
-
-    #if defined(__linux__) && !defined(__ANDROID__)
-      UVSource uvSource;
-      GSourceFuncs uvSourceFunctions;
-    #endif
+      AtomicBool ownsCore = false;
+      AtomicBool isRunning = false;
+      Core* core = nullptr;
 
       // thread state
-      AtomicBool isRunning = false;
-      Thread* thread = nullptr;
       Mutex mutex;
 
-      // uv
-      HandleMap handles;
-      Loop* loop = nullptr;
-
-      static void poll (FileSystemWatcher*);
       static void handleEventCallback (
-        Handle* handle,
+        EventHandle* handle,
         const char* filename,
         int events,
         int status
+      );
+
+      static void handlePollCallback (
+        PollHandle* handle,
+        int status,
+        const Stat* previousStat,
+        const Stat* currentStat
       );
 
       FileSystemWatcher (const String& path);
