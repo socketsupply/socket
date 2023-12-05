@@ -3584,21 +3584,19 @@ namespace SSC::IPC {
 
   #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
-      this->core->dispatchEventLoop([this]() mutable {
-        this->fileSystemWatcher = new FileSystemWatcher(getcwd());
-        this->fileSystemWatcher->loop = this->core->getEventLoop();
-        this->fileSystemWatcher->start([=, this](
-          const auto& path,
-          const auto& events,
-          const auto& context
-        ) mutable {
-          auto json = JSON::Object::Entries {
-            {"path", std::filesystem::relative(path, getcwd()).string()}
-          };
+      this->fileSystemWatcher = new FileSystemWatcher(getcwd());
+      this->fileSystemWatcher->core = this->core;
+      this->fileSystemWatcher->start([=, this](
+        const auto& path,
+        const auto& events,
+        const auto& context
+      ) mutable {
+        auto json = JSON::Object::Entries {
+          {"path", std::filesystem::relative(path, getcwd()).string()}
+        };
 
-          auto result = SSC::IPC::Result(json);
-          this->router.emit("filedidchange", result.json().str());
-        });
+        auto result = SSC::IPC::Result(json);
+        this->router.emit("filedidchange", result.json().str());
       });
     }
   #endif
