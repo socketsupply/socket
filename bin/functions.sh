@@ -463,7 +463,6 @@ function write_log() {
     echo "$@"
   fi
 
-  # Write-LogFile $message
   write_log_file "$@"
 }
 
@@ -544,7 +543,7 @@ function determine_cxx () {
       return 1
     fi
 
-    echo "warn - using '$CXX' as CXX"
+    write_log "v" "warn - using '$CXX' as CXX"
   fi
 
   export CXX
@@ -609,7 +608,7 @@ function first_time_experience_setup() {
 
   determine_cxx || return $?
 
-  if [ -z "$target" ] || [[ "$target" == "android" ]]; then
+  if [[ "$target" == "android" ]]; then
     ## Android is not supported on linux-arm64, return early
     if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"  ]]; then
       return 0
