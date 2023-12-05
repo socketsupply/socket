@@ -1078,7 +1078,7 @@ namespace SSC {
 
       if (watcher == nullptr) {
         watcher = new FileSystemWatcher(path);
-        watcher->loop = this->core->getEventLoop();
+        watcher->core = this->core;
         const auto started = watcher->start([=, this](
           const auto& changed,
           const auto& events,
