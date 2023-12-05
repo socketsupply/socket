@@ -32,7 +32,7 @@ declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-$G
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
 function get_android_default_search_paths() {
-  write_log "h" "# Determining default Android search paths."
+  write_log "v" "# Determining default Android search paths."
   local host="$(host_os)"
 
   # Prepopulate search paths with any known paths so that they can be verified quickly
@@ -107,7 +107,7 @@ function get_android_default_search_paths() {
   export JAVA_HOME_SEARCH_PATHS
   export GRADLE_SEARCH_PATHS
 
-  write_log "h" "ok - ANDROID_HOME, JAVA_HOME, and GRADLE_HOME search paths configured."
+  write_log "v" "ok - ANDROID_HOME, JAVA_HOME, and GRADLE_HOME search paths configured."
 }
 
 function test_javac_version() {
@@ -117,7 +117,7 @@ function test_javac_version() {
 
   # Setting JAVA_HOME to /usr causes sdkmanager to hang
   if [[ "$javac" == "/usr/bin/javac" ]] && [[ "$(host_os)" == "Darwin" ]]; then
-    write_log "h" "warn - Ignoring system java selector ($javac)"
+    write_log "v" "warn - Ignoring system java selector ($javac)"
     return 1
   fi
 
@@ -172,7 +172,7 @@ function validate_sdkmanager_jar() {
 
 function get_android_paths() {
   get_android_default_search_paths
-  write_log "h" "# Determining Android paths."
+  write_log "v" "# Determining Android paths."
 
   local _ah
   local _sdk
@@ -217,7 +217,7 @@ function get_android_paths() {
       if [[ "$r" == "0" ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
-        write_log "h" "# Using predetermined javac $(native_path "$javac")"
+        write_log "v" "# Using predetermined javac $(native_path "$javac")"
         break
       else
         write_log "v" "# Ignoring predetermined javac $(native_path "$javac") $jc_v"
@@ -237,7 +237,7 @@ function get_android_paths() {
           test_javac_version "$javac" "$JDK_VERSION" ; r=$?
           if [[ "$r" == "0" ]]; then
             # subshell, output to file
-            write_log "h" "# Using found javac $javac"
+            write_log "v" "# Using found javac $javac"
             echo "$(dirname "$(dirname "$javac")")" > "$temp"
           else
             write_log "v" "# Ignoring found javac $javac $jc_v"
@@ -264,7 +264,7 @@ function get_android_paths() {
         local gradle_path=$(dirname "$(dirname "$gradle")")
         test_gradle_version "$gradle_path" "$GRADLE_VERSION" ; r=$?
         if [[ "$r" == "0" ]]; then
-          write_log "h" "ok - Found gradle ($gradle_path)"
+          write_log "v" "ok - Found gradle ($gradle_path)"
           # subshell, output to file
           echo "$gradle_path" > "$temp"
         else
@@ -281,25 +281,25 @@ function get_android_paths() {
 
   if [[ -n "$_jh" ]]; then
     JAVA_HOME="$(native_path "$_jh")"
-    write_log "h" "ok - Found JAVA_HOME ($JAVA_HOME)"
+    write_log "v" "ok - Found JAVA_HOME ($JAVA_HOME)"
     export JAVA_HOME
   fi
 
   if [[ -n "$_gh" ]]; then
     GRADLE_HOME="$(native_path "$_gh")"
-    write_log "h" "ok - Found GRADLE_HOME ($GRADLE_HOME)"
+    write_log "v" "ok - Found GRADLE_HOME ($GRADLE_HOME)"
     export GRADLE_HOME
   fi
 
   if [[ -n "$_ah" ]]; then
     ANDROID_HOME="$(native_path "$_ah")"
-    write_log "h" "ok - Found ANDROID_HOME ($ANDROID_HOME)"
+    write_log "v" "ok - Found ANDROID_HOME ($ANDROID_HOME)"
     export ANDROID_HOME
   fi
 
   if [[ -n "$_sdk" ]]; then
     ANDROID_SDK_MANAGER="$(native_path "$_sdk")"
-    write_log "h" "ok - Found sdkmanager ($ANDROID_SDK_MANAGER)"
+    write_log "v" "ok - Found sdkmanager ($ANDROID_SDK_MANAGER)"
     export ANDROID_SDK_MANAGER
   fi
 }
@@ -524,7 +524,7 @@ function android_install_sdk_manager() {
 
   local _ah=""
   if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME" ]; then
-    write_log "h" "# Using existing ANDROID_HOME: $ANDROID_HOME folder"
+    write_log "v" "# Using existing ANDROID_HOME: $ANDROID_HOME folder"
     _ah="$ANDROID_HOME"
   else
     prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah \
@@ -538,7 +538,7 @@ function android_install_sdk_manager() {
     fi
   fi
 
-  write_log "h" "# Downloading $uri..."
+  write_log "v" "# Downloading $uri..."
   local uri="$(build_android_platform_tools_uri)"
   local archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
@@ -546,7 +546,7 @@ function android_install_sdk_manager() {
     return 1
   fi
 
-  write_log "h" "# Extracting $archive to $_ah"
+  write_log "v" "# Extracting $archive to $_ah"
   if ! unpack "$archive" "$_ah"; then
     write_log "h" "not ok - Failed to unpack $archive"
     return 1
@@ -566,14 +566,14 @@ function android_install_sdk_manager() {
   fi
 
   archive=""
-  write_log "h" "# Downloading $uri..."
+  write_log "v" "# Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
     write_log "h" "# Failed to download $uri"
     return 1
   fi
 
-  write_log "h" "# Extracting $archive to $_ah"
+  write_log "v" "# Extracting $archive to $_ah"
   if ! unpack "$archive" "$_ah"; then
     write_log "h" "# Failed to unpack $archive"
     return 1
@@ -623,7 +623,7 @@ function android_install_jdk() {
 
   # Determine internal folder name so we can add it to JAVA_HOME
   local archive_dir="$(get_top_level_archive_dir "$archive")"
-  write_log "h" "# Extracting $archive to $_jh"
+  write_log "v" "# Extracting $archive to $_jh"
   if ! unpack "$archive" "$_jh"; then
     write_log "h" "# Failed to unpack $archive"
     return 1
@@ -664,7 +664,7 @@ function android_install_gradle() {
 
   # Determine internal folder name so we can add it to GRADLE_HOME
   archive_dir="$(get_top_level_archive_dir "$archive")"
-  write_log "h" "# Extracting $archive to $_gh"
+  write_log "v" "# Extracting $archive to $_gh"
   if ! unpack "$archive" "$_gh"; then
     write_log "h" "# Failed to unpack $archive"
     return 1
@@ -811,11 +811,11 @@ function android_fte() {
       yes="$(unix_path "$yes")"
 
       if [[ -n "$ANDROID_HOME" && -d "$ANDROID_HOME" ]]; then
-        write_log "h" "# Ensuring Android dependencies are installed"
+        write_log "d" "# Ensuring Android dependencies are installed"
         write_log "d" "$yes | $(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
         # Without eval, sdk manager says there is a syntax error
         eval "$yes | ($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
-        write_log "v" "# Running Android licensing process"
+        write_log "d" "# Running Android licensing process"
         write_log "d" "$yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
         $yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
       fi
