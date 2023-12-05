@@ -3,7 +3,7 @@ import * as walk from 'acorn-walk'
 
 export function generateApiModuleDoc ({
   src,
-  srcFile,
+  location,
   gitTagOrBranch = 'master'
 }) {
   let accumulateComments = []
@@ -38,7 +38,7 @@ export function generateApiModuleDoc ({
   const onNode = node => {
     const item = {
       sort: node.loc.start.line,
-      location: `/${srcFile}#L${node.loc.start.line}`,
+      location: `/${location}#L${node.loc.start.line}`,
       type: node.type,
       name: node.name,
       export: node?.type.includes('Export'),
@@ -123,7 +123,7 @@ export function generateApiModuleDoc ({
     if (item.export && !item.header) {
       item.header = [
         `This is a \`${item.type}\` named \`${item.name}\` ` +
-        `in \`${srcFile}\`, it's exported but undocumented.\n`
+        `in \`${location}\`, it's exported but undocumented.\n`
       ]
     }
 

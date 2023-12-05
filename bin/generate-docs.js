@@ -43,9 +43,9 @@ const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
   const md = 'README.md'
 
   const chunks = await Promise.all(modules.map(async module => {
-    const src = await fs.readFile(path.relative(process.cwd(), `${dest}/${module}`))
-    const srcFile = path.relative(process.cwd(), `${dest}/${module}`)
-    return generateApiModuleDoc({ src, srcFile, gitTagOrBranch })
+    const location = `${dest}/${module}`
+    const src = await fs.readFile(path.relative(process.cwd(), location))
+    return generateApiModuleDoc({ src, location, gitTagOrBranch })
   }))
 
   // modules special with special handling
@@ -85,12 +85,13 @@ External docs: https://nodejs.org/api/events.html
 {
   const filename = 'index.js'
   const dest = SOCKET_NODE_DIR
+  const location = `${dest}/${filename}`
   const md = 'API.md'
 
-  const srcFile = path.relative(process.cwd(), `${dest}/${filename}`)
+  const srcFile = path.relative(process.cwd(), location)
   const src = await fs.readFile(srcFile)
 
-  const { content } = generateApiModuleDoc({ src, srcFile })
+  const { content } = generateApiModuleDoc({ src, location })
 
   const destFile = path.relative(process.cwd(), `${dest}/${md}`)
   fs.writeFile(destFile, content)
