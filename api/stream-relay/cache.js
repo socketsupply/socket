@@ -3,6 +3,8 @@ import { Buffer } from '../buffer.js'
 import { createDigest } from '../crypto.js'
 import { Packet, PacketPublish, PACKET_BYTES, sha256 } from './packets.js'
 
+const EMPTY_CACHE = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+
 export const trim = (/** @type {Buffer} */ buf) => {
   return buf.toString().split('~')[0].split('\x00')[0]
 }
@@ -25,8 +27,6 @@ function toBufferMaybe (m) {
  * Default max size of a `Cache` instance.
  */
 export const DEFAULT_MAX_SIZE = Math.ceil(16_000_000 / PACKET_BYTES)
-
-const EMPTY_HASH = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
 /**
  * @typedef {Packet} CacheEntry
@@ -294,7 +294,7 @@ export class Cache {
     if (!buckets.every(b => b === null)) {
       hash = await this.sha1(buckets.join(''), true)
     } else {
-      hash = EMPTY_HASH
+      hash = EMPTY_CACHE
     }
 
     return { prefix, hash, buckets }
