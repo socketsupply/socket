@@ -176,7 +176,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 {
   // TODO can this be escaped or is the url encoded property already?
   JSON::Object json = JSON::Object::Entries {{"url", [url.absoluteString UTF8String]}};
-  bridge->router.emit("protocol", json.str());
+  bridge->router.emit("applicationurl", json.str());
   return YES;
 }
 
