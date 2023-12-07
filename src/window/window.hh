@@ -6,6 +6,7 @@
 #include "../ipc/ipc.hh"
 #include "../app/app.hh"
 #include "../core/env.hh"
+#include "../core/config.hh"
 
 #include "options.hh"
 
