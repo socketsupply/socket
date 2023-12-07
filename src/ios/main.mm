@@ -349,7 +349,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   if (isDebugEnabled() && port > 0 && getDevHost() != nullptr) {
     NSString* host = [NSString stringWithUTF8String:getDevHost()];
     url = [NSURL
-      URLWithString: [NSString stringWithFormat: @"http://%@:%d/", host, port]
+      URLWithString: [NSString stringWithFormat: @"%@:%d/", host, port]
     ];
 
     if (@available(iOS 15, *)) {
