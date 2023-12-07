@@ -881,10 +881,12 @@ namespace SSC {
       withObject: @"ipc"
     ];
 
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"file"
-    ];
+    if (userConfig["host"].starts_with("http:")) {
+      [webview.configuration.processPool
+        performSelector: @selector(_registerURLSchemeAsSecure:)
+        withObject: @"http"
+      ];
+    }
 
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
