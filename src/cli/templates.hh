@@ -1008,7 +1008,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         MARKETING_VERSION = 1.0;
         ONLY_ACTIVE_ARCH = YES;
         OTHER_CFLAGS = (
-          "-DHOST={{host}}",
+          "-DHOST=\\\"{{host}}\\\"",
           "-DPORT={{port}}",
         );
         PRODUCT_BUNDLE_IDENTIFIER = "{{meta_bundle_identifier}}";
