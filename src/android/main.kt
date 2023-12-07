@@ -147,16 +147,26 @@ open class MainActivity : WebViewActivity() {
 
   override fun onStart () {
     this.runtime.start()
-    return super.onStart()
+    super.onStart()
+
+    val window = this.window
+    val action: String? = this.intent?.action
+    val data: android.net.Uri? = this.intent?.data
+
+    if (data != null) {
+      window.bridge.emit("applicationurl", """{
+        "url": "$data"
+      }""")
+    }
   }
 
   override fun onResume () {
-    this.runtime.resume()
+    this.runtime.start()
     return super.onResume()
   }
 
   override fun onPause () {
-    this.runtime.pause()
+    this.runtime.stop()
     return super.onPause()
   }
 
@@ -174,7 +184,14 @@ open class MainActivity : WebViewActivity() {
     super.onNewIntent(intent)
     val window = this.window
     val action = intent.action
+    val data = intent.data
     val id = intent.extras?.getCharSequence("id")?.toString()
+
+    if (data != null) {
+      window.bridge.emit("applicationurl", """{
+        "url": "$data"
+      }""")
+    }
 
     if (action != null) {
       if (action == "notification.response.default") {
@@ -203,7 +220,6 @@ open class MainActivity : WebViewActivity() {
     intent: android.content.Intent?
   ) {
     super.onActivityResult(requestCode, resultCode, intent)
-    console.log("requestCode=$requestCode resultCode=$resultCode")
   }
 
   override fun onPageStarted (
