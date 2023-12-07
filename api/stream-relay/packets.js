@@ -111,17 +111,17 @@ export const PACKET_SPEC = {
   hops: { bytes: 4, encoding: 'number', default: 0 },
   index: { bytes: 4, encoding: 'number', default: -1, signed: true },
   ttl: { bytes: 4, encoding: 'number', default: CACHE_TTL },
-  clusterId: { bytes: 32, encoding: 'base64', default: [] },
-  subclusterId: { bytes: 32, encoding: 'base64', default: [] },
-  previousId: { bytes: 32, encoding: 'hex', default: [] },
-  packetId: { bytes: 32, encoding: 'hex', default: [] },
-  nextId: { bytes: 32, encoding: 'hex', default: [] },
-  usr1: { bytes: 32, default: [] },
-  usr2: { bytes: 32, default: [] },
-  usr3: { bytes: 32, default: [] },
-  usr4: { bytes: 32, default: [] },
-  message: { bytes: 1024, default: [] },
-  sig: { bytes: 64, default: [] }
+  clusterId: { bytes: 32, encoding: 'base64', default: [0b0] },
+  subclusterId: { bytes: 32, encoding: 'base64', default: [0b0] },
+  previousId: { bytes: 32, encoding: 'hex', default: [0b0] },
+  packetId: { bytes: 32, encoding: 'hex', default: [0b0] },
+  nextId: { bytes: 32, encoding: 'hex', default: [0b0] },
+  usr1: { bytes: 32, default: [0b0] },
+  usr2: { bytes: 32, default: [0b0] },
+  usr3: { bytes: 32, default: [0b0] },
+  usr4: { bytes: 32, default: [0b0] },
+  message: { bytes: 1024, default: [0b0] },
+  sig: { bytes: 64, default: [0b0] }
 }
 
 let FRAME_BYTES = MAGIC_BYTES
@@ -317,7 +317,7 @@ export class Packet {
     if (p.message?.length > Packet.MESSAGE_BYTES) throw new Error('ETOOBIG')
 
     // we only have p.nextId when we know ahead of time, if it's empty that's fine.
-    if (p.packetId.length === 0) {
+    if (p.packetId.length === 1 && p.packetId[0] === 0) {
       const bufs = [p.previousId, p.message, p.nextId].map(v => Buffer.from(v))
       p.packetId = await sha256(Buffer.concat(bufs), { bytes: true })
     }

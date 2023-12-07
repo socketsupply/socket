@@ -6149,7 +6149,7 @@ declare module "socket:stream-relay/packets" {
             export { bytes_6 as bytes };
             let encoding_6: string;
             export { encoding_6 as encoding };
-            let _default_3: any[];
+            let _default_3: number[];
             export { _default_3 as default };
         }
         namespace subclusterId {
@@ -6157,7 +6157,7 @@ declare module "socket:stream-relay/packets" {
             export { bytes_7 as bytes };
             let encoding_7: string;
             export { encoding_7 as encoding };
-            let _default_4: any[];
+            let _default_4: number[];
             export { _default_4 as default };
         }
         namespace previousId {
@@ -6165,7 +6165,7 @@ declare module "socket:stream-relay/packets" {
             export { bytes_8 as bytes };
             let encoding_8: string;
             export { encoding_8 as encoding };
-            let _default_5: any[];
+            let _default_5: number[];
             export { _default_5 as default };
         }
         namespace packetId {
@@ -6173,7 +6173,7 @@ declare module "socket:stream-relay/packets" {
             export { bytes_9 as bytes };
             let encoding_9: string;
             export { encoding_9 as encoding };
-            let _default_6: any[];
+            let _default_6: number[];
             export { _default_6 as default };
         }
         namespace nextId {
@@ -6181,43 +6181,43 @@ declare module "socket:stream-relay/packets" {
             export { bytes_10 as bytes };
             let encoding_10: string;
             export { encoding_10 as encoding };
-            let _default_7: any[];
+            let _default_7: number[];
             export { _default_7 as default };
         }
         namespace usr1 {
             let bytes_11: number;
             export { bytes_11 as bytes };
-            let _default_8: any[];
+            let _default_8: number[];
             export { _default_8 as default };
         }
         namespace usr2 {
             let bytes_12: number;
             export { bytes_12 as bytes };
-            let _default_9: any[];
+            let _default_9: number[];
             export { _default_9 as default };
         }
         namespace usr3 {
             let bytes_13: number;
             export { bytes_13 as bytes };
-            let _default_10: any[];
+            let _default_10: number[];
             export { _default_10 as default };
         }
         namespace usr4 {
             let bytes_14: number;
             export { bytes_14 as bytes };
-            let _default_11: any[];
+            let _default_11: number[];
             export { _default_11 as default };
         }
         namespace message {
             let bytes_15: number;
             export { bytes_15 as bytes };
-            let _default_12: any[];
+            let _default_12: number[];
             export { _default_12 as default };
         }
         namespace sig {
             let bytes_16: number;
             export { bytes_16 as bytes };
-            let _default_13: any[];
+            let _default_13: number[];
             export { _default_13 as default };
         }
     }
