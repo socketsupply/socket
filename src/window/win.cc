@@ -614,6 +614,7 @@ namespace SSC {
   };
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+    static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
     window = CreateWindow(
@@ -667,17 +668,28 @@ namespace SSC {
       // UNREACHABLE - cannot continue
     }
 
-    const WCHAR* allowedSchemeOrigins[5] = { L"about://*", L"http://*", L"https://*", L"file://*", L"socket://*" };
+    const int MAX_ALLOWED_SCHEME_ORIGINS = 5;
+    int allowedSchemeOriginsCount = 4;
+    const WCHAR* allowedSchemeOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {
+      L"about://*",
+      L"https://*",
+      L"file://*",
+      L"socket://*"
+    };
+
+    if (userConfig["host"].starts_with("http:")) {
+      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(userConfig["host"]);
+    }
 
     auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
     ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
     ipcSchemeRegistration->put_TreatAsSecure(TRUE);
-    ipcSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
+    ipcSchemeRegistration->SetAllowedOrigins(allowedSchemeOriginsCount, allowedSchemeOrigins);
 
     auto socketSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"socket");
     socketSchemeRegistration->put_HasAuthorityComponent(TRUE);
     socketSchemeRegistration->put_TreatAsSecure(TRUE);
-    socketSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
+    socketSchemeRegistration->SetAllowedOrigins(allowedSchemeOriginsCount, allowedSchemeOrigins);
 
     // If someone can figure out how to allocate this so we can do it in a loop that'd be great, but even Ms is doing it like this:
     // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions4?view=webview2-1.0.1587.40
