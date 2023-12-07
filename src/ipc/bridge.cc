@@ -2630,7 +2630,9 @@ static void registerSchemeHandler (Router *router) {
   webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
 
-  if (userConfig["host"].starts_with("http:")) {
+  static const auto devHost = SSC::getDevHost();
+
+  if (devHost.starts_with("http:")) {
     webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
     webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
     webkit_security_manager_register_uri_scheme_as_secure(security, "http");
