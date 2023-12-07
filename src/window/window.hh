@@ -146,18 +146,18 @@ namespace SSC {
       int index = 0;
       int width = 0;
       int height = 0;
-#if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+    #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
-#endif
+    #endif
 
-#if defined(__APPLE__)
-#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    #if defined(__APPLE__)
+    #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSWindow* window;
-#endif
+    #endif
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
       SSCNavigationDelegate *navigationDelegate = nullptr;
-#elif defined(__linux__) && !defined(__ANDROID__)
+    #elif defined(__linux__) && !defined(__ANDROID__)
       GtkSelectionData *selectionData = nullptr;
       GtkAccelGroup *accelGroup = nullptr;
       GtkWidget *webview = nullptr;
@@ -170,7 +170,7 @@ namespace SSC {
       double dragLastY = 0;
       bool isDragInvokedInsideWindow;
       int popupId;
-#elif defined(_WIN32)
+    #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       ICoreWebView2Controller *controller = nullptr;
       ICoreWebView2 *webview = nullptr;
@@ -182,7 +182,7 @@ namespace SSC {
       HWND window;
       std::map<int, std::string> menuMap;
       void resize (HWND window);
-#endif
+    #endif
 
       Window (App&, WindowOptions);
     #if defined(__APPLE__)
