@@ -269,6 +269,18 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSPrincipalClass</key>
   <string>AtomApplication</string>
 
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>{{meta_application_protocol}}</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>{{meta_application_protocol}}</string>
+      </array>
+    </dict>
+  </array>
+
 
   <!-- Application configuration -->
   <key>NSLocationDefaultAccuracyReduced</key>
@@ -1143,10 +1155,10 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <array>
     <dict>
       <key>CFBundleURLName</key>
-      <string>{{ios_protocol}}</string>
+      <string>{{meta_application_protocol}}</string>
       <key>CFBundleURLSchemes</key>
       <array>
-        <string>{{ios_protocol}}</string>
+        <string>{{meta_application_protocol}}</string>
       </array>
     </dict>
   </array>
