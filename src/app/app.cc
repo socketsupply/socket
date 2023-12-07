@@ -21,6 +21,27 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "socket.runtime.app.queue",
   qos
 );
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+@implementation SSCApplicationDelegate
+- (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls {
+  auto app = self.app;
+  if (app != nullptr && app->windowManager != nullptr) {
+    for (NSURL* url in urls) {
+      SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+        "url", [url.absoluteString UTF8String]
+      }};
+
+      for (auto window : self.app->windowManager->windows) {
+        if (window != nullptr) {
+          window->bridge->router.emit("applicationurl", json.str());
+        }
+      }
+    }
+  }
+}
+@end
+#endif
 #endif
 
 namespace SSC {
@@ -35,17 +56,20 @@ namespace SSC {
   }
 
   App::App (int) : App() {
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     gtk_init_check(0, nullptr);
-#endif
+  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    this->delegate.app = this;
+    NSApplication.sharedApplication.delegate =  this->delegate;
+  #endif
   }
 
   int App::run () {
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     gtk_main();
-#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     [NSApp run];
-#elif defined(_WIN32)
+  #elif defined(_WIN32)
     MSG msg;
 
     if (!GetMessage(&msg, nullptr, 0, 0)) {
@@ -68,7 +92,7 @@ namespace SSC {
     if (msg.message == WM_QUIT && shouldExit) {
       return 1;
     }
-#endif
+  #endif
 
     return shouldExit ? 1 : 0;
   }
@@ -76,41 +100,41 @@ namespace SSC {
   void App::kill () {
     // Distinguish window closing with app exiting
     shouldExit = true;
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     gtk_main_quit();
-#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
     if (!fromSSC) {
       [NSApp terminate:nil];
     }
-#elif defined(_WIN32)
+  #elif defined(_WIN32)
     if (isDebugEnabled()) {
       if (w32ShowConsole) {
         HideConsole();
       }
     }
     PostQuitMessage(0);
-#endif
+  #endif
   }
 
   void App::restart () {
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     // @TODO
-#elif defined(__APPLE__)
+  #elif defined(__APPLE__)
     // @TODO
-#elif defined(_WIN32)
+  #elif defined(_WIN32)
     char filename[MAX_PATH] = "";
     PROCESS_INFORMATION pi;
     STARTUPINFO si = { sizeof(STARTUPINFO) };
     GetModuleFileName(NULL, filename, MAX_PATH);
     CreateProcess(NULL, filename, NULL, NULL, NULL, NULL, NULL, NULL, &si, &pi);
     std::exit(0);
-#endif
+  #endif
   }
 
   void App::dispatch (std::function<void()> callback) {
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     auto threadCallback = new std::function<void()>(callback);
 
     g_idle_add_full(
@@ -124,7 +148,7 @@ namespace SSC {
         delete static_cast<std::function<void()>*>(callback);
       }
     );
-#elif defined(__APPLE__)
+  #elif defined(__APPLE__)
     auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
     auto queue = dispatch_get_global_queue(priority, 0);
 
@@ -133,7 +157,7 @@ namespace SSC {
         callback();
       });
     });
-#elif defined(_WIN32)
+  #elif defined(_WIN32)
     static auto mainThread = GetCurrentThreadId();
     auto threadCallback = (LPARAM) new std::function<void()>(callback);
     if (this->isReady) {
@@ -151,24 +175,24 @@ namespace SSC {
       PostThreadMessage(mainThread, WM_APP, 0, threadCallback);
     });
     t.detach();
-#endif
+  #endif
   }
 
   String App::getCwd () {
     String cwd = "";
 
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     auto canonical = fs::canonical("/proc/self/exe");
     cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     cwd = [bundlePath UTF8String];
-#elif defined(_WIN32)
+  #elif defined(_WIN32)
     wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
     cwd = path.string();
-#endif
+  #endif
 
     return cwd;
   }
@@ -203,7 +227,6 @@ namespace SSC {
     MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  
   void App::ShowConsole() {
     if (consoleVisible)
       return;
@@ -221,7 +244,7 @@ namespace SSC {
   }
 
   App::App (void* h) : App() {
-    this->hInstance = (HINSTANCE) h;  
+    this->hInstance = (HINSTANCE) h;
 
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
