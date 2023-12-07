@@ -881,7 +881,8 @@ namespace SSC {
       withObject: @"ipc"
     ];
 
-    if (userConfig["host"].starts_with("http:")) {
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
       [webview.configuration.processPool
         performSelector: @selector(_registerURLSchemeAsSecure:)
         withObject: @"http"
