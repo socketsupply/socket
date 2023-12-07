@@ -57,6 +57,10 @@
  * hooks.onNotificationPresented((event) => {
  *   // called when 'notificationpresented' events are dispatched on the global object
  * })
+ *
+ * hooks.onNotificationPresented((event) => {
+ *   // called when 'notificationpresented' events are dispatched on the global object
+ * })
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
@@ -167,6 +171,26 @@ export class ReadyEvent extends Event {
  */
 export class RuntimeInitEvent extends Event {
   constructor () { super(RUNTIME_INIT_EVENT_NAME) }
+}
+
+/**
+ * An event dispatched when an ApplicationURL is opening the app.
+ */
+export class ApplicationURLEvent extends Event {
+  #data = null
+  #url = null
+
+    ;[Symbol(Symbol.toStringTag)] = 'ApplicationURLEvent'
+
+  constructor (type, options = null) {
+    super(type)
+    this.#data = options?.data ?? null
+    this.#url = options?.url ?? null
+  }
+
+  get isTrusted () { return true }
+  get data () { return this.#data ?? null }
+  get url () { return this.#url ? new URL(this.#url) : null }
 }
 
 /**
@@ -483,6 +507,17 @@ export class Hooks extends EventTarget {
     this.addEventListener('notificationpresented', callback)
     return () => this.removeEventListener('notificationpresented', callback)
   }
+
+  /**
+   * Calls callback when a `ApplicationURL` is opened.
+   * @param {function} callback
+   * @return {function}
+   */
+  onApplicationURL (callback) {
+    const cb = (e) => callback(new ApplicationURLEvent('applicationurl', e.detail.url))
+    this.addEventListener('applicationurl', cb)
+    return () => this.removeEventListener('applicationurl', callback)
+  }
 }
 
 /**
@@ -603,6 +638,15 @@ export function onNotificationResponse (callback) {
  */
 export function onNotificationPresented (callback) {
   return hooks.onNotificationPresented(callback)
+}
+
+/**
+ * Calls callback when a `ApplicationURL` is opened.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onApplicationURL (callback) {
+  return hooks.onApplicationURL(callback)
 }
 
 export default hooks
