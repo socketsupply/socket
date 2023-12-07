@@ -557,10 +557,14 @@ function determine_cxx () {
     write_log "v" "warn - using '$CXX' as CXX"
   fi
 
+  CC="${CXX/++/}"
+
   export CXX
+  export CC
   # win32 has partically escaping requirements, this is handled by install.ps1
   if [[ "$host" != "Win32" ]]; then
     update_env_data "CXX=$CXX"
+    update_env_data "CC=$CC"
   fi
 }
 
@@ -571,6 +575,8 @@ function first_time_experience_setup() {
   if [[ -n "$NO_ANDROID" ]]; then
     unset BUILD_ANDROID
   fi
+
+  determine_cxx
 
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
