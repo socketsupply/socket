@@ -677,8 +677,9 @@ namespace SSC {
       L"socket://*"
     };
 
-    if (userConfig["host"].starts_with("http:")) {
-      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(userConfig["host"]);
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
+      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(devHost);
     }
 
     auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
