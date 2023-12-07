@@ -43,7 +43,7 @@ namespace SSC {
   // implemented in `init.cc`
   extern const Map getUserConfig ();
   extern bool isDebugEnabled ();
-  extern const char* getDevHost ();
+  extern const String getDevHost ();
   extern int getDevPort ();
 
   /**
