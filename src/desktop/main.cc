@@ -1059,7 +1059,7 @@ MAIN {
   defaultWindow->show(EMPTY_SEQ);
 
   if (_port > 0) {
-    defaultWindow->navigate(EMPTY_SEQ, "http://" + _host + ":" + std::to_string(_port));
+    defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
     defaultWindow->setSystemMenu(EMPTY_SEQ, String(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
