@@ -477,10 +477,15 @@ constexpr auto gAndroidManifest = R"XML(
       android:name="{{android_main_activity}}"
       android:exported="true"
       android:configChanges="orientation|screenSize"
+      android:documentLaunchMode="intoExisting"
     >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.LAUNCHER" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="{{meta_application_protocol}}" />
       </intent-filter>
     </activity>
   </application>
@@ -502,6 +507,7 @@ Icon={{linux_icon_path}}
 StartupWMClass={{build_name}}
 Comment={{meta_description}}
 Categories={{linux_categories}};
+MimeType=x-scheme-handler/{{meta_application_protocol}}
 )INI";
 
 constexpr auto gDebianManifest = R"DEB(Package: {{build_name}}
@@ -1762,6 +1768,9 @@ flags = "-g"
 ; It's required when `[meta] type` is not `"extension"`.
 ; It should be in a reverse DNS notation https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion
 bundle_identifier = "com.{{project_name}}"
+
+; A unique application protocol scheme to support deep linking
+application_protocol = "{{project_name}}"
 
 ; A string that gets used in the about dialog and package meta info.
 ; copyright = "(c) Beep Boop Corp. 1985"
