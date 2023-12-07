@@ -23,6 +23,7 @@ open class Runtime (
   var pointer = alloc(activity.getRootDirectory())
   var activity = WeakReference(activity)
   val configuration = configuration;
+  var isRunning = false
 
   fun finalize () {
     if (this.pointer > 0) {
@@ -41,11 +42,17 @@ open class Runtime (
   }
 
   fun start () {
-    this.resume()
+    if (!this.isRunning) {
+      this.resume()
+      this.isRunning = true
+    }
   }
 
   fun stop () {
-    this.pause()
+    if (this.isRunning) {
+      this.pause()
+      this.isRunning = false
+    }
   }
 
   fun destroy () {
