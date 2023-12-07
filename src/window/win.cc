@@ -679,7 +679,7 @@ namespace SSC {
 
     static const auto devHost = SSC::getDevHost();
     if (devHost.starts_with("http:")) {
-      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(devHost);
+      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(devHost).c_str();
     }
 
     auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");

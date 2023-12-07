@@ -154,6 +154,18 @@ const Map SSC::getUserConfig () {
   return settings;
 }
 
+const String SSC::getDevHost () {
+  return settings["host"];
+}
+
+int SSC::getDevPort () {
+  if (settings.contains("port")) {
+    return std::stoi(settings["port"].c_str());
+  }
+
+  return 0;
+}
+
 bool SSC::isDebugEnabled () {
   return DEBUG == 1;
 }
