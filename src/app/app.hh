@@ -4,24 +4,35 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 
+namespace SSC {
+  class App;
+}
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+@interface SSCApplicationDelegate : NSObject<NSApplicationDelegate>
+@property (nonatomic) SSC::App* app;
+- (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls;
+@end
+#endif
 
 namespace SSC {
   class WindowManager;
 
   class App {
     // an opaque pointer to the configured `WindowManager<Window, App>`
-    WindowManager *windowManager = nullptr;
     public:
       static inline std::atomic<bool> isReady = false;
 
-#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSAutoreleasePool* pool = [NSAutoreleasePool new];
-#elif defined(_WIN32)
+      SSCApplicationDelegate* delegate = [SSCApplicationDelegate new];
+    #elif defined(_WIN32)
       MSG msg;
       WNDCLASSEX wcex;
       _In_ HINSTANCE hInstance;
-#endif
+    #endif
 
+      WindowManager *windowManager = nullptr;
       ExitCallback onExit = nullptr;
       bool shouldExit = false;
       bool fromSSC = false;
@@ -29,12 +40,12 @@ namespace SSC {
       Map appData;
       Core *core;
 
-#ifdef _WIN32
+    #ifdef _WIN32
       App (void *);
       void ShowConsole();
       void HideConsole();
       bool consoleVisible = false;
-#endif
+    #endif
 
       App (int);
       App ();
