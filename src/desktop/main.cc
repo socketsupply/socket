@@ -345,21 +345,21 @@ MAIN {
     auto value = message.get("value");
 
     if (message.name == "stdout") {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
       dispatch_async(dispatch_get_main_queue(), ^{
         os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
       });
-#endif
+    #endif
       std::cout << value;
       return;
     }
 
     if (message.name == "stderr") {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
       dispatch_async(dispatch_get_main_queue(), ^{
         os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
       });
-#endif
+    #endif
       std::cerr << "\033[31m" + value + "\033[0m";
       return;
     }
