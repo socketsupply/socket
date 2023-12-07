@@ -2749,6 +2749,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
     }
+
+    if (!devHost.starts_with("http")) {
+      devHost = String("http://") + devHost;
+    }
+
     settings.insert(std::make_pair("host", devHost));
 
     String devPort = "0";
@@ -4160,7 +4165,7 @@ int main (const int argc, const char* argv[]) {
               << " -DIOS=1"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-              << " -DHOST=" << devHost
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
@@ -5359,7 +5364,7 @@ int main (const int argc, const char* argv[]) {
               // << " -U__CYGWIN__"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-              << " -DHOST=" << devHost
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
@@ -5541,7 +5546,7 @@ int main (const int argc, const char* argv[]) {
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-        << " -DHOST=" << devHost
+        << " -DHOST=" << "\\\"" << devHost << "\\\""
         << " -DPORT=" << devPort
         << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
         << " -DSSC_VERSION=" << SSC::VERSION_STRING
@@ -6506,6 +6511,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
     }
+
+    if (!devHost.starts_with("http")) {
+      devHost = String("http://") + devHost;
+    }
+
     settings.insert(std::make_pair("host", devHost));
 
     String devPort = "0";
