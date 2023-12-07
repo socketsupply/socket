@@ -34,14 +34,14 @@ export const firstTimeExperienceSetup = async () => {
 
   // ssc env doesn't exist, attempt to run setup for target being built.
   // This should also install vc_redist if it hasn't been installed
-  const PLATFORM_PARAMETER = '--platform='
+  const PLATFORM_PARAMETER = '--platform'
   let isSetupCall = false
   let isBuildCall = false
   let isRunCall = false
 
   let platform = ''
   const argv = process.argv.slice(2)
-  argv.forEach(arg => {
+  argv.forEach((arg, index) => {
     if (arg === 'setup') {
       isSetupCall = true
     }
@@ -54,8 +54,10 @@ export const firstTimeExperienceSetup = async () => {
       isRunCall = true
     }
 
-    if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
-      platform = arg.slice(PLATFORM_PARAMETER.length)
+    if (arg.indexOf(PLATFORM_PARAMETER + '=') === 0) {
+      platform = arg.slice(PLATFORM_PARAMETER.length + 1)
+    } else if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
+      platform = argv[index + 1]
     }
   })
 
