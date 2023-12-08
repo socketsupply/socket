@@ -118,6 +118,7 @@ flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, e
 Key | Default Value | Description
 :--- | :--- | :---
 bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). It's required when `[meta] type` is not `"extension"`. It should be in a reverse DNS notation https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion
+application_protocol |  |  A unique application protocol scheme to support deep linking
 copyright |  |  A string that gets used in the about dialog and package meta info.
 description |  |  A short description of the app.
 file_limit |  |  Set the limit of files that can be opened by your process.

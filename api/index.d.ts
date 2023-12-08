@@ -2587,6 +2587,12 @@ declare module "socket:hooks" {
      * @return {function}
      */
     export function onNotificationPresented(callback: Function): Function;
+    /**
+     * Calls callback when a `ApplicationURL` is opened.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onApplicationURL(callback: Function): Function;
     export const RUNTIME_INIT_EVENT_NAME: "__runtime_init__";
     export const GLOBAL_EVENTS: string[];
     /**
@@ -2770,6 +2776,12 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onNotificationPresented(callback: Function): Function;
+        /**
+         * Calls callback when a `ApplicationURL` is opened.
+         * @param {function} callback
+         * @return {function}
+         */
+        onApplicationURL(callback: Function): Function;
         #private;
     }
     export default hooks;
@@ -7707,6 +7719,39 @@ declare module "socket:fs/web" {
     }
     export default _default;
     import fs from "socket:fs/promises";
+}
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+    }
+    export default _default;
 }
 declare module "socket:internal/geolocation" {
     /**
