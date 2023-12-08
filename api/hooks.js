@@ -61,6 +61,10 @@
  * hooks.onNotificationPresented((event) => {
  *   // called when 'notificationpresented' events are dispatched on the global object
  * })
+ *
+ * hooks.onApplicationURL((event) => {
+ *   // called when 'applicationurl' events are dispatched on the global object
+ * })
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
@@ -130,6 +134,7 @@ export const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 
 export const GLOBAL_EVENTS = [
   RUNTIME_INIT_EVENT_NAME,
+  'applicationurl',
   'data',
   'error',
   'init',
@@ -171,26 +176,6 @@ export class ReadyEvent extends Event {
  */
 export class RuntimeInitEvent extends Event {
   constructor () { super(RUNTIME_INIT_EVENT_NAME) }
-}
-
-/**
- * An event dispatched when an ApplicationURL is opening the app.
- */
-export class ApplicationURLEvent extends Event {
-  #data = null
-  #url = null
-
-    ;[Symbol(Symbol.toStringTag)] = 'ApplicationURLEvent'
-
-  constructor (type, options = null) {
-    super(type)
-    this.#data = options?.data ?? null
-    this.#url = options?.url ?? null
-  }
-
-  get isTrusted () { return true }
-  get data () { return this.#data ?? null }
-  get url () { return this.#url ? new URL(this.#url) : null }
 }
 
 /**
@@ -514,8 +499,7 @@ export class Hooks extends EventTarget {
    * @return {function}
    */
   onApplicationURL (callback) {
-    const cb = (e) => callback(new ApplicationURLEvent('applicationurl', e.detail.url))
-    this.addEventListener('applicationurl', cb)
+    this.addEventListener('applicationurl', callback)
     return () => this.removeEventListener('applicationurl', callback)
   }
 }
