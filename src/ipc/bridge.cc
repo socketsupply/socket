@@ -61,8 +61,10 @@ static String getcwd () {
   Lock lock(cwdstate.mutex);
   String cwd = cwdstate.value;
 #if defined(__linux__) && !defined(__ANDROID__)
-  auto canonical = fs::canonical("/proc/self/exe");
-  cwd = fs::path(canonical).parent_path().string();
+  try {
+    auto canonical = fs::canonical("/proc/self/exe");
+    cwd = fs::path(canonical).parent_path().string();
+  } catch (...) {}
 #elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
   NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
   cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
