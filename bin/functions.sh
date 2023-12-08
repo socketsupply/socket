@@ -103,8 +103,6 @@ function quiet () {
 
 # Always logs to terminal, but respects VERBOSE for command output
 function log_and_run () {
-  write_log "h" "$@"
-
   if [[ "$*" =~ "sudo "* ]] && (( !log_and_run_sudo_granted )); then
     local args=($@)
     if ! prompt_yn "'ssc' would like to use 'sudo' to run: ${args[*]:1}"; then
@@ -113,6 +111,8 @@ function log_and_run () {
 
     log_and_run_sudo_granted=1
   fi
+
+  write_log "h" "$@"
 
   if [ -n "$VERBOSE" ]; then
     "$@"
@@ -591,31 +591,34 @@ function first_time_experience_setup() {
           build-essential                 \
           libc++abi-14-dev                \
           libc++-14-dev                   \
+          libdbus-1-dev                   \
           pkg-config                      \
           clang-14                        \
           || return $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
-        log_and_run sudo pacman -Syu   \
-          git                          \
-          webkit2gtk-4.1               \
-          base-devel                   \
-          libc++abi-14                 \
-          libc++1-14                   \
-          clang-14                     \
-          pkgconf                      \
+        log_and_run sudo pacman -Syu      \
+          git                             \
+          webkit2gtk-4.1                  \
+          base-devel                      \
+          libc++abi-14                    \
+          libc++1-14                      \
+          clang-14                        \
+          pkgconf                         \
+          libdbus                         \
           || return $?
       elif [[ "$package_manager" == "dnf install" ]]; then
-        log_and_run sudo dnf install   \
-          make                         \
-          automake                     \
-          gcc                          \
-          gcc-c++                      \
-          kernel-devel                 \
-          clang14-devel                \
-          clang14-libs                 \
-          libcxx-devel                 \
-          libcxxabi-devel              \
-          webkit2gtk4.1-devel          \
+        log_and_run sudo dnf install      \
+          make                            \
+          automake                        \
+          gcc                             \
+          gcc-c++                         \
+          kernel-devel                    \
+          clang14-devel                   \
+          clang14-libs                    \
+          libcxx-devel                    \
+          libcxxabi-devel                 \
+          webkit2gtk4.1-devel             \
+          dbus-devel                      \
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
         echo "warn - yum package manager is not suppored yet. Please try to install from npm or from source."
