@@ -34,7 +34,7 @@ namespace SSC {
 
       WindowManager *windowManager = nullptr;
       ExitCallback onExit = nullptr;
-      bool shouldExit = false;
+      AtomicBool shouldExit = false;
       bool fromSSC = false;
       bool w32ShowConsole = false;
       Map appData;
