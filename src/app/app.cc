@@ -179,11 +179,13 @@ namespace SSC {
   }
 
   String App::getCwd () {
-    String cwd = "";
+    static String cwd = "";
 
   #if defined(__linux__) && !defined(__ANDROID__)
-    auto canonical = fs::canonical("/proc/self/exe");
-    cwd = fs::path(canonical).parent_path().string();
+    try {
+      auto canonical = fs::canonical("/proc/self/exe");
+      cwd = fs::path(canonical).parent_path().string();
+    } catch (...) {}
   #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     cwd = [bundlePath UTF8String];
