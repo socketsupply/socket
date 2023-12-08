@@ -2585,8 +2585,13 @@ int main (const int argc, const char* argv[]) {
       }
     } else if (platform.linux) {
       auto paths = getPaths(targetPlatform);
-      auto debArchive = paths.pathPackage.string() + ".deb";
+      Path pathPackage = paths.platformSpecificOutputPath / (
+        settings["build_name"] + "_" +
+        settings["meta_version"] + "_" +
+        "amd64"
+      );
 
+      auto debArchive = pathPackage.string() + ".deb";
       String command = "dpkg -i " + debArchive;
       auto r = exec(command);
       if (r.exitCode != 0) {
@@ -4408,7 +4413,7 @@ int main (const int argc, const char* argv[]) {
     //
     if (platform.linux && isForDesktop) {
       log("preparing build for linux");
-      flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
+      flags = " -std=c++2a `pkg-config --cflags --libs dbus-1 gtk+-3.0 webkit2gtk-4.1`";
       flags += " -ldl " + getCxxFlags();
       flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
