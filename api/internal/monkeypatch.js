@@ -1,6 +1,7 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
+import { ApplicationURLEvent } from './events.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
@@ -90,7 +91,10 @@ export function init () {
     // pickers
     showDirectoryPicker,
     showOpenFilePicker,
-    showSaveFilePicker
+    showSaveFilePicker,
+
+    // events
+    ApplicationURLEvent
   })
 
   // navigator
