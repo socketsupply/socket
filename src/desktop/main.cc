@@ -5,6 +5,11 @@
 #include "../process/process.hh"
 #include "../window/window.hh"
 
+#if defined(__linux__)
+#include <dbus/dbus.h>
+#include <fcntl.h>
+#endif
+
 #include <iostream>
 #include <ostream>
 #include <regex>
@@ -38,6 +43,8 @@
 
 using namespace SSC;
 
+static App *app_ptr = nullptr;
+
 std::function<void(int)> shutdownHandler;
 void signalHandler (int signal) {
   if (shutdownHandler != nullptr) {
@@ -70,12 +77,73 @@ inline const Vector<int> splitToInts (const String& s, const char& c) {
   return result;
 }
 
+#if defined(__linux__)
+static void handleApplicationURLEvent (const String url) {
+  SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+    "url", url
+  }};
+
+  if (app_ptr != nullptr && app_ptr->windowManager != nullptr) {
+    for (auto window : app_ptr->windowManager->windows) {
+      if (window != nullptr) {
+        if (window->index == 0) {
+          gtk_widget_show_all(GTK_WIDGET(window->window));
+          gtk_widget_grab_focus(GTK_WIDGET(window->webview));
+          gtk_widget_grab_focus(GTK_WIDGET(window->window));
+          gtk_window_activate_focus(GTK_WINDOW(window->window));
+          gtk_window_present(GTK_WINDOW(window->window));
+        }
+
+        window->bridge->router.emit("applicationurl", json.str());
+      }
+    }
+  }
+}
+
+static void onGTKApplicationActivation (
+  GtkApplication* app,
+  GFile** files,
+  gint n_files,
+  const gchar* hint,
+  gpointer userData
+) {
+  handleApplicationURLEvent(String(hint));
+}
+
+static DBusHandlerResult onDBusMessage (
+  DBusConnection* connection,
+  DBusMessage* message,
+  void* userData
+) {
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
+
+  // Check if the message is a method call and has the expected interface and method
+  if (dbus_message_is_method_call(message, dbusBundleIdentifier.c_str(), "handleApplicationURLEvent")) {
+    // Extract URI from the message
+    const char *uri = nullptr;
+    if (dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &uri, DBUS_TYPE_INVALID)) {
+      handleApplicationURLEvent(String(uri));
+    } else {
+      fprintf(stderr, "error: dbus: Failed to extract URI message\n");
+    }
+  }
+
+  return DBUS_HANDLER_RESULT_HANDLED;
+}
+#endif
+
 //
 // the MAIN macro provides a cross-platform program entry point.
 // it makes argc and argv uniformly available. It provides "instanceId"
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
+
+#if defined(__linux__)
+  gtk_init(&argc, &argv);
+#endif
 
   // Singletons should be static to remove some possible race conditions in
   // their instantiation and destruction.
@@ -87,7 +155,7 @@ MAIN {
   // For now make a pointer reference since there is some member variable name
   // collision in the call to shutdownHandler when it's being called from the
   // windowManager instance.
-  static App* app_ptr = &app;
+  app_ptr = &app;
 
   app.setWindowManager(&windowManager);
   const String _host = getDevHost();
@@ -115,6 +183,137 @@ MAIN {
 
   bool wantsVersion = false;
   bool wantsHelp = false;
+
+  auto bundleIdentifier = app.appData["meta_bundle_identifier"];
+
+#if defined(__linux__)
+  static auto appInstanceLock = String("/tmp/") + bundleIdentifier + ".lock";
+  auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
+  auto appProtocol = app.appData["meta_application_protocol"];
+  auto dbusError = DBusError {}; dbus_error_init(&dbusError);
+  auto connection = dbus_bus_get(DBUS_BUS_SESSION, &dbusError);
+  auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
+
+  // instance is running if fd was acquired
+  if (appInstanceLockFd != -1) {
+    auto filter = (
+      String("type='method_call',") +
+      String("interface='") + dbusBundleIdentifier + String("',") +
+      String("member='handleApplicationURLEvent'")
+    );
+
+    dbus_bus_add_match(connection, filter.c_str(), &dbusError);
+
+    if (dbus_error_is_set(&dbusError)) {
+      fprintf(stderr, "error: dbus: Failed to add match rule: %s\n", dbusError.message);
+      dbus_error_free(&dbusError);
+      dbus_connection_unref(connection);
+      exit(EXIT_FAILURE);
+    }
+
+    if (
+      DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != dbus_bus_request_name(
+        connection,
+        dbusBundleIdentifier.c_str(),
+        DBUS_NAME_FLAG_REPLACE_EXISTING,
+        &dbusError
+      )
+    ) {
+      fprintf(stderr, "error: dbus: Failed to request name for: %s\n", dbusBundleIdentifier.c_str());
+      exit(EXIT_FAILURE);
+    }
+
+    if (dbus_error_is_set(&dbusError)) {
+      fprintf(stderr, "error: dbus: Failed to request name for: %s: %s\n", dbusBundleIdentifier.c_str(), dbusError.message);
+      dbus_error_free(&dbusError);
+    }
+
+    dbus_connection_add_filter(connection, onDBusMessage, nullptr, nullptr);
+
+    static std::function<void()> pollForMessage = [connection]() {
+      Thread thread([connection] () {
+        while (dbus_connection_read_write_dispatch(connection, 100));
+        app_ptr->dispatch(pollForMessage);
+      });
+
+      thread.detach();
+    };
+
+    app_ptr->dispatch(pollForMessage);
+  } else if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
+    if (dbus_error_is_set(&dbusError)) {
+      fprintf(stderr, "error: dbus: Connection error: %s\n", dbusError.message);
+      dbus_error_free(&dbusError);
+      exit(EXIT_FAILURE);
+    }
+
+    auto message = dbus_message_new_method_call(
+      dbusBundleIdentifier.c_str(),
+      (String("/") + replace(dbusBundleIdentifier, "\\.", "/")).c_str(),
+      dbusBundleIdentifier.c_str(),
+      "handleApplicationURLEvent"
+    );
+
+    if (message == NULL) {
+      fprintf(stderr, "error: dbus: essage creation failed\n");
+      exit(EXIT_FAILURE);
+    }
+
+    // Append the URI to the D-Bus message
+    if (!dbus_message_append_args(message, DBUS_TYPE_STRING, &argv[1], DBUS_TYPE_INVALID)) {
+      fprintf(stderr, "error: dbus: Failed to append URI to D-Bus message\n");
+      exit(EXIT_FAILURE);
+    }
+
+    // Send the D-Bus message
+    if (!dbus_connection_send(connection, message, NULL)) {
+      fprintf(stderr, "error: dbus: Failed to send message\n");
+      exit(EXIT_FAILURE);
+    }
+
+    dbus_connection_flush(connection);
+    dbus_message_unref(message);
+    dbus_connection_unref(connection);
+    exit(EXIT_SUCCESS);
+  } else {
+    exit(EXIT_FAILURE);
+  }
+
+  atexit([]() {
+    unlink(appInstanceLock.c_str());
+  });
+
+  auto gtkApp = gtk_application_new(
+    bundleIdentifier.c_str(),
+    G_APPLICATION_FLAGS_NONE
+  );
+
+  if (appProtocol.size() > 0) {
+    GError* error = nullptr;
+    auto appName = app.appData["build_name"];
+    auto appDescription = app.appData["meta_description"];
+    auto appContentType = String("x-scheme-handler/") + appProtocol;
+    auto appinfo = g_app_info_create_from_commandline(
+      appName.c_str(),
+      appDescription.c_str(),
+      G_APP_INFO_CREATE_SUPPORTS_URIS,
+      NULL
+    );
+
+    g_app_info_set_as_default_for_type(
+      appinfo,
+      appContentType.c_str(),
+      &error
+    );
+
+    if (error != nullptr) {
+      fprintf(stderr, "error: g_app_info_set_as_default_for_type: %s\n", error->message);
+      return 1;
+    }
+
+    g_signal_connect(gtkApp, "activate", G_CALLBACK(onGTKApplicationActivation), NULL);
+  }
+#endif
 
   // TODO right now we forward a json parsable string as the args but this
   // isn't the most robust way of doing this. possible a URI-encoded query
@@ -254,7 +453,7 @@ MAIN {
     };
   };
 
-  if (isCommandMode) {
+  if (isCommandMode && cmd.size() > 0) {
     argvForward << " --cwd=" << fs::current_path();
 
     createProcess = createProcessTemplate(
@@ -1114,7 +1313,11 @@ MAIN {
   // start the platform specific event loop for the main
   // thread and run it until it returns a non-zero int.
   //
-  while(app.run() == 0);
+  while (app.run() == 0);
+
+#if defined(__linux__)
+  dbus_connection_unref(connection);
+#endif
 
   exit(exitCode);
 }
