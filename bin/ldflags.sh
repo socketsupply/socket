@@ -113,7 +113,7 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-ldl")
 elif [[ "$host" = "Linux" ]]; then
   ldflags+=("-ldl")
-  ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
+  ldflags+=($(pkg-config --libs dbus-1 gtk+-3.0 webkit2gtk-4.1))
 elif [[ "$host" = "Win32" ]]; then
   if [[ -n "$DEBUG" ]]; then
     # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
