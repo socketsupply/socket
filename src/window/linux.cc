@@ -21,6 +21,8 @@ namespace SSC {
     this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     this->popup = nullptr;
 
+    gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
+
     this->bridge = new IPC::Bridge(app.core);
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
@@ -30,7 +32,7 @@ namespace SSC {
       this->eval(js);
     };
 
-    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
+    this->bridge->router.map("window.eval", [=, &app](auto message, auto router, auto reply) {
       WindowManager* windowManager = app.getWindowManager();
       if (windowManager == nullptr) {
         // @TODO(jwerle): print warning
@@ -200,6 +202,8 @@ namespace SSC {
       "website-policies", policies,
       NULL
     )));
+
+    gtk_widget_set_can_focus(GTK_WIDGET(webview), true);
 
     webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
 
