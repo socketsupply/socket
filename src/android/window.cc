@@ -136,7 +136,11 @@ extern "C" {
     auto filename = window->config["webview_root"];
 
     if (filename.size() > 0) {
-      return env->NewStringUTF(filename.c_str());
+      if (filename.ends_with("/")) {
+        return env->NewStringUTF((filename + "index.html").c_str());
+      } else {
+        return env->NewStringUTF(filename.c_str());
+      }
     }
 
     return env->NewStringUTF("/index.html");

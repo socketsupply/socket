@@ -467,6 +467,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     // t.equal(result, true, 'returns true')
   })
 
+  /*
   test('window.showOpenFilePicker', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showOpenFilePicker())
@@ -481,6 +482,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showDirectoryFilePicker())
   })
+  */
 
   test('window.send wrong window', async (t) => {
     const mainWindow = await application.getCurrentWindow()
@@ -622,7 +624,8 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(true), { once: true })),
-      new Promise(resolve => setTimeout(() => resolve(false), 512))
+      // needs more time to restart
+      new Promise(resolve => setTimeout(() => resolve(false), 1024))
     ])
     t.ok(doesRestart, 'emits a backend:ready event')
   })

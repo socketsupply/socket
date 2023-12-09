@@ -353,7 +353,7 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2045.28 --output "$tmp/webview2.zip"
+  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2151.40 --output "$tmp/webview2.zip"
   cd "$tmp" || exit 1
   unzip -q "$tmp/webview2.zip"
   mkdir -p "$BUILD_DIR/include"
@@ -582,6 +582,9 @@ function _install {
     echo "# copying js api to $SOCKET_HOME/api"
     mkdir -p "$SOCKET_HOME/api"
     cp -frp "$root"/api/* "$SOCKET_HOME/api"
+
+    mkdir -p "$SOCKET_HOME/assets"
+    cp -rf "$root"/assets/* "$SOCKET_HOME/assets"
 
     # only do this for desktop, no need to copy again for other platforms
     rm -rf "$SOCKET_HOME/include"

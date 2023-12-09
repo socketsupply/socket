@@ -29,6 +29,7 @@ import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
 import * as constants from './constants.js'
+import { Watcher } from './watcher.js'
 import { Stats } from './stats.js'
 import fds from './fds.js'
 
@@ -44,6 +45,7 @@ export {
   FileHandle,
   ReadStream,
   Stats,
+  Watcher,
   WriteStream
 }
 
@@ -61,18 +63,16 @@ async function visit (path, options, callback) {
 
   const { flags, flag, mode } = options || {}
 
-  const handle = await FileHandle.open(path, flags || flag, mode, options)
-
   // just visit `FileHandle`, without closing if given
   if (path instanceof FileHandle) {
-    return await callback(handle)
+    return await callback(path)
   } else if (path?.fd) {
     return await callback(FileHandle.from(path.fd))
   }
 
+  const handle = await FileHandle.open(path, flags || flag, mode, options)
   const value = await callback(handle)
   await handle.close(options)
-
   return value
 }
 
@@ -110,7 +110,11 @@ export async function chmod (path, mode) {
 }
 
 /**
- * @ignore
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @return {Promise}
  */
 export async function chown (path, uid, gid) {
   if (typeof path !== 'string') {
@@ -133,7 +137,11 @@ export async function chown (path, uid, gid) {
 }
 
 /**
- * @ignore
+ * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+ * @param {string} src - The source file path.
+ * @param {string} dest - The destination file path.
+ * @param {number} flags - Modifiers for copy operation.
+ * @return {Promise}
  */
 export async function copyFile (src, dest, flags) {
   if (typeof src !== 'string') {
@@ -156,7 +164,11 @@ export async function copyFile (src, dest, flags) {
 }
 
 /**
- * @ignore
+ * Chages ownership of link at `path` with `uid` and `gid.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @return {Promise}
  */
 export async function lchown (path, uid, gid) {
   if (typeof path !== 'string') {
@@ -179,7 +191,10 @@ export async function lchown (path, uid, gid) {
 }
 
 /**
- * @ignore
+ * Creates a link to `dest` from `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
 export async function link (src, dest) {
   if (typeof src !== 'string') {
@@ -199,15 +214,16 @@ export async function link (src, dest) {
 
 /**
  * Asynchronously creates a directory.
- * @todo recursive option is not implemented yet.
  *
- * @param {String} path - The path to create
- * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+ * @param {string} path - The path to create
+ * @param {object} [options] - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+ * @param {boolean} [options.recursive=false] - Recursively create missing path segments.
+ * @param {number} [options.mode=0o777] - Set the mode of directory, or missing path segments when recursive is true.
  * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
  */
 export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
-  const recursive = options.recurisve === true
+  const recursive = Boolean(options.recursive)
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
@@ -229,11 +245,11 @@ export async function mkdir (path, options = {}) {
  * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
  *
  * @param {string | Buffer | URL} path
- * @param {string} flags - default: 'r'
- * @param {string} mode - default: 0o666
+ * @param {string=} flags - default: 'r'
+ * @param {number=} mode - default: 0o666
  * @return {Promise<FileHandle>}
  */
-export async function open (path, flags, mode) {
+export async function open (path, flags = 'r', mode = 0o666) {
   return await FileHandle.open(path, flags, mode)
 }
 
@@ -303,7 +319,9 @@ export async function readFile (path, options) {
 }
 
 /**
- * @ignore
+ * Reads link at `path`
+ * @param {string} path
+ * @return {Promise<string>}
  */
 export async function readlink (path) {
   if (typeof path !== 'string') {
@@ -320,7 +338,9 @@ export async function readlink (path) {
 }
 
 /**
- * @ignore
+ * Computes real path for `path`
+ * @param {string} path
+ * @return {Promise<string>}
  */
 export async function realpath (path) {
   if (typeof path !== 'string') {
@@ -337,18 +357,21 @@ export async function realpath (path) {
 }
 
 /**
- * @ignore
+ * Renames file or directory at `src` to `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
-export async function rename (oldPath, newPath) {
-  if (typeof oldPath !== 'string') {
+export async function rename (src, dest) {
+  if (typeof src !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
 
-  if (typeof newPath !== 'string') {
+  if (typeof dest !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
 
-  const result = await ipc.send('fs.rename', { oldPath, newPath })
+  const result = await ipc.send('fs.rename', { src, dest })
 
   if (result.err) {
     throw result.err
@@ -356,7 +379,9 @@ export async function rename (oldPath, newPath) {
 }
 
 /**
- * @ignore
+ * Removes directory at `path`.
+ * @param {string} path
+ * @return {Promise}
  */
 export async function rmdir (path) {
   if (typeof path !== 'string') {
@@ -384,7 +409,10 @@ export async function stat (path, options) {
 }
 
 /**
- * @ignore
+ * Creates a symlink of `src` at `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @return {Promise}
  */
 export async function symlink (src, dest, type = null) {
   let flags = 0
@@ -417,7 +445,9 @@ export async function symlink (src, dest, type = null) {
 }
 
 /**
- * @ignore
+ * Unlinks (removes) file at `path`.
+ * @param {string} path
+ * @return {Promise}
  */
 export async function unlink (path) {
   if (typeof path !== 'string') {
@@ -442,7 +472,6 @@ export async function unlink (path) {
  * @param {AbortSignal?} [options.signal]
  * @return {Promise<void>}
  */
-// FIXME: truncate file by default (support flags). Currently it fails if file exists
 export async function writeFile (path, data, options) {
   if (typeof options === 'string') {
     options = { encoding: options }
@@ -453,6 +482,18 @@ export async function writeFile (path, data, options) {
   return await visit(path, options, async (handle) => {
     return await handle.writeFile(data, options)
   })
+}
+
+/**
+ * Watch for changes at `path` calling `callback`
+ * @param {string}
+ * @param {function|object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {AbortSignal=} [options.signal]
+ * @return {Watcher}
+ */
+export function watch (path, options) {
+  return new Watcher(path, options)
 }
 
 export default exports

@@ -11,11 +11,11 @@
  */
 
 import { isArrayBufferView, isFunction, noop } from './util.js'
+import { murmur3, rand64 } from './crypto.js'
 import { InternalError } from './errors.js'
 import { EventEmitter } from './events.js'
 import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
-import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
 import process from './process.js'
 import console from './console.js'
@@ -165,7 +165,7 @@ async function stopReading (socket, callback) {
   }
 
   try {
-    result = await ipc.send('udp.readStop', {
+    result = await ipc.request('udp.readStop', {
       id: socket.id
     })
 
@@ -185,7 +185,7 @@ async function getRecvBufferSize (socket, callback) {
   }
 
   try {
-    result = await ipc.send('os.bufferSize', {
+    result = await ipc.request('os.bufferSize', {
       id: socket.id,
       buffer: RECV_BUFFER
     })
@@ -207,7 +207,7 @@ async function getSendBufferSize (socket, callback) {
   }
 
   try {
-    result = await ipc.send('os.bufferSize', {
+    result = await ipc.request('os.bufferSize', {
       id: socket.id,
       buffer: SEND_BUFFER
     })
@@ -247,12 +247,12 @@ async function bind (socket, options, callback) {
   }
 
   try {
-    result = await ipc.send('udp.bind', {
+    result = await ipc.request('udp.bind', {
       id: socket.id,
       port: options.port || 0,
       address: options.address,
-      ipv6Only: !!options.ipv6Only,
-      reuseAddr: !!options.reuseAddr
+      ipv6Only: Boolean(socket.state.ipv6Only),
+      reuseAddr: Boolean(socket.state.reuseAddr)
     })
 
     socket.state.bindState = BIND_STATE_BOUND
@@ -333,7 +333,7 @@ async function connect (socket, options, callback) {
   }
 
   try {
-    result = await ipc.send('udp.connect', {
+    result = await ipc.request('udp.connect', {
       id: socket.id,
       port: options?.port ?? 0,
       address: options?.address
@@ -544,7 +544,7 @@ async function close (socket, callback) {
   await disconnect(socket)
 
   try {
-    result = await ipc.send('udp.close', {
+    result = await ipc.request('udp.close', {
       id: socket.id
     })
 
@@ -631,6 +631,7 @@ export class Socket extends EventEmitter {
     super()
 
     this.id = options?.id || rand64()
+    this.knownIdWasGivenInSocketConstruction = Boolean(options?.id)
 
     if (typeof options === 'string') {
       options = { type: options }
@@ -683,7 +684,7 @@ export class Socket extends EventEmitter {
           console.warn('Closing Socket on garbage collection')
         }
 
-        await ipc.send('udp.close', { id }, options)
+        await ipc.request('udp.close', { id }, options)
       }
     }
   }
@@ -719,9 +720,32 @@ export class Socket extends EventEmitter {
       options.address = arg2
     }
 
+    if (
+      options.port !== 0 &&
+      this.state.reuseAddr &&
+      !this.knownIdWasGivenInSocketConstruction
+    ) {
+      const index = globalThis.__args?.index || 0
+      const a = murmur3(options.address + options.port)
+      const b = murmur3(options.address + options.port, index)
+      this.id = BigInt(a) * BigInt(b)
+      this.knownIdWasGivenInSocketConstruction = true
+    }
+
     bind(this, options, (err, info) => {
       if (err) {
-        return cb(err)
+        if (
+          this.knownIdWasGivenInSocketConstruction &&
+          err.code === 'ERR_SOCKET_ALREADY_BOUND'
+        ) {
+          this.dataListener = createDataListener(this)
+          cb(null)
+          this.emit('listening')
+        } else {
+          cb(err)
+        }
+
+        return
       }
 
       startReading(this, (err) => {
@@ -1063,7 +1087,7 @@ export class Socket extends EventEmitter {
   async setRecvBufferSize (size) {
     if (size > 0) {
       this.state.recvBufferSize = size
-      const result = await ipc.send('os.bufferSize', { id: this.id, size })
+      const result = await ipc.request('os.bufferSize', { id: this.id, size, buffer: 1 })
       if (result.err) {
         throw result.err
       }
@@ -1080,7 +1104,7 @@ export class Socket extends EventEmitter {
   async setSendBufferSize (size) {
     if (size > 0) {
       this.state.sendBufferSize = size
-      const result = await ipc.send('os.bufferSize', { id: this.id, size })
+      const result = await ipc.request('os.bufferSize', { id: this.id, size, buffer: 0 })
       if (result.err) {
         throw result.err
       }

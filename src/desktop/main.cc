@@ -234,8 +234,7 @@ MAIN {
 
   auto killProcess = [&](Process* processToKill) {
     if (processToKill != nullptr) {
-      auto pid = processToKill->getPID();
-      processToKill->kill(pid);
+      processToKill->kill();
       processToKill->wait();
 
       if (processToKill == process) {
@@ -285,8 +284,7 @@ MAIN {
 
     shutdownHandler = [&](int signum) {
       if (process != nullptr) {
-        auto pid = process->getPID();
-        process->kill(pid);
+        process->kill();
       }
       exit(signum);
     };
@@ -942,19 +940,6 @@ MAIN {
       return;
     }
 
-    if (message.name == "dialog") {
-      bool bSave = message.get("type").compare("save") == 0;
-      bool bDirs = message.get("allowDirs").compare("true") == 0;
-      bool bFiles = message.get("allowFiles").compare("true") == 0;
-      bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = message.get("defaultName");
-      SSC::String defaultPath = message.get("defaultPath");
-      SSC::String title = message.get("title");
-
-      window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
-      return;
-    }
-
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, value);
@@ -999,8 +984,7 @@ MAIN {
   //
   shutdownHandler = [&](int code) {
     if (process != nullptr) {
-      auto pid = process->getPID();
-      process->kill(pid);
+      process->kill();
     }
 
     windowManager.destroy();
@@ -1075,7 +1059,7 @@ MAIN {
   defaultWindow->show(EMPTY_SEQ);
 
   if (_port > 0) {
-    defaultWindow->navigate(EMPTY_SEQ, "http://" + _host + ":" + std::to_string(_port));
+    defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
     defaultWindow->setSystemMenu(EMPTY_SEQ, String(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"

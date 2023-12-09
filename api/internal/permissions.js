@@ -12,11 +12,18 @@ import gc from '../gc.js'
 import os from '../os.js'
 
 /**
+ * The 'permissionchange' event name.
+ * @ignore
+ * @type {string}
+ */
+const PERMISSION_CHANGE_EVENT = 'permissionchange'
+
+/**
  * @typedef {{ name: string }} PermissionDescriptor
  */
 
 const isAndroid = os.platform() === 'android'
-const isApple = os.platform() === 'darwin'
+const isApple = os.platform() === 'darwin' || os.platform() === 'ios'
 const isLinux = os.platform() === 'linux'
 
 /**
@@ -227,7 +234,7 @@ export async function query (descriptor, options) {
     return platform.query(descriptor)
   }
 
-  const result = await ipc.send('permissions.query', { name, signal: options?.signal })
+  const result = await ipc.request('permissions.query', { name, signal: options?.signal })
 
   if (result.err) {
     throw result.err
@@ -279,10 +286,12 @@ export async function request (descriptor, options) {
   if (isLinux) {
     if (name === 'notifications' || name === 'push') {
       const currentState = Notification.permission
+      // `Notification.requestPermission` will use the native
+      // `requestPermission` API internally, so this won't be a cycle
       const state = await Notification.requestPermission()
 
       if (currentState !== state) {
-        const globalEvent = new CustomEvent('permissionchange', {
+        const globalEvent = new CustomEvent(PERMISSION_CHANGE_EVENT, {
           detail: { name, state }
         })
 
@@ -297,13 +306,19 @@ export async function request (descriptor, options) {
     return new PermissionStatus(name, 'prompt', options)
   }
 
-  const result = await ipc.send('permissions.request', { name, signal: options?.signal })
+  const { signal } = options || {}
+
+  if (options?.signal) {
+    delete options.signal
+  }
+
+  const result = await ipc.request('permissions.request', { ...options, name, signal })
 
   if (result.err) {
     throw result.err
   }
 
-  const globalEvent = new CustomEvent('permissionchange', {
+  const globalEvent = new CustomEvent(PERMISSION_CHANGE_EVENT, {
     detail: {
       name,
       state: result.data.state

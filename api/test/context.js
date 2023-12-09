@@ -1,6 +1,5 @@
 import console from '../console.js'
 import process from '../process.js'
-import ipc from '../ipc.js'
 
 import '../application.js'
 
@@ -20,11 +19,6 @@ function onerror (e) {
 
 export default function (GLOBAL_TEST_RUNNER) {
   if (isInitialized) return
-
-  if (process.env.SOCKET_DEBUG_IPC) {
-    ipc.debug.enabled = true
-    ipc.debug.log = (...args) => console.log(...args)
-  }
 
   if (typeof globalThis?.addEventListener === 'function') {
     globalThis.addEventListener('error', onerror)

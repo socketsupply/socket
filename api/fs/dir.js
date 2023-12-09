@@ -61,11 +61,29 @@ export class Dir {
   }
 
   /**
+   * `true` if closed, otherwise `false`.
+   * @ignore
+   * @type {boolean}
+   */
+  get closed () {
+    return Boolean(this.handle?.closed)
+  }
+
+  /**
+   * `true` if closing, otherwise `false`.
+   * @ignore
+   * @type {boolean}
+   */
+  get closing () {
+    return Boolean(this.handle?.closing)
+  }
+
+  /**
    * Closes container and underlying handle.
    * @param {object|function} options
    * @param {function=} callback
    */
-  async close (options, callback) {
+  async close (options = null, callback) {
     if (typeof options === 'function') {
       callback = options
       options = {}
@@ -103,10 +121,10 @@ export class Dir {
     } catch (err) {
       if (typeof callback === 'function') {
         callback(err)
-        return
+        return null
+      } else {
+        throw err
       }
-
-      throw err
     }
 
     results = results.map((result) => {
@@ -152,7 +170,7 @@ export class Dir {
       while (true) {
         const results = await this.read(options)
 
-        if (results === null) {
+        if (results === null || results?.length === 0) {
           break
         }
 

@@ -39,6 +39,7 @@ open class MainActivity : WebViewActivity() {
   open lateinit var window: Window
 
   val permissionRequests = mutableListOf<PermissionRequest>()
+  val filePicker = WebViewFilePicker(this)
 
   companion object {
     init {
@@ -67,6 +68,17 @@ open class MainActivity : WebViewActivity() {
       permissions,
       request.id
     )
+  }
+
+  fun showFileSystemPicker (
+    options: WebViewFilePickerOptions,
+    callback: (Array<android.net.Uri>) -> Unit
+  ) : Boolean {
+    val filePicker = this.filePicker
+    this.runOnUiThread {
+      filePicker.launch(options, callback)
+    }
+    return true
   }
 
   override fun onCreate (state: android.os.Bundle?) {
@@ -185,6 +197,15 @@ open class MainActivity : WebViewActivity() {
     }
   }
 
+  override fun onActivityResult (
+    requestCode: Int,
+    resultCode: Int,
+    intent: android.content.Intent?
+  ) {
+    super.onActivityResult(requestCode, resultCode, intent)
+    console.log("requestCode=$requestCode resultCode=$resultCode")
+  }
+
   override fun onPageStarted (
     view: android.webkit.WebView,
     url: String,
@@ -255,7 +276,7 @@ open class MainActivity : WebViewActivity() {
       seen.add(name)
 
       this.runOnUiThread {
-        val state = if (granted) "grated" else "denied"
+        val state = if (granted) "granted" else "denied"
         window.bridge.emit("permissionchange", """{
           "name": "$name",
           "state": "$state"

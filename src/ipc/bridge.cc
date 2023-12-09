@@ -1,12 +1,12 @@
 #include <regex>
 #include <unordered_map>
-#include <set>
 
 #if defined(__APPLE__)
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #endif
 
 #include "../extension/extension.hh"
+#include "../window/window.hh"
 #include "ipc.hh"
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
@@ -33,21 +33,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "socket.runtime.ipc.bridge.queue",
   qos
 );
-
-static String getMIMEType (String path) {
-  auto url = [NSURL
-    fileURLWithPath: [NSString stringWithUTF8String: path.c_str()]
-  ];
-
-  auto extension = [url pathExtension];
-  auto utt = [UTType typeWithFilenameExtension: extension];
-
-  if (utt.preferredMIMEType.UTF8String != nullptr) {
-    return String(utt.preferredMIMEType.UTF8String);
-  }
-
-  return "";
-}
 #endif
 
 static JSON::Any validateMessageParameters (
@@ -78,14 +63,13 @@ static String getcwd () {
 #if defined(__linux__) && !defined(__ANDROID__)
   auto canonical = fs::canonical("/proc/self/exe");
   cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+  cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
+#elif defined(__APPLE__)
   auto fileManager = [NSFileManager defaultManager];
   auto currentDirectory = [fileManager currentDirectoryPath];
   cwd = String([currentDirectory UTF8String]);
-#elif defined(__APPLE__)
-  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
-  cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
-
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
@@ -708,6 +692,55 @@ static void initRouterTable (Router *router) {
   });
 
   /**
+   * Synchronize a file's in-core state with storage device
+   * @param id
+   * @see fsync(2)
+   */
+  router->map("fs.fsync", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.fsync(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Truncates opened file
+   * @param id
+   * @param offset
+   * @see ftruncate(2)
+   */
+  router->map("fs.ftruncate", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "offset"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    int64_t offset;
+    REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoll);
+
+    router->core->fs.ftruncate(
+      message.seq,
+      id,
+      offset,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
    * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
@@ -738,9 +771,10 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * Creates a directory at `path` with an optional mode.
+   * Creates a directory at `path` with an optional mode and an optional recursive flag.
    * @param path
    * @param mode
+   * @param recursive
    * @see mkdir(2)
    */
   router->map("fs.mkdir", [](auto message, auto router, auto reply) {
@@ -757,9 +791,11 @@ static void initRouterTable (Router *router) {
       message.seq,
       message.get("path"),
       mode,
+      message.get("recursive") == "true",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
+
 
   /**
    * Opens a file descriptor at `path` for `id` with `flags` and `mode`
@@ -880,7 +916,7 @@ static void initRouterTable (Router *router) {
 	/**
    * Read value of a symbolic link at 'path'
    * @param path
-   * @see unlink(2)
+   * @see readlink(2)
    */
   router->map("fs.readlink", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -996,6 +1032,27 @@ static void initRouterTable (Router *router) {
   });
 
   /**
+   * Stops a already started watcher
+   */
+  router->map("fs.stopWatch", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.watch(
+      message.seq,
+      id,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
    * Removes a file or empty directory at `path`.
    * @param path
    * @see unlink(2)
@@ -1009,6 +1066,27 @@ static void initRouterTable (Router *router) {
 
     router->core->fs.unlink(
       message.seq,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * TODO
+   */
+  router->map("fs.watch", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "path"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->fs.watch(
+      message.seq,
+      id,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -1059,7 +1137,12 @@ static void initRouterTable (Router *router) {
 
     auto performedActivation = [router->locationObserver getCurrentPositionWithCompletion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+         );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1106,7 +1189,12 @@ static void initRouterTable (Router *router) {
 
     const int identifier = [router->locationObserver watchPositionForIdentifier: id  completion: ^(NSError* error, CLLocation* location) {
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {{ "message", String(error.localizedFailureReason.UTF8String) }};
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
         err["type"] = "GeolocationPositionError";
         return reply(Result::Err { message, err });
       }
@@ -1269,8 +1357,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1312,8 +1400,8 @@ static void initRouterTable (Router *router) {
 
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1364,9 +1452,12 @@ static void initRouterTable (Router *router) {
       ];
 
       if (error != nullptr) {
-        auto err = JSON::Object::Entries {
-          { "message", String(error.localizedFailureReason.UTF8String) }
-        };
+        auto message = String(
+           error.localizedDescription.UTF8String != nullptr
+             ? error.localizedDescription.UTF8String
+             : "An unknown error occurred"
+        );
+        auto err = JSON::Object::Entries {{ "message", message }};
 
         return reply(Result::Err { message, err });
       }
@@ -1393,8 +1484,8 @@ static void initRouterTable (Router *router) {
     [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
       if (error != nullptr) {
         auto message = String(
-          error.localizedFailureReason.UTF8String != nullptr
-            ? error.localizedFailureReason.UTF8String
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
@@ -1532,6 +1623,129 @@ static void initRouterTable (Router *router) {
 
   router->map("os.availableMemory", [](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("os.paths", [](auto message, auto router, auto reply) {
+    JSON::Object data;
+
+    // paths
+    String resources = getcwd();
+    String downloads;
+    String documents;
+    String pictures;
+    String desktop;
+    String videos;
+    String music;
+    String home;
+
+  #if defined(__APPLE__)
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto fileManager = NSFileManager.defaultManager;
+
+  #define DIRECTORY_PATH_FROM_FILE_MANAGER(type) (                             \
+    String([fileManager                                                        \
+        URLForDirectory: type                                                  \
+               inDomain: NSUserDomainMask                                      \
+      appropriateForURL: nil                                                   \
+                 create: NO                                                    \
+                  error: nil                                                   \
+      ].path.UTF8String)                                                       \
+    )
+
+    // overload with main bundle resources path for macos/ios
+    resources = String(NSBundle.mainBundle.resourcePath.UTF8String);
+    downloads = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDownloadsDirectory);
+    documents = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDocumentDirectory);
+    pictures = DIRECTORY_PATH_FROM_FILE_MANAGER(NSPicturesDirectory);
+    desktop = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory);
+    videos = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory);
+    music = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory);
+    home = String(NSHomeDirectory().UTF8String);
+
+  #undef DIRECTORY_PATH_FROM_FILE_MANAGER
+
+  #elif defined(__linux__)
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto XDG_DOCUMENTS_DIR = Env::get("XDG_DOCUMENTS_DIR");
+    static const auto XDG_DOWNLOAD_DIR = Env::get("XDG_DOWNLOAD_DIR");
+    static const auto XDG_PICTURES_DIR = Env::get("XDG_PICTURES_DIR");
+    static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
+    static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
+    static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+
+    if (XDG_DOCUMENTS_DIR.size() > 0) {
+      documents = XDG_DOCUMENTS_DIR;
+    } else {
+      documents = (Path(HOME) / "Documents").string();
+    }
+
+    if (XDG_DOWNLOAD_DIR.size() > 0) {
+      downloads = XDG_DOWNLOAD_DIR;
+    } else {
+      downloads = (Path(HOME) / "Downloads").string();
+    }
+
+    if (XDG_DESKTOP_DIR.size() > 0) {
+      desktop = XDG_DESKTOP_DIR;
+    } else {
+      desktop = (Path(HOME) / "Desktop").string();
+    }
+
+    if (XDG_PICTURES_DIR.size() > 0) {
+      pictures = XDG_PICTURES_DIR;
+    } else if (fs::exists(Path(HOME) / "Images")) {
+      pictures = (Path(HOME) / "Images").string();
+    } else if (fs::exists(Path(HOME) / "Photos")) {
+      pictures = (Path(HOME) / "Photos").string();
+    } else {
+      pictures = (Path(HOME) / "Pictures").string();
+    }
+
+    if (XDG_VIDEOS_DIR.size() > 0) {
+      videos = XDG_VIDEOS_DIR;
+    } else {
+      videos = (Path(HOME) / "Videos").string();
+    }
+
+    if (XDG_MUSIC_DIR.size() > 0) {
+      music = XDG_MUSIC_DIR;
+    } else {
+      music = (Path(HOME) / "Music").string();
+    }
+
+    home = Path(HOME).string();
+  #elif defined(_WIN32)
+    static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
+    static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
+    downloads = (Path(USERPROFILE) / "Downloads").string();
+    documents = (Path(USERPROFILE) / "Documents").string();
+    desktop = (Path(USERPROFILE) / "Desktop").string();
+    pictures = (Path(USERPROFILE) / "Pictures").string();
+    videos = (Path(USERPROFILE) / "Videos").string();
+    music = (Path(USERPROFILE) / "Music").string();
+    home = Path(USERPROFILE).string();
+  #endif
+
+    data["resources"] = resources;
+    data["downloads"] = downloads;
+    data["documents"] = documents;
+    data["pictures"] = pictures;
+    data["desktop"] = desktop;
+    data["videos"] = videos;
+    data["music"] = music;
+    data["home"] = home;
+
+    return reply(Result::Data { message, data });
   });
 
   router->map("permissions.query", [](auto message, auto router, auto reply) {
@@ -1676,8 +1890,14 @@ static void initRouterTable (Router *router) {
             return reply(Result::Data { message, data });
           } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
             if (error) {
+              auto message = String(
+                error.localizedDescription.UTF8String != nullptr
+                  ? error.localizedDescription.UTF8String
+                  : "An unknown error occurred"
+              );
+
               auto err = JSON::Object::Entries {
-                { "message", String(error.localizedFailureReason.UTF8String) }
+                { "message", message }
               };
 
               return reply(Result::Err { message, err });
@@ -1849,6 +2069,7 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, false);
+    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
@@ -1859,6 +2080,7 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, true);
+    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
@@ -2040,7 +2262,9 @@ static void initRouterTable (Router *router) {
     router->core->udp.readStart(
       message.seq,
       id,
-      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
     );
   });
 
@@ -2101,6 +2325,60 @@ static void initRouterTable (Router *router) {
       options,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
+  });
+
+  router->map("window.showFileSystemPicker", [](auto message, auto router, auto reply) {
+    const auto allowMultiple = message.get("allowMultiple") == "true";
+    const auto allowFiles = message.get("allowFiles") == "true";
+    const auto allowDirs = message.get("allowDirs") == "true";
+    const auto isSave = message.get("type") == "save";
+
+    const auto contentTypeSpecs = message.get("contentTypeSpecs");
+    const auto defaultName = message.get("defaultName");
+    const auto defaultPath = message.get("defaultPath");
+    const auto title = message.get("title", isSave ? "Save" : "Open");
+
+    Dialog dialog;
+    auto options = Dialog::FileSystemPickerOptions {
+      .directories = allowDirs,
+      .multiple = allowMultiple,
+      .files = allowFiles,
+      .contentTypes = contentTypeSpecs,
+      .defaultName = defaultName,
+      .defaultPath = defaultPath,
+      .title = title
+    };
+
+    if (isSave) {
+      const auto result = dialog.showSaveFilePicker(options);
+
+      if (result.size() == 0) {
+        auto err = JSON::Object::Entries {{"type", "AbortError"}};
+        reply(Result::Err { message, err });
+      } else {
+        auto data = JSON::Object::Entries {
+          {"paths", JSON::Array::Entries{result}}
+        };
+        reply(Result::Data { message, data });
+      }
+    } else {
+      JSON::Array paths;
+      const auto results = (
+        allowFiles && !allowDirs
+          ? dialog.showOpenFilePicker(options)
+          : dialog.showDirectoryPicker(options)
+      );
+
+      for (const auto& result : results) {
+        paths.push(result);
+      }
+
+      auto data = JSON::Object::Entries {
+        {"paths", paths}
+      };
+
+      reply(Result::Data { message, data });
+    }
   });
 }
 
@@ -2242,9 +2520,33 @@ static void registerSchemeHandler (Router *router) {
     }
 
     auto resolved = Router::resolveURLPathForWebView(path, cwd);
+    auto mount = Router::resolveNavigatorMountForWebView(path);
     path = resolved.path;
 
-    if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+    if (mount.path.size() > 0) {
+      if (mount.resolution.redirect) {
+        auto redirectURL = path;
+        auto redirectSource = String(
+          "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+        );
+
+        auto size = redirectSource.size();
+        auto bytes = redirectSource.data();
+        auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+        auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+        auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+
+        soup_message_headers_append(headers, "location", redirectURL.c_str());
+        soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+
+        webkit_uri_scheme_response_set_http_headers(response, headers);
+        webkit_uri_scheme_response_set_content_type(response, "text/html");
+        webkit_uri_scheme_request_finish_with_response(request, response);
+
+        g_object_unref(stream);
+        return;
+      }
+    } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
       path = userConfig["webview_default_index"];
     } else if (resolved.redirect) {
       auto redirectURL = path;
@@ -2269,7 +2571,9 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    if (path.size() > 0) {
+    if (mount.path.size() > 0) {
+      path = mount.path;
+    } else if (path.size() > 0) {
       path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
     }
 
@@ -2326,6 +2630,15 @@ static void registerSchemeHandler (Router *router) {
   webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
 
+  static const auto devHost = SSC::getDevHost();
+
+  if (devHost.starts_with("http:")) {
+    webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
+    webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
+    webkit_security_manager_register_uri_scheme_as_secure(security, "http");
+    webkit_security_manager_register_uri_scheme_as_local(security, "http");
+  }
+
   webkit_security_manager_register_uri_scheme_as_display_isolated(security, "socket");
   webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
   webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
@@ -2337,13 +2650,13 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 {
   SSC::Mutex mutex;
-  std::set<Task> tasks;
+  std::unordered_map<Task, IPC::Message> tasks;
 }
 
-- (void) enqueueTask: (Task) task {
+- (void) enqueueTask: (Task) task withMessage: (IPC::Message) message {
   Lock lock(mutex);
   if (task != nullptr && !tasks.contains(task)) {
-    tasks.insert(task);
+    tasks.emplace(task, message);
   }
 }
 
@@ -2360,6 +2673,13 @@ static void registerSchemeHandler (Router *router) {
 }
 
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {
+  Lock lock(mutex);
+  if (tasks.contains(task)) {
+    auto message = tasks[task];
+    if (message.cancel->handler != nullptr) {
+      message.cancel->handler(message.cancel->data);
+    }
+  }
   [self finalizeTask: task];
 }
 
@@ -2372,6 +2692,7 @@ static void registerSchemeHandler (Router *router) {
   auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message(url, true);
   message.isHTTP = true;
+  message.cancel = std::make_shared<MessageCancellation>();
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
@@ -2425,14 +2746,88 @@ static void registerSchemeHandler (Router *router) {
       ext = "." + ext;
     }
 
+    // assumes `import 'socket:<bundle_identifier>/module'` syntax
+    if (host == nullptr && path.starts_with(bundleIdentifier)) {
+      host = @(path.substr(0, bundleIdentifier.size()).c_str());
+      path = path.substr(bundleIdentifier.size());
+
+      if (ext.size() == 0 && !path.ends_with(".js")) {
+        path += ".js";
+      }
+
+      components.path = @(path.c_str());
+    }
+
     if (
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
       auto resolved = Router::resolveURLPathForWebView(path, basePath);
+      auto mount = Router::resolveNavigatorMountForWebView(path);
       path = resolved.path;
 
-      if (path.size() == 0) {
+      if (mount.path.size() > 0) {
+        if (mount.resolution.redirect) {
+          auto redirectURL = mount.resolution.path;
+          auto redirectSource = String(
+            "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
+          );
+
+          data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+
+          auto response = [[NSHTTPURLResponse alloc]
+            initWithURL: [NSURL URLWithString: @(redirectURL.c_str())]
+             statusCode: 200
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didReceiveData: data];
+          [task didFinish];
+
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        } else {
+          auto url = [NSURL fileURLWithPath: @(mount.path.c_str())];
+          auto types = [UTType
+                typesWithTag: components.URL.pathExtension
+                    tagClass: UTTagClassFilenameExtension
+            conformingToType: nullptr
+          ];
+
+          headers[@"access-control-allow-origin"] = @"*";
+          headers[@"access-control-allow-methods"] = @"*";
+          headers[@"access-control-allow-headers"] = @"*";
+
+          if (types.count > 0 && types.firstObject.preferredMIMEType) {
+            headers[@"content-type"] = types.firstObject.preferredMIMEType;
+          }
+
+          [url startAccessingSecurityScopedResource];
+          const auto data = [NSData dataWithContentsOfURL: url];
+          headers[@"content-length"] = [@(data.length) stringValue];
+          [url stopAccessingSecurityScopedResource];
+
+          auto response = [[NSHTTPURLResponse alloc]
+            initWithURL: request.URL
+             statusCode: 200
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didReceiveData: data];
+          [task didFinish];
+
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+      } else if (path.size() == 0) {
         if (userConfig.contains("webview_default_index")) {
           path = userConfig["webview_default_index"];
         } else {
@@ -2559,7 +2954,6 @@ static void registerSchemeHandler (Router *router) {
         if (types.count > 0 && types.firstObject.preferredMIMEType) {
           headers[@"content-type"] = types.firstObject.preferredMIMEType;
         }
-
       }
     }
 
@@ -2646,7 +3040,7 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  [self enqueueTask: task];
+  [self enqueueTask: task withMessage: message];
 
   auto invoked = self.router->invoke(message, body, bufsize, [=](Result result) {
     // @TODO Communicate task cancellation to the route, so it can cancel its work.
@@ -3200,6 +3594,7 @@ namespace SSC::IPC {
   #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
       this->fileSystemWatcher = new FileSystemWatcher(getcwd());
+      this->fileSystemWatcher->core = this->core;
       this->fileSystemWatcher->start([=, this](
         const auto& path,
         const auto& events,
@@ -3310,32 +3705,24 @@ namespace SSC::IPC {
     }
 
     // Resolve the full path
-    fs::path fullPath = fs::path(basePath) / fs::path(inputPath);
+    fs::path fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
 
     // 1. Try the given path if it's a file
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(fullPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(fullPath)) {
-  #endif
-      return Router::WebViewURLPathResolution{"/" + fs::relative(fullPath, basePath).string()};
+      return Router::WebViewURLPathResolution{"/" + replace(fs::relative(fullPath, basePath).string(), "\\\\", "/")};
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
     fs::path indexPath = fullPath / fs::path("index.html");
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(indexPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(indexPath)) {
-  #endif
-      if (fullPath.string().ends_with("/")) {
+      if (fullPath.string().ends_with("\\") || fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
-          .path = "/" + fs::relative(indexPath, basePath).string(),
+          .path = "/" + replace(fs::relative(indexPath, basePath).string(), "\\\\", "/"),
           .redirect = false
         };
       } else {
         return Router::WebViewURLPathResolution{
-          .path = "/" + fs::relative(fullPath, basePath).string() + "/",
+          .path = "/" + replace(fs::relative(fullPath, basePath).string(), "\\\\", "/") + "/",
           .redirect = true
         };
       }
@@ -3344,17 +3731,125 @@ namespace SSC::IPC {
     // 3. Check if appending a .html file extension gives a valid file
     fs::path htmlPath = fullPath;
     htmlPath.replace_extension(".html");
-  #if defined(__APPLE__)
-    if ([NSFileManager.defaultManager fileExistsAtPath: @(htmlPath.string().c_str())]) {
-  #else
     if (fs::is_regular_file(htmlPath)) {
-  #endif
-      return Router::WebViewURLPathResolution{"/" + fs::relative(htmlPath, basePath).string()};
+      return Router::WebViewURLPathResolution{"/" + replace(fs::relative(htmlPath, basePath).string(), "\\\\", "/")};
     }
 
     // If no valid path is found, return empty string
     return Router::WebViewURLPathResolution{};
   };
+
+  static const Map getWebViewNavigatorMounts () {
+    static const auto userConfig = getUserConfig();
+  #if defined(_WIN32)
+    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    static const auto HOME = String(NSHomeDirectory().UTF8String);
+  #else
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+  #endif
+
+    static Map mounts;
+
+    if (mounts.size() > 0) {
+      return mounts;
+    }
+
+    Map mappings = {
+      {"\\$HOST_HOME", HOME},
+      {"~", HOME},
+
+      {"\\$HOST_CONTAINER",
+    #if defined(__APPLE__)
+      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
+      #else
+        // `homeDirectoryForCurrentUser` resolves to sandboxed container
+        // directory when in "sandbox" mode, otherwise the user's HOME directory
+        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
+      #endif
+    #elif defined(__linux__)
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux
+        getcwd(),
+    #elif defined(_WIN32)
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
+        getcwd(),
+    #endif
+      },
+
+      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
+    #if defined(__APPLE__)
+        NSBundle.mainBundle.resourcePath.UTF8String
+    #else
+        getcwd(),
+    #endif
+      }
+    };
+
+    for (const auto& tuple : userConfig) {
+      if (tuple.first.starts_with("webview_navigator_mounts_")) {
+        auto key = replace(tuple.first, "webview_navigator_mounts_", "");
+
+        if (key.starts_with("android") && !platform.android) continue;
+        if (key.starts_with("ios") && !platform.ios) continue;
+        if (key.starts_with("linux") && !platform.linux) continue;
+        if (key.starts_with("mac") && !platform.mac) continue;
+        if (key.starts_with("win") && !platform.win) continue;
+
+        key = replace(key, "android_", "");
+        key = replace(key, "ios_", "");
+        key = replace(key, "linux_", "");
+        key = replace(key, "mac_", "");
+        key = replace(key, "win_", "");
+
+        String path = key;
+
+        for (const auto& map : mappings) {
+          path = replace(path, map.first, map.second);
+        }
+
+        const auto& value = tuple.second;
+        mounts.insert_or_assign(path, value);
+      }
+    }
+
+    return mounts;
+  }
+
+  Router::WebViewNavigatorMount Router::resolveNavigatorMountForWebView (const String& path) {
+    static const auto mounts = getWebViewNavigatorMounts();
+
+    for (const auto& tuple : mounts) {
+      if (path.starts_with(tuple.second)) {
+        const auto relative = replace(path, tuple.second, "");
+        const auto resolution = resolveURLPathForWebView(relative, tuple.first);
+        if (resolution.path.size() > 0) {
+          const auto resolved = Path(tuple.first) / resolution.path.substr(1);
+          return WebViewNavigatorMount {
+            resolution,
+            resolved.string(),
+            path
+          };
+        } else {
+          const auto resolved = relative.starts_with("/")
+            ? Path(tuple.first) / relative.substr(1)
+            : Path(tuple.first) / relative;
+
+          return WebViewNavigatorMount {
+            resolution,
+            resolved.string(),
+            path
+          };
+        }
+      }
+    }
+
+    return WebViewNavigatorMount {};
+  }
 
   Router::Router () {
     static auto userConfig = SSC::getUserConfig();
@@ -3603,7 +4098,12 @@ namespace SSC::IPC {
       if (ctx.async) {
         auto dispatched = this->dispatch([ctx, msg, callback, this]() mutable {
           ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
-            callback(result);
+            if (result.seq == "-1") {
+              this->send(result.seq, result.str(), result.post);
+            } else {
+              callback(result);
+            }
+
             CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
           });
         });
@@ -3615,7 +4115,11 @@ namespace SSC::IPC {
         return dispatched;
       } else {
         ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
-          callback(result);
+          if (result.seq == "-1") {
+            this->send(result.seq, result.str(), result.post);
+          } else {
+            callback(result);
+          }
           CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
         });
 
@@ -3631,31 +4135,25 @@ namespace SSC::IPC {
     const String data,
     const Post post
   ) {
-    Lock lock(this->mutex);
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
     }
 
-    // this had a sequence, we need to try to resolve it.
-    if (seq != "-1" && seq.size() > 0) {
-      auto value = encodeURIComponent(data);
-      auto script = getResolveToRenderProcessJavaScript(seq, "0", value);
-      return this->evaluateJavaScript(script);
-    }
+    auto value = encodeURIComponent(data);
+    auto script = getResolveToRenderProcessJavaScript(
+      seq.size() == 0 ? "-1" : seq,
+      "0",
+      value
+    );
 
-    if (data.size() > 0) {
-      return this->evaluateJavaScript(data);
-    }
-
-    return false;
+    return this->evaluateJavaScript(script);
   }
 
   bool Router::emit (
     const String& name,
     const String data
   ) {
-    Lock lock(this->mutex);
     auto value = encodeURIComponent(data);
     auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);

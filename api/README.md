@@ -11,7 +11,7 @@
  import { createWindow } from 'socket:application'
  ```
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L37)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L38)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -36,15 +36,15 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L95)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L96)
 
 Returns the current screen size.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
+| Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L115)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L122)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -56,7 +56,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<Object.<number, ApplicationWindow>> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L134)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L152)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -68,7 +68,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L144)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L162)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -76,7 +76,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L153)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L171)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -88,7 +88,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L250)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L268)
 
 Set the native menu for the app.
 
@@ -183,7 +183,7 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L331)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L350)
 
 Set the enabled state of the system menu.
 
@@ -195,23 +195,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L339)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L358)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L345)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L364)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L351)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L370)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L356)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L375)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L362)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L381)
 
 
 
@@ -224,7 +224,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L370)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L389)
 
 
 
@@ -314,7 +314,7 @@ External docs: https://nodejs.org/api/buffer.html
 <!-- This file is generated by bin/docs-generator/api-module.js -->
 <!-- Do not edit this file directly. -->
 
-# [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L14)
+# [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L15)
 
 
  Some high-level methods around the `crypto.subtle` API for getting
@@ -325,16 +325,16 @@ External docs: https://nodejs.org/api/buffer.html
  import { randomBytes } from 'socket:crypto'
  ```
 
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L27)
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L30)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto
 WebCrypto API
 
-## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L56)
+## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L59)
 
 A promise that resolves when all internals to be loaded/ready.
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L71)
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L74)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 Generate cryptographically strong random values into the `buffer`
@@ -347,7 +347,7 @@ Generate cryptographically strong random values into the `buffer`
 | :---         | :--- | :---        |
 | Not specified | TypedArray |  |
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L94)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L97)
 
 Generate a random 64-bit number.
 
@@ -355,19 +355,19 @@ Generate a random 64-bit number.
 | :---         | :--- | :---        |
 | A random 64-bit number. | BigInt |  |
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L102)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L105)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L107)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L110)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L112)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L115)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L120)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L123)
 
 Generate `size` random bytes.
 
@@ -379,7 +379,7 @@ Generate `size` random bytes.
 | :---         | :--- | :---        |
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L147)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L150)
 
 
 
@@ -391,6 +391,20 @@ Generate `size` random bytes.
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer> | A promise that resolves with an instance of socket.Buffer with the hash. |
+
+## [`murmur3(value, seed)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L161)
+
+A murmur3 hash implementation based on https://github.com/jwerle/murmurhash.c
+ that works on strings and `ArrayBuffer` views (typed arrays)
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| value | string \| Uint8Array \| ArrayBuffer |  | false |  |
+| seed | number | 0 | true |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | number |  |
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
@@ -516,7 +530,7 @@ Creates a `Socket` instance.
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L704)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L705)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 Listen for datagram messages on a named port and optional address
@@ -533,7 +547,7 @@ Listen for datagram messages on a named port and optional address
 | address | string |  | false | The address to bind to (0.0.0.0) |
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L757)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L781)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 Associates the dgram.Socket to a remote address and port. Every message sent
@@ -553,7 +567,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | host | string |  | true | Host the client should connect to. |
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L792)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L816)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 A synchronous function that disassociates a connected dgram.Socket from
@@ -561,7 +575,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L851)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L875)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 Broadcasts a datagram on the socket. For connectionless sockets, the
@@ -612,7 +626,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | address | string |  | true | Destination host name or IP address. |
 | callback | Function |  | true | Called when the message has been sent. |
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L931)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L955)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 Close the underlying socket and stop listening for data on it. If a
@@ -624,7 +638,7 @@ Close the underlying socket and stop listening for data on it. If a
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | function |  | true | Called when the connection is completed or on error. |
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L997)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1021)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 Returns an object containing the address information for a socket. For
@@ -640,7 +654,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1032)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1056)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 Returns an object containing the address, family, and port of the remote
@@ -655,7 +669,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1063)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1087)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
@@ -666,7 +680,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new receive buffer |
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1080)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1104)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
@@ -677,12 +691,12 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new send buffer |
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1093)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1117)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1101)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1125)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -691,31 +705,31 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | :---         | :--- | :---        |
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
-### [`code()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1169)
+### [`code()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1193)
 
 
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1175)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1199)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1192)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1216)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1199)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1223)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1207)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1231)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1214)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1238)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1224)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1248)
 
 Thrown when a bad port is given.
 
@@ -754,7 +768,7 @@ External docs: https://nodejs.org/api/events.html
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L84)
+## [`access(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L85)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously check access a file for a given mode calling `callback`
@@ -766,7 +780,7 @@ Asynchronously check access a file for a given mode calling `callback`
 | mode | string? \| function(Error?)? | F_OK(0) | true |  |
 | callback | function(Error?)? |  | true |  |
 
-## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L117)
+## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L118)
 
 External docs: https://nodejs.org/api/fs.html#fschmodpath-mode-callback
 Asynchronously changes the permissions of a file.
@@ -780,7 +794,18 @@ Asynchronously changes the permissions of a file.
 | mode | number |  | false |  |
 | callback | function(Error?) |  | false |  |
 
-## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L166)
+## [`chown(path, uid, gid, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L143)
+
+Changes ownership of file or directory at `path` with `uid` and `gid`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+| callback | function |  | false |  |
+
+## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L171)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback
 Asynchronously close a file descriptor calling `callback` upon success or error.
@@ -790,7 +815,7 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | fd | number |  | false |  |
 | callback | function(Error?)? |  | true |  |
 
-## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L190)
+## [`copyFile(src, dest, flags, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L195)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback
 Asynchronously copies `src` to `dest` calling `callback` upon success or error.
@@ -802,7 +827,7 @@ Asynchronously copies `src` to `dest` calling `callback` upon success or error.
 | flags | number |  | false | Modifiers for copy operation. |
 | callback | function(Error=) |  | true | The function to call after completion. |
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L218)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L223)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -816,7 +841,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | ReadStream |  |
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L258)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L266)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -830,7 +855,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewri
 | :---         | :--- | :---        |
 | Not specified | WriteStream |  |
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L302)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L312)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback
 Invokes the callback with the <fs.Stats> for the file descriptor. See
@@ -842,9 +867,50 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false | A file descriptor. |
 | options | object? \| function? |  | true | An options object. |
-| callback | function? |  | true | The function to call after completion. |
+| callback | function? |  | false | The function to call after completion. |
 
-## [`open(path, flags, mode, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L407)
+## [`fsync(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L339)
+
+Request that all data for the open file descriptor is flushed
+ to the storage device.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| fd | number |  | false | A file descriptor. |
+| callback | function |  | false | The function to call after completion. |
+
+## [`ftruncate(fd, offset, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L361)
+
+Truncates the file up to `offset` bytes.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| fd | number |  | false | A file descriptor. |
+| offset | number= \| function | 0 | true |  |
+| callback | function? |  | false | The function to call after completion. |
+
+## [`lchown(path, uid, gid, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L389)
+
+Chages ownership of link at `path` with `uid` and `gid.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+| callback | function |  | false |  |
+
+## [`link(src, dest, )`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L417)
+
+Creates a link to `dest` from `src`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+| (Position 0) | function |  | false |  |
+
+## [`open(path, flags, mode, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L473)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 Asynchronously open a file calling `callback` upon success or error.
@@ -857,7 +923,7 @@ Asynchronously open a file calling `callback` upon success or error.
 | options | object? \| function? |  | true |  |
 | callback | function(Error?, number?)? |  | true |  |
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L460)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L526)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously open a directory calling `callback` upon success or error.
@@ -870,7 +936,7 @@ Asynchronously open a directory calling `callback` upon success or error.
 | options.withFileTypes | boolean? | false | true |  |
 | callback | function(Error?, Dir?)? |  | false |  |
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L486)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L552)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback
 Asynchronously read from an open file descriptor.
@@ -884,7 +950,7 @@ Asynchronously read from an open file descriptor.
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
 | callback | function(Error?, number?, Buffer?) |  | false |  |
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L520)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L586)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback
 Asynchronously read all entries in a directory.
@@ -897,7 +963,7 @@ Asynchronously read all entries in a directory.
 | options.withFileTypes ? false | boolean? |  | true |  |
 | callback | function(Error?, object) |  | false |  |
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L571)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L637)
 
 
 
@@ -910,7 +976,44 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Buffer?) |  | false |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L690)
+## [`readlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L680)
+
+Reads link at `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function(err, string) |  | false |  |
+
+## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L699)
+
+Computes real path for `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function(err, string) |  | false |  |
+
+## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L719)
+
+Renames file or directory at `src` to `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L742)
+
+Removes directory at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L765)
 
 
 
@@ -923,7 +1026,25 @@ Asynchronously read all entries in a directory.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L786)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L799)
+
+Creates a symlink of `src` at `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L840)
+
+Unlinks (removes) file at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| callback | function |  | false |  |
+
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L865)
 
 
 
@@ -937,6 +1058,21 @@ Asynchronously read all entries in a directory.
 | options.flag ? w | string? |  | true |  |
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
+
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L910)
+
+Watch for changes at `path` calling `callback`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| (Position 0) | string |  | false |  |
+| options | function \| object |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| callback | ?function |  | true |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Watcher |  |
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
@@ -991,21 +1127,78 @@ External docs: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L208)
+## [`chown(path, uid, gid)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L119)
+
+Changes ownership of file or directory at `path` with `uid` and `gid`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`copyFile(src, dest, flags)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L146)
+
+Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false | The source file path. |
+| dest | string |  | false | The destination file path. |
+| flags | number |  | false | Modifiers for copy operation. |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`lchown(path, uid, gid)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L173)
+
+Chages ownership of link at `path` with `uid` and `gid.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+| uid | number |  | false |  |
+| gid | number |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`link(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L199)
+
+Creates a link to `dest` from `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`mkdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L224)
 
 Asynchronously creates a directory.
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | String |  | false | The path to create |
-| options | Object |  | false | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false. |
+| path | string |  | false | The path to create |
+| options | object |  | true | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false. |
+| options.recursive | boolean | false | true | Recursively create missing path segments. |
+| options.mode | number | 0o777 | true | Set the mode of directory, or missing path segments when recursive is true. |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
-## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L236)
+## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L252)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode
 Asynchronously open a file.
@@ -1014,14 +1207,14 @@ Asynchronously open a file.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| flags | string |  | false | default: 'r' |
-| mode | string |  | false | default: 0o666 |
+| flags | string |  | true | default: 'r' |
+| mode | number |  | true | default: 0o666 |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<FileHandle> |  |
 
-## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L248)
+## [`opendir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L264)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 
@@ -1037,7 +1230,7 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L260)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L276)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1049,7 +1242,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | true |  |
 | options.withFileTypes | boolean? | false | true |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L293)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L309)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1066,7 +1259,56 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L380)
+## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L326)
+
+Reads link at `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<string> |  |
+
+## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L345)
+
+Computes real path for `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<string> |  |
+
+## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L365)
+
+Renames file or directory at `src` to `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L386)
+
+Removes directory at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L405)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 
@@ -1081,7 +1323,32 @@ External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L446)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L417)
+
+Creates a symlink of `src` at `dest`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| src | string |  | false |  |
+| dest | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L452)
+
+Unlinks (removes) file at `path`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise |  |
+
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L475)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1100,6 +1367,21 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L495)
+
+Watch for changes at `path` calling `callback`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| (Position 0) | string |  | false |  |
+| options | function \| object |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.signal | AbortSignal |  | true |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Watcher |  |
+
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
 <!-- Do not edit this file directly. -->
@@ -1108,7 +1390,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 
 
  This is a low-level API that you don't need unless you are implementing
- a library on top of Socket SDK. A Socket SDK app has two or three processes.
+ a library on top of Socket runtime. A Socket app has one or more processes.
 
  When you need to send a message to another window or to the backend, you
  should use the `application` module to get a reference to the window and
@@ -1138,7 +1420,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
  import { send } from 'socket:ipc'
  ```
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1091)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1100)
 
 Emit event to be dispatched on `window` object.
 
@@ -1149,7 +1431,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1150)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1159)
 
 Sends an async IPC command request with parameters.
 
@@ -1164,6 +1446,17 @@ Sends an async IPC command request with parameters.
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Result> |  |
+
+
+<!-- This file is generated by bin/docs-generator/api-module.js -->
+<!-- Do not edit this file directly. -->
+
+# [Network](https://github.com/socketsupply/socket/blob/master/api/network.js#L9)
+
+External docs: https://socketsupply.co/guides/#p2p-guide
+
+ Provides a higher level API over the stream-relay protocol.
+
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
@@ -1308,7 +1601,7 @@ The path.resolve() method resolves a sequence of paths or path segments into an 
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L71)
+## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L75)
 
 Computes current working directory for a path
 
@@ -1321,7 +1614,7 @@ Computes current working directory for a path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L95)
+## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L99)
 
 Computed location origin. Defaults to `socket:///` if not available.
 
@@ -1329,7 +1622,7 @@ Computed location origin. Defaults to `socket:///` if not available.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L106)
+## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L110)
 
 Computes the relative path from `from` to `to`.
 
@@ -1343,7 +1636,7 @@ Computes the relative path from `from` to `to`.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L153)
+## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L157)
 
 Joins path components. This function may not return an absolute path.
 
@@ -1356,7 +1649,7 @@ Joins path components. This function may not return an absolute path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L206)
+## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L210)
 
 Computes directory name of path.
 
@@ -1369,7 +1662,7 @@ Computes directory name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L242)
+## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L246)
 
 Computes base name of path.
 
@@ -1382,7 +1675,7 @@ Computes base name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L254)
+## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L258)
 
 Computes extension name of path.
 
@@ -1395,7 +1688,7 @@ Computes extension name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L265)
+## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L269)
 
 Computes normalized path
 
@@ -1408,7 +1701,7 @@ Computes normalized path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L315)
+## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L319)
 
 Formats `Path` object into a string.
 
@@ -1421,7 +1714,7 @@ Formats `Path` object into a string.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L331)
+## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L335)
 
 Parses input `path` into a `Path` instance.
 
@@ -1433,11 +1726,11 @@ Parses input `path` into a `Path` instance.
 | :---         | :--- | :---        |
 | Not specified | object |  |
 
-## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L359)
+## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L363)
 
 A container for a parsed Path.
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L381)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L385)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1446,7 +1739,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | input | PathComponent |  | false |  |
 | cwd | string |  | true |  |
 
-### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L404)
+### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L408)
 
 `Path` class constructor.
 
@@ -1455,47 +1748,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | pathname | string |  | false |  |
 | cwd | string | Path.cwd() | true |  |
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L473)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L477)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L480)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L484)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L514)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L518)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L522)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L526)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L541)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L545)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L562)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L566)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L597)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L601)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L609)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L613)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L617)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L621)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L637)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L641)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L644)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L648)
 
 
 
@@ -1503,7 +1796,7 @@ The computed drive, if given in the path.
 | :---         | :--- | :---        |
 | Not specified | URL |  |
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L652)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L656)
 
 Converts this `Path` instance to a string.
 
@@ -2122,10 +2415,6 @@ Retrieves the computed styles for a given element.
 <!-- This file is generated by bin/docs-generator/api-module.js -->
 <!-- Do not edit this file directly. -->
 
-
-<!-- This file is generated by bin/docs-generator/api-module.js -->
-<!-- Do not edit this file directly. -->
-
 # [Window](https://github.com/socketsupply/socket/blob/master/api/window.js#L12)
 
 
@@ -2281,7 +2570,7 @@ Shows a native open file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L246)
+### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L253)
 
 Shows a native save file dialog.
 
@@ -2293,7 +2582,7 @@ Shows a native save file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L257)
+### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L271)
 
 Shows a native directory dialog.
 
@@ -2305,7 +2594,7 @@ Shows a native directory dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L274)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L296)
 
 This is a high-level API that you should use instead of `ipc.send` when
  you want to send a message to another window or to the backend.
@@ -2319,7 +2608,7 @@ This is a high-level API that you should use instead of `ipc.send` when
 | options.event | string |  | false | the event to send |
 | options.value | string \| object |  | true | the value to send |
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L311)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L333)
 
 Opens an URL in the default browser.
 
@@ -2331,7 +2620,7 @@ Opens an URL in the default browser.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L322)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L344)
 
 Adds a listener to the window.
 
@@ -2340,7 +2629,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L340)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L362)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2349,7 +2638,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L357)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L379)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2358,7 +2647,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L373)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L395)
 
 Removes a listener from the window.
 
@@ -2367,7 +2656,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L386)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L408)
 
 Removes all listeners from the window.
 
@@ -2375,7 +2664,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L402)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L424)
 
 Removes a listener from the window. An alias for `removeListener`.
 

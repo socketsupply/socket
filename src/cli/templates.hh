@@ -38,12 +38,13 @@ options:
                                          - android-emulator
                                          - ios
                                          - ios-simulator
-  --port=<port>                        load "index.html" from "http://localhost:<port>"
+  --port=<port>                        load "index.html" from a specific port (if host is not specified, defaults to localhost)
+  --host=<host>                        load "index.html" from a specific host (if port is not specified, defaults to 80)
   --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
   --headless                           build application to run in headless mode (without frame or window)
   --prod                               build for production (disables debugging info, inspector, etc.)
-  --stdin                              read from stdin (dispacted as 'process.stdin' event to window #0)
   -D, --debug                          enable debug mode
+  -E, --env                            add environment variables
   -o, --only-build                     only run build step,
   -p, --package                        package the app for distribution
   -q, --quiet                          hint for less log output
@@ -57,19 +58,43 @@ Linux options:
                                          - zip
 
 macOS options:
-  -c                                   code sign application with 'codesign'
-  -n                                   notarize application with 'notarytool'
+  -c, --codesign                       code sign application with 'codesign'
+  -n, --notarize                       notarize application with 'notarytool'
   -f, --package-format=<format>        package a macOS application in a specified format for distribution:
                                          - zip (default)
                                          - pkg
 
 iOS options:
-  -c                                   code sign application during xcoddbuild
+  -c, --codesign                       code sign application during xcoddbuild
                                        (requires '[ios] provisioning_profile' in 'socket.ini')
 
 Windows options:
   -f, --package-format=<format>        package a Windows application in a specified format for distribution:
                                          - appx (default)
+)TEXT";
+
+constexpr auto gHelpTextRun = R"TEXT(
+ssc v{{ssc_version}}
+
+Run application.
+
+usage:
+  ssc run [options] [<project-dir>]
+
+options:
+  --headless                           run application in headless mode (without frame or window)
+  --platform=<platform>                platform target to run application on (defaults to host):
+                                         - android
+                                         - android-emulator
+                                         - ios
+                                         - ios-simulator
+  --port=<port>                        load "index.html" from a specific port (if host is not specified, defaults to localhost)
+  --host=<host>                        load "index.html" from a specific host (if port is not specified, defaults to 80)
+  --prod                               build for production (disables debugging info, inspector, etc.)
+  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
+  -D, --debug                          enable debug mode
+  -E, --env                            add environment variables
+  -V, --verbose                        enable verbose output
 )TEXT";
 
 constexpr auto gHelpTextListDevices = R"TEXT(
@@ -143,27 +168,6 @@ options:
   --root                               print the root build directory
 )TEXT";
 
-constexpr auto gHelpTextRun = R"TEXT(
-ssc v{{ssc_version}}
-
-Run application.
-
-usage:
-  ssc run [options] [<project-dir>]
-
-options:
-  -D, --debug                          enable debug mode
-  --headless                           run application in headless mode (without frame or window)
-  --platform=<platform>                platform target to run application on (defaults to host):
-                                         - android
-                                         - android-emulator
-                                         - ios
-                                         - ios-simulator
-  --prod                               build for production (disables debugging info, inspector, etc.)
-  --test[=path]                        indicate test mode, optionally importing a test file relative to resource files
-  -V, --verbose                        enable verbose output
-)TEXT";
-
 constexpr auto gHelpTextSetup = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -183,6 +187,8 @@ options:
 
 )TEXT";
 
+// Validate CSP using Google's CSP Evaluator
+// https://csp-evaluator.withgoogle.com
 constexpr auto gHelloWorld = R"HTML(
 <!doctype html>
 <html>
@@ -191,9 +197,11 @@ constexpr auto gHelloWorld = R"HTML(
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src https: file: ipc: socket: data:;
+        connect-src https: file: ipc: socket: ws://localhost:*;
+        script-src https: socket: http://localhost:* 'unsafe-eval';
+        img-src https: data: file: http://localhost:*;
         child-src 'none';
-        img-src https: data: file: socket:;
+        object-src 'none';
       "
     >
     <style type="text/css">
@@ -1000,7 +1008,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         MARKETING_VERSION = 1.0;
         ONLY_ACTIVE_ARCH = YES;
         OTHER_CFLAGS = (
-          "-DHOST={{host}}",
+          "-DHOST=\\\"{{host}}\\\"",
           "-DPORT={{port}}",
         );
         PRODUCT_BUNDLE_IDENTIFIER = "{{meta_bundle_identifier}}";
@@ -1161,6 +1169,8 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
 
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <{{ios_nonexempt_encryption}}/>
 
   <!-- Permission usage descriptions -->
   <key>NSAppDataUsageDescription</key>
@@ -1281,7 +1291,7 @@ android {
   compileSdkVersion 34
   ndkVersion "26.0.10792818"
   flavorDimensions "default"
-  namespace '{{meta_bundle_identifier}}'
+  namespace '{{android_bundle_identifier}}'
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -1293,7 +1303,7 @@ android {
   }
 
   defaultConfig {
-    applicationId "{{meta_bundle_identifier}}"
+    applicationId "{{android_bundle_identifier}}"
     minSdkVersion 26
     targetSdkVersion 34
     versionCode {{meta_revision}}
@@ -1609,11 +1619,15 @@ constexpr auto gDefaultConfig = R"INI(
 ; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
 
-; The value of the "script" property in a build section will be interpreted as a shell command when
-; you run "ssc build". This is the most important command in this file. It will
-; do all the heavy lifting and should handle 99.9% of your use cases for moving
-; files into place or tweaking platform-specific build artifacts. If you don't
-; specify it, ssc will just copy everything in your project to the build target.
+; The value of the "script" property in the build section will be interpreted as
+; a shell command when  you run "ssc build". This is the most important command
+; in this file. It will do all the heavy lifting and should handle 99.9% of your
+; use cases for moving files into place or tweaking platform-specific build
+; artifacts. If you don't specify it, ssc will just copy everything in your
+; project to the build target.
+;
+; Note that "~" alias won't expand to the home directory in any of the config
+; files. Use the full path instead.
 
 [build]
 
@@ -1644,9 +1658,15 @@ output = "build"
 ; The build script. It runs before the `[build] copy` phase.
 ; script = "npm run build"
 
+[build.script]
+; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+; default value: false
+forward_arguments = false
 
 [build.watch]
-sources = "src"
+; Configure your project to watch for sources that could change when running `ssc`.
+; Could be a string or an array of strings
+sources[] = "src"
 
 
 [webview]
@@ -1658,10 +1678,20 @@ root = "/"
 ; default value: ""
 ; default_index  = ""
 
-; Enable watch mode
+; Tell the webview to watch for changes in its resources
 ; default value: false
-watch = false
+watch = true
 
+[webview.watch]
+; Configure webview to reload when a file changes
+; default value: true
+reload = true
+
+; Mount file system paths in webview navigator
+[webview.navigator.mounts]
+; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
+; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
+; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
 [permissions]
 ; Allow/Disallow fullscreen in application
@@ -1748,6 +1778,8 @@ version = 1.0.0
 
 
 [android]
+; The icon to use for identifying your app on Android.
+icon = "src/icon.png"
 
 ; Extensions of files that will not be stored compressed in the APK.
 aapt_no_compress = ""
@@ -1773,7 +1805,7 @@ sources = ""
 
 [ios]
 
-; signing guide: https://sockets.sh/guides/#ios-1
+; signing guide: https://socketsupply.co/guides/#ios-1
 codesign_identity = ""
 
 ; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
@@ -1782,9 +1814,12 @@ distribution_method = "ad-hoc"
 ; A path to the provisioning profile used for signing iOS app.
 provisioning_profile = ""
 
-; which device to target when building for the simulator
+; which device to target when building for the simulator.
 simulator_device = "iPhone 14"
 
+; Indicate to Apple if you are using encryption that is not exempt.
+; default value: false
+; nonexempt_encryption = false
 
 [linux]
 ; Helps to make your app searchable in Linux desktop environments.
@@ -1799,9 +1834,6 @@ icon = "src/icon.png"
 
 [mac]
 
-; Mac App Store icon
-appstore_icon = "src/icons/icon.png"
-
 ; A category in the App Store
 category = ""
 
@@ -1809,7 +1841,7 @@ category = ""
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on MacOS.
-icon = ""
+icon = "src/icon.png"
 
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_identity = ""
@@ -1833,13 +1865,13 @@ headers = native-module1.hh
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on Windows.
-icon = ""
+icon = "src/icon.png"
 
 ; The icon to use for identifying your app on Windows.
 logo = "src/icons/icon.png"
 
 ; A relative path to the pfx file used for signing.
-pfx = "certs/cert.pfx"
+; pfx = "certs/cert.pfx"
 
 ; The signing information needed by the appx api.
 ; publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
@@ -1883,8 +1915,8 @@ runner_win32_flags = ""
 )INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
-# Logs
 logs
+# Logs
 *.log
 *.dat
 npm-debug.log*

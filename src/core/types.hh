@@ -18,10 +18,7 @@
 #endif
 
 namespace SSC {
-#if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
   namespace fs = std::filesystem;
-  using Path = fs::path;
-#endif
 
   using AtomicBool = std::atomic<bool>;
   using String = std::string;
@@ -30,6 +27,7 @@ namespace SSC {
   using WStringStream = std::wstringstream;
   using Map = std::map<String, String>;
   using Mutex = std::recursive_mutex;
+  using Path = fs::path;
   using Lock = std::lock_guard<Mutex>;
   using Thread = std::thread;
   using Exception = std::exception;

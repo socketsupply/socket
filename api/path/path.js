@@ -49,6 +49,10 @@ export function resolve (options, ...components) {
     }
 
     resolved = resolveURL(resolved + '/', component)
+
+    if (resolved.length > 1) {
+      resolved = resolved.replace(/\/$/g, '')
+    }
   }
 
   if (sep === '\\') {

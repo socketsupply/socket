@@ -18,8 +18,8 @@ namespace SSC {
     ));
   }
 
-  const char* getDevHost () {
-    static const char* host = CONVERT_TO_STRING(HOST);
+  const String getDevHost () {
+    static const auto host = String(HOST);
     return host;
   }
 

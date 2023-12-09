@@ -33,6 +33,7 @@ import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
 import * as constants from './constants.js'
 import * as promises from './promises.js'
+import { Watcher } from './watcher.js'
 import { Stats } from './stats.js'
 import fds from './fds.js'
 
@@ -47,7 +48,7 @@ function defaultCallback (err) {
   if (err) throw err
 }
 
-async function visit (path, options, callback) {
+async function visit (path, options = null, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
@@ -127,13 +128,17 @@ export function chmod (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.chmod', { mode, path }).then((result) => {
+  ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
 
 /**
- * @ignore
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @param {function} callback
  */
 export function chown (path, uid, gid, callback) {
   if (typeof path !== 'string') {
@@ -152,7 +157,7 @@ export function chown (path, uid, gid, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.chown', { path, uid, gid }).then((result) => {
+  ipc.request('fs.chown', { path, uid, gid }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -204,7 +209,7 @@ export function copyFile (src, dest, flags, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.copyFile', { src, dest, flags }).then((result) => {
+  ipc.request('fs.copyFile', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -230,7 +235,9 @@ export function createReadStream (path, options) {
   if (options?.fd) {
     handle = FileHandle.from(options.fd)
   } else {
+    // @ts-ignore
     handle = new FileHandle({ flags: 'r', path, ...options })
+    // @ts-ignore
     handle.open(options).catch((err) => stream.emit('error', err))
   }
 
@@ -239,6 +246,7 @@ export function createReadStream (path, options) {
       try {
         await handle.close(options)
       } catch (err) {
+        // @ts-ignore
         stream.emit('error', err)
       }
     }
@@ -271,6 +279,7 @@ export function createWriteStream (path, options) {
     handle = FileHandle.from(options.fd)
   } else {
     handle = new FileHandle({ flags: 'w', path, ...options })
+    // @ts-ignore
     handle.open(options).catch((err) => stream.emit('error', err))
   }
 
@@ -279,6 +288,7 @@ export function createWriteStream (path, options) {
       try {
         await handle.close(options)
       } catch (err) {
+        // @ts-ignore
         stream.emit('error', err)
       }
     }
@@ -297,7 +307,7 @@ export function createWriteStream (path, options) {
  *
  * @param {number} fd - A file descriptor.
  * @param {object?|function?} [options] - An options object.
- * @param {function?} [callback] - The function to call after completion.
+ * @param {function?} callback - The function to call after completion.
  */
 export function fstat (fd, options, callback) {
   if (typeof options === 'function') {
@@ -321,7 +331,60 @@ export function fstat (fd, options, callback) {
 }
 
 /**
- * @ignore
+ * Request that all data for the open file descriptor is flushed
+ * to the storage device.
+ * @param {number} fd - A file descriptor.
+ * @param {function} callback - The function to call after completion.
+ */
+export function fsync (fd, callback) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  try {
+    FileHandle
+      .from(fd)
+      .sync()
+      .then(() => callback(null))
+      .catch((err) => callback(err))
+  } catch (err) {
+    callback(err)
+  }
+}
+
+/**
+ * Truncates the file up to `offset` bytes.
+ * @param {number} fd - A file descriptor.
+ * @param {number=|function} [offset = 0]
+ * @param {function?} callback - The function to call after completion.
+ */
+export function ftruncate (fd, offset, callback) {
+  if (typeof offset === 'function') {
+    callback = offset
+    offset = {}
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  try {
+    FileHandle
+      .from(fd)
+      .truncate(offset)
+      .then(() => callback(null))
+      .catch((err) => callback(err))
+  } catch (err) {
+    callback(err)
+  }
+}
+
+/**
+ * Chages ownership of link at `path` with `uid` and `gid.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ * @param {function} callback
  */
 export function lchown (path, uid, gid, callback) {
   if (typeof path !== 'string') {
@@ -340,13 +403,16 @@ export function lchown (path, uid, gid, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.lchown', { path, uid, gid }).then((result) => {
+  ipc.request('fs.lchown', { path, uid, gid }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
 
 /**
- * @ignore
+ * Creates a link to `dest` from `src`.
+ * @param {string} src
+ * @param {string} dest
+ * @param {function}
  */
 export function link (src, dest, callback) {
   if (typeof src !== 'string') {
@@ -361,7 +427,7 @@ export function link (src, dest, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.link', { src, dest }).then((result) => {
+  ipc.request('fs.link', { src, dest }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -379,7 +445,7 @@ export function mkdir (path, options, callback) {
   }
 
   const mode = options.mode || 0o777
-  const recursive = options.recursive === true
+  const recursive = Boolean(options.recursive) // default to false
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
@@ -607,7 +673,9 @@ export function readFile (path, options = {}, callback) {
 }
 
 /**
- * @ignore
+ * Reads link at `path`
+ * @param {string} path
+ * @param {function(err, string)} callback
  */
 export function readlink (path, callback) {
   if (typeof path !== 'string') {
@@ -618,13 +686,15 @@ export function readlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.readlink', { path }).then((result) => {
+  ipc.request('fs.readlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(result.data.path)
   }).catch(callback)
 }
 
 /**
- * @ignore
+ * Computes real path for `path`
+ * @param {string} path
+ * @param {function(err, string)} callback
  */
 export function realpath (path, callback) {
   if (typeof path !== 'string') {
@@ -635,13 +705,16 @@ export function realpath (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.realpath', { path }).then((result) => {
+  ipc.request('fs.realpath', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(result.data.path)
   }).catch(callback)
 }
 
 /**
- * @ignore
+ * Renames file or directory at `src` to `dest`.
+ * @param {string} src
+ * @param {string} dest
+ * @param {function} callback
  */
 export function rename (src, dest, callback) {
   if (typeof src !== 'string') {
@@ -656,13 +729,15 @@ export function rename (src, dest, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.rename', { src, dest }).then((result) => {
+  ipc.request('fs.rename', { src, dest }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
 
 /**
- * @ignore
+ * Removes directory at `path`.
+ * @param {string} path
+ * @param {function} callback
  */
 export function rmdir (path, callback) {
   if (typeof path !== 'string') {
@@ -673,7 +748,7 @@ export function rmdir (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.rmdir', { path }).then((result) => {
+  ipc.request('fs.rmdir', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
 }
@@ -697,7 +772,7 @@ export function stat (path, options, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  visit(path, async (err, handle) => {
+  visit(path, {}, async (err, handle) => {
     let stats = null
 
     if (err) {
@@ -717,7 +792,9 @@ export function stat (path, options, callback) {
 }
 
 /**
- * @ignore
+ * Creates a symlink of `src` at `dest`.
+ * @param {string} src
+ * @param {string} dest
  */
 export function symlink (src, dest, type = null, callback) {
   let flags = 0
@@ -750,13 +827,15 @@ export function symlink (src, dest, type = null, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.symlink', { src, dest, flags }).then((result) => {
+  ipc.request('fs.symlink', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
 
 /**
- * @ignore
+ * Unlinks (removes) file at `path`.
+ * @param {string} path
+ * @param {function} callback
  */
 export function unlink (path, callback) {
   if (typeof path !== 'string') {
@@ -767,7 +846,7 @@ export function unlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
-  ipc.send('fs.unlink', { path }).then((result) => {
+  ipc.request('fs.unlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
 }
@@ -820,6 +899,24 @@ export function writeFile (path, data, options, callback) {
   })
 }
 
+/**
+ * Watch for changes at `path` calling `callback`
+ * @param {string}
+ * @param {function|object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {?function} [callback]
+ * @return {Watcher}
+ */
+export function watch (path, options, callback = null) {
+  if (typeof options === 'function') {
+    callback = options
+  }
+
+  const watcher = new Watcher(path, options)
+  watcher.on('change', callback)
+  return watcher
+}
+
 // re-exports
 export {
   constants,
@@ -831,6 +928,7 @@ export {
   promises,
   ReadStream,
   Stats,
+  Watcher,
   WriteStream
 }
 

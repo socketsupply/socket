@@ -2,7 +2,7 @@
  * @module IPC
  *
  * This is a low-level API that you don't need unless you are implementing
- * a library on top of Socket SDK. A Socket SDK app has two or three processes.
+ * a library on top of Socket runtime. A Socket app has one or more processes.
  *
  * When you need to send a message to another window or to the backend, you
  * should use the `application` module to get a reference to the window and
@@ -175,7 +175,7 @@ function getErrorClass (type, fallback) {
   if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
-      const object = Object.create(globalThis[${type}].prototype, {
+      const object = Object.create(globalThis['${type}']?.prototype ?? {}, {
         code: { value: null }
       })
 
@@ -414,8 +414,6 @@ export function debug (enable) {
   return debug.enabled
 }
 
-debug.log = () => undefined
-
 Object.defineProperty(debug, 'enabled', {
   enumerable: false,
   set (value) {
@@ -430,6 +428,13 @@ Object.defineProperty(debug, 'enabled', {
     return debug[kDebugEnabled]
   }
 })
+
+if (debug.enabled && globalThis.__args?.env?.SOCKET_DEBUG_IPC) {
+  // eslint-disable-next-line
+  debug.log = (...args) => void globalThis.console?.log?.(...args)
+} else {
+  debug.log = () => undefined
+}
 
 /**
  * @ignore
@@ -482,7 +487,7 @@ export async function postMessage (message, ...args) {
   } else if (globalThis.postMessage) {
     // worker
     if (globalThis.self && !globalThis.window) {
-      return globalThis?.postMessage({
+      return await globalThis?.postMessage({
         __runtime_worker_ipc_request: {
           message,
           bytes: args[0] ?? null
@@ -593,7 +598,7 @@ export class Message extends URL {
    * `Message` class constructor.
    * @protected
    * @param {string|URL} input
-   * @param {object|Uint8Array?} [bytes]
+   * @param {(object|Uint8Array)?} [bytes]
    * @ignore
    */
   constructor (input, bytes = null) {
@@ -828,7 +833,7 @@ export class Result {
 
   /**
    * Result data if given.
-   * @type {string|object|Uint8Array?}
+   * @type {(string|object|Uint8Array)?}
    * @ignore
    */
   data = null
@@ -850,7 +855,7 @@ export class Result {
   /**
    * Creates a `Result` instance from input that may be an object
    * like `{ err?, data? }`, an `Error` instance, or just `data`.
-   * @param {object|Error|any?} result
+   * @param {(object|Error|any)?} result
    * @param {Error|object} [maybeError]
    * @param {string} [maybeSource]
    * @param {object|string|Headers} [maybeHeaders]
@@ -902,7 +907,7 @@ export class Result {
    * @param {Error?} [err = null]
    * @param {object?} [data = null]
    * @param {string?} [source = null]
-   * @param {object|string|Headers?} [headers = null]
+   * @param {(object|string|Headers)?} [headers = null]
    * @ignore
    */
   constructor (id, err, data, source, headers) {
@@ -964,7 +969,7 @@ export class Result {
    */
   toJSON () {
     return {
-      headers: this.headers ?? null,
+      headers: this.headers ? this.headers.toJSON() : null,
       source: this.source ?? null,
       data: this.data ?? null,
       err: this.err && {
@@ -1027,6 +1032,10 @@ class IPCSearchParams extends URLSearchParams {
 
     if (nonce) {
       this.set('nonce', nonce)
+    }
+
+    if (globalThis.RUNTIME_WORKER_ID) {
+      this.set('runtime-worker-id', globalThis.RUNTIME_WORKER_ID)
     }
   }
 

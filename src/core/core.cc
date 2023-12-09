@@ -243,6 +243,7 @@ namespace SSC {
       "const globals = await import('socket:internal/globals');              \n"
       "const id = `" + sid + "`;                                             \n"
       "const seq = `" + seq + "`;                                            \n"
+      "const workerId = `" + post.workerId + "`.trim() || null;              \n"
       "const headers = `" + trim(post.headers) + "`                          \n"
       "  .trim()                                                             \n"
       "  .split(/[\\r\\n]+/)                                                 \n"
@@ -261,7 +262,7 @@ namespace SSC {
       "  id,                                                                 \n"
       "  seq,                                                                \n"
       "  params,                                                             \n"
-      "  headers                                                             \n"
+      "  { workerId }                                                         \n"
       ");                                                                    \n"
     );
 
@@ -542,9 +543,9 @@ namespace SSC {
     int buffer,
     Module::Callback cb
   ) {
-    if (buffer < 0) {
+    if (buffer == 0) {
       buffer = Core::OS::SEND_BUFFER;
-    } else if (buffer > 1) {
+    } else if (buffer == 1) {
       buffer = Core::OS::RECV_BUFFER;
     }
 
@@ -618,6 +619,18 @@ namespace SSC {
             this->core->fs.descriptors.erase(tuple.first);
           }
         }
+
+        #if !defined(__ANDROID__)
+        for (auto const &tuple : this->core->fs.watchers) {
+          auto watcher = tuple.second;
+          if (watcher != nullptr) {
+            watcher->stop();
+            delete watcher;
+          }
+        }
+
+        this->core->fs.watchers.clear();
+        #endif
       }
 
       auto json = JSON::Object::Entries {
@@ -942,12 +955,16 @@ namespace SSC {
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
-      if (!core->isLoopAlive() || !core->isLoopRunning) {
+      if (!core->isLoopRunning) {
         return false;
       }
 
+      if (!core->isLoopAlive()) {
+        return true;
+      }
+
       *timeout = core->getEventLoopTimeout();
-      return 0 == *timeout;
+      return *timeout == 0;
     },
 
     .dispatch = [](
@@ -976,11 +993,14 @@ namespace SSC {
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
       auto core = reinterpret_cast<SSC::Core  *>(handle->data);
       while (true) {
-        Lock lock(core->loopMutex);
-        if (core->eventLoopDispatchQueue.size() == 0) break;
-        auto dispatch = core->eventLoopDispatchQueue.front();
+        std::function<void()> dispatch;
+        {
+          Lock lock(core->loopMutex);
+          if (core->eventLoopDispatchQueue.size() == 0) break;
+          dispatch = core->eventLoopDispatchQueue.front();
+          core->eventLoopDispatchQueue.pop();
+        }
         if (dispatch != nullptr) dispatch();
-        core->eventLoopDispatchQueue.pop();
       }
     });
 
@@ -1108,9 +1128,11 @@ namespace SSC {
       Vector<uint64_t> ids;
       String msg = "";
 
-      Lock lock(core->fs.mutex);
-      for (auto const &tuple : core->fs.descriptors) {
-        ids.push_back(tuple.first);
+      {
+        Lock lock(core->fs.mutex);
+        for (auto const &tuple : core->fs.descriptors) {
+          ids.push_back(tuple.first);
+        }
       }
 
       for (auto const id : ids) {

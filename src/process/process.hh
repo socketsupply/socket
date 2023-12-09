@@ -104,6 +104,7 @@ namespace SSC {
   // the stdout, stderr and stdin are sent to the parent process instead.
   class Process {
   public:
+    static constexpr auto PROCESS_WAIT_TIMEOUT = 256;
 
   #ifdef _WIN32
     typedef unsigned long id_type; // Process id type
@@ -183,11 +184,14 @@ namespace SSC {
 
     // Kill a given process id. Use kill(bool force) instead if possible.
     // force=true is only supported on Unix-like systems.
-    void kill(id_type id) noexcept;
+    void kill (id_type id) noexcept;
+    void kill () noexcept {
+      this->kill(this->getPID());
+    }
 
     int wait () {
       do {
-        msleep(256);
+        msleep(Process::PROCESS_WAIT_TIMEOUT);
       } while (this->closed == false);
 
       return this->status;

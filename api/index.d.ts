@@ -1,15 +1,16 @@
 declare module "socket:errors" {
     export default exports;
-    export const ABORT_ERR: 20;
-    export const ENCODING_ERR: 32;
-    export const INVALID_ACCESS_ERR: 15;
-    export const INDEX_SIZE_ERR: 1;
-    export const NETWORK_ERR: 19;
-    export const NOT_ALLOWED_ERR: 31;
-    export const NOT_FOUND_ERR: 8;
-    export const NOT_SUPPORTED_ERR: 9;
-    export const OPERATION_ERR: 30;
-    export const TIMEOUT_ERR: 23;
+    export const ABORT_ERR: any;
+    export const ENCODING_ERR: any;
+    export const INVALID_ACCESS_ERR: any;
+    export const INDEX_SIZE_ERR: any;
+    export const NETWORK_ERR: any;
+    export const NOT_ALLOWED_ERR: any;
+    export const NOT_FOUND_ERR: any;
+    export const NOT_SUPPORTED_ERR: any;
+    export const OPERATION_ERR: any;
+    export const SECURITY_ERR: any;
+    export const TIMEOUT_ERR: any;
     /**
      * An `AbortError` is an error type thrown in an `onabort()` level 0
      * event handler on an `AbortSignal` instance.
@@ -19,7 +20,7 @@ declare module "socket:errors" {
          * The code given to an `ABORT_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `AbortError` class constructor.
          * @param {AbortSignal|string} reasonOrSignal
@@ -56,7 +57,7 @@ declare module "socket:errors" {
         /**
          * The code given to an `ENCODING_ERR` `DOMException`.
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `EncodingError` class constructor.
          * @param {string} message
@@ -108,9 +109,9 @@ declare module "socket:errors" {
      */
     export class IndexSizeError extends Error {
         /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * The code given to an `INDEX_SIZE_ERR` `DOMException`
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `IndexSizeError` class constructor.
          * @param {string} message
@@ -140,7 +141,7 @@ declare module "socket:errors" {
         /**
          * @param {number|string}
          */
-        set code(arg: string | number);
+        set code(code: string | number);
         /**
          * @type {number|string}
          */
@@ -156,7 +157,7 @@ declare module "socket:errors" {
          * The code given to an `INVALID_ACCESS_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `InvalidAccessError` class constructor.
          * @param {string} message
@@ -175,7 +176,7 @@ declare module "socket:errors" {
          * The code given to an `NETWORK_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NetworkError` class constructor.
          * @param {string} message
@@ -194,7 +195,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_ALLOWED_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotAllowedError` class constructor.
          * @param {string} message
@@ -213,7 +214,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_FOUND_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotFoundError` class constructor.
          * @param {string} message
@@ -232,7 +233,7 @@ declare module "socket:errors" {
          * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `NotSupportedError` class constructor.
          * @param {string} message
@@ -260,11 +261,29 @@ declare module "socket:errors" {
      */
     export class OperationError extends Error {
         /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * The code given to an `OPERATION_ERR` `DOMException`
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `OperationError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `SecurityError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class SecurityError extends Error {
+        /**
+         * The code given to an `SECURITY_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `SecurityError` class constructor.
          * @param {string} message
          * @param {number} [code]
          */
@@ -280,7 +299,7 @@ declare module "socket:errors" {
          * The code given to an `TIMEOUT_ERR` `DOMException`
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        static get code(): number;
+        static get code(): any;
         /**
          * `TimeoutError` class constructor.
          * @param {string} message
@@ -1016,6 +1035,60 @@ declare module "socket:path/path" {
     });
     import { URL } from "socket:url/index";
 }
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    /**
+     * Well known path to the application's "resources" folder.
+     * @type {?string}
+     */
+    export const RESOURCES: string | null;
+    /**
+     * Well known path to the application's "home" folder.
+     * This may be the user's HOME directory or the application container sandbox.
+     * @type {?string}
+     */
+    export const HOME: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { RESOURCES };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { MUSIC };
+        export { HOME };
+    }
+    export default _default;
+}
 declare module "socket:path/win32" {
     /**
      * Computes current working directory for a path
@@ -1090,11 +1163,18 @@ declare module "socket:path/win32" {
         let delimiter: ";";
     }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import * as posix from "socket:path/posix";
     import { Path } from "socket:path/path";
+    import * as posix from "socket:path/posix";
+    import { RESOURCES } from "socket:path/well-known";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { posix, Path };
+    export { posix, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/posix" {
     /**
@@ -1171,11 +1251,18 @@ declare module "socket:path/posix" {
         let delimiter: ":";
     }
     export type PathComponent = import("socket:path/path").PathComponent;
-    import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
+    import * as win32 from "socket:path/win32";
+    import { RESOURCES } from "socket:path/well-known";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { win32, Path };
+    export { win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
 }
 declare module "socket:path/index" {
     export * as _default from "socket:path/index";
@@ -1183,11 +1270,19 @@ declare module "socket:path/index" {
     import * as posix from "socket:path/posix";
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
-    export { posix, win32, Path };
+    import { RESOURCES } from "socket:path/well-known";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
-    export const delimiter: ";";
+    export const delimiter: ":" | ";";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
     export const dirname: typeof posix.win32.dirname;
@@ -1204,7 +1299,15 @@ declare module "socket:path" {
     import { posix } from "socket:path/index";
     import { Path } from "socket:path/index";
     import { win32 } from "socket:path/index";
-    export { Path, posix, win32 };
+    import { RESOURCES } from "socket:path/index";
+    import { DOWNLOADS } from "socket:path/index";
+    import { DOCUMENTS } from "socket:path/index";
+    import { PICTURES } from "socket:path/index";
+    import { DESKTOP } from "socket:path/index";
+    import { VIDEOS } from "socket:path/index";
+    import { MUSIC } from "socket:path/index";
+    import { HOME } from "socket:path/index";
+    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
 }
 declare module "socket:diagnostics/channels" {
     /**
@@ -1830,8 +1933,8 @@ declare module "socket:fs/stream" {
     export default exports;
     export type FileHandle = import("socket:fs/handle").FileHandle;
     import { Readable } from "socket:stream";
-    import * as exports from "socket:fs/stream";
     import { Writable } from "socket:stream";
+    import * as exports from "socket:fs/stream";
     
 }
 declare module "socket:fs/constants" {
@@ -1917,18 +2020,21 @@ declare module "socket:fs/flags" {
 }
 declare module "socket:fs/stats" {
     /**
-     * @TODO
+     * A container for various stats about a file or directory.
      */
     export class Stats {
         /**
-         * @TODO
+         * Creates a `Stats` instance from input, optionally with `BigInt` data types
+         * @param {object|Stats} [stat]
+         * @param {fromBigInt=} [fromBigInt = false]
+         * @return {Stats}
          */
-        static from(stat: any, fromBigInt: any): exports.Stats;
+        static from(stat?: object | Stats, fromBigInt?: any): Stats;
         /**
          * `Stats` class constructor.
-         * @param {object} stat
+         * @param {object|Stats} stat
          */
-        constructor(stat: object);
+        constructor(stat: object | Stats);
         dev: any;
         ino: any;
         mode: any;
@@ -1947,12 +2053,40 @@ declare module "socket:fs/stats" {
         mtime: Date;
         ctime: Date;
         birthtime: Date;
+        /**
+         * Returns `true` if stats represents a directory.
+         * @return {Boolean}
+         */
         isDirectory(): boolean;
+        /**
+         * Returns `true` if stats represents a file.
+         * @return {Boolean}
+         */
         isFile(): boolean;
+        /**
+         * Returns `true` if stats represents a block device.
+         * @return {Boolean}
+         */
         isBlockDevice(): boolean;
+        /**
+         * Returns `true` if stats represents a character device.
+         * @return {Boolean}
+         */
         isCharacterDevice(): boolean;
+        /**
+         * Returns `true` if stats represents a symbolic link.
+         * @return {Boolean}
+         */
         isSymbolicLink(): boolean;
+        /**
+         * Returns `true` if stats represents a FIFO.
+         * @return {Boolean}
+         */
         isFIFO(): boolean;
+        /**
+         * Returns `true` if stats represents a socket.
+         * @return {Boolean}
+         */
         isSocket(): boolean;
     }
     export default exports;
@@ -2004,24 +2138,25 @@ declare module "socket:fs/handle" {
          * @param {string} path
          * @param {number} [mode = 0o666]
          * @param {object=} [options]
-         * @return {boolean}
+         * @return {Promise<boolean>}
          */
-        static access(path: string, mode?: number, options?: object | undefined): boolean;
+        static access(path: string, mode?: number, options?: object | undefined): Promise<boolean>;
         /**
          * Asynchronously open a file.
          * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesopenpath-flags-mode}
          * @param {string | Buffer | URL} path
          * @param {string=} [flags = 'r']
-         * @param {string=} [mode = 0o666]
+         * @param {string|number=} [mode = 0o666]
          * @param {object=} [options]
+         * @return {Promise<FileHandle>}
          */
-        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: string | undefined, options?: object | undefined): Promise<exports.FileHandle>;
+        static open(path: string | Buffer | URL, flags?: string | undefined, mode?: (string | number) | undefined, options?: object | undefined): Promise<FileHandle>;
         /**
          * `FileHandle` class constructor
-         * @private
+         * @ignore
          * @param {object} options
          */
-        private constructor();
+        constructor(options: object);
         flags: any;
         path: any;
         mode: any;
@@ -2077,12 +2212,12 @@ declare module "socket:fs/handle" {
          * Creates a `ReadStream` for the underlying file.
          * @param {object=} [options] - An options object
          */
-        createReadStream(options?: object | undefined): any;
+        createReadStream(options?: object | undefined): ReadStream;
         /**
          * Creates a `WriteStream` for the underlying file.
          * @param {object=} [options] - An options object
          */
-        createWriteStream(options?: object | undefined): any;
+        createWriteStream(options?: object | undefined): WriteStream;
         /**
          * @param {object=} [options]
          */
@@ -2096,12 +2231,12 @@ declare module "socket:fs/handle" {
          * Reads `length` bytes starting from `position` into `buffer` at
          * `offset`.
          * @param {Buffer|object} buffer
-         * @param {number} offset
-         * @param {number} length
-         * @param {number} position
+         * @param {number=} [offset]
+         * @param {number=} [length]
+         * @param {number=} [position]
          * @param {object=} [options]
          */
-        read(buffer: Buffer | object, offset: number, length: number, position: number, options?: object | undefined): Promise<{
+        read(buffer: Buffer | object, offset?: number | undefined, length?: number | undefined, position?: number | undefined, options?: object | undefined): Promise<{
             bytesRead: number;
             buffer: any;
         }>;
@@ -2114,26 +2249,21 @@ declare module "socket:fs/handle" {
          */
         readFile(options?: object | undefined): Promise<string | Uint8Array>;
         /**
-         * @param {object=} [options]
-         */
-        readv(buffers: any, position: any): Promise<void>;
-        /**
          * Returns the stats of the underlying file.
          * @param {object=} [options]
+         * @return {Promise<Stats>}
          */
         stat(options?: object | undefined): Promise<Stats>;
         /**
-         * @param {object=} [options]
+         * Synchronize a file's in-core state with storage device
+         * @return {Promise}
          */
-        sync(): Promise<void>;
+        sync(): Promise<any>;
         /**
-         * @param {object=} [options]
+         * @param {number} [offset = 0]
+         * @return {Promise}
          */
-        truncate(length: any): Promise<void>;
-        /**
-         * @param {object=} [options]
-         */
-        utimes(atime: any, mtime: any): Promise<void>;
+        truncate(offset?: number): Promise<any>;
         /**
          * Writes `length` bytes at `offset` in `buffer` to the underlying file
          * at `position`.
@@ -2155,10 +2285,6 @@ declare module "socket:fs/handle" {
          * @param {object=} [options.signal]
          */
         writeFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void>;
-        /**
-         * @param {object=} [options]
-         */
-        writev(buffers: any, position: any): Promise<void>;
         [exports.kOpening]: any;
         [exports.kClosing]: any;
         [exports.kClosed]: boolean;
@@ -2189,8 +2315,9 @@ declare module "socket:fs/handle" {
          * Asynchronously open a directory.
          * @param {string | Buffer | URL} path
          * @param {object=} [options]
+         * @return {Promise<DirectoryHandle>}
          */
-        static open(path: string | Buffer | URL, options?: object | undefined): Promise<exports.DirectoryHandle>;
+        static open(path: string | Buffer | URL, options?: object | undefined): Promise<DirectoryHandle>;
         /**
          * `DirectoryHandle` class constructor
          * @private
@@ -2226,16 +2353,18 @@ declare module "socket:fs/handle" {
         /**
          * Opens the underlying handle for a directory.
          * @param {object=} options
+         * @return {Promise<boolean>}
          */
-        open(options?: object | undefined): Promise<any>;
+        open(options?: object | undefined): Promise<boolean>;
         /**
          * Close underlying directory handle
          * @param {object=} [options]
          */
         close(options?: object | undefined): Promise<any>;
         /**
-         * Reads
+         * Reads directory entries
          * @param {object=} [options]
+         * @param {number=} [options.entries = DirectoryHandle.MAX_ENTRIES]
          */
         read(options?: object | undefined): Promise<any>;
         [exports.kOpening]: any;
@@ -2246,8 +2375,10 @@ declare module "socket:fs/handle" {
     export type TypedArray = Uint8Array | Int8Array;
     import { EventEmitter } from "socket:events";
     import { Buffer } from "socket:buffer";
-    import * as exports from "socket:fs/handle";
+    import { ReadStream } from "socket:fs/stream";
+    import { WriteStream } from "socket:fs/stream";
     import { Stats } from "socket:fs/stats";
+    import * as exports from "socket:fs/handle";
     
 }
 declare module "socket:fs/dir" {
@@ -2278,11 +2409,23 @@ declare module "socket:fs/dir" {
         encoding: any;
         withFileTypes: boolean;
         /**
+         * `true` if closed, otherwise `false`.
+         * @ignore
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if closing, otherwise `false`.
+         * @ignore
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
          * Closes container and underlying handle.
          * @param {object|function} options
          * @param {function=} callback
          */
-        close(options: object | Function, callback?: Function | undefined): Promise<any>;
+        close(options?: object | Function, callback?: Function | undefined): Promise<any>;
         /**
          * Reads and returns directory entry.
          * @param {object|function} options
@@ -2365,6 +2508,352 @@ declare module "socket:fs/dir" {
     import * as exports from "socket:fs/dir";
     
 }
+declare module "socket:hooks" {
+    /**
+     * Wait for the global Window, Document, and Runtime to be ready.
+     * The callback function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onReady(callback: Function): Function;
+    /**
+     * Wait for the global Window and Document to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLoad(callback: Function): Function;
+    /**
+     * Wait for the runtime to be ready. The callback
+     * function is called exactly once.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onInit(callback: Function): Function;
+    /**
+     * Calls callback when a global exception occurs.
+     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onError(callback: Function): Function;
+    /**
+     * Subscribes to the global data pipe calling callback when
+     * new data is emitted on the global Window.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onData(callback: Function): Function;
+    /**
+     * Subscribes to global messages likely from an external `postMessage`
+     * invocation.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onMessage(callback: Function): Function;
+    /**
+     * Calls callback when runtime is working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOnline(callback: Function): Function;
+    /**
+     * Calls callback when runtime is not working online.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onOffline(callback: Function): Function;
+    /**
+     * Calls callback when runtime user preferred language has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onLanguageChange(callback: Function): Function;
+    /**
+     * Calls callback when an application permission has changed.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onPermissionChange(callback: Function): Function;
+    /**
+     * Calls callback in response to a presented `Notification`.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationResponse(callback: Function): Function;
+    /**
+     * Calls callback when a `Notification` is presented.
+     * @param {function} callback
+     * @return {function}
+     */
+    export function onNotificationPresented(callback: Function): Function;
+    export const RUNTIME_INIT_EVENT_NAME: "__runtime_init__";
+    export const GLOBAL_EVENTS: string[];
+    /**
+     * An event dispatched when the runtime has been initialized.
+     */
+    export class InitEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime global has been loaded.
+     */
+    export class LoadEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime is considered ready.
+     */
+    export class ReadyEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime has been initialized.
+     */
+    export class RuntimeInitEvent {
+        constructor();
+    }
+    /**
+     * An interface for registering callbacks for various hooks in
+     * the runtime.
+     */
+    export class Hooks extends EventTarget {
+        /**
+         * @ignore
+         */
+        static GLOBAL_EVENTS: string[];
+        /**
+         * @ignore
+         */
+        static InitEvent: typeof InitEvent;
+        /**
+         * @ignore
+         */
+        static LoadEvent: typeof LoadEvent;
+        /**
+         * @ignore
+         */
+        static ReadyEvent: typeof ReadyEvent;
+        /**
+         * @ignore
+         */
+        static RuntimeInitEvent: typeof RuntimeInitEvent;
+        /**
+         * An array of all global events listened to in various hooks
+         */
+        get globalEvents(): string[];
+        /**
+         * Reference to global object
+         * @type {object}
+         */
+        get global(): any;
+        /**
+         * Returns `document` in global.
+         * @type {Document}
+         */
+        get document(): Document;
+        /**
+         * Returns `document` in global.
+         * @type {Window}
+         */
+        get window(): Window;
+        /**
+         * Predicate for determining if the global document is ready.
+         * @type {boolean}
+         */
+        get isDocumentReady(): boolean;
+        /**
+         * Predicate for determining if the global object is ready.
+         * @type {boolean}
+         */
+        get isGlobalReady(): boolean;
+        /**
+         * Predicate for determining if the runtime is ready.
+         * @type {boolean}
+         */
+        get isRuntimeReady(): boolean;
+        /**
+         * Predicate for determining if everything is ready.
+         * @type {boolean}
+         */
+        get isReady(): boolean;
+        /**
+         * Predicate for determining if the runtime is working online.
+         * @type {boolean}
+         */
+        get isOnline(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Worker context.
+         * @type {boolean}
+         */
+        get isWorkerContext(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Window context.
+         * @type {boolean}
+         */
+        get isWindowContext(): boolean;
+        /**
+         * Wait for the global Window, Document, and Runtime to be ready.
+         * The callback function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onReady(callback: Function): Function;
+        /**
+         * Wait for the global Window and Document to be ready. The callback
+         * function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLoad(callback: Function): Function;
+        /**
+         * Wait for the runtime to be ready. The callback
+         * function is called exactly once.
+         * @param {function} callback
+         * @return {function}
+         */
+        onInit(callback: Function): Function;
+        /**
+         * Calls callback when a global exception occurs.
+         * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
+         * @param {function} callback
+         * @return {function}
+         */
+        onError(callback: Function): Function;
+        /**
+         * Subscribes to the global data pipe calling callback when
+         * new data is emitted on the global Window.
+         * @param {function} callback
+         * @return {function}
+         */
+        onData(callback: Function): Function;
+        /**
+         * Subscribes to global messages likely from an external `postMessage`
+         * invocation.
+         * @param {function} callback
+         * @return {function}
+         */
+        onMessage(callback: Function): Function;
+        /**
+         * Calls callback when runtime is working online.
+         * @param {function} callback
+         * @return {function}
+         */
+        onOnline(callback: Function): Function;
+        /**
+         * Calls callback when runtime is not working online.
+         * @param {function} callback
+         * @return {function}
+         */
+        onOffline(callback: Function): Function;
+        /**
+         * Calls callback when runtime user preferred language has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onLanguageChange(callback: Function): Function;
+        /**
+         * Calls callback when an application permission has changed.
+         * @param {function} callback
+         * @return {function}
+         */
+        onPermissionChange(callback: Function): Function;
+        /**
+         * Calls callback in response to a displayed `Notification`.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationResponse(callback: Function): Function;
+        /**
+         * Calls callback when a `Notification` is presented.
+         * @param {function} callback
+         * @return {function}
+         */
+        onNotificationPresented(callback: Function): Function;
+        #private;
+    }
+    export default hooks;
+    /**
+     * `Hooks` single instance.
+     * @ignore
+     */
+    const hooks: Hooks;
+}
+declare module "socket:fs/watcher" {
+    /**
+     * A container for a file system path watcher.
+     */
+    export class Watcher extends EventEmitter {
+        /**
+         * `Watcher` class constructor.
+         * @ignore
+         * @param {string} path
+         * @param {object=} [options]
+         * @param {AbortSignal=} [options.signal}
+         * @param {string|number|bigint=} [options.id]
+         * @param {string=} [options.encoding = 'utf8']
+         */
+        constructor(path: string, options?: object | undefined);
+        /**
+         * The underlying `fs.Watcher` resource id.
+         * @ignore
+         * @type {string}
+         */
+        id: string;
+        /**
+         * The path the `fs.Watcher` is watching
+         * @type {string}
+         */
+        path: string;
+        /**
+         * `true` if closed, otherwise `false.
+         * @type {boolean}
+         */
+        closed: boolean;
+        /**
+         * `true` if aborted, otherwise `false`.
+         * @type {boolean}
+         */
+        aborted: boolean;
+        /**
+         * The encoding of the `filename`
+         * @type {'utf8'|'buffer'}
+         */
+        encoding: 'utf8' | 'buffer';
+        /**
+         * A `AbortController` `AbortSignal` for async aborts.
+         * @type {AbortSignal?}
+         */
+        signal: AbortSignal | null;
+        /**
+         * Internal event listener cancellation.
+         * @ignore
+         * @type {function?}
+         */
+        stopListening: Function | null;
+        /**
+         * Internal starter for watcher.
+         * @ignore
+         */
+        start(): Promise<void>;
+        /**
+         * Closes watcher and stops listening for changes.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Implements the `AsyncIterator` (`Symbol.asyncIterator`) iterface.
+         * @ignore
+         * @return {AsyncIterator<{ eventType: string, filename: string }>}
+         */
+        [Symbol.asyncIterator](): AsyncIterator<{
+            eventType: string;
+            filename: string;
+        }>;
+    }
+    export default Watcher;
+    import { EventEmitter } from "socket:events";
+}
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
@@ -2382,40 +2871,59 @@ declare module "socket:fs/promises" {
      */
     export function chmod(path: string | Buffer | URL, mode: number): Promise<void>;
     /**
-     * @ignore
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @return {Promise}
      */
-    export function chown(path: any, uid: any, gid: any): Promise<void>;
+    export function chown(path: string, uid: number, gid: number): Promise<any>;
     /**
-     * @ignore
+     * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @return {Promise}
      */
-    export function copyFile(src: any, dest: any, flags: any): Promise<void>;
+    export function copyFile(src: string, dest: string, flags: number): Promise<any>;
     /**
-     * @ignore
+     * Chages ownership of link at `path` with `uid` and `gid.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @return {Promise}
      */
-    export function lchown(path: any, uid: any, gid: any): Promise<void>;
+    export function lchown(path: string, uid: number, gid: number): Promise<any>;
     /**
-     * @ignore
+     * Creates a link to `dest` from `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function link(src: any, dest: any): Promise<void>;
+    export function link(src: string, dest: string): Promise<any>;
     /**
      * Asynchronously creates a directory.
-     * @todo recursive option is not implemented yet.
      *
-     * @param {String} path - The path to create
-     * @param {Object} options - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+     * @param {string} path - The path to create
+     * @param {object} [options] - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
+     * @param {boolean} [options.recursive=false] - Recursively create missing path segments.
+     * @param {number} [options.mode=0o777] - Set the mode of directory, or missing path segments when recursive is true.
      * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
      */
-    export function mkdir(path: string, options?: any): Promise<any>;
+    export function mkdir(path: string, options?: {
+        recursive?: boolean;
+        mode?: number;
+    }): Promise<any>;
     /**
      * Asynchronously open a file.
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopenpath-flags-mode }
      *
      * @param {string | Buffer | URL} path
-     * @param {string} flags - default: 'r'
-     * @param {string} mode - default: 0o666
+     * @param {string=} flags - default: 'r'
+     * @param {number=} mode - default: 0o666
      * @return {Promise<FileHandle>}
      */
-    export function open(path: string | Buffer | URL, flags: string, mode: string): Promise<FileHandle>;
+    export function open(path: string | Buffer | URL, flags?: string | undefined, mode?: number | undefined): Promise<FileHandle>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
      * @param {string | Buffer | URL} path
@@ -2444,21 +2952,30 @@ declare module "socket:fs/promises" {
      */
     export function readFile(path: string, options?: object | null): Promise<Buffer | string>;
     /**
-     * @ignore
+     * Reads link at `path`
+     * @param {string} path
+     * @return {Promise<string>}
      */
-    export function readlink(path: any): Promise<any>;
+    export function readlink(path: string): Promise<string>;
     /**
-     * @ignore
+     * Computes real path for `path`
+     * @param {string} path
+     * @return {Promise<string>}
      */
-    export function realpath(path: any): Promise<any>;
+    export function realpath(path: string): Promise<string>;
     /**
-     * @ignore
+     * Renames file or directory at `src` to `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function rename(oldPath: any, newPath: any): Promise<void>;
+    export function rename(src: string, dest: string): Promise<any>;
     /**
-     * @ignore
+     * Removes directory at `path`.
+     * @param {string} path
+     * @return {Promise}
      */
-    export function rmdir(path: any): Promise<void>;
+    export function rmdir(path: string): Promise<any>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
@@ -2468,13 +2985,18 @@ declare module "socket:fs/promises" {
      */
     export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
-     * @ignore
+     * Creates a symlink of `src` at `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @return {Promise}
      */
-    export function symlink(src: any, dest: any, type?: any): Promise<void>;
+    export function symlink(src: string, dest: string, type?: any): Promise<any>;
     /**
-     * @ignore
+     * Unlinks (removes) file at `path`.
+     * @param {string} path
+     * @return {Promise}
      */
-    export function unlink(path: any): Promise<void>;
+    export function unlink(path: string): Promise<any>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
      * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
@@ -2487,22 +3009,32 @@ declare module "socket:fs/promises" {
      * @return {Promise<void>}
      */
     export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray, options?: object | null): Promise<void>;
+    /**
+     * Watch for changes at `path` calling `callback`
+     * @param {string}
+     * @param {function|object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {AbortSignal=} [options.signal]
+     * @return {Watcher}
+     */
+    export function watch(path: any, options?: (Function | object) | undefined): Watcher;
     export type Stats = any;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:fs/promises";
     import { FileHandle } from "socket:fs/handle";
     import { Dir } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
+    import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
     import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
+    import * as exports from "socket:fs/promises";
     
-    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, WriteStream };
+    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, Watcher, WriteStream };
 }
 declare module "socket:fs/index" {
     /**
@@ -2531,9 +3063,13 @@ declare module "socket:fs/index" {
      */
     export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
     /**
-     * @ignore
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @param {function} callback
      */
-    export function chown(path: any, uid: any, gid: any, callback: any): void;
+    export function chown(path: string, uid: number, gid: number, callback: Function): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
@@ -2572,17 +3108,38 @@ declare module "socket:fs/index" {
      *
      * @param {number} fd - A file descriptor.
      * @param {object?|function?} [options] - An options object.
-     * @param {function?} [callback] - The function to call after completion.
+     * @param {function?} callback - The function to call after completion.
      */
-    export function fstat(fd: number, options: any, callback?: Function | null): void;
+    export function fstat(fd: number, options: any, callback: Function | null): void;
     /**
-     * @ignore
+     * Request that all data for the open file descriptor is flushed
+     * to the storage device.
+     * @param {number} fd - A file descriptor.
+     * @param {function} callback - The function to call after completion.
      */
-    export function lchown(path: any, uid: any, gid: any, callback: any): void;
+    export function fsync(fd: number, callback: Function): void;
     /**
-     * @ignore
+     * Truncates the file up to `offset` bytes.
+     * @param {number} fd - A file descriptor.
+     * @param {number=|function} [offset = 0]
+     * @param {function?} callback - The function to call after completion.
      */
-    export function link(src: any, dest: any, callback: any): void;
+    export function ftruncate(fd: number, offset: any, callback: Function | null): void;
+    /**
+     * Chages ownership of link at `path` with `uid` and `gid.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     * @param {function} callback
+     */
+    export function lchown(path: string, uid: number, gid: number, callback: Function): void;
+    /**
+     * Creates a link to `dest` from `src`.
+     * @param {string} src
+     * @param {string} dest
+     * @param {function}
+     */
+    export function link(src: string, dest: string, callback: any): void;
     /**
      * @ignore
      */
@@ -2638,21 +3195,30 @@ declare module "socket:fs/index" {
      */
     export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
-     * @ignore
+     * Reads link at `path`
+     * @param {string} path
+     * @param {function(err, string)} callback
      */
-    export function readlink(path: any, callback: any): void;
+    export function readlink(path: string, callback: (arg0: err, arg1: string) => any): void;
     /**
-     * @ignore
+     * Computes real path for `path`
+     * @param {string} path
+     * @param {function(err, string)} callback
      */
-    export function realpath(path: any, callback: any): void;
+    export function realpath(path: string, callback: (arg0: err, arg1: string) => any): void;
     /**
-     * @ignore
+     * Renames file or directory at `src` to `dest`.
+     * @param {string} src
+     * @param {string} dest
+     * @param {function} callback
      */
-    export function rename(src: any, dest: any, callback: any): void;
+    export function rename(src: string, dest: string, callback: Function): void;
     /**
-     * @ignore
+     * Removes directory at `path`.
+     * @param {string} path
+     * @param {function} callback
      */
-    export function rmdir(path: any, callback: any): void;
+    export function rmdir(path: string, callback: Function): void;
     /**
      *
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2664,13 +3230,17 @@ declare module "socket:fs/index" {
      */
     export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
     /**
-     * @ignore
+     * Creates a symlink of `src` at `dest`.
+     * @param {string} src
+     * @param {string} dest
      */
-    export function symlink(src: any, dest: any, type: any, callback: any): void;
+    export function symlink(src: string, dest: string, type: any, callback: any): void;
     /**
-     * @ignore
+     * Unlinks (removes) file at `path`.
+     * @param {string} path
+     * @param {function} callback
      */
-    export function unlink(path: any, callback: any): void;
+    export function unlink(path: string, callback: Function): void;
     /**
      * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -2683,22 +3253,32 @@ declare module "socket:fs/index" {
      * @param {function(Error?)} callback
      */
     export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
+    /**
+     * Watch for changes at `path` calling `callback`
+     * @param {string}
+     * @param {function|object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {?function} [callback]
+     * @return {Watcher}
+     */
+    export function watch(path: any, options?: (Function | object) | undefined, callback?: Function | null): Watcher;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:fs/index";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
+    import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
     import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
     import * as promises from "socket:fs/promises";
+    import * as exports from "socket:fs/index";
     
-    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, WriteStream };
+    export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
 }
 declare module "socket:fs" {
     export * from "socket:fs/index";
@@ -2738,6 +3318,14 @@ declare module "socket:crypto" {
      */
     export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
     /**
+     * A murmur3 hash implementation based on https://github.com/jwerle/murmurhash.c
+     * that works on strings and `ArrayBuffer` views (typed arrays)
+     * @param {string|Uint8Array|ArrayBuffer} value
+     * @param {number=} [seed = 0]
+     * @return {number}
+     */
+    export function murmur3(value: string | Uint8Array | ArrayBuffer, seed?: number | undefined): number;
+    /**
      * @typedef {Uint8Array|Int8Array} TypedArray
      */
     /**
@@ -2764,11 +3352,11 @@ declare module "socket:crypto" {
     export const MAX_RANDOM_BYTES_PAGES: number;
     export default exports;
     export type TypedArray = Uint8Array | Int8Array;
-    import * as exports from "socket:crypto";
     import { Buffer } from "socket:buffer";
     export namespace sodium {
         let ready: Promise<any>;
     }
+    import * as exports from "socket:crypto";
     
 }
 declare module "socket:ipc" {
@@ -2788,8 +3376,8 @@ declare module "socket:ipc" {
      */
     export function debug(enable?: (boolean)): boolean;
     export namespace debug {
-        function log(): any;
         let enabled: any;
+        function log(...args: any[]): any;
     }
     /**
      * @ignore
@@ -2935,7 +3523,7 @@ declare module "socket:ipc" {
          * `Message` class constructor.
          * @protected
          * @param {string|URL} input
-         * @param {object|Uint8Array?} [bytes]
+         * @param {(object|Uint8Array)?} [bytes]
          * @ignore
          */
         protected constructor();
@@ -3061,14 +3649,14 @@ declare module "socket:ipc" {
         /**
          * Creates a `Result` instance from input that may be an object
          * like `{ err?, data? }`, an `Error` instance, or just `data`.
-         * @param {object|Error|any?} result
+         * @param {(object|Error|any)?} result
          * @param {Error|object} [maybeError]
          * @param {string} [maybeSource]
          * @param {object|string|Headers} [maybeHeaders]
          * @return {Result}
          * @ignore
          */
-        static from(result: object | Error | (any | null), maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
+        static from(result: (object | Error | any) | null, maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
         /**
          * `Result` class constructor.
          * @private
@@ -3076,7 +3664,7 @@ declare module "socket:ipc" {
          * @param {Error?} [err = null]
          * @param {object?} [data = null]
          * @param {string?} [source = null]
-         * @param {object|string|Headers?} [headers = null]
+         * @param {(object|string|Headers)?} [headers = null]
          * @ignore
          */
         private constructor();
@@ -3094,10 +3682,10 @@ declare module "socket:ipc" {
         err: Error | null;
         /**
          * Result data if given.
-         * @type {string|object|Uint8Array?}
+         * @type {(string|object|Uint8Array)?}
          * @ignore
          */
-        data: string | object | (Uint8Array | null);
+        data: (string | object | Uint8Array) | null;
         /**
          * The source of this result.
          * @type {string?}
@@ -3119,7 +3707,9 @@ declare module "socket:ipc" {
          * @ignore
          */
         toJSON(): {
-            headers: Headers;
+            headers: {
+                [k: string]: string;
+            };
             source: string;
             data: any;
             err: {
@@ -3400,9 +3990,12 @@ declare module "socket:application" {
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
-     * @returns {Promise<ipc.Result>}
+     * @returns {Promise<{ width: number, height: number }>}
      */
-    export function getScreenSize(): Promise<ipc.Result>;
+    export function getScreenSize(): Promise<{
+        width: number;
+        height: number;
+    }>;
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
@@ -3769,6 +4362,7 @@ declare module "socket:dgram" {
     export class Socket extends EventEmitter {
         constructor(options: any, callback: any);
         id: any;
+        knownIdWasGivenInSocketConstruction: boolean;
         type: any;
         signal: any;
         state: {
@@ -4003,8 +4597,8 @@ declare module "socket:dgram" {
     export default exports;
     export type SocketOptions = any;
     import { EventEmitter } from "socket:events";
-    import * as exports from "socket:dgram";
     import { InternalError } from "socket:errors";
+    import * as exports from "socket:dgram";
     
 }
 declare module "socket:enumeration" {
@@ -4244,245 +4838,6 @@ declare module "socket:fetch" {
     export default fetch;
     import fetch from "socket:fetch/index";
 }
-declare module "socket:hooks" {
-    /**
-     * Wait for the global Window, Document, and Runtime to be ready.
-     * The callback function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onReady(callback: Function): Function;
-    /**
-     * Wait for the global Window and Document to be ready. The callback
-     * function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onLoad(callback: Function): Function;
-    /**
-     * Wait for the runtime to be ready. The callback
-     * function is called exactly once.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onInit(callback: Function): Function;
-    /**
-     * Calls callback when a global exception occurs.
-     * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onError(callback: Function): Function;
-    /**
-     * Subscribes to the global data pipe calling callback when
-     * new data is emitted on the global Window.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onData(callback: Function): Function;
-    /**
-     * Subscribes to global messages likely from an external `postMessage`
-     * invocation.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onMessage(callback: Function): Function;
-    /**
-     * Calls callback when runtime is working online.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onOnline(callback: Function): Function;
-    /**
-     * Calls callback when runtime is not working online.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onOffline(callback: Function): Function;
-    /**
-     * Calls callback when runtime user preferred language has changed.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onLanguageChange(callback: Function): Function;
-    /**
-     * Calls callback when an application permission has changed.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onPermissionChange(callback: Function): Function;
-    /**
-     * Calls callback in response to a presented `Notification`.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onNotificationResponse(callback: Function): Function;
-    /**
-     * Calls callback when a `Notification` is presented.
-     * @param {function} callback
-     * @return {function}
-     */
-    export function onNotificationPresented(callback: Function): Function;
-    /**
-     * An event dispatched when the runtime has been initialized.
-     */
-    export class InitEvent {
-        constructor();
-    }
-    /**
-     * An event dispatched when the runtime global has been loaded.
-     */
-    export class LoadEvent {
-        constructor();
-    }
-    /**
-     * An event dispatched when the runtime is considered ready.
-     */
-    export class ReadyEvent {
-        constructor();
-    }
-    /**
-     * An interface for registering callbacks for various hooks in
-     * the runtime.
-     */
-    export class Hooks extends EventTarget {
-        /**
-         * Reference to global object
-         * @type {object}
-         */
-        get global(): any;
-        /**
-         * Returns `document` in global.
-         * @type {Document}
-         */
-        get document(): Document;
-        /**
-         * Returns `document` in global.
-         * @type {Window}
-         */
-        get window(): Window;
-        /**
-         * Predicate for determining if the global document is ready.
-         * @type {boolean}
-         */
-        get isDocumentReady(): boolean;
-        /**
-         * Predicate for determining if the global object is ready.
-         * @type {boolean}
-         */
-        get isGlobalReady(): boolean;
-        /**
-         * Predicate for determining if the runtime is ready.
-         * @type {boolean}
-         */
-        get isRuntimeReady(): boolean;
-        /**
-         * Predicate for determining if everything is ready.
-         * @type {boolean}
-         */
-        get isReady(): boolean;
-        /**
-         * Predicate for determining if the runtime is working online.
-         * @type {boolean}
-         */
-        get isOnline(): boolean;
-        /**
-         * Predicate for determining if the runtime is in a Worker context.
-         * @type {boolean}
-         */
-        get isWorkerContext(): boolean;
-        /**
-         * Predicate for determining if the runtime is in a Window context.
-         * @type {boolean}
-         */
-        get isWindowContext(): boolean;
-        /**
-         * Wait for the global Window, Document, and Runtime to be ready.
-         * The callback function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onReady(callback: Function): Function;
-        /**
-         * Wait for the global Window and Document to be ready. The callback
-         * function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onLoad(callback: Function): Function;
-        /**
-         * Wait for the runtime to be ready. The callback
-         * function is called exactly once.
-         * @param {function} callback
-         * @return {function}
-         */
-        onInit(callback: Function): Function;
-        /**
-         * Calls callback when a global exception occurs.
-         * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
-         * @param {function} callback
-         * @return {function}
-         */
-        onError(callback: Function): Function;
-        /**
-         * Subscribes to the global data pipe calling callback when
-         * new data is emitted on the global Window.
-         * @param {function} callback
-         * @return {function}
-         */
-        onData(callback: Function): Function;
-        /**
-         * Subscribes to global messages likely from an external `postMessage`
-         * invocation.
-         * @param {function} callback
-         * @return {function}
-         */
-        onMessage(callback: Function): Function;
-        /**
-         * Calls callback when runtime is working online.
-         * @param {function} callback
-         * @return {function}
-         */
-        onOnline(callback: Function): Function;
-        /**
-         * Calls callback when runtime is not working online.
-         * @param {function} callback
-         * @return {function}
-         */
-        onOffline(callback: Function): Function;
-        /**
-         * Calls callback when runtime user preferred language has changed.
-         * @param {function} callback
-         * @return {function}
-         */
-        onLanguageChange(callback: Function): Function;
-        /**
-         * Calls callback when an application permission has changed.
-         * @param {function} callback
-         * @return {function}
-         */
-        onPermissionChange(callback: Function): Function;
-        /**
-         * Calls callback in response to a displayed `Notification`.
-         * @param {function} callback
-         * @return {function}
-         */
-        onNotificationResponse(callback: Function): Function;
-        /**
-         * Calls callback when a `Notification` is presented.
-         * @param {function} callback
-         * @return {function}
-         */
-        onNotificationPresented(callback: Function): Function;
-        #private;
-    }
-    export default hooks;
-    /**
-     * `Hooks` single instance.
-     * @ignore
-     */
-    const hooks: Hooks;
-}
 declare module "socket:language" {
     /**
      * Look up a language name or code by query.
@@ -4691,6 +5046,156 @@ declare module "socket:i18n" {
     }
     export default _default;
     import Enumeration from "socket:enumeration";
+}
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
@@ -5421,13 +5926,13 @@ declare module "socket:module" {
      * to the "main" module and global object (if possible).
      */
     export class Module extends EventTarget {
-        static set current(arg: exports.Module);
+        static set current(module: exports.Module);
         /**
          * A reference to the currently scoped module.
          * @type {Module?}
          */
         static get current(): exports.Module;
-        static set previous(arg: exports.Module);
+        static set previous(module: exports.Module);
         /**
          * A reference to the previously scoped module.
          * @type {Module?}
@@ -5573,7 +6078,6 @@ declare module "socket:module" {
     
 }
 declare module "socket:stream-relay/packets" {
-    export function trim(buf: Buffer): any;
     /**
      * The magic bytes prefixing every packet. They are the
      * 2nd, 3rd, 5th, and 7th, prime numbers.
@@ -5583,95 +6087,148 @@ declare module "socket:stream-relay/packets" {
     /**
      * The version of the protocol.
      */
-    export const VERSION: 4;
+    export const VERSION: 6;
     /**
      * The size in bytes of the prefix magic bytes.
      */
     export const MAGIC_BYTES: 4;
     /**
-     * The size in bytes of the `type` field.
-     */
-    export const TYPE_BYTES: 1;
-    /**
-     * The size in bytes of the `version` field.
-     */
-    export const VERSION_BYTES: 1;
-    /**
-     * The size in bytes of the `gops` field.
-     */
-    export const HOPS_BYTES: 1;
-    /**
-     * The size in bytes of the `clock` field.
-     */
-    export const CLOCK_BYTES: 4;
-    /**
-     * The size in bytes of the `index` field.
-     */
-    export const INDEX_BYTES: 4;
-    /**
-     * The size in bytes of the `message_id` field.
-     */
-    export const MESSAGE_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `clusterId` field.
-     */
-    export const CLUSTER_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `cluster_id` field.
-     */
-    export const SUBCLUSTER_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `previous_id` field.
-     */
-    export const PREVIOUS_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `next_id` field.
-     */
-    export const NEXT_ID_BYTES: 32;
-    /**
-     * The size in bytes of the `usr1` field.
-     */
-    export const USR1_BYTES: 32;
-    /**
-     * The size in bytes of the `usr2` field.
-     */
-    export const USR2_BYTES: 32;
-    /**
-     * The size in bytes of the `ttl` field.
-     */
-    export const TTL_BYTES: 4;
-    /**
-     * The size in bytes of the `stream_to` field.
-     */
-    export const STREAM_TO_BYTES: 32;
-    /**
-     * The size in bytes of the `stream_from` field.
-     */
-    export const STREAM_FROM_BYTES: 32;
-    /**
-     * The size in bytes of the `message_length` field.
-     */
-    export const MESSAGE_LENGTH_BYTES: 2;
-    /**
-     * The size in bytes of the `message_length` field.
-     */
-    export const MESSAGE_SIG_BYTES: 64;
-    /**
-     * The size in bytes of the `message` field.
+     * The maximum size of the user message.
      */
     export const MESSAGE_BYTES: 1024;
     /**
-     * The size in bytes of the total packet frame.
+     * The cache TTL in milliseconds.
      */
-    export const FRAME_BYTES: number;
+    export const CACHE_TTL: number;
+    export namespace PACKET_SPEC {
+        namespace type {
+            let bytes: number;
+            let encoding: string;
+        }
+        namespace version {
+            let bytes_1: number;
+            export { bytes_1 as bytes };
+            let encoding_1: string;
+            export { encoding_1 as encoding };
+            export { VERSION as default };
+        }
+        namespace clock {
+            let bytes_2: number;
+            export { bytes_2 as bytes };
+            let encoding_2: string;
+            export { encoding_2 as encoding };
+            let _default: number;
+            export { _default as default };
+        }
+        namespace hops {
+            let bytes_3: number;
+            export { bytes_3 as bytes };
+            let encoding_3: string;
+            export { encoding_3 as encoding };
+            let _default_1: number;
+            export { _default_1 as default };
+        }
+        namespace index {
+            let bytes_4: number;
+            export { bytes_4 as bytes };
+            let encoding_4: string;
+            export { encoding_4 as encoding };
+            let _default_2: number;
+            export { _default_2 as default };
+            export let signed: boolean;
+        }
+        namespace ttl {
+            let bytes_5: number;
+            export { bytes_5 as bytes };
+            let encoding_5: string;
+            export { encoding_5 as encoding };
+            export { CACHE_TTL as default };
+        }
+        namespace clusterId {
+            let bytes_6: number;
+            export { bytes_6 as bytes };
+            let encoding_6: string;
+            export { encoding_6 as encoding };
+            let _default_3: number[];
+            export { _default_3 as default };
+        }
+        namespace subclusterId {
+            let bytes_7: number;
+            export { bytes_7 as bytes };
+            let encoding_7: string;
+            export { encoding_7 as encoding };
+            let _default_4: number[];
+            export { _default_4 as default };
+        }
+        namespace previousId {
+            let bytes_8: number;
+            export { bytes_8 as bytes };
+            let encoding_8: string;
+            export { encoding_8 as encoding };
+            let _default_5: number[];
+            export { _default_5 as default };
+        }
+        namespace packetId {
+            let bytes_9: number;
+            export { bytes_9 as bytes };
+            let encoding_9: string;
+            export { encoding_9 as encoding };
+            let _default_6: number[];
+            export { _default_6 as default };
+        }
+        namespace nextId {
+            let bytes_10: number;
+            export { bytes_10 as bytes };
+            let encoding_10: string;
+            export { encoding_10 as encoding };
+            let _default_7: number[];
+            export { _default_7 as default };
+        }
+        namespace usr1 {
+            let bytes_11: number;
+            export { bytes_11 as bytes };
+            let _default_8: number[];
+            export { _default_8 as default };
+        }
+        namespace usr2 {
+            let bytes_12: number;
+            export { bytes_12 as bytes };
+            let _default_9: number[];
+            export { _default_9 as default };
+        }
+        namespace usr3 {
+            let bytes_13: number;
+            export { bytes_13 as bytes };
+            let _default_10: number[];
+            export { _default_10 as default };
+        }
+        namespace usr4 {
+            let bytes_14: number;
+            export { bytes_14 as bytes };
+            let _default_11: number[];
+            export { _default_11 as default };
+        }
+        namespace message {
+            let bytes_15: number;
+            export { bytes_15 as bytes };
+            let _default_12: number[];
+            export { _default_12 as default };
+        }
+        namespace sig {
+            let bytes_16: number;
+            export { bytes_16 as bytes };
+            let _default_13: number[];
+            export { _default_13 as default };
+        }
+    }
     /**
      * The size in bytes of the total packet frame and message.
      */
     export const PACKET_BYTES: number;
     /**
-     * The cache TTL in milliseconds.
+     * The maximum distance that a packet can be replicated.
      */
-    export const CACHE_TTL: number;
+    export const MAX_HOPS: 16;
     export function validatePacket(o: any, constraints: {
         [key: string]: {
             required: boolean;
@@ -5684,7 +6241,7 @@ declare module "socket:stream-relay/packets" {
      */
     export const sha256: (arg0: string | Buffer | Uint8Array) => Promise<string>;
     export function decode(buf: Buffer): Packet;
-    export function addHops(buf: any, offset?: number): any;
+    export function getTypeFromBytes(buf: any): any;
     export class Packet {
         static ttl: number;
         static maxLength: number;
@@ -5713,35 +6270,30 @@ declare module "socket:stream-relay/packets" {
          * @param {Packet|object?} options
          */
         constructor(options?: Packet | (object | null));
-        type: number;
-        version: number;
-        clock: number;
-        hops: number;
-        index: number;
-        previousId: string;
-        packetId: string;
-        nextId: string;
-        clusterId: string;
-        subclusterId: string;
-        streamTo: string;
-        streamFrom: string;
-        usr1: string;
-        usr2: string;
-        ttl: number;
-        message: string;
-        sig: any;
-        #private;
+        /**
+         * @param {Packet} packet
+         * @return {Packet}
+         */
+        copy(): Packet;
+        timestamp: any;
+        isComposed: any;
+        isReconciled: any;
+        meta: any;
     }
     export class PacketPing extends Packet {
         static type: number;
-        constructor({ message }: {
+        constructor({ message, clusterId, subclusterId }: {
             message: any;
+            clusterId: any;
+            subclusterId: any;
         });
     }
     export class PacketPong extends Packet {
         static type: number;
-        constructor({ message }: {
+        constructor({ message, clusterId, subclusterId }: {
             message: any;
+            clusterId: any;
+            subclusterId: any;
         });
     }
     export class PacketIntro extends Packet {
@@ -5766,7 +6318,7 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketPublish extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, to, usr1, usr2, ttl, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5775,7 +6327,6 @@ declare module "socket:stream-relay/packets" {
             nextId: any;
             clock: any;
             hops: any;
-            to: any;
             usr1: any;
             usr2: any;
             ttl: any;
@@ -5784,7 +6335,7 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketStream extends Packet {
         static type: number;
-        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, usr1, usr2, ttl, streamTo, streamFrom, previousId }: {
+        constructor({ message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId }: {
             message: any;
             sig: any;
             packetId: any;
@@ -5792,11 +6343,11 @@ declare module "socket:stream-relay/packets" {
             subclusterId: any;
             nextId: any;
             clock: any;
+            ttl: any;
             usr1: any;
             usr2: any;
-            ttl: any;
-            streamTo: any;
-            streamFrom: any;
+            usr3: any;
+            usr4: any;
             previousId: any;
         });
     }
@@ -5804,14 +6355,19 @@ declare module "socket:stream-relay/packets" {
         static type: number;
         constructor({ packetId, message }: {
             packetId: any;
-            message?: string;
+            message?: any;
         });
     }
     export class PacketQuery extends Packet {
         static type: number;
-        constructor({ packetId, subclusterId, message }: {
+        constructor({ packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message }: {
             packetId: any;
+            previousId: any;
             subclusterId: any;
+            usr1: any;
+            usr2: any;
+            usr3: any;
+            usr4: any;
             message?: {};
         });
     }
@@ -5838,6 +6394,7 @@ declare module "socket:stream-relay/encryption" {
         static verify(b: Buffer, sig: any, pk: Uint8Array): number;
         keys: {};
         add(publicKey: any, privateKey: any): void;
+        remove(publicKey: any): void;
         has(to: any): boolean;
         /**
          * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
@@ -5853,6 +6410,8 @@ declare module "socket:stream-relay/encryption" {
          * }
          */
         open(message: any, v: any): any;
+        openMessage(message: any, v: any): any;
+        sealMessage(message: any, publicKey: any): any;
         /**
          * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
          * a plaintext `message` for a `receiver` identity. This prevents repudiation
@@ -5908,19 +6467,52 @@ declare module "socket:stream-relay/cache" {
         constructor(iterable?: Iterable<readonly [any, any]>);
     }
     /**
-     * A class for storing a cache of packets by ID.
+     * A class for storing a cache of packets by ID. This class includes a scheme
+     * for reconciling disjointed packet caches in a large distributed system. The
+     * following are key design characteristics.
+     *
+     * Space Efficiency: This scheme can be space-efficient because it summarizes
+     * the cache's contents in a compact binary format. By sharing these summaries,
+     * two computers can quickly determine whether their caches have common data or
+     * differences.
+     *
+     * Bandwidth Efficiency: Sharing summaries instead of the full data can save
+     * bandwidth. If the differences between the caches are small, sharing summaries
+     * allows for more efficient data synchronization.
+     *
+     * Time Efficiency: The time efficiency of this scheme depends on the size of
+     * the cache and the differences between the two caches. Generating summaries
+     * and comparing them can be faster than transferring and comparing the entire
+     * dataset, especially for large caches.
+     *
+     * Complexity: The scheme introduces some complexity due to the need to encode
+     * and decode summaries. In some cases, the overhead introduced by this
+     * complexity might outweigh the benefits, especially if the caches are
+     * relatively small. In this case, you should be using a query.
+     *
+     * Data Synchronization Needs: The efficiency also depends on the data
+     * synchronization needs. If the data needs to be synchronized in real-time,
+     * this scheme might not be suitable. It's more appropriate for cases where
+     * periodic or batch synchronization is acceptable.
+     *
+     * Scalability: The scheme's efficiency can vary depending on the scalability
+     * of the system. As the number of cache entries or computers involved
+     * increases, the complexity of generating and comparing summaries will stay
+     * bound to a maximum of 16Mb.
+     *
      */
     export class Cache {
         static HASH_SIZE_BYTES: number;
         /**
-         * encodeSummary provide a compact binary encoding of the output of summary()
+         * The encodeSummary method provides a compact binary encoding of the output
+         * of summary()
          *
          * @param {Object} summary - the output of calling summary()
          * @return {Buffer}
         **/
         static encodeSummary(summary: any): Buffer;
         /**
-         * decodeSummary decodes the output of encodeSummary()
+         * The decodeSummary method decodes the output of encodeSummary()
          *
          * @param {Buffer} bin - the output of calling encodeSummary()
          * @return {Object} summary
@@ -5939,6 +6531,11 @@ declare module "socket:stream-relay/cache" {
          * @type {number}
          */
         get size(): number;
+        /**
+         * Readonly size of the cache in bytes.
+         * @type {number}
+         */
+        get bytes(): number;
         /**
          * Inserts a `CacheEntry` value `v` into the cache at key `k`.
          * @param {string} k
@@ -5970,29 +6567,30 @@ declare module "socket:stream-relay/cache" {
         compose(packet: Packet, source?: CacheData): Promise<Packet>;
         sha1(value: any, toHex: any): Promise<any>;
         /**
-         * summarize returns a terse yet comparable summary of the cache contents.
          *
-         * thinking of the cache as a trie of hex characters, the summary returns
-         * a checksum for the current level of the trie and for its 16 children.
+         * The summarize method returns a terse yet comparable summary of the cache
+         * contents.
          *
-         * this is similar to a merkel tree as equal subtrees can easily be detected
+         * Think of the cache as a trie of hex characters, the summary returns a
+         * checksum for the current level of the trie and for its 16 children.
+         *
+         * This is similar to a merkel tree as equal subtrees can easily be detected
          * without the need for further recursion. When the subtree checksums are
          * inequivalent then further negotiation at lower levels may be required, this
          * process continues until the two trees become synchonized.
          *
-         * when the prefix is empty, the summary will return an array of 16 checksums
+         * When the prefix is empty, the summary will return an array of 16 checksums
          * these checksums provide a way of comparing that subtree with other peers.
          *
-         * when a variable-length hexidecimal prefix is provided, then only cache
+         * When a variable-length hexidecimal prefix is provided, then only cache
          * member hashes sharing this prefix will be considered.
          *
-         * for each hex character provided in the prefix, the trie will decend by one
-         * level, each level divides the 2^128 address space by 16.
+         * For each hex character provided in the prefix, the trie will decend by one
+         * level, each level divides the 2^128 address space by 16. For exmaple...
          *
-         * example:
-         *
-         * level  0   1   2
-         * --------------------------
+         * ```
+         * Level  0   1   2
+         * ----------------
          * 2b00
          * aa0e  ━┓  ━┓
          * aa1b   ┃   ┃
@@ -6005,11 +6603,13 @@ declare module "socket:stream-relay/cache" {
          * abef   ┃   ┃
          * abf0  ━┛  ━┛
          * bff9
+         * ```
          *
          * @param {string} prefix - a string of lowercased hexidecimal characters
          * @return {Object}
+         *
          */
-        summarize(prefix?: string): any;
+        summarize(prefix?: string, predicate?: (o: any) => boolean): any;
     }
     export default Cache;
     export type CacheEntry = Packet;
@@ -6117,8 +6717,10 @@ declare module "socket:stream-relay/nat" {
 }
 declare module "socket:stream-relay/index" {
     /**
-     * Computes rate limit predicate value for a port and address pair for a given threshold
-     * updating an input rates map.
+     * Computes rate limit predicate value for a port and address pair for a given
+     * threshold updating an input rates map. This method is accessed concurrently,
+     * the rates object makes operations atomic to avoid race conditions.
+     *
      * @param {Map} rates
      * @param {number} type
      * @param {number} port
@@ -6192,14 +6794,15 @@ declare module "socket:stream-relay/index" {
         pingId: any;
         distance: number;
         connected: boolean;
-        probed: boolean;
+        opening: number;
+        probed: number;
         proxy: any;
         clock: number;
         uptime: number;
         lastUpdate: number;
         lastRequest: number;
         localPeer: any;
-        write(sharedKey: any, args: any): Promise<void>;
+        write(sharedKey: any, args: any): Promise<any>;
     }
     export function wrap(dgram: any): {
         new (persistedState?: object | null): {
@@ -6226,19 +6829,36 @@ declare module "socket:stream-relay/index" {
             bdpCache: number[];
             onListening: any;
             onDelete: any;
+            sendQueue: any[];
             firewall: any;
             rates: Map<any, any>;
             streamBuffer: Map<any, any>;
-            controlPackets: Map<any, any>;
+            gate: Map<any, any>;
+            returnRoutes: Map<any, any>;
             metrics: {
-                0: number;
-                1: number;
-                2: number;
-                3: number;
-                4: number;
-                5: number;
-                6: number;
-                7: number;
+                i: {
+                    0: number;
+                    1: number;
+                    2: number;
+                    3: number;
+                    4: number;
+                    5: number;
+                    6: number;
+                    7: number;
+                    8: number;
+                    REJECTED: number;
+                };
+                o: {
+                    0: number;
+                    1: number;
+                    2: number;
+                    3: number;
+                    4: number;
+                    5: number;
+                    6: number;
+                    7: number;
+                    8: number;
+                };
             };
             peers: any;
             encryption: Encryption;
@@ -6288,7 +6908,7 @@ declare module "socket:stream-relay/index" {
              */
             _mainLoop(ts: any): undefined;
             /**
-             * Continuously evaluate the state of the peer and its network
+             * Enqueue packets to be sent to the network
              * @param {Buffer} data - An encoded packet
              * @param {number} port - The desination port of the remote host
              * @param {string} address - The destination address of the remote host
@@ -6297,6 +6917,15 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             send(data: Buffer, port: number, address: string, socket?: any): undefined;
+            /**
+             * @private
+             */
+            _scheduleSend(): void;
+            sendTimeout: number;
+            /**
+             * @private
+             */
+            _dequeue(): void;
             /**
              * Send any unpublished packets
              * @return {undefined}
@@ -6319,7 +6948,7 @@ declare module "socket:stream-relay/index" {
              * @return {undefined}
              * @ignore
              */
-            mcast(packet: any, isTaxed: any, ignorelist?: any[]): undefined;
+            mcast(packet: any, ignorelist?: any[]): undefined;
             /**
              * The process of determining this peer's NAT behavior (firewall and dependentness)
              * @return {undefined}
@@ -6333,22 +6962,7 @@ declare module "socket:stream-relay/index" {
              * @ignore
              */
             ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
-            /**
-             * Add a peer to this peer's known peers list
-             * @return {RemotePeer}
-             * @ignore
-             */
-            addPeer(args: any): RemotePeer;
-            /**
-             * @return {RemotePeer}
-             * @ignore
-             */
-            getPeer(id: any): RemotePeer;
-            /**
-             * @return {RemotePeer}
-             * @ignore
-             */
-            updatePeer(args: any): RemotePeer;
+            getPeer(id: any): any;
             /**
              * This should be called at least once when an app starts to multicast
              * this peer, and starts querying the network to discover peers.
@@ -6386,16 +7000,31 @@ declare module "socket:stream-relay/index" {
             }): Array<PacketPublish>;
             /**
              * @return {undefined}
-             * @ignore
              */
-            sync(peer: any, packet: any, port: any, address: any): undefined;
+            sync(peer: any): undefined;
             close(): void;
             /**
-             * A connection was made, call the onConnection if it is defined by the user.
+             * Deploy a query into the network
+             * @return {undefined}
+             *
+             */
+            query(query: any): undefined;
+            /**
+             *
+             * This is a default implementation for deciding what to summarize
+             * from the cache when receiving a request to sync. that can be overridden
+             *
+             */
+            cachePredicate(packet: any): boolean;
+            /**
+             * A connection was made, add the peer to the local list of known
+             * peers and call the onConnection if it is defined by the user.
+             *
              * @return {undefined}
              * @ignore
              */
-            _onConnection(packet: any, peer: any, port: any, address: any): undefined;
+            _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
+            connections: Map<any, any>;
             /**
              * Received a Sync Packet
              * @return {undefined}
@@ -6404,8 +7033,24 @@ declare module "socket:stream-relay/index" {
             _onSync(packet: any, port: any, address: any): undefined;
             /**
              * Received a Query Packet
+             *
+             * a -> b -> c -> (d) -> c -> b -> a
+             *
              * @return {undefined}
-             * @ignore
+             * @example
+             *
+             * ```js
+             * peer.onQuery = (packet) => {
+             *   //
+             *   // read a database or something
+             *   //
+             *   return {
+             *     message: Buffer.from('hello'),
+             *     publicKey: '',
+             *     privateKey: ''
+             *   }
+             * }
+             * ```
              */
             _onQuery(packet: any, port: any, address: any): undefined;
             /**
@@ -6425,7 +7070,9 @@ declare module "socket:stream-relay/index" {
              * @return {undefined}
              * @ignore
              */
-            _onIntro(packet: any, port: any, address: any): undefined;
+            _onIntro(packet: any, port: any, address: any, _: any, opts?: {
+                attempts: number;
+            }): undefined;
             socketPool: any[];
             /**
              * Received an Join Packet
@@ -6470,28 +7117,29 @@ declare module "socket:stream-relay/index" {
         };
     };
     export default wrap;
+    import { Packet } from "socket:stream-relay/packets";
     import { sha256 } from "socket:stream-relay/packets";
     import { Cache } from "socket:stream-relay/cache";
     import { Encryption } from "socket:stream-relay/encryption";
     import * as NAT from "socket:stream-relay/nat";
     import { Buffer } from "socket:buffer";
     import { PacketPing } from "socket:stream-relay/packets";
-    import { Packet } from "socket:stream-relay/packets";
     import { PacketPublish } from "socket:stream-relay/packets";
-    export { sha256, Cache, Encryption, NAT };
+    export { Packet, sha256, Cache, Encryption, NAT };
 }
 declare module "socket:stream-relay/sugar" {
-    function _default(dgram: any, events: any): (options: any) => Promise<any>;
+    function _default(dgram: any, events: any): (options?: {}) => Promise<any>;
     export default _default;
 }
 declare module "socket:network" {
     export default network;
-    export const network: (options: any) => Promise<any>;
+    export const network: (options?: {}) => Promise<any>;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
     import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, NAT };
+    export { Cache, sha256, Encryption, Packet, NAT };
 }
 declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
@@ -6555,7 +7203,7 @@ declare module "socket:internal/permissions" {
          * @type {string}
          */
         get state(): string;
-        set onchange(arg: (arg0: Event) => any);
+        set onchange(onchange: (arg0: Event) => any);
         /**
          * Level 0 event target 'change' event listener accessor
          * @type {function(Event)}
@@ -6668,7 +7316,7 @@ declare module "socket:notification" {
          * `NotificationOptions` class constructor.
          * @ignore
          * @param {object} [options = {}]
-         * @param {'auto'|'ltr|'rtl'=} [options.dir = 'auto']
+         * @param {string=} [options.dir = 'auto']
          * @param {NotificationAction[]=} [options.actions = []]
          * @param {string|URL=} [options.badge = '']
          * @param {string=} [options.body = '']
@@ -6682,7 +7330,21 @@ declare module "socket:notification" {
          * @param {boolean=} [options.silent = false]
          * @param {number[]=} [options.vibrate = []]
          */
-        constructor(options?: object);
+        constructor(options?: {
+            dir?: string | undefined;
+            actions?: NotificationAction[] | undefined;
+            badge?: (string | URL) | undefined;
+            body?: string | undefined;
+            data?: (any | null) | undefined;
+            icon?: (string | URL) | undefined;
+            image?: (string | URL) | undefined;
+            lang?: string | undefined;
+            tag?: string | undefined;
+            boolean?: boolean | undefined;
+            requireInteraction?: boolean | undefined;
+            silent?: boolean | undefined;
+            vibrate?: number[] | undefined;
+        });
         /**
          * An array of actions to display in the notification.
          * @type {NotificationAction[]}
@@ -6787,9 +7449,14 @@ declare module "socket:notification" {
         static get maxActions(): number;
         /**
          * Requests permission from the user to display notifications.
+         * @param {object=} [options]
+         * @param {boolean=} [options.alert = true] - (macOS/iOS only)
+         * @param {boolean=} [options.sound = false] - (macOS/iOS only)
+         * @param {boolean=} [options.badge = false] - (macOS/iOS only)
+         * @param {boolean=} [options.force = false]
          * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(): Promise<'granted' | 'default' | 'denied'>;
+        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
         /**
          * `Notification` class constructor.
          * @param {string} title
@@ -6801,27 +7468,27 @@ declare module "socket:notification" {
          * @type {string}
          */
         get id(): string;
-        set onclick(arg: Function);
+        set onclick(onclick: Function);
         /**
          * The click event is dispatched when the user clicks on
          * displayed notification.
          * @type {?function}
          */
         get onclick(): Function;
-        set onclose(arg: Function);
+        set onclose(onclose: Function);
         /**
          * The close event is dispatched when the notification closes.
          * @type {?function}
          */
         get onclose(): Function;
-        set onerror(arg: Function);
+        set onerror(onerror: Function);
         /**
          * The eror event is dispatched when the notification fails to display
          * or encounters an error.
          * @type {?function}
          */
         get onerror(): Function;
-        set onshow(arg: Function);
+        set onshow(onshow: Function);
         /**
          * The click event is dispatched when the notification is displayed.
          * @type {?function}
@@ -6938,6 +7605,108 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
+declare module "socket:fs/web" {
+    /**
+     * Creates a new `File` instance from `filename`.
+     * @param {string} filename
+     * @param {{ fd: fs.FileHandle }} [options]
+     * @return {File}
+     */
+    export function createFile(filename: string, options?: {
+        fd: fs.FileHandle;
+    }): File;
+    /**
+     * Creates a `FileSystemWritableFileStream` instance backed
+     * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
+     * @param {string|File} file
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemWritableFileStream(handle: any, options: any): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemFileHandle` instance backed by `socket:fs:` module from
+     * a given `File` instance or filename string.
+     * @param {string|File} file
+     * @param {object} [options]
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemFileHandle(file: string | File, options?: object): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemDirectoryHandle` instance backed by `socket:fs:` module
+     * from a given directory name string.
+     * @param {string} dirname
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemDirectoryHandle(dirname: string, options?: any): Promise<FileSystemFileHandle>;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    } | {
+        new (): {
+            readonly lastModifiedDate: Date;
+            readonly lastModified: number;
+            readonly name: any;
+            readonly size: number;
+            readonly type: string;
+            slice(): void;
+            arrayBuffer(): Promise<void>;
+            text(): Promise<void>;
+            stream(): void;
+        };
+    };
+    export const FileSystemHandle: {
+        new (): {
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemFileHandle: {
+        new (): FileSystemFileHandle;
+        prototype: FileSystemFileHandle;
+    } | {
+        new (): {
+            getFile(): void;
+            createWritable(options?: any): Promise<void>;
+            createSyncAccessHandle(): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemDirectoryHandle: {
+        new (): FileSystemDirectoryHandle;
+        prototype: FileSystemDirectoryHandle;
+    } | {
+        new (): {
+            entries(): AsyncGenerator<never, void, unknown>;
+            values(): AsyncGenerator<never, void, unknown>;
+            keys(): AsyncGenerator<never, void, unknown>;
+            resolve(possibleDescendant: any): Promise<void>;
+            removeEntry(name: any, options?: any): Promise<void>;
+            getDirectoryHandle(name: any, options?: any): Promise<void>;
+            getFileHandle(name: any, options?: any): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemWritableFileStream: {
+        new (underlyingSink?: UnderlyingSink<any>, strategy?: QueuingStrategy<any>): {
+            seek(position: any): Promise<void>;
+            truncate(size: any): Promise<void>;
+            write(data: any): Promise<void>;
+            readonly locked: boolean;
+            abort(reason?: any): Promise<void>;
+            close(): Promise<void>;
+            getWriter(): WritableStreamDefaultWriter<any>;
+        };
+    };
+    namespace _default {
+        export { createFileSystemWritableFileStream };
+        export { createFileSystemDirectoryHandle };
+        export { createFileSystemFileHandle };
+        export { createFile };
+    }
+    export default _default;
+    import fs from "socket:fs/promises";
+}
 declare module "socket:internal/geolocation" {
     /**
      * Get the current position of the device.
@@ -6995,6 +7764,100 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
+declare module "socket:internal/pickers" {
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   mode?: 'read' | 'readwrite'
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     * }} ShowDirectoryPickerOptions
+     */
+    /**
+     * Shows a directory picker which allows the user to select a directory.
+     * @param {ShowDirectoryPickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker}
+     * @return {Promise<FileSystemDirectoryHandle[]>}
+     */
+    export function showDirectoryPicker(options?: ShowDirectoryPickerOptions | undefined): Promise<FileSystemDirectoryHandle[]>;
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   excludeAcceptAllOption?: boolean,
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     *   types?: Array<{
+     *     description?: string,
+     *     [keyof object]?: string[]
+     *   }>
+     * }} ShowOpenFilePickerOptions
+     */
+    /**
+     * Shows a file picker that allows a user to select a file or multiple files
+     * and returns a handle for each selected file.
+     * @param {ShowOpenFilePickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker}
+     * @return {Promise<FileSystemFileHandle[]>}
+     */
+    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   excludeAcceptAllOption?: boolean,
+     *   suggestedName?: string,
+     *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
+     *   types?: Array<{
+     *     description?: string,
+     *     [keyof object]?: string[]
+     *   }>
+     * }} ShowSaveFilePickerOptions
+     */
+    /**
+     * Shows a file picker that allows a user to save a file by selecting an
+     * existing file, or entering a name for a new file.
+     * @param {ShowSaveFilePickerOptions=} [options]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker}
+     * @return {Promise<FileSystemHandle>}
+     */
+    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions): Promise<FileSystemHandle>;
+    /**
+     * Key-value store for general usage by the file pickers"
+     * @ignore
+     */
+    export class Database {
+        get(key: any): any;
+        set(key: any, value: any): void;
+    }
+    /**
+     * Internal database for pickers, such as mapping IDs to directory/file paths.
+     * @ignore
+     */
+    export const db: Database;
+    namespace _default {
+        export { showDirectoryPicker };
+        export { showOpenFilePicker };
+        export { showSaveFilePicker };
+    }
+    export default _default;
+    export type ShowDirectoryPickerOptions = {
+        id?: string;
+        mode?: 'read' | 'readwrite';
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+    };
+    /**
+     * ]?: string[]
+     *   }>
+     * }} ShowOpenFilePickerOptions
+     */
+    export type object = {
+        id?: string;
+        excludeAcceptAllOption?: boolean;
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+        types?: Array<{
+            description?: string;
+            [keyof];
+        }>;
+    };
+    import { FileSystemHandle } from "socket:fs/web";
+}
 declare module "socket:internal/monkeypatch" {
     export function init(): void;
     const _default: void;
@@ -7006,8 +7869,44 @@ declare module "socket:internal/init" {
 }
 declare module "socket:internal/worker" {
     export function onWorkerMessage(event: any): any;
-    const undefined: any;
-    export default undefined;
+    export function addEventListener(eventName: any, callback: any, ...args: any[]): any;
+    export function removeEventListener(eventName: any, callback: any, ...args: any[]): any;
+    export function dispatchEvent(event: any): any;
+    export function postMessage(message: any, ...args: any[]): any;
+    /**
+     * The absolute `URL` of the internal worker initialization entry.
+     * @ignore
+     * @type {URL}
+     */
+    export const url: URL;
+    /**
+     * The worker entry source.
+     * @ignore
+     * @type {string}
+     */
+    export const source: string;
+    /**
+     * A unique identifier for this worker made available on the global scope
+     * @ignore
+     * @type {string}
+     */
+    export const RUNTIME_WORKER_ID: string;
+    /**
+     * Internally scoped event interface for a worker context.
+     * @ignore
+     * @type {object}
+     */
+    export const worker: object;
+    namespace _default {
+        export { RUNTIME_WORKER_ID };
+        export { removeEventListener };
+        export { addEventListener };
+        export { dispatchEvent };
+        export { postMessage };
+        export { source };
+        export { url };
+    }
+    export default _default;
 }
 declare module "socket:test/harness" {
     /**

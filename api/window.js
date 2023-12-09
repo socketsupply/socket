@@ -233,9 +233,16 @@ export class ApplicationWindow {
    * @return {Promise<string[]>} - an array of file paths
    */
   async showOpenFilePicker (options) {
-    console.warn('window.showOpenFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { type: 'open', ...options })
-    return typeof data === 'string' ? data.split('\n') : []
+    const result = await ipc.request('window.showFileSystemPicker', {
+      type: 'open',
+      ...options
+    })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data.paths
   }
 
   /**
@@ -244,9 +251,16 @@ export class ApplicationWindow {
    * @return {Promise<string[]>} - an array of file paths
    */
   async showSaveFilePicker (options) {
-    console.warn('window.showSaveFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { type: 'save', ...options })
-    return typeof data === 'string' ? data.split('\n') : []
+    const result = await ipc.request('window.showFileSystemPicker', {
+      type: 'save',
+      ...options
+    })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data.paths[0] ?? null
   }
 
   /**
@@ -255,9 +269,17 @@ export class ApplicationWindow {
    * @return {Promise<string[]>} - an array of file paths
    */
   async showDirectoryFilePicker (options) {
-    console.warn('window.showDirectoryFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { allowDirs: true, ...options })
-    return typeof data === 'string' ? data.split('\n') : []
+    const result = await ipc.request('window.showFileSystemPicker', {
+      type: 'open',
+      allowDirs: true,
+      ...options
+    })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data.paths
   }
 
   /**

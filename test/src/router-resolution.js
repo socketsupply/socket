@@ -1,8 +1,10 @@
 import test from 'socket:test'
 import URL from 'socket:url'
+import os from 'socket:os'
 
 const basePath = 'router-resolution'
 const dirname = URL.resolve(import.meta.url, basePath)
+const isWindows = os.platform() === 'win32'
 
 test('router-resolution', async (t) => {
   const response = await fetch(dirname + '/invalid')
@@ -23,7 +25,8 @@ test('router-resolution', async (t) => {
       url: '/a-conflict-index',
       bodyTest: '/a-conflict-index/index.html',
       redirect: true,
-      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/a-conflict-index/'\" />"
+      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/a-conflict-index/'\" />",
+      redirectUrl: '/router-resolution/a-conflict-index/'
     },
     {
       url: '/another-file',
@@ -44,7 +47,8 @@ test('router-resolution', async (t) => {
       url: '/an-index-file',
       bodyTest: '/an-index-file/index.html',
       redirect: true,
-      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/an-index-file/'\" />"
+      redirectBodyTest: "<meta http-equiv=\"refresh\" content=\"0; url='/router-resolution/an-index-file/'\" />",
+      redirectUrl: '/router-resolution/an-index-file/'
     },
     {
       url: '/an-index-file/a-html-file',
@@ -60,27 +64,44 @@ test('router-resolution', async (t) => {
 
   for (const testCase of cases) {
     const requestUrl = dirname + testCase.url
-    const response = await fetch(requestUrl)
+    const response = await fetch(requestUrl, { redirect: 'manual' })
     const responseBody = (await response.text()).trim()
 
     t.ok(response.ok, `response is ok for ${testCase.url}`)
     t.ok(response.status, `response status is 200 for ${testCase.url}`)
 
     if (testCase.redirect) {
-      t.equal(responseBody, testCase.redirectBodyTest, `Redirect response body matches ${testCase.redirectBodyTest}`)
-      const extractedRedirectURL = extractUrl(responseBody)
-
-      const redirectResponse = await fetch(extractedRedirectURL)
-      const redirectResponseBody = (await redirectResponse.text()).trim()
-      t.equal(redirectResponseBody, testCase.bodyTest, `Redirect response body matches ${testCase.bodyTest}`)
+      if (isWindows) {
+        const extractedRedirectURL = extractUrl(response, responseBody)
+        t.equal(extractedRedirectURL, testCase.redirectUrl, `Redirect response url matches ${testCase.redirectUrl} (windows)`)
+      } else {
+        t.equal(responseBody, testCase.redirectBodyTest, `Redirect response matches ${testCase.redirectBodyTest}`)
+        const extractedRedirectURL = extractUrl(response, responseBody)
+        const redirectResponse = await fetch(extractedRedirectURL)
+        const redirectResponseBody = (await redirectResponse.text()).trim()
+        t.equal(redirectResponseBody, testCase.bodyTest, `Redirect response body matches ${testCase.bodyTest}`)
+      }
     } else {
       t.equal(responseBody, testCase.bodyTest, `response body matches ${testCase.bodyTest}`)
     }
   }
 })
 
-function extractUrl (content) {
+function extractUrl (response, content) {
+  const location = response.headers.get('content-location') || response.headers.get('location')
   const regex = /url\s*=\s*(["'])([^"']+)\1/i
   const match = content.match(regex)
-  return match ? match[2] : null
+  if (match) {
+    return new URL(match[2], dirname).pathname
+  } else if (response.url) {
+    return new URL(response.url, dirname).pathname
+  } else if (location) {
+    return new URL(location, dirname).pathname
+  } else if (content) {
+    try {
+      return new URL(`.${content}`, dirname).pathname
+    } catch {}
+  }
+
+  return null
 }

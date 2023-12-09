@@ -35,8 +35,8 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <fstream>
 #include <regex>
 #include <span>
 #include <unordered_set>
@@ -61,6 +61,12 @@ using namespace std::chrono;
 
 const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
 const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
+
+Process* buildAfterScriptProcess = nullptr;
+FileSystemWatcher* sourcesWatcher = nullptr;
+Thread* sourcesWatcherSupportThread = nullptr;
+
+Mutex signalHandlerMutex;
 
 String _settings;
 Path targetPath;
@@ -146,6 +152,18 @@ bool equal (const String& s1, const String& s2) {
 
 const Map SSC::getUserConfig () {
   return settings;
+}
+
+const String SSC::getDevHost () {
+  return settings["host"];
+}
+
+int SSC::getDevPort () {
+  if (settings.contains("port")) {
+    return std::stoi(settings["port"].c_str());
+  }
+
+  return 0;
 }
 
 bool SSC::isDebugEnabled () {
@@ -486,7 +504,6 @@ void handleBuildPhaseForUserScript (
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
   const Path& cwd,
-  const String& additionalArgs,
   bool performAfterLifeCycle
 ) {
   do {
@@ -507,18 +524,16 @@ void handleBuildPhaseForUserScript (
 #endif
   } while (0);
 
-  StringStream buildArgs;
-  buildArgs << " " << pathResourcesRelativeToUserBuild.string();
-  buildArgs << " " << additionalArgs;
+  const bool shouldPassBuildArgs = settings.contains("build_script_forward_arguments") && settings.at("build_script_forward_arguments") == "true";
+  String scriptArgs = shouldPassBuildArgs ? (" " + pathResourcesRelativeToUserBuild.string()) : "";
 
   if (settings.contains("build_script") && settings.at("build_script").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
@@ -544,23 +559,29 @@ void handleBuildPhaseForUserScript (
 
   // runs async, does not block
   if (performAfterLifeCycle && settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
-    auto scriptArgs = buildArgs.str();
     auto buildScript = settings.at("build_script_after");
 
     // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
     // cmd.exe can handle this translation
     if (platform.win) {
-      scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+      scriptArgs = " /c \"" + buildScript + scriptArgs + "\"";
       buildScript = "cmd.exe";
     }
 
-    SSC::Process* process = new SSC::Process(
+    if (buildAfterScriptProcess != nullptr) {
+      buildAfterScriptProcess->kill();
+      buildAfterScriptProcess->wait();
+      delete buildAfterScriptProcess;
+      buildAfterScriptProcess = nullptr;
+    }
+
+    buildAfterScriptProcess = new SSC::Process(
       buildScript,
       scriptArgs,
       (cwd / targetPath).string(),
       [](SSC::String const &out) { IO::write(out, false); },
       [](SSC::String const &out) { IO::write(out, true); },
-      [process](const auto status) {
+      [](const auto status) {
         const auto exitCode = std::atoi(status.c_str());
         if (exitCode != 0) {
           log("build after script failed with code: " + status);
@@ -568,7 +589,7 @@ void handleBuildPhaseForUserScript (
       }
     );
 
-    process->open();
+    buildAfterScriptProcess->open();
   }
 }
 
@@ -812,16 +833,6 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 }
 
 void signalHandler (int signal) {
-  if (appPid == 0 && signal == SIGTERM) {
-    exit(1);
-    return;
-  }
-
-  if (appPid == 0 && signal == SIGINT) {
-    exit(signal);
-    return;
-  }
-
 #if !defined(_WIN32)
   if (signal == SIGUSR1) {
   #if defined(__APPLE__)
@@ -829,27 +840,67 @@ void signalHandler (int signal) {
   #endif
     return;
   }
+#endif
 
+  Lock lock(signalHandlerMutex);
+
+#if !defined(_WIN32)
+  if (appPid > 0) {
+    kill(appPid, signal);
+  }
+#endif
+
+  if (appProcess != nullptr) {
+    appProcess->kill();
+  }
+
+  appPid = 0;
+
+#if defined(__linux__) && !defined(__ANDROID__)
+  if (gtk_main_level() > 0) {
+    gtk_main_quit();
+  }
+#endif
+
+  if (sourcesWatcher != nullptr) {
+    sourcesWatcher->stop();
+    delete sourcesWatcher;
+    sourcesWatcher = nullptr;
+  }
+
+  if (sourcesWatcherSupportThread != nullptr) {
+    if (sourcesWatcherSupportThread->joinable()) {
+      sourcesWatcherSupportThread->join();
+    }
+    delete sourcesWatcherSupportThread;
+    sourcesWatcherSupportThread = nullptr;
+  }
+
+  if (buildAfterScriptProcess != nullptr) {
+    buildAfterScriptProcess->kill();
+    buildAfterScriptProcess->wait();
+    delete buildAfterScriptProcess;
+    buildAfterScriptProcess = nullptr;
+  }
+
+  if (appStatus == -1) {
+    appStatus = signal;
+    log("App result: " + std::to_string(signal));
+  }
+
+  if (signal == SIGTERM) {
+    exit(1);
+    return;
+  }
+
+#if !defined(_WIN32)
   if (signal == SIGUSR2) {
     exit(0);
     return;
   }
 #endif
 
-  if (appProcess != nullptr) {
-    auto pid = appProcess->getPID();
-    appProcess->kill(pid);
-  } else if (appPid > 0) {
-  #if !defined(_WIN32)
-    kill(appPid, signal);
-  #endif
-  }
-
-  appProcess = nullptr;
-  appStatus = signal;
-  appPid = 0;
-
-  appMutex.unlock();
+  exit(signal);
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
@@ -987,15 +1038,19 @@ int runApp (const Path& path, const String& args, bool headless) {
 
     // wait for `NSRunningApplication` to terminate
     std::lock_guard<std::mutex> lock(appMutex);
-    log("App result: " + std::to_string(appStatus.load()));
-    return appStatus.load();
+    if (appStatus != -1) {
+      log("App result: " + std::to_string(appStatus.load()));
+      return appStatus.load();
+    }
+
+    return 0;
   }
 #endif
 
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
   appProcess = new SSC::Process(
-     headlessCommand + prefix + cmd,
+    headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
     [](SSC::String const &out) { std::cout << out << std::endl; },
@@ -1003,17 +1058,17 @@ int runApp (const Path& path, const String& args, bool headless) {
   );
 
   appPid = appProcess->open();
-  appProcess->wait();
-  auto status = appProcess->status.load();
-
-  if (status > -1) {
+  const auto status = appProcess->wait();
+  if (appStatus == -1) {
     appStatus = status;
+    log("App result: " + std::to_string(appStatus.load()));
   }
 
-  delete appProcess;
-  appProcess = nullptr;
+  if (appProcess != nullptr) {
+    delete appProcess;
+    appProcess = nullptr;
+  }
 
-  log("App result: " + std::to_string(appStatus));
   return appStatus;
 }
 
@@ -1483,7 +1538,7 @@ bool startAndroidApp (AndroidCliState& state) {
     mainActivity = String(DEFAULT_ANDROID_ACTIVITY_NAME);
   }
 
-  state.adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << mainActivity << " 2>&1";
+  state.adbShellStart << "shell am start -n " << settings["android_bundle_identifier"] << "/" << settings["android_bundle_identifier"] << mainActivity << " 2>&1";
   if (state.verbose) log(state.adbShellStart.str());
   ExecOutput adbShellStartOutput;
   while (true) {
@@ -1591,7 +1646,9 @@ void initializeEnv (Path targetPath) {
         value = valueAsPath.string();
       }
 
-      Env::set(key, value);
+      if (!Env::has(key)) {
+        Env::set(key, value);
+      }
     }
   }
 }
@@ -2194,10 +2251,35 @@ int main (const int argc, const char* argv[]) {
     { { "--name", "-n" }, true, true }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
-    auto isCurrentPathEmpty = fs::is_empty(fs::current_path());
+    auto isTargetPathEmpty = fs::exists(targetPath) ? fs::is_empty(targetPath) : true;
     auto configOnly = optionsWithoutValue.find("--config") != optionsWithoutValue.end();
-    auto projectName = optionsWithValue["--name"];
+    auto projectName = optionsWithValue["--name"].size() > 0 ? optionsWithValue["--name"] : targetPath.filename().string();
 
+    log("project name: " + projectName);
+
+    if (!configOnly) {
+      if (isTargetPathEmpty) {
+        // create src/index.html
+        fs::create_directories(targetPath / "src");
+        writeFile(targetPath / "src" / "index.html", gHelloWorld);
+        log("src/index.html created in " + targetPath.string());
+
+        // copy icon.png
+        fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
+        log("icon.png created in " + targetPath.string() + "/src");
+      } else {
+        log("Current directory was not empty. Assuming index.html and icon are already in place.");
+      }
+      // create .gitignore
+      if (!fs::exists(targetPath / ".gitignore")) {
+        writeFile(targetPath / ".gitignore", gDefaultGitignore);
+        log(".gitignore created in " + targetPath.string());
+      } else {
+        log(".gitignore already exists in " + targetPath.string());
+      }
+    }
+
+    // create socket.ini
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
     } else {
@@ -2207,21 +2289,7 @@ int main (const int argc, const char* argv[]) {
       writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
       log("socket.ini created in " + targetPath.string());
     }
-    if (!configOnly) {
-      if (isCurrentPathEmpty) {
-        fs::create_directories(targetPath / "src");
-        writeFile(targetPath / "src" / "index.html", gHelloWorld);
-        log("src/index.html created in " + targetPath.string());
-      } else {
-        log("Current directory was not empty. Assuming index.html is already in place.");
-      }
-      if (fs::exists(targetPath / ".gitignore")) {
-        log(".gitignore already exists in " + targetPath.string());
-      } else {
-        writeFile(targetPath / ".gitignore", gDefaultGitignore);
-        log(".gitignore created in " + targetPath.string());
-      }
-    }
+
     exit(0);
   });
 
@@ -2575,22 +2643,20 @@ int main (const int argc, const char* argv[]) {
     { { "--headless", "-H" }, true, false },
     { { "--debug", "-D" }, true, false },
     { { "--verbose", "-V" }, true, false },
-    { { "--env", "-E" }, true, true }
+    { { "--env", "-E" }, true, true },
+    { { "--port" }, true, true },
+    { { "--host"}, true, true }
   };
 
   Options buildOptions = {
     { { "--quiet", "-q" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
-    { { "--watch", "-W" }, true, false },
-    { { "--debug", "-D" }, true, false },
-    { { "--verbose", "-V" }, true, false },
-    { { "--prod", "-P" }, true, false },
+    { { "--watch", "-w" }, true, false },
     { { "--package", "-p" }, true, false },
     { { "--package-format", "-f" }, true, true },
     { { "--codesign", "-c" }, true, false },
-    { { "--notarize", "-n" }, true, false },
-    { { "--env", "-E" }, true, true }
+    { { "--notarize", "-n" }, true, false }
   };
 
   // Insert the elements of runOptions into buildOptions
@@ -2615,7 +2681,6 @@ int main (const int argc, const char* argv[]) {
 
     String argvForward = "";
     String targetPlatform = optionsWithValue["--platform"];
-    String additionalBuildArgs = "";
 
     bool flagRunUserBuildOnly = optionsWithoutValue.find("--only-build") != optionsWithoutValue.end() || equal(rc["build_only"], "true");
     bool flagCodeSign = optionsWithoutValue.find("--codesign") != optionsWithoutValue.end() || equal(rc["build_codesign"], "true");
@@ -2696,6 +2761,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
     }
+
+    if (!devHost.starts_with("http")) {
+      devHost = String("http://") + devHost;
+    }
+
     settings.insert(std::make_pair("host", devHost));
 
     String devPort = "0";
@@ -2805,14 +2875,6 @@ int main (const int argc, const char* argv[]) {
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
 
-    if (flagDebugMode) {
-      additionalBuildArgs += " --debug=true";
-    }
-
-    if (flagBuildTest) {
-      additionalBuildArgs += " --test=true";
-    }
-
     String flags;
     String files;
 
@@ -2880,7 +2942,7 @@ int main (const int argc, const char* argv[]) {
         settings["mac_info_plist_data"] = "";
       }
 
-      if (flagRunHeadless) {
+      if (flagBuildHeadless) {
         settings["mac_info_plist_data"] += (
           "  <key>LSBackgroundOnly</key>\n"
           "  <true/>\n"
@@ -2960,10 +3022,11 @@ int main (const int argc, const char* argv[]) {
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
 
+    settings.insert(std::make_pair("android_bundle_identifier", replace(settings["meta_bundle_identifier"], "-", "_")));
+
     if (flagBuildForAndroid) {
-      auto bundle_identifier = settings["meta_bundle_identifier"];
-      auto bundle_path = Path(replace(bundle_identifier, "\\.", "/")).make_preferred();
-      auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
+      auto bundle_path = Path(replace(settings["android_bundle_identifier"], "\\.", "/")).make_preferred();
+      auto bundle_path_underscored = replace(replace(settings["android_bundle_identifier"], "_", "_1"), "\\.", "_");
 
       auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
@@ -3216,6 +3279,20 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      if (settings["permissions_allow_read_media"] != "false") {
+        if (settings["permissions_allow_read_media_images"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\" />\n";
+        }
+
+        if (settings["permissions_allow_read_media_video"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\" />\n";
+        }
+
+        if (settings["permissions_allow_read_media_audio"] != "false") {
+          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\" />\n";
+        }
+      }
+
       if (settings["android_manifest_permissions"].size() > 0) {
         settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
         for (auto const &value: parseStringList(settings["android_manifest_permissions"])) {
@@ -3289,9 +3366,9 @@ int main (const int argc, const char* argv[]) {
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
       } else {
         // create empty icons
-        std::ofstream icon((targetPath / androidIcon, res / "mipmap" / "icon.png").string());
-        std::ofstream ic_launcher((targetPath / androidIcon, res / "mipmap" / "ic_launcher.png").string());
-        std::ofstream ic_launcher_round((targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png").string());
+        std::ofstream icon((res / "mipmap" / "icon.png").string());
+        std::ofstream ic_launcher((res / "mipmap" / "ic_launcher.png").string());
+        std::ofstream ic_launcher_round((res / "mipmap" / "ic_launcher_round.png").string());
       }
 
       // allow user space to override all `res/` files
@@ -3334,7 +3411,7 @@ int main (const int argc, const char* argv[]) {
           tmpl(std::regex_replace(
             convertWStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
-            bundle_identifier
+            settings["android_bundle_identifier"]
           ), settings)
         );
       }
@@ -3698,7 +3775,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/bridge.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3707,7 +3784,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3716,7 +3793,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3725,7 +3802,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/window.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3734,7 +3811,7 @@ int main (const int argc, const char* argv[]) {
         std::regex_replace(
           convertWStringToString(readFile(trim(prefixFile("src/android/webview.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_identifier
+          settings["android_bundle_identifier"]
         )
       );
 
@@ -3746,7 +3823,7 @@ int main (const int argc, const char* argv[]) {
           tmpl(std::regex_replace(
             convertWStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
-            bundle_identifier
+            settings["android_bundle_identifier"]
           ), settings)
         );
       }
@@ -4100,7 +4177,7 @@ int main (const int argc, const char* argv[]) {
               << " -DIOS=1"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-              << " -DHOST=" << devHost
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
@@ -4236,6 +4313,8 @@ int main (const int argc, const char* argv[]) {
           settings["ios_info_plist_data"] += readFile(file);
         }
       }
+
+      settings["ios_nonexempt_encryption"] = settings.contains("ios_nonexempt_encryption") ? "true" : "false";
 
       if (!settings.contains("ios_info_plist_data")) {
         settings["ios_info_plist_data"] = "";
@@ -4506,7 +4585,6 @@ int main (const int argc, const char* argv[]) {
       targetPlatform,
       pathResourcesRelativeToUserBuild,
       oldCwd,
-      additionalBuildArgs,
       true
     );
 
@@ -4585,8 +4663,13 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
-      if (settings["ios_sandbox"] != "false") {
+      if (flagDebugMode) {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>get-task-allow</key>\n"
+          "  <true/>\n "
+        );
       }
+
 
       writeFile(
         pathToDist / "socket.entitlements",
@@ -4740,7 +4823,6 @@ int main (const int argc, const char* argv[]) {
         << quote << "platform-tools" << quote << " "
         << quote << "platforms;" << androidPlatform << quote << " "
         << quote << "emulator" << quote << " "
-        << quote << "patcher;v4" << quote << " "
         << quote << "system-images;" << androidPlatform << ";google_apis;x86_64" << quote << " "
         << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
@@ -4934,7 +5016,7 @@ int main (const int argc, const char* argv[]) {
 
     // build desktop extension
     if (isForDesktop) {
-      static const auto IN_GITHUB_ACTIONS_CI = Env::get("GITHUB_ACTIONS_CI").size() == 0;
+      static const auto IN_GITHUB_ACTIONS_CI = Env::get("GITHUB_ACTIONS_CI").size() > 0;
       auto oldCwd = fs::current_path();
       fs::current_path(targetPath);
 
@@ -5294,7 +5376,7 @@ int main (const int argc, const char* argv[]) {
               // << " -U__CYGWIN__"
               << " -DANDROID=0"
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-              << " -DHOST=" << devHost
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
               << " -DSSC_VERSION=" << SSC::VERSION_STRING
               << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
@@ -5476,7 +5558,7 @@ int main (const int argc, const char* argv[]) {
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-        << " -DHOST=" << devHost
+        << " -DHOST=" << "\\\"" << devHost << "\\\""
         << " -DPORT=" << devPort
         << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
         << " -DSSC_VERSION=" << SSC::VERSION_STRING
@@ -5626,6 +5708,10 @@ int main (const int argc, const char* argv[]) {
         "  <true/>\n"
         "  <key>com.apple.security.files.user-selected.read-write</key>\n"
         "  <true/>\n"
+        "  <key>com.apple.security.files.bookmarks.app-scope</key>\n"
+        "  <true/>\n"
+        "  <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>\n"
+        "  <true/>\n"
       );
 
       if (settings["permissions_allow_user_media"] != "false") {
@@ -5680,14 +5766,44 @@ int main (const int argc, const char* argv[]) {
           "  <key>com.apple.security.inherit</key>\n"
           "  <true/>\n"
         );
+
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>\n"
+          "  <array>\n"
+        );
+
+        for (const auto& tuple : settings) {
+          if (tuple.first.starts_with("webview_navigator_mounts_")) {
+            const auto key = replace(
+              replace(tuple.first, "webview_navigator_mounts_", ""),
+              "mac_",
+              ""
+            );
+
+            if (
+              key.starts_with("android") ||
+              key.starts_with("ios") ||
+              key.starts_with("linux") ||
+              key.starts_with("win")
+            ) {
+              continue;
+            }
+
+            if (key.starts_with("$HOST_HOME") || key.starts_with("~")) {
+              const auto path = replace(replace(key, "$HOST_HOME", ""), "~", "");
+              entitlementSettings["configured_entitlements"] += (
+                "    <string>" + (path.ends_with("/") ? path : path + "/") + "</string>\n"
+              );
+            }
+          }
+        }
+
+        entitlementSettings["configured_entitlements"] += (
+          "  </array>\n"
+        );
       }
 
       if (flagDebugMode) {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>get-task-allow</key>\n"
-          "  <true/>\n "
-        );
-
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.security.cs.debugger</key>\n"
           "  <true/>\n "
@@ -6291,17 +6407,22 @@ int main (const int argc, const char* argv[]) {
       Vector<String> sources;
 
       if (settings.contains("build_watch_sources")) {
-        sources = parseStringList(trim(settings["build_watch_sources"]));
-      } else if (copyMapFiles.size() > 0) {
+        const auto buildWatchSources = parseStringList(trim(settings["build_watch_sources"]), ' ');
+        for (const auto& source : buildWatchSources) {
+          sources.push_back((fs::current_path() / source).string());
+        }
+      }
+
+      if (copyMapFiles.size() > 0) {
         for (const auto& file : copyMapFiles) {
-          sources.push_back(file.string());
+          sources.push_back((fs::current_path() / file).string());
         }
       }
 
       // allow changes to 'socket.ini' to be observed
-      sources.push_back("socket.ini");
+      sources.push_back((fs::current_path() / "socket.ini").string());
 
-      FileSystemWatcher* sourcesWatcher = new FileSystemWatcher(sources);
+      sourcesWatcher = new FileSystemWatcher(sources);
       auto watchingSources = sourcesWatcher->start([=](
         const String& path,
         const Vector<FileSystemWatcher::Event>& events,
@@ -6318,7 +6439,6 @@ int main (const int argc, const char* argv[]) {
           targetPlatform,
           pathResourcesRelativeToUserBuild,
           targetPath,
-          additionalBuildArgs,
           false
         );
 
@@ -6336,12 +6456,18 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      log("Watching for changes in: " + join(sources, ","));
+      log("Watching for changes in: " + join(sourcesWatcher->watchedPaths, ", "));
+    #if defined(__linux__) && !defined(__ANDROID__)
+      // `FileSystemWatcher` will use GTK event loop on linux to pump the
+      // libuv event loop when `sourcesWatcher->loop == nullptr` when `start()`
+      // is called. We use the runtime core libuv event loop in the `bridge` APIs
+      sourcesWatcherSupportThread = new Thread([] () { gtk_main(); });
+    #endif
     }
 
     int exitCode = 0;
     if (flagShouldRun) {
-      run(targetPlatform, settings, paths, flagDebugMode, flagRunHeadless, argvForward, androidState);
+      run(targetPlatform, settings, paths, flagDebugMode, flagBuildHeadless || flagRunHeadless, argvForward, androidState);
     }
 
     exit(exitCode);
@@ -6397,6 +6523,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
     }
+
+    if (!devHost.starts_with("http")) {
+      devHost = String("http://") + devHost;
+    }
+
     settings.insert(std::make_pair("host", devHost));
 
     String devPort = "0";
@@ -6560,7 +6691,9 @@ int main (const int argc, const char* argv[]) {
     envs["XDG_DATA_HOME"] = Env::get("XDG_DATA_HOME");
 
     // compiler variables
+    envs["CC"] = Env::get("CC");
     envs["CXX"] = Env::get("CXX");
+    envs["CPP"] = Env::get("CPP");
     envs["PREFIX"] = Env::get("PREFIX");
     envs["CXXFLAGS"] = Env::get("CXXFLAGS");
 
@@ -6578,7 +6711,7 @@ int main (const int argc, const char* argv[]) {
 
     // apple specific platform variables
     envs["APPLE_ID"] = Env::get("APPLE_ID");
-    envs["APPLE_ID_PASSWORD"] = Env::get("APPLE_ID");
+    envs["APPLE_ID_PASSWORD"] = Env::get("APPLE_ID_PASSWORD");
 
     // windows specific platform variables
     envs["SIGNTOOL"] = Env::get("SIGNTOOL");

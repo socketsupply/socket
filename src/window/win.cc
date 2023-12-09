@@ -614,6 +614,7 @@ namespace SSC {
   };
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+    static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
     window = CreateWindow(
@@ -667,17 +668,29 @@ namespace SSC {
       // UNREACHABLE - cannot continue
     }
 
-    const WCHAR* allowedSchemeOrigins[5] = { L"about://*", L"http://*", L"https://*", L"file://*", L"socket://*" };
+    const int MAX_ALLOWED_SCHEME_ORIGINS = 5;
+    int allowedSchemeOriginsCount = 4;
+    const WCHAR* allowedSchemeOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {
+      L"about://*",
+      L"https://*",
+      L"file://*",
+      L"socket://*"
+    };
+
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
+      allowedSchemeOrigins[allowedSchemeOriginsCount++] = convertStringToWString(devHost).c_str();
+    }
 
     auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
     ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
     ipcSchemeRegistration->put_TreatAsSecure(TRUE);
-    ipcSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
+    ipcSchemeRegistration->SetAllowedOrigins(allowedSchemeOriginsCount, allowedSchemeOrigins);
 
     auto socketSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"socket");
     socketSchemeRegistration->put_HasAuthorityComponent(TRUE);
     socketSchemeRegistration->put_TreatAsSecure(TRUE);
-    socketSchemeRegistration->SetAllowedOrigins(5, allowedSchemeOrigins);
+    socketSchemeRegistration->SetAllowedOrigins(allowedSchemeOriginsCount, allowedSchemeOrigins);
 
     // If someone can figure out how to allocate this so we can do it in a loop that'd be great, but even Ms is doing it like this:
     // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions4?view=webview2-1.0.1587.40
@@ -932,10 +945,6 @@ namespace SSC {
                               uri = uri.substr(7);
                             }
 
-                            if (uri.ends_with("/")) {
-                              uri = uri.substr(0, uri.size() - 1);
-                            }
-
                             auto path = String(
                               uri.starts_with(bundleIdentifier)
                                 ? uri.substr(bundleIdentifier.size())
@@ -949,11 +958,19 @@ namespace SSC {
                             }
 
                             if (!uri.starts_with(bundleIdentifier)) {
+                              if (path.ends_with("/")) {
+                                path = path.substr(0, path.size() - 1);
+                              }
+
                               if (ext.size() == 0 && !path.ends_with(".js")) {
                                 path += ".js";
                               }
 
-                              uri = "socket://" + bundleIdentifier + "/" + path;
+			      if (path == "/") {
+                                uri = "socket://" + bundleIdentifier + "/";
+			      } else {
+                                uri = "socket://" + bundleIdentifier + "/" + path;
+			      }
 
                               String headers;
 
@@ -1006,32 +1023,56 @@ namespace SSC {
                                 });
                               }
                             } else {
+                              if (path.ends_with("//")) {
+                                path = path.substr(0, path.size() - 2);
+                              }
+
                               auto rootPath = this->modulePath.parent_path();
                               auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
                               path = resolved.path;
 
-                              if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-                                path = userConfig["webview_default_index"];
-                              } else if (resolved.redirect) {
-                                uri += "/";
+                              if (mount.path.size() > 0) {
+                                if (mount.resolution.redirect) {
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
-                                    ).c_str(),
+                                      convertStringToWString("Location: ") + convertStringToWString(mount.resolution.path) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(mount.resolution.path) + L"\n"
+                                      ).c_str(),
                                     &res
                                   );
 
                                   args->put_Response(res);
                                   deferral->Complete();
                                   return S_OK;
+                                }
+                              } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
+                                path = userConfig["webview_default_index"];
+                              } else if (resolved.redirect) {
+                                ICoreWebView2WebResourceResponse* res = nullptr;
+                                env->CreateWebResourceResponse(
+                                  nullptr,
+                                  301,
+                                  L"Moved Permanently",
+                                  WString(
+                                    convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
+                                    ).c_str(),
+                                  &res
+                                  );
+
+                                args->put_Response(res);
+                                deferral->Complete();
+                                return S_OK;
                               }
 
-                              if (path.size() > 0) {
+                              if (mount.path.size() > 0) {
+                                path = mount.path;
+                              } else if (path.size() > 0) {
                                 path = fs::absolute(rootPath / path.substr(1)).string();
                               }
 
@@ -1692,279 +1733,6 @@ namespace SSC {
   void Window::setBackgroundColor(int r, int g, int b, float a) {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
-  }
-
-  void Window::openDialog (
-      const SSC::String& seq,
-      bool isSave,
-      bool allowDirs,
-      bool allowFiles,
-      bool allowMultiple,
-      const SSC::String& defaultPath,
-      const SSC::String& title,
-      const SSC::String& defaultName)
-  {
-    std::vector<SSC::String> result_paths;
-    SSC::String result_string = "";
-    IShellItemArray *results;
-    IShellItem *single_result;
-    DWORD dialog_options;
-    DWORD results_count;
-    HRESULT result;
-
-    // the dialogs as a union, because there can only _one_.
-    union {
-      IFileSaveDialog *save;
-      IFileOpenDialog *open;
-    } dialog;
-
-    result = CoInitializeEx(
-      NULL,
-      COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE
-    );
-
-    if (FAILED(result)) {
-      std::cerr << "ERR: CoInitializeEx() failed in 'openDialog()'" << std::endl;
-      return;
-    }
-
-    // create IFileDialog instance (IFileOpenDialog or IFileSaveDialog)
-    if (isSave) {
-      result = CoCreateInstance(
-        CLSID_FileSaveDialog,
-        NULL,
-        CLSCTX_ALL,
-        IID_PPV_ARGS(&dialog.save)
-      );
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: CoCreateInstance() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    } else {
-      result = CoCreateInstance(
-        CLSID_FileOpenDialog,
-        NULL,
-        CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&dialog.open)
-      );
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: CoCreateInstance() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (isSave) {
-      result = dialog.save->GetOptions(&dialog_options);
-    } else {
-      result = dialog.open->GetOptions(&dialog_options);
-    }
-
-    if (FAILED(result)) {
-      std::cerr << "ERR: IFileDialog::GetOptions() failed in 'openDialog()'" << std::endl;
-      CoUninitialize();
-      return;
-    }
-
-    if (allowDirs == true && allowFiles == false) {
-      if (isSave) {
-        result = dialog.save->SetOptions(dialog_options | FOS_PICKFOLDERS);
-      } else {
-        result = dialog.open->SetOptions(dialog_options | FOS_PICKFOLDERS);
-      }
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
-      result = dialog.open->SetOptions(dialog_options | FOS_ALLOWMULTISELECT);
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (!defaultPath.empty()) {
-      IShellItem *defaultFolder;
-
-      auto normalizedDefaultPath = defaultPath;
-      std::replace(normalizedDefaultPath.begin(), normalizedDefaultPath.end(), '/', '\\');
-      result = SHCreateItemFromParsingName(
-        SSC::WString(normalizedDefaultPath.begin(), normalizedDefaultPath.end()).c_str(),
-        NULL,
-        IID_PPV_ARGS(&defaultFolder)
-      );
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: SHCreateItemFromParsingName() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-
-      if (isSave) {
-        result = dialog.save->SetDefaultFolder(defaultFolder);
-      } else {
-        result = dialog.open->SetDefaultFolder(defaultFolder);
-      }
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::SetDefaultFolder() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (!title.empty()) {
-      if (isSave) {
-        result = dialog.save->SetTitle(
-          SSC::WString(title.begin(), title.end()).c_str()
-        );
-      } else {
-        result = dialog.open->SetTitle(
-          SSC::WString(title.begin(), title.end()).c_str()
-        );
-      }
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::SetTitle() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (!defaultName.empty()) {
-      if (isSave) {
-        result = dialog.save->SetFileName(
-          SSC::WString(defaultName.begin(), defaultName.end()).c_str()
-        );
-      } else {
-        result = dialog.open->SetFileName(
-          SSC::WString(defaultName.begin(), defaultName.end()).c_str()
-        );
-      }
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::SetFileName() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (isSave) {
-      result = dialog.save->Show(NULL);
-    } else {
-      result = dialog.open->Show(NULL);
-    }
-
-    if (FAILED(result)) {
-      std::cerr << "ERR: IFileDialog::Show() failed in 'openDialog()'" << std::endl;
-      CoUninitialize();
-      return;
-    }
-
-    if (isSave) {
-      result = dialog.save->GetResult(&single_result);
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::GetResult() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    } else {
-      result = dialog.open->GetResults(&results);
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IFileDialog::GetResults() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-    }
-
-    if (FAILED(result)) {
-      std::cerr << "ERR: IFileDialog::Show() failed in 'openDialog()'" << std::endl;
-      CoUninitialize();
-      return;
-    }
-
-    if (isSave) {
-      LPWSTR buf;
-
-      result = single_result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IShellItem::GetDisplayName() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-
-      result_paths.push_back(SSC::convertWStringToString(SSC::WString(buf)));
-      single_result->Release();
-
-      CoTaskMemFree(buf);
-    } else {
-      results->GetCount(&results_count);
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IShellItemArray::GetCount() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
-
-      for (DWORD i = 0; i < results_count; i++) {
-        IShellItem *path;
-        LPWSTR buf;
-
-        result = results->GetItemAt(i, &path);
-
-        if (FAILED(result)) {
-          std::cerr << "ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'" << std::endl;
-          CoUninitialize();
-          return;
-        }
-
-        result = path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
-
-        if (FAILED(result)) {
-          std::cerr << "ERR: IShellItem::GetDisplayName() failed in 'openDialog()'" << std::endl;
-          CoUninitialize();
-          return;
-        }
-
-        result_paths.push_back(SSC::convertWStringToString(SSC::WString(buf)));
-        path->Release();
-        CoTaskMemFree(buf);
-      }
-    }
-
-      for (size_t i = 0, i_end = result_paths.size(); i < i_end; ++i) {
-        result_string += (i ? "\\n" : "");
-        std::replace(result_paths[i].begin(), result_paths[i].end(), '\\', '/');
-        result_string += result_paths[i];
-      }
-
-    auto wrapped_result_string =  String("\"" + result_string + "\"");
-    this->resolvePromise(seq, "0", encodeURIComponent(wrapped_result_string));
-
-    if (isSave) {
-      dialog.save->Release();
-    } else {
-      dialog.open->Release();
-    }
-
-    if (!isSave) {
-      results->Release();
-    }
-
-    CoUninitialize();
   }
 
   // message is defined in WinUser.h

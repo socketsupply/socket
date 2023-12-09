@@ -169,6 +169,9 @@ if (( !only_top_level )); then
     cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
     cp -f "$root/README.md" "$SOCKET_HOME/packages/$package"
 
+    mkdir -p "$SOCKET_HOME/packages/$package/assets"
+    cp -rf "$root/assets"/* "$SOCKET_HOME/packages/$package/assets"
+
     cp -rf "$SOCKET_HOME/uv"/* "$SOCKET_HOME/packages/$package/uv"
     cp -rf "$SOCKET_HOME/bin"/* "$SOCKET_HOME/packages/$package/bin"
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"
@@ -185,11 +188,16 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
 
-    ## Install x86_64-iPhoneSimulator files for arm64 too
     if [ "$platform" = "darwin" ]; then
+      ## Install x86_64-iPhoneSimulator files for arm64 too
       if [ "$(uname -m)" == "arm64" ]; then
         cp -rf "$SOCKET_HOME/lib/x86_64-iPhoneSimulator" "$SOCKET_HOME/packages/$package/lib"
         cp -rf "$SOCKET_HOME/objects/x86_64-iPhoneSimulator" "$SOCKET_HOME/packages/$package/objects"
+      fi
+      ## Install arm64-iPhone files for x86_64 too
+      if [ "$(uname -m)" == "x86_64" ]; then
+        cp -rf "$SOCKET_HOME/lib/arm64-iPhoneOS" "$SOCKET_HOME/packages/$package/lib"
+        cp -rf "$SOCKET_HOME/objects/arm64-iPhoneOS" "$SOCKET_HOME/packages/$package/objects"
       fi
     fi
 

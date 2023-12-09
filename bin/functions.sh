@@ -4,6 +4,8 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare SSC_ENV_FILENAME=".ssc.env"
 export SSC_ENV_FILENAME
 
+declare log_and_run_sudo_granted=0
+
 # BSD stat has no version argument or reliable identifier
 if stat --help 2>&1 | grep "usage: stat" >/dev/null; then
   stat_format_arg="-f"
@@ -102,6 +104,15 @@ function quiet () {
 # Always logs to terminal, but respects VERBOSE for command output
 function log_and_run () {
   write_log "h" "$@"
+
+  if [[ "$*" =~ "sudo "* ]] && (( !log_and_run_sudo_granted )); then
+    local args=($@)
+    if ! prompt_yn "'ssc' would like to use 'sudo' to run: ${args[*]:1}"; then
+      return 1
+    fi
+
+    log_and_run_sudo_granted=1
+  fi
 
   if [ -n "$VERBOSE" ]; then
     "$@"
@@ -463,7 +474,6 @@ function write_log() {
     echo "$@"
   fi
 
-  # Write-LogFile $message
   write_log_file "$@"
 }
 
@@ -544,13 +554,17 @@ function determine_cxx () {
       return 1
     fi
 
-    echo "warn - using '$CXX' as CXX"
+    write_log "v" "warn - using '$CXX' as CXX"
   fi
 
+  CC="${CXX/++/}"
+
   export CXX
+  export CC
   # win32 has partically escaping requirements, this is handled by install.ps1
   if [[ "$host" != "Win32" ]]; then
     update_env_data "CXX=$CXX"
+    update_env_data "CC=$CC"
   fi
 }
 
@@ -562,10 +576,13 @@ function first_time_experience_setup() {
     unset BUILD_ANDROID
   fi
 
+  determine_cxx
+
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
       local package_manager="$(determine_package_manager)"
       echo "Installing $(host_os) dependencies..."
+
       if [[ "$package_manager" == "apt install" ]]; then
         log_and_run sudo apt update || return $?
         log_and_run sudo apt install -y   \
@@ -609,7 +626,7 @@ function first_time_experience_setup() {
 
   determine_cxx || return $?
 
-  if [ -z "$target" ] || [[ "$target" == "android" ]]; then
+  if [[ "$target" == "android" ]]; then
     ## Android is not supported on linux-arm64, return early
     if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"  ]]; then
       return 0

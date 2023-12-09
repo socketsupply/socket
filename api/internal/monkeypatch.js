@@ -5,6 +5,12 @@ import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 
+import {
+  showDirectoryPicker,
+  showOpenFilePicker,
+  showSaveFilePicker
+} from './pickers.js'
+
 import ipc from '../ipc.js'
 
 let applied = false
@@ -79,7 +85,12 @@ export function init () {
     Response,
 
     // notifications
-    Notification
+    Notification,
+
+    // pickers
+    showDirectoryPicker,
+    showOpenFilePicker,
+    showSaveFilePicker
   })
 
   // navigator
@@ -89,7 +100,7 @@ export function init () {
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
   // initial value
-  globalThis.addEventListener('DOMContentLoaded', () => {
+  globalThis.document.addEventListener('DOMContentLoaded', () => {
     const title = globalThis.document.title
     if (title.length !== 0) {
       const index = globalThis.__args.index

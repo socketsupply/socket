@@ -1,4 +1,4 @@
-/* global Blob */
+/* global Blob, ArrayBuffer */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -15,11 +15,16 @@ console.assert(
 import './monkeypatch.js'
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
-import { Event, CustomEvent, ErrorEvent } from '../events.js'
+import { CustomEvent, ErrorEvent } from '../events.js'
+import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import { URL } from '../url.js'
+import fs from '../fs/promises.js'
+import {
+  createFileSystemDirectoryHandle,
+  createFileSystemFileHandle
+} from '../fs/web.js'
 
-const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
 
 // only patch a webview or worker context
@@ -69,18 +74,83 @@ if ((globalThis.window || globalThis.self) === globalThis) {
   }
 }
 
+// webview only features
+if ((globalThis.window) === globalThis) {
+  globalThis.addEventListener('dragdropfiles', async (event) => {
+    const { files } = event.detail
+    const handles = []
+    if (Array.isArray(files)) {
+      for (const file of files) {
+        if (typeof file === 'string') {
+          const stats = await fs.stat(file)
+          if (stats.isDirectory()) {
+            handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
+          } else {
+            handles.push(await createFileSystemFileHandle(file, { writable: false }))
+          }
+        }
+      }
+    }
+
+    globalThis.dispatchEvent(new CustomEvent('dropfiles', { detail: { handles } }))
+  })
+}
+
 class RuntimeWorker extends GlobalWorker {
-  #onmessage = null
   #onglobaldata = null
+  #id = rand64()
 
-  static get [Symbol.species] () { return GlobalWorker }
+  static pool = new Map()
+
+  static get [Symbol.species] () {
+    return GlobalWorker
+  }
+
+  /**
+   * `RuntimeWorker` class worker.
+   * @ignore
+   */
   constructor (filename, options, ...args) {
-    const url = new URL(filename, location.href || '/')
-    const preload = `import 'socket:internal/worker?source=${url}'`
-    const blob = new Blob([preload.trim()], { type: 'application/javascript' })
-    const uri = URL.createObjectURL(blob)
+    const url = encodeURIComponent(new URL(filename, location.href || '/').toString())
+    const id = rand64()
 
-    super(uri, { ...options, type: 'module' }, ...args)
+    const preload = `
+    Object.defineProperty(globalThis, '__args', {
+      configurable: false,
+      enumerable: false,
+      value: ${JSON.stringify(globalThis.__args)}
+    })
+
+    Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
+      configurable: false,
+      enumerable: false,
+      value: '${id}'
+    })
+
+    Object.defineProperty(globalThis, 'RUNTIME_WORKER_LOCATION', {
+      configurable: false,
+      enumerable: false,
+      value: '${url}'
+    })
+
+    import 'socket://${location.hostname}/socket/internal/worker.js?source=${url}'
+    `.trim()
+
+    const objectURL = URL.createObjectURL(
+      new Blob([preload.trim()], { type: 'application/javascript' })
+    )
+
+    // level 1 worker `EventTarget` 'message' listener
+    let onmessage = null
+
+    // events are routed through this `EventTarget`
+    const eventTarget = new EventTarget()
+
+    super(objectURL, { ...options, type: 'module' }, ...args)
+
+    RuntimeWorker.pool.set(id, new WeakRef(this))
+
+    this.#id = id
 
     this.#onglobaldata = (event) => {
       const data = new Uint8Array(event.detail.data).buffer
@@ -97,13 +167,40 @@ class RuntimeWorker extends GlobalWorker {
 
     globalThis.addEventListener('data', this.#onglobaldata)
 
+    this.addEventListener = (eventName, ...args) => {
+      if (eventName === 'message') {
+        return eventTarget.addEventListener(eventName, ...args)
+      }
+
+      return this.addEventListener(eventName, ...args)
+    }
+
+    this.removeEventListener = (eventName, ...args) => {
+      if (eventName === 'message') {
+        return eventTarget.removeEventListener(eventName, ...args)
+      }
+
+      return this.removeEventListener(eventName, ...args)
+    }
+
+    Object.defineProperty(this, 'onmessage', {
+      configurable: false,
+      get: () => onmessage,
+      set: (value) => {
+        if (typeof onmessage === 'function') {
+          eventTarget.removeEventListener('message', onmessage)
+        }
+
+        if (value === null || typeof value === 'function') {
+          onmessage = value
+          eventTarget.addEventListener('message', onmessage)
+        }
+      }
+    })
+
     this.addEventListener('message', (event) => {
       const { data } = event
-      if (data?.__runtime_worker_request_args) {
-        this.postMessage({
-          __runtime_worker_args: globalThis.__args
-        })
-      } else if (data?.__runtime_worker_ipc_request) {
+      if (data?.__runtime_worker_ipc_request) {
         const request = data.__runtime_worker_ipc_request
         if (
           typeof request?.message === 'string' &&
@@ -115,30 +212,32 @@ class RuntimeWorker extends GlobalWorker {
               const message = ipc.Message.from(request.message, request.bytes)
               const options = { bytes: message.bytes }
               // eslint-disable-next-line no-use-before-define
-              const result = await ipc.send(message.name, message.rawParams, options)
+              const result = await ipc.request(message.name, message.rawParams, options)
+              const transfer = []
+
+              if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
+                transfer.push(result.data)
+              }
+
               this.postMessage({
                 __runtime_worker_ipc_result: {
                   message: message.toJSON(),
                   result: result.toJSON()
                 }
-              })
+              }, transfer)
             } catch (err) {
               console.warn('RuntimeWorker:', err)
             }
           })
         }
-      } else if (typeof this.onmessage === 'function') {
-        return this.onmessage(event)
+      } else {
+        return eventTarget.dispatchEvent(event)
       }
     })
   }
 
-  get onmessage () {
-    return this.#onmessage
-  }
-
-  set onmessage (onmessage) {
-    this.#onmessage = onmessage
+  get id () {
+    return this.#id
   }
 
   terminate () {
@@ -174,7 +273,17 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
       }
     }
 
-    return open.call(this, method, url, isAsyncRequest !== false, ...args)
+    const value = open.call(this, method, url, isAsyncRequest !== false, ...args)
+
+    if (typeof globalThis.RUNTIME_WORKER_ID === 'string') {
+      this.setRequestHeader('Runtime-Worker-ID', globalThis.RUNTIME_WORKER_ID)
+    }
+
+    if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
+      this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
+    }
+
+    return value
   }
 
   globalThis.XMLHttpRequest.prototype.send = async function (...args) {
@@ -206,9 +315,9 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   }
 }
 
+import hooks, { RuntimeInitEvent } from '../hooks.js'
 import { config } from '../application.js'
 import globals from './globals.js'
-import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
 import '../console.js'
@@ -267,7 +376,22 @@ class ConcurrentQueue extends EventTarget {
 }
 
 class RuntimeXHRPostQueue extends ConcurrentQueue {
-  async dispatch (id, seq, params, headers) {
+  async dispatch (id, seq, params, headers, options = null) {
+    if (options?.workerId) {
+      const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
+      if (worker) {
+        worker.postMessage({
+          __runtime_worker_event: {
+            type: 'runtime-xhr-post-queue',
+            detail: {
+              id, seq, params, headers
+            }
+          }
+        })
+        return
+      }
+    }
+
     const promise = new InvertedPromise()
     await this.push(promise, 8)
 
@@ -275,8 +399,9 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
       params = {}
     }
 
-    const options = { responseType: 'arraybuffer' }
-    const result = await ipc.request('post', { id }, options)
+    const result = await ipc.request('post', { id }, {
+      responseType: 'arraybuffer'
+    })
 
     promise.resolve()
 
@@ -293,7 +418,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
-    globalThis.dispatchEvent(new Event(RUNTIME_INIT_EVENT_NAME))
+    globalThis.dispatchEvent(new RuntimeInitEvent())
   }
 })
 

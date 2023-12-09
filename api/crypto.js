@@ -1,4 +1,5 @@
 /* global console */
+/* eslint-disable no-fallthrough */
 /**
  * @module Crypto
  *
@@ -15,6 +16,8 @@ import { toBuffer } from './util.js'
 import { Buffer } from './buffer.js'
 
 import * as exports from './crypto.js'
+
+const textDecoder = new TextDecoder()
 
 /**
  * @typedef {Uint8Array|Int8Array} TypedArray
@@ -146,6 +149,89 @@ export function randomBytes (size) {
  */
 export async function createDigest (algorithm, buf) {
   return Buffer.from(await webcrypto.subtle.digest(algorithm, buf))
+}
+
+/**
+ * A murmur3 hash implementation based on https://github.com/jwerle/murmurhash.c
+ * that works on strings and `ArrayBuffer` views (typed arrays)
+ * @param {string|Uint8Array|ArrayBuffer} value
+ * @param {number=} [seed = 0]
+ * @return {number}
+ */
+export function murmur3 (value, seed = 0) {
+  let string = value
+
+  if (typeof string !== 'string') {
+    if (string instanceof ArrayBuffer) {
+      string = new Uint8Array(string)
+    }
+
+    if (ArrayBuffer.isView(string)) {
+      string = textDecoder.decode(string)
+    }
+  }
+
+  if (typeof string !== 'string') {
+    throw new TypeError(
+      'Expecting input to be a string, ArrayBuffer, or TypedArray'
+    )
+  }
+
+  let hash = seed
+  let len = string.length
+
+  const c1 = 0xcc9e2d51
+  const c2 = 0x1b873593
+  const r1 = 15
+  const r2 = 13
+  const m = 5
+  const n = 0xe6546b64
+  const remainder = len & 3
+
+  len = len - remainder
+
+  for (let i = 0; i < len; i += 4) {
+    let k = (
+      (string.charCodeAt(i) & 0xff) |
+      ((string.charCodeAt(i + 1) & 0xff) << 8) |
+      ((string.charCodeAt(i + 2) & 0xff) << 16) |
+      ((string.charCodeAt(i + 3) & 0xff) << 24)
+    )
+
+    k = (k * c1) & 0xffffffff
+    k = (k << r1) | (k >>> (32 - r1))
+    k = (k * c2) & 0xffffffff
+
+    hash ^= k
+    hash = ((hash << r2) | (hash >>> (32 - r2))) * m + n
+    hash = hash & 0xffffffff
+  }
+
+  let k = 0
+
+  switch (remainder) {
+    case 3:
+      k ^= (string.charCodeAt(len + 2) & 0xff) << 16
+    case 2:
+      k ^= (string.charCodeAt(len + 1) & 0xff) << 8
+    case 1:
+      k ^= (string.charCodeAt(len) & 0xff)
+
+      k = (k * c1) & 0xffffffff
+      k = (k << r1) | (k >>> (32 - r1))
+      k = (k * c2) & 0xffffffff
+      hash ^= k
+  }
+
+  hash ^= len
+  hash ^= (hash >>> 16)
+  hash = (hash * 0x85ebca6b) & 0xffffffff
+  hash ^= (hash >>> 13)
+  hash = (hash * 0xc2b2ae35) & 0xffffffff
+  hash ^= (hash >>> 16)
+
+  // convert to unsigned 32-bit integer
+  return hash >>> 0
 }
 
 export default exports

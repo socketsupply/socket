@@ -1,6 +1,6 @@
 #include "core.hh"
-
 namespace SSC {
+
   #define SET_CONSTANT(c) constants[#c] = (c);
   static std::map<String, int32_t> getFSConstantsMap () {
     std::map<String, int32_t> constants;
@@ -715,7 +715,7 @@ namespace SSC {
 
       if (desc == nullptr) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.readdir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},
@@ -729,7 +729,7 @@ namespace SSC {
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.readdir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},
@@ -1052,6 +1052,90 @@ namespace SSC {
     });
   }
 
+  void Core::FS::watch (
+    const String seq,
+    uint64_t id,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      auto json = JSON::Object::Entries {
+        {"source", "fs.watch"},
+        {"err", JSON::Object::Entries {
+          {"message", "Not supported"}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    #else
+      FileSystemWatcher* watcher;
+      {
+        Lock lock(this->mutex);
+        watcher = this->watchers[id];
+      }
+
+      if (watcher == nullptr) {
+        watcher = new FileSystemWatcher(path);
+        watcher->core = this->core;
+        const auto started = watcher->start([=, this](
+          const auto& changed,
+          const auto& events,
+          const auto& context
+        ) mutable {
+          JSON::Array::Entries eventNames;
+
+          if (std::find(events.begin(), events.end(), FileSystemWatcher::Event::RENAME) != events.end()) {
+            eventNames.push_back("rename");
+          }
+
+          if (std::find(events.begin(), events.end(), FileSystemWatcher::Event::CHANGE) != events.end()) {
+            eventNames.push_back("change");
+          }
+
+          auto json = JSON::Object::Entries {
+            {"source", "fs.watch"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(id)},
+              {"events",eventNames},
+              {"path", std::filesystem::relative(changed, path).string()}
+            }}
+          };
+
+          cb("-1", json, Post{});
+        });
+
+        if (!started) {
+          auto json = JSON::Object::Entries {
+            {"source", "fs.watch"},
+            {"err", JSON::Object::Entries {
+              {"message", "Failed to start 'fs.Watcher'"}
+            }}
+          };
+
+          cb(seq, json, Post{});
+          return;
+        }
+
+        {
+          Lock lock(this->mutex);
+          this->watchers.insert_or_assign(id, watcher);
+        }
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "fs.watch"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(id)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+    #endif
+    });
+  }
+
   void Core::FS::write (
     const String seq,
     uint64_t id,
@@ -1160,6 +1244,183 @@ namespace SSC {
         auto json = JSON::Object::Entries {
           {"source", "fs.stat"},
           {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::stopWatch (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      auto json = JSON::Object::Entries {
+        {"source", "fs.stopWatch"},
+        {"err", JSON::Object::Entries {
+          {"message", "Not supported"}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    #else
+      auto watcher = this->core->fs.watchers[id];
+      if (watcher != nullptr) {
+        watcher->stop();
+        delete watcher;
+        this->core->fs.watchers.erase(id);
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stopWatch"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+          }}
+        };
+        cb(seq, json, Post{});
+      } else {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"err", JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "fs.Watcher does not exist"}
+          }}
+        };
+
+        cb(seq, json, Post{});
+      }
+    #endif
+    });
+  }
+
+  void Core::FS::fsync (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fsync"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_fsync(loop, req, desc->fd, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.fsync"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror((int) req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.fsync"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fsync"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::ftruncate (
+    const String seq,
+    uint64_t id,
+    int64_t offset,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.ftruncate"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_ftruncate(loop, req, desc->fd, offset, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (uv_fs_get_result(req) < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.ftruncate"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror((int) req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.ftruncate"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.ftruncate"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
             {"code", err},
             {"message", String(uv_strerror(err))}
           }}
@@ -1718,18 +1979,24 @@ namespace SSC {
     const String seq,
     const String path,
     int mode,
+    bool recursive,
     Module::Callback cb
   ) {
     this->core->dispatchEventLoop([=, this]() {
+      int err = 0;
       auto filename = path.c_str();
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
+      ctx->recursive = recursive;
       auto req = &ctx->req;
-      auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
+      const auto callback = [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
-        if (uv_fs_get_result(req) < 0) {
+        int result = uv_fs_get_result(req);
+
+        // Report recursive errors only when they are not EEXIST
+        if (result < 0 && (!ctx->recursive || (result != -EEXIST && result != -4075))) {
           json = JSON::Object::Entries {
             {"source", "fs.mkdir"},
             {"err", JSON::Object::Entries {
@@ -1748,7 +2015,36 @@ namespace SSC {
 
         ctx->cb(ctx->seq, json, Post{});
         delete ctx;
-      });
+      };
+
+      if (!recursive) {
+        err = uv_fs_mkdir(loop, req, filename, mode, callback);
+      } else {
+        const auto sep = String(1, std::filesystem::path::preferred_separator);
+        const auto components = split(path, sep);
+        auto queue = std::queue(std::deque(components.begin(), components.end()));
+        auto currentComponents = Vector<String>();
+        while (queue.size() > 0) {
+          uv_fs_t req;
+          const auto currentComponent = queue.front();
+          queue.pop();
+          currentComponents.push_back(currentComponent);
+          const auto joinedComponents = join(currentComponents, sep);
+          const auto currentPath = joinedComponents.empty() ? sep : joinedComponents;
+          if (queue.size() == 0) {
+            err = uv_fs_mkdir(loop, &ctx->req, currentPath.c_str(), mode, callback);
+          } else {
+            err = uv_fs_mkdir(loop, &req, currentPath.c_str(), mode, nullptr);
+          }
+
+          if (err == 0 || err == -EEXIST || err == -4075) { // '4075' is EEXIST on Windows
+            err = 0;
+            continue;
+          } else {
+            break;
+          }
+        }
+      }
 
       if (err < 0) {
         auto json = JSON::Object::Entries {

@@ -8,6 +8,7 @@ The file is read on startup and the values are used to configure the project.
 Sometimes it's useful to overide the values in `socket.ini` or keep some of the values local (e.g. `[ios] simulator_device`)
 or secret (e.g. `[ios] codesign_identity`, `[ios] provisioning_profile`, etc.)
 This can be done by creating a file called `.ssrc` in the root of the project.
+It is possible to override both Command Line Interface (CLI) and Configuration File (INI) options.
 
 Example:
 
@@ -26,15 +27,23 @@ headless = false
 ```ini
 [build]
 
-headless = true
+platform = ios ; override the `ssc build --platform` CLI option
 
-[ios]
+
+[settings.ios] ; override the `[ios]` section in `socket.ini`
 
 codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
 distribution_method = "ad-hoc"
 provisioning_profile = "johndoe.mobileprovision"
 simulator_device = "iPhone 15"
 ```
+
+<tonic-toaster-inline
+  title="Note"
+  type="info">
+    Note that "~" alias won't expand to the home directory in any of the configuration files.
+    Use the full path instead.
+</tonic-toaster-inline>
 
 # `build`
 
@@ -48,11 +57,17 @@ name |  |  The name of the program and executable to be output. Can't contain sp
 output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
 script |  |  The build script. It runs before the `[build] copy` phase.
 
+# `build.script`
+
+Key | Default Value | Description
+:--- | :--- | :---
+forward_arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+
 # `build.watch`
 
 Key | Default Value | Description
 :--- | :--- | :---
-sources |  | 
+sources[] |  |  Configure your project to watch for sources that could change when running `ssc`. Could be a string or an array of strings
 
 # `webview`
 
@@ -60,7 +75,21 @@ Key | Default Value | Description
 :--- | :--- | :---
 root | "/" |  Make root open index.html
 default_index | "" |  Set default 'index.html' path to open for implicit routes
-watch | false |  Enable watch mode
+watch | false |  Tell the webview to watch for changes in its resources
+
+# `webview.watch`
+
+Key | Default Value | Description
+:--- | :--- | :---
+reload | true |  Configure webview to reload when a file changes
+
+# `webview.navigator.mounts`
+
+Key | Default Value | Description
+:--- | :--- | :---
+$HOST_HOME/directory-in-home-folder/ |  | 
+$HOST_CONTAINER/directory-app-container/ |  | 
+$HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  | 
 
 # `permissions`
 
@@ -102,6 +131,7 @@ version |  |  A string that indicates the version of the application. It should 
 
 Key | Default Value | Description
 :--- | :--- | :---
+icon |  |  The icon to use for identifying your app on Android.
 aapt_no_compress |  |  Extensions of files that will not be stored compressed in the APK.
 enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
 main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
@@ -116,10 +146,11 @@ sources |  |
 
 Key | Default Value | Description
 :--- | :--- | :---
-codesign_identity |  |  signing guide: https://sockets.sh/guides/#ios-1
+codesign_identity |  |  signing guide: https://socketsupply.co/guides/#ios-1
 distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
-simulator_device |  |  which device to target when building for the simulator
+simulator_device |  |  which device to target when building for the simulator.
+nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.
 
 # `linux`
 
@@ -133,7 +164,6 @@ icon |  |  The icon to use for identifying your app in Linux desktop environment
 
 Key | Default Value | Description
 :--- | :--- | :---
-appstore_icon |  |  Mac App Store icon
 category |  |  A category in the App Store
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app on MacOS.

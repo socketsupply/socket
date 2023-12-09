@@ -13,6 +13,7 @@
 import ipc, { primordials } from './ipc.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
+import os from './os.js'
 
 import * as exports from './application.js'
 
@@ -90,9 +91,15 @@ export async function createWindow (opts) {
 
 /**
  * Returns the current screen size.
- * @returns {Promise<ipc.Result>}
+ * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
+  if (os.platform() === 'ios') {
+    return {
+      width: globalThis.screen.availWidth,
+      height: globalThis.screen.availHeight
+    }
+  }
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
   if (err) {
     throw err
@@ -113,6 +120,17 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
+  if (os.platform() === 'ios') {
+    return {
+      0: new ApplicationWindow({
+        index: 0,
+        width: globalThis.screen.availWidth,
+        height: globalThis.screen.availHeight,
+        title: document.title,
+        status: 31
+      })
+    }
+  }
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
   if (!Array.isArray(resultIndices)) {
@@ -272,7 +290,7 @@ export async function setSystemMenu (o) {
   const callerLineNo = frame.split(':').reverse()[1]
 
   // Use this link to test the regex (https://regexr.com/7lhqe)
-  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*)(.*))$/m
+  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*.*))$/m
   const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
 
   for (let i = 0; i < lines.length; i++) {
@@ -300,7 +318,8 @@ export async function setSystemMenu (o) {
       } else if (label.includes(':')) {
         err = 'Invalid label contains ":"'
       } else if (binding) {
-        const [accelerator, ...modifiers] = binding.split(/ *\+ */)
+        const [accelerator, modifiersRaw] = binding.split(/ *\+ */)
+        const modifiers = modifiersRaw?.replace(';', '').split(', ') ?? []
         if (validModifiers.test(accelerator)) {
           err = 'Missing accelerator'
         } else {
@@ -316,7 +335,7 @@ export async function setSystemMenu (o) {
 
     if (err) {
       const lineNo = Number(callerLineNo) + i
-      throw new Error(`${err} on line ${lineNo}: "${lineText}"`)
+      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
     }
   }
 

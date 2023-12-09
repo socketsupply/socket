@@ -109,6 +109,7 @@ namespace SSC {
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
+    String workerId = "";
     std::shared_ptr<std::function<bool(const char*, const char*, bool)>> event_stream;
     std::shared_ptr<std::function<bool(const char*, size_t, bool)>> chunk_stream;
   };
@@ -408,6 +409,7 @@ namespace SSC {
             uv_dirent_t dirents[256];
             int offset = 0;
             int result = 0;
+            bool recursive;  // A place to stash recursive options when needed
 
             RequestContext () = default;
             RequestContext (Descriptor *desc)
@@ -420,6 +422,7 @@ namespace SSC {
               this->seq = seq;
               this->desc = desc;
               this->req.data = (void *) this;
+              this->recursive = false;
             }
 
             ~RequestContext () {
@@ -431,6 +434,10 @@ namespace SSC {
             char* getBuffer ();
             uint32_t getBufferSize ();
           };
+
+        #if !defined(__ANDROID__)
+          std::map<uint64_t, FileSystemWatcher*> watchers;
+        #endif
 
           std::map<uint64_t, Descriptor*> descriptors;
           Mutex mutex;
@@ -487,6 +494,13 @@ namespace SSC {
             Module::Callback cb
           );
           void fstat (const String seq, uint64_t id, Module::Callback cb);
+          void fsync (const String seq, uint64_t id, Module::Callback cb);
+          void ftruncate (
+            const String seq,
+            uint64_t id,
+            int64_t offset,
+            Module::Callback cb
+          );
           void getOpenDescriptors (const String seq, Module::Callback cb);
           void lstat (const String seq, const String path, Module::Callback cb);
 					void link (
@@ -506,6 +520,7 @@ namespace SSC {
             const String seq,
             const String path,
             int mode,
+            bool recursive,
             Module::Callback cb
           );
           void readlink (
@@ -566,8 +581,19 @@ namespace SSC {
             const String path,
             Module::Callback cb
           );
+          void stopWatch (
+            const String seq,
+            uint64_t id,
+            Module::Callback cb
+          );
           void unlink (
             const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void watch (
+            const String seq,
+            uint64_t id,
             const String path,
             Module::Callback cb
           );
@@ -718,7 +744,7 @@ namespace SSC {
       uv_async_t eventLoopAsync;
       std::queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
 
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
       dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
         DISPATCH_QUEUE_SERIAL,
         QOS_CLASS_DEFAULT,
@@ -729,9 +755,9 @@ namespace SSC {
         "socket.runtime.core.loop.queue",
         eventLoopQueueAttrs
       );
-#else
+    #else
       std::thread *eventLoopThread = nullptr;
-#endif
+    #endif
 
       Core () :
         diagnostics(this),

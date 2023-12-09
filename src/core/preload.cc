@@ -72,6 +72,19 @@ namespace SSC {
       }
     }
 
+    if (opts.appData.contains("webview_watch") && opts.appData.at("webview_watch") == "true") {
+      if (
+        !opts.appData.contains("webview_watch_reload") ||
+        opts.appData.at("webview_watch_reload") != "false"
+      ) {
+          preload += (
+            "  globalThis.addEventListener('filedidchange', () => {            \n"
+            "  location.reload()                                               \n"
+            "  });                                                             \n"
+        );
+      }
+    }
+
     // fill in the config
     for (auto const &tuple : opts.appData) {
       auto key = trim(tuple.first);
@@ -146,11 +159,15 @@ namespace SSC {
     );
 
     preload += (
-      "document.addEventListener('readystatechange', () => {                 \n"
-      "  if (/interactive|complete/.test(document.readyState)) {             \n"
-      "    import('socket:internal/init').catch(console.error);              \n"
-      "  }                                                                   \n"
-      "}, { once: true });                                                   \n"
+      "if (document.readyState === 'complete') {                             \n"
+      "  import('socket:internal/init').catch(console.error);                \n"
+      "} else {                                                              \n"
+      "  document.addEventListener('readystatechange', () => {               \n"
+      "    if (/interactive|complete/.test(document.readyState)) {           \n"
+      "      import('socket:internal/init').catch(console.error);            \n"
+      "    }                                                                 \n"
+      "  }, { once: true });                                                 \n"
+      "}                                                                     \n"
     );
 
     return preload;

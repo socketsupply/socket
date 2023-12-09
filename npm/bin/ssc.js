@@ -49,6 +49,14 @@ async function main () {
       process.exit(1)
     }
   })
+
+  process.on('SIGTERM', () => {
+    child.kill('SIGTERM')
+  })
+
+  process.on('exit', () => {
+    child.kill('SIGTERM')
+  })
 }
 
 main().catch((err) => {

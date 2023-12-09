@@ -404,6 +404,74 @@ int lastY = 0;
   SSC::String file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
+
+
+-             (void) webView: (WKWebView*) webView
+  runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
+            initiatedByFrame: (WKFrameInfo*) frame
+           completionHandler: (void (^)(NSArray<NSURL*>*URLs)) completionHandler
+{
+  auto acceptedFileExtensions = parameters._acceptedFileExtensions;
+  auto acceptedMIMETypes = parameters._acceptedMIMETypes;
+  SSC::StringStream contentTypesSpec;
+
+  for (NSString* acceptedMIMEType in acceptedMIMETypes) {
+    contentTypesSpec << acceptedMIMEType.UTF8String << "|";
+  }
+
+  if (acceptedFileExtensions.count > 0) {
+    contentTypesSpec << "*/*:";
+    const auto count = acceptedFileExtensions.count;
+    int seen = 0;
+    for (NSString* acceptedFileExtension in acceptedFileExtensions) {
+      const auto string = SSC::String(acceptedFileExtension.UTF8String);
+
+      if (!string.starts_with(".")) {
+        contentTypesSpec << ".";
+      }
+
+      contentTypesSpec << string;
+      if (++seen < count) {
+        contentTypesSpec << ",";
+      }
+    }
+  }
+
+  auto contentTypes = SSC::trim(contentTypesSpec.str());
+
+  if (contentTypes.size() == 0) {
+    contentTypes = "*/*";
+  }
+
+  if (contentTypes.ends_with("|")) {
+    contentTypes = contentTypes.substr(0, contentTypes.size() - 1);
+  }
+
+  const auto options = SSC::Dialog::FileSystemPickerOptions {
+    .directories = false,
+    .multiple = parameters.allowsMultipleSelection ? true : false,
+    .contentTypes = contentTypes,
+    .defaultName = "",
+    .defaultPath = "",
+    .title = "Choose a File"
+  };
+
+  SSC::Dialog dialog;
+  const auto results = dialog.showOpenFilePicker(options);
+
+  if (results.size() == 0) {
+    completionHandler(nullptr);
+    return;
+  }
+
+  auto urls = [NSMutableArray new];
+
+  for (const auto& result : results) {
+    [urls addObject: [NSURL URLWithString: @(result.c_str())]];
+  }
+
+  completionHandler(urls);
+}
 #endif
 
 #if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
@@ -664,7 +732,7 @@ namespace SSC {
                    forURLScheme: @"socket"];
 
     WKPreferences* prefs = [config preferences];
-    prefs.javaScriptCanOpenWindowsAutomatically = NO;
+    prefs.javaScriptCanOpenWindowsAutomatically = YES;
 
     @try {
       if (userConfig["permissions_allow_fullscreen"] == "false") {
@@ -813,10 +881,13 @@ namespace SSC {
       withObject: @"ipc"
     ];
 
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"file"
-    ];
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
+      [webview.configuration.processPool
+        performSelector: @selector(_registerURLSchemeAsSecure:)
+        withObject: @"http"
+      ];
+    }
 
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
@@ -1203,16 +1274,26 @@ namespace SSC {
 
     for (auto m : menus) {
       auto menu = split(m, '\n');
-      auto line = trim(menu[0]);
-      if (line.empty()) continue;
+      auto i = -1;
+
+      // find the first non-empty line
+      std::string line = "";
+      while (line.empty() && ++i < menu.size()) {
+        line = trim(menu[i]);
+      }
+      if (i == menu.size()) {
+        continue;
+      }
+
       auto menuTitle = split(line, ':')[0];
       NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
       dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
       bool isDisabled = false;
 
-      for (int i = 1; i < menu.size(); i++) {
-        auto line = trim(menu[i]);
+      while (++i < menu.size()) {
+        line = trim(menu[i]);
         if (line.empty()) continue;
+
         auto parts = split(line, ':');
         auto title = parts[0];
         NSUInteger mask = 0;
@@ -1228,16 +1309,17 @@ namespace SSC {
             auto accelerator = split(parts[1], '+');
             key = trim(accelerator[0]);
 
-            if (accelerator[1].find("CommandOrControl") != -1) {
-              mask |= NSEventModifierFlagCommand;
-            } else if (accelerator[1].find("Meta") != -1) {
-              mask |= NSEventModifierFlagCommand;
-            } else if (accelerator[1].find("Control") != -1) {
-              mask |= NSEventModifierFlagControl;
-            }
-
-            if (accelerator[1].find("Alt") != -1) {
-              mask |= NSEventModifierFlagOption;
+            for (int i = 1; i < accelerator.size(); i++) {
+              auto modifier = trim(accelerator[i]);
+              if (modifier.compare("CommandOrControl") == 0) {
+                mask |= NSEventModifierFlagCommand;
+              } else if (modifier.compare("Meta") == 0) {
+                mask |= NSEventModifierFlagCommand;
+              } else if (modifier.compare("Control") == 0) {
+                mask |= NSEventModifierFlagControl;
+              } else if (modifier.compare("Alt") == 0) {
+                mask |= NSEventModifierFlagOption;
+              }
             }
           } else {
             key = trim(parts[1]);
@@ -1317,109 +1399,6 @@ namespace SSC {
       auto index = std::to_string(this->opts.index);
       this->resolvePromise(seq, "0", index);
     }
-  }
-
-  void Window::openDialog (
-    const SSC::String& seq,
-    bool isSave,
-    bool allowDirs,
-    bool allowFiles,
-    bool allowMultiple,
-    const SSC::String& defaultPath = "",
-    const SSC::String& title = "",
-    const SSC::String& defaultName = "")
-  {
-
-    NSURL *url;
-    const char *utf8_path;
-    NSSavePanel *dialog_save;
-    NSOpenPanel *dialog_open;
-    NSURL *default_url = nil;
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    if (isSave) {
-      dialog_save = [NSSavePanel savePanel];
-      [dialog_save setTitle: [NSString stringWithUTF8String:title.c_str()]];
-    } else {
-      dialog_open = [NSOpenPanel openPanel];
-      // open does not support title for some reason
-    }
-
-    if (!isSave) {
-      [dialog_open setCanCreateDirectories:YES];
-    }
-
-    if (allowDirs == true && isSave == false) {
-      [dialog_open setCanChooseDirectories:YES];
-    }
-
-    if (isSave == false) {
-      [dialog_open setCanChooseFiles: allowFiles ? YES : NO];
-    }
-
-    if ((isSave == false || allowDirs == true) && allowMultiple == true) {
-      [dialog_open setAllowsMultipleSelection:YES];
-    }
-
-    if (defaultName.size() > 0) {
-      default_url = [NSURL fileURLWithPath:
-        [NSString stringWithUTF8String: defaultName.c_str()]];
-    } else if (defaultPath.size() > 0) {
-      default_url = [NSURL fileURLWithPath:
-        [NSString stringWithUTF8String: defaultPath.c_str()]];
-    }
-
-    if (default_url != nil) {
-      if (isSave) {
-        [dialog_save setDirectoryURL: default_url];
-        [dialog_save setNameFieldStringValue: default_url.lastPathComponent];
-      } else {
-        [dialog_open setDirectoryURL: default_url];
-        [dialog_open setNameFieldStringValue: default_url.lastPathComponent];
-      }
-    }
-
-    if (title.size() > 0) {
-      NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
-      if (isSave) {
-        [dialog_save setTitle: nssTitle];
-      } else {
-        [dialog_open setTitle: nssTitle];
-      }
-    }
-
-    if (isSave) {
-      if ([dialog_save runModal] == NSModalResponseOK) {
-        SSC::String url = (char*) [[[dialog_save URL] path] UTF8String];
-        auto wrapped = SSC::String("\"" + url + "\"");
-        this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
-      }
-      return;
-    }
-
-    SSC::String result = "";
-    SSC::Vector<SSC::String> paths;
-    NSArray* urls;
-
-    if ([dialog_open runModal] == NSModalResponseOK) {
-      urls = [dialog_open URLs];
-
-      for (NSURL* url in urls) {
-        if ([url isFileURL]) {
-          paths.push_back(SSC::String((char*) [[url path] UTF8String]));
-        }
-      }
-    }
-
-    [pool release];
-
-    for (size_t i = 0, i_end = paths.size(); i < i_end; ++i) {
-      result += (i ? "\\n" : "");
-      result += paths[i];
-    }
-
-    auto wrapped = SSC::String("\"" + result + "\"");
-    this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
   }
 }
 #endif
