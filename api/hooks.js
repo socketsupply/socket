@@ -58,10 +58,6 @@
  *   // called when 'notificationpresented' events are dispatched on the global object
  * })
  *
- * hooks.onNotificationPresented((event) => {
- *   // called when 'notificationpresented' events are dispatched on the global object
- * })
- *
  * hooks.onApplicationURL((event) => {
  *   // called when 'applicationurl' events are dispatched on the global object
  * })
