@@ -1,16 +1,11 @@
-import { toBuffer, compareBuffers } from 'socket:util'
+import { compareBuffers } from 'socket:util'
+import { createFile } from 'socket:fs/web'
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
 import process from 'socket:process'
 import path from 'socket:path'
 import fs from 'socket:fs/promises'
 import os from 'socket:os'
-
-import {
-  createFile,
-  createFileSystemFileHandle,
-  createFileSystemDirectoryHandle
-} from 'socket:fs/web'
 
 let TMPDIR = null
 let FIXTURES = null
@@ -24,10 +19,8 @@ if (process.platform !== 'ios') {
 
 test('createFile - simple', async (t) => {
   const filename = FIXTURES + 'data.bin'
-  const handle = await fs.open(filename)
   const file = await createFile(filename, { highWaterMark: 256 })
   t.ok(file && file instanceof globalThis.File, 'File instance is created')
-  const arrayBuffer = await file.arrayBuffer()
 })
 
 test('createFile - File.prototype.arrayBuffer()', async (t) => {
@@ -56,9 +49,7 @@ test('createFile - File.prototype.stream()', async (t) => {
   const handle = await fs.open(filename)
   const file = await createFile(filename, { highWaterMark: 256 })
   const stream = file.stream()
-  const text = await file.text()
   const buffer = await handle.readFile()
-  const encoder = new TextEncoder()
   const chunks = []
   for await (const chunk of stream) {
     chunks.push(chunk)
