@@ -7609,11 +7609,12 @@ declare module "socket:fs/web" {
     /**
      * Creates a new `File` instance from `filename`.
      * @param {string} filename
-     * @param {{ fd: fs.FileHandle }} [options]
+     * @param {{ fd: fs.FileHandle, highWaterMark?: number }=} [options]
      * @return {File}
      */
     export function createFile(filename: string, options?: {
         fd: fs.FileHandle;
+        highWaterMark?: number;
     }): File;
     /**
      * Creates a `FileSystemWritableFileStream` instance backed
