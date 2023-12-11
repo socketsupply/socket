@@ -193,4 +193,21 @@ extern "C" {
     runtime->isEmulator = value;
     return true;
   }
+
+  jstring external(Runtime, getConfigValue)(
+    JNIEnv *env,
+    jobject self,
+    jboolean keyString
+  ) {
+    static const auto config = SSC::getUserConfig();
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return nullptr;
+    }
+
+    auto key = StringWrap(env, keyString).str();
+    return env->NewStringUTF(key.c_str());
+  }
 }

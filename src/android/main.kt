@@ -153,10 +153,8 @@ open class MainActivity : WebViewActivity() {
     val action: String? = this.intent?.action
     val data: android.net.Uri? = this.intent?.data
 
-    if (data != null) {
-      window.bridge.emit("applicationurl", """{
-        "url": "$data"
-      }""")
+    if (action != null && data != null) {
+      this.onNewIntent(this.intent)
     }
   }
 
@@ -187,10 +185,20 @@ open class MainActivity : WebViewActivity() {
     val data = intent.data
     val id = intent.extras?.getCharSequence("id")?.toString()
 
-    if (data != null) {
-      window.bridge.emit("applicationurl", """{
-        "url": "$data"
-      }""")
+    if (action != null && data != null) {
+      if (
+        action == "android.intent.action.MAIN" ||
+        action == "android.intent.action.VIEW"
+      ) {
+        val applicationProtocol = this.runtime.getConfigValue("meta_application_protocol")
+        if (data.startsWith(applicationProtocol)) {
+          this.runOnUiThread {
+            window.bridge.emit("applicationurl", """{
+              "url": "$data"
+            }""")
+          }
+        }
+      }
     }
 
     if (action != null) {

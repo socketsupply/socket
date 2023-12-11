@@ -91,4 +91,7 @@ open class Runtime (
 
   @Throws(java.lang.Exception::class)
   external fun setIsEmulator (value: Boolean): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun getConfigValue (key: String): String;
 }
