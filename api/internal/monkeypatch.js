@@ -53,6 +53,28 @@ export function init () {
           target[actualName] = implementation
         } catch {}
 
+        if (
+          (typeof nativeImplementation === 'function' && nativeImplementation.prototype) &&
+          (typeof implementation === 'function' && implementation.prototype)
+        ) {
+          const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
+          const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
+          Object.setPrototypeOf(descriptors, nativeDescriptors)
+          for (const key in nativeDescriptors) {
+            const nativeDescriptor = nativeDescriptors[key]
+            const descriptor = descriptors[key]
+            if (descriptor) {
+              if (nativeDescriptors.set && nativeDescriptors.get) {
+                descriptor[key] = nativeDescriptors
+              } else {
+                descriptor[key] = { writable: true, configurable: true }
+              }
+            } else {
+              descriptors[key] = nativeDescriptors
+            }
+          }
+        }
+
         if (nativeImplementation !== null) {
           const nativeName = ['_', 'native', ...name.split('.')].join('_')
           Object.defineProperty(globalThis, nativeName, {
