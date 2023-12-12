@@ -14,6 +14,10 @@
 #define SSC_MAX_WINDOWS 32
 #endif
 
+#if defined(_WIN32)
+#define WM_HANDLE_DEEP_LINK WM_APP + 1
+#endif
+
 namespace SSC {
   // forward
   class Dialog;
