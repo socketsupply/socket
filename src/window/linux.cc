@@ -433,9 +433,9 @@ namespace SSC {
         }
 
         return true;
-      }),
+      })),
       this
-    ));
+    );
 
     g_signal_connect(
       G_OBJECT(webview),
