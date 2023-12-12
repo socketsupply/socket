@@ -16,15 +16,15 @@ test('load wasm synchronously', async (t) => {
   t.equal(exports.identity(42), 42, 'exported function works')
 })
 
-// test('load wasm asynchronously', async (t) => {
-//   const file = await createFile('./webassembly/program.wasm')
-//   const stream = file.stream()
-//   const response = new __native_Response(stream, {
-//     headers: {
-//       'Content-Type': 'application/wasm'
-//     }
-//   })
-//   const { exports } = await WebAssembly.instantiateStreaming(response, importObject)
-//   t.equal(exports.runMyFunc(5), 25, 'imported function works')
-//   t.equal(exports.identity(42), 42, 'exported function works')
-// })
+test('load wasm asynchronously', async (t) => {
+  const file = await createFile('./webassembly/program.wasm')
+  const stream = file.stream()
+  const response = new __native_Response(stream, {
+    headers: {
+      'Content-Type': 'application/wasm'
+    }
+  })
+  const { instance } = await WebAssembly.instantiateStreaming(response, importObject)
+  t.equal(instance.exports.runMyFunc(5), 25, 'imported function works')
+  t.equal(instance.exports.identity(42), 42, 'exported function works')
+})
