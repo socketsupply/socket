@@ -17,9 +17,9 @@
     if (request.starts_with(userConfig["meta_application_protocol"])) {
       decisionHandler(WKNavigationActionPolicyCancel);
 
-      if (self.window != nullptr) {
+      if (self.bridge != nullptr) {
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-          "url", uri
+          "url", request
         }};
 
         self.bridge->router.emit("applicationurl", json.str());
