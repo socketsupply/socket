@@ -132,6 +132,71 @@ static DBusHandlerResult onDBusMessage (
 
   return DBUS_HANDLER_RESULT_HANDLED;
 }
+#elif defined(_WIN32)
+BOOL registerWindowsURISchemeInRegistry () {
+  static auto userConfig = SSC::getUserConfig();
+  HKEY shellKey;
+  HKEY key;
+  LONG result;
+
+  auto protocol = userConfig["meta_application_protocol"];
+
+  if (protocol.size() == 0) {
+    return FALSE;
+  }
+
+  auto scheme = protocol.c_str();
+  wchar_t applicationPath[MAX_PATH];
+  GetModuleFileNameW(NULL, applicationPath, MAX_PATH);
+
+  // Create the registry key for the scheme
+  result = RegCreateKeyEx(HKEY_CLASSES_ROOT, scheme, 0, NULL, 0, KEY_SET_VALUE, NULL, &key, NULL);
+  if (result != ERROR_SUCCESS) {
+    fprintf(stderr, "error: RegCreateKeyEx: Error creating registry key for scheme: %ld\n", result);
+    return FALSE;
+  }
+
+  auto value = String("URL:") + protocol;
+  // Set the default value for the scheme
+  result = RegSetValueEx(key, NULL, 0, REG_SZ, (BYTE*) value.c_str(), value.size());
+  if (result != ERROR_SUCCESS) {
+    fprintf(stderr, "error: RegSetValueEx: Error setting default value for scheme: %ld\n", result);
+    RegCloseKey(key);
+    return FALSE;
+  }
+
+  // Set the URL protocol value
+  result = RegSetValueEx(key, "URL Protocol", 0, REG_SZ, (BYTE*)"", sizeof(""));
+  if (result != ERROR_SUCCESS) {
+    fprintf(stderr, "error: RegSetValueEx: Error setting URL protocol value: %ld\n", result);
+    RegCloseKey(key);
+    return FALSE;
+  }
+
+  // create the registry key for the shell
+  result = RegCreateKeyEx(key, "shell\\open\\command", 0, NULL, 0, KEY_SET_VALUE, NULL, &shellKey, NULL);
+  if (result != ERROR_SUCCESS) {
+    fprintf(stderr, "error: RegCreateKeyEx: Error creating registry key for shell: %ld\n", result);
+    RegCloseKey(key);
+    return FALSE;
+  }
+
+  auto command = convertWStringToString(applicationPath) + String(" %1");
+  result = RegSetValueEx(shellKey, NULL, 0, REG_SZ, (const BYTE*) command.c_str(), command.size());
+
+  if (result != ERROR_SUCCESS) {
+    fprintf(stderr, "error: kRegSetValueEx: Error setting command value: %ld\n", result);
+    RegCloseKey(shellKey);
+    RegCloseKey(key);
+    return FALSE;
+  }
+
+  // close the registry keys
+  RegCloseKey(shellKey);
+  RegCloseKey(key);
+
+  return TRUE;
+}
 #endif
 
 //
@@ -241,6 +306,14 @@ MAIN {
     };
 
     app_ptr->dispatch(pollForMessage);
+    if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
+      const uri = String(argv[1]);
+      app_ptr->dispatch([uri]() {
+        app_ptr->core->dispatchEventLoop([uri]() {
+          handleApplicationURLEvent(uri);
+	});
+      });
+    }
   } else if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
     if (dbus_error_is_set(&dbusError)) {
       fprintf(stderr, "error: dbus: Connection error: %s\n", dbusError.message);
@@ -314,6 +387,48 @@ MAIN {
 
     g_signal_connect(gtkApp, "activate", G_CALLBACK(onGTKApplicationActivation), NULL);
   }
+#elif defined(_WIN32)
+  HANDLE hMutex = CreateMutex(NULL, TRUE, bundleIdentifier.c_str());
+  auto lastWindowsError = GetLastError();
+  auto appProtocol = userConfig["meta_application_protocol"];
+
+  if (argc > 1 && String(argv[1]).starts_with(appProtocol)) {
+    HWND hWnd = FindWindow(
+      userConfig["meta_bundle_identifier"].c_str(),
+      userConfig["meta_title"].c_str()
+    );
+
+    if (hWnd != NULL) {
+      COPYDATASTRUCT data;
+      data.dwData = WM_HANDLE_DEEP_LINK;
+      data.cbData = strlen(lpCmdLine);
+      data.lpData = lpCmdLine;
+      SendMessage(
+        hWnd,
+	WM_COPYDATA,
+	(WPARAM) nullptr,
+	reinterpret_cast<LPARAM>(&data)
+      );
+    } else {
+      app_ptr->dispatch([hWnd, lpCmdLine]() {
+        Window::WndProc(
+          hWnd,
+	  WM_HANDLE_DEEP_LINK,
+	  (WPARAM) strlen(lpCmdLine),
+	  (LPARAM) lpCmdLine
+	);
+      });
+    }
+  }
+
+  if (lastWindowsError == ERROR_ALREADY_EXISTS) {
+    // Application is already running, send the URI to the existing instance
+    // Release the mutex and exit
+    CloseHandle(hMutex);
+    return 0;
+  }
+
+  registerWindowsURISchemeInRegistry();
 #endif
 
   // TODO right now we forward a json parsable string as the args but this
