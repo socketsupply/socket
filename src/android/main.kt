@@ -185,39 +185,37 @@ open class MainActivity : WebViewActivity() {
     val data = intent.data
     val id = intent.extras?.getCharSequence("id")?.toString()
 
-    if (action != null && data != null) {
-      if (
-        action == "android.intent.action.MAIN" ||
-        action == "android.intent.action.VIEW"
-      ) {
-        val applicationProtocol = this.runtime.getConfigValue("meta_application_protocol")
-        if (data.startsWith(applicationProtocol)) {
-          this.runOnUiThread {
-            window.bridge.emit("applicationurl", """{
-              "url": "$data"
-            }""")
-          }
-        }
-      }
+    if (action == null) {
+      return
     }
 
-    if (action != null) {
-      if (action == "notification.response.default") {
-        this.runOnUiThread {
-          window.bridge.emit("notificationresponse", """{
-            "id": "$id",
-            "action": "default"
+    when (action) {
+      "android.intent.action.MAIN",
+      "android.intent.action.VIEW" -> {
+        val applicationProtocol = this.runtime.getConfigValue("meta_application_protocol")
+        if (
+          applicationProtocol.length > 0 &&
+          data != null &&
+          data.startsWith(applicationProtocol)
+        ) {
+          window.bridge.emit("applicationurl", """{
+            "url": "$data"
           }""")
         }
       }
 
-      if (action == "notification.response.dismiss") {
-        this.runOnUiThread {
-          window.bridge.emit("notificationresponse", """{
-            "id": "$id",
-            "action": "dismiss"
-          }""")
-        }
+      "notification.response.default" -> {
+        window.bridge.emit("notificationresponse", """{
+          "id": "$id",
+          "action": "default"
+        }""")
+      }
+
+      "notification.response.dismiss" -> {
+        window.bridge.emit("notificationresponse", """{
+          "id": "$id",
+          "action": "dismiss"
+        }""")
       }
     }
   }
