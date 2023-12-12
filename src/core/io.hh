@@ -4,7 +4,7 @@
 #include "types.hh"
 
 namespace SSC::IO {
-  void write (const String& input, bool isErrorOutput);
+  void write (const String& input, bool isErrorOutput = false);
 }
 
 #endif
