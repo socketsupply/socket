@@ -22,6 +22,7 @@ namespace SSC {
     // an opaque pointer to the configured `WindowManager<Window, App>`
     public:
       static inline std::atomic<bool> isReady = false;
+      static App* instance ();
 
     #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSAutoreleasePool* pool = [NSAutoreleasePool new];
