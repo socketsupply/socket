@@ -48,8 +48,14 @@ namespace SSC {
 #if defined(_WIN32)
   FILE* console;
 #endif
+  static App* applicationInstance = nullptr;
+
+  App* App::instance () {
+    return SSC::applicationInstance;
+  }
 
   App::App () {
+    SSC::applicationInstance = this;
     this->core = new Core();
     auto cwd = getCwd();
     uv_chdir(cwd.c_str());
@@ -246,6 +252,7 @@ namespace SSC {
   }
 
   App::App (void* h) : App() {
+    static auto userConfig = SSC::getUserConfig();
     this->hInstance = (HINSTANCE) h;
 
     // this fixes bad default quality DPI.
@@ -262,8 +269,7 @@ namespace SSC {
       LR_LOADFROMFILE
     );
 
-    auto *szWindowClass = L"DesktopApp";
-    auto *szTitle = L"Socket";
+    auto windowClassName = userConfig["meta_bundle_identifier"];
 
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -274,7 +280,7 @@ namespace SSC {
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
     wcex.lpszMenuName = NULL;
-    wcex.lpszClassName = TEXT("DesktopApp");
+    wcex.lpszClassName = windowClassName.c_str();
     wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
     wcex.hIcon = icon;
     wcex.lpfnWndProc = Window::WndProc;
