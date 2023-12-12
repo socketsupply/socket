@@ -149,6 +149,7 @@ MAIN {
   // their instantiation and destruction.
   static App app(instanceId);
   static WindowManager windowManager(app);
+  static auto userConfig = SSC::getUserConfig();
 
   // TODO(trevnorris): Since App is a singleton, follow the CppCoreGuidelines
   // better in how it's handled in the future.
@@ -166,7 +167,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = SSC::getUserConfig();
+  app.appData = userConfig;
 
   SSC::String suffix = "";
 
@@ -175,7 +176,7 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isHeadless = app.appData["build_headless"] == "true" ? true : false;
+  bool isHeadless = userConfig["build_headless"] == "true" ? true : false;
   bool isTest = false;
 
   int exitCode = 0;
@@ -184,12 +185,12 @@ MAIN {
   bool wantsVersion = false;
   bool wantsHelp = false;
 
-  auto bundleIdentifier = app.appData["meta_bundle_identifier"];
+  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
 #if defined(__linux__)
   static auto appInstanceLock = String("/tmp/") + bundleIdentifier + ".lock";
   auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
-  auto appProtocol = app.appData["meta_application_protocol"];
+  auto appProtocol = userConfig["meta_application_protocol"];
   auto dbusError = DBusError {}; dbus_error_init(&dbusError);
   auto connection = dbus_bus_get(DBUS_BUS_SESSION, &dbusError);
   auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
@@ -290,8 +291,8 @@ MAIN {
 
   if (appProtocol.size() > 0) {
     GError* error = nullptr;
-    auto appName = app.appData["build_name"];
-    auto appDescription = app.appData["meta_description"];
+    auto appName = userConfig["build_name"];
+    auto appDescription = userConfig["meta_description"];
     auto appContentType = String("x-scheme-handler/") + appProtocol;
     auto appinfo = g_app_info_create_from_commandline(
       appName.c_str(),
@@ -499,8 +500,6 @@ MAIN {
   }
 
 #if defined(__APPLE__)
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     "socket.runtime.mobile"

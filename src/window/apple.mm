@@ -8,10 +8,20 @@
     webview.URL.absoluteString.UTF8String != nullptr &&
     navigationAction.request.URL.absoluteString.UTF8String != nullptr
   ) {
+    static auto userConfig = SSC::getUserConfig();
+    static const auto devHost = SSC::getDevHost();
+
     auto base = SSC::String(webview.URL.absoluteString.UTF8String);
     auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
 
-    if (request.find("socket:") == 0 && request.find("http://localhost") == 0) {
+    if (request.starts_with(userConfig["meta_application_protocol"])) {
+      auto url = [NSURL URLWithString: navigationAction.request.URL.absoluteString];
+      [NSWorkspace.sharedWorkspace openURL: url];
+      decisionHandler(WKNavigationActionPolicyCancel);
+      return;
+    }
+
+    if (request.find("socket:") != 0 && request.find(devHost) != 0) {
       decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
