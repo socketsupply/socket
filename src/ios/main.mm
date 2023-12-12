@@ -103,7 +103,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     {"value", JSON::Object::Entries {
       {"event", "will-hide"},
       {"height", height}
-    }} 
+    }}
   };
 
   self.webview.scrollView.scrollEnabled = YES;
@@ -331,7 +331,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [ns addObserver: self selector: @selector(keyboardWillHide:) name: UIKeyboardWillHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
-  self.navDelegate = [[SSCNavigationDelegate alloc] init];
+  self.navDelegate = [SSCNavigationDelegate new];
+  self.navDelegate.bridge = bridge;
   [self.webview setNavigationDelegate: self.navDelegate];
 
   [viewController.view addSubview: self.webview];

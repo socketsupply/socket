@@ -112,6 +112,7 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 @end
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
+@property (nonatomic) SSC::IPC::Bridge* bridge;
 -                  (void) webView: (WKWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;

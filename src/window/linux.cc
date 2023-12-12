@@ -394,7 +394,7 @@ namespace SSC {
     g_signal_connect(
       G_OBJECT(webview),
       "decide-policy",
-      G_CALLBACK(+[](
+      G_CALLBACK((+[](
         WebKitWebView* webview,
         WebKitPolicyDecision* decision,
         WebKitPolicyDecisionType decisionType,
@@ -408,14 +408,22 @@ namespace SSC {
           return true;
         }
 
-        auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
-        auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
-        auto req = webkit_navigation_action_get_request(action);
-        auto uri = String(webkit_uri_request_get_uri(req));
+        const auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        const auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
+        const auto req = webkit_navigation_action_get_request(action);
+        const auto uri = String(webkit_uri_request_get_uri(req));
 
         if (uri.starts_with(userConfig["meta_application_protocol"])) {
-          gtk_widget_realize(window->window);
-          gtk_show_uri_on_window(GTK_WINDOW(window->window), uri.c_str(), GDK_CURRENT_TIME, nullptr);
+          webkit_policy_decision_ignore(decision);
+
+          if (window != nullptr && window->bridge != nullptr) {
+            SSC::JSON::Object json = SSC::JSON::Object::Entries {
+              {"url", uri }
+            };
+
+            window->bridge->router.emit("applicationurl", json.str());
+          }
+
           return false;
         }
 
@@ -427,7 +435,7 @@ namespace SSC {
         return true;
       }),
       this
-    );
+    ));
 
     g_signal_connect(
       G_OBJECT(webview),

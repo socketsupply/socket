@@ -783,8 +783,14 @@ namespace SSC {
                         SSC::String url(SSC::convertWStringToString(uri));
 
                         if (url.starts_with(userConfig["meta_application_protocol"])) {
-                          ShellExecute(nullptr, "Open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                           e->put_Cancel(true);
+                          Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                          if (w != nullptr) {
+                            SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+                              "url", url
+                            }};
+                            w->bridge->router.emit("applicationurl", json.str());
+                          }
                         } else if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find(devHost) != 0) {
                           e->put_Cancel(true);
                         }
@@ -1826,13 +1832,13 @@ namespace SSC {
           "url", url
         }};
 
-	if (app != nullptr && app->windowManager != nullptr) {
+        if (app != nullptr && app->windowManager != nullptr) {
           for (auto window : app->windowManager->windows) {
             if (window != nullptr) {
               window->bridge->router.emit("applicationurl", json.str());
-	    }
-	  }
-	}
+            }
+          }
+        }
         break;
       }
 

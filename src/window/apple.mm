@@ -15,9 +15,15 @@
     auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
 
     if (request.starts_with(userConfig["meta_application_protocol"])) {
-      auto url = [NSURL URLWithString: navigationAction.request.URL.absoluteString];
-      [NSWorkspace.sharedWorkspace openURL: url];
       decisionHandler(WKNavigationActionPolicyCancel);
+
+      if (self.window != nullptr) {
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+          "url", uri
+        }};
+
+        self.bridge->router.emit("applicationurl", json.str());
+      }
       return;
     }
 
@@ -909,14 +915,15 @@ namespace SSC {
     //
     bool exiting = false;
 
-    windowDelegate = [SSCWindowDelegate alloc];
-    navigationDelegate = [[SSCNavigationDelegate alloc] init];
+    windowDelegate = [SSCWindowDelegate new];
+    navigationDelegate = [SSCNavigationDelegate new];
     [controller addScriptMessageHandler: windowDelegate name: @"external"];
 
     // set delegates
     window.delegate = windowDelegate;
     webview.UIDelegate = webview;
     webview.navigationDelegate = navigationDelegate;
+    webview.navigationDelegate.bridge = this->bridge;
 
     if (!isDelegateSet) {
       isDelegateSet = true;

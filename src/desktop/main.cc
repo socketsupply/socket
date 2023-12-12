@@ -307,11 +307,11 @@ MAIN {
 
     app_ptr->dispatch(pollForMessage);
     if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
-      const uri = String(argv[1]);
+      const auto uri = String(argv[1]);
       app_ptr->dispatch([uri]() {
         app_ptr->core->dispatchEventLoop([uri]() {
           handleApplicationURLEvent(uri);
-	});
+        });
       });
     }
   } else if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {

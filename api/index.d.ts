@@ -7732,10 +7732,20 @@ declare module "socket:internal/events" {
          */
         constructor(type?: string | undefined, options?: object | undefined);
         /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
          * Data associated with the `ApplicationURLEvent`.
          * @type {?any}
          */
         get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
         /**
          * The `URL` for the `ApplicationURLEvent`.
          * @type {?URL}
