@@ -917,13 +917,13 @@ namespace SSC {
 
     windowDelegate = [SSCWindowDelegate new];
     navigationDelegate = [SSCNavigationDelegate new];
+    navigationDelegate.bridge = this->bridge;
     [controller addScriptMessageHandler: windowDelegate name: @"external"];
 
     // set delegates
     window.delegate = windowDelegate;
     webview.UIDelegate = webview;
     webview.navigationDelegate = navigationDelegate;
-    webview.navigationDelegate.bridge = this->bridge;
 
     if (!isDelegateSet) {
       isDelegateSet = true;
