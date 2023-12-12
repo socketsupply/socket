@@ -306,7 +306,7 @@ MAIN {
     };
 
     app_ptr->dispatch(pollForMessage);
-    if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
+    if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
       const auto uri = String(argv[1]);
       app_ptr->dispatch([uri]() {
         app_ptr->core->dispatchEventLoop([uri]() {
@@ -314,7 +314,7 @@ MAIN {
         });
       });
     }
-  } else if (argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
+  } else if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
     if (dbus_error_is_set(&dbusError)) {
       fprintf(stderr, "error: dbus: Connection error: %s\n", dbusError.message);
       dbus_error_free(&dbusError);
@@ -392,7 +392,7 @@ MAIN {
   auto lastWindowsError = GetLastError();
   auto appProtocol = userConfig["meta_application_protocol"];
 
-  if (argc > 1 && String(argv[1]).starts_with(appProtocol)) {
+  if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol)) {
     HWND hWnd = FindWindow(
       userConfig["meta_bundle_identifier"].c_str(),
       userConfig["meta_title"].c_str()
@@ -405,18 +405,18 @@ MAIN {
       data.lpData = lpCmdLine;
       SendMessage(
         hWnd,
-	WM_COPYDATA,
-	(WPARAM) nullptr,
-	reinterpret_cast<LPARAM>(&data)
+        WM_COPYDATA,
+        (WPARAM) nullptr,
+        reinterpret_cast<LPARAM>(&data)
       );
     } else {
       app_ptr->dispatch([hWnd, lpCmdLine]() {
         Window::WndProc(
           hWnd,
-	  WM_HANDLE_DEEP_LINK,
-	  (WPARAM) strlen(lpCmdLine),
-	  (LPARAM) lpCmdLine
-	);
+          WM_HANDLE_DEEP_LINK,
+          (WPARAM) strlen(lpCmdLine),
+          (LPARAM) lpCmdLine
+        );
       });
     }
   }
