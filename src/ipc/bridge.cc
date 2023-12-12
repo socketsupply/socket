@@ -1975,11 +1975,28 @@ static void initRouterTable (Router *router) {
    * Requests a URL to be opened externally.
    * @param value
    */
-  router->map("platform.openExternal", [](auto message, auto router, auto reply) {
+  router->map("platform.openExternal", [](auto message, auto router, auto reply) mutable {
+    static const auto applicationProtocol = userConfig["meta_application_protocol"];
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
+    }
+
+    if (applicationProtocol.size() > 0 && message.value.starts_with(applicationProtocol + ":")) {
+      SSC::JSON::Object json = SSC::JSON::Object::Entries {
+        { "url", message.value }
+      };
+
+      router->bridge->router.emit("applicationurl", json.str());
+      reply(Result {
+        message.seq,
+        message,
+        SSC::JSON::Object::Entries {
+          {"data", json}
+        }
+      });
+      return;
     }
 
     router->core->platform.openExternal(
