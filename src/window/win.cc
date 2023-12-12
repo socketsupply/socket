@@ -618,13 +618,17 @@ namespace SSC {
     app.isReady = false;
 
     window = CreateWindow(
-      TEXT("DesktopApp"), TEXT("Socket"),
+      userConfig["meta_bundle_identifier"].c_str(),
+      userConfig["meta_title"].c_str(),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
-      opts.width, opts.height,
-      NULL, NULL,
-      app.hInstance, NULL
+      opts.width,
+      opts.height,
+      NULL,
+      NULL,
+      app.hInstance,
+      NULL
     );
 
     HRESULT initResult = OleInitialize(NULL);
@@ -766,8 +770,6 @@ namespace SSC {
                     }
                     return TRUE;
                   }, (LPARAM)window);
-
-                  app.isReady = true;
 
                   EventRegistrationToken tokenNavigation;
 
@@ -1351,6 +1353,8 @@ namespace SSC {
                     &tokenPermissionRequested
                   );
 
+                  app.isReady = true;
+
                   return S_OK;
                 }
               ).Get()
@@ -1743,12 +1747,21 @@ namespace SSC {
   // message is defined in WinUser.h
   // https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/WinUser.h
   LRESULT CALLBACK Window::WndProc(
-      HWND hWnd,
-      UINT message,
-      WPARAM wParam,
-      LPARAM lParam) {
-
+    HWND hWnd,
+    UINT message,
+    WPARAM wParam,
+    LPARAM lParam
+  ) {
+    static auto app = SSC::App::instance();
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+
+    if (message == WM_COPYDATA) {
+      auto copyData = reinterpret_cast<PCOPYDATASTRUCT>(lParam);
+      message = (UINT) copyData->dwData;
+      wParam = (WPARAM) copyData->cbData;
+      lParam = (LPARAM) copyData->lpData;
+    }
+
     switch (message) {
       case WM_SIZE: {
         if (w == nullptr || w->webview == nullptr) {
@@ -1804,6 +1817,22 @@ namespace SSC {
 
       case WM_CLOSE: {
         w->close(0);
+        break;
+      }
+
+      case WM_HANDLE_DEEP_LINK: {
+        auto url = SSC::String((const char*) lParam, wParam);
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+          "url", url
+        }};
+
+	if (app != nullptr && app->windowManager != nullptr) {
+          for (auto window : app->windowManager->windows) {
+            if (window != nullptr) {
+              window->bridge->router.emit("applicationurl", json.str());
+	    }
+	  }
+	}
         break;
       }
 
