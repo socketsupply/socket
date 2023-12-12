@@ -97,7 +97,7 @@ function create (Super, Adapter) {
  */
 export async function createFile (filename, options = null) {
   if (!globalThis.File) {
-    console.warn('Missing platform \'File\' implementation')
+    console.warn('socket:fs/web: Missing platform \'File\' implementation')
   }
 
   const decoder = new TextDecoder()
@@ -119,7 +119,7 @@ export async function createFile (filename, options = null) {
     get type () { return type }
 
     slice () {
-      console.warn('File.slice() is not supported in implementation')
+      console.warn('socket:fs/web: File.slice() is not supported in implementation')
       // This synchronous interface is not supported
       // An empty and ephemeral `Blob` is returned instead
       return new Blob([], { type })
@@ -237,7 +237,7 @@ export async function createFile (filename, options = null) {
  */
 export async function createFileSystemWritableFileStream (handle, options) {
   if (!globalThis.FileSystemWritableFileStream) {
-    console.warn('Missing platform \'FileSystemWritableFileStream\' implementation')
+    console.warn('socket:fs/web: Missing platform \'FileSystemWritableFileStream\' implementation')
   }
 
   const file = handle.getFile()
@@ -330,7 +330,7 @@ export async function createFileSystemFileHandle (file, options = null) {
   const { writable = true } = options || {}
 
   if (!globalThis.FileSystemFileHandle) {
-    console.warn('Missing platform \'FileSystemFileHandle\' implementation')
+    console.warn('socket:fs/web: Missing platform \'FileSystemFileHandle\' implementation')
   }
 
   if (typeof file === 'string') {
@@ -421,7 +421,7 @@ export async function createFileSystemDirectoryHandle (dirname, options = null) 
   const { writable = true } = options || {}
 
   if (!globalThis.FileSystemDirectoryHandle) {
-    console.warn('Missing platform \'FileSystemDirectoryHandle\' implementation')
+    console.warn('socket:fs/web: Missing platform \'FileSystemDirectoryHandle\' implementation')
   }
 
   if (!dirname || typeof dirname !== 'string') {
