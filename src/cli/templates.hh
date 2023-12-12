@@ -1771,6 +1771,7 @@ flags = "-g"
 bundle_identifier = "com.{{project_name}}"
 
 ; A unique application protocol scheme to support deep linking
+; If this value is not defined, then it is derived from the `[meta] bundle_identifier` value
 application_protocol = "{{project_name}}"
 
 ; A string that gets used in the about dialog and package meta info.
