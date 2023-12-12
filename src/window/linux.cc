@@ -400,6 +400,9 @@ namespace SSC {
         WebKitPolicyDecisionType decisionType,
         gpointer userData
       ) {
+        static const auto devHost = SSC::getDevHost();
+        auto window = static_cast<Window*>(userData);
+
         if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
           webkit_policy_decision_use(decision);
           return true;
@@ -410,7 +413,13 @@ namespace SSC {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.find("http://localhost") != 0 && uri.find("socket:") != 0) {
+        if (uri.starts_with(userConfig["meta_application_protocol"])) {
+          gtk_widget_realize(window->window);
+          gtk_show_uri_on_window(GTK_WINDOW(window->window), uri.c_str(), GDK_CURRENT_TIME, nullptr);
+          return false;
+        }
+
+        if (uri.find("socket:") != 0 && uri.find(devHost) != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }

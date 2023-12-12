@@ -774,11 +774,16 @@ namespace SSC {
                   webview->add_NavigationStarting(
                     Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
+                        static const auto devHost = SSC::getDevHost();
+
                         PWSTR uri;
                         e->get_Uri(&uri);
                         SSC::String url(SSC::convertWStringToString(uri));
 
-                        if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find("http://localhost") != 0) {
+                        if (url.starts_with(userConfig["meta_application_protocol"])) {
+                          ShellExecute(nullptr, "Open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                          e->put_Cancel(true);
+                        } else if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find(devHost) != 0) {
                           e->put_Cancel(true);
                         }
 
