@@ -1,7 +1,6 @@
 import { compareBuffers } from 'socket:util'
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
-import process from 'socket:process'
 import path from 'socket:path'
 import mime from 'socket:mime'
 import fs from 'socket:fs/promises'

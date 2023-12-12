@@ -2,7 +2,6 @@ import Buffer from 'socket:buffer'
 import path from 'socket:path'
 import fs from 'socket:fs/promises'
 import os from 'socket:os'
-import process from 'socket:process'
 
 import { FileHandle } from 'socket:fs/handle'
 import { test } from 'socket:test'

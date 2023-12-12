@@ -1,7 +1,6 @@
 import { Buffer } from 'socket:buffer'
 import deepEqual from 'socket:test/fast-deep-equal'
 import { test } from 'socket:test'
-import process from 'socket:process'
 import crypto from 'socket:crypto'
 import path from 'socket:path'
 import fs from 'socket:fs'

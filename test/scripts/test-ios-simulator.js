@@ -17,7 +17,7 @@ const interval = setInterval(() => {
   }
 
   try {
-    container = execSync(`xcrun simctl get_app_container booted co.socketsupply.socket.tests data`)
+    container = execSync('xcrun simctl get_app_container booted co.socketsupply.socket.tests data')
     if (container) {
       container = container.toString().trim()
     }
