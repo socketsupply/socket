@@ -1,3 +1,5 @@
+import application from '../application.js'
+
 /**
  * An event dispatched when an application URL is opening the application.
  */
@@ -31,18 +33,41 @@ export class ApplicationURLEvent extends Event {
   get isTrusted () { return true }
 
   /**
+   * `true` if the application URL is valid (parses correctly).
+   * @type {boolean}
+   */
+  get isValid () { return this.url !== null }
+
+  /**
    * Data associated with the `ApplicationURLEvent`.
    * @type {?any}
    */
   get data () { return this.#data ?? null }
 
   /**
+   * The original source URI
+   * @type {?string}
+   */
+  get source () { return this.#url ?? null }
+
+  /**
    * The `URL` for the `ApplicationURLEvent`.
    * @type {?URL}
    */
   get url () {
+    const protocol = application.config['meta_application_protocol']
+    let { source } = this
+
+    if (!source) {
+      return null
+    }
+
+    if (source.startsWith(`${protocol}:`) && !source.startsWith(`${protocol}://`)) {
+      source = source.replace(`${protocol}:`, `${protocol}://`)
+    }
+
     try {
-      return this.#url ? new URL(this.#url) : null
+      return new URL(source)
     } catch (err) {
       return null
     }
