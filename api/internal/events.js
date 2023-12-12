@@ -55,7 +55,7 @@ export class ApplicationURLEvent extends Event {
    * @type {?URL}
    */
   get url () {
-    const protocol = application.config['meta_application_protocol']
+    const protocol = application.config.meta_application_protocol
     let { source } = this
 
     if (!source) {
