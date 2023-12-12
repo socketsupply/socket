@@ -2022,7 +2022,7 @@ int main (const int argc, const char* argv[]) {
         settings["build_name"] + "_" +
         "v" + settings["meta_version"] + "-" +
         settings["meta_revision"] + "_" +
-        "amd64"
+        replace(platform.arch, "x86_64", "amd64")
       );
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = {
@@ -2592,7 +2592,7 @@ int main (const int argc, const char* argv[]) {
       Path pathPackage = paths.platformSpecificOutputPath / (
         settings["build_name"] + "_" +
         settings["meta_version"] + "_" +
-        "amd64"
+        replace(platform.arch, "x86_64", "amd64")
       );
 
       auto debArchive = pathPackage.string() + ".deb";
