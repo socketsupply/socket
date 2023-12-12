@@ -2230,7 +2230,11 @@ int main (const int argc, const char* argv[]) {
           // internal
           if (flagDebugMode) {
             suffix += "-dev";
-          } else {
+          }
+
+          if (settings["meta_application_protocol"].size() == 0) {
+            const auto bundleIdentifier = settings["meta_bundle_identifier"];
+            settings["meta_application_protocol"] = replace(replace(bundleIdentifier, "\\.", "-"), "_", "-");
           }
 
           settings["debug"] = flagDebugMode;
