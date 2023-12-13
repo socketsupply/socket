@@ -5,6 +5,7 @@ import { ApplicationURLEvent } from './events.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
+import WebAssembly from './webassembly.js'
 
 import {
   showDirectoryPicker,
@@ -15,9 +16,13 @@ import {
 import ipc from '../ipc.js'
 
 let applied = false
+const natives = {}
+const patches = {}
 
 export function init () {
-  if (applied || !globalThis.window) return
+  if (applied || !globalThis.window) {
+    return { natives, patches }
+  }
 
   function install (implementations, target = globalThis, prefix) {
     for (let name in implementations) {
@@ -37,8 +42,11 @@ export function init () {
             target[actualName][key] = implementation[key]
           } catch {}
 
+          patches[actualName] ??= {}
+          patches[actualName][key] = implementation[key]
           if (nativeImplementation !== null) {
             const nativeName = ['_', 'native', ...name.split('.'), key].join('_')
+            natives[name] = nativeImplementation
             Object.defineProperty(globalThis, nativeName, {
               enumerable: false,
               configurable: false,
@@ -53,15 +61,21 @@ export function init () {
           target[actualName] = implementation
         } catch {}
 
+        patches[actualName] = implementation
         if (
           (typeof nativeImplementation === 'function' && nativeImplementation.prototype) &&
           (typeof implementation === 'function' && implementation.prototype)
         ) {
           const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
           const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
+          implementation[Symbol.species] = nativeImplementation
           for (const key in nativeDescriptors) {
             const nativeDescriptor = nativeDescriptors[key]
             const descriptor = descriptors[key]
+
+            if (key === 'constructor') {
+              continue
+            }
 
             if (descriptor) {
               if (nativeDescriptor.set && nativeDescriptor.get) {
@@ -95,6 +109,7 @@ export function init () {
 
         if (nativeImplementation !== null) {
           const nativeName = ['_', 'native', ...name.split('.')].join('_')
+          natives[name] = nativeImplementation
           Object.defineProperty(globalThis, nativeName, {
             enumerable: false,
             configurable: false,
@@ -140,6 +155,9 @@ export function init () {
   // navigator
   install({ geolocation, permissions }, globalThis.navigator, 'navigator')
 
+  // WebAssembly
+  install(WebAssembly, globalThis.WebAssembly, 'WebAssembly')
+
   applied = true
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
@@ -171,6 +189,8 @@ export function init () {
   if (titleElement) {
     observer.observe(titleElement, { childList: true })
   }
+
+  return { natives, patches }
 }
 
 export default init()
