@@ -197,7 +197,7 @@ extern "C" {
   jstring external(Runtime, getConfigValue)(
     JNIEnv *env,
     jobject self,
-    jboolean keyString
+    jstring keyString
   ) {
     static const auto config = SSC::getUserConfig();
     auto runtime = Runtime::from(env, self);
