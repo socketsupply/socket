@@ -19,7 +19,7 @@ test('load wasm synchronously', async (t) => {
 test('load wasm asynchronously', async (t) => {
   const file = await createFile('./webassembly/program.wasm')
   const stream = file.stream()
-  const response = new __native_Response(stream, {
+  const response = new Response(stream, {
     headers: {
       'Content-Type': 'application/wasm'
     }
