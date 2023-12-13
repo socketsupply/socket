@@ -192,11 +192,11 @@ open class MainActivity : WebViewActivity() {
     when (action) {
       "android.intent.action.MAIN",
       "android.intent.action.VIEW" -> {
+        val scheme = data?.scheme ?: return
         val applicationProtocol = this.runtime.getConfigValue("meta_application_protocol")
         if (
           applicationProtocol.length > 0 &&
-          data != null &&
-          data.startsWith(applicationProtocol)
+          scheme.startsWith(applicationProtocol)
         ) {
           window.bridge.emit("applicationurl", """{
             "url": "$data"
