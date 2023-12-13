@@ -59,7 +59,6 @@ export function init () {
         ) {
           const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
           const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
-          Object.setPrototypeOf(descriptors, nativeDescriptors)
           for (const key in nativeDescriptors) {
             const nativeDescriptor = nativeDescriptors[key]
             const descriptor = descriptors[key]
@@ -74,6 +73,9 @@ export function init () {
             }
           }
         }
+
+        Object.defineProperties(implementation.prototype, descriptors)
+        Object.setPrototypeOf(implementation.prototype, nativeImplementation.prototype)
 
         if (nativeImplementation !== null) {
           const nativeName = ['_', 'native', ...name.split('.')].join('_')
