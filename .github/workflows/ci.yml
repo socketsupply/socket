@@ -47,6 +47,20 @@ jobs:
         run: |
           brew install automake
 
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
       - name: Build Socket Runtime
         run: |
           VERBOSE=1 ./bin/install.sh
@@ -103,7 +117,7 @@ jobs:
   ios_macos_tests:
     name: iOS (on macOS) tests
     runs-on: macOS-13
-    timeout-minutes: 20
+    timeout-minutes: 40
     needs: mac_build
 
     steps:
@@ -136,7 +150,7 @@ jobs:
   android_mac_tests:
     name: Android (on macOS) tests
     runs-on: macos-13
-    timeout-minutes: 60
+    timeout-minutes: 30
     needs: mac_build
 
     steps:
@@ -221,6 +235,20 @@ jobs:
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev at-spi2-core
 
+      - name: Android FTE
+        run: |
+          ./bin/android-functions.sh --android-fte --yes-deps
+        env:
+          VERBOSE: 1
+          DEBUG: 1
+          CI: true
+          SSC_ANDROID_CI: true
+          # Clear variables because CI supplied installs are out of date
+          ANDROID_HOME:
+          JAVA_HOME:
+          ANDROID_SUPPORTED_ABIS: x86_64
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
       - name: Build Socket Runtime
         run: |
           yes | sdkmanager --licenses > /dev/null
@@ -282,7 +310,7 @@ jobs:
   android_linux_tests:
     name: Android (on Linux) tests
     runs-on: ubuntu-latest-m
-    timeout-minutes: 60
+    timeout-minutes: 30
     needs: linux_build
 
     steps:

@@ -625,7 +625,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     const doesRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(true), { once: true })),
       // needs more time to restart
-      new Promise(resolve => setTimeout(() => resolve(false), 1024))
+      new Promise(resolve => setTimeout(() => resolve(false), 2048))
     ])
     t.ok(doesRestart, 'emits a backend:ready event')
   })
