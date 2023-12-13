@@ -7820,6 +7820,20 @@ declare module "socket:internal/globals" {
         get(name: any): any;
     };
 }
+declare module "socket:internal/webassembly" {
+    /**
+     * The `instantiateStreaming()` function compiles and instantiates a WebAssembly
+     * module directly from a streamed source.
+     * @ignore
+     * @param {Response}
+     * @param
+     */
+    export function instantiateStreaming(response: any, importObject?: any): Promise<any>;
+    namespace _default {
+        export { instantiateStreaming };
+    }
+    export default _default;
+}
 declare module "socket:internal/pickers" {
     /**
      * @typedef {{
@@ -7915,9 +7929,17 @@ declare module "socket:internal/pickers" {
     import { FileSystemHandle } from "socket:fs/web";
 }
 declare module "socket:internal/monkeypatch" {
-    export function init(): void;
-    const _default: void;
+    export function init(): {
+        natives: {};
+        patches: {};
+    };
+    namespace _default {
+        export { natives };
+        export { patches };
+    }
     export default _default;
+    const natives: {};
+    const patches: {};
 }
 declare module "socket:internal/init" {
     const _default: any;
