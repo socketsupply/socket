@@ -513,7 +513,7 @@ MimeType=x-scheme-handler/{{meta_application_protocol}}
 
 constexpr auto gDebianManifest = R"DEB(Package: {{build_name}}
 Version: {{meta_version}}
-Architecture: amd64
+Architecture: {{arch}}
 Maintainer: {{meta_maintainer}}
 Description: {{meta_title}}
  {{meta_description}}
