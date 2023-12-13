@@ -8,6 +8,8 @@ const child = spawn('ssc', ['build', '--headless', '--test=./index.js', '--platf
   stdio: 'inherit'
 })
 
+let retries = 100
+
 const interval = setInterval(() => {
   let container = null
   if (child.exitCode !== null || child.killed) {
@@ -22,7 +24,7 @@ const interval = setInterval(() => {
       container = container.toString().trim()
     }
   } catch (err) {
-    if (err.status !== 2) {
+    if (--retries === 0) {
       clearInterval(interval)
       throw err
     }
