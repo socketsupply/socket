@@ -150,7 +150,7 @@ BOOL registerWindowsURISchemeInRegistry () {
   GetModuleFileNameW(NULL, applicationPath, MAX_PATH);
 
   // Create the registry key for the scheme
-  result = RegCreateKeyEx(HKEY_CLASSES_ROOT, scheme, 0, NULL, 0, KEY_SET_VALUE, NULL, &key, NULL);
+  result = RegCreateKeyEx(HKEY_CURRENT_USER, scheme, 0, NULL, 0, KEY_SET_VALUE, NULL, &key, NULL);
   if (result != ERROR_SUCCESS) {
     fprintf(stderr, "error: RegCreateKeyEx: Error creating registry key for scheme: %ld\n", result);
     return FALSE;
