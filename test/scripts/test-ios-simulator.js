@@ -8,7 +8,7 @@ const child = spawn('ssc', ['build', '--headless', '--test=./index.js', '--platf
   stdio: 'inherit'
 })
 
-let retries = 100
+let retries = 1000
 
 const interval = setInterval(() => {
   let container = null
