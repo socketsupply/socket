@@ -62,21 +62,36 @@ export function init () {
           for (const key in nativeDescriptors) {
             const nativeDescriptor = nativeDescriptors[key]
             const descriptor = descriptors[key]
+
             if (descriptor) {
               if (nativeDescriptor.set && nativeDescriptor.get) {
-                descriptor[key] = { ...nativeDescriptor, ...descriptor }
+                descriptors[key] = { ...nativeDescriptor, ...descriptor }
               } else {
-                descriptor[key] = { ...nativeDescriptor, writable: true, configurable: true, ...descriptor }
+                descriptors[key] = { writable: true, configurable: true, ...descriptor }
               }
             } else {
-              descriptors[key] = nativeDescriptor
+              descriptors[key] = { writable: true, configurable: true }
+            }
+
+            if (descriptors[key] && typeof descriptors[key] === 'object') {
+              if ('get' in descriptors[key] && typeof descriptors[key].get !== 'function') {
+                delete descriptors[key].get
+              }
+
+              if ('set' in descriptors[key] && typeof descriptors[key].set !== 'function') {
+                delete descriptors[key].set
+              }
+
+              if (descriptors[key].get || descriptors[key].set) {
+                delete descriptors[key].writable
+                delete descriptors[key].value
+              }
             }
           }
 
           Object.defineProperties(implementation.prototype, descriptors)
+          Object.setPrototypeOf(implementation.prototype, nativeImplementation.prototype)
         }
-
-        Object.setPrototypeOf(implementation.prototype, nativeImplementation.prototype)
 
         if (nativeImplementation !== null) {
           const nativeName = ['_', 'native', ...name.split('.')].join('_')
