@@ -41,7 +41,6 @@ namespace SSC {
     SSC::String jsonValue = JSON::Any(SSC::replace(value, "\\\\", "\\\\")).str();
 
     return createJavaScript("emit-to-render-process.js",
-      "const events = await import('socket:internal/events');                \n"
       "const name = decodeURIComponent(`" + event + "`);                     \n"
       "const value = " + jsonValue + ";                                      \n"
       "const target = " + target + ";                                        \n"
@@ -61,7 +60,7 @@ namespace SSC {
       "}                                                                     \n"
       "                                                                      \n"
       "if (name === 'applicationurl') {                                      \n"
-      "  const event = new events.ApplicationURLEvent(name, detail);         \n"
+      "  const event = new ApplicationURLEvent(name, detail);                \n"
       "  if (event.isValid) {                                                \n"
       "    target.dispatchEvent(event);                                      \n"
       "  }                                                                   \n"
