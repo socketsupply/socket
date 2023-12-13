@@ -43,7 +43,7 @@ function watchdog_file_update() {
   fi
 }
 
-function watchdog_file_exists() {  
+function watchdog_file_exists() {
   if [ -f "$poll_adb_watchdog_file" ]; then
     data="$(cat "$poll_adb_watchdog_file")"
     if [ -z "$data" ]; then
@@ -79,7 +79,7 @@ echo "App start timeout: $timeout"
 echo ""
 while [ -z "$pid" ] && (( count < timeout )); do
   count_output="$count_output$count..." # Ouput doesn't flush in CI with echo -n, rebuild line
-  
+
   [[ -n "$CI" ]] && echo "$count..."
   [[ -z "$CI" ]] && echo -e "\e[1A\e[K$count_output" # Replace previous line, doesn't work in CI
   pid="$($adb shell ps | grep "$id" | awk '{print $2}' 2>/dev/null)"
@@ -139,17 +139,17 @@ done < <($adb logcat --pid="$pid") & logcat_pid=$!
 # Handle situation where logcat loop doesn't catch exit, because eg an unexpected error condition occured that isn't handled by the text processing above
 # This section dumps the entire process log after it has gone away, note that we don't want the entire log on failed tests that were successfully reported
 count=0
-timeout=300
+timeout=600
 [[ -z "$CI" ]] && timeout=30
 [[ -z "$CI" ]] && echo "Waiting 30s before aborting tests..."
-[[ -n "$CI" ]] && echo "Waiting 5m before aborting tests..."
+[[ -n "$CI" ]] && echo "Waiting 10m before aborting tests..."
 
 # while [[ "$(watchdog_file_exists)" == "0" ]]; do
 while (( count < timeout )) ; do
   if [[ "$(watchdog_file_exists)" != "0" ]]; then
     break
   fi
-  
+
   (( count > 0 )) && (( count % 30 == 0 )) && echo "Timeout count: $count/$timeout"
   sleep 1
   (( count++ ))
