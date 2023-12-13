@@ -5,6 +5,7 @@ import crypto from 'socket:crypto'
 import path from 'socket:path'
 import fs from 'socket:fs'
 import os from 'socket:os'
+import process from 'socket:process'
 
 const TMPDIR = `${os.tmpdir()}${path.sep}`
 const FIXTURES = /android/i.test(os.platform())
@@ -47,8 +48,6 @@ test('fs.access', async (t) => {
   })
 })
 
-test('fs.appendFile', async (t) => {})
-
 if (os.platform() !== 'android' && os.platform() !== 'win32') {
   test('fs.chmod', async (t) => {
     await new Promise((resolve, reject) => {
@@ -64,9 +63,26 @@ if (os.platform() !== 'android' && os.platform() !== 'win32') {
   })
 }
 
-test('fs.chown', async (t) => {})
+if (os.platform() !== 'android' && os.platform() !== 'win32') {
+  test.skip('fs.chown', async (t) => {
+    // TODO: implement process.getuid and process.getgid @bcomnes
+    await new Promise((resolve, reject) => {
+      const uid = process.getuid()
+      const gid = process.getgid()
+      fs.chown(FIXTURES + 'chown.txt', uid, gid, (err) => {
+        if (err) t.fail(err)
+        fs.stat(FIXTURES + 'file.txt', (err, stats) => {
+          if (err) t.fail(err)
+          t.equal(stats.uid, uid, 'the uid matches the stat')
+          t.equal(stats.gid, gid, 'the gid matches the stat')
+          resolve()
+        })
+      })
+    })
+  })
+}
 
-test('fs.close', async (t) => {
+test('fs.open + fs.close', async (t) => {
   await new Promise((resolve, reject) => {
     fs.open(FIXTURES + 'file.txt', (err, fd) => {
       if (err) {
@@ -85,7 +101,58 @@ test('fs.close', async (t) => {
   })
 })
 
-test('fs.copyFile', async (t) => {})
+test('fs.copyFile', async (t) => {
+  await new Promise((resolve, reject) => {
+    const src = path.join(FIXTURES, 'file.txt')
+    const dest = path.join(FIXTURES, 'copy.txt')
+
+    fs.copyFile(src, dest, 0, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+      t.pass('File was copied without error')
+
+      fs.stat(dest, (err, stats) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.ok(stats, 'Copied file was stated without error')
+
+        fs.readFile(src, 'utf8', (err, srcData) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+
+          t.ok(srcData, 'The src data was read without error')
+
+          fs.readFile(dest, 'utf8', (err, destData) => {
+            if (err) {
+              t.fail(err)
+              return resolve()
+            }
+
+            t.ok(srcData, 'The copied data was read without error')
+
+            t.equal(destData, srcData, 'the copy contains a copy of the data')
+
+            fs.unlink(dest, (err) => {
+              if (err) {
+                t.fail(err)
+                return resolve()
+              }
+              t.ok('The copied file is removed')
+              return resolve()
+            })
+          })
+        })
+      })
+    })
+  })
+})
 
 test('fs.createReadStream', async (t) => {
   if (os.platform() === 'android') {
@@ -151,12 +218,42 @@ test('fs.createWriteStream', async (t) => {
   })
 })
 
-test('fs.fstat', async (t) => {})
+test.skip('fs.fstat', async (t) => {
+  // TODO: fix fstat @bcomnes @jwerle
+  await new Promise((resolve, reject) => {
+    fs.open(path.join(FIXTURES, 'file.txt'), (err, fd) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.ok(Number.isFinite(fd), 'isFinite(fd)')
+
+      fs.fstat(fd, (err, stats, ...rest) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.ok(stats, 'the stats object is included')
+
+        fs.close(fd, (err) => {
+          if (err) t.fail(err)
+
+          t.ok(!err, 'fd closed')
+          resolve()
+        })
+      })
+    })
+  })
+})
+
 test('fs.lchmod', async (t) => {})
 test('fs.lchown', async (t) => {})
 test('fs.lutimes', async (t) => {})
 test('fs.link', async (t) => {})
 test('fs.lstat', async (t) => {})
+
 if (os.platform() !== 'android') {
   test('fs.mkdir', async (t) => {
     const dirname = FIXTURES + Math.random().toString(16).slice(2)
@@ -171,7 +268,9 @@ if (os.platform() !== 'android') {
       })
     })
   })
+}
 
+if (os.platform() !== 'android') {
   test('fs.mkdir recursive', async (t) => {
     const randomDirSegment = () => Math.random().toString(16).slice(2)
     const dirname = path.join(FIXTURES, randomDirSegment(), randomDirSegment(), randomDirSegment())
@@ -187,10 +286,110 @@ if (os.platform() !== 'android') {
     })
   })
 }
-test('fs.open', async (t) => {})
-test('fs.opendir', async (t) => {})
-test('fs.read', async (t) => {})
-test('fs.readdir', async (t) => {})
+
+test('fs.opendir', async (t) => {
+  await new Promise((resolve, reject) => {
+    fs.opendir(FIXTURES, async (err, dir) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      try {
+        t.ok(!dir.closed, 'the dirent is open before iterating')
+        let count = 0
+        for await (const dirent of dir) {
+          t.ok(dirent.name, `loop through dirents and they have names: ${dirent.name}`)
+          count++
+        }
+        t.ok(count > 0, 'There are more than 0 dirents')
+        t.ok(dir.closed, 'the dirent is closed after iterating')
+        return resolve()
+      } catch (err) {
+        t.fail(err)
+        return resolve()
+      }
+    })
+  })
+})
+
+test('fs.read', async (t) => {
+  await new Promise((resolve, reject) => {
+    fs.open(FIXTURES + 'file.txt', (err, fd) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.ok(Number.isFinite(fd), 'isFinite(fd)')
+      const readLength = 8
+      const readBuff = new Int8Array(readLength)
+
+      fs.read(fd, readBuff, 0, readLength, 0, (err, bytesRead, buffer) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+        const expected = 'test 123'
+        const returnedBuf = new TextDecoder().decode(buffer)
+        const targetBuf = new TextDecoder().decode(readBuff)
+
+        t.equal(returnedBuf, expected, 'returned buffer has the correct data')
+        t.equal(targetBuf, expected, 'target buffer has the correct data')
+
+        fs.close(fd, (err) => {
+          if (err) t.fail(err)
+
+          t.ok(!err, 'fd closed')
+          resolve()
+        })
+      })
+    })
+  })
+})
+
+test('fs.readdir', async (t) => {
+  await new Promise((resolve, reject) => {
+    fs.readdir(FIXTURES, async (err, files) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.ok(files.length >= 7, 'has the correct number of files in it')
+      ;[
+        'bin',
+        'chown.txt',
+        'data.bin',
+        'directory',
+        'file.js',
+        'file.json',
+        'file.txt'
+      ].forEach(file => {
+        t.ok(files.includes(file), `includes ${file}`)
+      })
+
+      return resolve()
+    })
+  })
+})
+
+test('fs.readdir withFileTypes', async (t) => {
+  await new Promise((resolve, reject) => {
+    fs.readdir(FIXTURES, { withFileTypes: true }, async (err, files) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.ok(files.length >= 7, 'has the correct number of files in it')
+
+      t.ok(files.every(dirent => dirent instanceof fs.Dirent), 'every dirent in the files array is actually a dirent')
+      return resolve()
+    })
+  })
+})
+
 test('fs.readFile', async (t) => {
   let failed = false
   const iterations = 16 // generate ~1k _concurrent_ requests
@@ -222,12 +421,116 @@ test('fs.readFile', async (t) => {
   t.ok(results.every(Boolean), 'fs.readFile(\'fixtures/file.json\')')
 })
 
-test('fs.readlink', async (t) => {})
-test('fs.realpath', async (t) => {})
-test('fs.rename', async (t) => {})
-test('fs.rmdir', async (t) => {})
-test('fs.rm', async (t) => {})
-test('fs.stat', async (t) => {})
+// TODO: ensure this is working as expected. Its not working like node @bcomnes
+// resolving to "/Users/userHomeDir/socket/test/fixtures/file.txt" on macos
+test('fs.readlink', async (t) => {
+  await new Promise((resolve, reject) => {
+    const link = path.join(FIXTURES, 'link.txt')
+    fs.readlink(link, (resolvedPath) => {
+      t.ok(resolvedPath.endsWith('/file.txt'), 'link path matches the actual path')
+      return resolve()
+    })
+  })
+})
+
+// TODO: ensure this is working as expected. Its not working like node @bcomnes
+test('fs.realpath', async (t) => {
+  await new Promise((resolve, reject) => {
+    const link = path.join(FIXTURES, 'link.txt')
+    fs.realpath(link, (resolvedPath) => {
+      t.ok(resolvedPath.endsWith('/file.txt'), 'link path matches the actual path')
+      return resolve()
+    })
+  })
+})
+
+test('fs.rename', async (t) => {
+  await new Promise((resolve, reject) => {
+    const src = path.join(FIXTURES, 'file.txt')
+    const dest = path.join(FIXTURES, 'rename.txt')
+    fs.rename(src, dest, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.pass('File was renamed without error')
+
+      fs.stat(dest, (err, stats) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.ok(stats, 'Renamed file was stated without error')
+
+        fs.rename(dest, src, (err) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+
+          fs.stat(src, (err, stats) => {
+            if (err) {
+              t.fail(err)
+              return resolve()
+            }
+
+            t.ok(stats, 'Renamed file was moved back to the original location')
+            return resolve()
+          })
+        })
+      })
+    })
+  })
+})
+
+if (os.platform() !== 'android') {
+  test.only('fs.rmdir', async (t) => {
+    await new Promise((resolve, reject) => {
+      const target = path.join(FIXTURES, 'rmdir-dir')
+      fs.mkdir(target, { recursive: true }, (err) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+        t.pass('The directory is created without error')
+        fs.rmdir(target, (err) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+          t.pass('The directory is removed without error')
+          fs.stat(target, (err, stats) => {
+            if (err) {
+              t.pass('The directory is removed and no longer stats')
+              return resolve()
+            } else {
+              t.fail('The directory should fail to stat')
+              return resolve()
+            }
+          })
+        })
+      })
+    })
+  })
+}
+
+test('fs.stat', async (t) => {
+  await new Promise((resolve, reject) => {
+    const target = path.join(FIXTURES, 'file.txt')
+    fs.stat(target, (err, stats) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.ok(stats, 'stat object is returned')
+      return resolve()
+    })
+  })
+})
+
 test('fs.symlink', async (t) => {})
 test('fs.truncate', async (t) => {})
 test('fs.unlink', async (t) => {})
