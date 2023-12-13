@@ -2242,6 +2242,9 @@ int main (const int argc, const char* argv[]) {
           std::replace(settings["build_name"].begin(), settings["build_name"].end(), ' ', '_');
           settings["build_name"] += suffix;
         }
+
+
+        settings["arch"] = replace(SSC::platform.arch, "x86_64", "amd64");
       }
 
       subcommandHandler(optionsAndEnv.optionsWithValue, optionsAndEnv.optionsWithoutValue);
