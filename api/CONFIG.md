@@ -50,6 +50,7 @@ simulator_device = "iPhone 15"
 Key | Default Value | Description
 :--- | :--- | :---
 copy | "src" |  ssc will copy everything in this directory to the build output directory. This is useful when you want to avoid bundling or want to use tools like vite, webpack, rollup, etc. to build your project and then copy output to the Socket bundle resources directory.
+copy_map |  |  An ini file that maps files from the source directory to the build directory.
 env |  |  An list of environment variables, separated by commas.
 flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 headless | false |  If true, the window will never be displayed.
