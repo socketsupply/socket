@@ -1657,6 +1657,9 @@ constexpr auto gDefaultConfig = R"INI(
 ; default value: "src"
 copy = "src"
 
+; An ini file that maps files from the source directory to the build directory.
+; copy_map = src/mapping.ini
+
 ; An list of environment variables, separated by commas.
 env = USER, TMPDIR, PWD
 
