@@ -1,14 +1,27 @@
 #ifndef SOCKET_RUNTIME_EXTENSION_H
 #define SOCKET_RUNTIME_EXTENSION_H
 
+#if defined(SOCKET_RUNTIME_EXTENSION_WASM)
+#include "webassembly.h"
+#else
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
 #include <uv.h>
-
 #include "platform.h"
+#endif
 
-#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+#if defined(__cplusplus)
+#define SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN extern "C" {
+#define SOCKET_RUNTIME_EXTENSION_EXTERN_END };
+#else
+#define SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
+#define SOCKET_RUNTIME_EXTENSION_EXTERN_END
+#endif
+
+#if defined(SOCKET_RUNTIME_EXTENSION_WASM)
+# define SOCKET_RUNTIME_EXTENSION_EXPORT extern
+#elif SOCKET_RUNTIME_PLATFORM_WINDOWS
 # define SOCKET_RUNTIME_EXTENSION_EXPORT __declspec(dllexport)
 #elif SOCKET_RUNTIME_PLATFORM_LINUX
 # define SOCKET_RUNTIME_EXTENSION_EXPORT __attribute__((visibility("default")))
@@ -57,14 +70,14 @@
  * @see sapi_extension_registration_initializer
  */
 #define SOCKET_RUNTIME_REGISTER_EXTENSION(_name, _initializer, ...)            \
-  extern "C" {                                                                 \
+  SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN                                        \
     static sapi_extension_registration_t __sapi_extension__ = {                \
       SOCKET_RUNTIME_EXTENSION_ABI_VERSION,                                    \
       _name, _initializer, ##__VA_ARGS__                                       \
     };                                                                         \
                                                                                \
     SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
-    unsigned long __sapi_extension_abi () {                                    \
+    unsigned int __sapi_extension_abi () {                                     \
       return __sapi_extension__.abi;                                           \
     }                                                                          \
                                                                                \
@@ -84,14 +97,24 @@
     }                                                                          \
                                                                                \
     SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
+    const sapi_extension_registration_initializer_t                            \
+    __sapi_extension_initializer () {                                          \
+      return __sapi_extension__.initializer;                                   \
+    }                                                                          \
+                                                                               \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
+    const sapi_extension_registration_deinitializer_t                          \
+    __sapi_extension_deinitializer () {                                        \
+      return __sapi_extension__.deinitializer;                                 \
+    }                                                                          \
+                                                                               \
+    SOCKET_RUNTIME_EXTENSION_EXPORT                                            \
     const sapi_extension_registration_t* __sapi_extension_init () {            \
       return &__sapi_extension__;                                              \
     }                                                                          \
-  }
+  SOCKET_RUNTIME_EXTENSION_EXTERN_END                                          \
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
   typedef struct sapi_extension_registration sapi_extension_registration_t;
 
   /**
@@ -738,7 +761,7 @@ extern "C" {
    * A container for an extension registration.
    */
   struct sapi_extension_registration {
-    unsigned long abi;
+    unsigned long abi:32;
     // required
     const char* name;
     const sapi_extension_registration_initializer_t initializer;
@@ -750,7 +773,7 @@ extern "C" {
 
     // reserved for future ABI changes
     char __reserved__[1024];
-  };
+  } __attribute__((packed));
 
   /**
    * Register a new extension. There is typically no need to call this directly.
@@ -1617,8 +1640,6 @@ extern "C" {
     const sapi_ipc_result_t* result
   );
 
-#if defined(__cplusplus)
-};
-#endif
+SOCKET_RUNTIME_EXTENSION_EXTERN_END
 
 #endif
