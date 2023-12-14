@@ -288,7 +288,8 @@ static void initRouterTable (Router *router) {
           {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
           {"name", name},
           {"type", type},
-          {"path", path}
+          // `path` is absolute to the location of the resources
+          {"path", String("/") + std::filesystem::relative(path, getcwd()).string()}
         }}
       };
 
@@ -328,8 +329,11 @@ static void initRouterTable (Router *router) {
     auto name = message.get("name");
     auto type = Extension::getExtensionType(name);
     auto json = SSC::JSON::Object::Entries {
-      {"name", name},
-      {"type", type}
+      {"source", "extension.type"},
+      {"data", JSON::Object::Entries {
+        {"name", name},
+        {"type", type}
+      }}
     };
 
     reply(Result { message.seq, message, json });
