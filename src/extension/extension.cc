@@ -366,28 +366,28 @@ namespace SSC {
         if (abi != SOCKET_RUNTIME_EXTENSION_ABI_VERSION) {
           if (userConfig["build_extensions_abi_strict"] != "false") {
             debug(
-              "Failed to load extension: %s - Extension ABI %u does not match runtime ABI %u",
+              "Failed to load extension: %s - Extension ABI %lu does not match runtime ABI %lu",
               registration->name,
               abi,
-              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
             return false;
           } else if (abi < SOCKET_RUNTIME_EXTENSION_ABI_VERSION) {
             debug(
-              "WARNING: Extension %s ABI %u does not match runtime ABI %u - trying to load anyways.\n"
+              "WARNING: Extension %s ABI %lu does not match runtime ABI %lu - trying to load anyways.\n"
               "Remove `[build.extensions.abi] strict = false' to disable this",
               registration->name,
               abi,
-              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
           } else {
             debug(
               "Refusing to load extension: %s - "
-              "Extension ABI %u is incompatible with runtime ABI %u.\n"
+              "Extension ABI %lu is incompatible with runtime ABI %lu.\n"
               "Rebuild the extension to fix this",
               registration->name,
               abi,
-              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
             return false;
           }
