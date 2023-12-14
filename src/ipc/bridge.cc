@@ -277,20 +277,59 @@ static void initRouterTable (Router *router) {
 
   router->map("extension.stats", [](auto message, auto router, auto reply) {
     auto extensions = Extension::all();
-    int loaded = 0;
+    auto name = message.get("name");
 
-    for (const auto& tuple : extensions) {
-      if (tuple.second != nullptr) {
-        loaded++;
+    if (name.size() > 0) {
+      auto type = Extension::getExtensionType(name);
+      auto path = Extension::getExtensionPath(name);
+      auto json = JSON::Object::Entries {
+        {"source", "extension.stats"},
+        {"data", JSON::Object::Entries {
+          {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
+          {"name", name},
+          {"type", type},
+          {"path", path}
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    } else {
+      int loaded = 0;
+
+      for (const auto& tuple : extensions) {
+        if (tuple.second != nullptr) {
+          loaded++;
+        }
       }
+
+      auto json = JSON::Object::Entries {
+        {"source", "extension.stats"},
+        {"data", JSON::Object::Entries {
+          {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
+          {"loaded", loaded}
+        }}
+      };
+
+      reply(Result { message.seq, message, json });
+    }
+  });
+
+  /**
+   * Query for type of extension ('shared', 'wasm32', 'unknown')
+   * @param name
+   */
+  router->map("extension.type", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
     }
 
-    auto json = JSON::Object::Entries {
-      {"source", "extension.stats"},
-      {"data", JSON::Object::Entries {
-        {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
-        {"loaded", loaded}
-      }}
+    auto name = message.get("name");
+    auto type = Extension::getExtensionType(name);
+    auto json = SSC::JSON::Object::Entries {
+      {"name", name},
+      {"type", type}
     };
 
     reply(Result { message.seq, message, json });

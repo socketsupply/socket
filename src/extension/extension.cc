@@ -305,6 +305,33 @@ namespace SSC {
     return extensions.contains(name) && extensions.at(name) != nullptr;
   }
 
+  String Extension::getExtensionType (const String& name) {
+    const auto libraryPath = getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
+    const auto wasmPath = getExtensionsDirectory(name) + (name + ".wasm");
+    if (fs::exists(wasmPath)) {
+      return "wasm32";
+    }
+
+    if (fs::exists(libraryPath)) {
+      return "shared";
+    }
+
+    return "unknown";
+  }
+
+  String Extension::getExtensionPath (const String& name) {
+    const auto type = getExtensionType(name);
+    if (type == "wasm32") {
+      return getExtensionsDirectory(name) + (name + ".wasm");
+    }
+
+    if (type == "shared") {
+      return getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
+    }
+
+    return "";
+  }
+
   bool Extension::load (const String& name) {
     Lock lock(mutex);
 
@@ -339,28 +366,28 @@ namespace SSC {
         if (abi != SOCKET_RUNTIME_EXTENSION_ABI_VERSION) {
           if (userConfig["build_extensions_abi_strict"] != "false") {
             debug(
-              "Failed to load extension: %s - Extension ABI %lu does not match runtime ABI %lu",
+              "Failed to load extension: %s - Extension ABI %u does not match runtime ABI %u",
               registration->name,
               abi,
-              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
             return false;
           } else if (abi < SOCKET_RUNTIME_EXTENSION_ABI_VERSION) {
             debug(
-              "WARNING: Extension %s ABI %lu does not match runtime ABI %lu - trying to load anyways.\n"
+              "WARNING: Extension %s ABI %u does not match runtime ABI %u - trying to load anyways.\n"
               "Remove `[build.extensions.abi] strict = false' to disable this",
               registration->name,
               abi,
-              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
           } else {
             debug(
               "Refusing to load extension: %s - "
-              "Extension ABI %lu is incompatible with runtime ABI %lu.\n"
+              "Extension ABI %u is incompatible with runtime ABI %u.\n"
               "Rebuild the extension to fix this",
               registration->name,
               abi,
-              (unsigned long) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
+              (unsigned int) SOCKET_RUNTIME_EXTENSION_ABI_VERSION
             );
             return false;
           }

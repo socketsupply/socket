@@ -4668,10 +4668,260 @@ declare module "socket:enumeration" {
     }
     export default Enumeration;
 }
-declare module "socket:extension" {
+declare module "socket:mime/index" {
     /**
-     * @typedef {{ allow: string[] | string }} ExtensionLoadOptions
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
      */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
+declare module "socket:fs/web" {
+    /**
+     * Creates a new `File` instance from `filename`.
+     * @param {string} filename
+     * @param {{ fd: fs.FileHandle, highWaterMark?: number }=} [options]
+     * @return {File}
+     */
+    export function createFile(filename: string, options?: {
+        fd: fs.FileHandle;
+        highWaterMark?: number;
+    }): File;
+    /**
+     * Creates a `FileSystemWritableFileStream` instance backed
+     * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
+     * @param {string|File} file
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemWritableFileStream(handle: any, options: any): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemFileHandle` instance backed by `socket:fs:` module from
+     * a given `File` instance or filename string.
+     * @param {string|File} file
+     * @param {object} [options]
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemFileHandle(file: string | File, options?: object): Promise<FileSystemFileHandle>;
+    /**
+     * Creates a `FileSystemDirectoryHandle` instance backed by `socket:fs:` module
+     * from a given directory name string.
+     * @param {string} dirname
+     * @return {Promise<FileSystemFileHandle>}
+     */
+    export function createFileSystemDirectoryHandle(dirname: string, options?: any): Promise<FileSystemFileHandle>;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    } | {
+        new (): {
+            readonly lastModifiedDate: Date;
+            readonly lastModified: number;
+            readonly name: any;
+            readonly size: number;
+            readonly type: string;
+            slice(): void;
+            arrayBuffer(): Promise<void>;
+            text(): Promise<void>;
+            stream(): void;
+        };
+    };
+    export const FileSystemHandle: {
+        new (): {
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemFileHandle: {
+        new (): FileSystemFileHandle;
+        prototype: FileSystemFileHandle;
+    } | {
+        new (): {
+            getFile(): void;
+            createWritable(options?: any): Promise<void>;
+            createSyncAccessHandle(): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemDirectoryHandle: {
+        new (): FileSystemDirectoryHandle;
+        prototype: FileSystemDirectoryHandle;
+    } | {
+        new (): {
+            entries(): AsyncGenerator<never, void, unknown>;
+            values(): AsyncGenerator<never, void, unknown>;
+            keys(): AsyncGenerator<never, void, unknown>;
+            resolve(possibleDescendant: any): Promise<void>;
+            removeEntry(name: any, options?: any): Promise<void>;
+            getDirectoryHandle(name: any, options?: any): Promise<void>;
+            getFileHandle(name: any, options?: any): Promise<void>;
+            readonly name: any;
+            readonly kind: any;
+        };
+    };
+    export const FileSystemWritableFileStream: {
+        new (underlyingSink?: UnderlyingSink<any>, strategy?: QueuingStrategy<any>): {
+            seek(position: any): Promise<void>;
+            truncate(size: any): Promise<void>;
+            write(data: any): Promise<void>;
+            readonly locked: boolean;
+            abort(reason?: any): Promise<void>;
+            close(): Promise<void>;
+            getWriter(): WritableStreamDefaultWriter<any>;
+        };
+    };
+    namespace _default {
+        export { createFileSystemWritableFileStream };
+        export { createFileSystemDirectoryHandle };
+        export { createFileSystemFileHandle };
+        export { createFile };
+    }
+    export default _default;
+    import fs from "socket:fs/promises";
+}
+declare module "socket:extension" {
     /**
      * Load an extension by name.
      * @template {Record<string, any> T}
@@ -4685,6 +4935,15 @@ declare module "socket:extension" {
      * @return {Promise<ExtensionStats>}
      */
     export function stats(): Promise<ExtensionStats>;
+    /**
+     * @typedef {{
+     *   allow: string[] | string,
+     *   imports?: object,
+     *   type?: 'shared' | 'wasm32',
+     *   instance?: WebAssembly.Instance,
+     *   adapter?: WebAssemblyExtensionAdapter
+     * }} ExtensionLoadOptions
+     */
     /**
      * @typedef {{ abi: number, version: string, description: string }} ExtensionInfo
      */
@@ -4705,10 +4964,17 @@ declare module "socket:extension" {
          */
         static load<T_1 extends Record<string, any>>(name: string, options?: ExtensionLoadOptions): Promise<Extension<T_1>>;
         /**
-         * Provides current stats about the loaded extensions.
-         * @return {Promise<ExtensionStats>}
+         * Query type of extension by name.
+         * @param {string} name
+         * @return {Promise<'shared'|'wasm32'|'unknown'|null>}
          */
-        static stats(): Promise<ExtensionStats>;
+        static type(name: string): Promise<'shared' | 'wasm32' | 'unknown' | null>;
+        /**
+         * Provides current stats about the loaded extensions or one by name.
+         * @param {?string} name
+         * @return {Promise<ExtensionStats|null>}
+         */
+        static stats(name: string | null): Promise<ExtensionStats | null>;
         /**
          * `Extension` class constructor.
          * @param {string} name
@@ -4745,15 +5011,31 @@ declare module "socket:extension" {
          */
         binding: T;
         /**
+         * Not `null` if extension is of type 'wasm32'
+         * @type {?WebAssembly.Instance}
+         */
+        instance: WebAssembly.Instance | null;
+        /**
+         * Not `null` if extension is of type 'wasm32'
+         * @type {?WebAssemblyExtensionAdapter}
+         */
+        adapter: WebAssemblyExtensionAdapter | null;
+        /**
          * `true` if the extension was loaded, otherwise `false`
          * @type {boolean}
          */
         get loaded(): boolean;
         /**
+         * The extension type: 'shared' or  'wasm32'
+         * @type {'shared'|'wasm32'}
+         */
+        get type(): "shared" | "wasm32";
+        /**
          * Unloads the loaded extension.
          * @throws Error
          */
-        unload(): Promise<any>;
+        unload(): Promise<boolean>;
+        [$type]: "shared" | "wasm32";
         [$loaded]: boolean;
     }
     namespace _default {
@@ -4763,6 +5045,10 @@ declare module "socket:extension" {
     export default _default;
     export type ExtensionLoadOptions = {
         allow: string[] | string;
+        imports?: object;
+        type?: 'shared' | 'wasm32';
+        instance?: WebAssembly.Instance;
+        adapter?: WebAssemblyExtensionAdapter;
     };
     export type ExtensionInfo = {
         abi: number;
@@ -4773,6 +5059,58 @@ declare module "socket:extension" {
         abi: number;
         loaded: number;
     };
+    /**
+     * An adapter for reading and writing various values from a WebAssembly instance's
+     * memory buffer.
+     * @ignore
+     */
+    class WebAssemblyExtensionAdapter {
+        constructor({ instance, module, table }: {
+            instance: any;
+            module: any;
+            table: any;
+        });
+        view: DataView;
+        table: any;
+        buffer: Uint8Array;
+        module: any;
+        instance: any;
+        textDecoder: TextDecoder;
+        textEncoder: TextEncoder;
+        heap: Uint8Array;
+        stack: Uint8Array;
+        get heapBaseOffset(): any;
+        get stackBaseOffset(): any;
+        get baseOffset(): any;
+        get indirectFunctionTable(): any;
+        callIndirect(offset: any, ...args: any[]): any;
+        init(): boolean;
+        get(pointer: any): Uint8Array;
+        set(pointer: any, value: any): void;
+        getFloat32(pointer: any): number;
+        setFloat32(pointer: any, value: any): boolean;
+        getFloat64(pointer: any): number;
+        setFloat64(pointer: any, value: any): boolean;
+        getInt8(pointer: any): number;
+        setInt8(pointer: any, value: any): boolean;
+        getInt16(pointer: any): number;
+        setInt16(pointer: any, value: any): boolean;
+        getInt32(pointer: any): number;
+        setInt32(pointer: any, value: any): boolean;
+        getBigInt64(pointer: any): bigint | 0;
+        setBigInt64(pointer: any, value: any): boolean;
+        getUint8(pointer: any): number;
+        setUint8(pointer: any, value: any): boolean;
+        getUint16(pointer: any): number;
+        setUint16(pointer: any, value: any): boolean;
+        getUint32(pointer: any): number;
+        setUint32(pointer: any, value: any): boolean;
+        getBigUint64(pointer: any): bigint | 0;
+        setBigUint64(pointer: any, value: any): boolean;
+        getString(pointer: any, buffer: any, size: any): string;
+        setString(pointer: any, string: any, buffer: any): boolean;
+    }
+    const $type: unique symbol;
     const $loaded: unique symbol;
 }
 declare module "socket:fetch/fetch" {
@@ -5058,156 +5396,6 @@ declare module "socket:i18n" {
     }
     export default _default;
     import Enumeration from "socket:enumeration";
-}
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
 }
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
@@ -7617,109 +7805,6 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
-declare module "socket:fs/web" {
-    /**
-     * Creates a new `File` instance from `filename`.
-     * @param {string} filename
-     * @param {{ fd: fs.FileHandle, highWaterMark?: number }=} [options]
-     * @return {File}
-     */
-    export function createFile(filename: string, options?: {
-        fd: fs.FileHandle;
-        highWaterMark?: number;
-    }): File;
-    /**
-     * Creates a `FileSystemWritableFileStream` instance backed
-     * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
-     * @param {string|File} file
-     * @return {Promise<FileSystemFileHandle>}
-     */
-    export function createFileSystemWritableFileStream(handle: any, options: any): Promise<FileSystemFileHandle>;
-    /**
-     * Creates a `FileSystemFileHandle` instance backed by `socket:fs:` module from
-     * a given `File` instance or filename string.
-     * @param {string|File} file
-     * @param {object} [options]
-     * @return {Promise<FileSystemFileHandle>}
-     */
-    export function createFileSystemFileHandle(file: string | File, options?: object): Promise<FileSystemFileHandle>;
-    /**
-     * Creates a `FileSystemDirectoryHandle` instance backed by `socket:fs:` module
-     * from a given directory name string.
-     * @param {string} dirname
-     * @return {Promise<FileSystemFileHandle>}
-     */
-    export function createFileSystemDirectoryHandle(dirname: string, options?: any): Promise<FileSystemFileHandle>;
-    export const File: {
-        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
-        prototype: File;
-    } | {
-        new (): {
-            readonly lastModifiedDate: Date;
-            readonly lastModified: number;
-            readonly name: any;
-            readonly size: number;
-            readonly type: string;
-            slice(): void;
-            arrayBuffer(): Promise<void>;
-            text(): Promise<void>;
-            stream(): void;
-        };
-    };
-    export const FileSystemHandle: {
-        new (): {
-            readonly name: any;
-            readonly kind: any;
-        };
-    };
-    export const FileSystemFileHandle: {
-        new (): FileSystemFileHandle;
-        prototype: FileSystemFileHandle;
-    } | {
-        new (): {
-            getFile(): void;
-            createWritable(options?: any): Promise<void>;
-            createSyncAccessHandle(): Promise<void>;
-            readonly name: any;
-            readonly kind: any;
-        };
-    };
-    export const FileSystemDirectoryHandle: {
-        new (): FileSystemDirectoryHandle;
-        prototype: FileSystemDirectoryHandle;
-    } | {
-        new (): {
-            entries(): AsyncGenerator<never, void, unknown>;
-            values(): AsyncGenerator<never, void, unknown>;
-            keys(): AsyncGenerator<never, void, unknown>;
-            resolve(possibleDescendant: any): Promise<void>;
-            removeEntry(name: any, options?: any): Promise<void>;
-            getDirectoryHandle(name: any, options?: any): Promise<void>;
-            getFileHandle(name: any, options?: any): Promise<void>;
-            readonly name: any;
-            readonly kind: any;
-        };
-    };
-    export const FileSystemWritableFileStream: {
-        new (underlyingSink?: UnderlyingSink<any>, strategy?: QueuingStrategy<any>): {
-            seek(position: any): Promise<void>;
-            truncate(size: any): Promise<void>;
-            write(data: any): Promise<void>;
-            readonly locked: boolean;
-            abort(reason?: any): Promise<void>;
-            close(): Promise<void>;
-            getWriter(): WritableStreamDefaultWriter<any>;
-        };
-    };
-    namespace _default {
-        export { createFileSystemWritableFileStream };
-        export { createFileSystemDirectoryHandle };
-        export { createFileSystemFileHandle };
-        export { createFile };
-    }
-    export default _default;
-    import fs from "socket:fs/promises";
-}
 declare module "socket:internal/events" {
     /**
      * An event dispatched when an application URL is opening the application.
@@ -7825,10 +7910,19 @@ declare module "socket:internal/webassembly" {
      * The `instantiateStreaming()` function compiles and instantiates a WebAssembly
      * module directly from a streamed source.
      * @ignore
-     * @param {Response}
-     * @param
+     * @param {Response} response
+     * @param {=object} [importObject]
+     * @return {Promise<WebAssembly.Instance>}
      */
-    export function instantiateStreaming(response: any, importObject?: any): Promise<any>;
+    export function instantiateStreaming(response: Response, importObject?: any): Promise<WebAssembly.Instance>;
+    /**
+     * The `compileStreaming()` function compiles and instantiates a WebAssembly
+     * module directly from a streamed source.
+     * @ignore
+     * @param {Response} response
+     * @return {Promise<WebAssembly.Module>}
+     */
+    export function compileStreaming(response: Response): Promise<WebAssembly.Module>;
     namespace _default {
         export { instantiateStreaming };
     }
