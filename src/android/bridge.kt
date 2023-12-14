@@ -314,6 +314,30 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       buffers.remove(message.seq)
     }
 
+    if (message.domain == "fs") {
+      if (message.has("path")) {
+        var path = message.get("path")
+        val uri = android.net.Uri.parse(path)
+        if (!isAssetBundleUri(uri)) {
+          if (path.startsWith("/")) {
+            path = path.substring(1)
+          } else if (path.startsWith("./")) {
+            path = path.substring(2)
+          }
+
+          try {
+            val stream = assetManager.open(path, 0)
+            message.set("path", "socket://__BUNDLE_IDENTIFIER__/$path")
+            stream.close()
+          } catch (e: java.io.FileNotFoundException) {
+            // noop
+          } catch (e: Exception) {
+            // noop
+          }
+        }
+      }
+    }
+
     when (message.command) {
       "application.getScreenSize",
       "application.getWindows" -> {
@@ -354,6 +378,55 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           }
         }
         return true
+      }
+
+      // handle WASM extensions here
+      "extension.stats" -> {
+        val name = message.get("name")
+        if (name.length > 0) {
+          val path = "socket/extensions/$name/$name.wasm"
+          try {
+            val stream = assetManager.open(path, 0)
+            val abi = 1 // TODO(@jwerle): read this over JNI
+            stream.close()
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "abi": $abi,
+                "name": "$name",
+                "type": "wasm32",
+                "path": "socket://__BUNDLE_IDENTIFIER__/$path"
+              }
+            }"""))
+            return true
+          } catch (e: java.io.FileNotFoundException) {
+            // noop
+          } catch (e: Exception) {
+            // nooop
+          }
+        }
+      }
+
+      // handle WASM extensions here
+      "extension.type" -> {
+        val name = message.get("name")
+        if (name.length > 0) {
+          try {
+            val path = "socket/extensions/$name/$name.wasm"
+            val stream = assetManager.open(path, 0)
+            stream.close()
+            callback(Result(0, message.seq, message.command, """{
+              "data": {
+                "name": "$name",
+                "type": "wasm32"
+              }
+            }"""))
+            return true
+          } catch (e: java.io.FileNotFoundException) {
+            // noop
+          } catch (e: Exception) {
+            // nooop
+          }
+        }
       }
 
       "window.showFileSystemPicker" -> {
