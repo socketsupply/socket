@@ -3185,7 +3185,7 @@ int main (const int argc, const char* argv[]) {
       writeFile(jni / "user-config-bytes.hh", settings["ini_code"]);
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
-      auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
+      auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","json","jsonld","js","jsx","mjs","ts","tsx","css","xml","wasm")OPTIONS", ',');
       auto aaptNoCompressOptions = parseStringList(settings["android_aapt_no_compress"]);
 
       settings["android_aapt_no_compress"] = "";
@@ -3452,6 +3452,7 @@ int main (const int argc, const char* argv[]) {
           }
 
           extension = split(extension, '_')[0];
+          fs::current_path(targetPath);
 
           if (std::find(seenExtensions.begin(), seenExtensions.end(), extension) != seenExtensions.end()) {
             continue;
@@ -3546,6 +3547,7 @@ int main (const int argc, const char* argv[]) {
           auto build = settings["build_extensions_" + extension + "_build_script"];
           auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
+          auto target = settings["build_extensions_" + extension + "_target"];
 
           auto sources = StringStream();
           auto make = StringStream();
@@ -3594,12 +3596,21 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
+          auto CXX = Env::get("CXX");
+          auto CC = Env::get("CC");
+
           for (
             auto source : parseStringList(
               trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_android"]),
               ' '
             )
           ) {
+            if (target == "wasm32" || target == "wasm32-wasi") {
+              // just build sources
+              sources << (fs::current_path() / source).string() << " ";
+              continue;
+            }
+
             if (fs::is_directory(source)) {
               auto target = Path(source).filename();
               fs::create_directories(jni / target);
@@ -3626,6 +3637,13 @@ int main (const int argc, const char* argv[]) {
             fs::copy(source, jni / destination, fs::copy_options::overwrite_existing);
 
             if (destination.ends_with(".hh") || destination.ends_with(".h")) {
+              continue;
+            } else if (source.ends_with(".wasm")) {
+              fs::copy(
+                source,
+                (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm")),
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
               continue;
             } else if (destination.ends_with(".cc") || destination.ends_with(".cpp") || destination.ends_with(".c++") || destination.ends_with(".mm")) {
               cppflags.insert("-std=c++2a");
@@ -3665,6 +3683,98 @@ int main (const int argc, const char* argv[]) {
                 make << "include $(PREBUILT_STATIC_LIBRARY)" << std::endl;
               }
             }
+          }
+
+          if (target == "wasm32") {
+            String compiler;
+            auto compilerFlags = replace(
+              settings["build_extensions_compiler_flags"] + " " +
+              settings["build_extensions_android_compiler_flags"] + " " +
+              settings["build_extensions_" + extension + "_compiler_flags"] + " " +
+              settings["build_extensions_" + extension + "_android_compiler_flags"] +  " ",
+              "-I",
+              "-I$(LOCAL_PATH)/"
+            );
+
+            auto compilerDebugFlags = replace(
+              settings["build_extensions_compiler_debug_flags"] + " " +
+              settings["build_extensions_android_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_android_compiler_debug_flags"] +  " ",
+              "-I",
+              "-I$(LOCAL_PATH)/"
+            );
+
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compiler = CXX.size() > 0 ? CXX : "clang++";
+            compilerFlags += " -v";
+            compilerFlags += " -std=c++2a -v";
+            if (platform.mac) {
+              compilerFlags += " -ObjC++";
+            } else if (platform.win) {
+              compilerFlags += " -stdlib=libstdc++";
+            }
+
+            if (platform.win || platform.linux) {
+              compilerFlags += " -Wno-unused-command-line-argument";
+            }
+
+            if (compiler.ends_with("clang++")) {
+              compiler = compiler.substr(0, compiler.size() - 2);
+            } else if (compiler.ends_with("clang++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
+            } else if (compiler.ends_with("g++")) {
+              compiler = compiler.substr(0, compiler.size() - 2) + "cc";
+            } else if (compiler.ends_with("g++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
+            }
+            auto compileExtensionWASMCommand = StringStream();
+            auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm"));
+            fs::create_directories(lib.parent_path());
+            compileExtensionWASMCommand
+              << compiler
+              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("src")) + quote)
+              << (" -L" + quote + trim(prefixFile("lib")) + quote)
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " --target=wasm32"
+              << " --no-standard-libraries"
+              << " -Wl,--allow-undefined"
+              << " -Wl,--export-all"
+              << " -Wl,--no-entry"
+              << " -Wl,--demangle"
+              << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+              << " -fvisibility=hidden"
+              << " -DIOS=0"
+              << " -DANDROID=1"
+              << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
+              << " -DPORT=" << devPort
+              << " -DSSC_VERSION=" << SSC::VERSION_STRING
+              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " " << sources.str()
+              << " -o " << lib.string()
+              ;
+
+            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+              log(compileExtensionWASMCommand.str());
+            }
+
+            do {
+              auto r = exec(compileExtensionWASMCommand.str());
+
+              if (r.exitCode != 0) {
+                log("Unable to build WASM extension (" + extension + ")");
+                log(r.output);
+                exit(r.exitCode);
+              }
+            } while (0);
+            continue;
+          } else if (target == "wasm32-wasi") {
+            // TODO
+            continue;
           }
 
           make << "## socket/extensions/" << extension << RUNTIME_EXTENSION_FILE_EXT << std::endl;
@@ -4006,6 +4116,7 @@ int main (const int argc, const char* argv[]) {
           }
 
           extension = split(extension, '_')[0];
+          fs::current_path(targetPath);
 
           auto source = settings["build_extensions_" + extension + "_source"];
 
@@ -4057,6 +4168,7 @@ int main (const int argc, const char* argv[]) {
           auto build = settings["build_extensions_" + extension + "_build_script"];
           auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
+          auto target = settings["build_extensions_" + extension + "_target"];
 
           auto sources = parseStringList(
             trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_ios"]),
@@ -4110,9 +4222,16 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
+          auto CXX = Env::get("CXX");
+          auto CC = Env::get("CC");
+
           for (auto source : sources) {
             if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
               log("extension source: " + source);
+            }
+
+            if (target == "wasm32" || target == "wasm32-wasi") {
+              continue;
             }
 
             String compiler;
@@ -4147,6 +4266,13 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (source.ends_with(".hh") || source.ends_with(".h")) {
+              continue;
+            } else if (source.ends_with(".wasm")) {
+              fs::copy(
+                source,
+                (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm")),
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
               compiler = "clang++";
@@ -4216,6 +4342,95 @@ int main (const int argc, const char* argv[]) {
               }
             } while (0);
           }
+
+          if (target == "wasm32") {
+            String compiler;
+            auto compilerFlags = (
+              settings["build_extensions_compiler_flags"] +
+              settings["build_extensions_ios_compiler_flags"] +
+              settings["build_extensions_" + extension + "_compiler_flags"] +
+              settings["build_extensions_" + extension + "_ios_compiler_flags"]
+            );
+
+            auto compilerDebugFlags = (
+              settings["build_extensions_compiler_debug_flags"] + " " +
+              settings["build_extensions_ios_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
+            );
+
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compiler = CXX.size() > 0 ? CXX : "clang++";
+            compilerFlags += " -v";
+            compilerFlags += " -std=c++2a -v";
+            if (platform.mac) {
+              compilerFlags += " -ObjC++";
+            } else if (platform.win) {
+              compilerFlags += " -stdlib=libstdc++";
+            }
+
+            if (platform.win || platform.linux) {
+              compilerFlags += " -Wno-unused-command-line-argument";
+            }
+
+            if (compiler.ends_with("clang++")) {
+              compiler = compiler.substr(0, compiler.size() - 2);
+            } else if (compiler.ends_with("clang++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
+            } else if (compiler.ends_with("g++")) {
+              compiler = compiler.substr(0, compiler.size() - 2) + "cc";
+            } else if (compiler.ends_with("g++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
+            }
+            auto compileExtensionWASMCommand = StringStream();
+            auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm"));
+            fs::create_directories(lib.parent_path());
+            compileExtensionWASMCommand
+              << compiler
+              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("src")) + quote)
+              << (" -L" + quote + trim(prefixFile("lib")) + quote)
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " --target=wasm32"
+              << " --no-standard-libraries"
+              << " -Wl,--allow-undefined"
+              << " -Wl,--export-all"
+              << " -Wl,--no-entry"
+              << " -Wl,--demangle"
+              << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+              << " -fvisibility=hidden"
+              << " -DIOS=1"
+              << " -DANDROID=0"
+              << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
+              << " -DPORT=" << devPort
+              << " -DSSC_VERSION=" << SSC::VERSION_STRING
+              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " " << join(sources, " ")
+              << " -o " << lib.string()
+              ;
+
+            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+              log(compileExtensionWASMCommand.str());
+            }
+
+            do {
+              auto r = exec(compileExtensionWASMCommand.str());
+
+              if (r.exitCode != 0) {
+                log("Unable to build WASM extension (" + extension + ")");
+                log(r.output);
+                exit(r.exitCode);
+              }
+            } while (0);
+            continue;
+          } else if (target == "wasm32-wasi") {
+            // TODO
+            continue;
+          }
+
 
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] + " " +
@@ -5064,6 +5279,7 @@ int main (const int argc, const char* argv[]) {
           }
 
           extension = split(extension, '_')[0];
+          fs::current_path(targetPath);
 
           auto source = settings["build_extensions_" + extension + "_source"];
 
@@ -5094,10 +5310,12 @@ int main (const int argc, const char* argv[]) {
               }
             }
 
+            log("SOURCE = " + source);
             if (fs::exists(target) && fs::is_directory(target)) {
               target = fs::canonical(target);
 
               auto configFile = target / "socket.ini";
+              log("READ CONFIG FILE " + configFile.string());
               auto config = INI::parse(fs::exists(configFile) ? readFile(configFile) : "");
               settings["build_extensions_" + extension + "_path"] = target.string();
               fs::current_path(target);
@@ -5193,6 +5411,15 @@ int main (const int argc, const char* argv[]) {
           auto build = settings["build_extensions_" + extension + "_build_script"];
           auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
+          auto target = settings["build_extensions_" + extension + "_target"];
+
+          if (extension == "wasm") {
+            for (const auto t : settings) {
+              if (t.first.starts_with("build_extensions_")) {
+                log(t.first + " = " + t.second);
+              }
+            }
+          }
 
           auto sources = parseStringList(
             trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_" + os]),
@@ -5256,9 +5483,14 @@ int main (const int argc, const char* argv[]) {
             extensions.push_back(extension);
           }
 
-          sources.push_back(
-            trim(prefixFile("src/init.cc"))
-          );
+          if (target != "wasm32") {
+            sources.push_back(
+              trim(prefixFile("src/init.cc"))
+            );
+          }
+
+          auto CXX = Env::get("CXX");
+          auto CC = Env::get("CC");
 
           for (auto source : sources) {
             if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
@@ -5308,11 +5540,16 @@ int main (const int argc, const char* argv[]) {
               compilerDebugFlags += "-D_DEBUG";
             }
 
-            auto CXX = Env::get("CXX");
-            auto CC = Env::get("CC");
             String compiler;
 
             if (source.ends_with(".hh") || source.ends_with(".h")) {
+              continue;
+            } else if (source.ends_with(".wasm")) {
+              fs::copy(
+                source,
+                (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm")),
+                fs::copy_options::update_existing | fs::copy_options::recursive
+              );
               continue;
             } else if (source.ends_with(".cc") || source.ends_with(".cpp") || source.ends_with(".c++") || source.ends_with(".mm")) {
               compiler = CXX.size() > 0 && !IN_GITHUB_ACTIONS_CI ? CXX : "clang++";
@@ -5351,6 +5588,11 @@ int main (const int argc, const char* argv[]) {
 
             if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
               log("extension source: " + source);
+            }
+
+            if (target == "wasm32" || target == "wasm32-wasi") {
+              // just build sources
+              continue;
             }
 
             auto objectFile = source;
@@ -5436,6 +5678,107 @@ int main (const int argc, const char* argv[]) {
                 exit(r.exitCode);
               }
             } while (0);
+          }
+
+          if (target == "wasm32") {
+            String compiler;
+            auto compilerFlags = (
+              settings["build_extensions_compiler_flags"] + " " +
+              settings["build_extensions_" + os + "_compiler_flags"] + " " +
+              settings["build_extensions_" + extension + "_compiler_flags"] + " " +
+              settings["build_extensions_" + extension + "_" + os + "_compiler_flags"] + " "
+            );
+
+            auto compilerDebugFlags = (
+              settings["build_extensions_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + os + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_compiler_debug_flags"] + " " +
+              settings["build_extensions_" + extension + "_" + os + "_compiler_debug_flags"] + " "
+            );
+
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compiler = CXX.size() > 0 && !IN_GITHUB_ACTIONS_CI ? CXX : "clang++";
+            compilerFlags += " -v";
+            compilerFlags += " -std=c++2a -v";
+            if (platform.mac) {
+              compilerFlags += " -ObjC++";
+            } else if (platform.win) {
+              compilerFlags += " -stdlib=libstdc++";
+            }
+
+            if (platform.win || platform.linux) {
+              compilerFlags += " -Wno-unused-command-line-argument";
+            }
+
+            if (compiler.ends_with("clang++")) {
+              compiler = compiler.substr(0, compiler.size() - 2);
+            } else if (compiler.ends_with("clang++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + ".exe";
+            } else if (compiler.ends_with("g++")) {
+              compiler = compiler.substr(0, compiler.size() - 2) + "cc";
+            } else if (compiler.ends_with("g++.exe")) {
+              compiler = compiler.substr(0, compiler.size() - 6) + "cc.exe";
+            }
+            auto compileExtensionWASMCommand = StringStream();
+            auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + ".wasm"));
+            fs::create_directories(lib.parent_path());
+            compileExtensionWASMCommand
+              << quote // win32 - quote the entire command
+              << quote // win32 - quote the binary path
+              << compiler
+              << quote // win32 - quote the binary path
+              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("src")) + quote)
+              << (" -L" + quote + trim(prefixFile("lib")) + quote)
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " --target=wasm32"
+              << " --no-standard-libraries"
+              << " -Wl,--allow-undefined"
+              << " -Wl,--export-all"
+              << " -Wl,--no-entry"
+              << " -Wl,--demangle"
+            #if defined(_WIN32)
+              << (" -L" + quote + trim(prefixFile("lib\\" + platform.arch + "-desktop")) + quote)
+              << " -D_MT"
+              << " -D_DLL"
+              << " -DWIN32"
+              << " -DWIN32_LEAN_AND_MEAN"
+              << " -Xlinker /NODEFAULTLIB:libcmt"
+              << " -Wno-nonportable-include-path"
+            #else
+              << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
+            #endif
+              << " -fvisibility=hidden"
+              << " -DIOS=0"
+              << " -DANDROID=0"
+              << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+              << " -DHOST=" << "\\\"" << devHost << "\\\""
+              << " -DPORT=" << devPort
+              << " -DSSC_VERSION=" << SSC::VERSION_STRING
+              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
+              << " " << join(sources, " ")
+              << " -o " << (quote + lib.string() + quote)
+              ;
+
+            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+              log(compileExtensionWASMCommand.str());
+            }
+
+            do {
+              auto r = exec(compileExtensionWASMCommand.str());
+
+              if (r.exitCode != 0) {
+                log("Unable to build WASM extension (" + extension + ")");
+                log(r.output);
+                exit(r.exitCode);
+              }
+            } while (0);
+            continue;
+          } else if (target == "wasm32-wasi") {
+            // TODO
+            continue;
           }
 
           auto linkerFlags = (
