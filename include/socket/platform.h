@@ -1,6 +1,9 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_H
 #define SOCKET_RUNTIME_PLATFORM_H
 
+// when this header is included, this is always `0`
+#define SOCKET_RUNTIME_PLATFORM_WASM 0
+
 #if defined(__x86_64__) || defined(_M_X64)
 #  define SOCKET_RUNTIME_ARCH_x64 1
 #  define SOCKET_RUNTIME_ARCH_ARM64 0
