@@ -475,11 +475,16 @@ constexpr auto gAndroidManifest = R"XML(
     <activity
       android:name="{{android_main_activity}}"
       android:exported="true"
-      android:configChanges="orientation|screenSize"
-      android:documentLaunchMode="intoExisting"
+      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+      android:launchMode="singleInstance"
+      android:hardwareAccelerated="true"
     >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+
+      <intent-filter>
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.LAUNCHER" />
