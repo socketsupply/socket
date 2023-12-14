@@ -5310,12 +5310,10 @@ int main (const int argc, const char* argv[]) {
               }
             }
 
-            log("SOURCE = " + source);
             if (fs::exists(target) && fs::is_directory(target)) {
               target = fs::canonical(target);
 
               auto configFile = target / "socket.ini";
-              log("READ CONFIG FILE " + configFile.string());
               auto config = INI::parse(fs::exists(configFile) ? readFile(configFile) : "");
               settings["build_extensions_" + extension + "_path"] = target.string();
               fs::current_path(target);
@@ -5412,14 +5410,6 @@ int main (const int argc, const char* argv[]) {
           auto copy = settings["build_extensions_" + extension + "_build_copy"];
           auto path = settings["build_extensions_" + extension + "_path"];
           auto target = settings["build_extensions_" + extension + "_target"];
-
-          if (extension == "wasm") {
-            for (const auto t : settings) {
-              if (t.first.starts_with("build_extensions_")) {
-                log(t.first + " = " + t.second);
-              }
-            }
-          }
 
           auto sources = parseStringList(
             trim(settings["build_extensions_" + extension] + " " + settings["build_extensions_" + extension + "_" + os]),
