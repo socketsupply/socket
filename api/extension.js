@@ -376,6 +376,7 @@ function createWebAssemblyExtensionImports (env) {
       name = env.adapter.getString(name)
       source = env.adapter.getString(source)
       // TODO(@jwerle): implement a 'vm' module and use it
+      // eslint-disable-next-line
       const evaluation = new Function(`return function ${name || ''} () { ${source}; }`)()
       try {
         await evaluation()
@@ -425,7 +426,7 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_json_stringify_value (value) {
-    },
+    }
 
     // TODO: IPC
   })
