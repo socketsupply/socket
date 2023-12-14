@@ -479,8 +479,9 @@ export class Extension extends EventTarget {
     if (options.type === 'wasm32') {
       let adapter = null
 
-      const fd = await fs.open(stats.path)
-      const file = await createFile(stats.path, { fd })
+      const path = stats.path.startsWith('/') ? stats.path.slice(1) : stats.path
+      const fd = await fs.open(path)
+      const file = await createFile(path, { fd })
       const stream = file.stream()
       const response = new WebAssemblyResponse(stream)
       const table = new WebAssembly.Table({
@@ -623,7 +624,7 @@ export class Extension extends EventTarget {
         extension: this,
         default: 'request'
       })
-    } else {
+    } else if (this.type === 'wasm32') {
       this.instance = options?.instance
       this.adapter = options?.adapter
       this.binding = createWebAssemblyExtensionBinding(this.adapter)
