@@ -4,7 +4,7 @@ import path from 'node:path'
 
 const dirname = path.dirname(import.meta.url.replace('file://', '').replace(/^\/[A-Za-z]:/, ''))
 const root = path.dirname(dirname)
-const child = spawn('ssc', ['build', '--headless', '--test=./index.js', '--platform=ios-simulator', '--prod', '-r', '-o', '--env', 'SOCKET_DEBUG_IPC'], {
+const child = spawn('ssc', ['build', '--headless', '--test=./index.js', '--platform=ios-simulator', '-r', '-o', '--env', 'SOCKET_DEBUG_IPC'], {
   stdio: 'inherit'
 })
 

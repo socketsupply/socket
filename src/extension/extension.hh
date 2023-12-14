@@ -133,6 +133,8 @@ namespace SSC {
       static bool load (const String& name);
       static bool unload (Context* ctx, const String& name, bool shutdown);
       static bool isLoaded (const String& name);
+      static String getExtensionType (const String& name);
+      static String getExtensionPath (const String& name);
 
       static void setRouterContext (
         const String& name,

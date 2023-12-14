@@ -6,7 +6,7 @@ test('extension.load(name) - simple', async (t) => {
   const stats = await extension.stats()
   try {
     const simple = await extension.load('simple-ipc-ping')
-    t.ok(simple, 'extension.load()')
+    t.ok(simple, 'simple = extension.load()')
     const result = await ipc.request('simple.ping', { value: 'hello world' })
     t.equal(simple.abi, stats.abi, 'simple.abi === stats.abi')
     t.equal(simple.name, 'simple-ipc-ping', 'name === "simple-ipc-ping"')
