@@ -76,7 +76,7 @@ test('mime.lookup', async (t) => {
     { ext: 'ts', expect: ['video/mp2t'] },
     { ext: 'ttf', expect: ['font/ttf'] },
     { ext: 'txt', expect: ['text/plain'] },
-    { ext: 'vsd', expect: ['application/vnd.visio'] },,
+    { ext: 'vsd', expect: ['application/vnd.visio'] },
     { ext: 'wasm', expect: ['application/wasm'] },
     { ext: 'wav', expect: ['audio/wav'] },
     { ext: 'weba', expect: ['audio/webm'] },
