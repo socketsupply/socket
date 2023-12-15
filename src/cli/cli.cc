@@ -3735,6 +3735,7 @@ int main (const int argc, const char* argv[]) {
               << compiler
               << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
               << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
               << " -DSOCKET_RUNTIME_EXTENSION_WASM"
@@ -4389,6 +4390,7 @@ int main (const int argc, const char* argv[]) {
               << compiler
               << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
               << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
               << " -DSOCKET_RUNTIME_EXTENSION_WASM"
@@ -5719,6 +5721,7 @@ int main (const int argc, const char* argv[]) {
               << quote // win32 - quote the binary path
               << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
               << (" -I" + quote + trim(prefixFile("include")) + quote)
+              << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
               << " -DSOCKET_RUNTIME_EXTENSION_WASM"
