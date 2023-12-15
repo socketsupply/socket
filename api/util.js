@@ -694,7 +694,7 @@ export function format (format, ...args) {
       .join(' ')
   }
 
-  const regex = /%[dfijoOs%]/g
+  const regex = /%[dfijloOsuxz%]/ig
 
   let i = 0
   let str = format.replace(regex, (x) => {
@@ -717,10 +717,15 @@ export function format (format, ...args) {
 
     switch (x) {
       case '%d': return Number(args[i++])
+      case '%u': return Number(args[i++])
+      case '%l': return Number(args[i++])
+      case '%lu': return Number(args[i++])
+      case '%llu': return Number(args[i++])
+      case '%zu': return Number(args[i++])
       case '%f': return parseFloat(args[i++])
       case '%i': return parseInt(args[i++])
       case '%o': return inspect(args[i++], { showHidden: true })
-      case '%O': return inspect(args[i++])
+      case '%O': return inspect(args[i++], {})
       case '%j':
         try {
           return JSON.stringify(args[i++])
@@ -728,7 +733,17 @@ export function format (format, ...args) {
           return '[Circular]'
         }
 
+      case '%J':
+        try {
+          return JSON.stringify(args[i++], null, ' ')
+        } catch (_) {
+          return '[Circular]'
+        }
+
       case '%s': return String(args[i++])
+      case '%ls': return String(args[i++])
+      case '%S': return String(args[i++])
+      case '%LS': return String(args[i++])
     }
 
     return x
