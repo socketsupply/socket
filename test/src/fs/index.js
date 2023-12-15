@@ -531,7 +531,35 @@ test('fs.stat', async (t) => {
   })
 })
 
-test('fs.symlink', async (t) => {})
+test('fs.symlink', async (t) => {
+  await new Promise((resolve, reject) => {
+    const src = path.join(FIXTURES, 'file.txt')
+    const dest = path.join(FIXTURES, 'symlink.txt')
+    fs.symlink(src, dest, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.pass('The symlink is made without error')
+
+      // TODO: Update this when realpath is fixed
+      fs.realpath(dest, (resolvedPath) => {
+        t.ok(resolvedPath.endsWith('/file.txt'), 'link path matches the actual path')
+
+        fs.unlink(dest, (err) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+          t.ok('The synlink is removed')
+          return resolve()
+        })
+      })
+    })
+  })
+})
+
 test('fs.truncate', async (t) => {})
 test('fs.unlink', async (t) => {})
 test('fs.utimes', async (t) => {})
