@@ -820,8 +820,7 @@ SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
    */
   #define sapi_printf(ctx, format, ...) ({                                     \
     char _buffer[BUFSIZ] = {0};                                                \
-    int _size = snprintf(NULL, 0, format, ##__VA_ARGS__) + 1;                  \
-    snprintf(_buffer, _size, format, ##__VA_ARGS__);                           \
+    snprintf(_buffer, BUFSIZ, format, ##__VA_ARGS__);                          \
     sapi_log(ctx, _buffer);                                                    \
   })
 
