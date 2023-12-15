@@ -5077,41 +5077,59 @@ declare module "socket:extension" {
         instance: any;
         textDecoder: TextDecoder;
         textEncoder: TextEncoder;
-        heap: Uint8Array;
-        stack: Uint8Array;
-        get heapBaseOffset(): any;
-        get stackBaseOffset(): any;
-        get baseOffset(): any;
-        get indirectFunctionTable(): any;
-        callIndirect(offset: any, ...args: any[]): any;
+        indirectFunctionTable: WebAssemblyExtensionIndirectFunctionTable;
+        stack: WebAssemblyExtensionStack;
+        heap: WebAssemblyExtensionHeap;
         init(): boolean;
+        get globalBaseOffset(): any;
         get(pointer: any): Uint8Array;
         set(pointer: any, value: any): void;
         getFloat32(pointer: any): number;
         setFloat32(pointer: any, value: any): boolean;
-        getFloat64(pointer: any): number;
-        setFloat64(pointer: any, value: any): boolean;
         getInt8(pointer: any): number;
         setInt8(pointer: any, value: any): boolean;
         getInt16(pointer: any): number;
         setInt16(pointer: any, value: any): boolean;
         getInt32(pointer: any): number;
         setInt32(pointer: any, value: any): boolean;
-        getBigInt64(pointer: any): bigint | 0;
-        setBigInt64(pointer: any, value: any): boolean;
         getUint8(pointer: any): number;
         setUint8(pointer: any, value: any): boolean;
         getUint16(pointer: any): number;
         setUint16(pointer: any, value: any): boolean;
         getUint32(pointer: any): number;
         setUint32(pointer: any, value: any): boolean;
-        getBigUint64(pointer: any): bigint | 0;
-        setBigUint64(pointer: any, value: any): boolean;
         getString(pointer: any, buffer: any, size: any): string;
         setString(pointer: any, string: any, buffer: any): boolean;
     }
     const $type: unique symbol;
     const $loaded: unique symbol;
+    class WebAssemblyExtensionIndirectFunctionTable {
+        constructor(adapter: any, options?: any);
+        adapter: any;
+        table: any;
+        call(index: any, ...args: any[]): any;
+    }
+    class WebAssemblyExtensionStack {
+        constructor(adapter: any);
+        adapter: any;
+        limits: {
+            min: any;
+            max: any;
+        };
+        offset: any;
+        current: any[];
+        get buffer(): any;
+        get(pointer: any): any;
+        push(value: any): any;
+        pop(): number;
+        rewind(offset: any): number[];
+    }
+    class WebAssemblyExtensionHeap {
+        constructor(adapter: any);
+        adapter: any;
+        get buffer(): any;
+        get(pointer: any): any;
+    }
 }
 declare module "socket:fetch/fetch" {
     export class DOMException {
