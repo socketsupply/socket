@@ -1,9 +1,16 @@
 #include <socket/extension.h>
+#include <stdio.h>
+#include <string.h>
 
 static bool initialize (
   sapi_context_t* context,
   const void* data
 ) {
+  sapi_printf(0, "%s = %s + %d", "foo", "bars", 1234);
+  printf("hello from printf ");
+  printf("will be flushed");
+  printf("\n");
+  fprintf(stderr, "from stderr: %s\n", "hello from stderr");
   sapi_log(context, "from wasm");
   sapi_javascript_evaluate(context, "foo", "console.log('hello world!')");
   sapi_log(context, sapi_env_get(context, "HOME"));
