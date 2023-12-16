@@ -248,6 +248,7 @@ test.skip('fs.fstat', async (t) => {
   })
 })
 
+// TODO
 test('fs.lchmod', async (t) => {})
 test('fs.lchown', async (t) => {})
 test('fs.lutimes', async (t) => {})
@@ -486,7 +487,7 @@ test('fs.rename', async (t) => {
 })
 
 if (os.platform() !== 'android') {
-  test.only('fs.rmdir', async (t) => {
+  test('fs.rmdir', async (t) => {
     await new Promise((resolve, reject) => {
       const target = path.join(FIXTURES, 'rmdir-dir')
       fs.mkdir(target, { recursive: true }, (err) => {
@@ -560,8 +561,102 @@ test('fs.symlink', async (t) => {
   })
 })
 
-test('fs.truncate', async (t) => {})
-test('fs.unlink', async (t) => {})
+// This doesn't work yet
+test.skip('fs.ftruncate', async (t) => {
+  await new Promise((resolve, reject) => {
+    const testString = 'test 123 test 123 test 123 test 123 test 123'
+    const buffer = Buffer.from(testString)
+    const filePath = path.join(TMPDIR, 'truncate.txt')
+    fs.writeFile(filePath, buffer, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.pass('The test file is created')
+
+      fs.open(filePath, (err, fd) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.ok(fd, 'The test file is opened and we have an fd')
+
+        fs.ftruncate(fd, 5, (err) => {
+          if (err) {
+            console.error({ err })
+            t.fail(err)
+            return resolve()
+          }
+
+          t.pass('The test file is truncated')
+
+          fs.readFile(filePath, (err, result) => {
+            if (err) {
+              t.fail(err)
+              return resolve()
+            }
+
+            t.equal(result, testString)
+
+            fs.close(fd, (err) => {
+              if (err) t.fail(err)
+
+              t.ok(!err, 'fd closed')
+              resolve()
+            })
+          })
+        })
+      })
+    })
+  })
+})
+
+test.only('fs.unlink', async (t) => {
+  const buffer = Buffer.from('test 123')
+  await new Promise((resolve, reject) => {
+    const filePatht = path.join(TMPDIR, 'new-file.txt')
+    fs.writeFile(filePatht, buffer, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.pass('The file is written wuthout error')
+
+      fs.readFile(filePatht, (err, result) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.pass('The file is written wuthout error')
+
+        t.equal(Buffer.compare(result, buffer), 0, 'bytes match')
+
+        fs.unlink(filePatht, (err) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+          t.ok('The test file is removed without error')
+
+          fs.stat(filePatht, (err, stats) => {
+            if (err) {
+              t.pass('The file is removed and no longer stats')
+              return resolve()
+            } else {
+              t.fail('The file should fail to stat')
+              return resolve()
+            }
+          })
+        })
+      })
+    })
+  })
+})
+
 test('fs.utimes', async (t) => {})
 test('fs.watch', async (t) => {})
 test('fs.write', async (t) => {})
