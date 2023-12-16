@@ -613,7 +613,7 @@ test.skip('fs.ftruncate', async (t) => {
   })
 })
 
-test.only('fs.unlink', async (t) => {
+test('fs.unlink', async (t) => {
   const buffer = Buffer.from('test 123')
   await new Promise((resolve, reject) => {
     const filePatht = path.join(TMPDIR, 'new-file.txt')
@@ -657,9 +657,46 @@ test.only('fs.unlink', async (t) => {
   })
 })
 
-test('fs.utimes', async (t) => {})
-test('fs.watch', async (t) => {})
-test('fs.write', async (t) => {})
+// Not working yet
+test.skip('fs.watch', async (t) => {
+  let watcherFired = false
+  const watcher = fs.watch(TMPDIR, (...eventArgs) => {
+    watcherFired = true
+  })
+  await watcher.start()
+  const buffer = Buffer.from('test 123')
+
+  await new Promise((resolve, reject) => {
+    fs.writeFile(TMPDIR + 'watch-file1.txt', buffer, (err) => {
+      if (err) {
+        t.fail(err)
+        return resolve()
+      }
+
+      t.pass('watch-file1.txt written')
+
+      fs.writeFile(TMPDIR + 'watch-file2.txt', buffer, (err) => {
+        if (err) {
+          t.fail(err)
+          return resolve()
+        }
+
+        t.pass('watch-file2.txt written')
+        fs.writeFile(TMPDIR + 'watch-file3.txt', buffer, (err) => {
+          if (err) {
+            t.fail(err)
+            return resolve()
+          }
+          t.pass('watch-file3.txt written')
+          resolve()
+        })
+      })
+    })
+  })
+
+  await watcher.close()
+  t.ok(watcherFired, 'The watcher should have fired at least once')
+})
 
 if (os.platform() !== 'android') {
   test('fs.writeFile', async (t) => {
@@ -730,5 +767,3 @@ if (os.platform() !== 'android') {
     // }
   })
 }
-
-test('fs.writev', async (t) => {})
