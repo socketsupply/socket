@@ -10,6 +10,7 @@
  */
 import { isBufferLike } from './util.js'
 import { createFile } from './fs/web.js'
+import application from './application.js'
 // import { Buffer } from './buffer.js'
 import process from './process.js'
 import crypto from './crypto.js'
@@ -188,6 +189,16 @@ const ENOTRECOVERABLE = 131
 const ERFKILL = 132
 const EHWPOISON = 133
 
+const SAPI_JSON_TYPE_EMPTY = -1
+const SAPI_JSON_TYPE_ANY = 0
+const SAPI_JSON_TYPE_NULL = 1
+const SAPI_JSON_TYPE_OBJECT = 2
+const SAPI_JSON_TYPE_ARRAY = 3
+const SAPI_JSON_TYPE_BOOLEAN = 4
+const SAPI_JSON_TYPE_NUMBER = 5
+const SAPI_JSON_TYPE_STRING = 6
+const SAPI_JSON_TYPE_RAW = 7
+
 const errorMessages = {
   0: 'Undefined error: 0',
   [EPERM]: 'Operation not permitted',
@@ -324,6 +335,140 @@ const errorMessages = {
   [ENOTRECOVERABLE]: 'State not recoverable',
   [ERFKILL]: 'Operation not possible due to RF-kill',
   [EHWPOISON]: 'Memory page has hardware error'
+}
+
+class WebAssemblyExtensionRuntimeObject {
+  static get pointerSize () { return 4 }
+  constructor (adapter) {
+    this.adapter = adapter
+  }
+}
+
+class WebAssemblyExtensionRuntimeRouter extends WebAssemblyExtensionRuntimeObject {
+  routes = new Map()
+}
+
+class WebAssemblyExtensionRuntimePolicy extends WebAssemblyExtensionRuntimeObject {
+  name = null
+  allowed = false
+}
+
+class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObject {
+  // internal pointers
+  data = NULL
+  pointer = NULL
+
+  pool = []
+  json = new Map()
+  error = null
+  router = null
+  config = Object.create(application.config)
+  context = null
+  retained = false
+  policies = new Map()
+  retainedCount = 0
+
+  constructor (adapter, options) {
+    super(adapter)
+
+    this.context = options?.context ?? null
+
+    if (Array.isArray(options?.policies)) {
+      for (const policy of options.policies) {
+        this.setPolicy(policy, true)
+      }
+    }
+
+    this.router = this.context?.router ?? null
+    this.confix = this.context?.config ? Object.create(this.context.config) : this.config
+    this.retained = Boolean(options?.retained)
+    this.policy = this.context?.policies ?? this.policies
+    this.pointer = this.context
+      ? this.context.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
+      : this.adapter.heap.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
+
+    this.adapter.contexts.set(this.pointer, this)
+  }
+
+  alloc (size) {
+    const pointer = this.adapter.heap.alloc(size)
+
+    if (pointer) {
+      this.pool.push(pointer)
+    }
+
+    return pointer
+  }
+
+  allocJSON (value) {
+    const pointer = this.alloc(4)
+    this.json.set(pointer, value)
+    return pointer
+  }
+
+  retain () {
+    this.retained = true
+    this.retainedCount++
+  }
+
+  release () {
+    if (this.retainedCount === 0) {
+      return false
+    }
+
+    if (--this.retainedCount === 0) {
+      for (const pointer of this.pool) {
+        const context = this.env.adapter.contexts(pointer)
+
+        if (context) {
+          context.release()
+        }
+
+        this.adapter.heap.free(pointer)
+      }
+
+      this.adapter.heap.free(this.pointer)
+      this.pool.splice(0, this.pool.length)
+      this.pointer = NULL
+      this.retained = false
+      this.context = null
+      return true
+    }
+
+    return false
+  }
+
+  isAllowed (name) {
+    const names = name.split(',')
+    for (const name of names) {
+      const parts = name.trim().split('_')
+      let key = ''
+      for (const part of parts) {
+        key += part
+        if (this.hasPolicy(key) && this.getPolicy(key).allowed) {
+          return true
+        }
+
+        key += '_'
+      }
+    }
+
+    return false
+  }
+
+  setPolicy (name, allowed) {
+    if (this.hasPolicy(name)) {
+      const policy = this.getPolicy(name)
+      policy.name = name
+      policy.allowed = Boolean(allowed)
+    } else {
+      this.policies.set(name, { name, allowed: Boolean(allowed) })
+    }
+  }
+
+  getPolicy (name) {
+    return this.policies.get(name) ?? null
+  }
 }
 
 /**
@@ -652,18 +797,19 @@ class WebAssemblyExtensionIndirectFunctionTable {
  * @ignore
  */
 class WebAssemblyExtensionAdapter {
-  constructor ({ instance, module, table, memory }) {
+  constructor ({ instance, module, table, memory, policies }) {
     this.view = new DataView(memory.buffer)
     this.table = table
     this.buffer = new Uint8Array(memory.buffer)
     this.module = module
     this.memory = memory
+    this.policies = policies || []
+    this.contexts = new Map() // mapping pointer address to instance
     this.instance = instance
     this.exitStatus = null
     this.textDecoder = new TextDecoder()
     this.textEncoder = new TextEncoder()
     this.errorMessagePointers = {}
-
     this.indirectFunctionTable = new WebAssemblyExtensionIndirectFunctionTable(this)
   }
 
@@ -679,6 +825,7 @@ class WebAssemblyExtensionAdapter {
     this.indirectFunctionTable = null
     this.stack = null
     this.heap = null
+    this.context = null
   }
 
   init () {
@@ -687,7 +834,9 @@ class WebAssemblyExtensionAdapter {
 
     this.instance.exports.__wasm_call_ctors()
     const offset = this.instance.exports.__sapi_extension_initializer()
-    const context = new Uint8Array(1)
+    this.context = new WebAssemblyExtensionRuntimeContext(this, {
+      policies: this.policies || []
+    })
 
     // preallocate error message pointertr
     for (const errorCode in errorMessages) {
@@ -697,7 +846,7 @@ class WebAssemblyExtensionAdapter {
       this.setString(pointer, errorMessage)
     }
 
-    return Boolean(this.indirectFunctionTable.call(offset, context))
+    return Boolean(this.indirectFunctionTable.call(offset, this.context.pointer))
   }
 
   get globalBaseOffset () {
@@ -874,7 +1023,7 @@ function variadicFormattedestinationPointerringFromPointers (
 
   let index = 0
 
-  const regex = /%(l|ll|j|t|z)?(d|i|o|s|S|u|x|X|n|%)/g
+  const regex = /%(l|ll|j|t|z)?(d|i|n|o|p|s|S|u|x|X|%)/g
   const output = format.replace(regex, (x) => {
     if (x === '%%') {
       return '%'
@@ -893,8 +1042,13 @@ function variadicFormattedestinationPointerringFromPointers (
 
       case '%llu': case '%lu':
       case '%lld': case '%ld':
+      case '%zu':
       case '%i': case '%x': case '%X': case '%d': {
         return view.getInt32((index++) * 4, true)
+      }
+
+      case '%p': {
+        return `0x${view.getUint32((index++) * 4, true).toString(16)}`
       }
 
       case '%u': {
@@ -2105,30 +2259,98 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     // extension
-    sapi_extension_register (pointer) {
+    sapi_extension_register (registrationPointer) {
+    },
+
+    sapi_extension_is_allowed (contextPointer, allowedPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          const string = env.adapter.getString(allowedPointer)
+          if (string) {
+            return context.isAllowed(string)
+          }
+        }
+      }
+
+      return false
     },
 
     // context
-    sapi_context_create (parent, retained) {
+    sapi_context_create (parentPointer, retained) {
+      let parent = null
+
+      if (parentPointer) {
+        parent = env.adapter.contexts.get(parentPointer) ?? null
+      }
+
+      const context = new WebAssemblyExtensionRuntimeContext(env.adapter, {
+        context: parent,
+        retained
+      })
+
+      return context.pointer
     },
 
-    sapi_context_retain (context) {
+    sapi_context_retain (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          context.retain()
+          return true
+        }
+      }
+
+      return false
     },
 
-    sapi_context_retained (context) {
+    sapi_context_retained (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.retained
+        }
+      }
+
+      return false
     },
 
     sapi_context_get_loop (context) {
-      return 0
+      return NULL
     },
 
-    sapi_context_release (context) {
+    sapi_context_release (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.release()
+        }
+      }
+
+      return false
     },
 
-    sapi_context_set_data (context, data) {
+    sapi_context_set_data (contextPointer, dataPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          context.data = dataPointer
+          return true
+        }
+      }
+
+      return false
     },
 
-    sapi_context_get_data (context) {
+    sapi_context_get_data (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.data
+        }
+      }
+
+      return NULL
     },
 
     sapi_context_dispatch (context, data, callback) {
@@ -2151,11 +2373,163 @@ function createWebAssemblyExtensionImports (env) {
       }
     },
 
-    sapi_context_alloc (context, size) {
+    sapi_context_alloc (contextPointer, size) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.alloc(size)
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_get_parent (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context?.context?.pointer) {
+          return context.context.pointer
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_error_set_code (contextPointer, code) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          if (!context.error) {
+            context.error = new Error()
+          }
+          context.error.code = code
+        }
+      }
+    },
+
+    sapi_context_error_get_code (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context?.error) {
+          return context.error.code || 0
+        }
+      }
+
+      return 0
+    },
+
+    sapi_context_error_set_name (contextPointer, namePointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          const name = env.adapter.getString(namePointer)
+          if (name) {
+            if (!context.error) {
+              context.error = new Error()
+            }
+            context.error.name = name
+          }
+        }
+      }
+    },
+
+    sapi_context_error_get_name (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context?.error) {
+          return context.error.name || NULL
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_error_set_message (contextPointer, messagePointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          const message = env.adapter.getString(messagePointer)
+          if (message) {
+            if (!context.error) {
+              context.error = new Error()
+            }
+            context.error.message = message
+          }
+        }
+      }
+    },
+
+    sapi_context_error_get_message (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context?.error) {
+          return context.error.message || NULL
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_error_set_location (contextPointer, locationPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          const location = env.adapter.getString(locationPointer)
+          if (location) {
+            if (!context.error) {
+              context.error = new Error()
+            }
+            context.error.location = location
+          }
+        }
+      }
+    },
+
+    sapi_context_error_get_location (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context?.error) {
+          return context.error.location || NULL
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_config_get (contextPointer, keyStringPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        const string = env.adapter.getString(keyStringPointer)
+        if (context && string) {
+          const value = context.config[string]
+          if (value) {
+            return env.adapter.stack.push(value)
+          }
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_context_config_set (contextPointer, keyStringPointer, valueStringPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        const string = env.adapter.getString(keyStringPointer)
+        if (context && string) {
+          const value = env.adapter.getString(valueStringPointer)
+          if (value) {
+            context.config[string] = value
+          }
+        }
+      }
     },
 
     // env
-    sapi_env_get (context, name) {
+    sapi_env_get (contextPointer, name) {
+      if (!contextPointer) {
+        return NULL
+      }
+
       return imports.env.getenv(name)
     },
 
@@ -2177,49 +2551,408 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     // JSON
-    sapi_json_typeof (value) {
+    sapi_json_typeof (valuePointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(valuePointer)) {
+          const value = context.json.get(valuePointer)
+          if (value === null) {
+            return SAPI_JSON_TYPE_NULL
+          }
+
+          if (Array.isArray(value)) {
+            return SAPI_JSON_TYPE_ARRAY
+          }
+
+          if (typeof value === 'string') {
+            return SAPI_JSON_TYPE_STRING
+          }
+
+          if (typeof value === 'number') {
+            return SAPI_JSON_TYPE_NUMBER
+          }
+
+          if (typeof value === 'boolean') {
+            return SAPI_JSON_TYPE_BOOLEAN
+          }
+
+          if (typeof value === 'object') {
+            return SAPI_JSON_TYPE_OBJECT
+          }
+
+          return SAPI_JSON_TYPE_ANY
+        }
+      }
+
+      return SAPI_JSON_TYPE_EMPTY
     },
 
-    sapi_json_object_create (context) {
+    sapi_json_object_create (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.allocJSON({})
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_array_create (context) {
+    sapi_json_array_create (contextPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.allocJSON([])
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_string_create (context, string) {
+    sapi_json_string_create (contextPointer, stringPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        const string = env.adapter.getString(stringPointer)
+        if (context && string) {
+          return context.allocJSON(string)
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_boolean_create (context, boolean) {
+    sapi_json_boolean_create (contextPointer, booleanValue) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.allocJSON(Boolean(booleanValue))
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_number_create (context, number) {
+    sapi_json_number_create (contextPointer, numberValue) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        if (context) {
+          return context.allocJSON(numberValue)
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_raw_from (context, source) {
+    sapi_json_raw_from (contextPointer, stringPointer) {
+      if (contextPointer) {
+        const context = env.adapter.contexts.get(contextPointer)
+        const string = env.adapter.getString(stringPointer)
+        if (context && string) {
+          return context.allocJSON(JSON.parse(string))
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_object_set_value (object, key, value) {
+    sapi_json_object_set_value (objectPointer, keyStringPointer, valuePointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(objectPointer)) {
+          const object = context.json.get(objectPointer)
+          const key = env.adapter.getString(keyStringPointer)
+          if (object && key) {
+            for (const context of env.adapter.contexts.values()) {
+              if (context.json.has(valuePointer)) {
+                const value = context.json.get(valuePointer)
+                object[key] = value
+                return
+              }
+            }
+          }
+        }
+      }
     },
 
-    sapi_json_object_get (object, key) {
+    sapi_json_object_get (objectPointer, keyStringPointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(objectPointer)) {
+          const object = context.json.get(objectPointer)
+          const key = env.adapter.getString(keyStringPointer)
+          if (object && key && key in object) {
+            const value = object[key]
+            for (const entry of context.json.entries()) {
+              if (entry[1] === value) {
+                return entry[0]
+              }
+            }
+          }
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_array_set_value (array, index, value) {
+    sapi_json_array_set_value (arrayPointer, index, valuePointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(arrayPointer)) {
+          const array = context.json.get(arrayPointer)
+          if (array) {
+            for (const context of env.adapter.contexts.values()) {
+              if (context.json.has(valuePointer)) {
+                const value = context.json.get(valuePointer)
+                array[index] = value
+                return
+              }
+            }
+          }
+        }
+      }
     },
 
-    sapi_json_array_get (array, index) {
+    sapi_json_array_get (arrayPointer, index) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(arrayPointer)) {
+          const array = context.json.get(arrayPointer)
+          if (array) {
+            const value = array[index]
+            for (const entry of context.json.entries()) {
+              if (entry[1] === value) {
+                return entry[0]
+              }
+            }
+          }
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_array_push_value (array, value) {
+    sapi_json_array_push_value (arrayPointer, valuePointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(arrayPointer)) {
+          const array = context.json.get(arrayPointer)
+          if (array) {
+            const index = array.length
+            for (const context of env.adapter.contexts.values()) {
+              if (context.json.has(valuePointer)) {
+                const value = context.json.get(valuePointer)
+                array[index] = value
+                return index
+              }
+            }
+          }
+        }
+      }
+
+      return -1
     },
 
-    sapi_json_array_pop (array) {
+    sapi_json_array_pop (arrayPointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(arrayPointer)) {
+          const array = context.json.get(arrayPointer)
+          if (array) {
+            const value = array.pop()
+            for (const entry of context.json.entries()) {
+              if (entry[1] === value) {
+                return entry[0]
+              }
+            }
+          }
+        }
+      }
+
+      return NULL
     },
 
-    sapi_json_stringify_value (value) {
+    sapi_json_stringify_value (valuePointer) {
+      for (const context of env.adapter.contexts.values()) {
+        if (context.json.has(valuePointer)) {
+          const value = context.json.get(valuePointer)
+          return env.adapter.stack.push(JSON.stringify(value))
+        }
+      }
+
+      return NULL
+    },
+
+    sapi_ipc_message_get_index (messagePointer) {
+    },
+
+    sapi_ipc_message_get_value (messagePointer) {
+    },
+
+    sapi_ipc_message_get_bytes (messagePointer) {
+    },
+
+    sapi_ipc_message_get_bytes_size (messagePointer) {
+    },
+
+    sapi_ipc_message_get_name (messagePointer) {
+    },
+
+    sapi_ipc_message_get_seq (messagePointer) {
+    },
+
+    sapi_ipc_message_get_uri (messagePointer) {
+    },
+
+    sapi_ipc_message_get (messagePointer, keyStringPointer) {
+    },
+
+    sapi_ipc_result_create (contextPointer, messagePointer) {
+    },
+
+    sapi_ipc_result_set_seq (resultPointer, seqPointer) {
+    },
+
+    sapi_ipc_result_get_seq (resultPointer) {
+    },
+
+    sapi_ipc_result_get_context (resultPointer) {
+    },
+
+    sapi_ipc_result_set_message (resultPointer, messagePointer) {
+    },
+
+    sapi_ipc_result_get_message (resultPointer) {
+    },
+
+    sapi_ipc_result_set_json (resultPointer, jsonPointer) {
+    },
+
+    sapi_ipc_result_get_json (resultPointer) {
+    },
+
+    sapi_ipc_result_set_json_data (result, jsonPointer) {
+    },
+
+    sapi_ipc_result_get_json_data (resultPointer) {
+    },
+
+    sapi_ipc_result_set_json_error (resultPointer, jsonPointer) {
+    },
+
+    sapi_ipc_result_get_json_error (resultPointer) {
+    },
+
+    sapi_ipc_result_set_bytes (resultPointer, size, bytesPointer) {
+    },
+
+    sapi_ipc_result_get_bytes (resultPointer) {
+    },
+
+    sapi_ipc_result_get_bytes_size (resultPointer) {
+    },
+
+    sapi_ipc_result_set_header (resultPointer, namePointer, valuePointer) {
+    },
+
+    sapi_ipc_result_get_header (resultPointer, namePointer) {
+    },
+
+    sapi_ipc_result_from_json (contextPointer, messagePointer, jsonPointer) {
+    },
+
+    sapi_ipc_send_chunk (resultPointer, chunkPointer, chunkSize, finished) {
+    },
+
+    sapi_ipc_send_event (resultPointer, namePointer, dataPointer, finished) {
+    },
+
+    sapi_ipc_set_cancellation_handler (resultPointer, handlerPointer, dataPointer) {
+    },
+
+    sapi_ipc_reply (resultPointer) {
+    },
+
+    sapi_ipc_reply_with_error (resultPointer, errorPointer) {
+    },
+
+    sapi_ipc_send_json (contextPointer, messagePointer, jsonPointer) {
+    },
+
+    sapi_ipc_send_json_with_result (contextPointer, resultPointer, jsonPointer) {
+    },
+
+    sapi_ipc_send_bytes (contextPointer, messagePointer, size, bytesPointer, headersPointer) {
+    },
+
+    sapi_ipc_send_bytes_with_result (contextPointer, resultPointer, size, bytesPointer, headersPointer) {
+    },
+
+    sapi_ipc_emit (contextPointer, namePointer, dataPointer) {
+    },
+
+    sapi_ipc_invoke (contextPointer, urlPointer, size, bytesPointer, callbackPointer) {
+    },
+
+    sapi_ipc_router_map (contextPointer, routePointer, callbackPointer, dataPointer) {
+    },
+
+    sapi_ipc_router_unmap (contextPointer, routePointer) {
+    },
+
+    sapi_ipc_router_listen (contextPointer, routePointer, callbackPointer, dataPointer) {
+    },
+
+    sapi_ipc_router_unlisten (contextPointer, routePointer, token) {
+    },
+
+    sapi_process_exec (contextPointer, commandPointer) {
+    },
+
+    sapi_process_exec_get_exit_code (processPointer) {
+    },
+
+    sapi_process_exec_get_output (processPointer) {
+    },
+
+    sapi_process_spawn (
+      contextPointer,
+      commandPointer,
+      argvPointer,
+      pathPointer,
+      onstdoutPointer,
+      onstderrPointer,
+      onexitPointer
+    ) {
+    },
+
+    sapi_process_spawn_get_exit_code (processPointer) {
+    },
+
+    sapi_process_spawn_get_pid (processPointer) {
+    },
+
+    sapi_process_spawn_get_context (processPointer) {
+    },
+
+    sapi_process_spawn_wait (processPointer) {
+    },
+
+    sapi_process_spawn_write (processPointer, bytesPointer, size) {
+    },
+
+    sapi_process_spawn_close_stdin (processPointer) {
+    },
+
+    sapi_process_spawn_kill (processPointer, code) {
+    },
+
+    sapi_extension_load (contextPointer, namePointer, dataPointer) {
+    },
+
+    sapi_extension_unload (contextPointer, namePointer) {
+    },
+
+    sapi_extension_get (contextPointer, namePointer) {
+    },
+
+    sapi_ipc_message_clone (contextPointer, messagePointer) {
+    },
+
+    sapi_ipc_result_clone (contextPointer, resultPointer) {
     }
-
-    // TODO: IPC
   })
 
   return imports
@@ -2283,7 +3016,7 @@ export class Extension extends EventTarget {
       const tags = {
         ...options.tags,
         exit: new WebAssembly.Tag({ parameters: ['i32'] }),
-        abort: new WebAssembly.Tag({ parameters: [] }),
+        abort: new WebAssembly.Tag({ parameters: [] })
       }
 
       const memory = options.memory ?? new WebAssembly.Memory({ initial: 32 })
@@ -2304,7 +3037,14 @@ export class Extension extends EventTarget {
         module
       } = await WebAssembly.instantiateStreaming(response, imports)
 
-      adapter = new WebAssemblyExtensionAdapter({ instance, module, table, memory })
+      adapter = new WebAssemblyExtensionAdapter({
+        policies: options.allowed || [],
+        instance,
+        memory,
+        module,
+        table
+      })
+
       info = new WebAssemblyExtensionInfo(adapter)
 
       options.adapter = adapter
@@ -2313,12 +3053,16 @@ export class Extension extends EventTarget {
       try {
         adapter.init()
       } catch (err) {
-        if (err.is(tags.exit)) {
-          adapter.exitStatus = err.getArg(tags.exit, 0)
-          adapter.destroy()
-        } else if (err.is(tags.abort)) {
-          adapter.exitStatus = 1
-          adapter.destroy()
+        if (typeof err?.is === 'function') {
+          if (err.is(tags.exit)) {
+            adapter.exitStatus = err.getArg(tags.exit, 0)
+            adapter.destroy()
+          } else if (err.is(tags.abort)) {
+            adapter.exitStatus = 1
+            adapter.destroy()
+          } else {
+            throw err
+          }
         } else {
           throw err
         }
