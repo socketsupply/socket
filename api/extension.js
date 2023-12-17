@@ -1,4 +1,5 @@
 /* global Event */
+/* eslint-disable no-unused-vars */
 /**
  * @module extension
  *
@@ -15,9 +16,315 @@ import crypto from './crypto.js'
 import ipc from './ipc.js'
 import fs from './fs/promises.js'
 
+/**
+ * @typedef {number} {Pointer}
+ */
+
 const $loaded = Symbol('loaded')
 const $stats = Symbol('stats')
 const $type = Symbol('type')
+
+const NULL = 0x0
+
+// eslint-disable-next-line
+const STDIN = 0x0 // STDIN_FILENO
+const STDOUT = 0x1 // STDOUT_FILENO
+const STDERR = 0x2 // STDERR_FILNO
+
+const EXIT_FAILURE = 1
+const EXIT_SUCCESS = 0
+const RAND_MAX = (0x7fffffff)
+
+const CLOCKS_PER_SEC = 1000
+
+const TIME_UTC = 1
+const TIMER_ABSTIME = 1
+
+const CLOCK_REALTIME = 0
+const CLOCK_MONOTONIC = 1
+const CLOCK_PROCESS_CPUTIME_ID = 2
+const CLOCK_THREAD_CPUTIME_ID = 3
+const CLOCK_MONOTONIC_RAW = 4
+const CLOCK_REALTIME_COARSE = 5
+const CLOCK_MONOTONIC_COARSE = 6
+const CLOCK_BOOTTIME = 7
+const CLOCK_REALTIME_ALARM = 8
+const CLOCK_BOOTTIME_ALARM = 9
+const CLOCK_SGI_CYCLE = 10
+const CLOCK_TAI = 11
+
+const EPERM = 1
+const ENOENT = 2
+const ESRCH = 3
+const EINTR = 4
+const EIO = 5
+const ENXIO = 6
+const E2BIG = 7
+const ENOEXEC = 8
+const EBADF = 9
+const ECHILD = 10
+const EAGAIN = 11
+const ENOMEM = 12
+const EACCES = 13
+const EFAULT = 14
+const ENOTBLK = 15
+const EBUSY = 16
+const EEXIST = 17
+const EXDEV = 18
+const ENODEV = 19
+const ENOTDIR = 20
+const EISDIR = 21
+const EINVAL = 22
+const ENFILE = 23
+const EMFILE = 24
+const ENOTTY = 25
+const ETXTBSY = 26
+const EFBIG = 27
+const ENOSPC = 28
+const ESPIPE = 29
+const EROFS = 30
+const EMLINK = 31
+const EPIPE = 32
+const EDOM = 33
+const ERANGE = 34
+const EDEADLK = 35
+const ENAMETOOLONG = 36
+const ENOLCK = 37
+const ENOSYS = 38
+const ENOTEMPTY = 39
+const ELOOP = 40
+const EWOULDBLOCK = EAGAIN
+const ENOMSG = 42
+const EIDRM = 43
+const ECHRNG = 44
+const EL2NSYNC = 45
+const EL3HLT = 46
+const EL3RST = 47
+const ELNRNG = 48
+const EUNATCH = 49
+const ENOCSI = 50
+const EL2HLT = 51
+const EBADE = 52
+const EBADR = 53
+const EXFULL = 54
+const ENOANO = 55
+const EBADRQC = 56
+const EBADSLT = 57
+const EDEADLOCK = EDEADLK
+const EBFONT = 59
+const ENOSTR = 60
+const ENODATA = 61
+const ETIME = 62
+const ENOSR = 63
+const ENONET = 64
+const ENOPKG = 65
+const EREMOTE = 66
+const ENOLINK = 67
+const EADV = 68
+const ESRMNT = 69
+const ECOMM = 70
+const EPROTO = 71
+const EMULTIHOP = 72
+const EDOTDOT = 73
+const EBADMSG = 74
+const EOVERFLOW = 75
+const ENOTUNIQ = 76
+const EBADFD = 77
+const EREMCHG = 78
+const ELIBACC = 79
+const ELIBBAD = 80
+const ELIBSCN = 81
+const ELIBMAX = 82
+const ELIBEXEC = 83
+const EILSEQ = 84
+const ERESTART = 85
+const ESTRPIPE = 86
+const EUSERS = 87
+const ENOTSOCK = 88
+const EDESTADDRREQ = 89
+const EMSGSIZE = 90
+const EPROTOTYPE = 91
+const ENOPROTOOPT = 92
+const EPROTONOSUPPORT = 93
+const ESOCKTNOSUPPORT = 94
+const EOPNOTSUPP = 95
+const ENOTSUP = EOPNOTSUPP
+const EPFNOSUPPORT = 96
+const EAFNOSUPPORT = 97
+const EADDRINUSE = 98
+const EADDRNOTAVAIL = 99
+const ENETDOWN = 100
+const ENETUNREACH = 101
+const ENETRESET = 102
+const ECONNABORTED = 103
+const ECONNRESET = 104
+const ENOBUFS = 105
+const EISCONN = 106
+const ENOTCONN = 107
+const ESHUTDOWN = 108
+const ETOOMANYREFS = 109
+const ETIMEDOUT = 110
+const ECONNREFUSED = 111
+const EHOSTDOWN = 112
+const EHOSTUNREACH = 113
+const EALREADY = 114
+const EINPROGRESS = 115
+const ESTALE = 116
+const EUCLEAN = 117
+const ENOTNAM = 118
+const ENAVAIL = 119
+const EISNAM = 120
+const EREMOTEIO = 121
+const EDQUOT = 122
+const ENOMEDIUM = 123
+const EMEDIUMTYPE = 124
+const ECANCELED = 125
+const ENOKEY = 126
+const EKEYEXPIRED = 127
+const EKEYREVOKED = 128
+const EKEYREJECTED = 129
+const EOWNERDEAD = 130
+const ENOTRECOVERABLE = 131
+const ERFKILL = 132
+const EHWPOISON = 133
+
+const errorMessages = {
+  0: 'Undefined error: 0',
+  [EPERM]: 'Operation not permitted',
+  [ENOENT]: 'No such file or directory',
+  [ESRCH]: 'No such process',
+  [EINTR]: 'Interrupted system call',
+  [EIO]: 'Input/output error',
+  [ENXIO]: 'Device not configured',
+  [E2BIG]: 'Argument list too long',
+  [ENOEXEC]: 'Exec format error',
+  [EBADF]: 'Bad file descriptor',
+  [ECHILD]: 'No child processes',
+  [EAGAIN]: 'Try again',
+  [ENOMEM]: 'Out of memory',
+  [EACCES]: 'Permission denied',
+  [EFAULT]: 'Bad address',
+  [ENOTBLK]: 'Block device required',
+  [EBUSY]: 'Device or resource busy',
+  [EEXIST]: 'File exists',
+  [EXDEV]: 'Cross-device link',
+  [ENODEV]: 'No such device',
+  [ENOTDIR]: 'Not a directory',
+  [EISDIR]: 'Is a directory',
+  [EINVAL]: 'Invalid argument',
+  [ENFILE]: 'File table overflow',
+  [EMFILE]: 'Too many open files',
+  [ENOTTY]: 'Not a typewriter',
+  [ETXTBSY]: 'Text file busy',
+  [EFBIG]: 'File too large',
+  [ENOSPC]: 'No space left on device',
+  [ESPIPE]: 'Illegal seek',
+  [EROFS]: 'Read-only file system ',
+  [EMLINK]: 'Too many links',
+  [EPIPE]: 'Broken pipe',
+  [EDOM]: ' Numerical argument out of domain',
+  [ERANGE]: 'umerical result out of range',
+  [EDEADLK]: 'Resource deadlock avoided',
+  [ENAMETOOLONG]: 'File name too long',
+  [ENOLCK]: 'No locks available',
+  [ENOSYS]: 'Function not implemented',
+  [ENOTEMPTY]: 'Directory not empty',
+  [ELOOP]: 'Too many levels of symbolic links',
+  [EWOULDBLOCK]: 'Try again',
+  [ENOMSG]: 'No message of desired type',
+  [EIDRM]: 'Identifier removed',
+  [ECHRNG]: 'Character range error',
+  [EL2NSYNC]: 'Level 2 not synchronized',
+  [EL3HLT]: 'Level 3 halted',
+  [EL3RST]: 'EL3RST',
+  [ELNRNG]: 'ELNRNG',
+  [EUNATCH]: 'No such device',
+  [ENOCSI]: 'No CSI structure available',
+  [EL2HLT]: 'Level 2 halted',
+  [EBADE]: 'Invalid exchange',
+  [EBADR]: 'Invalid request descriptor',
+  [EXFULL]: 'Exchange full',
+  [ENOANO]: 'No anode',
+  [EBADRQC]: 'Invalid request code',
+  [EBADSLT]: 'Invalid slot',
+  [EDEADLOCK]: 'Resource deadlock avoided',
+  [EBFONT]: 'Bad font file format',
+  [ENOSTR]: 'Device not a stream',
+  [ENODATA]: 'No data available',
+  [ETIME]: 'Timer expired',
+  [ENOSR]: 'Out of streams resources',
+  [ENONET]: 'Machine is not on the network',
+  [ENOPKG]: 'Package not installed',
+  [EREMOTE]: 'Object is remote',
+  [ENOLINK]: 'Link has been severed',
+  [EADV]: 'Advertise error',
+  [ESRMNT]: 'Srmount error',
+  [ECOMM]: 'Communication error on send',
+  [EPROTO]: 'Protocol error',
+  [EMULTIHOP]: 'Multihop attempted',
+  [EDOTDOT]: 'RFS specific error',
+  [EBADMSG]: 'Not a data message',
+  [EOVERFLOW]: 'Value too large for defined data type',
+  [ENOTUNIQ]: 'Name not unique on network',
+  [EBADFD]: 'File descriptor in bad state',
+  [EREMCHG]: 'Remote address changed',
+  [ELIBACC]: 'Can not access a needed shared library',
+  [ELIBBAD]: 'Accessing a corrupted shared library',
+  [ELIBSCN]: '.lib section in a.out corrupted',
+  [ELIBMAX]: 'Attempting to link in too many shared libraries',
+  [ELIBEXEC]: 'Cannot exec a shared library directly',
+  [EILSEQ]: 'Illegal byte sequence',
+  [ERESTART]: 'Interrupted system call should be restarted',
+  [ESTRPIPE]: 'Streams pipe error',
+  [EUSERS]: 'Too many users',
+  [ENOTSOCK]: 'Socket operation on non-socket',
+  [EDESTADDRREQ]: 'Destination address required',
+  [EMSGSIZE]: 'Message too long',
+  [EPROTOTYPE]: 'Protocol wrong type for socket',
+  [ENOPROTOOPT]: 'Protocol not available',
+  [EPROTONOSUPPORT]: 'Protocol not supported',
+  [ESOCKTNOSUPPORT]: 'Socket type not supported',
+  [EOPNOTSUPP]: 'Operation not supported on transport endpoint',
+  [ENOTSUP]: 'Operation not supported',
+  [EPFNOSUPPORT]: 'Protocol family not supported',
+  [EAFNOSUPPORT]: 'Address family not supported by protocol',
+  [EADDRINUSE]: 'Address already in use',
+  [EADDRNOTAVAIL]: 'Cannot assign requested address',
+  [ENETDOWN]: 'Network is down',
+  [ENETUNREACH]: 'Network is unreachable',
+  [ENETRESET]: 'Network dropped connection because of reset',
+  [ECONNABORTED]: 'Software caused connection abort',
+  [ECONNRESET]: 'Connection reset by peer',
+  [ENOBUFS]: 'No buffer space available',
+  [EISCONN]: 'Transport endpoint is already connected',
+  [ENOTCONN]: 'Transport endpoint is not connected',
+  [ESHUTDOWN]: 'Cannot send after transport endpoint shutdown',
+  [ETOOMANYREFS]: 'Too many references: cannot splice',
+  [ETIMEDOUT]: 'Connection timed out',
+  [ECONNREFUSED]: 'Connection refused',
+  [EHOSTDOWN]: 'Host is down',
+  [EHOSTUNREACH]: 'No route to host',
+  [EALREADY]: 'Operation already in progress',
+  [EINPROGRESS]: 'Operation now in progress',
+  [ESTALE]: 'Stale NFS file handle',
+  [EUCLEAN]: 'Structure needs cleaning',
+  [ENOTNAM]: 'Not a XENIX named type file',
+  [ENAVAIL]: 'No XENIX semaphores available',
+  [EISNAM]: 'Is a named type file',
+  [EREMOTEIO]: 'Remote I/O error',
+  [EDQUOT]: 'Quota exceeded',
+  [ENOMEDIUM]: 'No medium found',
+  [EMEDIUMTYPE]: 'Wrong medium type',
+  [ECANCELED]: 'Operation canceled',
+  [ENOKEY]: 'Required key not available',
+  [EKEYEXPIRED]: 'Key has expired',
+  [EKEYREVOKED]: 'Key has been revoked',
+  [EKEYREJECTED]: 'Key was rejected by service',
+  [EOWNERDEAD]: 'Owner died',
+  [ENOTRECOVERABLE]: 'State not recoverable',
+  [ERFKILL]: 'Operation not possible due to RF-kill',
+  [EHWPOISON]: 'Memory page has hardware error'
+}
 
 /**
  * A constructed `Response` suitable for WASM binaries.
@@ -33,28 +340,48 @@ class WebAssemblyResponse extends Response {
   }
 }
 
-class WebAssemblyExtensionStack {
-  constructor (adapter) {
-    this.adapter = adapter
-    this.limits = {
-      min: this.adapter.instance.exports.__stack_low.value,
-      max: this.adapter.instance.exports.__stack_high.value
-    }
+class WebAssemblyExtensionMemoryBlock {
+  start = 0
+  end = 0
+  constructor (memory, start, end) {
+    this.memory = memory
+    this.start = start || 0
+    this.end = end || memory.byteLength
+  }
+}
 
-    this.offset = this.limits.min
+class WebAssemblyExtensionMemory {
+  adapter = null
+  offset = 0
+  limits = { min: 0, max: 0 }
+
+  constructor (adapter, min, max) {
+    this.adapter = adapter
+    this.limits.min = min
+    this.limits.max = max
+    this.offset = min
     this.current = []
+    this.freeList = [new WebAssemblyExtensionMemoryBlock(this)]
   }
 
   get buffer () {
     return this.adapter.buffer
   }
 
+  get byteLength () {
+    return this.buffer.byteLength
+  }
+
   get (pointer) {
     return this.buffer.subarray(pointer)
   }
 
+  get pointer () {
+    return this.offset
+  }
+
   push (value) {
-    const pointer = this.offset
+    let pointer = this.offset
 
     if (value === null) {
       value = 0
@@ -68,7 +395,7 @@ class WebAssemblyExtensionStack {
 
     if (!isBufferLike(value) && typeof value !== 'number') {
       throw new TypeError(
-        'WebAssemblyExtensionStack: ' +
+        'WebAssemblyExtensionMemory: ' +
         'Expected value to be TypedArray or a number: ' +
         `Got ${typeof value}`
       )
@@ -79,6 +406,7 @@ class WebAssemblyExtensionStack {
 
     if (isBufferLike(value)) {
       byteLength = value.byteLength
+      pointer = this.alloc(byteLength)
     } else {
       const zeroes = Math.clz32(value)
       if (zeroes <= 8) {
@@ -129,26 +457,158 @@ class WebAssemblyExtensionStack {
     return pointer
   }
 
-  rewind (offset) {
+  restore (offset) {
     const pointers = []
     while (this.offset > offset) {
       pointers.push(this.pop())
     }
     return pointers
   }
+
+  alloc (size) {
+    if (!size) {
+      return NULL
+    }
+
+    // find a free block that is large enough
+    for (let i = 0; i < this.freeList.length; ++i) {
+      const block = this.freeList[i]
+      if (block.end - block.start >= size) {
+        // allocate memory from the free block
+        const allocatedBlock = new WebAssemblyExtensionMemoryBlock(
+          this,
+          block.start,
+          block.start + size
+        )
+
+        // update the free block (if any remaining)
+        if (block.end - allocatedBlock.end > 0) {
+          block.start = allocatedBlock.end
+        } else {
+          // remove the block from the free list if no remaining space
+          this.freeList.splice(i, 1)
+        }
+
+        this.offset = allocatedBlock.end
+        const pointer = this.limits.min + allocatedBlock.start
+        return pointer
+      }
+    }
+
+    return NULL
+  }
+
+  free (pointer) {
+    if (!pointer) {
+      return
+    }
+
+    pointer = pointer - this.limits.min
+
+    // find the block to free and merge adjacent free blocks
+    for (let i = 0; i < this.freeList.length; ++i) {
+      const block = this.freeList[i]
+      if (pointer >= block.start && pointer < block.end) {
+        // add the freed block back to the free list
+        this.freeList.splice(i, 0, new WebAssemblyExtensionMemoryBlock(
+          this,
+          pointer,
+          pointer + (block.end - block.start)
+        ))
+
+        // merge adjacent free blocks
+        if (i < this.freeList.length - 1 && this.freeList[i + 1].start === block.end) {
+          this.freeList[i].end = this.freeList[i + 1].end
+          this.freeList.splice(i + 1, 1)
+        }
+
+        if (i > 0 && this.freeList[i - 1].end === block.start) {
+          this.freeList[i - 1].end = block.end
+          this.freeList.splice(i, 1)
+        }
+
+        this.offset = this.freeList[this.freeList.length - 1].start
+        return
+      }
+    }
+  }
 }
 
-class WebAssemblyExtensionHeap {
+class WebAssemblyExtensionStack extends WebAssemblyExtensionMemory {
   constructor (adapter) {
-    this.adapter = adapter
+    super(
+      adapter,
+      adapter.instance.exports.__stack_low.value,
+      adapter.instance.exports.__stack_high.value
+    )
+  }
+}
+
+class WebAssemblyExtensionHeap extends WebAssemblyExtensionMemory {
+  constructor (adapter) {
+    super(
+      adapter,
+      adapter.instance.exports.__heap_base.value,
+      adapter.instance.exports.__heap_end.value
+    )
   }
 
-  get buffer () {
-    return this.adapter.buffer
+  realloc (pointer, size) {
+    // if the pointer is NULL, it's equivalent to `alloc()`
+    if (pointer === NULL) {
+      return this.alloc(size)
+    }
+
+    // find the block corresponding to the given pointer
+    for (let i = 0; i < this.freeList.length; ++i) {
+      const block = this.freeList[i]
+      if (pointer >= block.start && pointer < block.end) {
+        const currentSize = block.end - block.start
+
+        // if the new size is smaller or equal, return the existing pointer
+        if (size <= currentSize) {
+          return pointer
+        }
+
+        // try to extend the current block if there is enough space
+        if (
+          i < this.freeList.length - 1 &&
+          this.freeList[i + 1].start - block.end >= size - currentSize
+        ) {
+          block.end += size - currentSize
+          return pointer
+        }
+
+        // if extension is not possible, allocate a new block and copy the data
+        const newPointer = this.alloc(size)
+        const sourceArray = new Uint8Array(this.buffer.buffer, block.start, currentSize)
+        const destinationArray = new Uint8Array(this.buffer.buffer, newPointer, currentSize)
+        destinationArray.set(sourceArray)
+
+        // free the original block
+        this.free(pointer)
+
+        return newPointer
+      }
+    }
+
+    // return NULL if the pointer is not found (not allocated)
+    return NULL
   }
 
-  get (pointer) {
-    return this.buffer.subarray(pointer)
+  calloc (count, size) {
+    const totalSize = count * size
+    const pointer = this.alloc(totalSize)
+
+    if (pointer === NULL) {
+      // allocation failed
+      return NULL
+    }
+
+    // initialize the allocated memory to zero
+    const array = new Uint8Array(this.buffer.buffer, pointer, totalSize)
+    array.fill(0)
+    return pointer
   }
 }
 
@@ -169,7 +629,7 @@ class WebAssemblyExtensionIndirectFunctionTable {
 
     const callable = this.table.get(index)
     const values = []
-    const mark = this.adapter.stack.offset
+    const mark = this.adapter.stack.pointer
 
     for (const arg of args) {
       if (typeof arg === 'number') {
@@ -180,7 +640,7 @@ class WebAssemblyExtensionIndirectFunctionTable {
     }
 
     const value = callable(...values)
-    this.adapter.stack.rewind(mark)
+    this.adapter.stack.restore(mark)
 
     return value
   }
@@ -192,24 +652,50 @@ class WebAssemblyExtensionIndirectFunctionTable {
  * @ignore
  */
 class WebAssemblyExtensionAdapter {
-  constructor ({ instance, module, table }) {
-    this.view = new DataView(instance.exports.memory.buffer)
+  constructor ({ instance, module, table, memory }) {
+    this.view = new DataView(memory.buffer)
     this.table = table
-    this.buffer = new Uint8Array(instance.exports.memory.buffer)
+    this.buffer = new Uint8Array(memory.buffer)
     this.module = module
+    this.memory = memory
     this.instance = instance
     this.textDecoder = new TextDecoder()
     this.textEncoder = new TextEncoder()
+    this.errorMessagePointers = {}
 
     this.indirectFunctionTable = new WebAssemblyExtensionIndirectFunctionTable(this)
-    this.stack = new WebAssemblyExtensionStack(this)
-    this.heap = new WebAssemblyExtensionHeap(this)
+  }
+
+  destroy () {
+    this.view = null
+    this.table = null
+    this.buffer = null
+    this.module = null
+    this.memory = null
+    this.instance = null
+    this.textDecoder = null
+    this.textEncoder = null
+    this.indirectFunctionTable = null
+    this.stack = null
+    this.heap = null
   }
 
   init () {
+    this.stack = new WebAssemblyExtensionStack(this)
+    this.heap = new WebAssemblyExtensionHeap(this)
+
     this.instance.exports.__wasm_call_ctors()
     const offset = this.instance.exports.__sapi_extension_initializer()
     const context = new Uint8Array(1)
+
+    // preallocate error message pointertr
+    for (const errorCode in errorMessages) {
+      const errorMessage = errorMessages[errorCode]
+      const pointer = this.heap.alloc(errorMessage.length)
+      this.errorMessagePointers[errorCode] = pointer
+      this.setString(pointer, errorMessage)
+    }
+
     return Boolean(this.indirectFunctionTable.call(offset, context))
   }
 
@@ -303,7 +789,7 @@ class WebAssemblyExtensionAdapter {
 
     const start = buffer
       ? buffer.slice(pointer)
-      : this.stack.get(pointer)
+      : this.buffer.subarray(pointer)
 
     const end = size || start.indexOf(0) // NULL byte
 
@@ -367,18 +853,86 @@ function createWebAssemblyExtensionBinding (adapter) {
   })
 }
 
+function variadicFormattedestinationPointerringFromPointers (
+  env,
+  formatPointer,
+  variadicArguments = 0x0,
+  encoded = true
+) {
+  const format = env.adapter.getString(formatPointer)
+  if (!variadicArguments) {
+    if (encoded) {
+      return env.adapter.textEncoder.encode(format)
+    }
+
+    return format
+  }
+
+  const buffer = env.adapter.buffer.slice(variadicArguments)
+  const view = new DataView(buffer.buffer)
+
+  let index = 0
+
+  const regex = /%(l|ll|j|t|z)?(d|i|o|s|S|u|x|X|n|%)/g
+  const output = format.replace(regex, (x) => {
+    if (x === '%%') {
+      return '%'
+    }
+
+    switch (x) {
+      case '%S': case '%s': {
+        const pointer = view.getInt32((index++) * 4, true)
+        const string = env.adapter.getString(pointer)
+        if (!string) {
+          return '(null)'
+        }
+
+        return string
+      }
+
+      case '%llu': case '%lu':
+      case '%lld': case '%ld':
+      case '%i': case '%x': case '%X': case '%d': {
+        return view.getInt32((index++) * 4, true)
+      }
+
+      case '%u': {
+        return view.getUint32((index++) * 4, true)
+      }
+    }
+
+    return x
+  })
+
+  if (encoded) {
+    return env.adapter.textEncoder.encode(output)
+  }
+
+  return output
+}
+
 function createWebAssemblyExtensionImports (env) {
   const imports = {
     env: {
-      memoryBase: 0,
-      tableBase: 0
+      memoryBase: 5 * 1024 * 1024,
+      tableBase: 0,
+      memory: env.memory,
+      table: env.table || new WebAssembly.Table({
+        initial: 0,
+        element: 'anyfunc'
+      })
     }
   }
 
-  imports.table = env.table || new WebAssembly.Table({
-    initial: 0,
-    element: 'anyfunc'
-  })
+  let errnoPointer = 0
+  let srandSeed = 1
+  let atExitCallbackPointer = 0x0
+  let exitCode = 0
+
+  const toBeFlushed = {
+    stdout: [],
+    stderr: []
+  }
 
   // <assert.h>
   Object.assign(imports.env, {
@@ -389,73 +943,13 @@ function createWebAssemblyExtensionImports (env) {
   // <errno.h>
   Object.assign(imports.env, {
     __errno_location () {
-      // TODO(@jwerle): return pointer from `env.adapter.heap` that is in reserved space
-      return 0
+      if (!errnoPointer) {
+        errnoPointer = env.adapter.heap.alloc(4)
+      }
+
+      return errnoPointer
     }
   })
-
-  function variadicFormatedStringFromPointers (
-    formatPointer,
-    variadicArguments = 0x0,
-    encoded = true
-  ) {
-    const format = env.adapter.getString(formatPointer)
-    if (!variadicArguments) {
-      if (encoded) {
-        return env.adapter.textEncoder.encode(format)
-      }
-
-      return format
-    }
-
-    const buffer = env.adapter.buffer.slice(variadicArguments)
-    const view = new DataView(buffer.buffer)
-
-    let index = 0
-
-    const regex = /%(l|ll|j|t|z)?(d|i|o|s|S|u|x|X|n|%)/g
-    const output = format.replace(regex, (x) => {
-      if (x === '%%') {
-        return '%'
-      }
-
-      switch (x) {
-        case '%S': case '%s': {
-          const pointer = view.getUint8((index++) * 4)
-          const offset = env.adapter.globalBaseOffset + pointer
-          return env.adapter.getString(offset, env.adapter.buffer)
-        }
-
-        case '%llu': case '%lu':
-        case '%lld': case '%ld':
-        case '%i': case '%x': case '%X': case '%d': {
-          return view.getInt32((index++) * 4, true)
-        }
-
-        case '%u': {
-          return view.getUint32((index++) * 4, true)
-        }
-      }
-
-      return x
-    })
-
-    if (encoded) {
-      return env.adapter.textEncoder.encode(output)
-    }
-
-    return output
-  }
-
-  // eslint-disable-next-line
-  const STDIN = 0x0
-  const STDOUT = 0x1
-  const STDERR = 0x2
-
-  const toBeFlushed = {
-    stdout: [],
-    stderr: []
-  }
 
   // <stdio.h>
   Object.assign(imports.env, {
@@ -464,7 +958,8 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     fprintf (descriptorPointer, formatPointer, variadicArguments) {
-      const output = variadicFormatedStringFromPointers(
+      const output = variadicFormattedestinationPointerringFromPointers(
+        env,
         formatPointer,
         variadicArguments,
         /* encoded = */ false
@@ -490,7 +985,11 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sprintf (stringPointer, formatPointer, variadicArguments) {
-      const output = variadicFormatedStringFromPointers(formatPointer, variadicArguments)
+      const output = variadicFormattedestinationPointerringFromPointers(
+        env,
+        formatPointer,
+        variadicArguments
+      )
 
       if (stringPointer !== 0) {
         const buffer = env.adapter.get(stringPointer)
@@ -501,7 +1000,11 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     snprintf (stringPointer, size, formatPointer, variadicArguments) {
-      const output = variadicFormatedStringFromPointers(formatPointer, variadicArguments)
+      const output = variadicFormattedestinationPointerringFromPointers(
+        env,
+        formatPointer,
+        variadicArguments
+      )
 
       if (stringPointer !== 0 && size !== 0) {
         const buffer = env.adapter.get(stringPointer)
@@ -512,82 +1015,1075 @@ function createWebAssemblyExtensionImports (env) {
     }
   })
 
+  // <stdlib.h>
+  Object.assign(imports.env, {
+    /**
+     * @param {number} stringPointer
+     * @return {number}
+     */
+    atoi (stringPointer) {
+      if (!stringPointer) {
+        return 0
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        return 0
+      }
+
+      return parseInt(string.trim()) || 0
+    },
+
+    /**
+     * @param {number} stringPointer
+     * @return {number}
+     */
+    atol (stringPointer) {
+      return imports.env.atoi(stringPointer)
+    },
+
+    /**
+     * @param {number} stringPointer
+     * @return {number}
+     */
+    atoll (stringPointer) {
+      return imports.env.atoi(stringPointer)
+    },
+
+    /**
+     * @param {number} stringPointer
+     * @return {number}
+     */
+    atof (stringPointer) {
+      if (!stringPointer) {
+        return 0
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        return 0
+      }
+
+      return parseFloat(string) || 0
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @return {number}
+     */
+    strtof (stringPointer, endPointer = 0) {
+      if (!stringPointer) {
+        return 0
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        return 0
+      }
+
+      const regex = /^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/
+      const match = regex.exec(string.trim())
+
+      if (match) {
+        const value = parseFloat(match[0])
+        return value
+      }
+
+      return Number.NaN
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @return {number}
+     */
+    strtod (stringPointer, endPointer) {
+      return imports.env.strtof(stringPointer, endPointer)
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @return {number}
+     */
+    strtold (stringPointer, endPointer) {
+      return imports.env.strtof(stringPointer, endPointer)
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @param {number} base
+     * @return {number}
+     */
+    strtol (stringPointer, endPointer, base) {
+      if (!stringPointer) {
+        return 0
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        return 0
+      }
+
+      return parseInt(string, base) || 0
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @param {number} base
+     * @return {number}
+     */
+    strtoul (stringPointer, endPointer, base) {
+      return imports.env.strol(stringPointer, endPointer, base)
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @param {number} base
+     * @return {number}
+     */
+    strtoll (stringPointer, endPointer, base) {
+      return imports.env.strol(stringPointer, endPointer, base)
+    },
+
+    /**
+     * TODO(@jwerle): handle `endPointer`
+     * @param {number} stringPointer
+     * @param {number=} [endPointer]
+     * @param {number} base
+     * @return {number}
+     */
+    strtoull (stringPointer, endPointer, base) {
+      return imports.env.strol(stringPointer, endPointer, base)
+    },
+
+    /**
+     * @return {number}
+     */
+    rand () {
+      const x = Math.sin(srandSeed++) * 10000
+      const y = x - Math.floor(x)
+      // map the random number to the interval [0, RAND_MAX]
+      return Math.floor(y * (RAND_MAX + 1))
+    },
+
+    /**
+     * @param {number} seed
+     */
+    srand (seed) {
+      // convert to unsigned integer
+      srandSeed = (new Uint32Array([seed]))[0]
+    },
+
+    /**
+     * @param {number} size
+     * @return {number}
+     */
+    malloc (size) {
+      return env.adapter.heap.alloc(size)
+    },
+
+    /**
+     * @param {number} count
+     * @param {number} size
+     * @return {number}
+     */
+    calloc (count, size) {
+      return env.adapter.heap.calloc(count, size)
+    },
+
+    /**
+     * @param {number} pointer
+     * @param {number} size
+     * @return {number}
+     */
+    realloc (pointer, size) {
+      return env.adapter.heap.realloc(pointer, size)
+    },
+
+    /**
+     * @param {number} pointer
+     */
+    free (pointer) {
+      return env.adapter.heap.free(pointer)
+    },
+
+    /**
+     */
+    abort () {
+      env.adapter.destroy()
+      // TODO(@jwerle): exit WASM runtime somehow with abort
+    },
+
+    /**
+     * @param {number} callbackPointer
+     */
+    atexit (callbackPointer) {
+      if (!callbackPointer) {
+        return -1
+      }
+
+      atExitCallbackPointer = callbackPointer
+      return 0
+    },
+
+    /**
+     * @param {number} code
+     */
+    exit (code) {
+      exitCode = code
+      // TODO(@jerle): exit WASM runtime with exit code
+      env.adapter.indirectFunctionTable.call(atExitCallbackPointer)
+    },
+
+    /**
+     * @param {number} code
+     */
+    _Exit (code) {
+      env.imports.exit(code)
+    },
+
+    /**
+     * @param {number} callbackPointer
+     */
+    at_quick_exit (callbackPointer) {
+      return env.imports.atexit(callbackPointer)
+    },
+
+    /**
+     * @param {number} code
+     */
+    quick_exit (code) {
+      env.imports.exit(code)
+    },
+
+    /**
+     * @param {number} namePointer
+     * @return {number}
+     */
+    getenv (namePointer) {
+      if (!namePointer) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return NULL
+      }
+
+      const name = env.adapter.getString(namePointer)
+
+      if (!name) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return NULL
+      }
+
+      if (!process.env[name]) {
+        return NULL
+      }
+
+      return env.adapter.stack.push(process.env[name])
+    },
+
+    /**
+     * @param {number} namePointer
+     * @param {number} valuePointer
+     * @param {number} overwrite
+     */
+    setenv (namePointer, valuePointer, overwrite) {
+      if (!namePointer || !valuePointer) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      const name = env.adapter.getString(namePointer)
+      const value = env.adapter.getString(valuePointer)
+
+      if (!name || !value) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      if (name in process.env) {
+        if (overwrite) {
+          process.env[name] = value
+        }
+      } else {
+        process.env[name] = value
+      }
+
+      return 0
+    },
+
+    /**
+     * @param {number} namePointer
+     */
+    unsetenv (namePointer) {
+      if (!namePointer) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      const name = env.adapter.getString(namePointer)
+      if (!name) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      delete process.env[name]
+      return 0
+    },
+
+    /**
+     * @param {number} stringPointer
+     */
+    putenv (stringPointer) {
+      if (!stringPointer) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      const parts = string.split('=')
+
+      if (parts.length !== 2) {
+        env.adapter.setUint8(imports.env.__errno_location(), EINVAL)
+        return -1
+      }
+
+      const [name, value] = parts
+
+      process.env[name] = value
+
+      return 0
+    },
+
+    /**
+     * @return {number}
+     */
+    clearenv () {
+      console.warn('clearenv: Operation is ignored')
+      return -1
+    },
+
+    /**
+     * @param {number} namePointer
+     * @return {number}
+     */
+    secure_getenv (namePointer) {
+      return imports.env.getenv(namePointer)
+    },
+
+    /**
+     * @param {number} stringPointer
+     */
+    system (stringPointer) {
+      console.warn('system: Operation is ignored')
+      return -1
+    },
+
+    /**
+     * @param {number} value
+     * @return {number}
+     */
+    abs (value) {
+      return Math.abs(parseInt(value))
+    },
+
+    /**
+     * @param {number} value
+     * @return {number}
+     */
+    labs (value) {
+      return imports.env.abs(value)
+    },
+
+    /**
+     * @param {number} value
+     * @return {number}
+     */
+    llabs (value) {
+      return imports.env.abs(value)
+    },
+
+    /**
+     * @param {number} outputPointer
+     * @param {number} numerator
+     * @param {numerator} denominator
+     */
+    div (outputPointer, numerator, denominator) {
+      const result = {
+        quot: Math.floor(numerator / denominator),
+        rem: numerator % denominator
+      }
+
+      env.adapter.setInt8(outputPointer, result.quot)
+      env.adapter.setInt8(outputPointer + 4, result.rem)
+    },
+
+    /**
+     * @param {number} outputPointer
+     * @param {number} numerator
+     * @param {numerator} denominator
+     */
+    ldiv (outputPointer, numerator, denominator) {
+      return imports.env.div(outputPointer, numerator, denominator)
+    },
+
+    /**
+     * @param {number} outputPointer
+     * @param {number} numerator
+     * @param {numerator} denominator
+     */
+    lldiv (outputPointer, numerator, denominator) {
+      return imports.env.div(outputPointer, numerator, denominator)
+    }
+  })
+
   // <string.h>
   Object.assign(imports.env, {
-    memcpy (dst, src, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    memcpy (destinationPointer, sourcePointer, size) {
+      if (!destinationPointer) {
+        return NULL
+      }
+
+      if (sourcePointer && size) {
+        const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer, size)
+        const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer, size)
+        destination.set(source)
+      }
+
+      return destinationPointer
     },
 
-    memmove (dst, src, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    memmove (destinationPointer, sourcePointer, size) {
+      if (!destinationPointer) {
+        return NULL
+      }
+
+      if (sourcePointer && size) {
+        const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer, size)
+        const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer, size)
+
+        if (destinationPointer < sourcePointer) {
+          // copy from beginning to end
+          destination.set(source)
+        } else if (destinationPointer > sourcePointer) {
+          // copy from end to beginning
+          for (let i = size - 1; i >= 0; --i) {
+            destination[i] = source[i]
+          }
+        } // else they overlap
+      }
+
+      return destinationPointer
     },
 
-    memset (dst, byte, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} byte
+     * @param {number} size
+     * @return {number}
+     */
+    memset (destinationPointer, byte, size) {
+      if (!destinationPointer) {
+        return NULL
+      }
+
+      const destination = new Uint8Array(
+        env.adapter.buffer.buffer,
+        destinationPointer,
+        size
+      )
+
+      destination.fill(byte)
+      return destinationPointer
     },
 
+    /**
+     * @param {number} left
+     * @param {number} right
+     * @param {number} size
+     * @return {number}
+     */
     memcmp (left, right, size) {
+      const view1 = new Uint8Array(env.adapter.buffer.buffer, left, size)
+      const view2 = new Uint8Array(env.adapter.buffer.buffer, right, size)
+
+      for (let i = 0; i < size; ++i) {
+        if (view1[i] !== view2[i]) {
+          return view1[i] - view2[i]
+        }
+      }
+
+      // left and right are equal
+      return 0
     },
 
-    memchr (string, char, size) {
+    /**
+     * @param {number} stringPointer
+     * @param {number} byte
+     * @param {number} size
+     * @return {number}
+     */
+    memchr (stringPointer, byte, size) {
+      const view = new Uint8Array(env.adapter.buffer.buffer, stringPointer, size)
+
+      for (let i = 0; i < size; ++i) {
+        if (view[i] === byte) {
+          // return the pointer where the character can be found
+          return stringPointer + i
+        }
+      }
+
+      return 0
     },
 
-    strcpy (dst, src) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @return {number}
+     */
+    strcpy (destinationPointer, sourcePointer) {
+      const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
+      let i = 0
+
+      for (; source[i] !== 0; ++i) {
+        destination[i] = source[i]
+      }
+
+      // "null-terminate" the destination string
+      destination[i] = 0
+      return destinationPointer
     },
 
-    strncpy (dst, src, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    strncpy (destinationPointer, sourcePointer, size) {
+      const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
+      let i = 0
+
+      while (i < size && source[i] !== 0) {
+        destination[i] = source[i]
+        i++
+      }
+
+      // Pad the remaining characters with null if necessary
+      while (i < size) {
+        destination[i] = 0
+        i++
+      }
+
+      return destinationPointer
     },
 
-    strcat (dst, src) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @return {number}
+     */
+    strcat (destinationPointer, sourcePointer) {
+      const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
+      let i = 0
+      let j = 0
+
+      while (destination[i] !== 0) {
+        i++
+      }
+
+      // copy the source string to the end of the destination string
+      while (source[j] !== 0) {
+        destination[i + j] = source[j]
+        j++
+      }
+
+      // "null-terminate" the concatenated string
+      destination[i + j] = 0
+
+      return destinationPointer
     },
 
-    strncat (dst, src, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    strncat (destinationPointer, sourcePointer, size) {
+      const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
+      let i = 0
+      let j = 0
+
+      while (destination[i] !== 0) {
+        i++
+      }
+
+      // copy the source string up to `size` characters to
+      // the end of the destination string
+      while (j < size && source[j] !== 0) {
+        destination[i + j] = source[j]
+        j++
+      }
+
+      // "null-terminate" the concatenated string
+      destination[i + j] = 0
+      return destinationPointer
     },
 
+    /**
+     * @param {number} left
+     * @param {number} right
+     * @return {number}
+     */
     strcmp (left, right) {
+      const view1 = new Uint8Array(env.adapter.buffer.buffer, left)
+      const view2 = new Uint8Array(env.adapter.buffer.buffer, right)
+      let i = 0
+
+      while (view1[i] !== 0 && view1[i] === view2[i]) {
+        i++
+      }
+
+      return view1[i] - view2[i]
     },
 
+    /**
+     * @param {number} left
+     * @param {number} right
+     * @param {number} size
+     * @return {number}
+     */
     strncmp (left, right, size) {
+      const view1 = new Uint8Array(env.adapter.buffer.buffer, left)
+      const view2 = new Uint8Array(env.adapter.buffer.buffer, right)
+      let i = 0
+
+      while (i < size && view1[i] !== 0 && view1[i] === view2[i]) {
+        i++
+      }
+
+      if (i === size || (view1[i] === 0 && view2[i] === 0)) {
+        // strings are equal up to the specified size or both terminated
+        return 0
+      }
+
+      return view1[i] - view2[i]
     },
 
+    /**
+     * @param {number} left
+     * @param {number} right
+     * @return {number}
+     */
     strcoll (left, right) {
+      const view1 = new Uint8Array(env.adapter.buffer.buffer, left)
+      const view2 = new Uint8Array(env.adapter.buffer.buffer, right)
+      const string1 = String.fromCharCode(...view1)
+      const string2 = String.fromCharCode(...view2)
+
+      return string1.localeCompare(string2)
     },
 
-    strxfrm (dst, src, size) {
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    strxfrm (destinationPointer, sourcePointer, size) {
+      const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
+      const string = String.fromCharCode.apply(null, source)
+
+      // use `Intl.Collator` for locale-sensitive comparison
+      const collator = new Intl.Collator(globalThis.navigator.language)
+      // normalize and remove diacritics
+      const transformed = string
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+
+      // convert to plain byte array
+      const bytes = Array.from(string).map((char) => char.charCodeAt(0))
+
+      // copy transformed string to destination
+      for (let i = 0; i < bytes.length; ++i) {
+        destination[i] = bytes[i]
+      }
+
+      // "null-terminate" the transformed string
+      destination[bytes.length] = 0
+
+      // return the length of the transformed string
+      return bytes.length
     },
 
-    strchr (string, char) {
+    strxfrm_l (destinationPointer, sourcePointer, size, locale) {
+      // TODO@(jwerle): figure out how to work with `locale_t`
+      console.warn('strxfrm_l: Operation is not supported')
+      return -1
     },
 
-    strrchr (string, char) {
+    strchr (stringPointer, byte) {
+      const view = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      let i = 0
+
+      while (view[i] !== 0 && view[i] !== byte) {
+        i++
+      }
+
+      // return the pointer if found,
+      if (view[i] === byte) {
+        return stringPointer + i
+      }
+
+      return NULL
     },
 
-    strcspn (string, charset) {
+    strrchr (stringPointer, byte) {
+      const view = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      let lastOccurrence = 0
+
+      for (let i = 0; view[i] !== 0; ++i) {
+        if (view[i] === byte) {
+          lastOccurrence = stringPointer + i
+        }
+      }
+
+      return lastOccurrence
     },
 
-    strspn (string, charset) {
+    strcspn (stringPointer, charsetPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      const charset = new Uint8Array(env.adapter.buffer.buffer, charsetPointer)
+      let i = 0
+
+      while (string[i] !== 0) {
+        let j = 0
+
+        while (charset[j] !== 0 && charset[j] !== string[i]) {
+          j++
+        }
+
+        if (charset[j] !== 0) {
+          return i
+        }
+
+        i++
+      }
+
+      return i
     },
 
-    strpbrk (string, charset) {
+    strspn (stringPointer, charsetPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      const charset = new Uint8Array(env.adapter.buffer.buffer, charsetPointer)
+      let i = 0
+
+      while (string[i] !== 0) {
+        let j = 0
+
+        while (charset[j] !== 0 && charset[j] !== string[i]) {
+          j++
+        }
+
+        if (charset[j] === 0) {
+          return i
+        }
+
+        i++
+      }
+
+      return i
     },
 
-    strstr (string, needle) {
+    strpbrk (stringPointer, charsetPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      const charset = new Uint8Array(env.adapter.buffer.buffer, charsetPointer)
+
+      for (let i = 0; i < string[i]; ++i) {
+        for (let j = 0; charset[j] !== 0; ++j) {
+          if (charset[j] === string[i]) {
+            return stringPointer + i
+          }
+        }
+      }
+
+      // return `NULL` if no character from the set is found
+      return 0
     },
 
-    strtok (string, sep) {
+    strstr (stringPointer, needlePointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      const needle = new Uint8Array(env.adapter.buffer.buffer, needlePointer)
+
+      for (let i = 0; string[i] !== 0; ++i) {
+        let match = true
+
+        for (let j = 0; needle[j] !== 0; ++j) {
+          if (string[i + j] !== needle[j]) {
+            match = false
+            break
+          }
+        }
+
+        if (match) {
+          return string + i
+        }
+      }
+
+      // return `NULL` if the substring is not found
+      return 0
     },
 
-    strlen (string) {
+    strtok (stringPointer, delimitersPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      const delimiters = new Uint8Array(env.adapter.buffer.buffer, delimitersPointer)
+
+      // save the position of the next token in linear memory
+      let tokenPointer = stringPointer
+
+      // find the start of the next token
+      while (
+        string[tokenPointer - stringPointer] !== 0 &&
+        delimiters.includes(string[tokenPointer - stringPointer])
+      ) {
+        tokenPointer++
+      }
+
+      // if the end of the string is reached, return `NULL~
+      if (string[tokenPointer - stringPointer] === 0) {
+        return NULL
+      }
+
+      // save the position of the start of the token
+      const tokenStartPointer = tokenPointer
+
+      // find the end of the token
+      while (
+        string[tokenPointer - stringPointer] !== 0 &&
+        !delimiters.includes(string[tokenPointer - stringPointer])
+      ) {
+        tokenPointer++
+      }
+
+      // if the end of the string is reached, update the next token position to 0
+      if (string[tokenPointer - stringPointer] === 0) {
+        tokenPointer = 0
+      } else {
+        // "null-terminate" the token
+        string[tokenPointer - stringPointer] = 0
+      }
+
+      return tokenStartPointer
     },
 
-    strdup (string) {
+    strlen (stringPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      let size = 0
+
+      while (string[size] !== 0) {
+        size++
+      }
+
+      return size
     },
 
-    strndup (string, size) {
+    strdup (stringPointer) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      let size = 0
+
+      while (string[size] !== 0) {
+        size++
+      }
+
+      // allocate memory for the new string
+      const pointer = env.adapter.heap.alloc(size + 1) // `+1` for the "null terminator"
+      const duplicate = new Uint8Array(env.adapter.buffer.buffer, pointer)
+
+      // copy the original string to the new memory location
+      for (let i = 0; i <= size; ++i) {
+        duplicate[i] = string[i]
+      }
+
+      return pointer
+    },
+
+    strndup (stringPointer, maxSize) {
+      const string = new Uint8Array(env.adapter.buffer.buffer, stringPointer)
+      let size = 0
+
+      while (string[size] !== 0 && size < maxSize) {
+        size++
+      }
+
+      // allocate memory for the new string
+      const pointer = env.adapter.heap.alloc(size + 1) // `+1` for the "null terminator"
+      const duplicate = new Uint8Array(env.adapter.buffer.buffer, pointer)
+
+      // copy the original string to the new memory location
+      for (let i = 0; i <= size; ++i) {
+        duplicate[i] = string[i]
+      }
+
+      return pointer
     },
 
     strerror (errorCode) {
+      if (errorCode >= 0 && errorCode in errorMessages) {
+        const errorMessagePointer = env.adapter.errorMessagePointers[errorCode]
+
+        if (!errorMessagePointer) {
+          return NULL
+        }
+
+        const errorMessage = new Uint8Array(env.adapter.buffer.buffer, errorMessagePointer)
+
+        // copy the error message to the allocated memory
+        for (let i = 0; i < errorMessages[errorCode].length; ++i) {
+          errorMessage[i] = errorMessages[errorCode].charCodeAt(i)
+        }
+
+        // null-terminate the string
+        errorMessage[errorMessages[errorCode].length] = 0
+        return errorMessagePointer
+      }
+
+      return NULL
     },
 
     strsignal (signal) {
+      console.warn('strsignal: Operation is not supported')
+      return NULL
     }
+  })
+
+  // <time.h>
+  Object.assign(imports.env, {
+    time (timePointer) {
+      const now = Date.now() * 1000 // convert to seconds
+      if (timePointer !== 0) {
+        env.adapter.setUint32(timePointer, now)
+      }
+      return now
+    },
+
+    difftime (leftTime, rightTime) {
+      return rightTime - leftTime;
+    },
+
+    mktime (outputPointer, tmPointer) {
+    },
+
+    strftime (stringPointer, maxSize, formatPointer, tmPointer) {
+    },
+
+    strptime (bufferPointer, formatPointer, tmPointer) {
+    },
+
+    gmtime (timePointer) {
+    },
+
+    timegm (tmPointer) {
+    },
+
+    localtime (timePointer) {
+    },
+
+    asctime (tmPointer) {
+    },
+
+    ctime (timePointer) {
+    },
+
+    stime (timePointer) {
+    },
+
+    timespec_get (timeSpecPointer, base) {
+    },
+
+    getdate (stringPointer) {
+    },
+
+    nanosleep (rqtp, tmtp) {
+    },
+
+    gmtime_r (timePointer, tmPointer) {
+    },
+
+    localtime_r (timePointer, tmPointer) {
+    },
+
+    asctime_r (tmPointer, outputPointer) {
+    },
+
+    time_r (timePointer, outputPointer) {
+    },
+
+    // clock
+    clock () {
+    },
+
+    clock_getres (clockId, timeSpecPointer) {
+    },
+
+    clock_gettime (clockId, timeSpecPointer) {
+    },
+
+    clock_nanosleep (clockId, flags, requestTimeSpecPointer, remainTimeSpecPointer) {
+    }
+  })
+
+  // <ulimit.h>
+  Object.assign(imports.env, {
+    ulimit (commandValue, varargs) {
+      console.warn('strxfrm_l: Operation is not supported')
+
+      return -1
+    }
+  })
+
+  // <unistd.h>
+  Object.assign(imports.env, {
+  })
+
+  // <uv.h>
+  Object.assign(imports.env, {
   })
 
   // <socket/extension.h>
@@ -647,13 +2143,7 @@ function createWebAssemblyExtensionImports (env) {
 
     // env
     sapi_env_get (context, name) {
-      name = env.adapter.getString(name)
-
-      if (!process.env[name]) {
-        return 0
-      }
-
-      return env.adapter.stack.push(process.env[name])
+      return imports.env.getenv(name)
     },
 
     // javascript
@@ -777,10 +2267,12 @@ export class Extension extends EventTarget {
         element: 'anyfunc'
       })
 
+      const memory = new WebAssembly.Memory({ initial: 32 })
       const imports = {
         ...options.imports,
         ...createWebAssemblyExtensionImports({
           table,
+          memory,
           get adapter () {
             return adapter
           }
@@ -792,7 +2284,7 @@ export class Extension extends EventTarget {
         module
       } = await WebAssembly.instantiateStreaming(response, imports)
 
-      adapter = new WebAssemblyExtensionAdapter({ instance, module, table })
+      adapter = new WebAssemblyExtensionAdapter({ instance, module, table, memory })
       info = new WebAssemblyExtensionInfo(adapter)
 
       options.adapter = adapter
@@ -878,12 +2370,6 @@ export class Extension extends EventTarget {
 
   /**
    * Not `null` if extension is of type 'wasm32'
-   * @type {?WebAssembly.Instance}
-   */
-  instance = null
-
-  /**
-   * Not `null` if extension is of type 'wasm32'
    * @type {?WebAssemblyExtensionAdapter}
    */
   adapter = null
@@ -913,9 +2399,8 @@ export class Extension extends EventTarget {
         default: 'request'
       })
     } else if (this.type === 'wasm32') {
-      this.instance = options?.instance
       this.adapter = options?.adapter
-      this.binding = createWebAssemblyExtensionBinding(this.adapter)
+      this.binding = createWebAssemblyExtensionBinding(this)
     }
   }
 
