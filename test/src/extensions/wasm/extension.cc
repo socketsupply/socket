@@ -4,8 +4,14 @@ static bool initialize (
   sapi_context_t* context,
   const void* data
 ) {
+  atexit([]() {
+    ok("atexit callback called");
+  });
   initialize_libc_tests();
   initialize_sapi_tests();
+  sapi_context_dispatch(context, data, [](sapi_context_t* context, const void* data) {
+    exit(0);
+  });
   return true;
 }
 
