@@ -17,7 +17,7 @@ class Process extends EventEmitter {
   argv = globalThis.__args?.argv ?? []
   argv0 = globalThis.__args?.argv?.[0] ?? ''
   cwd = () => primordials.cwd
-  env = globalThis.__args?.env ?? {}
+  env = { ...(globalThis.__args?.env ?? {}) }
   exit = exit
   homedir = homedir
   platform = primordials.platform
