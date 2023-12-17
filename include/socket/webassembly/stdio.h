@@ -7,12 +7,13 @@
 
 #include "string.h"
 #include "stdint.h"
+#include "unistd.h"
 
 #if defined(BUFSIZ)
 #undef BUFSIZ
 #endif
 
-#define BUFSIZ 1024
+#define BUFSIZ 4096
 
 #if defined(__cplusplus)
 extern "C" {
@@ -21,9 +22,9 @@ extern "C" {
 struct _FILE { void* _internal; };
 typedef struct _FILE FILE;
 
-static FILE* stdin = (FILE*) 0x0;
-static FILE* stdout = (FILE*) 0x1;
-static FILE* stderr = (FILE*) 0x2;
+static FILE* stdin = (FILE*) STDIN_FILENO;
+static FILE* stdout = (FILE*) STDOUT_FILENO;
+static FILE* stderr = (FILE*) STDERR_FILENO;
 
 extern "C" int printf (const char* __restrict format, ...);
 extern "C" int fprintf (FILE* __restrict stream, const char* __restrict format, ...);

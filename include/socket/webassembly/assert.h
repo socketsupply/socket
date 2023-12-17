@@ -7,7 +7,7 @@
 #undef assert
 #endif
 
-#define assert(x) ((void)((x) || (__assert_fail(#x, __FILE__, __LINE__, __func__),0)))
+#define assert(x) ((void)((x) || (__assert_fail(#x, __FILE__, __LINE__, __func__), 0)))
 
 #if __STDC_VERSION__ >= 201112L && !defined(__cplusplus)
 #define static_assert _Static_assert
@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-extern void __assert_fail (const char *, const char *, int, const char *);
+extern void __assert_fail (const char*, const char*, int, const char*);
 
 #ifdef __cplusplus
 }

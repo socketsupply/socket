@@ -1,14 +1,14 @@
 #ifndef SOCKET_RUNTIME_WEBASSEMBLY_H
 #define SOCKET_RUNTIME_WEBASSEMBLY_H
 
+#include "webassembly/stdbool.h"
 #include "webassembly/stddef.h"
 #include "webassembly/stdint.h"
-#include "webassembly/string.h"
 #include "webassembly/stdio.h"
+#include "webassembly/stdlib.h"
+#include "webassembly/string.h"
 #include "webassembly/errno.h"
-
-struct uv_loop;
-typedef struct uv_loop uv_loop_t;
+#include "webassembly/uv.h"
 
 // platform
 #define SOCKET_RUNTIME_PLATFORM_NAME "wasm32"
