@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#include "bits/errno.h"
+#include "sys/errno.h"
 
 int *__errno_location(void);
 #define errno (*__errno_location())

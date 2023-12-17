@@ -11,14 +11,24 @@
 extern "C" {
 #endif
 
-#define offsetof(type, member) ((size_t)( (char *)&(((type *)0)->member) - (char *)0 ))
+#define WASM_NOOP
+#define WASM_ALIAS(name)
+
+#define offsetof(type, member) ((size_t)((char*) &(((type*) 0)->member) - (char *) 0))
+
+#if defined(NULL)
+#undef NULL
+#endif
 
 #if defined(__cplusplus)
-#if !defined(NULL)
-#define NULL 0L
+#  if __cplusplus >= 201103L
+#    define NULL nullptr
+#  elif defined(__cplusplus)
+#    define NULL 0L
+#  else
+#  endif
 #else
-#define NULL ((void*)0)
-#endif
+#  define NULL ((void*)0)
 #endif
 
 typedef unsigned long size_t;
