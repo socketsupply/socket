@@ -5012,11 +5012,6 @@ declare module "socket:extension" {
         binding: T;
         /**
          * Not `null` if extension is of type 'wasm32'
-         * @type {?WebAssembly.Instance}
-         */
-        instance: WebAssembly.Instance | null;
-        /**
-         * Not `null` if extension is of type 'wasm32'
          * @type {?WebAssemblyExtensionAdapter}
          */
         adapter: WebAssemblyExtensionAdapter | null;
@@ -5035,6 +5030,7 @@ declare module "socket:extension" {
          * @throws Error
          */
         unload(): Promise<boolean>;
+        instance: any;
         [$type]: "shared" | "wasm32";
         [$loaded]: boolean;
     }
@@ -5065,19 +5061,23 @@ declare module "socket:extension" {
      * @ignore
      */
     class WebAssemblyExtensionAdapter {
-        constructor({ instance, module, table }: {
+        constructor({ instance, module, table, memory }: {
             instance: any;
             module: any;
             table: any;
+            memory: any;
         });
         view: DataView;
         table: any;
         buffer: Uint8Array;
         module: any;
+        memory: any;
         instance: any;
         textDecoder: TextDecoder;
         textEncoder: TextEncoder;
+        errorMessagePointers: {};
         indirectFunctionTable: WebAssemblyExtensionIndirectFunctionTable;
+        destroy(): void;
         stack: WebAssemblyExtensionStack;
         heap: WebAssemblyExtensionHeap;
         init(): boolean;
@@ -5102,6 +5102,13 @@ declare module "socket:extension" {
         setString(pointer: any, string: any, buffer: any): boolean;
     }
     const $type: unique symbol;
+    /**
+     * {Pointer}
+     */
+    type $loaded = number;
+    /**
+     * @typedef {number} {Pointer}
+     */
     const $loaded: unique symbol;
     class WebAssemblyExtensionIndirectFunctionTable {
         constructor(adapter: any, options?: any);
@@ -5109,26 +5116,39 @@ declare module "socket:extension" {
         table: any;
         call(index: any, ...args: any[]): any;
     }
-    class WebAssemblyExtensionStack {
+    class WebAssemblyExtensionStack extends WebAssemblyExtensionMemory {
         constructor(adapter: any);
-        adapter: any;
-        limits: {
-            min: any;
-            max: any;
-        };
-        offset: any;
-        current: any[];
-        get buffer(): any;
-        get(pointer: any): any;
-        push(value: any): any;
-        pop(): number;
-        rewind(offset: any): number[];
     }
-    class WebAssemblyExtensionHeap {
+    class WebAssemblyExtensionHeap extends WebAssemblyExtensionMemory {
         constructor(adapter: any);
+        realloc(pointer: any, size: any): any;
+        calloc(count: any, size: any): number;
+    }
+    class WebAssemblyExtensionMemory {
+        constructor(adapter: any, min: any, max: any);
         adapter: any;
+        offset: number;
+        limits: {
+            min: number;
+            max: number;
+        };
+        current: any[];
+        freeList: WebAssemblyExtensionMemoryBlock[];
         get buffer(): any;
+        get byteLength(): any;
         get(pointer: any): any;
+        get pointer(): number;
+        push(value: any): number;
+        pop(): number;
+        restore(offset: any): number[];
+        alloc(size: any): number;
+        free(pointer: any): void;
+    }
+    class WebAssemblyExtensionMemoryBlock {
+        constructor(memory: any, start: any, end: any);
+        start: number;
+        end: number;
+        memory: any;
     }
 }
 declare module "socket:fetch/fetch" {
