@@ -659,6 +659,7 @@ class WebAssemblyExtensionAdapter {
     this.module = module
     this.memory = memory
     this.instance = instance
+    this.exitStatus = null
     this.textDecoder = new TextDecoder()
     this.textEncoder = new TextEncoder()
     this.errorMessagePointers = {}
@@ -1225,8 +1226,7 @@ function createWebAssemblyExtensionImports (env) {
     /**
      */
     abort () {
-      env.adapter.destroy()
-      // TODO(@jwerle): exit WASM runtime somehow with abort
+      throw new WebAssembly.Exception(env.tags.abort, [])
     },
 
     /**
@@ -1248,6 +1248,7 @@ function createWebAssemblyExtensionImports (env) {
       exitCode = code
       // TODO(@jerle): exit WASM runtime with exit code
       env.adapter.indirectFunctionTable.call(atExitCallbackPointer)
+      throw new WebAssembly.Exception(env.tags.exit, [code])
     },
 
     /**
@@ -2132,8 +2133,20 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_dispatch (context, data, callback) {
       if (callback > 0) {
-        process.nextTick(() => {
-          env.adapter.indirectFunctionTable.call(callback, context, data)
+        setTimeout(() => {
+          try {
+            env.adapter.indirectFunctionTable.call(callback, context, data)
+          } catch (err) {
+            if (err.is(env.tags.exit)) {
+              env.adapter.exitStatus = err.getArg(env.tags.exit, 0)
+              env.adapter.destroy()
+            } else if (err.is(env.tags.abort)) {
+              env.adapter.exitStatus = 1
+              env.adapter.destroy()
+            } else {
+              throw err
+            }
+          }
         })
       }
     },
@@ -2267,10 +2280,17 @@ export class Extension extends EventTarget {
         element: 'anyfunc'
       })
 
-      const memory = new WebAssembly.Memory({ initial: 32 })
+      const tags = {
+        ...options.tags,
+        exit: new WebAssembly.Tag({ parameters: ['i32'] }),
+        abort: new WebAssembly.Tag({ parameters: [] }),
+      }
+
+      const memory = options.memory ?? new WebAssembly.Memory({ initial: 32 })
       const imports = {
         ...options.imports,
         ...createWebAssemblyExtensionImports({
+          tags,
           table,
           memory,
           get adapter () {
@@ -2290,7 +2310,19 @@ export class Extension extends EventTarget {
       options.adapter = adapter
       options.instance = instance
 
-      adapter.init()
+      try {
+        adapter.init()
+      } catch (err) {
+        if (err.is(tags.exit)) {
+          adapter.exitStatus = err.getArg(tags.exit, 0)
+          adapter.destroy()
+        } else if (err.is(tags.abort)) {
+          adapter.exitStatus = 1
+          adapter.destroy()
+        } else {
+          throw err
+        }
+      }
     } else {
       const result = await ipc.request('extension.load', options)
       if (result.err) {

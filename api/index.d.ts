@@ -5073,6 +5073,7 @@ declare module "socket:extension" {
         module: any;
         memory: any;
         instance: any;
+        exitStatus: any;
         textDecoder: TextDecoder;
         textEncoder: TextEncoder;
         errorMessagePointers: {};
