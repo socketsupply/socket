@@ -2004,7 +2004,7 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     difftime (leftTime, rightTime) {
-      return rightTime - leftTime;
+      return rightTime - leftTime
     },
 
     mktime (outputPointer, tmPointer) {
