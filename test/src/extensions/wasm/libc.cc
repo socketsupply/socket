@@ -5,17 +5,6 @@
 
 #include "extension.hh"
 
-#define _CONVERT_TO_STRING(value) #value
-#define CONVERT_TO_STRING(value) _CONVERT_TO_STRING(value)
-
-#define test(condition) ({               \
-  if ((condition)) {                     \
-    ok(CONVERT_TO_STRING(condition));    \
-  } else {                               \
-    notok(CONVERT_TO_STRING(condition)); \
-  }                                      \
-})
-
 static void initialize_libc_stdlib_tests () {
   test(atoi("123") == 123);
   test(atoi("abc") == 0);

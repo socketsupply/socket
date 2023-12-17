@@ -8,7 +8,7 @@ static bool initialize (
     ok("atexit callback called");
   });
   initialize_libc_tests();
-  initialize_sapi_tests();
+  initialize_sapi_tests(context);
   sapi_context_dispatch(context, data, [](sapi_context_t* context, const void* data) {
     exit(0);
   });
