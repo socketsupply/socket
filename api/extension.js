@@ -2260,6 +2260,7 @@ function createWebAssemblyExtensionImports (env) {
 
     // extension
     sapi_extension_register (registrationPointer) {
+      console.warn('sapi_extension_register: Operation is not supported')
     },
 
     sapi_extension_is_allowed (contextPointer, allowedPointer) {
@@ -2274,6 +2275,18 @@ function createWebAssemblyExtensionImports (env) {
       }
 
       return false
+    },
+
+    sapi_extension_load (contextPointer, namePointer, dataPointer) {
+      console.warn(': Operation is not supported')
+    },
+
+    sapi_extension_unload (contextPointer, namePointer) {
+      console.warn(': Operation is not supported')
+    },
+
+    sapi_extension_get (contextPointer, namePointer) {
+      console.warn(': Operation is not supported')
     },
 
     // context
@@ -2799,7 +2812,13 @@ function createWebAssemblyExtensionImports (env) {
     sapi_ipc_message_get (messagePointer, keyStringPointer) {
     },
 
+    sapi_ipc_message_clone (contextPointer, messagePointer) {
+    },
+
     sapi_ipc_result_create (contextPointer, messagePointer) {
+    },
+
+    sapi_ipc_result_clone (contextPointer, resultPointer) {
     },
 
     sapi_ipc_result_set_seq (resultPointer, seqPointer) {
@@ -2899,12 +2918,18 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_process_exec (contextPointer, commandPointer) {
+      console.warn('sapi_process_exec: Operation is not supported')
+      return NULL
     },
 
     sapi_process_exec_get_exit_code (processPointer) {
+      console.warn('sapi_process_exec_get_exit_code: Operation is not supported')
+      return -1
     },
 
     sapi_process_exec_get_output (processPointer) {
+      console.warn('sapi_process_exec_get_output: Operation is not supported')
+      return NULL
     },
 
     sapi_process_spawn (
@@ -2916,42 +2941,43 @@ function createWebAssemblyExtensionImports (env) {
       onstderrPointer,
       onexitPointer
     ) {
+      console.warn('sapi_process_spawn: Operation is not supported')
+      return NULL
     },
 
     sapi_process_spawn_get_exit_code (processPointer) {
+      console.warn('sapi_process_spawn_get_exit_code: Operation is not supported')
+      return -1
     },
 
     sapi_process_spawn_get_pid (processPointer) {
+      console.warn('sapi_process_spawn_get_pid: Operation is not supported')
+      return -1
     },
 
     sapi_process_spawn_get_context (processPointer) {
+      console.warn('sapi_process_spawn_get_context: Operation is not supported')
+      return NULL
     },
 
     sapi_process_spawn_wait (processPointer) {
+      console.warn('sapi_process_spawn_wait: Operation is not supported')
+      return -1
     },
 
     sapi_process_spawn_write (processPointer, bytesPointer, size) {
+      console.warn('sapi_process_spawn_write: Operation is not supported')
+      return false
     },
 
     sapi_process_spawn_close_stdin (processPointer) {
+      console.warn('sapi_process_spawn_close_stdin: Operation is not supported')
+      return false
     },
 
     sapi_process_spawn_kill (processPointer, code) {
-    },
-
-    sapi_extension_load (contextPointer, namePointer, dataPointer) {
-    },
-
-    sapi_extension_unload (contextPointer, namePointer) {
-    },
-
-    sapi_extension_get (contextPointer, namePointer) {
-    },
-
-    sapi_ipc_message_clone (contextPointer, messagePointer) {
-    },
-
-    sapi_ipc_result_clone (contextPointer, resultPointer) {
+      console.warn('sapi_process_spawn_kill: Operation is not supported')
+      return false
     }
   })
 
