@@ -2617,9 +2617,9 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
+    gchar* mimeType = nullptr;
     auto size = fs::file_size(path);
     auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-    auto mimeType = g_content_type_guess(path.c_str(), nullptr, 0, nullptr);
     auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
 
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
@@ -2628,10 +2628,19 @@ static void registerSchemeHandler (Router *router) {
 
     webkit_uri_scheme_response_set_http_headers(response, headers);
 
-    if (mimeType) {
-      webkit_uri_scheme_response_set_content_type(response, mimeType);
+    if (path.ends_with(".wasm")) {
+      webkit_uri_scheme_response_set_content_type(response, "application/wasm");
+    } else if (path.ends_with(".cjs") || path.ends_with(".mjs")) {
+      webkit_uri_scheme_response_set_content_type(response, "text/javascript");
+    } else if (path.ends_with(".ts")) {
+      webkit_uri_scheme_response_set_content_type(response, "application/typescript");
     } else {
-      webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+      mimeType = g_content_type_guess(path.c_str(), nullptr, 0, nullptr);
+      if (mimeType) {
+        webkit_uri_scheme_response_set_content_type(response, mimeType);
+      } else {
+        webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+      }
     }
 
     webkit_uri_scheme_request_finish_with_response(request, response);
@@ -2811,18 +2820,26 @@ static void registerSchemeHandler (Router *router) {
           return;
         } else {
           auto url = [NSURL fileURLWithPath: @(mount.path.c_str())];
-          auto types = [UTType
-                typesWithTag: components.URL.pathExtension
-                    tagClass: UTTagClassFilenameExtension
-            conformingToType: nullptr
-          ];
-
           headers[@"access-control-allow-origin"] = @"*";
           headers[@"access-control-allow-methods"] = @"*";
           headers[@"access-control-allow-headers"] = @"*";
 
-          if (types.count > 0 && types.firstObject.preferredMIMEType) {
-            headers[@"content-type"] = types.firstObject.preferredMIMEType;
+          if (path.ends_with(".wasm")) {
+            headers[@"content-type"] = @("application/wasm");
+          } else if (path.ends_with(".ts")) {
+            headers[@"content-type"] = @("application/typescript");
+          } else if (path.ends_with(".cjs") || path.ends_with(".mjs")) {
+            headers[@"content-type"] = @("text/javascript");
+          } else {
+            auto types = [UTType
+                  typesWithTag: components.URL.pathExtension
+                      tagClass: UTTagClassFilenameExtension
+              conformingToType: nullptr
+            ];
+
+            if (types.count > 0 && types.firstObject.preferredMIMEType) {
+              headers[@"content-type"] = types.firstObject.preferredMIMEType;
+            }
           }
 
           [url startAccessingSecurityScopedResource];
@@ -2963,6 +2980,12 @@ static void registerSchemeHandler (Router *router) {
       headers[@"content-length"] = [@(data.length) stringValue];
       if (isModule && data.length > 0) {
         headers[@"content-type"] = @"text/javascript";
+      } else if (path.ends_with(".ts")) {
+        headers[@"content-type"] = @("application/typescript");
+      } else if (path.ends_with(".cjs") || path.ends_with(".mjs")) {
+        headers[@"content-type"] = @("text/javascript");
+      } else if (path.ends_with(".wasm")) {
+        headers[@"content-type"] = @("application/wasm");
       } else {
         auto types = [UTType
               typesWithTag: components.URL.pathExtension

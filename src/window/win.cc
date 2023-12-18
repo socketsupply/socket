@@ -979,11 +979,11 @@ namespace SSC {
                                 path += ".js";
                               }
 
-			      if (path == "/") {
+                              if (path == "/") {
                                 uri = "socket://" + bundleIdentifier + "/";
-			      } else {
+                              } else {
                                 uri = "socket://" + bundleIdentifier + "/" + path;
-			      }
+                              }
 
                               String headers;
 
@@ -1105,8 +1105,12 @@ namespace SSC {
                                   IStream* stream = nullptr;
                                   String headers = "";
 
-                                  if (path.ends_with(".js")) {
+                                  if (path.ends_with(".js") || path.ends_with(".mjs") || path.ends_with(".cjs")) {
                                     mimeType = (wchar_t*) L"text/javascript";
+                                  } else if (path.ends_with(".wasm")) {
+                                    mimeType = (wchar_t*) L"application/wasm";
+                                  } else if (path.ends_with(".ts")) {
+                                    mimeType = (wchar_t*) L"application/typescript";
                                   } else if (path.ends_with(".html")) {
                                     mimeType = (wchar_t*) L"text/html";
                                   } else if (path.ends_with(".css")) {
