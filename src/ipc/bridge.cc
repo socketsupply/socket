@@ -145,6 +145,14 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
+    if (userConfig["permissions_allow_bluetooth"] == "false") {
+      auto err =JSON::Object::Entries {
+        {"message", "Bluetooth is not allowed"}
+      };
+
+      return reply(Result::Err { message, err });
+    }
+
     router->bridge->bluetooth.startService(
       message.seq,
       message.get("serviceId"),
@@ -166,6 +174,14 @@ static void initRouterTable (Router *router) {
     });
 
     if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (userConfig["permissions_allow_bluetooth"] == "false") {
+      auto err =JSON::Object::Entries {
+        {"message", "Bluetooth is not allowed"}
+      };
+
       return reply(Result::Err { message, err });
     }
 
@@ -191,6 +207,14 @@ static void initRouterTable (Router *router) {
     });
 
     if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (userConfig["permissions_allow_bluetooth"] == "false") {
+      auto err =JSON::Object::Entries {
+        {"message", "Bluetooth is not allowed"}
+      };
+
       return reply(Result::Err { message, err });
     }
 
