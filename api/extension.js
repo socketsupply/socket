@@ -344,8 +344,238 @@ class WebAssemblyExtensionRuntimeObject {
   }
 }
 
-class WebAssemblyExtensionRuntimeRouter extends WebAssemblyExtensionRuntimeObject {
+class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeObject {
+  message = null
+  constructor (adapter, context, url, ...args) {
+    super(adapter)
+    this.context = context
+    this.pointer = context.createExternalReferenceValue(this)
+    this.message = ipc.Message.from(url, ...args)
+  }
+
+  get id () {
+    return this.message?.id ?? ''
+  }
+
+  get name () {
+    return this.message?.name ?? ''
+  }
+
+  get seq () {
+    return this.message?.seq ?? ''
+  }
+
+  get index () {
+    return this.message?.index ?? -1
+  }
+
+  get params () {
+    return this.message?.params ?? null
+  }
+
+  get (key) {
+    return this.message?.get(key) ?? null
+  }
+
+  get value () {
+    return this.message?.value ?? null
+  }
+}
+
+class WebAssemblyExtensionRuntimeJSON extends WebAssemblyExtensionRuntimeObject {
+  #value = null
+  constructor (adapter, context, value) {
+    super(adapter)
+    this.context = context
+    this.pointer = context.createExternalReferenceValue(this)
+    this.value = value
+  }
+
+  set value (value) {
+    this.#value = value
+  }
+
+  get value () {
+    return this.#value
+  }
+}
+
+class WebAssemblyExtensionRuntimeIPCResultJSON extends WebAssemblyExtensionRuntimeJSON {
+  #data = null
+  #err = null
+
+  constructor (adapter, context, value) {
+    super(adapter, context, value)
+    this.#data = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.value?.data ?? null)
+    this.#err = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.value?.err ?? null)
+  }
+
+  set value (value) {
+    if (value?.data) {
+      this.#data.value = value.data
+    }
+
+    if (value?.err) {
+      this.#err.value = value.err
+    }
+
+    super.value = value
+  }
+
+  get value () {
+    return super.value
+  }
+
+  get data () {
+    return this.#data
+  }
+
+  get err () {
+    return this.#err
+  }
+}
+
+class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeObject {
+  #message = null
+  #json = null
+  #data = null
+  #err = null
+
+  context = null
+
+  headers = new ipc.Headers()
+  source = null
+  seq = null
+  id = null
+
+  constructor (adapter, context, message, existingResult) {
+    super(adapter)
+    this.#json = new WebAssemblyExtensionRuntimeIPCResultJSON(adapter, context, {})
+
+    this.pointer = context.createExternalReferenceValue(this)
+    this.context = context
+    this.message = message
+
+    if (this.result && existingResult) {
+      this.id = existingResult.id
+      this.seq = existingResult.seq
+      this.err = existingResult.err
+      this.data = existingResult.data
+      this.source = existingResult.source
+      this.headers = existingResult.headers
+    }
+  }
+
+  set message (message) {
+    this.#message = message
+    this.result = new ipc.Result(message.id, null, null, message.name, message.headers)
+    this.seq = message.seq
+  }
+
+  get message () {
+    return this.#message
+  }
+
+  set data (data) {
+    this.#json.data.value = data ?? null
+  }
+
+  get data () {
+    return this.#json.data
+  }
+
+  // eslint-disable-next-line
+  set err (err) {
+    this.#json.err.value = err ?? null
+  }
+
+  get err () {
+    return this.#json.err
+  }
+
+  set json (json) {
+    this.#json.value = json
+
+    this.source = json?.source ?? this.source
+    this.data = json?.data ?? this.data
+    this.err = json?.err ?? this.err
+    this.id = json?.id ?? this.id
+  }
+
+  get json () {
+    return this.#json
+  }
+
+  toJSON () {
+    return this.#json.value
+  }
+
+  reply () {
+    const callback = this.context?.internal?.callback
+    this.result.headers = this.headers
+    this.result.data = this.data.value ?? this.json.value
+    this.result.err = this.err.value ?? null
+    this.result.id = this.id || ''
+
+    if (typeof callback === 'function') {
+      callback(this.result)
+      return true
+    }
+
+    return false
+  }
+}
+
+class WebAssemblyExtensionRuntimeIPCRouter extends WebAssemblyExtensionRuntimeObject {
   routes = new Map()
+  constructor (adapter) {
+    super(adapter)
+    this.pointer = adapter.createExternalReferenceValue(this)
+  }
+
+  map (route, callback) {
+    this.routes.set(route, callback)
+  }
+
+  unmap (route) {
+    this.routes.delete(route)
+  }
+
+  invoke (context, url, size, bytes, callback) {
+    if (typeof size === 'function') {
+      callback = size
+      bytes = null
+      size = 0
+    }
+
+    if (!url.startsWith('ipc://')) {
+      url = `ipc://${url}`
+    }
+
+    const { adapter } = this
+    const { name } = ipc.Message.from(url)
+
+    if (this.routes.has(name)) {
+      const routeContext = new WebAssemblyExtensionRuntimeContext(adapter, {
+        context
+      })
+
+      const message = new WebAssemblyExtensionRuntimeIPCMessage(
+        adapter,
+        routeContext,
+        url,
+        null,
+        bytes
+      )
+
+      routeContext.internal.callback = callback
+      const route = this.routes.get(message.name)
+      route(routeContext, message, this)
+      return true
+    }
+
+    return false
+  }
 }
 
 class WebAssemblyExtensionRuntimePolicy extends WebAssemblyExtensionRuntimeObject {
@@ -359,9 +589,9 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
   pointer = NULL
 
   pool = []
-  json = new Map()
   error = null
   router = null
+  internal = { callback: null }
   config = Object.create(application.config)
   context = null
   retained = false
@@ -372,14 +602,15 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
     super(adapter)
 
     this.context = options?.context ?? null
+    const policies = options?.policies ?? options?.context?.policies ?? null
 
-    if (Array.isArray(options?.policies)) {
-      for (const policy of options.policies) {
+    if (Array.isArray(policies)) {
+      for (const policy of policies) {
         this.setPolicy(policy, true)
       }
     }
 
-    this.router = this.context?.router ?? null
+    this.router = this.context?.router ?? new WebAssemblyExtensionRuntimeIPCRouter(adapter)
     this.confix = this.context?.config ? Object.create(this.context.config) : this.config
     this.retained = Boolean(options?.retained)
     this.policy = this.context?.policies ?? this.policies
@@ -387,7 +618,7 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
       ? this.context.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
       : this.adapter.heap.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
 
-    this.adapter.contexts.set(this.pointer, this)
+    this.adapter.setExternalReferenceValue(this.pointer, this)
   }
 
   alloc (size) {
@@ -400,9 +631,19 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
     return pointer
   }
 
-  allocJSON (value) {
-    const pointer = this.alloc(4)
-    this.json.set(pointer, value)
+  free (pointer) {
+    const index = this.pool.indexOf(pointer)
+    if (index > -1) {
+      this.pool.splice(index, 1)
+      this.adapter.heap.free(pointer)
+    }
+  }
+
+  createExternalReferenceValue (value) {
+    const pointer = this.adapter.createExternalReferenceValue(value)
+    if (pointer) {
+      this.pool.push(pointer)
+    }
     return pointer
   }
 
@@ -418,10 +659,10 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
 
     if (--this.retainedCount === 0) {
       for (const pointer of this.pool) {
-        const context = this.env.adapter.contexts(pointer)
+        const object = this.env.adapter.getExternalReferenceValue(pointer)
 
-        if (context) {
-          context.release()
+        if (typeof object?.release === 'function') {
+          object.release()
         }
 
         this.adapter.heap.free(pointer)
@@ -482,6 +723,34 @@ class WebAssemblyResponse extends Response {
         'content-type': 'application/wasm'
       }
     })
+  }
+}
+
+class WebAssemblyExtensionExternalReference {
+  constructor (adapter, value, pointer) {
+    // box primitive values for proper equality comparisons
+    if (typeof value === 'string') {
+      // eslint-disable-next-line
+      value = new String(value)
+    } else if (typeof value === 'number') {
+      // eslint-disable-next-line
+      value = new Number(value)
+    } else if (typeof value === 'boolean') {
+      // eslint-disable-next-line
+      value = new Boolean(value)
+    }
+
+    this.adapter = adapter
+    this.pointer = pointer || adapter.heap.alloc(4)
+    this.value = value
+  }
+
+  valueOf () {
+    return this.value?.valueOf?.() ?? undefined
+  }
+
+  toString () {
+    return this.value?.toString?.() ?? ''
   }
 }
 
@@ -648,6 +917,10 @@ class WebAssemblyExtensionMemory {
       return
     }
 
+    if (this.adapter.externalReferences.has(pointer)) {
+      this.adapter.externalReferences.delete(pointer)
+    }
+
     pointer = pointer - this.limits.min
 
     // find the block to free and merge adjacent free blocks
@@ -804,13 +1077,17 @@ class WebAssemblyExtensionAdapter {
     this.module = module
     this.memory = memory
     this.policies = policies || []
-    this.contexts = new Map() // mapping pointer address to instance
+    this.externalReferences = new Map() // mapping pointer addresses to javascript objects
     this.instance = instance
     this.exitStatus = null
     this.textDecoder = new TextDecoder()
     this.textEncoder = new TextEncoder()
     this.errorMessagePointers = {}
     this.indirectFunctionTable = new WebAssemblyExtensionIndirectFunctionTable(this)
+  }
+
+  get globalBaseOffset () {
+    return this.instance.exports.__global_base.value
   }
 
   destroy () {
@@ -849,10 +1126,6 @@ class WebAssemblyExtensionAdapter {
     return Boolean(this.indirectFunctionTable.call(offset, this.context.pointer))
   }
 
-  get globalBaseOffset () {
-    return this.instance.exports.__global_base.value
-  }
-
   get (pointer) {
     if (!pointer) {
       return null
@@ -869,6 +1142,48 @@ class WebAssemblyExtensionAdapter {
 
       this.buffer.set(value, pointer)
     }
+  }
+
+  createExternalReferenceValue (value) {
+    const pointer = this.heap.alloc(4)
+    this.setExternalReferenceValue(pointer, value)
+    return pointer
+  }
+
+  getExternalReferenceValue (pointer) {
+    const ref = this.externalReferences.get(pointer)
+    if (ref) {
+      if (ref.value === null) {
+        return NULL
+      }
+
+      if (typeof ref.value === 'object') {
+        return ref.value.valueOf()
+      }
+
+      return ref.value
+    }
+  }
+
+  setExternalReferenceValue (pointer, value) {
+    return this.externalReferences.set(
+      pointer,
+      new WebAssemblyExtensionExternalReference(this, value, pointer)
+    )
+  }
+
+  removeExternalReferenceValue (pointer) {
+    this.externalReferences.delete(pointer)
+  }
+
+  getExternalReferencePointer (value) {
+    for (const ref of this.externalReferences.values()) {
+      if (ref.value === value) {
+        return ref.pointer
+      }
+    }
+
+    return NULL
   }
 
   getFloat32 (pointer) {
@@ -991,14 +1306,35 @@ class WebAssemblyExtensionInfo {
   }
 }
 
-function createWebAssemblyExtensionBinding (adapter) {
+function createWebAssemblyExtensionBinding (extension, adapter) {
   return new Proxy(adapter, {
     get (target, key) {
       if (typeof adapter.instance.exports[key] === 'function') {
         return adapter.instance.exports[key].bind(adapter.instance.exports)
       }
 
-      // TODO: invoke IPC route?
+      if (!adapter.context.router.routes.has(key)) {
+        key = `${extension.name}.${key}`
+      }
+
+      if (adapter.context.router.routes.has(key)) {
+        return (...args) => {
+          return new Promise((resolve, reject) => {
+            const rest = Array.from(args).concat([resolve])
+            try {
+              adapter.context.router.invoke(
+                adapter.context,
+                key,
+                ...rest
+              )
+            } catch (err) {
+              reject(err)
+            }
+          })
+        }
+      }
+
+      return null
     }
   })
 }
@@ -2265,8 +2601,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_extension_is_allowed (contextPointer, allowedPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.isAllowed === 'function') {
           const string = env.adapter.getString(allowedPointer)
           if (string) {
             return context.isAllowed(string)
@@ -2287,6 +2623,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_extension_get (contextPointer, namePointer) {
       console.warn(': Operation is not supported')
+      return NULL
     },
 
     // context
@@ -2294,7 +2631,7 @@ function createWebAssemblyExtensionImports (env) {
       let parent = null
 
       if (parentPointer) {
-        parent = env.adapter.contexts.get(parentPointer) ?? null
+        parent = env.adapter.getExternalReferenceValue(parentPointer) ?? null
       }
 
       const context = new WebAssemblyExtensionRuntimeContext(env.adapter, {
@@ -2307,8 +2644,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_retain (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.retain === 'function') {
           context.retain()
           return true
         }
@@ -2319,8 +2656,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_retained (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'retained' in context) {
           return context.retained
         }
       }
@@ -2334,8 +2671,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_release (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.release === 'function') {
           return context.release()
         }
       }
@@ -2345,8 +2682,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_set_data (contextPointer, dataPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'data' in context) {
           context.data = dataPointer
           return true
         }
@@ -2357,9 +2694,9 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_get_data (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
-          return context.data
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'data' in context) {
+          return context.data ?? NULL
         }
       }
 
@@ -2388,8 +2725,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_alloc (contextPointer, size) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.alloc === 'function') {
           return context.alloc(size)
         }
       }
@@ -2399,7 +2736,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_get_parent (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
         if (context?.context?.pointer) {
           return context.context.pointer
         }
@@ -2410,8 +2747,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_set_code (contextPointer, code) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'error' in context) {
           if (!context.error) {
             context.error = new Error()
           }
@@ -2422,7 +2759,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_get_code (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
         if (context?.error) {
           return context.error.code || 0
         }
@@ -2433,8 +2770,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_set_name (contextPointer, namePointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'error' in context) {
           const name = env.adapter.getString(namePointer)
           if (name) {
             if (!context.error) {
@@ -2448,7 +2785,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_get_name (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
         if (context?.error) {
           return context.error.name || NULL
         }
@@ -2459,8 +2796,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_set_message (contextPointer, messagePointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'error' in context) {
           const message = env.adapter.getString(messagePointer)
           if (message) {
             if (!context.error) {
@@ -2474,7 +2811,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_get_message (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
         if (context?.error) {
           return context.error.message || NULL
         }
@@ -2485,8 +2822,8 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_set_location (contextPointer, locationPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context && 'error' in context) {
           const location = env.adapter.getString(locationPointer)
           if (location) {
             if (!context.error) {
@@ -2500,7 +2837,7 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_error_get_location (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
         if (context?.error) {
           return context.error.location || NULL
         }
@@ -2511,12 +2848,14 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_config_get (contextPointer, keyStringPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        const string = env.adapter.getString(keyStringPointer)
-        if (context && string) {
-          const value = context.config[string]
-          if (value) {
-            return env.adapter.stack.push(value)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context?.config) {
+          const string = env.adapter.getString(keyStringPointer)
+          if (string) {
+            const value = context.config[string]
+            if (value) {
+              return env.adapter.stack.push(value)
+            }
           }
         }
       }
@@ -2526,12 +2865,14 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_context_config_set (contextPointer, keyStringPointer, valueStringPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        const string = env.adapter.getString(keyStringPointer)
-        if (context && string) {
-          const value = env.adapter.getString(valueStringPointer)
-          if (value) {
-            context.config[string] = value
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context?.config) {
+          const string = env.adapter.getString(keyStringPointer)
+          if (string) {
+            const value = env.adapter.getString(valueStringPointer)
+            if (value) {
+              context.config[string] = value
+            }
           }
         }
       }
@@ -2548,52 +2889,49 @@ function createWebAssemblyExtensionImports (env) {
 
     // javascript
     async sapi_javascript_evaluate (context, name, source) {
-      name = env.adapter.getString(name)
+      name = env.adapter.getString(name) ?? ''
       source = env.adapter.getString(source)
-      // TODO(@jwerle): implement a 'vm' module and use it
-      // eslint-disable-next-line
-      const evaluation = new Function(`
-        return function () { ${source}; }
-        //# sourceURL=${name}
-      `)()
-      try {
-        await evaluation()
-      } catch (err) {
-        console.error('sapi_javascript_evaluate:', err)
+      if (source) {
+        // TODO(@jwerle): implement a 'vm' module and use it
+        // eslint-disable-next-line
+        const evaluation = new Function(`
+          return function () { ${source}; }
+          //# sourceURL=${name}
+        `)()
+
+        try {
+          await evaluation()
+        } catch (err) {
+          console.error('sapi_javascript_evaluate:', err)
+        }
       }
     },
 
     // JSON
     sapi_json_typeof (valuePointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(valuePointer)) {
-          const value = context.json.get(valuePointer)
-          if (value === null) {
-            return SAPI_JSON_TYPE_NULL
-          }
+      const value = env.adapter.getExternalReferenceValue(valuePointer)
+      if (value === null) {
+        return SAPI_JSON_TYPE_NULL
+      }
 
-          if (Array.isArray(value)) {
-            return SAPI_JSON_TYPE_ARRAY
-          }
+      if (Array.isArray(value)) {
+        return SAPI_JSON_TYPE_ARRAY
+      }
 
-          if (typeof value === 'string') {
-            return SAPI_JSON_TYPE_STRING
-          }
+      if (typeof value === 'object') {
+        return SAPI_JSON_TYPE_OBJECT
+      }
 
-          if (typeof value === 'number') {
-            return SAPI_JSON_TYPE_NUMBER
-          }
+      if (typeof value === 'string') {
+        return SAPI_JSON_TYPE_STRING
+      }
 
-          if (typeof value === 'boolean') {
-            return SAPI_JSON_TYPE_BOOLEAN
-          }
+      if (typeof value === 'number') {
+        return SAPI_JSON_TYPE_NUMBER
+      }
 
-          if (typeof value === 'object') {
-            return SAPI_JSON_TYPE_OBJECT
-          }
-
-          return SAPI_JSON_TYPE_ANY
-        }
+      if (typeof value === 'boolean') {
+        return SAPI_JSON_TYPE_BOOLEAN
       }
 
       return SAPI_JSON_TYPE_EMPTY
@@ -2601,9 +2939,9 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_object_create (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
-          return context.allocJSON({})
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.createExternalReferenceValue === 'function') {
+          return context.createExternalReferenceValue({})
         }
       }
 
@@ -2612,9 +2950,9 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_array_create (contextPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
-          return context.allocJSON([])
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.createExternalReferenceValue === 'function') {
+          return context.createExternalReferenceValue([])
         }
       }
 
@@ -2623,10 +2961,12 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_string_create (contextPointer, stringPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        const string = env.adapter.getString(stringPointer)
-        if (context && string) {
-          return context.allocJSON(string)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context.createExternalReferenceValue === 'function') {
+          const string = env.adapter.getString(stringPointer)
+          if (typeof string === 'string') {
+            return context.createExternalReferenceValue(string)
+          }
         }
       }
 
@@ -2635,9 +2975,9 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_boolean_create (contextPointer, booleanValue) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
-          return context.allocJSON(Boolean(booleanValue))
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (context?.createExternalReferenceValue) {
+          return context.createExternalReferenceValue(Boolean(booleanValue))
         }
       }
 
@@ -2646,9 +2986,9 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_number_create (contextPointer, numberValue) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        if (context) {
-          return context.allocJSON(numberValue)
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.createExternalReferenceValue === 'function') {
+          return context.createExternalReferenceValue(numberValue)
         }
       }
 
@@ -2657,10 +2997,12 @@ function createWebAssemblyExtensionImports (env) {
 
     sapi_json_raw_from (contextPointer, stringPointer) {
       if (contextPointer) {
-        const context = env.adapter.contexts.get(contextPointer)
-        const string = env.adapter.getString(stringPointer)
-        if (context && string) {
-          return context.allocJSON(JSON.parse(string))
+        const context = env.adapter.getExternalReferenceValue(contextPointer)
+        if (typeof context?.createExternalReferenceValue === 'function') {
+          const string = env.adapter.getString(stringPointer)
+          if (string) {
+            return context.createExternalReferenceValue(JSON.parse(string))
+          }
         }
       }
 
@@ -2668,36 +3010,25 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_json_object_set_value (objectPointer, keyStringPointer, valuePointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(objectPointer)) {
-          const object = context.json.get(objectPointer)
-          const key = env.adapter.getString(keyStringPointer)
-          if (object && key) {
-            for (const context of env.adapter.contexts.values()) {
-              if (context.json.has(valuePointer)) {
-                const value = context.json.get(valuePointer)
-                object[key] = value
-                return
-              }
-            }
+      const object = env.adapter.getExternalReferenceValue(objectPointer)
+      if (object && typeof object === 'object') {
+        const key = env.adapter.getString(keyStringPointer)
+        if (key) {
+          const value = env.adapter.getExternalReferenceValue(valuePointer)
+          if (value !== undefined) {
+            object[key] = value
           }
         }
       }
     },
 
     sapi_json_object_get (objectPointer, keyStringPointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(objectPointer)) {
-          const object = context.json.get(objectPointer)
-          const key = env.adapter.getString(keyStringPointer)
-          if (object && key && key in object) {
-            const value = object[key]
-            for (const entry of context.json.entries()) {
-              if (entry[1] === value) {
-                return entry[0]
-              }
-            }
-          }
+      const object = env.adapter.getExternalReferenceValue(objectPointer)
+      if (object) {
+        const key = env.adapter.getString(keyStringPointer)
+        if (key && key in object) {
+          const value = object[key]
+          return env.adapter.getExternalReferencePointer(value) ?? NULL
         }
       }
 
@@ -2705,54 +3036,33 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_json_array_set_value (arrayPointer, index, valuePointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(arrayPointer)) {
-          const array = context.json.get(arrayPointer)
-          if (array) {
-            for (const context of env.adapter.contexts.values()) {
-              if (context.json.has(valuePointer)) {
-                const value = context.json.get(valuePointer)
-                array[index] = value
-                return
-              }
-            }
-          }
+      const array = env.adapter.getExternalReferenceValue(arrayPointer)
+      if (array) {
+        const value = env.adapter.getExternalReferenceValue(valuePointer)
+        if (value !== undefined) {
+          array[index] = value
         }
       }
     },
 
     sapi_json_array_get (arrayPointer, index) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(arrayPointer)) {
-          const array = context.json.get(arrayPointer)
-          if (array) {
-            const value = array[index]
-            for (const entry of context.json.entries()) {
-              if (entry[1] === value) {
-                return entry[0]
-              }
-            }
-          }
-        }
+      const array = env.adapter.getExternalReferenceValue(arrayPointer)
+      if (array) {
+        const value = array[index]
+        return env.adapter.getExternalReferencePointer(value) ?? NULL
       }
 
       return NULL
     },
 
     sapi_json_array_push_value (arrayPointer, valuePointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(arrayPointer)) {
-          const array = context.json.get(arrayPointer)
-          if (array) {
-            const index = array.length
-            for (const context of env.adapter.contexts.values()) {
-              if (context.json.has(valuePointer)) {
-                const value = context.json.get(valuePointer)
-                array[index] = value
-                return index
-              }
-            }
-          }
+      const array = env.adapter.getExternalReferenceValue(arrayPointer)
+      if (array) {
+        const index = array.length
+        const value = env.adapter.getExternalReferenceValue(valuePointer)
+        if (value !== undefined) {
+          array[index] = value
+          return index
         }
       }
 
@@ -2760,29 +3070,19 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_json_array_pop (arrayPointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(arrayPointer)) {
-          const array = context.json.get(arrayPointer)
-          if (array) {
-            const value = array.pop()
-            for (const entry of context.json.entries()) {
-              if (entry[1] === value) {
-                return entry[0]
-              }
-            }
-          }
-        }
+      const array = env.adapter.getExternalReferenceValue(arrayPointer)
+      if (array) {
+        const value = array.pop()
+        return env.adapter.getExternalReferencePointer(value) ?? NULL
       }
 
       return NULL
     },
 
     sapi_json_stringify_value (valuePointer) {
-      for (const context of env.adapter.contexts.values()) {
-        if (context.json.has(valuePointer)) {
-          const value = context.json.get(valuePointer)
-          return env.adapter.stack.push(JSON.stringify(value))
-        }
+      const value = env.adapter.getExternalReferenceValue(valuePointer)
+      if (value !== undefined) {
+        return env.adapter.stack.push(JSON.stringify(value))
       }
 
       return NULL
@@ -2816,42 +3116,139 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_result_create (contextPointer, messagePointer) {
+      if (!contextPointer || !messagePointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      const result = new WebAssemblyExtensionRuntimeIPCResult(
+        env.adapter,
+        context,
+        message
+      )
+
+      return result.pointer
     },
 
     sapi_ipc_result_clone (contextPointer, resultPointer) {
+      if (!contextPointer || !resultPointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const existingResult = env.adapter.getExternalReferenceValue(resultPointer)
+      const result = new WebAssemblyExtensionRuntimeIPCResult(
+        env.adapter,
+        existingResult.context,
+        existingResult.message,
+        existingResult
+      )
+
+      return result.pointer
     },
 
     sapi_ipc_result_set_seq (resultPointer, seqPointer) {
+      if (!resultPointer || !seqPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.seq = env.adapter.getString(seqPointer)
     },
 
     sapi_ipc_result_get_seq (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      if (result.seq) {
+        return env.adapter.stack.push(result.seq)
+      }
+
+      return NULL
     },
 
     sapi_ipc_result_get_context (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result?.context?.pointer ?? NULL
     },
 
     sapi_ipc_result_set_message (resultPointer, messagePointer) {
+      if (!resultPointer || !messagePointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.message = env.adapter.getExternalReferenceValue(messagePointer)
     },
 
     sapi_ipc_result_get_message (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.message?.pointer ?? NULL
     },
 
     sapi_ipc_result_set_json (resultPointer, jsonPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.json = env.adapter.getExternalReferenceValue(jsonPointer)
     },
 
     sapi_ipc_result_get_json (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.json.pointer
     },
 
-    sapi_ipc_result_set_json_data (result, jsonPointer) {
+    sapi_ipc_result_set_json_data (resultPointer, jsonDataPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.data = env.adapter.getExternalReferenceValue(jsonDataPointer)
     },
 
     sapi_ipc_result_get_json_data (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.json.data.pointer
     },
 
-    sapi_ipc_result_set_json_error (resultPointer, jsonPointer) {
+    sapi_ipc_result_set_json_error (resultPointer, jsonErrorPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.error = env.adapter.getExternalReferenceValue(jsonErrorPointer)
     },
 
     sapi_ipc_result_get_json_error (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.json.err.pointer
     },
 
     sapi_ipc_result_set_bytes (resultPointer, size, bytesPointer) {
@@ -2882,6 +3279,13 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_reply (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.reply()
+      result.context.free(result.pointer)
     },
 
     sapi_ipc_reply_with_error (resultPointer, errorPointer) {
@@ -2903,12 +3307,59 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_invoke (contextPointer, urlPointer, size, bytesPointer, callbackPointer) {
+      if (!contextPointer || !urlPointer || !callbackPointer) {
+        return false
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+
+      if (!context.router) {
+        return false
+      }
+
+      const url = env.adapter.getString(urlPointer)
+      const bytes = env.adapter.get(bytesPointer)
+      return context.router.invoke(context, url, size, bytes, (result) => {
+      })
     },
 
     sapi_ipc_router_map (contextPointer, routePointer, callbackPointer, dataPointer) {
+      if (!contextPointer || !routePointer || !callbackPointer) {
+        return false
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+
+      if (!context.router) {
+        return false
+      }
+
+      const route = env.adapter.getString(routePointer)
+      context.router.map(route, (context, message) => {
+        env.adapter.indirectFunctionTable.call(
+          callbackPointer,
+          context.pointer,
+          message.pointer,
+          context.router.pointer
+        )
+      })
+
+      return true
     },
 
     sapi_ipc_router_unmap (contextPointer, routePointer) {
+      if (!contextPointer || !routePointer) {
+        return false
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+
+      if (!context.router) {
+        return false
+      }
+
+      const route = env.adapter.getString(routePointer)
+      return context.router.unmap(route)
     },
 
     sapi_ipc_router_listen (contextPointer, routePointer, callbackPointer, dataPointer) {
@@ -3202,7 +3653,7 @@ export class Extension extends EventTarget {
       })
     } else if (this.type === 'wasm32') {
       this.adapter = options?.adapter
-      this.binding = createWebAssemblyExtensionBinding(this)
+      this.binding = createWebAssemblyExtensionBinding(this, this.adapter)
     }
   }
 
