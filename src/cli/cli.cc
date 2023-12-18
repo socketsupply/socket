@@ -3373,14 +3373,14 @@ int main (const int argc, const char* argv[]) {
       auto androidIcon = settings["android_icon"];
 
       if (androidIcon.size() > 0) {
+        settings["android_application_icon_config"] = (
+          String("    android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
+          String("    android:icon=\"@mipmap/ic_launcher\"\n")
+        );
+
         fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher.png", fs::copy_options::overwrite_existing);
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
-      } else {
-        // create empty icons
-        std::ofstream icon((res / "mipmap" / "icon.png").string());
-        std::ofstream ic_launcher((res / "mipmap" / "ic_launcher.png").string());
-        std::ofstream ic_launcher_round((res / "mipmap" / "ic_launcher_round.png").string());
       }
 
       // allow user space to override all `res/` files

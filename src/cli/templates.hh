@@ -469,8 +469,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:label="{{meta_title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
-    android:roundIcon="@mipmap/ic_launcher_round"
-    android:icon="@mipmap/ic_launcher"
+    {{android_application_icon_config}}
     {{android_allow_cleartext}}
   >
     <activity
