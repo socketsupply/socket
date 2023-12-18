@@ -430,10 +430,6 @@ using namespace SSC;
 
 namespace SSC {
   Bluetooth::Bluetooth () {
-    #if defined(__APPLE__)
-    this->controller = [SSCBluetoothController new];
-    [this->controller setBluetooth: this];
-    #endif
   }
 
   Bluetooth::~Bluetooth () {
@@ -468,6 +464,11 @@ namespace SSC {
 
   void Bluetooth::startScanning () {
     #if defined(__APPLE__)
+    if (this->controller == nullptr) {
+      this->controller = [SSCBluetoothController new];
+    }
+
+    [this->controller setBluetooth: this];
     if (this->controller != nullptr) {
       [this->controller startScanning];
     }
