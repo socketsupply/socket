@@ -25,6 +25,7 @@ const $stats = Symbol('stats')
 const $type = Symbol('type')
 
 const NULL = 0x0
+const EOF = -1
 
 // eslint-disable-next-line
 const STDIN = 0x0 // STDIN_FILENO
@@ -1608,6 +1609,92 @@ function createWebAssemblyExtensionImports (env) {
       )
 
       imports.env.abort()
+    }
+  })
+
+  Object.assign(imports.env, {
+    isalnum (char) {
+      return imports.env.isalpha(char) || imports.env.isdigit(char)
+    },
+
+    isalpha (char) {
+      return char === EOF || imports.env.islower(char) || imports.env.isupper(char)
+    },
+
+    isascii (char) {
+      return char >= 0 && char <= parseInt('0177', 8)
+    },
+
+    isblank (char) {
+      return /\s/.test(String.fromCharCode(char))
+    },
+
+    iscntrl (char) {
+      const codes = [
+        '000', '001', '002', '003', '004',
+        '005', '006', '007', '010', '011',
+        '012', '013', '014', '015', '016',
+        '017', '020', '021', '022', '023',
+        '024', '025', '026', '027', '030',
+        '031', '032', '033', '034', '035',
+        '036', '037', '177'
+      ].map((c) => parseInt(c, 8))
+
+      return codes.includes(char)
+    },
+
+    isdigit (char) {
+      return !Number.isNaN(parseInt(char, 10))
+    },
+
+    isgraph (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && char >= '!' && char <= '~' && char !== ' '
+    },
+
+    islower (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && char === char.toLowerCase()
+    },
+
+    isprint (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && char >= ' ' && char <= '~'
+    },
+
+    ispunct (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && /[!@#$%^&*()_+{}[]:;<>,.?~\\\/-=]/.test(char)
+    },
+
+    isspace (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && /\s/.test(char)
+    },
+
+    isupper (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && char === char.toUpperCase()
+    },
+
+    isxdigit (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 && /[0-9a-fA-F]/.test(char)
+    },
+
+    toascii (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 ? char.charCodeAt(0) & 0x7F : -1
+    },
+
+    tolower (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 ? char.toLowerCase() : char
+    },
+
+    toupper (char) {
+      char = String.fromCharCode(char)
+      return char.length === 1 ? char.toUpperCase() : char
     }
   })
 
