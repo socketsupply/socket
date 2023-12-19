@@ -469,8 +469,10 @@ class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeO
   #id = null
   #name = null
   #seq = null
+  #uri = null
   #value = null
   #values = {}
+  #bytes = null
   #message = null
 
   constructor (adapter, context, url, ...args) {
@@ -481,10 +483,12 @@ class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeO
 
     this.#id = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.id)
     this.#name = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.name)
+    this.#uri = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.toString())
     this.#seq = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.seq)
     this.#value = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.value)
+    this.#bytes = new WebAssemblyExtensionRuntimeBuffer(adapter, context, this.#message.bytes)
 
-    for (const key in this.#message.searchParams.keys) {
+    for (const key of this.#message.searchParams.keys()) {
       const value = this.#message.get(key)
       this.#values[key] = new WebAssemblyExtensionRuntimeJSON(adapter, context, value)
     }
@@ -492,9 +496,11 @@ class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeO
 
   get id () { return this.#id }
   get name () { return this.#name }
+  get uri () { return this.#uri }
   get seq () { return this.#seq }
   get index () { return this.#message.index }
   get value () { return this.#value }
+  get bytes () { return this.#bytes }
 
   get (key) {
     return this.#values[key]
@@ -601,7 +607,12 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
   }
 
   reply () {
-    const callback = this.context?.internal?.callback
+    if (!this.context) {
+      this.result = null
+      return false
+    }
+
+    const callback = this.context.internal?.callback
     this.result.headers = this.headers.value
     this.result.source = this.source.value
     this.result.err = this.err.value ?? null
@@ -615,10 +626,13 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
 
     if (typeof callback === 'function') {
       callback(this.result)
-      return true
     }
 
-    return false
+    this.context.release()
+
+    this.result = null
+    this.context = null
+    return typeof callback === 'function'
   }
 }
 
@@ -1459,13 +1473,21 @@ function createWebAssemblyExtensionBinding (extension, adapter) {
       }
 
       if (adapter.context.router.routes.has(key)) {
-        return (...args) => {
+        return (options, ...args) => {
           return new Promise((resolve, reject) => {
+            let params = null
+            if (typeof options === 'object') {
+              params = String(new URLSearchParams(options))
+            } else if (typeof options === 'string') {
+              params = options
+            }
+
             const rest = Array.from(args).concat([resolve])
+            const url = `ipc://${key}?${params}`
             try {
               adapter.context.router.invoke(
                 adapter.context,
-                key,
+                url,
                 ...rest
               )
             } catch (err) {
@@ -1509,8 +1531,12 @@ function variadicFormattedestinationPointerringFromPointers (
     switch (x) {
       case '%S': case '%s': {
         const pointer = view.getInt32((index++) * 4, true)
-        const string = env.adapter.getString(pointer)
-        if (!string) {
+        const string = (
+          env.adapter.getString(pointer) ||
+          env.adapter.getExternalReferenceValue(pointer)?.value
+        )
+
+        if (!string || typeof string !== 'string') {
           return '(null)'
         }
 
@@ -3324,27 +3350,86 @@ function createWebAssemblyExtensionImports (env) {
       }
 
       const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.value.pointer
     },
 
     sapi_ipc_message_get_bytes (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.bytes.bufferPointer
     },
 
     sapi_ipc_message_get_bytes_size (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.bytes.buffer.byteLength
     },
 
     sapi_ipc_message_get_name (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.name.pointer
     },
 
     sapi_ipc_message_get_seq (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.seq.pointer
     },
 
     sapi_ipc_message_get_uri (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.uri.pointer
     },
 
     sapi_ipc_message_get (messagePointer, keyStringPointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      const key = env.adapter.getString(keyStringPointer)
+      const value = message.get(key)
+      return value ? value.pointer : NULL
     },
 
     sapi_ipc_message_clone (contextPointer, messagePointer) {
+      if (!contextPointer || !messagePointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const existingMessage = env.adapter.getExternalReferenceValue(messagePointer)
+      const message = new WebAssemblyExtensionRuntimeIPCMessage(
+        env.adapter,
+        context,
+        existingMessage.uri.value.toString()
+      )
+
+      if (existingMessage.bytes.pointer && existingMessage.bytes.buffer.byteLength) {
+        message.bytes.set(
+          existingMessage.bytes.pointer,
+          existingMessage.bytes.buffer.byteLength
+        )
+      }
+
+      return message.pointer
     },
 
     sapi_ipc_result_create (contextPointer, messagePointer) {
