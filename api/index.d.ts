@@ -4945,6 +4945,8 @@ declare module "socket:extension" {
      *   allow: string[] | string,
      *   imports?: object,
      *   type?: 'shared' | 'wasm32',
+     *   path?: string,
+     *   stats?: object,
      *   instance?: WebAssembly.Instance,
      *   adapter?: WebAssemblyExtensionAdapter
      * }} ExtensionLoadOptions
@@ -5048,6 +5050,8 @@ declare module "socket:extension" {
         allow: string[] | string;
         imports?: object;
         type?: 'shared' | 'wasm32';
+        path?: string;
+        stats?: object;
         instance?: WebAssembly.Instance;
         adapter?: WebAssemblyExtensionAdapter;
     };
