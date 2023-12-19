@@ -1,4 +1,4 @@
-/* global Event */
+/* global Event, ErrorEvent */
 /* eslint-disable no-unused-vars */
 /**
  * @module extension
@@ -11,7 +11,6 @@
 import { isBufferLike } from './util.js'
 import { createFile } from './fs/web.js'
 import application from './application.js'
-// import { Buffer } from './buffer.js'
 import process from './process.js'
 import crypto from './crypto.js'
 import ipc from './ipc.js'
@@ -339,51 +338,46 @@ const errorMessages = {
 
 class WebAssemblyExtensionRuntimeObject {
   static get pointerSize () { return 4 }
+  adapter = null
+
   constructor (adapter) {
     this.adapter = adapter
   }
 }
 
-class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeObject {
-  message = null
-  constructor (adapter, context, url, ...args) {
+class WebAssemblyExtensionRuntimeBuffer extends WebAssemblyExtensionRuntimeObject {
+  context = null
+  pointer = NULL
+  #buffer = new Uint8Array(0)
+  #bufferPointer = NULL
+
+  constructor (adapter, context) {
     super(adapter)
     this.context = context
     this.pointer = context.createExternalReferenceValue(this)
-    this.message = ipc.Message.from(url, ...args)
   }
 
-  get id () {
-    return this.message?.id ?? ''
+  get buffer () {
+    return this.#buffer
   }
 
-  get name () {
-    return this.message?.name ?? ''
+  get bufferPointer () {
+    return this.#bufferPointer
   }
 
-  get seq () {
-    return this.message?.seq ?? ''
-  }
-
-  get index () {
-    return this.message?.index ?? -1
-  }
-
-  get params () {
-    return this.message?.params ?? null
-  }
-
-  get (key) {
-    return this.message?.get(key) ?? null
-  }
-
-  get value () {
-    return this.message?.value ?? null
+  set (pointer, size) {
+    this.#buffer = new Uint8Array(size)
+    this.#buffer.fill(0)
+    this.#buffer.set(this.adapter.get(pointer), size)
+    this.#bufferPointer = pointer
   }
 }
 
 class WebAssemblyExtensionRuntimeJSON extends WebAssemblyExtensionRuntimeObject {
+  context = null
+  pointer = NULL
   #value = null
+
   constructor (adapter, context, value) {
     super(adapter)
     this.context = context
@@ -435,22 +429,96 @@ class WebAssemblyExtensionRuntimeIPCResultJSON extends WebAssemblyExtensionRunti
   }
 }
 
+class WebAssemblyExtensionRuntimeIPCResultHeaders extends WebAssemblyExtensionRuntimeObject {
+  #headers = new ipc.Headers()
+  #pointerMap = new Map()
+  context = null
+  pointer = NULL
+  constructor (adapter, context) {
+    super(adapter)
+    this.context = context
+    this.pointer = context.createExternalReferenceValue(this)
+  }
+
+  get headers () {
+    return this.#headers
+  }
+
+  get pointerMap () {
+    return this.#pointerMap
+  }
+
+  set (name, value) {
+    this.#headers.set(name, value)
+    this.#pointerMap.set(name, this.context.createExternalReferenceValue(value))
+  }
+
+  get (name) {
+    return this.#headers.get(name)
+  }
+
+  getValuePointer (name) {
+    return this.#pointerMap.get(name)
+  }
+}
+
+class WebAssemblyExtensionRuntimeIPCMessage extends WebAssemblyExtensionRuntimeObject {
+  context = null
+  pointer = NULL
+
+  #id = null
+  #name = null
+  #seq = null
+  #value = null
+  #values = {}
+  #message = null
+
+  constructor (adapter, context, url, ...args) {
+    super(adapter)
+    this.context = context
+    this.pointer = context.createExternalReferenceValue(this)
+    this.#message = ipc.Message.from(url, ...args)
+
+    this.#id = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.id)
+    this.#name = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.name)
+    this.#seq = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.seq)
+    this.#value = new WebAssemblyExtensionRuntimeJSON(adapter, context, this.#message.value)
+
+    for (const key in this.#message.searchParams.keys) {
+      const value = this.#message.get(key)
+      this.#values[key] = new WebAssemblyExtensionRuntimeJSON(adapter, context, value)
+    }
+  }
+
+  get id () { return this.#id }
+  get name () { return this.#name }
+  get seq () { return this.#seq }
+  get index () { return this.#message.index }
+  get value () { return this.#value }
+
+  get (key) {
+    return this.#values[key]
+  }
+}
+
 class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeObject {
   #message = null
+  #bytes = null
+  #headers = null
   #json = null
-  #data = null
-  #err = null
 
   context = null
-
-  headers = new ipc.Headers()
+  pointer = NULL
+  result = null
   source = null
   seq = null
   id = null
 
-  constructor (adapter, context, message, existingResult) {
+  constructor (adapter, context, message, existingResult = null) {
     super(adapter)
     this.#json = new WebAssemblyExtensionRuntimeIPCResultJSON(adapter, context, {})
+    this.#bytes = new WebAssemblyExtensionRuntimeBuffer(adapter, context)
+    this.#headers = new WebAssemblyExtensionRuntimeIPCResultHeaders(adapter, context)
 
     this.pointer = context.createExternalReferenceValue(this)
     this.context = context
@@ -462,18 +530,38 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
       this.err = existingResult.err
       this.data = existingResult.data
       this.source = existingResult.source
-      this.headers = existingResult.headers
+
+      for (const entry of existingResult.pointerMap.entries()) {
+        this.#headers.pointerMap.set(entry[0], entry[1])
+      }
+
+      for (const entry of existingResult.headers.entries()) {
+        this.#headers.headers.set(entry[0], entry[1])
+      }
     }
   }
 
   set message (message) {
     this.#message = message
-    this.result = new ipc.Result(message.id, null, null, message.name, message.headers)
     this.seq = message.seq
+    this.result = ipc.Result.from(
+      { id: message.id },
+      null,
+      message.name,
+      message.headers
+    )
   }
 
   get message () {
     return this.#message
+  }
+
+  get headers () {
+    return this.#headers
+  }
+
+  get bytes () {
+    return this.#bytes
   }
 
   set data (data) {
@@ -528,6 +616,8 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
 
 class WebAssemblyExtensionRuntimeIPCRouter extends WebAssemblyExtensionRuntimeObject {
   routes = new Map()
+  pointer = NULL
+
   constructor (adapter) {
     super(adapter)
     this.pointer = adapter.createExternalReferenceValue(this)
@@ -581,6 +671,11 @@ class WebAssemblyExtensionRuntimeIPCRouter extends WebAssemblyExtensionRuntimeOb
 class WebAssemblyExtensionRuntimePolicy extends WebAssemblyExtensionRuntimeObject {
   name = null
   allowed = false
+  constructor (adapter, name, allowed) {
+    super(adapter)
+    this.name = name
+    this.allowed = Boolean(allowed)
+  }
 }
 
 class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObject {
@@ -611,9 +706,9 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
     }
 
     this.router = this.context?.router ?? new WebAssemblyExtensionRuntimeIPCRouter(adapter)
-    this.confix = this.context?.config ? Object.create(this.context.config) : this.config
+    this.config = this.context?.config ? Object.create(this.context.config) : this.config
     this.retained = Boolean(options?.retained)
-    this.policy = this.context?.policies ?? this.policies
+    this.policies = this.context?.policies ?? this.policies
     this.pointer = this.context
       ? this.context.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
       : this.adapter.heap.alloc(WebAssemblyExtensionRuntimeObject.pointerSize)
@@ -659,7 +754,7 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
 
     if (--this.retainedCount === 0) {
       for (const pointer of this.pool) {
-        const object = this.env.adapter.getExternalReferenceValue(pointer)
+        const object = this.adapter.getExternalReferenceValue(pointer)
 
         if (typeof object?.release === 'function') {
           object.release()
@@ -703,12 +798,20 @@ class WebAssemblyExtensionRuntimeContext extends WebAssemblyExtensionRuntimeObje
       policy.name = name
       policy.allowed = Boolean(allowed)
     } else {
-      this.policies.set(name, { name, allowed: Boolean(allowed) })
+      this.policies.set(name, new WebAssemblyExtensionRuntimePolicy(
+        this.adapter,
+        name,
+        allowed
+      ))
     }
   }
 
   getPolicy (name) {
     return this.policies.get(name) ?? null
+  }
+
+  hasPolicy (name) {
+    return this.policies.has(name)
   }
 }
 
@@ -727,6 +830,10 @@ class WebAssemblyResponse extends Response {
 }
 
 class WebAssemblyExtensionExternalReference {
+  adapter = null
+  pointer = NULL
+  value = null
+
   constructor (adapter, value, pointer) {
     // box primitive values for proper equality comparisons
     if (typeof value === 'string') {
@@ -755,9 +862,11 @@ class WebAssemblyExtensionExternalReference {
 }
 
 class WebAssemblyExtensionMemoryBlock {
+  memory = null
   start = 0
   end = 0
-  constructor (memory, start, end) {
+
+  constructor (memory, start = null, end = null) {
     this.memory = memory
     this.start = start || 0
     this.end = end || memory.byteLength
@@ -767,15 +876,17 @@ class WebAssemblyExtensionMemoryBlock {
 class WebAssemblyExtensionMemory {
   adapter = null
   offset = 0
+  current = []
   limits = { min: 0, max: 0 }
+  freeList = []
 
   constructor (adapter, min, max) {
     this.adapter = adapter
     this.limits.min = min
     this.limits.max = max
     this.offset = min
-    this.current = []
-    this.freeList = [new WebAssemblyExtensionMemoryBlock(this)]
+
+    this.freeList.push(new WebAssemblyExtensionMemoryBlock(this))
   }
 
   get buffer () {
@@ -816,7 +927,7 @@ class WebAssemblyExtensionMemory {
     }
 
     let byteLength = 0
-    const isFloat = typeof value === 'number' && parseInt(value) !== value
+    const isFloat = typeof value === 'number' && parseInt(String(value)) !== value
 
     if (isBufferLike(value)) {
       byteLength = value.byteLength
@@ -1070,6 +1181,23 @@ class WebAssemblyExtensionIndirectFunctionTable {
  * @ignore
  */
 class WebAssemblyExtensionAdapter {
+  view = null
+  heap = null
+  table = null
+  stack = null
+  buffer = null
+  module = null
+  memory = null
+  context = null
+  policies = []
+  externalReferences = new Map() // mapping pointer addresses to javascript objects
+  instance = null
+  exitStatus = null
+  textDecoder = new TextDecoder()
+  textEncoder = new TextEncoder()
+  errorMessagePointers = {}
+  indirectFunctionTable = null
+
   constructor ({ instance, module, table, memory, policies }) {
     this.view = new DataView(memory.buffer)
     this.table = table
@@ -1077,12 +1205,7 @@ class WebAssemblyExtensionAdapter {
     this.module = module
     this.memory = memory
     this.policies = policies || []
-    this.externalReferences = new Map() // mapping pointer addresses to javascript objects
     this.instance = instance
-    this.exitStatus = null
-    this.textDecoder = new TextDecoder()
-    this.textEncoder = new TextEncoder()
-    this.errorMessagePointers = {}
     this.indirectFunctionTable = new WebAssemblyExtensionIndirectFunctionTable(this)
   }
 
@@ -1265,7 +1388,7 @@ class WebAssemblyExtensionAdapter {
     return this.textDecoder.decode(start.slice(0, end))
   }
 
-  setString (pointer, string, buffer) {
+  setString (pointer, string, buffer = null) {
     if (pointer) {
       const encoded = this.textEncoder.encode(string)
       ;(buffer || this.buffer).set(encoded, pointer)
@@ -1281,6 +1404,8 @@ class WebAssemblyExtensionAdapter {
  * @ignore
  */
 class WebAssemblyExtensionInfo {
+  adapter = null
+
   constructor (adapter) {
     this.adapter = adapter
   }
@@ -1308,13 +1433,13 @@ class WebAssemblyExtensionInfo {
 
 function createWebAssemblyExtensionBinding (extension, adapter) {
   return new Proxy(adapter, {
-    get (target, key) {
+    get (_, key) {
       if (typeof adapter.instance.exports[key] === 'function') {
         return adapter.instance.exports[key].bind(adapter.instance.exports)
       }
 
       if (!adapter.context.router.routes.has(key)) {
-        key = `${extension.name}.${key}`
+        key = `${extension.name}.${String(key)}`
       }
 
       if (adapter.context.router.routes.has(key)) {
@@ -1415,10 +1540,9 @@ function createWebAssemblyExtensionImports (env) {
     }
   }
 
+  let atExitCallbackPointer = 0x0
   let errnoPointer = 0
   let srandSeed = 1
-  let atExitCallbackPointer = 0x0
-  let exitCode = 0
 
   const toBeFlushed = {
     stdout: [],
@@ -1427,7 +1551,21 @@ function createWebAssemblyExtensionImports (env) {
 
   // <assert.h>
   Object.assign(imports.env, {
-    __assert_fail (condition, filename, line, func) {
+    __assert_fail (
+      conditionStringPointer,
+      filenameStringPointer,
+      lineNumber,
+      functionStringPointer
+    ) {
+      console.error(
+        'Assertion failed: (%s), function %s, file %s, line %d.',
+        env.adapter.getString(conditionStringPointer),
+        env.adapter.getString(functionStringPointer),
+        env.adapter.getString(filenameStringPointer),
+        lineNumber
+      )
+
+      imports.env.abort()
     }
   })
 
@@ -1716,6 +1854,7 @@ function createWebAssemblyExtensionImports (env) {
     /**
      */
     abort () {
+      console.error('Abort trap: 6') // SIGABORT == 6
       throw new WebAssembly.Exception(env.tags.abort, [])
     },
 
@@ -1735,7 +1874,7 @@ function createWebAssemblyExtensionImports (env) {
      * @param {number} code
      */
     exit (code) {
-      exitCode = code
+      env.adapter.exitStatus = code
       // TODO(@jerle): exit WASM runtime with exit code
       env.adapter.indirectFunctionTable.call(atExitCallbackPointer)
       throw new WebAssembly.Exception(env.tags.exit, [code])
@@ -2215,39 +2354,62 @@ function createWebAssemblyExtensionImports (env) {
      * @param {number} destinationPointer
      * @param {number} sourcePointer
      * @param {number} size
+     * @param {number} localeStringPointer
      * @return {number}
      */
-    strxfrm (destinationPointer, sourcePointer, size) {
+    strxfrm_l (destinationPointer, sourcePointer, size, localeStringPointer) {
       const destination = new Uint8Array(env.adapter.buffer.buffer, destinationPointer)
+      const collation = {}
       const source = new Uint8Array(env.adapter.buffer.buffer, sourcePointer)
       const string = String.fromCharCode.apply(null, source)
 
-      // use `Intl.Collator` for locale-sensitive comparison
-      const collator = new Intl.Collator(globalThis.navigator.language)
+      const locale = localeStringPointer
+        ? env.adapter.getString(localeStringPointer)
+        : globalThis.navigator.language
+
       // normalize and remove diacritics
       const transformed = string
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
 
       // convert to plain byte array
-      const bytes = Array.from(string).map((char) => char.charCodeAt(0))
+      const bytes = Array.from(transformed).map((char) => String(char).charCodeAt(0))
+      const length = Math.min(size, bytes.length)
+
+      // generate a collation map for the specified locale
+      for (let i = 0; i < length; ++i) {
+        const char = String.fromCharCode(bytes[i])
+
+        if (!collation[char]) {
+          // arbitrary string for comparison
+          const comparisonString = `a${char}b`
+          collation[char] = comparisonString.localeCompare('a', locale)
+        }
+      }
+
+      const collated = bytes.slice(0, length)
+        .sort((a, b) => collation[a] - collation[b])
 
       // copy transformed string to destination
-      for (let i = 0; i < bytes.length; ++i) {
-        destination[i] = bytes[i]
+      for (let i = 0; i < collated.length; ++i) {
+        destination[i] = collated[i]
       }
 
       // "null-terminate" the transformed string
-      destination[bytes.length] = 0
+      destination[collated.length] = 0
 
       // return the length of the transformed string
-      return bytes.length
+      return collated.length
     },
 
-    strxfrm_l (destinationPointer, sourcePointer, size, locale) {
-      // TODO@(jwerle): figure out how to work with `locale_t`
-      console.warn('strxfrm_l: Operation is not supported')
-      return -1
+    /**
+     * @param {number} destinationPointer
+     * @param {number} sourcePointer
+     * @param {number} size
+     * @return {number}
+     */
+    strxfrm (destinationPointer, sourcePointer, size) {
+      return imports.env.strxfrm_l(destinationPointer, sourcePointer, size, NULL)
     },
 
     strchr (stringPointer, byte) {
@@ -2354,7 +2516,7 @@ function createWebAssemblyExtensionImports (env) {
         }
 
         if (match) {
-          return string + i
+          return stringPointer + i
         }
       }
 
@@ -2499,72 +2661,111 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     mktime (outputPointer, tmPointer) {
+      console.warn('mktime: Not implemented')
+      return -1
     },
 
     strftime (stringPointer, maxSize, formatPointer, tmPointer) {
+      console.warn('strftime: Not implemented')
+      return -1
     },
 
     strptime (bufferPointer, formatPointer, tmPointer) {
+      console.warn('strptime: Not implemented')
+      return -1
     },
 
     gmtime (timePointer) {
+      console.warn('gmtime: Not implemented')
+      return -1
     },
 
     timegm (tmPointer) {
+      console.warn('timegm: Not implemented')
+      return -1
     },
 
     localtime (timePointer) {
+      console.warn('localtime: Not implemented')
+      return -1
     },
 
     asctime (tmPointer) {
+      console.warn('asctime_r: Not implemented')
+      return -1
     },
 
     ctime (timePointer) {
+      console.warn('ctime: Not implemented')
+      return -1
     },
 
     stime (timePointer) {
+      console.warn('stime: Not implemented')
+      return -1
     },
 
     timespec_get (timeSpecPointer, base) {
+      console.warn('timespec_get: Not implemented')
+      return -1
     },
 
     getdate (stringPointer) {
+      console.warn('getdate: Not implemented')
+      return -1
     },
 
     nanosleep (rqtp, tmtp) {
+      console.warn('nanosleep: Not implemented')
+      return -1
     },
 
     gmtime_r (timePointer, tmPointer) {
+      console.warn('gmtime_r: Not implemented')
+      return -1
     },
 
     localtime_r (timePointer, tmPointer) {
+      console.warn('localtime_r: Not implemented')
+      return -1
     },
 
     asctime_r (tmPointer, outputPointer) {
+      console.warn('asctime_r: Not implemented')
+      return -1
     },
 
     time_r (timePointer, outputPointer) {
+      console.warn('time_r: Not implemented')
+      return -1
     },
 
     // clock
     clock () {
+      console.warn('clock: Not implemented')
+      return -1
     },
 
     clock_getres (clockId, timeSpecPointer) {
+      console.warn('clock_getres: Not implemented')
+      return -1
     },
 
     clock_gettime (clockId, timeSpecPointer) {
+      console.warn('clock_gettime Not implemented')
+      return -1
     },
 
     clock_nanosleep (clockId, flags, requestTimeSpecPointer, remainTimeSpecPointer) {
+      console.warn('clock_nanosleep: Not implemented')
+      return -1
     }
   })
 
   // <ulimit.h>
   Object.assign(imports.env, {
     ulimit (commandValue, varargs) {
-      console.warn('strxfrm_l: Operation is not supported')
-
+      console.warn('ulimit: Operation is not supported')
       return -1
     }
   })
@@ -2614,15 +2815,15 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_extension_load (contextPointer, namePointer, dataPointer) {
-      console.warn(': Operation is not supported')
+      console.warn('sapi_extension_load: Operation is not supported')
     },
 
     sapi_extension_unload (contextPointer, namePointer) {
-      console.warn(': Operation is not supported')
+      console.warn('sapi_extension_unload: Operation is not supported')
     },
 
     sapi_extension_get (contextPointer, namePointer) {
-      console.warn(': Operation is not supported')
+      console.warn('sapi_extension_get: Operation is not supported')
       return NULL
     },
 
@@ -2665,7 +2866,7 @@ function createWebAssemblyExtensionImports (env) {
       return false
     },
 
-    sapi_context_get_loop (context) {
+    sapi_context_get_loop (contextPointer) {
       return NULL
     },
 
@@ -2703,11 +2904,15 @@ function createWebAssemblyExtensionImports (env) {
       return NULL
     },
 
-    sapi_context_dispatch (context, data, callback) {
-      if (callback > 0) {
+    sapi_context_dispatch (contextPointer, dataPointer, callbackPointer) {
+      if (callbackPointer !== NULL) {
         setTimeout(() => {
           try {
-            env.adapter.indirectFunctionTable.call(callback, context, data)
+            env.adapter.indirectFunctionTable.call(
+              callbackPointer,
+              contextPointer,
+              dataPointer
+            )
           } catch (err) {
             if (err.is(env.tags.exit)) {
               env.adapter.exitStatus = err.getArg(env.tags.exit, 0)
@@ -3089,9 +3294,20 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_message_get_index (messagePointer) {
+      if (!messagePointer) {
+        return -1
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      return message.index
     },
 
     sapi_ipc_message_get_value (messagePointer) {
+      if (!messagePointer) {
+        return NULL
+      }
+
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
     },
 
     sapi_ipc_message_get_bytes (messagePointer) {
@@ -3140,7 +3356,7 @@ function createWebAssemblyExtensionImports (env) {
       const existingResult = env.adapter.getExternalReferenceValue(resultPointer)
       const result = new WebAssemblyExtensionRuntimeIPCResult(
         env.adapter,
-        existingResult.context,
+        context,
         existingResult.message,
         existingResult
       )
@@ -3252,30 +3468,84 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_result_set_bytes (resultPointer, size, bytesPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.bytes.set(bytesPointer, size)
     },
 
     sapi_ipc_result_get_bytes (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.bytes.bufferPointer
     },
 
     sapi_ipc_result_get_bytes_size (resultPointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      return result.bytes.buffer.byteLength
     },
 
     sapi_ipc_result_set_header (resultPointer, namePointer, valuePointer) {
+      if (!resultPointer || !namePointer) {
+        return
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      const name = env.adapter.getString(namePointer)
+      const value = env.adapter.getString(valuePointer)
+
+      result.headers.set(name, value)
     },
 
     sapi_ipc_result_get_header (resultPointer, namePointer) {
+      if (!resultPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      const name = env.adapter.getString(namePointer)
+      return result.headers.getValuePointer(name)
     },
 
     sapi_ipc_result_from_json (contextPointer, messagePointer, jsonPointer) {
+      if (!contextPointer || !messagePointer || !jsonPointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      const result = new WebAssemblyExtensionRuntimeIPCResult(
+        env.adapter,
+        context,
+        message
+      )
+
+      result.json = env.adapter.getExternalReferenceValue(jsonPointer)
+      return result.pointer
     },
 
     sapi_ipc_send_chunk (resultPointer, chunkPointer, chunkSize, finished) {
+      console.warn('sapi_ipc_send_chunk: Operation is not supported')
+      return false
     },
 
     sapi_ipc_send_event (resultPointer, namePointer, dataPointer, finished) {
+      console.warn('sapi_ipc_send_event: Operation is not supported')
+      return false
     },
 
     sapi_ipc_set_cancellation_handler (resultPointer, handlerPointer, dataPointer) {
+      console.warn('sapi_ipc_set_cancellation_handler: Operation is not supported')
+      return false
     },
 
     sapi_ipc_reply (resultPointer) {
@@ -3288,22 +3558,170 @@ function createWebAssemblyExtensionImports (env) {
       result.context.free(result.pointer)
     },
 
-    sapi_ipc_reply_with_error (resultPointer, errorPointer) {
+    sapi_ipc_reply_with_error (resultPointer, jsonErrorPointer) {
+      if (!resultPointer || !jsonErrorPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      result.error = env.adapter.getExternalReferenceValue(jsonErrorPointer)
+      result.reply()
+      result.context.free(result.pointer)
     },
 
     sapi_ipc_send_json (contextPointer, messagePointer, jsonPointer) {
+      if (!contextPointer || !messagePointer || !jsonPointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      const result = new WebAssemblyExtensionRuntimeIPCResult(
+        env.adapter,
+        context,
+        message
+      )
+
+      result.json = env.adapter.getExternalReferenceValue(jsonPointer)
+
+      if (result.seq === '-1') {
+        if (result.err) {
+          globalThis.dispatchEvent(new ErrorEvent(result.err?.type || 'error', { error: result.err }))
+        } else {
+          const { data, id } = result
+          const headers = result.headers.headers
+          const params = {}
+          const detail = { headers, params, data, id }
+          globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+        }
+      } else {
+        const index = application.getCurrentWindowIndex()
+        const eventName = `resolve-${index}-${result.seq}`
+        const event = new CustomEvent(eventName, { detail: result.json })
+        globalThis.dispatchEvent(event)
+      }
     },
 
     sapi_ipc_send_json_with_result (contextPointer, resultPointer, jsonPointer) {
+      if (!contextPointer || !resultPointer || !jsonPointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      const json = env.adapter.getExternalReferenceValue(jsonPointer)
+      if (context && result && json) {
+        result.json = json
+      }
+
+      if (result.seq === '-1') {
+        if (result.err) {
+          globalThis.dispatchEvent(new ErrorEvent(result.err?.type || 'error', { error: result.err }))
+        } else {
+          const { data, id } = result
+          const headers = result.headers.headers
+          const params = {}
+          const detail = { headers, params, data, id }
+          globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+        }
+      } else {
+        const index = application.getCurrentWindowIndex()
+        const eventName = `resolve-${index}-${result.seq}`
+        const event = new CustomEvent(eventName, { detail: result.json })
+        globalThis.dispatchEvent(event)
+      }
     },
 
     sapi_ipc_send_bytes (contextPointer, messagePointer, size, bytesPointer, headersPointer) {
+      if (!contextPointer || !messagePointer || !bytesPointer) {
+        return NULL
+      }
+
+      const context = env.adapter.getExternalReferenceValue(contextPointer)
+      const message = env.adapter.getExternalReferenceValue(messagePointer)
+      const result = new WebAssemblyExtensionRuntimeIPCResult(
+        env.adapter,
+        context,
+        message
+      )
+
+      const headers = env.adapter.getString(headersPointer)
+
+      if (headers) {
+        const lines = headers.split('\n')
+        for (const line of lines) {
+          const entry = line.trim().split(':')
+          result.headers.set(entry[0], entry[1])
+        }
+      }
+
+      result.bytes.set(bytesPointer, size)
+
+      if (result.seq === '-1') {
+        const { id } = result
+        const data = result.bytes.buffer
+        const headers = result.headers.headers
+        const params = {}
+        const detail = { headers, params, data, id }
+        globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+      } else {
+        const index = application.getCurrentWindowIndex()
+        const eventName = `resolve-${index}-${result.seq}`
+        const event = new CustomEvent(eventName, { detail: { data: result.bytes.buffer } })
+        globalThis.dispatchEvent(event)
+      }
     },
 
     sapi_ipc_send_bytes_with_result (contextPointer, resultPointer, size, bytesPointer, headersPointer) {
+      if (!contextPointer || !resultPointer || !bytesPointer) {
+        return NULL
+      }
+
+      const result = env.adapter.getExternalReferenceValue(resultPointer)
+      const headers = env.adapter.getString(headersPointer)
+
+      if (headers) {
+        const lines = headers.split('\n')
+        for (const line of lines) {
+          const entry = line.trim().split(':')
+          result.headers.set(entry[0], entry[1])
+        }
+      }
+
+      result.bytes.set(bytesPointer, size)
+
+      if (result.seq === '-1') {
+        const { id } = result
+        const data = result.bytes.buffer
+        const headers = result.headers.headers
+        const params = {}
+        const detail = { headers, params, data, id }
+        globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+      } else {
+        const index = application.getCurrentWindowIndex()
+        const eventName = `resolve-${index}-${result.seq}`
+        const event = new CustomEvent(eventName, { detail: { data: result.bytes.buffer } })
+        globalThis.dispatchEvent(event)
+      }
     },
 
     sapi_ipc_emit (contextPointer, namePointer, dataPointer) {
+      if (!contextPointer || !namePointer) {
+        return NULL
+      }
+
+      const eventName = env.adapter.getString(namePointer)
+      const data = dataPointer ? env.adapter.getString(dataPointer) : null
+      let json = null
+
+      if (data) {
+        try {
+          json = JSON.parse(data)
+        } catch {}
+      }
+
+      const event = new CustomEvent(eventName, { detail: json })
+      globalThis.dispatchEvent(event)
     },
 
     sapi_ipc_invoke (contextPointer, urlPointer, size, bytesPointer, callbackPointer) {
@@ -3320,6 +3738,11 @@ function createWebAssemblyExtensionImports (env) {
       const url = env.adapter.getString(urlPointer)
       const bytes = env.adapter.get(bytesPointer)
       return context.router.invoke(context, url, size, bytes, (result) => {
+        env.adapter.indirectFunctionTable.call(
+          callbackPointer,
+          result.pointer,
+          context.router.pointer
+        )
       })
     },
 
@@ -3363,9 +3786,13 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     sapi_ipc_router_listen (contextPointer, routePointer, callbackPointer, dataPointer) {
+      console.warn('sapi_ipc_router_listen: Operation is not supported')
+      return false
     },
 
     sapi_ipc_router_unlisten (contextPointer, routePointer, token) {
+      console.warn('sapi_ipc_router_unlisten: Operation is not supported')
+      return false
     },
 
     sapi_process_exec (contextPointer, commandPointer) {
