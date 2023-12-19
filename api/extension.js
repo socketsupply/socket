@@ -368,7 +368,7 @@ class WebAssemblyExtensionRuntimeBuffer extends WebAssemblyExtensionRuntimeObjec
   set (pointer, size) {
     this.#buffer = new Uint8Array(size)
     this.#buffer.fill(0)
-    this.#buffer.set(this.adapter.get(pointer), size)
+    this.#buffer.set(this.adapter.get(pointer, size))
     this.#bufferPointer = pointer
   }
 }
@@ -440,7 +440,7 @@ class WebAssemblyExtensionRuntimeIPCResultHeaders extends WebAssemblyExtensionRu
     this.pointer = context.createExternalReferenceValue(this)
   }
 
-  get headers () {
+  get value () {
     return this.#headers
   }
 
@@ -523,6 +523,7 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
     this.pointer = context.createExternalReferenceValue(this)
     this.context = context
     this.message = message
+    this.source = message.name
 
     if (this.result && existingResult) {
       this.id = existingResult.id
@@ -536,7 +537,7 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
       }
 
       for (const entry of existingResult.headers.entries()) {
-        this.#headers.headers.set(entry[0], entry[1])
+        this.#headers.value.set(entry[0], entry[1])
       }
     }
   }
@@ -544,6 +545,7 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
   set message (message) {
     this.#message = message
     this.seq = message.seq
+    this.source = message.name
     this.result = ipc.Result.from(
       { id: message.id },
       null,
@@ -600,10 +602,16 @@ class WebAssemblyExtensionRuntimeIPCResult extends WebAssemblyExtensionRuntimeOb
 
   reply () {
     const callback = this.context?.internal?.callback
-    this.result.headers = this.headers
-    this.result.data = this.data.value ?? this.json.value
+    this.result.headers = this.headers.value
+    this.result.source = this.source.value
     this.result.err = this.err.value ?? null
     this.result.id = this.id || ''
+
+    if (this.bytes.buffer.byteLength > 0) {
+      this.result.data = this.bytes.buffer
+    } else {
+      this.result.data = this.data.value ?? this.json.value
+    }
 
     if (typeof callback === 'function') {
       callback(this.result)
@@ -659,7 +667,7 @@ class WebAssemblyExtensionRuntimeIPCRouter extends WebAssemblyExtensionRuntimeOb
       )
 
       routeContext.internal.callback = callback
-      const route = this.routes.get(message.name)
+      const route = this.routes.get(name)
       route(routeContext, message, this)
       return true
     }
@@ -897,8 +905,12 @@ class WebAssemblyExtensionMemory {
     return this.buffer.byteLength
   }
 
-  get (pointer) {
-    return this.buffer.subarray(pointer)
+  get (pointer, size = -1) {
+    if (size > -1) {
+      return this.buffer.subarray(pointer, pointer + size)
+    } else {
+      return this.buffer.subarray(pointer)
+    }
   }
 
   get pointer () {
@@ -1249,9 +1261,13 @@ class WebAssemblyExtensionAdapter {
     return Boolean(this.indirectFunctionTable.call(offset, this.context.pointer))
   }
 
-  get (pointer) {
+  get (pointer, size = -1) {
     if (!pointer) {
       return null
+    }
+
+    if (size > -1) {
+      return this.buffer.subarray(pointer, pointer + size)
     }
 
     return this.buffer.subarray(pointer)
@@ -3589,7 +3605,7 @@ function createWebAssemblyExtensionImports (env) {
           globalThis.dispatchEvent(new ErrorEvent(result.err?.type || 'error', { error: result.err }))
         } else {
           const { data, id } = result
-          const headers = result.headers.headers
+          const headers = result.headers.value
           const params = {}
           const detail = { headers, params, data, id }
           globalThis.dispatchEvent(new CustomEvent('data', { detail }))
@@ -3619,7 +3635,7 @@ function createWebAssemblyExtensionImports (env) {
           globalThis.dispatchEvent(new ErrorEvent(result.err?.type || 'error', { error: result.err }))
         } else {
           const { data, id } = result
-          const headers = result.headers.headers
+          const headers = result.headers.value
           const params = {}
           const detail = { headers, params, data, id }
           globalThis.dispatchEvent(new CustomEvent('data', { detail }))
@@ -3660,7 +3676,7 @@ function createWebAssemblyExtensionImports (env) {
       if (result.seq === '-1') {
         const { id } = result
         const data = result.bytes.buffer
-        const headers = result.headers.headers
+        const headers = result.headers.value
         const params = {}
         const detail = { headers, params, data, id }
         globalThis.dispatchEvent(new CustomEvent('data', { detail }))
@@ -3693,7 +3709,7 @@ function createWebAssemblyExtensionImports (env) {
       if (result.seq === '-1') {
         const { id } = result
         const data = result.bytes.buffer
-        const headers = result.headers.headers
+        const headers = result.headers.value
         const params = {}
         const detail = { headers, params, data, id }
         globalThis.dispatchEvent(new CustomEvent('data', { detail }))
