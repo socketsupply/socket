@@ -18,6 +18,14 @@ import os from './os.js'
 import * as exports from './application.js'
 
 /**
+ * Returns the current window index
+ * @return {number}
+ */
+export function getCurrentWindowIndex () {
+  return globalThis.__args.index ?? 0
+}
+
+/**
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
  * @param {number} opts.index - the index of the window
