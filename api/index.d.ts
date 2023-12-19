@@ -5092,7 +5092,7 @@ declare module "socket:extension" {
         get globalBaseOffset(): any;
         destroy(): void;
         init(): boolean;
-        get(pointer: any): any;
+        get(pointer: any, size?: number): any;
         set(pointer: any, value: any): void;
         createExternalReferenceValue(value: any): any;
         getExternalReferenceValue(pointer: any): any;
