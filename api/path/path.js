@@ -361,22 +361,6 @@ export function parse (path) {
  * A container for a parsed Path.
  */
 export class Path {
-  static {
-    Object.assign(this, {
-      basename,
-      cwd,
-      dirname,
-      extname,
-      format,
-      join,
-      normalize,
-      origin,
-      parse,
-      relative,
-      resolve
-    })
-  }
-
   /**
    * Creates a `Path` instance from `input` and optional `cwd`.
    * @param {PathComponent} input
@@ -679,5 +663,19 @@ export class Path {
     return 'Path'
   }
 }
+
+Object.assign(Path, {
+  basename,
+  cwd,
+  dirname,
+  extname,
+  format,
+  join,
+  normalize,
+  origin,
+  parse,
+  relative,
+  resolve
+})
 
 export default Path
