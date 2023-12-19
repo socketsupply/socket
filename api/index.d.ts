@@ -3968,6 +3968,11 @@ declare module "socket:window" {
 }
 declare module "socket:application" {
     /**
+     * Returns the current window index
+     * @return {number}
+     */
+    export function getCurrentWindowIndex(): number;
+    /**
      * Creates a new window and returns an instance of ApplicationWindow.
      * @param {object} opts - an options object
      * @param {number} opts.index - the index of the window
@@ -5061,46 +5066,55 @@ declare module "socket:extension" {
      * @ignore
      */
     class WebAssemblyExtensionAdapter {
-        constructor({ instance, module, table, memory }: {
+        constructor({ instance, module, table, memory, policies }: {
             instance: any;
             module: any;
             table: any;
             memory: any;
+            policies: any;
         });
-        view: DataView;
+        view: any;
+        heap: any;
         table: any;
-        buffer: Uint8Array;
+        stack: any;
+        buffer: any;
         module: any;
         memory: any;
+        context: any;
+        policies: any[];
+        externalReferences: Map<any, any>;
         instance: any;
         exitStatus: any;
         textDecoder: TextDecoder;
         textEncoder: TextEncoder;
         errorMessagePointers: {};
-        indirectFunctionTable: WebAssemblyExtensionIndirectFunctionTable;
-        destroy(): void;
-        stack: WebAssemblyExtensionStack;
-        heap: WebAssemblyExtensionHeap;
-        init(): boolean;
+        indirectFunctionTable: any;
         get globalBaseOffset(): any;
-        get(pointer: any): Uint8Array;
+        destroy(): void;
+        init(): boolean;
+        get(pointer: any): any;
         set(pointer: any, value: any): void;
-        getFloat32(pointer: any): number;
+        createExternalReferenceValue(value: any): any;
+        getExternalReferenceValue(pointer: any): any;
+        setExternalReferenceValue(pointer: any, value: any): Map<any, any>;
+        removeExternalReferenceValue(pointer: any): void;
+        getExternalReferencePointer(value: any): any;
+        getFloat32(pointer: any): any;
         setFloat32(pointer: any, value: any): boolean;
-        getInt8(pointer: any): number;
+        getInt8(pointer: any): any;
         setInt8(pointer: any, value: any): boolean;
-        getInt16(pointer: any): number;
+        getInt16(pointer: any): any;
         setInt16(pointer: any, value: any): boolean;
-        getInt32(pointer: any): number;
+        getInt32(pointer: any): any;
         setInt32(pointer: any, value: any): boolean;
-        getUint8(pointer: any): number;
+        getUint8(pointer: any): any;
         setUint8(pointer: any, value: any): boolean;
-        getUint16(pointer: any): number;
+        getUint16(pointer: any): any;
         setUint16(pointer: any, value: any): boolean;
-        getUint32(pointer: any): number;
+        getUint32(pointer: any): any;
         setUint32(pointer: any, value: any): boolean;
         getString(pointer: any, buffer: any, size: any): string;
-        setString(pointer: any, string: any, buffer: any): boolean;
+        setString(pointer: any, string: any, buffer?: any): boolean;
     }
     const $type: unique symbol;
     /**
@@ -5111,46 +5125,6 @@ declare module "socket:extension" {
      * @typedef {number} {Pointer}
      */
     const $loaded: unique symbol;
-    class WebAssemblyExtensionIndirectFunctionTable {
-        constructor(adapter: any, options?: any);
-        adapter: any;
-        table: any;
-        call(index: any, ...args: any[]): any;
-    }
-    class WebAssemblyExtensionStack extends WebAssemblyExtensionMemory {
-        constructor(adapter: any);
-    }
-    class WebAssemblyExtensionHeap extends WebAssemblyExtensionMemory {
-        constructor(adapter: any);
-        realloc(pointer: any, size: any): any;
-        calloc(count: any, size: any): number;
-    }
-    class WebAssemblyExtensionMemory {
-        constructor(adapter: any, min: any, max: any);
-        adapter: any;
-        offset: number;
-        limits: {
-            min: number;
-            max: number;
-        };
-        current: any[];
-        freeList: WebAssemblyExtensionMemoryBlock[];
-        get buffer(): any;
-        get byteLength(): any;
-        get(pointer: any): any;
-        get pointer(): number;
-        push(value: any): number;
-        pop(): number;
-        restore(offset: any): number[];
-        alloc(size: any): number;
-        free(pointer: any): void;
-    }
-    class WebAssemblyExtensionMemoryBlock {
-        constructor(memory: any, start: any, end: any);
-        start: number;
-        end: number;
-        memory: any;
-    }
 }
 declare module "socket:fetch/fetch" {
     export class DOMException {
