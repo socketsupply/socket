@@ -270,6 +270,28 @@ static void initialize_libc_errno_tests () {
   #undef TEST_ERRNO_VALUE
 }
 
+static void variadic_string (char* output, int count, ...) {
+  va_list args;
+  size_t offset = 0;
+  va_start(args, count);
+  for (int i = 0; i < count; ++i) {
+    char* arg = va_arg(args, char*);
+    size_t size = strlen(arg);
+    for (int j = 0; j < size; ++j) {
+      output[offset + j] = arg[j];
+    }
+
+    offset += size;
+  }
+}
+
+static void initialize_libc_variadic_tests () {
+  char output[BUFSIZ] = {0};
+
+  variadic_string(output, 3, "abc", "def", "ghi");
+  test(strcmp(output, "abcdefghi") == 0);
+}
+
 static void initialize_libc_regex_tests () {
   regex_t regex;
   char input[] = "abbbc abc def 000 abbbbbc";
@@ -297,4 +319,5 @@ void initialize_libc_tests () {
   initialize_libc_time_tests();
   initialize_libc_errno_tests();
   initialize_libc_regex_tests();
+  initialize_libc_variadic_tests();
 }
