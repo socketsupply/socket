@@ -1,8 +1,10 @@
+#include <regex.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
+#include <time.h>
 #include "extension.hh"
 
 static void initialize_libc_stdlib_tests () {
@@ -127,7 +129,7 @@ static void initialize_libc_errno_tests () {
     errno = code;                                \
     test(strcmp(strerror(errno), message) == 0); \
     errno = 0;                                   \
-  })
+    })
 
   TEST_ERRNO_VALUE(0, "Undefined error: 0");
   TEST_ERRNO_VALUE(EPERM, "Operation not permitted");
@@ -264,6 +266,29 @@ static void initialize_libc_errno_tests () {
   TEST_ERRNO_VALUE(ENOTRECOVERABLE, "State not recoverable");
   TEST_ERRNO_VALUE(ERFKILL, "Operation not possible due to RF-kill");
   TEST_ERRNO_VALUE(EHWPOISON, "Memory page has hardware error");
+
+  #undef TEST_ERRNO_VALUE
+}
+
+static void initialize_libc_regex_tests () {
+  regex_t regex;
+  char input[] = "abbbc abc def 000 abbbbbc";
+  char pattern[] = "ab+c";
+  const size_t nmatch = 3;
+  char* expected[] = {
+    (char*) "abbbc",
+    (char*) "abc",
+    (char*) "abbbbbc"
+  };
+
+  regmatch_t pmatch[nmatch] = {0};
+
+  test(regcomp(&regex, pattern, 0) == 0);
+  test(regexec(&regex, input, nmatch, pmatch, 0) == 0);
+  test(strncmp(expected[0], input + pmatch[0].rm_so, 5) == 0);
+  test(strncmp(expected[1], input + pmatch[1].rm_so, 3) == 0);
+  test(strncmp(expected[2], input + pmatch[2].rm_so, 7) == 0);
+  regfree(&regex);
 }
 
 void initialize_libc_tests () {
@@ -271,4 +296,5 @@ void initialize_libc_tests () {
   initialize_libc_string_tests();
   initialize_libc_time_tests();
   initialize_libc_errno_tests();
+  initialize_libc_regex_tests();
 }
