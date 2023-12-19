@@ -3968,6 +3968,8 @@ function createWebAssemblyExtensionImports (env) {
  *   allow: string[] | string,
  *   imports?: object,
  *   type?: 'shared' | 'wasm32',
+ *   path?: string,
+ *   stats?: object,
  *   instance?: WebAssembly.Instance,
  *   adapter?: WebAssemblyExtensionAdapter
  * }} ExtensionLoadOptions
@@ -4000,18 +4002,26 @@ export class Extension extends EventTarget {
       options.allow = options.allow.join(',')
     }
 
-    options.type = await this.type(name)
-    const stats = await this.stats(name)
+    options.type = options.type ?? await this.type(name)
+    const stats = options.stats ?? await this.stats(name)
 
     let info = null
 
     if (options.type === 'wasm32') {
       let adapter = null
+      let stream = null
+      let path = null
 
-      const path = stats.path.startsWith('/') ? stats.path.slice(1) : stats.path
-      const fd = await fs.open(path)
-      const file = await createFile(path, { fd })
-      const stream = file.stream()
+      path = options.path ?? stats.path
+      if (path.startsWith('http')) {
+        const response = await fetch(path)
+        stream = response.stream()
+      } else {
+        path = path.startsWith('/') ? path.slice(1) : path
+        const fd = await fs.open(path)
+        const file = await createFile(path, { fd })
+        stream = file.stream()
+      }
       const response = new WebAssemblyResponse(stream)
       const table = new WebAssembly.Table({
         initial: 0,
