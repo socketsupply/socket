@@ -294,7 +294,7 @@ const errorMessages = {
   [ENOPROTOOPT]: 'Protocol not available',
   [EPROTONOSUPPORT]: 'Protocol not supported',
   [ESOCKTNOSUPPORT]: 'Socket type not supported',
-  [EOPNOTSUPP]: 'Operation not supported on transport endpoint',
+  [EOPNOTSUPP]: 'Operation not supported',
   [ENOTSUP]: 'Operation not supported',
   [EPFNOSUPPORT]: 'Protocol family not supported',
   [EAFNOSUPPORT]: 'Address family not supported by protocol',
