@@ -199,6 +199,27 @@ const SAPI_JSON_TYPE_NUMBER = 5
 const SAPI_JSON_TYPE_STRING = 6
 const SAPI_JSON_TYPE_RAW = 7
 
+const REG_EXTENDED = 0x1
+const REG_ICASE = 0x2
+const REG_NOSUB = 0x4
+const REG_NEWLINE = 0x8
+const REG_NOMATCH = 1
+const REG_BADPAT = 2
+const REG_ECOLLATE = 3
+const REG_ECTYPE = 4
+const REG_EESCAPE = 5
+const REG_ESUBREG = 6
+const REG_EBRACK = 7
+const REG_EPAREN = 8
+const REG_EBRACE = 9
+const REG_BADBR = 10
+const REG_ERANGE = 11
+const REG_ESPACE = 12
+const REG_BADRPT = 13
+const REG_ENOSYS = 14
+const REG_NOTBOL = 0x1
+const REG_NOTEOL = 0x2
+
 const errorMessages = {
   0: 'Undefined error: 0',
   [EPERM]: 'Operation not permitted',
@@ -1523,13 +1544,28 @@ function variadicFormattedestinationPointerringFromPointers (
 
   let index = 0
 
-  const regex = /%(l|ll|j|t|z)?(d|i|n|o|p|s|S|u|x|X|%)/g
+  const regex = /%(l|ll|j|t|z|\.\*)?(d|i|n|o|p|s|S|u|x|X|%)/g
   const output = format.replace(regex, (x) => {
     if (x === '%%') {
       return '%'
     }
 
     switch (x) {
+      case '%.*u': case '%.*S': case '%.*s': {
+        const size = view.getInt32((index++) * 4, true)
+        const pointer = view.getInt32((index++) * 4, true)
+        const string = (
+          env.adapter.getString(pointer) ||
+          env.adapter.getExternalReferenceValue(pointer)?.value
+        )
+
+        if (!string || typeof string !== 'string') {
+          return '(null)'
+        }
+
+        return string.slice(0, size)
+      }
+
       case '%S': case '%s': {
         const pointer = view.getInt32((index++) * 4, true)
         const string = (
@@ -1706,6 +1742,112 @@ function createWebAssemblyExtensionImports (env) {
       }
 
       return errnoPointer
+    }
+  })
+
+  // <regex.h>
+  Object.assign(imports.env, {
+    regcomp (regexPointer, patternStringPointer, cflags) {
+      if (!regexPointer || !patternStringPointer) {
+        return -EINVAL
+      }
+
+      const string = env.adapter.getString(patternStringPointer)
+      const flags = ['g']
+
+      if ((cflags & REG_ICASE) === REG_ICASE) {
+        flags.push('i')
+      }
+
+      const container = { regex: null, error: null }
+      const view = new DataView(env.adapter.get(regexPointer).buffer)
+      const pointer = env.adapter.createExternalReferenceValue(container)
+
+      view.setInt32(0, 0, true)
+      view.setInt32(1, pointer, true)
+
+      try {
+        container.regex = new RegExp(string, flags.join(''))
+      } catch (err) {
+        container.error = err
+        return -EINVAL
+      }
+
+      return 0
+    },
+
+    regerror (errorCode, regexPointer, bufStringPointer, bufCount) {
+      return -1
+    },
+
+    regexec (regexPointer, stringPointer, matchCount, matchesPointer, eflags, ...args) {
+      if (!regexPointer || !stringPointer) {
+        return -EINVAL
+      }
+
+      const view = new DataView(env.adapter.get(regexPointer).buffer)
+      const pointer = view.getInt32(1, true)
+      const container = env.adapter.getExternalReferenceValue(pointer)
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string || !container) {
+        return -EINVAL
+      }
+
+      if (!matchesPointer) {
+        if (container.regex.test(string)) {
+          return 0
+        }
+      } else {
+        const matches = string.match(container.regex)
+        const offsets = []
+
+        let buffer = string
+
+        for (let i = 0; i < Math.min(matchCount, matches.length); ++i) {
+          const match = matches[i]
+
+          if (!match) {
+            break
+          }
+
+          const index = buffer.indexOf(match)
+
+          if (index === -1) {
+            break
+          }
+
+          offsets.push(
+            index +
+            (offsets[i - 1] || 0) +
+            (matches[i - 1]?.length || 0)
+          )
+
+          // seek
+          buffer = buffer.slice(index + match.length)
+        }
+
+        for (let i = 0; i < offsets.length; ++i) {
+          const start = offsets[i]
+          const end = start + matches[i].length
+          env.adapter.view.setInt32(matchesPointer + (i * 8), start, true)
+          env.adapter.view.setInt32(matchesPointer + (i * 8) + 4, end, true)
+        }
+
+        if (matches.length) {
+          return 0
+        }
+      }
+
+      return -REG_NOMATCH
+    },
+
+    regfree (regexPointer) {
+      if (regexPointer) {
+        const view = new DataView(env.adapter.get(regexPointer).buffer)
+        const pointer = view.getInt32(1, true)
+        env.adapter.heap.free(pointer)
+      }
     }
   })
 
