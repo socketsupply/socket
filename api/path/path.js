@@ -245,7 +245,9 @@ export function dirname (options, path) {
  */
 export function basename (options, path) {
   const { sep } = options
-  const components = path.split(sep)
+  const components = path.endsWith(sep)
+    ? path.slice(0, -1).split(sep)
+    : path.split(sep)
   return components.pop()
 }
 
