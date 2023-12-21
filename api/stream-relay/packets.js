@@ -200,27 +200,33 @@ export const decode = buf => {
   for (const [k, spec] of Object.entries(PACKET_SPEC)) {
     o[k] = spec.default
 
-    if (spec.encoding === 'number') {
-      const method = getMethod('read', spec.bytes, spec.signed)
-      o[k] = buf[method](offset)
-      offset += spec.bytes
-      continue
+    try {
+      if (spec.encoding === 'number') {
+        const method = getMethod('read', spec.bytes, spec.signed)
+        o[k] = buf[method](offset)
+        offset += spec.bytes
+        continue
+      }
+
+      const size = buf.readUInt16BE(offset)
+      offset += SIZE
+      let value = buf.slice(offset, offset + size)
+      offset += size
+
+      if (spec.bytes && size > spec.bytes) return null
+
+      if (spec.encoding === 'hex') value = Buffer.from(value, 'hex')
+      if (spec.encoding === 'base64') value = Buffer.from(value, 'base64')
+      if (spec.encoding === 'utf8') value = value.toString()
+
+      if (k === 'message' && isEncodedAsJSON(o)) {
+        try { value = JSON.parse(value.toString()) } catch {}
+      }
+
+      o[k] = value
+    } catch (err) {
+      return null // completely bail
     }
-
-    const size = buf.readUInt16BE(offset)
-    offset += SIZE
-    let value = buf.slice(offset, offset + size)
-    offset += size
-
-    if (spec.encoding === 'hex') value = Buffer.from(value, 'hex')
-    if (spec.encoding === 'base64') value = Buffer.from(value, 'base64')
-    if (spec.encoding === 'utf8') value = value.toString()
-
-    if (k === 'message' && isEncodedAsJSON(o)) {
-      try { value = JSON.parse(value.toString()) } catch {}
-    }
-
-    o[k] = value
   }
 
   return o
