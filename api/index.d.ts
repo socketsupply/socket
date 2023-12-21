@@ -5105,6 +5105,8 @@ declare module "socket:extension" {
         getExternalReferencePointer(value: any): any;
         getFloat32(pointer: any): any;
         setFloat32(pointer: any, value: any): boolean;
+        getFloat64(pointer: any): any;
+        setFloat64(pointer: any, value: any): boolean;
         getInt8(pointer: any): any;
         setInt8(pointer: any, value: any): boolean;
         getInt16(pointer: any): any;
@@ -5129,6 +5131,7 @@ declare module "socket:extension" {
      * @typedef {number} {Pointer}
      */
     const $loaded: unique symbol;
+    import path from "socket:path";
 }
 declare module "socket:fetch/fetch" {
     export class DOMException {
