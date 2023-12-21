@@ -1,11 +1,20 @@
+#include <float.h>
+#include <libgen.h>
+#include <limits.h>
+#include <math.h>
 #include <regex.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <time.h>
+
 #include "extension.hh"
+
+static bool fequal(float a, float b) {
+  auto c = fabs(a - b);
+  return c == 0.0f || c < FLT_EPSILON;
+}
 
 static void initialize_libc_stdlib_tests () {
   test(atoi("123") == 123);
@@ -125,11 +134,11 @@ static void initialize_libc_time_tests () {
 }
 
 static void initialize_libc_errno_tests () {
-  #define TEST_ERRNO_VALUE(code, message) ({     \
-    errno = code;                                \
-    test(strcmp(strerror(errno), message) == 0); \
-    errno = 0;                                   \
-    })
+  #define TEST_ERRNO_VALUE(code, message) ({                                   \
+    errno = code;                                                              \
+    test(strcmp(strerror(errno), message) == 0);                               \
+    errno = 0;                                                                 \
+  })
 
   TEST_ERRNO_VALUE(0, "Undefined error: 0");
   TEST_ERRNO_VALUE(EPERM, "Operation not permitted");
@@ -292,6 +301,49 @@ static void initialize_libc_variadic_tests () {
   test(strcmp(output, "abcdefghi") == 0);
 }
 
+static void initialize_libc_libgen_tests () {
+  test(strcmp(basename("/"), "/") == 0);
+  test(strcmp(basename("."), ".") == 0);
+  test(strcmp(basename("/usr"), "usr") == 0);
+  test(strcmp(basename("/usr/"), "usr") == 0);
+  test(strcmp(basename("/usr/local"), "local") == 0);
+  test(strcmp(basename("/usr/local/"), "local") == 0);
+  test(strcmp(basename("/usr/local/bin"), "bin") == 0);
+  test(strcmp(basename("/usr/local/bin/program.exe"), "program.exe") == 0);
+
+  test(strcmp(dirname("/"), "/") == 0);
+  test(strcmp(dirname("."), ".") == 0);
+  test(strcmp(dirname("/usr"), "/") == 0);
+  test(strcmp(dirname("/usr/"), "/") == 0);
+  test(strcmp(dirname("/usr/local"), "/usr") == 0);
+  test(strcmp(dirname("/usr/local/"), "/usr") == 0);
+  test(strcmp(dirname("/usr/local/bin"), "/usr/local") == 0);
+  test(strcmp(dirname("/usr/local/bin/program.exe"), "/usr/local/bin") == 0);
+
+  char pathWithTooBigBasename[PATH_MAX + 2] = {0};
+
+  pathWithTooBigBasename[0] = '/';
+
+  for (int i = 1; i < PATH_MAX + 2; ++i) {
+    pathWithTooBigBasename[i] = 'a';
+  }
+
+  char pathWithTooBigDirname[PATH_MAX + 4] = {0};
+  pathWithTooBigDirname[0] = '/';
+  pathWithTooBigDirname[1] = 'a';
+  pathWithTooBigDirname[2] = '/';
+
+  for (int i = 3; i < PATH_MAX + 2; ++i) {
+    pathWithTooBigDirname[i] = 'b';
+  }
+
+  pathWithTooBigDirname[PATH_MAX + 2] = '/';
+  pathWithTooBigDirname[PATH_MAX + 3] = 'c';
+
+  test(basename((char*) pathWithTooBigBasename) == NULL && errno == ENAMETOOLONG);
+  test(dirname((char*) pathWithTooBigDirname) == NULL && errno == ENAMETOOLONG);
+}
+
 static void initialize_libc_regex_tests () {
   regex_t regex;
   char input[] = "abbbc abc def 000 abbbbbc";
@@ -313,6 +365,213 @@ static void initialize_libc_regex_tests () {
   regfree(&regex);
 }
 
+static void initialize_libc_math_tests () {
+  test(fequal(acos(0.1), 1.4706289056333368));
+  test(fequal(acosf(0.1234), 1.4470809809523457));
+  test(fequal(acosl(0.123), 1.4474840516030247));
+  test(fequal(acosh(12345.0), 10.114153580698794));
+  test(fequal(acoshf(12345.6789), 10.114208221435547));
+  test(fequal(acoshl(2.3456), 1.4967962513609694));
+
+  test(fequal(asin(0.33333333), 0.339836905918588));
+  test(fequal(asinf(0.98765), 1.4134716987609863));
+  test(fequal(asinl(0.29384756), 0.2982496274073672));
+  test(fequal(asinh(123.2938475), 5.507734136828022));
+  test(fequal(asinhf(123.98765), 5.513345406378311));
+  test(fequal(asinhl(888.999888777), 7.483244607290699));
+
+  // test(atan());
+  // test(atanf());
+  // test(atanl());
+  // test(atan2());
+  // test(atan2f());
+  // test(atan2l());
+  // test(atanh());
+  // test(atanhf());
+  // test(atanhl());
+
+  // test(cbrt());
+  // test(cbrtf());
+  // test(cbrtl());
+
+  // test(ceil());
+  // test(ceilf());
+  // test(ceill());
+
+  // test(copysign());
+  // test(copysignf());
+  // test(copysignl());
+
+  // test(cos());
+  // test(cosf());
+  // test(cosl());
+  // test(cosh());
+  // test(coshf());
+  // test(coshl());
+
+  // test(erf());
+  // test(erff());
+  // test(erfl());
+  // test(erfcf());
+  // test(erfcl());
+
+  // test(exp());
+  // test(expf());
+  // test(expl());
+  // test(exp2());
+  // test(exp2f());
+  // test(exp2l());
+
+  // test(expm1());
+  // test(expm1f());
+  // test(expm1l());
+
+  // test(fabs());
+  // test(fabsf());
+  // test(fabsl());
+
+  // test(fdim());
+  // test(fdimf());
+  // test(fdiml());
+
+  // test(floor());
+  // test(floorf());
+  // test(floorl());
+
+  // test(fma());
+  // test(fmaf());
+  // test(fmal());
+  // test(fmax());
+  // test(fmaxf());
+  // test(fmaxl());
+
+  // test(fmin());
+  // test(fminf());
+  // test(fminl());
+
+  // test(fmod());
+  // test(fmodf());
+  // test(fmodl());
+
+  // test(frexp());
+  // test(frexpf());
+  // test(frexpl());
+
+  // test(hypot());
+  // test(hypotf());
+  // test(hypotl());
+
+  // test(ilogb());
+  // test(ilogbf());
+  // test(ilogbl());
+
+  // test(ldexp());
+  // test(ldexpf());
+  // test(ldexpl());
+
+  // test(lgamma());
+  // test(lgammaf());
+  // test(lgammal());
+
+  // test(tgamma());
+  // test(tgammaf());
+  // test(tgammal());
+
+  // test(rint());
+  // test(rintf());
+  // test(rintl());
+  // test(lrint());
+  // test(lrintf());
+  // test(lrintl());
+  // test(llrint());
+  // test(llrintf());
+  // test(llrintl());
+
+  // test(lround());
+  // test(lroundf());
+  // test(lroundl());
+  // test(llround());
+  // test(llroundf());
+  // test(llroundl());
+
+  // test(log());
+  // test(logf());
+  // test(logl());
+  // test(log10());
+  // test(log10f());
+  // test(log10l());
+  // test(log1p());
+  // test(log1pf());
+  // test(log1pl());
+  // test(log2());
+  // test(log2f());
+  // test(log2l());
+  // test(logb());
+  // test(logbf());
+  // test(logbl());
+
+  // test(modf());
+  // test(modff());
+  // test(modfl());
+
+  // test(nearbyint());
+  // test(nearbyintf());
+  // test(nearbyintl());
+
+  // test(nextafter());
+  // test(nextafterf());
+  // test(nextafterl());
+
+  // test(nexttoward());
+  // test(nexttowardf());
+  // test(nexttowardl());
+
+  // test(pow());
+  // test(powf());
+  // test(powl());
+
+  // test(remainder());
+  // test(remainderf());
+  // test(remainderl());
+
+  // test(remquo());
+  // test(remquof());
+  // test(remquol());
+
+  // test(round());
+  // test(roundf());
+  // test(roundl());
+
+  // test(scalbln());
+  // test(scalblnf());
+  // test(scalblnl());
+  // test(scalbn());
+  // test(scalbnf());
+  // test(scalbnl());
+
+  // test(sin());
+  // test(sinf());
+  // test(sinl());
+  // test(sinh());
+  // test(sinhf());
+  // test(sinhl());
+
+  // test(sqrt());
+  // test(sqrtf());
+  // test(sqrtl());
+
+  // test(tan());
+  // test(tanf());
+  // test(tanl());
+  // test(tanh());
+  // test(tanhf());
+  // test(tanhl());
+
+  // test(trunc());
+  // test(truncf());
+  // test(truncl());
+}
+
 void initialize_libc_tests () {
   initialize_libc_stdlib_tests();
   initialize_libc_string_tests();
@@ -320,4 +579,6 @@ void initialize_libc_tests () {
   initialize_libc_errno_tests();
   initialize_libc_regex_tests();
   initialize_libc_variadic_tests();
+  initialize_libc_libgen_tests();
+  initialize_libc_math_tests();
 }
