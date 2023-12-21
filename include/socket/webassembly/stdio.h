@@ -30,6 +30,18 @@ extern "C" int printf (const char* __restrict format, ...);
 extern "C" int fprintf (FILE* __restrict stream, const char* __restrict format, ...);
 extern "C" int sprintf (char* __restrict str, const char* __restrict format, ...);
 extern "C" int snprintf (char* __restrict str, size_t size, const char* __restrict format, ...);
+extern "C" int puts (const char *s);
+extern "C" int putc (int c, FILE* stream);
+extern "C" int putchar (int c);
+
+extern "C" int fputc (int c, FILE* __restrict stream);
+extern "C" int fputs (const char* __restrict s, FILE*__restrict stream);
+extern "C" size_t fwrite(
+  const void *__restrict ptr,
+  size_t size,
+  size_t nitems,
+  FILE *__restrict stream
+);
 
 #if defined(__cplusplus)
 }
