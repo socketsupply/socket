@@ -196,7 +196,7 @@ export class Cache {
 
     // follow the chain to get the buffers in order
     const bufs = [...source.values()]
-      .filter(p => p.previousId.toString('hex') === previous.packetId.toString('hex'))
+      .filter(p => Buffer.from(p.previousId).toString('hex') === Buffer.from(previous.packetId).toString('hex'))
       .sort((a, b) => a.index - b.index)
 
     if (!indexes || bufs.length < indexes) return null
