@@ -3352,6 +3352,22 @@ int main (const int argc, const char* argv[]) {
         settings["android_external_native_build"].assign("  // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
       }
 
+      auto androidResources = settings["android_resources"];
+      auto androidIcon = settings["android_icon"];
+
+      if (androidIcon.size() > 0) {
+        settings["android_application_icon_config"] = (
+          String("    android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
+          String("    android:icon=\"@mipmap/ic_launcher\"\n")
+        );
+
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher.png", fs::copy_options::overwrite_existing);
+        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
+      } else {
+        settings["android_application_icon_config"] = "";
+      }
+
       // Android Project
       writeFile(
         src / "main" / "AndroidManifest.xml",
@@ -3368,22 +3384,6 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
-
-      auto androidResources = settings["android_resources"];
-      auto androidIcon = settings["android_icon"];
-
-      if (androidIcon.size() > 0) {
-        settings["android_application_icon_config"] = (
-          String("    android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
-          String("    android:icon=\"@mipmap/ic_launcher\"\n")
-        );
-
-        fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
-        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher.png", fs::copy_options::overwrite_existing);
-        fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
-      } else {
-        settings["android_application_icon_config"] = "";
-      }
 
       // allow user space to override all `res/` files
       if (fs::exists(androidResources)) {
