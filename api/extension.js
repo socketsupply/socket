@@ -13,6 +13,7 @@ import { createFile } from './fs/web.js'
 import application from './application.js'
 import process from './process.js'
 import crypto from './crypto.js'
+import path from './path.js'
 import ipc from './ipc.js'
 import fs from './fs/promises.js'
 
@@ -32,9 +33,12 @@ const STDIN = 0x0 // STDIN_FILENO
 const STDOUT = 0x1 // STDOUT_FILENO
 const STDERR = 0x2 // STDERR_FILNO
 
+const EPSILON = 1.1920928955078125e-07
+
 const EXIT_FAILURE = 1
 const EXIT_SUCCESS = 0
 const RAND_MAX = (0x7fffffff)
+const PATH_MAX = 4096
 
 const CLOCKS_PER_SEC = 1000
 
@@ -941,6 +945,10 @@ class WebAssemblyExtensionMemory {
     return this.buffer.byteLength
   }
 
+  get pointer () {
+    return this.offset
+  }
+
   get (pointer, size = -1) {
     if (size > -1) {
       return this.buffer.subarray(pointer, pointer + size)
@@ -949,8 +957,19 @@ class WebAssemblyExtensionMemory {
     }
   }
 
-  get pointer () {
-    return this.offset
+  set (pointer, byteOrBytes, size) {
+    if (!pointer || !size) {
+      return false
+    }
+
+    if (typeof byteOrBytes === 'number') {
+      const byte = byteOrBytes
+      byteOrBytes = new Uint8Array(size)
+      byteOrBytes.fill(byte)
+    }
+
+    this.buffer.set(byteOrBytes.slice(0, size), pointer)
+    return true
   }
 
   push (value) {
@@ -1369,6 +1388,14 @@ class WebAssemblyExtensionAdapter {
     return pointer ? (this.view.setFloat32(pointer, value, true), true) : false
   }
 
+  getFloat64 (pointer) {
+    return pointer ? this.view.getFloat64(pointer, true) : 0
+  }
+
+  setFloat64 (pointer, value) {
+    return pointer ? (this.view.setFloat64(pointer, value, true), true) : false
+  }
+
   getInt8 (pointer) {
     return pointer ? this.view.getInt8(pointer, true) : 0
   }
@@ -1539,12 +1566,11 @@ function variadicFormattedestinationPointerringFromPointers (
     return format
   }
 
-  const buffer = env.adapter.buffer.slice(variadicArguments)
-  const view = new DataView(buffer.buffer)
+  const view = new DataView(env.adapter.buffer.buffer, variadicArguments)
 
   let index = 0
 
-  const regex = /%(l|ll|j|t|z|\.\*)?(d|i|n|o|p|s|S|u|x|X|%)/g
+  const regex = /%(|l|ll|j|t|z|\.\*)+(d|f|i|n|o|p|s|S|u|x|X|%)/gi
   const output = format.replace(regex, (x) => {
     if (x === '%%') {
       return '%'
@@ -1580,8 +1606,8 @@ function variadicFormattedestinationPointerringFromPointers (
         return string
       }
 
-      case '%llu': case '%lu':
-      case '%lld': case '%ld':
+      case '%LLU': case '%LU': case '%llu': case '%lu':
+      case '%LD': case '%LLD': case '%lld': case '%ld':
       case '%zu':
       case '%i': case '%x': case '%X': case '%d': {
         return view.getInt32((index++) * 4, true)
@@ -1593,6 +1619,10 @@ function variadicFormattedestinationPointerringFromPointers (
 
       case '%u': {
         return view.getUint32((index++) * 4, true)
+      }
+
+      case '%LLF': case '%LF': case '%f': {
+        return view.getFloat64((index++) * 8, true)
       }
     }
 
@@ -1620,8 +1650,12 @@ function createWebAssemblyExtensionImports (env) {
   }
 
   let atExitCallbackPointer = 0x0
-  let errnoPointer = 0
   let srandSeed = 1
+
+  // internal pointers
+  let basenamePointer = 0
+  let dirnamePointer = 0
+  let errnoPointer = 0
 
   const toBeFlushed = {
     stdout: [],
@@ -1648,6 +1682,7 @@ function createWebAssemblyExtensionImports (env) {
     }
   })
 
+  // <ctype.h>
   Object.assign(imports.env, {
     isalnum (char) {
       return imports.env.isalpha(char) || imports.env.isdigit(char)
@@ -1745,6 +1780,569 @@ function createWebAssemblyExtensionImports (env) {
     }
   })
 
+  // <libgen.h>
+  Object.assign(imports.env, {
+    basename (pathStringPointer) {
+      if (!basenamePointer) {
+        basenamePointer = env.adapter.heap.alloc(PATH_MAX + 1)
+      }
+
+      env.adapter.heap.set(basenamePointer, 0, PATH_MAX)
+
+      if (!pathStringPointer) {
+        env.adapter.setString(basenamePointer, '.')
+      } else {
+        const string = env.adapter.getString(pathStringPointer)
+
+        if (string) {
+          if (string === '/') {
+            env.adapter.setString(basenamePointer, '/')
+          } else if (string === '.') {
+            env.adapter.setString(basenamePointer, '.')
+          } else {
+            const basename = path.basename(string)
+            if (basename.length > PATH_MAX) {
+              env.adapter.setUint8(imports.env.__errno_location(), ENAMETOOLONG)
+              return NULL
+            }
+
+            env.adapter.setString(basenamePointer, basename)
+          }
+        } else {
+          env.adapter.setString(basenamePointer, '.')
+        }
+      }
+
+      return basenamePointer
+    },
+
+    dirname (pathStringPointer) {
+      if (!dirnamePointer) {
+        dirnamePointer = env.adapter.heap.alloc(PATH_MAX + 1)
+      }
+
+      env.adapter.heap.set(dirnamePointer, 0, PATH_MAX)
+
+      if (!pathStringPointer) {
+        env.adapter.setString(dirnamePointer, '.')
+      } else {
+        const string = env.adapter.getString(pathStringPointer)
+
+        if (string) {
+          if (string === '/') {
+            env.adapter.setString(dirnamePointer, '/')
+          } else if (string === '.') {
+            env.adapter.setString(dirnamePointer, '.')
+          } else {
+            const dirname = path.dirname(string)
+            if (dirname.length > PATH_MAX) {
+              env.adapter.setUint8(imports.env.__errno_location(), ENAMETOOLONG)
+              return NULL
+            }
+
+            env.adapter.setString(dirnamePointer, dirname)
+          }
+        } else {
+          env.adapter.setString(dirnamePointer, '.')
+        }
+      }
+
+      return dirnamePointer
+    }
+  })
+
+  // <math.h>
+  Object.assign(imports.env, {
+    __eqtf2 (x, y) { imports.env.abort() },
+    __trunctfsf2 (low, high) { imports.env.abort() },
+    __trunctfdf2 (low, high) { imports.env.abort() },
+    acos (value) { return Math.acos(value) },
+    acosl (value) { return Math.acos(value) },
+    acosf (value) { return Math.acos(value) },
+    agcosl (value) { return Math.acos(value) },
+    acosh (value) { return Math.acosh(value) },
+    acoshf (value) { return Math.acosh(value) },
+    acoshl (value) { return Math.acosh(value) },
+
+    asin (value) { return Math.asin(value) },
+    asinf (value) { return Math.asin(value) },
+    asinl (value) { return Math.asin(value) },
+    asinh (value) { return Math.asinh(value) },
+    asinhf (value) { return Math.asinh(value) },
+    asinhl (value) { return Math.asinh(value) },
+
+    atan (value) { return Math.atan(value) },
+    atanf (value) { return Math.atan(value) },
+    atanl (value) { return Math.atan(value) },
+    atanh (value) { return Math.atanh(value) },
+    atanhf (value) { return Math.atanh(value) },
+    atanhl (value) { return Math.atanh(value) },
+    atan2 (x, y) { return Math.atan2(x, y) },
+    atan2f (x, y) { return Math.atan2(x, y) },
+    atan2l (x, y) { return Math.atan2(x, y) },
+
+    cbrt (value) { return Math.cbrt(value) },
+    cbrtf (value) { return Math.cbrt(value) },
+    cbrtl (value) { return Math.cbrt(value) },
+
+    ceil (value) { return Math.ceil(value) },
+    ceilf (value) { return Math.ceil(value) },
+    ceill (value) { return Math.ceil(value) },
+
+    copysign (x, y) {
+      // return a new value with the magnitude of x and the sign of y
+      return Math.abs(x) * Math.sign(y)
+    },
+
+    copysignf (x, y) { return imports.env.copysign(x, y) },
+    copysignl (x, y) { return imports.env.copysign(x, y) },
+
+    cos (value) { return Math.cos(value) },
+    cosf (value) { return Math.cos(value) },
+    cosl (value) { return Math.cos(value) },
+    cosh (value) { return Math.cosh(value) },
+    coshf (value) { return Math.cosh(value) },
+    coshl (value) { return Math.cosh(value) },
+
+    erf (value) {
+      // constants for the rational approximations
+      const a1 = 0.254829592
+      const a2 = -0.284496736
+      const a3 = 1.421413741
+      const a4 = -1.453152027
+      const a5 = 1.061405429
+
+      // approximation formula
+      const x = value
+      const t = 1.0 / (1.0 + 0.3275911 * x)
+      const result = (a1 * t + a2 * t * t + a3 * t * t * t + a4 * t * t * t * t + a5 * t * t * t * t * t) * Math.exp(-x * x)
+
+      return x >= 0 ? 1.0 - result : result - 1.0
+    },
+
+    erff (value) { return imports.env.erf(value) },
+    erfl (value) { return imports.env.erf(value) },
+    erfcf (value) { return 1 - imports.env.erf(value) },
+    erfcl (value) { return 1 - imports.env.erf(value) },
+
+    exp (value) { return Math.exp(value) },
+    expf (value) { return Math.exp(value) },
+    expl (value) { return Math.exp(value) },
+    exp2 (value) { return Math.exp(value) },
+    exp2f (value) { return Math.exp(value) },
+    exp2l (value) { return Math.exp(value) },
+
+    expm1 (value) { return Math.expm1(value) },
+    expm1f (value) { return Math.expm1(value) },
+    expm1l (value) { return Math.expm1(value) },
+
+    fabs (value) { return Math.abs(value) },
+    fabsf (value) { return Math.abs(value) },
+    fabsl (value) { return Math.abs(value) },
+
+    fdim (x, y) { return x > y ? x - y : 0.0 },
+    fdimf (x, y) { return x > y ? x - y : 0.0 },
+    fdiml (x, y) { return x > y ? x - y : 0.0 },
+
+    floor (value) { return Math.floor(value) },
+    floorf (value) { return Math.floor(value) },
+    floorl (value) { return Math.floor(value) },
+
+    fma (x, y, z) { return x * y + z },
+    fmaf (x, y, z) { return x * y + z },
+    fmal (x, y, z) { return x * y + z },
+
+    fmax (x, y) { return Math.max(x, y) },
+    fmaxf (x, y) { return Math.max(x, y) },
+    fmaxl (x, y) { return Math.max(x, y) },
+
+    fmin (x, y) { return Math.min(x, y) },
+    fminf (x, y) { return Math.min(x, y) },
+    fminl (x, y) { return Math.min(x, y) },
+
+    fmod (x, y) { return y === 0 ? 0 : x - (y * Math.floor(x / y)) },
+    fmodf (x, y) { return y === 0 ? 0 : x - (y * Math.floor(x / y)) },
+    fmodl (x, y) { return y === 0 ? 0 : x - (y * Math.floor(x / y)) },
+
+    frexp (value, expPointer) {
+      if (value === 0) {
+        env.adapter.setInt32(expPointer, 0)
+        return 0
+      }
+
+      let exponent = Math.floor(Math.log2(Math.abs(value)))
+      // normalize the exponent for subnormal numbers
+      if (Math.abs(value) < 1) {
+        exponent -= 1
+      }
+
+      env.adapter.setInt32(expPointer, exponent)
+      return value / Math.pow(2, exponent)
+    },
+
+    frexpf (value, expPointer) { return imports.env.frexp(value, expPointer) },
+    frexpl (value, expPointer) { return imports.env.frexp(value, expPointer) },
+
+    hypot (x, y) { return Math.hypot(x, y) },
+    hypotf (x, y) { return Math.hypot(x, y) },
+    hypotl (x, y) { return Math.hypot(x, y) },
+
+    ilogb (value) {
+      if (Number.isNaN(value)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return Infinity
+      }
+
+      if (value === 0) {
+        return -Infinity
+      }
+
+      // calculate the unbiased evalueponent
+      return Math.floor(Math.log2(Math.abs(value)))
+    },
+
+    ilogbf (value) { return imports.env.ilogb(value) },
+    ilogbl (value) { return imports.env.ilogb(value) },
+
+    ldexp (x, y) {
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        // returns nan or +/-infinity
+        return x * y
+      }
+
+      if (x === 0) {
+        return x
+      }
+
+      return x * Math.pow(2, y)
+    },
+
+    ldexpf (x, y) { return imports.env.ldexp(x, y) },
+    ldexpl (x, y) { return imports.env.ldexp(x, y) },
+
+    lgamma (value) {
+      if (Number.isNaN(value)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return Infinity
+      }
+
+      if (value === 0) {
+        return -Infinity
+      }
+
+      return Math.log(Math.abs(Math.gamma(value)))
+    },
+
+    lgammaf (value) { return imports.env.lgamma(value) },
+    lgammal (value) { return imports.env.lgamma(value) },
+
+    llrint (value) {
+      if (Number.isNaN(value)) {
+        return 0
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      return Math.round(value)
+    },
+
+    llrintf (value) {
+      if (Number.isNaN(value)) {
+        return 0
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      return Math.fround(value)
+    },
+
+    llrintl (value) { return imports.env.llrint(value) },
+    lrint (value) { return imports.env.llrint(value) },
+    lrintf (value) { return imports.env.llrintf(value) },
+    lrintl (value) { return imports.env.llrint(value) },
+
+    llround (value) { return Math.round(value) },
+    llroundf (value) { return Math.fround(value) },
+    llroundl (value) { return Math.round(value) },
+
+    rint (value) { return imports.env.llrint(value) },
+    rintf (value) { return imports.env.llrintf(value) },
+    rintl (value) { return imports.env.llrint(value) },
+
+    log (value) { return Math.log(value) },
+    logf (value) { return Math.log(value) },
+    logl (value) { return Math.log(value) },
+
+    log10 (value) { return Math.log10(value) },
+    log10f (value) { return Math.log10(value) },
+    log10l (value) { return Math.log10(value) },
+
+    log1p (value) { return Math.log1p(value) },
+    log1pf (value) { return Math.log1p(value) },
+    log1pl (value) { return Math.log1p(value) },
+
+    log2 (value) { return Math.log2(value) },
+    log2f (value) { return Math.log2(value) },
+    log2l (value) { return Math.log2(value) },
+
+    logb (value) {
+      if (Number.isNaN(value)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return Infinity
+      }
+
+      if (value === 0) {
+        return -Infinity
+      }
+
+      return Math.floor(Math.log(Math.abs(value)) / Math.log(2))
+    },
+
+    logbf (value) { return imports.env.logb(value) },
+    logbl (value) { return imports.env.logb(value) },
+
+    lround (value) { return Math.round(value) },
+    lroundf (value) { return Math.fround(value) },
+    lroundl (value) { return Math.round(value) },
+
+    modf (value, integralPointer) {
+      if (Number.isNaN(value)) {
+        env.adapter.setInt32(integralPointer, Number.NaN)
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        env.adapter.setInt32(integralPointer, value)
+        return 0
+      }
+
+      // calculate the integer and fractional parts
+      const integralPart = value < 0 ? Math.ceil(value) : Math.floor(value)
+      env.adapter.setInt32(integralPointer, integralPart)
+      return value - integralPart
+    },
+
+    modff (value, integralPointer) { return imports.env.modf(value, integralPointer) },
+    modfl (value, integralPointer) { return imports.env.modf(value, integralPointer) },
+
+    nearbyint (value) {
+      if (Number.isNaN(value)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      // round to the nearest integer using the current rounding direction
+      return Math.round(value)
+    },
+
+    nearbyintf (value) { return imports.env.nearbyint(value) },
+    nearbyintl (value) { return imports.env.nearbyint(value) },
+
+    nextafter (x, y) {
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        return x
+      }
+
+      if (x === y) {
+        return y
+      }
+
+      // calculate the next representable floating-point number in the direction of y
+      return x + Math.sign(y - x) * EPSILON
+    },
+
+    nextafterf (x, y) { return imports.env.nextafter(x, y) },
+    nextafterl (x, y) { return imports.env.nextafter(x, y) },
+
+    nexttoward (x, y) {
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        return Number.NaN
+      }
+
+      if (!isFinite(x) || !isFinite(y)) {
+        return x
+      }
+
+      if (x === y) {
+        return y
+      }
+
+      // Calculate the next representable floating-point number toward y
+      const diff = y - x
+      if (diff === 0) {
+        return y
+      }
+
+      // adjust the floating-point number based on the magnitude of y - x
+      const scale = Math.abs(y) + Math.abs(x)
+      return x + (diff * EPSILON) * (scale + 1)
+    },
+
+    nexttowardf (x, y) { return imports.env.nexttoward(x, y) },
+    nexttowardl (x, y) { return imports.env.nexttoward(x, y) },
+
+    pow (x, y) { return Math.pow(x, y) },
+    powf (x, y) { return Math.pow(x, y) },
+    powl (x, y) { return Math.pow(x, y) },
+
+    remainder (x, y) {
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        return NaN
+      }
+
+      return x % y
+    },
+
+    remainderf (x, y) { return imports.env.remainder(x, y) },
+    remainderl (x, y) { return imports.env.remainder(x, y) },
+
+    remquo (x, y, quotPointer) {
+      if (Number.isNaN(x) || Number.isNaN(y) || !Number.isFinite(x) || !Number.isFinite(y)) {
+        env.adjust.setInt32(quotPointer, NaN)
+        return NaN
+      }
+
+      const rem = x % y
+      env.adjust.setInt32(quotPointer, (x - rem) / y)
+      return rem
+    },
+
+    remquof (x, y, quotPointer) { return imports.env.remquo(x, y, quotPointer) },
+    remquol (x, y, quotPointer) { return imports.env.remquo(x, y, quotPointer) },
+
+    round (value) { return Math.round(value) },
+    roundf (value) { return Math.fround(value) },
+    roundl (value) { return Math.round(value) },
+
+    scalbn (x, y) {
+      if (Number.isNaN(x) || !Number.isFinite(x) || Number.isNaN(y) || !Number.isFinite(y)) {
+        return Number.NaN
+      }
+
+      return x * Math.pow(2, y)
+    },
+
+    scalblnf (x, y) { return imports.env.scalbn(x, y) },
+    scalblnl (x, y) { return imports.env.scalbn(x, y) },
+    scalbln (x, y) { return imports.env.scalbn(x, y) },
+    scalbnf (x, y) { return imports.env.scalbn(x, y) },
+    scalbnl (x, y) { return imports.env.scalbn(x, y) },
+
+    sin (value) { return Math.sin(value) },
+    sinf (value) { return Math.sin(value) },
+    sinl (value) { return Math.sin(value) },
+    sinh (value) { return Math.sinh(value) },
+    sinhf (value) { return Math.sinh(value) },
+    sinhl (value) { return Math.sinh(value) },
+
+    sqrt (value) { return Math.sqrt(value) },
+    sqrtf (value) { return Math.sqrt(value) },
+    sqrtl (value) { return Math.sqrt(value) },
+
+    tan (value) { return Math.tan(value) },
+    tanf (value) { return Math.tan(value) },
+    tanl (value) { return Math.tan(value) },
+    tanh (value) { return Math.tanh(value) },
+    tanhf (value) { return Math.tanh(value) },
+    tanhl (value) { return Math.tanh(value) },
+
+    tgamma (value) {
+      if (Number.isNaN(value)) {
+        return NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      if (value === 0) {
+        // The gamma function is undefined such that x = 0
+        return Infinity
+      }
+
+      let x = value
+
+      // lanczos approximation parameters
+      // see https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
+      const g = 7
+      const p = [ // best we can do in javascript
+        0.99999999999980993,
+        676.5203681218851,
+        -1259.1392167224028,
+        771.32342877765313,
+        -176.61502916214059,
+        12.507343278686905,
+        -0.13857109526572012,
+        9.9843695780195716e-6,
+        1.5056327351493116e-7
+      ]
+
+      // lanczos approximation
+      // see https://en.wikipedia.org/wiki/Lanczos_approximation
+      if (x < 0.5) {
+        // recursive computation
+        return Math.PI / (Math.sin(Math.PI * x) * imports.env.tgamma(1 - x))
+      }
+
+      const t = x + g + 0.5
+      let a = p[0]
+      x -= 1
+
+      for (let i = 1; i < g + 2; i++) {
+        a += p[i] / (x + i)
+      }
+
+      return Math.sqrt(2 * Math.PI) * Math.pow(t, (x + 0.5)) * Math.exp(-t) * a
+    },
+
+    tgammaf (value) { return imports.env.tgamma(value) },
+    tgammal (value) { return imports.env.tgamma(value) },
+
+    trunc (value) {
+      if (Number.isNaN(value)) {
+        return Number.NaN
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      // truncate towards zero
+      return value < 0 ? Math.ceil(value) : Math.floor(value)
+    },
+
+    truncf (value) { return imports.env.trunc(value) },
+    truncl (value) { return imports.env.trunc(value) }
+  })
+
   // <regex.h>
   Object.assign(imports.env, {
     regcomp (regexPointer, patternStringPointer, cflags) {
@@ -1777,6 +2375,7 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     regerror (errorCode, regexPointer, bufStringPointer, bufCount) {
+      // TODO
       return -1
     },
 
@@ -1858,6 +2457,10 @@ function createWebAssemblyExtensionImports (env) {
     },
 
     fprintf (descriptorPointer, formatPointer, variadicArguments) {
+      if (!formatPointer || !descriptorPointer) {
+        return -EINVAL
+      }
+
       const output = variadicFormattedestinationPointerringFromPointers(
         env,
         formatPointer,
@@ -1869,16 +2472,12 @@ function createWebAssemblyExtensionImports (env) {
         toBeFlushed.stdout.push(output)
       } else if (descriptorPointer === STDERR) {
         toBeFlushed.stderr.push(output)
+      } else {
+        return -EBADF
       }
 
       if (output.includes('\n')) {
-        if (descriptorPointer === STDOUT) {
-          console.log(toBeFlushed.stdout.join(''))
-          toBeFlushed.stdout.splice(0, toBeFlushed.stdout.length)
-        } else if (descriptorPointer === STDERR) {
-          console.error(toBeFlushed.stderr.join(''))
-          toBeFlushed.stderr.splice(0, toBeFlushed.stderr.length)
-        }
+        imports.env.fflush(descriptorPointer)
       }
 
       return output.length
@@ -1912,6 +2511,105 @@ function createWebAssemblyExtensionImports (env) {
       }
 
       return output.byteLength
+    },
+
+    fputs (stringPointer, descriptorPointer) {
+      if (!stringPointer || !descriptorPointer) {
+        return EOF
+      }
+
+      if (descriptorPointer === STDOUT) {
+        const string = env.adapter.getString(stringPointer)
+        console.log(string)
+      } else if (descriptorPointer === STDERR) {
+        const string = env.adapter.getString(stringPointer)
+        console.error(string)
+      } else {
+        env.adapter.setUint8(imports.env.__errno_location(), EBADFD)
+        return EOF
+      }
+
+      return 0
+    },
+
+    puts (stringPointer) {
+      return imports.env.fputs(stringPointer, STDOUT)
+    },
+
+    fputc (byte, descriptorPointer) {
+      const string = String.fromCharCode(byte)
+
+      if (descriptorPointer === STDOUT) {
+        toBeFlushed.stdout.push(string)
+      } else if (descriptorPointer === STDERR) {
+        toBeFlushed.stderr.push(string)
+      } else {
+        env.adapter.setUint8(imports.env.__errno_location(), EBADFD)
+        return EOF
+      }
+
+      if (string.includes('\n')) {
+        return imports.env.fflush(descriptorPointer)
+      }
+
+      return 0
+    },
+
+    putc (byte, descriptorPointer) {
+      return imports.env.fputc(byte, descriptorPointer)
+    },
+
+    putchar (byte) {
+      return imports.env.fputc(byte, STDOUT)
+    },
+
+    fwrite (stringPointer, size, nitems, descriptorPointer) {
+      if (!stringPointer || !descriptorPointer) {
+        return -1
+      }
+
+      if (!size || !nitems) {
+        return 0
+      }
+
+      const string = env.adapter.getString(stringPointer)
+
+      if (!string) {
+        return 0
+      }
+
+      let count = 0
+      for (let i = 0; i < nitems; ++i) {
+        if (imports.env.fprintf(descriptorPointer, string) > 0) {
+          count++
+        }
+      }
+
+      return count
+    },
+
+    fflush (descriptorPointer) {
+      if (descriptorPointer === STDOUT) {
+        console.log(toBeFlushed.stdout.join(''))
+      } else if (descriptorPointer === STDERR) {
+        console.error(toBeFlushed.stderr.join(''))
+      } else if (descriptorPointer === NULL) {
+        console.log(toBeFlushed.stdout.join(''))
+        console.error(toBeFlushed.stderr.join(''))
+      }
+
+      return imports.env.fpurge(descriptorPointer)
+    },
+
+    fpurge (descriptorPointer) {
+      if (descriptorPointer === STDOUT) {
+        toBeFlushed.stdout.splice(0, toBeFlushed.stdout.length)
+      } else if (descriptorPointer === STDERR) {
+        toBeFlushed.stderr.splice(0, toBeFlushed.stderr.length)
+      } else if (descriptorPointer === NULL) {
+        toBeFlushed.stdout.splice(0, toBeFlushed.stdout.length)
+        toBeFlushed.stderr.splice(0, toBeFlushed.stderr.length)
+      }
     }
   })
 
@@ -4237,6 +4935,11 @@ export class Extension extends EventTarget {
     let info = null
 
     if (options.type === 'wasm32') {
+      console.warn(
+        'socket:extension: wasm32 extensions are highly experimental. ' +
+        'The ABI is unstable and APIs may change or be incomplete'
+      )
+
       let adapter = null
       let stream = null
       let path = null
