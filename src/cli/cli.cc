@@ -3381,6 +3381,8 @@ int main (const int argc, const char* argv[]) {
         fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher.png", fs::copy_options::overwrite_existing);
         fs::copy(targetPath / androidIcon, res / "mipmap" / "ic_launcher_round.png", fs::copy_options::overwrite_existing);
+      } else {
+        settings["android_application_icon_config"] = "";
       }
 
       // allow user space to override all `res/` files
