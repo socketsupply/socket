@@ -8,6 +8,14 @@ import permissions from './permissions.js'
 import WebAssembly from './webassembly.js'
 
 import {
+  File,
+  FileSystemHandle,
+  FileSystemFileHandle,
+  FileSystemDirectoryHandle,
+  FileSystemWritableFileStream
+} from '../fs/web.js'
+
+import {
   showDirectoryPicker,
   showOpenFilePicker,
   showSaveFilePicker
@@ -37,6 +45,9 @@ export function init () {
       if (typeof target[actualName] === 'object' && target[actualName] !== null) {
         for (const key in implementation) {
           const nativeImplementation = target[actualName][key] || null
+          if (nativeImplementation === implementation[key]) {
+            continue
+          }
           // let this fail, the environment implementation may not be writable
           try {
             target[actualName][key] = implementation[key]
@@ -56,65 +67,67 @@ export function init () {
         }
       } else {
         const nativeImplementation = target[actualName] || null
-        // let this fail, the environment implementation may not be writable
-        try {
-          target[actualName] = implementation
-        } catch {}
+        if (nativeImplementation !== implementation) {
+          // let this fail, the environment implementation may not be writable
+          try {
+            target[actualName] = implementation
+          } catch {}
 
-        patches[actualName] = implementation
-        if (
-          (typeof nativeImplementation === 'function' && nativeImplementation.prototype) &&
-          (typeof implementation === 'function' && implementation.prototype)
-        ) {
-          const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
-          const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
-          implementation[Symbol.species] = nativeImplementation
-          for (const key in nativeDescriptors) {
-            const nativeDescriptor = nativeDescriptors[key]
-            const descriptor = descriptors[key]
+          patches[actualName] = implementation
+          if (
+            (typeof nativeImplementation === 'function' && nativeImplementation.prototype) &&
+            (typeof implementation === 'function' && implementation.prototype)
+          ) {
+            const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
+            const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
+            implementation[Symbol.species] = nativeImplementation
+            for (const key in nativeDescriptors) {
+              const nativeDescriptor = nativeDescriptors[key]
+              const descriptor = descriptors[key]
 
-            if (key === 'constructor') {
-              continue
-            }
+              if (key === 'constructor') {
+                continue
+              }
 
-            if (descriptor) {
-              if (nativeDescriptor.set && nativeDescriptor.get) {
-                descriptors[key] = { ...nativeDescriptor, ...descriptor }
+              if (descriptor) {
+                if (nativeDescriptor.set && nativeDescriptor.get) {
+                  descriptors[key] = { ...nativeDescriptor, ...descriptor }
+                } else {
+                  descriptors[key] = { writable: true, configurable: true, ...descriptor }
+                }
               } else {
-                descriptors[key] = { writable: true, configurable: true, ...descriptor }
+                descriptors[key] = { writable: true, configurable: true }
               }
-            } else {
-              descriptors[key] = { writable: true, configurable: true }
+
+              if (descriptors[key] && typeof descriptors[key] === 'object') {
+                if ('get' in descriptors[key] && typeof descriptors[key].get !== 'function') {
+                  delete descriptors[key].get
+                }
+
+                if ('set' in descriptors[key] && typeof descriptors[key].set !== 'function') {
+                  delete descriptors[key].set
+                }
+
+                if (descriptors[key].get || descriptors[key].set) {
+                  delete descriptors[key].writable
+                  delete descriptors[key].value
+                }
+              }
             }
 
-            if (descriptors[key] && typeof descriptors[key] === 'object') {
-              if ('get' in descriptors[key] && typeof descriptors[key].get !== 'function') {
-                delete descriptors[key].get
-              }
-
-              if ('set' in descriptors[key] && typeof descriptors[key].set !== 'function') {
-                delete descriptors[key].set
-              }
-
-              if (descriptors[key].get || descriptors[key].set) {
-                delete descriptors[key].writable
-                delete descriptors[key].value
-              }
-            }
+            Object.defineProperties(implementation.prototype, descriptors)
+            Object.setPrototypeOf(implementation.prototype, nativeImplementation.prototype)
           }
 
-          Object.defineProperties(implementation.prototype, descriptors)
-          Object.setPrototypeOf(implementation.prototype, nativeImplementation.prototype)
-        }
-
-        if (nativeImplementation !== null) {
-          const nativeName = ['_', 'native', ...name.split('.')].join('_')
-          natives[name] = nativeImplementation
-          Object.defineProperty(globalThis, nativeName, {
-            enumerable: false,
-            configurable: false,
-            value: nativeImplementation
-          })
+          if (nativeImplementation !== null) {
+            const nativeName = ['_', 'native', ...name.split('.')].join('_')
+            natives[name] = nativeImplementation
+            Object.defineProperty(globalThis, nativeName, {
+              enumerable: false,
+              configurable: false,
+              value: nativeImplementation
+            })
+          }
         }
       }
     }
@@ -149,7 +162,14 @@ export function init () {
     showSaveFilePicker,
 
     // events
-    ApplicationURLEvent
+    ApplicationURLEvent,
+
+    // file
+    File,
+    FileSystemHandle,
+    FileSystemFileHandle,
+    FileSystemDirectoryHandle,
+    FileSystemWritableFileStream
   })
 
   // navigator
