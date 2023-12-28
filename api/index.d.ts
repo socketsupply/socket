@@ -3987,6 +3987,7 @@ declare module "socket:application" {
      * @param {boolean=} [opts.resizable=true] - whether the window is resizable
      * @param {boolean=} [opts.frameless=false] - whether the window is frameless
      * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
+     * @param {boolean=} [opts.transparent=false] - whether the window is transparent
      * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
      * @return {Promise<ApplicationWindow>}
      */
@@ -4003,6 +4004,7 @@ declare module "socket:application" {
         resizable?: boolean | undefined;
         frameless?: boolean | undefined;
         utility?: boolean | undefined;
+        transparent?: boolean | undefined;
         canExit?: boolean | undefined;
     }): Promise<ApplicationWindow>;
     /**

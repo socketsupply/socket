@@ -952,6 +952,7 @@ MAIN {
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
+      options.transparent = message.get("transparent") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
       options.index = targetWindowIndex;
 
@@ -1355,6 +1356,7 @@ MAIN {
     .defaultMaxWidth = app.appData["window_max_width"],
     .defaultMaxHeight = app.appData["window_max_height"],
     .headless = isHeadless,
+    .transparent = app.appData["window_transparent"] == "true" ? true : false,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,
@@ -1366,7 +1368,8 @@ MAIN {
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = app.appData["window_resizable"] == "false" ? false : true,
     .frameless = app.appData["window_frameless"] == "true" ? true : false,
-    .utility = app.appData["window_utility"] == "true" ? true : false
+    .utility = app.appData["window_utility"] == "true" ? true : false,
+    .transparent = app.appData["window_transparent"] == "true" ? true : false
   });
 
   defaultWindow->show(EMPTY_SEQ);

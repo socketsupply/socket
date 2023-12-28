@@ -1909,6 +1909,10 @@ logo = "src/icons/icon.png"
 
 [window]
 
+; Use system window background color.
+; default value: false
+transparent = false
+
 ; The initial height of the first window in pixels or as a percentage of the screen.
 height = 50%
 

@@ -20,6 +20,8 @@ namespace SSC {
     int port = 0;
     bool isTest = false;
     bool headless = false;
+    bool transparent = false;
+
     String cwd = "";
     String title = "";
     String url = "data:text/html,<html>";

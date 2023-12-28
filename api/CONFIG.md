@@ -192,6 +192,7 @@ pfx |  |  A relative path to the pfx file used for signing.
 
 Key | Default Value | Description
 :--- | :--- | :---
+transparent | false |  Use system window background color.
 height |  |  The initial height of the first window in pixels or as a percentage of the screen.
 width |  |  The initial width of the first window in pixels or as a percentage of the screen.
 max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.

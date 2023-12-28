@@ -40,6 +40,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
+ * @param {boolean=} [opts.transparent=false] - whether the window is transparent
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
  * @return {Promise<ApplicationWindow>}
  */
@@ -57,6 +58,7 @@ export async function createWindow (opts) {
     resizable: opts.resizable ?? true,
     frameless: opts.frameless ?? false,
     utility: opts.utility ?? false,
+    transparent: opts.transparent ?? false,
     canExit: opts.canExit ?? false,
     minWidth: opts.minWidth ?? 0,
     minHeight: opts.minHeight ?? 0,
