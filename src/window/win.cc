@@ -1224,7 +1224,7 @@ namespace SSC {
                   webview->add_WebMessageReceived(
                     Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
                       LPWSTR messageRaw;
-                      args->TryGetWebMessageAsString(&messageRaw);                      
+                      args->TryGetWebMessageAsString(&messageRaw);
                       SSC::WString message_w(messageRaw);
                       CoTaskMemFree(messageRaw);
                       if (onMessage != nullptr) {
@@ -1422,7 +1422,7 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
-    if (this->onExit != nullptr) 
+    if (this->onExit != nullptr)
     {
       std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
       this->onExit(code);

@@ -44,7 +44,8 @@ namespace SSC::android {
     const auto argv = this->config["ssc_argv"];
 
     options.headless = this->config["build_headless"] == "true";
-    options.transparent = this->config["build_transparent"] == "true";
+    // TODO: not implemented yet on mobile
+    // options.transparent = this->config["build_transparent"] == "true";
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();

@@ -588,6 +588,7 @@ namespace SSC {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
+          .transparent = opts.transparent,
           .canExit = opts.canExit,
           .width = width,
           .height = height,
@@ -599,7 +600,6 @@ namespace SSC {
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
-          .transparent = opts.transparent,
 
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
