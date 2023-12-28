@@ -192,8 +192,15 @@ pfx |  |  A relative path to the pfx file used for signing.
 
 Key | Default Value | Description
 :--- | :--- | :---
-height |  |  The initial height of the first window.
-width |  |  The initial width of the first window.
+height |  |  The initial height of the first window in pixels or as a percentage of the screen.
+width |  |  The initial width of the first window in pixels or as a percentage of the screen.
+max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
+max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
+min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen.
+min_width | 0 |  Minimum width of the window in pixels or as a percentage of the screen.
+resizable | true |  If the window is resizable or not.
+frameless | false |  If the window has a title bar or not.
+utility | false |  If the window is utility window or not.
 
 # `headless`
 
