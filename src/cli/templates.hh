@@ -1909,11 +1909,39 @@ logo = "src/icons/icon.png"
 
 [window]
 
-; The initial height of the first window.
+; The initial height of the first window in pixels or as a percentage of the screen.
 height = 50%
 
-; The initial width of the first window.
+; The initial width of the first window in pixels or as a percentage of the screen.
 width = 50%
+
+; Maximum height of the window in pixels or as a percentage of the screen.
+; default value: 100%
+; max_height = 100%
+
+; Maximum width of the window in pixels or as a percentage of the screen.
+; default value: 100%
+; max_width = 100%
+
+; Minimum height of the window in pixels or as a percentage of the screen.
+; default value: 0
+; min_height = 0
+
+; Minimum width of the window in pixels or as a percentage of the screen.
+; default value: 0
+; min_width = 0
+
+; If the window is resizable or not.
+; default value: true
+; resizable = true
+
+; If the window has a title bar or not.
+; default value: false
+; frameless = false
+
+; If the window is utility window or not.
+; default value: false
+; utility = false
 
 [headless]
 
