@@ -171,6 +171,7 @@ cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app on MacOS.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
+minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
 
 # `native`
 
