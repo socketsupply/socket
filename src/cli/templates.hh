@@ -499,7 +499,7 @@ constexpr auto gAndroidManifest = R"XML(
 //
 // Linux config
 //
-constexpr auto gDestkopManifest = R"INI(
+constexpr auto gDesktopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
 Version=v{{meta_version}}
