@@ -4700,7 +4700,7 @@ int main (const int argc, const char* argv[]) {
         (settings["build_name"] + ".png")
       ).string();
 
-      writeFile(pathManifestFile / (settings["build_name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+      writeFile(pathManifestFile / (settings["build_name"] + ".desktop"), tmpl(gDesktopManifest, settings));
 
       writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
