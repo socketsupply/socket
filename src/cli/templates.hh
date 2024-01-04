@@ -1879,6 +1879,10 @@ codesign_identity = ""
 ; Additional paths to codesign
 codesign_paths = ""
 
+; Minimum supported MacOS version
+; default value: "13.0.0"
+; minimum_supported_version = "13.0.0"
+
 
 [native]
 
