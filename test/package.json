@@ -8,6 +8,10 @@
     "test:android": "node ./scripts/test-android.js",
     "test:ios-simulator": "node ./scripts/test-ios-simulator.js",
     "test:android-emulator": "sh ./scripts/shell.sh ./scripts/test-android-emulator.sh",
+    "test:node": "node ./scripts/test-node.js",
     "start": "npm test"
+  },
+  "dependencies": {
+    "@socketsupply/socket": "../api"
   }
 }
