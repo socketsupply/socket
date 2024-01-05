@@ -566,9 +566,16 @@ int lastY = 0;
   runJavaScriptAlertPanelWithMessage: (NSString*) message
                     initiatedByFrame: (WKFrameInfo*) frame
                    completionHandler: (void (^)(void)) completionHandler {
+  static auto userConfig = SSC::getUserConfig();
+  auto title = userConfig["meta_title"] + ":";
+
+  if (userConfig.contains("window_alert_title")) {
+    title = userConfig["window_alert_title"];
+  }
+
 #if TARGET_OS_IPHONE || TARGET_OS_IPHONE
   auto alert = [UIAlertController
-    alertControllerWithTitle: nil
+    alertControllerWithTitle: @(title.c_str())
                      message: message
               preferredStyle: UIAlertControllerStyleAlert
   ];
@@ -585,7 +592,7 @@ int lastY = 0;
   [webView presentViewController:alert animated: YES completion: nil];
 #else
   NSAlert *alert = [[NSAlert alloc] init];
-  [alert setMessageText: message];
+  [alert setMessageText: @(title.c_str())];
   [alert setInformativeText: message];
   [alert addButtonWithTitle: @"OK"];
   [alert runModal];
@@ -597,9 +604,15 @@ int lastY = 0;
   runJavaScriptConfirmPanelWithMessage: (NSString*) message
                       initiatedByFrame: (WKFrameInfo*) frame
                      completionHandler: (void (^)(BOOL result)) completionHandler {
+  static auto userConfig = SSC::getUserConfig();
+  auto title = userConfig["meta_title"] + ":";
+
+  if (userConfig.contains("window_alert_title")) {
+    title = userConfig["window_alert_title"];
+  }
 #if TARGET_OS_IPHONE || TARGET_OS_IPHONE
   auto alert = [UIAlertController
-    alertControllerWithTitle: nil
+    alertControllerWithTitle: @(title.c_str())
                      message: message
               preferredStyle: UIAlertControllerStyleAlert
   ];
@@ -624,7 +637,7 @@ int lastY = 0;
   [webView presentViewController: alert animated: YES completion: nil];
 #else
   NSAlert *alert = [[NSAlert alloc] init];
-  [alert setMessageText: message];
+  [alert setMessageText: @(title.c_str())];
   [alert setInformativeText: message];
   [alert addButtonWithTitle: @"OK"];
   [alert addButtonWithTitle: @"Cancel"];
