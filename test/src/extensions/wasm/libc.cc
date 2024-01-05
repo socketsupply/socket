@@ -11,7 +11,7 @@
 
 #include "extension.hh"
 
-static bool fequal(float a, float b) {
+static bool fequal (double a, double b) {
   auto c = fabs(a - b);
   return c == 0.0f || c < FLT_EPSILON;
 }
@@ -377,117 +377,127 @@ static void initialize_libc_math_tests () {
   test(fequal(asinf(0.98765), 1.4134716987609863));
   test(fequal(asinl(0.29384756), 0.2982496274073672));
   test(fequal(asinh(123.2938475), 5.507734136828022));
-  test(fequal(asinhf(123.98765), 5.513345406378311));
+  test(fequal(asinhf(123.98765),  5.513345241546631));
   test(fequal(asinhl(888.999888777), 7.483244607290699));
 
-  // test(atan());
-  // test(atanf());
-  // test(atanl());
-  // test(atan2());
-  // test(atan2f());
-  // test(atan2l());
-  // test(atanh());
-  // test(atanhf());
-  // test(atanhl());
+  test(fequal(atan(123.456), 1.5626964520979927));
+  test(fequal(atanf(456.789), 1.5686071357187537));
+  test(fequal(atanl(987.654), 1.5697838268118243));
 
-  // test(cbrt());
-  // test(cbrtf());
-  // test(cbrtl());
+  test(fequal(atan2(123.456, 987.654), 0.12435424685414087));
+  test(fequal(atan2f(987.654, 123.456), 1.4464420799407558));
+  test(fequal(atan2l(0.0, 0.0), 0.0));
 
-  // test(ceil());
-  // test(ceilf());
-  // test(ceill());
+  test(fequal(atanh(0.998877), 3.7421685630428145));
+  test(fequal(atanhf(0.112233), 0.11270783203029852));
+  test(fequal(atanhl(0.123456789), 0.12408981359692224));
 
-  // test(copysign());
-  // test(copysignf());
-  // test(copysignl());
+  test(fequal(cbrt(1.0), 1.0));
+  test(fequal(cbrtf(0.123456789), 0.49793385921817446));
+  test(fequal(cbrtl(1.23456789), 1.0727659796410873));
 
-  // test(cos());
-  // test(cosf());
-  // test(cosl());
-  // test(cosh());
-  // test(coshf());
-  // test(coshl());
+  test(fequal(ceil(1.45), 2.0));
+  test(fequal(ceilf(0.45), 1));
+  test(fequal(ceill(0.0), 0.0));
 
-  // test(erf());
-  // test(erff());
-  // test(erfl());
-  // test(erfcf());
-  // test(erfcl());
+  test(fequal(copysign(-123.456, -32.64), -123.456));
+  test(fequal(copysignf(-123.456, 0.0), 123.456f));
+  test(fequal(copysignl(987.654, 1), 987.654));
 
-  // test(exp());
-  // test(expf());
-  // test(expl());
-  // test(exp2());
-  // test(exp2f());
-  // test(exp2l());
+  test(fequal(cos(123.456), -0.5947139710921574));
+  test(fequal(cosf(987.654), 0.3680378496646881));
+  test(fequal(cosl(0.11223344556), 0.9937084352371074));
 
-  // test(expm1());
-  // test(expm1f());
-  // test(expm1l());
+  test(fequal(cosh(0.11223344556), 1.0063047870924915));
+  test(fequal(coshf(0.987654321), 1.5286892059778199));
+  test(fequal(coshl(0.123456789), 1.0076304736991977));
 
-  // test(fabs());
-  // test(fabsf());
-  // test(fabsl());
+  test(fequal(erf(0.0), 1.000000082740371e-9));
+  test(fequal(erf(2.0), 0.9953221395812188));
+  test(fequal(erff(123.0), 1));
+  test(fequal(erfl(-INFINITY), -1));
 
-  // test(fdim());
-  // test(fdimf());
-  // test(fdiml());
+  test(fequal(erfcf(INFINITY), 0));
+  test(fequal(erfcf(-INFINITY), 2));
+  test(fequal(erfcf(123.456), 0));
+  test(fequal(erfcl(-0.456), 0.5187334966466077));
 
-  // test(floor());
-  // test(floorf());
-  // test(floorl());
+  test(fequal(exp(0.1234), 1.131336865198686));
+  test(fequal(expf(0.4321), 1.5404891563745755));
+  test(fequal(expl(1.234), 3.43494186080076));
 
-  // test(fma());
-  // test(fmaf());
-  // test(fmal());
-  // test(fmax());
-  // test(fmaxf());
-  // test(fmaxl());
+  test(fequal(exp2(1.234), 1073741824));
+  test(fequal(exp2f(4.321), 1078984704));
+  test(fequal(exp2l(32.0), 1120927744));
 
-  // test(fmin());
-  // test(fminf());
-  // test(fminl());
+  test(fequal(expm1(1.23), 2.4212295362896734));
+  test(fequal(expm1f(4.56), 94.5834732055664));
+  test(fequal(expm1l(0.87654321), 1.4025801420211792));
 
-  // test(fmod());
-  // test(fmodf());
-  // test(fmodl());
+  test(fequal(fabs(-1.234), 1.234));
+  test(fequal(fabsf(-99.87654f), 99.87654f));
+  test(fequal(fabsl(12345.6789), 12345.6789));
 
-  // test(frexp());
-  // test(frexpf());
-  // test(frexpl());
+  test(fequal(fdim(2.34, 1.23), 1.1099999999999999));
+  test(fequal(fdimf(1.23, 2.34), 0.0));
+  test(fequal(fdiml(99.876, 88.7654), 11.110600000000005));
 
-  // test(hypot());
-  // test(hypotf());
-  // test(hypotl());
+  test(fequal(floor(1.23), 1.0));
+  test(fequal(floorf(0.0), 0));
+  test(fequal(floorl(2.99), 2));
 
-  // test(ilogb());
-  // test(ilogbf());
-  // test(ilogbl());
+  test(fequal(fma(1.2, 3.4, 5.6), 1.2 * 3.4 + 5.6));
+  test(fequal(fmaf(5.6, 3.4, 1.2), 20.239999771118164));
+  test(fequal(fmal(99.88, 77.66, 55.44), 99.88 * 77.66 + 55.44));
 
-  // test(ldexp());
-  // test(ldexpf());
-  // test(ldexpl());
+  test(fequal(fmax(0.0, 1.0), 1.0));
+  test(fequal(fmaxf(987.654, 123.456), 987.654f));
+  test(fequal(fmaxl(9000.888, 1000.1234), 9000.888));
 
-  // test(lgamma());
-  // test(lgammaf());
-  // test(lgammal());
+  test(fequal(fmin(123.456, 987.654), 123.456));
+  test(fequal(fminf(9.87654321, 1.23456789), 1.23456788));
+  test(fequal(fminl(0.000123456789, 0.0000123456789), 0.0000123456789));
 
-  // test(tgamma());
-  // test(tgammaf());
-  // test(tgammal());
+  test(fequal(fmod(0.1234, -0.5678), 0.1234));
+  test(fequal(fmodf(-0.001234, 0.9987), -0.0012339999666437507));
+  test(fequal(fmodl(0.00000051, -1.23450001), -1.2344995));
 
-  // test(rint());
-  // test(rintf());
-  // test(rintl());
-  // test(lrint());
-  // test(lrintf());
-  // test(lrintl());
-  // test(llrint());
-  // test(llrintf());
-  // test(llrintl());
+  int exp = 0;
+  test(fequal(frexp(123.456, &exp), 1.929) && exp == 6);
+  test(fequal(frexpf(0.987654321, &exp), 3.9506173133850098) && exp == -2);
+  test(fequal(frexpl(64.321684, &exp), 1.0050263125) && exp == 6);
 
-  // test(lround());
+  test(fequal(hypot(32, 16), 35.77708763999664));
+  test(fequal(hypotf(128, 16), 128.9961239727768f));
+  test(fequal(hypotl(0.321987, 0.123456), 0.3448434602903178));
+
+  test(fequal(ilogb(123.456), 6.0));
+  test(fequal(ilogbf(0.123456), -4.0));
+  test(fequal(ilogbl(123456), 16));
+
+  test(fequal(ldexp(123.456, 987), 1.6147969556736795e+299L));
+  test(fequal(ldexpf(0.123, 2), 0.492f));
+  test(fequal(ldexpl(999.888, 456), 1.8604987349977237e+140L));
+
+  test(fequal(lgamma(123), 462.6081785268749L));
+  test(fequal(lgammaf(123.9987), 467.4059753417969F));
+  test(fequal(lgammal(99887766.5544332211L), 1740000694.2205663L));
+
+  test(fequal(tgamma(0.7531), 0.4642265214333058F));
+  test(fequal(tgammaf(0.1357), 17.936216354370117F));
+  test(fequal(tgammal(0.13571357L), 17.934361673027155L));
+
+  test(fequal(rint(0.88246), 1.0));
+  test(fequal(rintf(42.682462), 43.0));
+  test(fequal(rintl(1357.6824629998L), 1358));
+  test(lrint(8662289) == 8662289);
+  test(fequal(lrintf(0.8662289), 0));
+  test(lrintl(0.3268) == 0);
+  test(fequal(llrint(32.64), 33.0));
+  test(llrintf(-2.3264L) == -2L);
+  test(fequal(llrintl(42.99876L), 43.0));
+
+  test(fequal(lround(-2.32), -2.0));
   // test(lroundf());
   // test(lroundl());
   // test(llround());
