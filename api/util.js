@@ -48,7 +48,11 @@ export function isAsyncFunction (object) {
 }
 
 export function isArgumentsObject (object) {
-  return isPlainObject(object)
+  return (
+    !Array.isArray(object) &&
+    isPlainObject(object) &&
+    Number.isFinite(object.length)
+  )
 }
 
 export function isEmptyObject (object) {
