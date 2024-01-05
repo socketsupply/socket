@@ -1947,6 +1947,11 @@ width = 50%
 ; default value: false
 ; utility = false
 
+[window.alert]
+; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead.
+; defalut value = ""
+; title = ""
+
 [headless]
 
 ; The headless runner command. It is used when no OS specific runner is set.
