@@ -203,6 +203,12 @@ resizable | true |  If the window is resizable or not.
 frameless | false |  If the window has a title bar or not.
 utility | false |  If the window is utility window or not.
 
+# `window.alert`
+
+Key | Default Value | Description
+:--- | :--- | :---
+title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. defalut value = ""
+
 # `headless`
 
 Key | Default Value | Description
