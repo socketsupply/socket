@@ -1,3 +1,4 @@
+/* global ApplicationURLEvent */
 /**
  * @module hooks
  *
@@ -108,7 +109,12 @@ function proxyGlobalEvents (global, target) {
     addEventListener(global, type, (event) => {
       const { type, data, detail = null, error } = event
       const { origin } = location
-      if (error) {
+      if (type === 'applicationurl') {
+        dispatchEvent(target, new ApplicationURLEvent(type, {
+          data: event.data,
+          url: event.url.toString()
+        }))
+      } else if (error) {
         const { message, filename = import.meta.url } = error
         dispatchEvent(target, new ErrorEvent(type, { message, filename, error, detail }))
       } else if (type && data) {
