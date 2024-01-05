@@ -1622,7 +1622,7 @@ function variadicFormattedestinationPointerringFromPointers (
         return `0x${view.getUint32((index++) * 4, true).toString(16)}`
       }
 
-      case '%f': case '%lf': case '%llf':  {
+      case '%f': case '%lf': case '%llf': {
         return view.getFloat64((index++) * 8, true)
       }
     }
