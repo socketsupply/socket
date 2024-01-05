@@ -1570,14 +1570,16 @@ function variadicFormattedestinationPointerringFromPointers (
 
   let index = 0
 
-  const regex = /%(|l|ll|j|t|z|\.\*)+(d|f|i|n|o|p|s|S|u|x|X|%)/gi
+  const regex = /%(|l|ll|j|t|z|\.\*)+(l|d|f|i|n|o|p|s|S|u|x|X|%)+/gi
   const output = format.replace(regex, (x) => {
     if (x === '%%') {
       return '%'
     }
 
-    switch (x) {
-      case '%.*u': case '%.*S': case '%.*s': {
+    switch (x.toLowerCase()) {
+      case '%.*lu': case '%.*llu':
+      case '%.*ls': case '%.*lls':
+      case '%.*u': case '%.*s': {
         const size = view.getInt32((index++) * 4, true)
         const pointer = view.getInt32((index++) * 4, true)
         const string = (
@@ -1592,7 +1594,7 @@ function variadicFormattedestinationPointerringFromPointers (
         return string.slice(0, size)
       }
 
-      case '%S': case '%s': {
+      case '%s': {
         const pointer = view.getInt32((index++) * 4, true)
         const string = (
           env.adapter.getString(pointer) ||
@@ -1606,22 +1608,21 @@ function variadicFormattedestinationPointerringFromPointers (
         return string
       }
 
-      case '%LLU': case '%LU': case '%llu': case '%lu':
-      case '%LD': case '%LLD': case '%lld': case '%ld':
-      case '%zu':
-      case '%i': case '%x': case '%X': case '%d': {
+      case '%zu': case '%u':
+      case '%llu': case '%lu': {
+        return view.getUint32((index) * 4, true)
+      }
+
+      case '%lld': case '%ld':
+      case '%i': case '%x': case '%d': {
         return view.getInt32((index++) * 4, true)
       }
 
-      case '%p': {
+      case '%lp': case '%p': {
         return `0x${view.getUint32((index++) * 4, true).toString(16)}`
       }
 
-      case '%u': {
-        return view.getUint32((index++) * 4, true)
-      }
-
-      case '%LLF': case '%LF': case '%f': {
+      case '%f': case '%lf': case '%llf':  {
         return view.getFloat64((index++) * 8, true)
       }
     }
@@ -1890,7 +1891,14 @@ function createWebAssemblyExtensionImports (env) {
     ceill (value) { return Math.ceil(value) },
 
     copysign (x, y) {
-      // return a new value with the magnitude of x and the sign of y
+      if (y === 0) {
+        return Math.abs(x)
+      }
+
+      if (x === 0) {
+        return 0
+      }
+
       return Math.abs(x) * Math.sign(y)
     },
 
@@ -1928,9 +1936,16 @@ function createWebAssemblyExtensionImports (env) {
     exp (value) { return Math.exp(value) },
     expf (value) { return Math.exp(value) },
     expl (value) { return Math.exp(value) },
-    exp2 (value) { return Math.exp(value) },
-    exp2f (value) { return Math.exp(value) },
-    exp2l (value) { return Math.exp(value) },
+
+    exp2 (value) {
+      const x = value * 1.4426950408889634 // approximation of log2(2)
+      const clamped = Math.max(-1022, Math.min(1023, x))
+      const bias = clamped + 1023
+      return new Float64Array(Float64Array.of(bias << 52).buffer)[0]
+    },
+
+    exp2f (value) { return imports.env.exp2(value) },
+    exp2l (value) { return imports.env.exp2(value) },
 
     expm1 (value) { return Math.expm1(value) },
     expm1f (value) { return Math.expm1(value) },
@@ -2027,6 +2042,11 @@ function createWebAssemblyExtensionImports (env) {
     ldexpf (x, y) { return imports.env.ldexp(x, y) },
     ldexpl (x, y) { return imports.env.ldexp(x, y) },
 
+    // @see {@link https://en.wikipedia.org/wiki/Gamma_function#Log-gamma_function}
+    // @see {@link https://en.cppreference.com/w/c/numeric/math/lgamma}
+    // @see {@link https://pubs.opengroup.org/onlinepubs/009696799/functions/lgamma.html}
+    // @see {@link https://opensource.apple.com/source/Libm/Libm-230/ppc.subproj/lgamma.c.auto.html}
+    // @see {@link https://apc.u-paris.fr/~franco/g4doxy/html/classG4VGaussianQuadrature.html#d88f4c34f9215434708f08ac9d5b68a7}
     lgamma (value) {
       if (Number.isNaN(value)) {
         return Number.NaN
@@ -2040,13 +2060,66 @@ function createWebAssemblyExtensionImports (env) {
         return -Infinity
       }
 
-      return Math.log(Math.abs(Math.gamma(value)))
+      let x = value
+
+      const g = 7
+      const p = [ // coefficients
+        0.99999999999980993,
+        676.5203681218851,
+        -1259.1392167224028,
+        771.32342877765313,
+        -176.61502916214059,
+        12.507343278686905,
+        -0.13857109526572012,
+        9.9843695780195716e-6,
+        1.5056327351493116e-7
+      ]
+
+      if (x < 0.5) {
+        // recursive computation
+        return Math.log(Math.PI / (Math.sin(Math.PI * x) * imports.env.lgamma(1 - x)))
+      }
+
+      x -= 1
+
+      let a = p[0]
+      const t = x + g + 0.5
+
+      for (let i = 1; i < p.length; ++i) {
+        a += p[i] / (x + i)
+      }
+
+      const C = 2.5066282746310007 // 2.5066282746310005
+      return Math.log(C * a / x) + (x + 0.5) * Math.log(t) - t
     },
 
     lgammaf (value) { return imports.env.lgamma(value) },
     lgammal (value) { return imports.env.lgamma(value) },
 
     llrint (value) {
+      if (Number.isNaN(value)) {
+        return 0n
+      }
+
+      if (!Number.isFinite(value)) {
+        return value
+      }
+
+      return BigInt(Math.round(value).toString())
+    },
+
+    llrintf (value) { return imports.env.llrint(value) },
+
+    llrintl (value) { return imports.env.llrint(value) },
+    lrint (value) { return imports.env.rint(value) },
+    lrintf (value) { return imports.env.rintf(value) },
+    lrintl (value) { return imports.env.lrint(value) },
+
+    llround (value) { return Math.round(value) },
+    llroundf (value) { return Math.fround(value) },
+    llroundl (value) { return Math.round(value) },
+
+    rint (value) {
       if (Number.isNaN(value)) {
         return 0
       }
@@ -2058,7 +2131,7 @@ function createWebAssemblyExtensionImports (env) {
       return Math.round(value)
     },
 
-    llrintf (value) {
+    rintf (value) {
       if (Number.isNaN(value)) {
         return 0
       }
@@ -2070,18 +2143,7 @@ function createWebAssemblyExtensionImports (env) {
       return Math.fround(value)
     },
 
-    llrintl (value) { return imports.env.llrint(value) },
-    lrint (value) { return imports.env.llrint(value) },
-    lrintf (value) { return imports.env.llrintf(value) },
-    lrintl (value) { return imports.env.llrint(value) },
-
-    llround (value) { return Math.round(value) },
-    llroundf (value) { return Math.fround(value) },
-    llroundl (value) { return Math.round(value) },
-
-    rint (value) { return imports.env.llrint(value) },
-    rintf (value) { return imports.env.llrintf(value) },
-    rintl (value) { return imports.env.llrint(value) },
+    rintl (value) { return imports.env.rint(value) },
 
     log (value) { return Math.log(value) },
     logf (value) { return Math.log(value) },
@@ -2293,7 +2355,7 @@ function createWebAssemblyExtensionImports (env) {
       // lanczos approximation parameters
       // see https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
       const g = 7
-      const p = [ // best we can do in javascript
+      const p = [ // best coefficients we can do in javascript
         0.99999999999980993,
         676.5203681218851,
         -1259.1392167224028,
@@ -4968,7 +5030,6 @@ export class Extension extends EventTarget {
 
       const memory = options.memory ?? new WebAssembly.Memory({ initial: 32 })
       const imports = {
-        ...options.imports,
         ...createWebAssemblyExtensionImports({
           tags,
           table,
@@ -4976,7 +5037,9 @@ export class Extension extends EventTarget {
           get adapter () {
             return adapter
           }
-        })
+        }),
+
+        ...options.imports
       }
 
       const {
