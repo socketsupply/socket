@@ -16,6 +16,10 @@ export class ApplicationURLEvent extends Event {
     super(type)
     this.#data = options?.data ?? null
     this.#url = options?.url ?? null
+
+    if (this.#url !== null && typeof this.#url === 'object') {
+      this.#url = this.#url.toString()
+    }
   }
 
   /**

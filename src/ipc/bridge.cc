@@ -2897,7 +2897,7 @@ static void registerSchemeHandler (Router *router) {
             headers[@"content-type"] = @("application/typescript");
           } else if (path.ends_with(".cjs") || path.ends_with(".mjs")) {
             headers[@"content-type"] = @("text/javascript");
-          } else {
+          } else if (components.URL.pathExtension != nullptr) {
             auto types = [UTType
                   typesWithTag: components.URL.pathExtension
                       tagClass: UTTagClassFilenameExtension
@@ -3053,7 +3053,7 @@ static void registerSchemeHandler (Router *router) {
         headers[@"content-type"] = @("text/javascript");
       } else if (path.ends_with(".wasm")) {
         headers[@"content-type"] = @("application/wasm");
-      } else {
+      } else if (components.URL.pathExtension != nullptr) {
         auto types = [UTType
               typesWithTag: components.URL.pathExtension
                   tagClass: UTTagClassFilenameExtension

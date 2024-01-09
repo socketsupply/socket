@@ -37,8 +37,7 @@ test('util.isAsyncFunction', (t) => {
 test('util.isArgumentsObject', (t) => {
   const args = (function () { return arguments })()
   t.ok(util.isArgumentsObject(args), 'util.isArgumentsObject returns true for arguments objects')
-  // should it?
-  // t.ok(!util.isArgumentsObject({}), 'util.isArgumentsObject returns false for non-arguments objects')
+  t.ok(!util.isArgumentsObject({}), 'util.isArgumentsObject returns false for non-arguments objects')
 })
 
 test('util.isEmptyObject', (t) => {

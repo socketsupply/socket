@@ -171,6 +171,7 @@ cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app on MacOS.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
+minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
 
 # `native`
 
@@ -192,8 +193,21 @@ pfx |  |  A relative path to the pfx file used for signing.
 
 Key | Default Value | Description
 :--- | :--- | :---
-height |  |  The initial height of the first window.
-width |  |  The initial width of the first window.
+height |  |  The initial height of the first window in pixels or as a percentage of the screen.
+width |  |  The initial width of the first window in pixels or as a percentage of the screen.
+max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
+max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
+min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen.
+min_width | 0 |  Minimum width of the window in pixels or as a percentage of the screen.
+resizable | true |  If the window is resizable or not.
+frameless | false |  If the window has a title bar or not.
+utility | false |  If the window is utility window or not.
+
+# `window.alert`
+
+Key | Default Value | Description
+:--- | :--- | :---
+title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. defalut value = ""
 
 # `headless`
 

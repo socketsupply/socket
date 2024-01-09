@@ -499,7 +499,7 @@ constexpr auto gAndroidManifest = R"XML(
 //
 // Linux config
 //
-constexpr auto gDestkopManifest = R"INI(
+constexpr auto gDesktopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
 Version=v{{meta_version}}
@@ -1879,6 +1879,10 @@ codesign_identity = ""
 ; Additional paths to codesign
 codesign_paths = ""
 
+; Minimum supported MacOS version
+; default value: "13.0.0"
+; minimum_supported_version = "13.0.0"
+
 
 [native]
 
@@ -1909,11 +1913,44 @@ logo = "src/icons/icon.png"
 
 [window]
 
-; The initial height of the first window.
+; The initial height of the first window in pixels or as a percentage of the screen.
 height = 50%
 
-; The initial width of the first window.
+; The initial width of the first window in pixels or as a percentage of the screen.
 width = 50%
+
+; Maximum height of the window in pixels or as a percentage of the screen.
+; default value: 100%
+; max_height = 100%
+
+; Maximum width of the window in pixels or as a percentage of the screen.
+; default value: 100%
+; max_width = 100%
+
+; Minimum height of the window in pixels or as a percentage of the screen.
+; default value: 0
+; min_height = 0
+
+; Minimum width of the window in pixels or as a percentage of the screen.
+; default value: 0
+; min_width = 0
+
+; If the window is resizable or not.
+; default value: true
+; resizable = true
+
+; If the window has a title bar or not.
+; default value: false
+; frameless = false
+
+; If the window is utility window or not.
+; default value: false
+; utility = false
+
+[window.alert]
+; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead.
+; defalut value = ""
+; title = ""
 
 [headless]
 

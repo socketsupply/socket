@@ -6,6 +6,7 @@ import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 import WebAssembly from './webassembly.js'
+import { Buffer } from '../buffer.js'
 
 import {
   File,
@@ -169,7 +170,13 @@ export function init () {
     FileSystemHandle,
     FileSystemFileHandle,
     FileSystemDirectoryHandle,
-    FileSystemWritableFileStream
+    FileSystemWritableFileStream,
+
+    // buffer
+    Buffer,
+
+    // platform detection
+    isSocketRuntime: true
   })
 
   // navigator
