@@ -5417,886 +5417,6 @@ declare module "socket:i18n" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
-declare module "socket:test/fast-deep-equal" {
-    export default function equal(a: any, b: any): boolean;
-}
-declare module "socket:test/context" {
-    export default function _default(GLOBAL_TEST_RUNNER: any): void;
-}
-declare module "socket:test/dom-helpers" {
-    /**
-     * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
-     *
-     * @export
-     * @param {string|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-     * @returns {Element} The HTMLElement, Element, or Window that corresponds to the selector.
-     * @throws {Error} Throws an error if the `selector` is not a string that resolves to an HTMLElement or not an instance of HTMLElement, Element, or Window.
-     *
-     */
-    export function toElement(selector: string | Element): Element;
-    /**
-     * Waits for an element to appear in the DOM and resolves the promise when it does.
-     *
-     * @export
-     * @param {Object} args - Configuration arguments.
-     * @param {string} [args.selector] - The CSS selector to look for.
-     * @param {boolean} [args.visible=true] - Whether the element should be visible.
-     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
-     * @param {() => HTMLElement | Element | null | undefined} [lambda] - An optional function that returns the element. Used if the `selector` is not provided.
-     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element.
-     *
-     * @throws {Error} - Throws an error if neither `lambda` nor `selector` is provided.
-     * @throws {Error} - Throws an error if the element is not found within the timeout.
-     *
-     * @example
-     * ```js
-     * waitFor({ selector: '#my-element', visible: true, timeout: 5000 })
-     *   .then(el => console.log('Element found:', el))
-     *   .catch(err => console.log('Element not found:', err));
-     * ```
-     */
-    export function waitFor(args: {
-        selector?: string;
-        visible?: boolean;
-        timeout?: number;
-    }, lambda?: () => HTMLElement | Element | null | undefined): Promise<Element | HTMLElement | void>;
-    /**
-     * Waits for an element's text content to match a given string or regular expression.
-     *
-     * @export
-     * @param {Object} args - Configuration arguments.
-     * @param {Element} args.element - The root element from which to begin searching.
-     * @param {string} [args.text] - The text to search for within elements.
-     * @param {RegExp} [args.regex] - A regular expression to match against element text content.
-     * @param {boolean} [args.multipleTags=false] - Whether to look for text across multiple sibling elements.
-     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
-     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element or null.
-     *
-     * @example
-     * ```js
-     * waitForText({ element: document.body, text: 'Hello', timeout: 5000 })
-     *   .then(el => console.log('Element found:', el))
-     *   .catch(err => console.log('Element not found:', err));
-     * ```
-     */
-    export function waitForText(args: {
-        element: Element;
-        text?: string;
-        regex?: RegExp;
-        multipleTags?: boolean;
-        timeout?: number;
-    }): Promise<Element | HTMLElement | void>;
-    /**
-     * @export
-     * @param {Object} args - Arguments
-     * @param {string | Event} args.event - The event to dispatch.
-     * @param {HTMLElement | Element | window} [args.element=window] - The element to dispatch the event on.
-     * @returns {void}
-     *
-     * @throws {Error} Throws an error if the `event` is not a string that can be converted to a CustomEvent or not an instance of Event.
-     */
-    export function event(args: {
-        event: string | Event;
-        element?: HTMLElement | Element | (Window & typeof globalThis);
-    }): void;
-    /**
-     * @export
-     * Copy pasted from https://raw.githubusercontent.com/testing-library/jest-dom/master/src/to-be-visible.js
-     * @param {Element | HTMLElement} element
-     * @param {Element | HTMLElement} [previousElement]
-     * @returns {boolean}
-     */
-    export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
-}
-declare module "socket:test/index" {
-    /**
-     * @returns {number} - The default timeout for tests in milliseconds.
-     */
-    export function getDefaultTestRunnerTimeout(): number;
-    /**
-     * @param {string} name
-     * @param {TestFn} [fn]
-     * @returns {void}
-     */
-    export function only(name: string, fn?: TestFn): void;
-    /**
-     * @param {string} _name
-     * @param {TestFn} [_fn]
-     * @returns {void}
-     */
-    export function skip(_name: string, _fn?: TestFn): void;
-    /**
-     * @param {boolean} strict
-     * @returns {void}
-     */
-    export function setStrict(strict: boolean): void;
-    /**
-     * @typedef {{
-     *    (name: string, fn?: TestFn): void
-     *    only(name: string, fn?: TestFn): void
-     *    skip(name: string, fn?: TestFn): void
-     * }} testWithProperties
-     * @ignore
-     */
-    /**
-     * @type {testWithProperties}
-     * @param {string} name
-     * @param {TestFn} [fn]
-     * @returns {void}
-     */
-    export function test(name: string, fn?: TestFn): void;
-    export namespace test {
-        export { only };
-        export { skip };
-    }
-    /**
-     * @typedef {(t: Test) => (void | Promise<void>)} TestFn
-     */
-    /**
-     * @class
-     */
-    export class Test {
-        /**
-         * @constructor
-         * @param {string} name
-         * @param {TestFn} fn
-         * @param {TestRunner} runner
-         */
-        constructor(name: string, fn: TestFn, runner: TestRunner);
-        /**
-         * @type {string}
-         * @ignore
-         */
-        name: string;
-        /**
-         * @type {null|number}
-         * @ignore
-         */
-        _planned: null | number;
-        /**
-         * @type {null|number}
-         * @ignore
-         */
-        _actual: null | number;
-        /**
-         * @type {TestFn}
-         * @ignore
-         */
-        fn: TestFn;
-        /**
-         * @type {TestRunner}
-         * @ignore
-         */
-        runner: TestRunner;
-        /**
-         * @type{{ pass: number, fail: number }}
-         * @ignore
-         */
-        _result: {
-            pass: number;
-            fail: number;
-        };
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        done: boolean;
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        strict: boolean;
-        /**
-         * @param {string} msg
-         * @returns {void}
-         */
-        comment(msg: string): void;
-        /**
-         * Plan the number of assertions.
-         *
-         * @param {number} n
-         * @returns {void}
-         */
-        plan(n: number): void;
-        /**
-         * @template T
-         * @param {T} actual
-         * @param {T} expected
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        deepEqual<T>(actual: T, expected: T, msg?: string): void;
-        /**
-         * @template T
-         * @param {T} actual
-         * @param {T} expected
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        notDeepEqual<T_1>(actual: T_1, expected: T_1, msg?: string): void;
-        /**
-         * @template T
-         * @param {T} actual
-         * @param {T} expected
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        equal<T_2>(actual: T_2, expected: T_2, msg?: string): void;
-        /**
-         * @param {unknown} actual
-         * @param {unknown} expected
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        notEqual(actual: unknown, expected: unknown, msg?: string): void;
-        /**
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        fail(msg?: string): void;
-        /**
-         * @param {unknown} actual
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        ok(actual: unknown, msg?: string): void;
-        /**
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        pass(msg?: string): void;
-        /**
-         * @param {Error | null | undefined} err
-         * @param {string} [msg]
-         * @returns {void}
-         */
-        ifError(err: Error | null | undefined, msg?: string): void;
-        /**
-         * @param {Function} fn
-         * @param {RegExp | any} [expected]
-         * @param {string} [message]
-         * @returns {void}
-         */
-        throws(fn: Function, expected?: RegExp | any, message?: string): void;
-        /**
-         * Sleep for ms with an optional msg
-         *
-         * @param {number} ms
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.sleep(100)
-         * ```
-         */
-        sleep(ms: number, msg?: string): Promise<void>;
-        /**
-         * Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
-         * tests are run headlessly.
-         *
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.requestAnimationFrame()
-         * ```
-         */
-        requestAnimationFrame(msg?: string): Promise<void>;
-        /**
-         * Dispatch the `click`` method on an element specified by selector.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.click('.class button', 'Click a button')
-         * ```
-         */
-        click(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Dispatch the click window.MouseEvent on an element specified by selector.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.eventClick('.class button', 'Click a button with an event')
-         * ```
-         */
-        eventClick(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         *  Dispatch an event on the target.
-         *
-         * @param {string | Event} event - The event name or Event instance to dispatch.
-         * @param {string|HTMLElement|Element} target - A CSS selector string, or an instance of HTMLElement, or Element to dispatch the event on.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
-         * ```
-         */
-        dispatchEvent(event: string | Event, target: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         *  Call the focus method on element specified by selector.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.focus('#my-div')
-         * ```
-         */
-        focus(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         *  Call the blur method on element specified by selector.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.blur('#my-div')
-         * ```
-         */
-        blur(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Consecutively set the str value of the element specified by selector to simulate typing.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {string} str - The string to type into the :focus element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
-         * ```
-         */
-        type(selector: string | HTMLElement | Element, str: string, msg?: string): Promise<void>;
-        /**
-         * appendChild an element el to a parent selector element.
-         *
-         * @param {string|HTMLElement|Element} parentSelector - A CSS selector string, or an instance of HTMLElement, or Element to appendChild on.
-         * @param {HTMLElement|Element} el - A element to append to the parent element.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * const myElement = createElement('div')
-         * await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
-         * ```
-         */
-        appendChild(parentSelector: string | HTMLElement | Element, el: HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Remove an element from the DOM.
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to remove from the DOM.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.removeElement('#dom-selector', 'Remove #dom-selector')
-         * ```
-         */
-        removeElement(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Test if an element is visible
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.elementVisible('#dom-selector','Element is visible')
-         * ```
-         */
-        elementVisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Test if an element is invisible
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
-         * @param {string} [msg]
-         * @returns {Promise<void>}
-         *
-         * @example
-         * ```js
-         * await t.elementInvisible('#dom-selector','Element is invisible')
-         * ```
-         */
-        elementInvisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
-        /**
-         * Test if an element is invisible
-         *
-         * @param {string|(() => HTMLElement|Element|null|undefined)} querySelectorOrFn - A query string or a function that returns an element.
-         * @param {Object} [opts]
-         * @param {boolean} [opts.visible] - The element needs to be visible.
-         * @param {number} [opts.timeout] - The maximum amount of time to wait.
-         * @param {string} [msg]
-         * @returns {Promise<HTMLElement|Element|void>}
-         *
-         * @example
-         * ```js
-         * await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
-         * ```
-         */
-        waitFor(querySelectorOrFn: string | (() => HTMLElement | Element | null | undefined), opts?: {
-            visible?: boolean;
-            timeout?: number;
-        }, msg?: string): Promise<HTMLElement | Element | void>;
-        /**
-         * @typedef {Object} WaitForTextOpts
-         * @property {string} [text] - The text to wait for
-         * @property {number} [timeout]
-         * @property {Boolean} [multipleTags]
-         * @property {RegExp} [regex] The regex to wait for
-         */
-        /**
-         * Test if an element is invisible
-         *
-         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
-         * @param {WaitForTextOpts | string | RegExp} [opts]
-         * @param {string} [msg]
-         * @returns {Promise<HTMLElement|Element|void>}
-         *
-         * @example
-         * ```js
-         * await t.waitForText('#dom-selector', 'Text to wait for')
-         * ```
-         *
-         * @example
-         * ```js
-         * await t.waitForText('#dom-selector', /hello/i)
-         * ```
-         *
-         * @example
-         * ```js
-         * await t.waitForText('#dom-selector', {
-         *   text: 'Text to wait for',
-         *   multipleTags: true
-         * })
-         * ```
-         */
-        waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
-            /**
-             * - The text to wait for
-             */
-            text?: string;
-            timeout?: number;
-            multipleTags?: boolean;
-            /**
-             * The regex to wait for
-             */
-            regex?: RegExp;
-        }, msg?: string): Promise<HTMLElement | Element | void>;
-        /**
-         * Run a querySelector as an assert and also get the results
-         *
-         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
-         * @param {string} [msg]
-         * @returns {HTMLElement | Element}
-         *
-         * @example
-         * ```js
-         * const element = await t.querySelector('#dom-selector')
-         * ```
-         */
-        querySelector(selector: string, msg?: string): HTMLElement | Element;
-        /**
-         * Run a querySelectorAll as an assert and also get the results
-         *
-         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
-         * @param {string} [msg]
-         @returns {Array<HTMLElement | Element>}
-         *
-         * @example
-         * ```js
-         * const elements = await t.querySelectorAll('#dom-selector', '')
-         * ```
-         */
-        querySelectorAll(selector: string, msg?: string): Array<HTMLElement | Element>;
-        /**
-         * Retrieves the computed styles for a given element.
-         *
-         * @param {string|Element} selector - The CSS selector or the Element object for which to get the computed styles.
-         * @param {string} [msg] - An optional message to display when the operation is successful. Default message will be generated based on the type of selector.
-         * @returns {CSSStyleDeclaration} - The computed styles of the element.
-         * @throws {Error} - Throws an error if the element has no `ownerDocument` or if `ownerDocument.defaultView` is not available.
-         *
-         * @example
-         * ```js
-         * // Using CSS selector
-         * const style = getComputedStyle('.my-element', 'Custom success message');
-         * ```
-         *
-         * @example
-         * ```js
-         * // Using Element object
-         * const el = document.querySelector('.my-element');
-         * const style = getComputedStyle(el);
-         * ```
-         */
-        getComputedStyle(selector: string | Element, msg?: string): CSSStyleDeclaration;
-        /**
-         * @param {boolean} pass
-         * @param {unknown} actual
-         * @param {unknown} expected
-         * @param {string} description
-         * @param {string} operator
-         * @returns {void}
-         * @ignore
-         */
-        _assert(pass: boolean, actual: unknown, expected: unknown, description: string, operator: string): void;
-        /**
-         * @returns {Promise<{
-         *   pass: number,
-         *   fail: number
-         * }>}
-         */
-        run(): Promise<{
-            pass: number;
-            fail: number;
-        }>;
-    }
-    /**
-     * @class
-     */
-    export class TestRunner {
-        /**
-         * @constructor
-         * @param {(lines: string) => void} [report]
-         */
-        constructor(report?: (lines: string) => void);
-        /**
-         * @type {(lines: string) => void}
-         * @ignore
-         */
-        report: (lines: string) => void;
-        /**
-         * @type {Test[]}
-         * @ignore
-         */
-        tests: Test[];
-        /**
-         * @type {Test[]}
-         * @ignore
-         */
-        onlyTests: Test[];
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        scheduled: boolean;
-        /**
-         * @type {number}
-         * @ignore
-         */
-        _id: number;
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        completed: boolean;
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        rethrowExceptions: boolean;
-        /**
-         * @type {boolean}
-         * @ignore
-         */
-        strict: boolean;
-        /**
-        * @type {function | void}
-        * @ignore
-        */
-        _onFinishCallback: Function | void;
-        /**
-         * @returns {string}
-         */
-        nextId(): string;
-        /**
-         * @param {string} name
-         * @param {TestFn} fn
-         * @param {boolean} only
-         * @returns {void}
-         */
-        add(name: string, fn: TestFn, only: boolean): void;
-        /**
-         * @returns {Promise<void>}
-         */
-        run(): Promise<void>;
-        /**
-         * @param {(result: { total: number, success: number, fail: number }) => void} callback
-         * @returns {void}
-         */
-        onFinish(callback: (result: {
-            total: number;
-            success: number;
-            fail: number;
-        }) => void): void;
-    }
-    /**
-     * @ignore
-     */
-    export const GLOBAL_TEST_RUNNER: TestRunner;
-    export default test;
-    export type testWithProperties = {
-        (name: string, fn?: TestFn): void;
-        only(name: string, fn?: TestFn): void;
-        skip(name: string, fn?: TestFn): void;
-    };
-    export type TestFn = (t: Test) => (void | Promise<void>);
-}
-declare module "socket:test" {
-    export * from "socket:test/index";
-    export default test;
-    import test from "socket:test/index";
-}
-declare module "socket:module" {
-    export function isBuiltin(name: any): boolean;
-    /**
-     * Creates a `require` function from a source URL.
-     * @param {URL|string} sourcePath
-     * @return {function}
-     */
-    export function createRequire(sourcePath: URL | string): Function;
-    export default exports;
-    /**
-     * A limited set of builtins exposed to CommonJS modules.
-     */
-    export const builtins: {
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        gc: any;
-        ipc: typeof ipc;
-        module: typeof exports;
-        os: typeof os;
-        path: typeof path;
-        process: any;
-        stream: typeof stream;
-        test: typeof test;
-        util: typeof util;
-        url: any;
-    };
-    export const builtinModules: {
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        gc: any;
-        ipc: typeof ipc;
-        module: typeof exports;
-        os: typeof os;
-        path: typeof path;
-        process: any;
-        stream: typeof stream;
-        test: typeof test;
-        util: typeof util;
-        url: any;
-    };
-    /**
-     * CommonJS module scope source wrapper.
-     * @type {string}
-     */
-    export const COMMONJS_WRAPPER: string;
-    /**
-     * The main entry source origin.
-     * @type {string}
-     */
-    export const MAIN_SOURCE_ORIGIN: string;
-    export namespace scope {
-        let current: any;
-        let previous: any;
-    }
-    /**
-     * A container for a loaded CommonJS module. All errors bubble
-     * to the "main" module and global object (if possible).
-     */
-    export class Module extends EventTarget {
-        static set current(module: exports.Module);
-        /**
-         * A reference to the currently scoped module.
-         * @type {Module?}
-         */
-        static get current(): exports.Module;
-        static set previous(module: exports.Module);
-        /**
-         * A reference to the previously scoped module.
-         * @type {Module?}
-         */
-        static get previous(): exports.Module;
-        /**
-         * Module cache.
-         * @ignore
-         */
-        static cache: any;
-        /**
-         * Custom module resolvers.
-         * @type {Array<ModuleResolver>}
-         */
-        static resolvers: Array<ModuleResolver>;
-        /**
-         * CommonJS module scope source wrapper.
-         * @ignore
-         */
-        static wrapper: string;
-        /**
-         * Creates a `require` function from a source URL.
-         * @param {URL|string} sourcePath
-         * @return {function}
-         */
-        static createRequire(sourcePath: URL | string): Function;
-        /**
-         * The main entry module, lazily created.
-         * @type {Module}
-         */
-        static get main(): exports.Module;
-        /**
-         * Wraps source in a CommonJS module scope.
-         */
-        static wrap(source: any): string;
-        /**
-         * Creates a `Module` from source URL and optionally a parent module.
-         * @param {string|URL|Module} [sourcePath]
-         * @param {string|URL|Module} [parent]
-         */
-        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
-        /**
-         * `Module` class constructor.
-         * @ignore
-         */
-        constructor(id: any, parent?: any, sourcePath?: any);
-        /**
-         * The module id, most likely a file name.
-         * @type {string}
-         */
-        id: string;
-        /**
-         * The parent module, if given.
-         * @type {Module?}
-         */
-        parent: Module | null;
-        /**
-         * `true` if the module did load successfully.
-         * @type {boolean}
-         */
-        loaded: boolean;
-        /**
-         * The module's exports.
-         * @type {any}
-         */
-        exports: any;
-        /**
-         * The filename of the module.
-         * @type {string}
-         */
-        filename: string;
-        /**
-         * Modules children to this one, as in they were required in this
-         * module scope context.
-         * @type {Array<Module>}
-         */
-        children: Array<Module>;
-        /**
-         * The original source URL to load this module.
-         * @type {string}
-         */
-        sourcePath: string;
-        /**
-         * `true` if the module is the main module.
-         * @type {boolean}
-         */
-        get isMain(): boolean;
-        /**
-         * `true` if the module was loaded by name, not file path.
-         * @type {boolean}
-         */
-        get isNamed(): boolean;
-        /**
-         * @type {URL}
-         */
-        get url(): URL;
-        /**
-         * @type {string}
-         */
-        get pathname(): string;
-        /**
-         * @type {string}
-         */
-        get path(): string;
-        /**
-         * Loads the module, synchronously returning `true` upon success,
-         * otherwise `false`.
-         * @return {boolean}
-         */
-        load(): boolean;
-        /**
-         * Creates a require function for loaded CommonJS modules
-         * child to this module.
-         * @return {function(string): any}
-         */
-        createRequire(): (arg0: string) => any;
-        /**
-         * Requires a module at `filename` that will be loaded as a child
-         * to this module.
-         * @param {string} filename
-         * @return {any}
-         */
-        require(filename: string): any;
-        /**
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-    }
-    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
-    import { URL } from "socket:url/index";
-    import * as exports from "socket:module";
-    import buffer from "socket:buffer";
-    import dgram from "socket:dgram";
-    import dns from "socket:dns";
-    import events from "socket:events";
-    import fs from "socket:fs";
-    import ipc from "socket:ipc";
-    import os from "socket:os";
-    import { posix as path } from "socket:path";
-    import stream from "socket:stream";
-    import test from "socket:test";
-    import util from "socket:util";
-    
-}
 declare module "socket:stream-relay/packets" {
     /**
      * The magic bytes prefixing every packet. They are the
@@ -7350,6 +6470,905 @@ declare module "socket:stream-relay/index" {
 declare module "socket:stream-relay/sugar" {
     function _default(dgram: any, events: any): (options?: {}) => Promise<any>;
     export default _default;
+}
+declare module "socket:node/index" {
+    export default network;
+    export const network: (options?: {}) => Promise<any>;
+    import { Cache } from "socket:stream-relay/index";
+    import { sha256 } from "socket:stream-relay/index";
+    import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
+    import { NAT } from "socket:stream-relay/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
+}
+declare module "socket:index" {
+    import { network } from "socket:node/index";
+    import { Cache } from "socket:node/index";
+    import { sha256 } from "socket:node/index";
+    import { Encryption } from "socket:node/index";
+    import { Packet } from "socket:node/index";
+    import { NAT } from "socket:node/index";
+    export { network, Cache, sha256, Encryption, Packet, NAT };
+}
+declare module "socket:test/fast-deep-equal" {
+    export default function equal(a: any, b: any): boolean;
+}
+declare module "socket:test/context" {
+    export default function _default(GLOBAL_TEST_RUNNER: any): void;
+}
+declare module "socket:test/dom-helpers" {
+    /**
+     * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
+     *
+     * @export
+     * @param {string|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+     * @returns {Element} The HTMLElement, Element, or Window that corresponds to the selector.
+     * @throws {Error} Throws an error if the `selector` is not a string that resolves to an HTMLElement or not an instance of HTMLElement, Element, or Window.
+     *
+     */
+    export function toElement(selector: string | Element): Element;
+    /**
+     * Waits for an element to appear in the DOM and resolves the promise when it does.
+     *
+     * @export
+     * @param {Object} args - Configuration arguments.
+     * @param {string} [args.selector] - The CSS selector to look for.
+     * @param {boolean} [args.visible=true] - Whether the element should be visible.
+     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
+     * @param {() => HTMLElement | Element | null | undefined} [lambda] - An optional function that returns the element. Used if the `selector` is not provided.
+     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element.
+     *
+     * @throws {Error} - Throws an error if neither `lambda` nor `selector` is provided.
+     * @throws {Error} - Throws an error if the element is not found within the timeout.
+     *
+     * @example
+     * ```js
+     * waitFor({ selector: '#my-element', visible: true, timeout: 5000 })
+     *   .then(el => console.log('Element found:', el))
+     *   .catch(err => console.log('Element not found:', err));
+     * ```
+     */
+    export function waitFor(args: {
+        selector?: string;
+        visible?: boolean;
+        timeout?: number;
+    }, lambda?: () => HTMLElement | Element | null | undefined): Promise<Element | HTMLElement | void>;
+    /**
+     * Waits for an element's text content to match a given string or regular expression.
+     *
+     * @export
+     * @param {Object} args - Configuration arguments.
+     * @param {Element} args.element - The root element from which to begin searching.
+     * @param {string} [args.text] - The text to search for within elements.
+     * @param {RegExp} [args.regex] - A regular expression to match against element text content.
+     * @param {boolean} [args.multipleTags=false] - Whether to look for text across multiple sibling elements.
+     * @param {number} [args.timeout=defaultTimeout] - Time in milliseconds to wait before rejecting the promise.
+     * @returns {Promise<Element|HTMLElement|void>} - A promise that resolves to the found element or null.
+     *
+     * @example
+     * ```js
+     * waitForText({ element: document.body, text: 'Hello', timeout: 5000 })
+     *   .then(el => console.log('Element found:', el))
+     *   .catch(err => console.log('Element not found:', err));
+     * ```
+     */
+    export function waitForText(args: {
+        element: Element;
+        text?: string;
+        regex?: RegExp;
+        multipleTags?: boolean;
+        timeout?: number;
+    }): Promise<Element | HTMLElement | void>;
+    /**
+     * @export
+     * @param {Object} args - Arguments
+     * @param {string | Event} args.event - The event to dispatch.
+     * @param {HTMLElement | Element | window} [args.element=window] - The element to dispatch the event on.
+     * @returns {void}
+     *
+     * @throws {Error} Throws an error if the `event` is not a string that can be converted to a CustomEvent or not an instance of Event.
+     */
+    export function event(args: {
+        event: string | Event;
+        element?: HTMLElement | Element | (Window & typeof globalThis);
+    }): void;
+    /**
+     * @export
+     * Copy pasted from https://raw.githubusercontent.com/testing-library/jest-dom/master/src/to-be-visible.js
+     * @param {Element | HTMLElement} element
+     * @param {Element | HTMLElement} [previousElement]
+     * @returns {boolean}
+     */
+    export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
+}
+declare module "socket:test/index" {
+    /**
+     * @returns {number} - The default timeout for tests in milliseconds.
+     */
+    export function getDefaultTestRunnerTimeout(): number;
+    /**
+     * @param {string} name
+     * @param {TestFn} [fn]
+     * @returns {void}
+     */
+    export function only(name: string, fn?: TestFn): void;
+    /**
+     * @param {string} _name
+     * @param {TestFn} [_fn]
+     * @returns {void}
+     */
+    export function skip(_name: string, _fn?: TestFn): void;
+    /**
+     * @param {boolean} strict
+     * @returns {void}
+     */
+    export function setStrict(strict: boolean): void;
+    /**
+     * @typedef {{
+     *    (name: string, fn?: TestFn): void
+     *    only(name: string, fn?: TestFn): void
+     *    skip(name: string, fn?: TestFn): void
+     * }} testWithProperties
+     * @ignore
+     */
+    /**
+     * @type {testWithProperties}
+     * @param {string} name
+     * @param {TestFn} [fn]
+     * @returns {void}
+     */
+    export function test(name: string, fn?: TestFn): void;
+    export namespace test {
+        export { only };
+        export { skip };
+    }
+    /**
+     * @typedef {(t: Test) => (void | Promise<void>)} TestFn
+     */
+    /**
+     * @class
+     */
+    export class Test {
+        /**
+         * @constructor
+         * @param {string} name
+         * @param {TestFn} fn
+         * @param {TestRunner} runner
+         */
+        constructor(name: string, fn: TestFn, runner: TestRunner);
+        /**
+         * @type {string}
+         * @ignore
+         */
+        name: string;
+        /**
+         * @type {null|number}
+         * @ignore
+         */
+        _planned: null | number;
+        /**
+         * @type {null|number}
+         * @ignore
+         */
+        _actual: null | number;
+        /**
+         * @type {TestFn}
+         * @ignore
+         */
+        fn: TestFn;
+        /**
+         * @type {TestRunner}
+         * @ignore
+         */
+        runner: TestRunner;
+        /**
+         * @type{{ pass: number, fail: number }}
+         * @ignore
+         */
+        _result: {
+            pass: number;
+            fail: number;
+        };
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        done: boolean;
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        strict: boolean;
+        /**
+         * @param {string} msg
+         * @returns {void}
+         */
+        comment(msg: string): void;
+        /**
+         * Plan the number of assertions.
+         *
+         * @param {number} n
+         * @returns {void}
+         */
+        plan(n: number): void;
+        /**
+         * @template T
+         * @param {T} actual
+         * @param {T} expected
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        deepEqual<T>(actual: T, expected: T, msg?: string): void;
+        /**
+         * @template T
+         * @param {T} actual
+         * @param {T} expected
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        notDeepEqual<T_1>(actual: T_1, expected: T_1, msg?: string): void;
+        /**
+         * @template T
+         * @param {T} actual
+         * @param {T} expected
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        equal<T_2>(actual: T_2, expected: T_2, msg?: string): void;
+        /**
+         * @param {unknown} actual
+         * @param {unknown} expected
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        notEqual(actual: unknown, expected: unknown, msg?: string): void;
+        /**
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        fail(msg?: string): void;
+        /**
+         * @param {unknown} actual
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        ok(actual: unknown, msg?: string): void;
+        /**
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        pass(msg?: string): void;
+        /**
+         * @param {Error | null | undefined} err
+         * @param {string} [msg]
+         * @returns {void}
+         */
+        ifError(err: Error | null | undefined, msg?: string): void;
+        /**
+         * @param {Function} fn
+         * @param {RegExp | any} [expected]
+         * @param {string} [message]
+         * @returns {void}
+         */
+        throws(fn: Function, expected?: RegExp | any, message?: string): void;
+        /**
+         * Sleep for ms with an optional msg
+         *
+         * @param {number} ms
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.sleep(100)
+         * ```
+         */
+        sleep(ms: number, msg?: string): Promise<void>;
+        /**
+         * Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
+         * tests are run headlessly.
+         *
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.requestAnimationFrame()
+         * ```
+         */
+        requestAnimationFrame(msg?: string): Promise<void>;
+        /**
+         * Dispatch the `click`` method on an element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.click('.class button', 'Click a button')
+         * ```
+         */
+        click(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Dispatch the click window.MouseEvent on an element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.eventClick('.class button', 'Click a button with an event')
+         * ```
+         */
+        eventClick(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Dispatch an event on the target.
+         *
+         * @param {string | Event} event - The event name or Event instance to dispatch.
+         * @param {string|HTMLElement|Element} target - A CSS selector string, or an instance of HTMLElement, or Element to dispatch the event on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.dispatchEvent('my-event', '#my-div', 'Fire the my-event event')
+         * ```
+         */
+        dispatchEvent(event: string | Event, target: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Call the focus method on element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.focus('#my-div')
+         * ```
+         */
+        focus(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         *  Call the blur method on element specified by selector.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.blur('#my-div')
+         * ```
+         */
+        blur(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Consecutively set the str value of the element specified by selector to simulate typing.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {string} str - The string to type into the :focus element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.typeValue('#my-div', 'Hello World', 'Type "Hello World" into #my-div')
+         * ```
+         */
+        type(selector: string | HTMLElement | Element, str: string, msg?: string): Promise<void>;
+        /**
+         * appendChild an element el to a parent selector element.
+         *
+         * @param {string|HTMLElement|Element} parentSelector - A CSS selector string, or an instance of HTMLElement, or Element to appendChild on.
+         * @param {HTMLElement|Element} el - A element to append to the parent element.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * const myElement = createElement('div')
+         * await t.appendChild('#parent-selector', myElement, 'Append myElement into #parent-selector')
+         * ```
+         */
+        appendChild(parentSelector: string | HTMLElement | Element, el: HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Remove an element from the DOM.
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to remove from the DOM.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.removeElement('#dom-selector', 'Remove #dom-selector')
+         * ```
+         */
+        removeElement(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is visible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.elementVisible('#dom-selector','Element is visible')
+         * ```
+         */
+        elementVisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element to test visibility on.
+         * @param {string} [msg]
+         * @returns {Promise<void>}
+         *
+         * @example
+         * ```js
+         * await t.elementInvisible('#dom-selector','Element is invisible')
+         * ```
+         */
+        elementInvisible(selector: string | HTMLElement | Element, msg?: string): Promise<void>;
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|(() => HTMLElement|Element|null|undefined)} querySelectorOrFn - A query string or a function that returns an element.
+         * @param {Object} [opts]
+         * @param {boolean} [opts.visible] - The element needs to be visible.
+         * @param {number} [opts.timeout] - The maximum amount of time to wait.
+         * @param {string} [msg]
+         * @returns {Promise<HTMLElement|Element|void>}
+         *
+         * @example
+         * ```js
+         * await t.waitFor('#dom-selector', { visible: true },'#dom-selector is on the page and visible')
+         * ```
+         */
+        waitFor(querySelectorOrFn: string | (() => HTMLElement | Element | null | undefined), opts?: {
+            visible?: boolean;
+            timeout?: number;
+        }, msg?: string): Promise<HTMLElement | Element | void>;
+        /**
+         * @typedef {Object} WaitForTextOpts
+         * @property {string} [text] - The text to wait for
+         * @property {number} [timeout]
+         * @property {Boolean} [multipleTags]
+         * @property {RegExp} [regex] The regex to wait for
+         */
+        /**
+         * Test if an element is invisible
+         *
+         * @param {string|HTMLElement|Element} selector - A CSS selector string, or an instance of HTMLElement, or Element.
+         * @param {WaitForTextOpts | string | RegExp} [opts]
+         * @param {string} [msg]
+         * @returns {Promise<HTMLElement|Element|void>}
+         *
+         * @example
+         * ```js
+         * await t.waitForText('#dom-selector', 'Text to wait for')
+         * ```
+         *
+         * @example
+         * ```js
+         * await t.waitForText('#dom-selector', /hello/i)
+         * ```
+         *
+         * @example
+         * ```js
+         * await t.waitForText('#dom-selector', {
+         *   text: 'Text to wait for',
+         *   multipleTags: true
+         * })
+         * ```
+         */
+        waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
+            /**
+             * - The text to wait for
+             */
+            text?: string;
+            timeout?: number;
+            multipleTags?: boolean;
+            /**
+             * The regex to wait for
+             */
+            regex?: RegExp;
+        }, msg?: string): Promise<HTMLElement | Element | void>;
+        /**
+         * Run a querySelector as an assert and also get the results
+         *
+         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
+         * @param {string} [msg]
+         * @returns {HTMLElement | Element}
+         *
+         * @example
+         * ```js
+         * const element = await t.querySelector('#dom-selector')
+         * ```
+         */
+        querySelector(selector: string, msg?: string): HTMLElement | Element;
+        /**
+         * Run a querySelectorAll as an assert and also get the results
+         *
+         * @param {string} selector - A CSS selector string, or an instance of HTMLElement, or Element to select.
+         * @param {string} [msg]
+         @returns {Array<HTMLElement | Element>}
+         *
+         * @example
+         * ```js
+         * const elements = await t.querySelectorAll('#dom-selector', '')
+         * ```
+         */
+        querySelectorAll(selector: string, msg?: string): Array<HTMLElement | Element>;
+        /**
+         * Retrieves the computed styles for a given element.
+         *
+         * @param {string|Element} selector - The CSS selector or the Element object for which to get the computed styles.
+         * @param {string} [msg] - An optional message to display when the operation is successful. Default message will be generated based on the type of selector.
+         * @returns {CSSStyleDeclaration} - The computed styles of the element.
+         * @throws {Error} - Throws an error if the element has no `ownerDocument` or if `ownerDocument.defaultView` is not available.
+         *
+         * @example
+         * ```js
+         * // Using CSS selector
+         * const style = getComputedStyle('.my-element', 'Custom success message');
+         * ```
+         *
+         * @example
+         * ```js
+         * // Using Element object
+         * const el = document.querySelector('.my-element');
+         * const style = getComputedStyle(el);
+         * ```
+         */
+        getComputedStyle(selector: string | Element, msg?: string): CSSStyleDeclaration;
+        /**
+         * @param {boolean} pass
+         * @param {unknown} actual
+         * @param {unknown} expected
+         * @param {string} description
+         * @param {string} operator
+         * @returns {void}
+         * @ignore
+         */
+        _assert(pass: boolean, actual: unknown, expected: unknown, description: string, operator: string): void;
+        /**
+         * @returns {Promise<{
+         *   pass: number,
+         *   fail: number
+         * }>}
+         */
+        run(): Promise<{
+            pass: number;
+            fail: number;
+        }>;
+    }
+    /**
+     * @class
+     */
+    export class TestRunner {
+        /**
+         * @constructor
+         * @param {(lines: string) => void} [report]
+         */
+        constructor(report?: (lines: string) => void);
+        /**
+         * @type {(lines: string) => void}
+         * @ignore
+         */
+        report: (lines: string) => void;
+        /**
+         * @type {Test[]}
+         * @ignore
+         */
+        tests: Test[];
+        /**
+         * @type {Test[]}
+         * @ignore
+         */
+        onlyTests: Test[];
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        scheduled: boolean;
+        /**
+         * @type {number}
+         * @ignore
+         */
+        _id: number;
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        completed: boolean;
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        rethrowExceptions: boolean;
+        /**
+         * @type {boolean}
+         * @ignore
+         */
+        strict: boolean;
+        /**
+        * @type {function | void}
+        * @ignore
+        */
+        _onFinishCallback: Function | void;
+        /**
+         * @returns {string}
+         */
+        nextId(): string;
+        /**
+         * @param {string} name
+         * @param {TestFn} fn
+         * @param {boolean} only
+         * @returns {void}
+         */
+        add(name: string, fn: TestFn, only: boolean): void;
+        /**
+         * @returns {Promise<void>}
+         */
+        run(): Promise<void>;
+        /**
+         * @param {(result: { total: number, success: number, fail: number }) => void} callback
+         * @returns {void}
+         */
+        onFinish(callback: (result: {
+            total: number;
+            success: number;
+            fail: number;
+        }) => void): void;
+    }
+    /**
+     * @ignore
+     */
+    export const GLOBAL_TEST_RUNNER: TestRunner;
+    export default test;
+    export type testWithProperties = {
+        (name: string, fn?: TestFn): void;
+        only(name: string, fn?: TestFn): void;
+        skip(name: string, fn?: TestFn): void;
+    };
+    export type TestFn = (t: Test) => (void | Promise<void>);
+}
+declare module "socket:test" {
+    export * from "socket:test/index";
+    export default test;
+    import test from "socket:test/index";
+}
+declare module "socket:module" {
+    export function isBuiltin(name: any): boolean;
+    /**
+     * Creates a `require` function from a source URL.
+     * @param {URL|string} sourcePath
+     * @return {function}
+     */
+    export function createRequire(sourcePath: URL | string): Function;
+    export default exports;
+    /**
+     * A limited set of builtins exposed to CommonJS modules.
+     */
+    export const builtins: {
+        buffer: typeof buffer;
+        console: import("socket:console").Console;
+        dgram: typeof dgram;
+        dns: typeof dns;
+        'dns/promises': typeof dns.promises;
+        events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
+        fs: typeof fs;
+        'fs/promises': typeof fs.promises;
+        gc: any;
+        ipc: typeof ipc;
+        module: typeof exports;
+        os: typeof os;
+        path: typeof path;
+        process: any;
+        stream: typeof stream;
+        test: typeof test;
+        util: typeof util;
+        url: any;
+    };
+    export const builtinModules: {
+        buffer: typeof buffer;
+        console: import("socket:console").Console;
+        dgram: typeof dgram;
+        dns: typeof dns;
+        'dns/promises': typeof dns.promises;
+        events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
+        fs: typeof fs;
+        'fs/promises': typeof fs.promises;
+        gc: any;
+        ipc: typeof ipc;
+        module: typeof exports;
+        os: typeof os;
+        path: typeof path;
+        process: any;
+        stream: typeof stream;
+        test: typeof test;
+        util: typeof util;
+        url: any;
+    };
+    /**
+     * CommonJS module scope source wrapper.
+     * @type {string}
+     */
+    export const COMMONJS_WRAPPER: string;
+    /**
+     * The main entry source origin.
+     * @type {string}
+     */
+    export const MAIN_SOURCE_ORIGIN: string;
+    export namespace scope {
+        let current: any;
+        let previous: any;
+    }
+    /**
+     * A container for a loaded CommonJS module. All errors bubble
+     * to the "main" module and global object (if possible).
+     */
+    export class Module extends EventTarget {
+        static set current(module: exports.Module);
+        /**
+         * A reference to the currently scoped module.
+         * @type {Module?}
+         */
+        static get current(): exports.Module;
+        static set previous(module: exports.Module);
+        /**
+         * A reference to the previously scoped module.
+         * @type {Module?}
+         */
+        static get previous(): exports.Module;
+        /**
+         * Module cache.
+         * @ignore
+         */
+        static cache: any;
+        /**
+         * Custom module resolvers.
+         * @type {Array<ModuleResolver>}
+         */
+        static resolvers: Array<ModuleResolver>;
+        /**
+         * CommonJS module scope source wrapper.
+         * @ignore
+         */
+        static wrapper: string;
+        /**
+         * Creates a `require` function from a source URL.
+         * @param {URL|string} sourcePath
+         * @return {function}
+         */
+        static createRequire(sourcePath: URL | string): Function;
+        /**
+         * The main entry module, lazily created.
+         * @type {Module}
+         */
+        static get main(): exports.Module;
+        /**
+         * Wraps source in a CommonJS module scope.
+         */
+        static wrap(source: any): string;
+        /**
+         * Creates a `Module` from source URL and optionally a parent module.
+         * @param {string|URL|Module} [sourcePath]
+         * @param {string|URL|Module} [parent]
+         */
+        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
+        /**
+         * `Module` class constructor.
+         * @ignore
+         */
+        constructor(id: any, parent?: any, sourcePath?: any);
+        /**
+         * The module id, most likely a file name.
+         * @type {string}
+         */
+        id: string;
+        /**
+         * The parent module, if given.
+         * @type {Module?}
+         */
+        parent: Module | null;
+        /**
+         * `true` if the module did load successfully.
+         * @type {boolean}
+         */
+        loaded: boolean;
+        /**
+         * The module's exports.
+         * @type {any}
+         */
+        exports: any;
+        /**
+         * The filename of the module.
+         * @type {string}
+         */
+        filename: string;
+        /**
+         * Modules children to this one, as in they were required in this
+         * module scope context.
+         * @type {Array<Module>}
+         */
+        children: Array<Module>;
+        /**
+         * The original source URL to load this module.
+         * @type {string}
+         */
+        sourcePath: string;
+        /**
+         * `true` if the module is the main module.
+         * @type {boolean}
+         */
+        get isMain(): boolean;
+        /**
+         * `true` if the module was loaded by name, not file path.
+         * @type {boolean}
+         */
+        get isNamed(): boolean;
+        /**
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * @type {string}
+         */
+        get pathname(): string;
+        /**
+         * @type {string}
+         */
+        get path(): string;
+        /**
+         * Loads the module, synchronously returning `true` upon success,
+         * otherwise `false`.
+         * @return {boolean}
+         */
+        load(): boolean;
+        /**
+         * Creates a require function for loaded CommonJS modules
+         * child to this module.
+         * @return {function(string): any}
+         */
+        createRequire(): (arg0: string) => any;
+        /**
+         * Requires a module at `filename` that will be loaded as a child
+         * to this module.
+         * @param {string} filename
+         * @return {any}
+         */
+        require(filename: string): any;
+        /**
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+    }
+    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
+    import { URL } from "socket:url/index";
+    import * as exports from "socket:module";
+    import buffer from "socket:buffer";
+    import dgram from "socket:dgram";
+    import dns from "socket:dns";
+    import events from "socket:events";
+    import fs from "socket:fs";
+    import ipc from "socket:ipc";
+    import os from "socket:os";
+    import { posix as path } from "socket:path";
+    import stream from "socket:stream";
+    import test from "socket:test";
+    import util from "socket:util";
+    
 }
 declare module "socket:network" {
     export default network;
