@@ -192,7 +192,16 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L366)
+## [`setMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L288)
+
+This is a `FunctionDeclaration` named `setMenu` in `api/application.js`, it's exported but undocumented.
+
+
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L368)
+
+An alias to setSystemMenu for creating a tary menu
+
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L377)
 
 Set the enabled state of the system menu.
 
@@ -204,23 +213,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L374)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L385)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L380)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L391)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L386)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L397)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L391)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L402)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L397)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L408)
 
 
 
@@ -233,7 +242,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L405)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L416)
 
 
 

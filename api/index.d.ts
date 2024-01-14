@@ -4544,6 +4544,11 @@ declare module "socket:application" {
      *
      */
     export function setSystemMenu(o: any): Promise<ipc.Result>;
+    export function setMenu(o: any, isTrayMenu: any): Promise<ipc.Result>;
+    /**
+     * An alias to setSystemMenu for creating a tary menu
+     */
+    export function setTrayMenu(o: any): Promise<ipc.Result>;
     /**
      * Set the enabled state of the system menu.
      * @param {object} value - an options object
