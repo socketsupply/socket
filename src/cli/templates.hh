@@ -258,7 +258,7 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>{{meta_bundle_identifier}}</string>
 
   <key>LSUIElement</key>
-  <{{window_agent}}/>
+  <{{application_agent}}/>
 
   <key>LSApplicationCategoryType</key>
   <string>{{mac_category}}</string>
