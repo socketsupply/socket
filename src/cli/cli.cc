@@ -2219,6 +2219,7 @@ int main (const int argc, const char* argv[]) {
           settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
           settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
           settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
+          settings["application_agent"] = settings["application_agent"].size() > 0 ? "true" : "false";
 
           for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
             if (equal(arg, "--prod")) {

@@ -257,6 +257,9 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
 
+  <key>LSUIElement</key>
+  <{{window_agent}}/>
+
   <key>LSApplicationCategoryType</key>
   <string>{{mac_category}}</string>
 
@@ -1659,6 +1662,7 @@ constexpr auto gDefaultConfig = R"INI(
 ; Note that "~" alias won't expand to the home directory in any of the config
 ; files. Use the full path instead.
 
+
 [build]
 
 ; ssc will copy everything in this directory to the build output directory.
@@ -1691,10 +1695,12 @@ output = "build"
 ; The build script. It runs before the `[build] copy` phase.
 ; script = "npm run build"
 
+
 [build.script]
 ; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 ; default value: false
 forward_arguments = false
+
 
 [build.watch]
 ; Configure your project to watch for sources that could change when running `ssc`.
@@ -1725,11 +1731,13 @@ watch = true
 ; default value: true
 reload = true
 
+
 ; Mount file system paths in webview navigator
 [webview.navigator.mounts]
 ; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
 ; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
 ; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
+
 
 [permissions]
 ; Allow/Disallow fullscreen in application
@@ -1866,6 +1874,7 @@ simulator_device = "iPhone 14"
 ; default value: false
 ; nonexempt_encryption = false
 
+
 [linux]
 ; Helps to make your app searchable in Linux desktop environments.
 categories = "Developer Tools"
@@ -1962,13 +1971,20 @@ width = 50%
 ; default value: false
 ; utility = false
 
+
 [window.alert]
 ; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS.
 ; defalut value = ""
 ; title = ""
 
-[headless]
 
+[application]
+; If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app.
+; default value: false
+; agent = true
+
+
+[headless]
 ; The headless runner command. It is used when no OS specific runner is set.
 runner = ""
 ; The headless runner command flags. It is used when no OS specific runner is set.
