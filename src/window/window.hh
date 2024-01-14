@@ -182,7 +182,8 @@ namespace SSC {
       bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
       ICoreWebView2 *webview = nullptr;
-      HMENU systemMenu;
+      HMENU menubar;
+      HMENU menutray;
       DWORD mainThread = GetCurrentThreadId();
       POINT m_minsz = POINT {0, 0};
       POINT m_maxsz = POINT {0, 0};
@@ -222,9 +223,9 @@ namespace SSC {
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
-      void setSystemMenu (const String& seq, const String& menu);
-      void setMenu (const String& seq, const String& menu, const bool& isTrayMenu);
-      void setTrayMenu (const String& seq, const String& menu);
+      void setSystemMenu (const String& seq, const String& dsl);
+      void setMenu (const String& seq, const String& dsl, const bool& isTrayMenu);
+      void setTrayMenu (const String& seq, const String& dsl);
       void showInspector ();
       int openExternal (const String& s);
 

@@ -1318,8 +1318,8 @@ namespace SSC {
   }
 
   void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
-    if (NSApp == nil) return;
-    SSC::String menuSource = SSC::String(source);
+    if (source.empty()) return void(0);
+    SSC::String menuSource = replace(SSC::String(source), "%%", "\n");
 
     NSStatusItem *statusItem;
     NSString *title;
@@ -1338,10 +1338,6 @@ namespace SSC {
     // id appName = [[NSProcessInfo processInfo] processName];
     // title = [@"About " stringByAppendingString:appName];
 
-    // deserialize the menu
-    menuSource = replace(menuSource, "%%", "\n");
-
-    // split on ;
     auto menus = split(menuSource, ';');
 
     for (auto m : menus) {

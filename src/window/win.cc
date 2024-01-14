@@ -920,7 +920,7 @@ namespace SSC {
                             HRESULT r;
                             auto msg = IPC::Message(uri);
                             msg.isHTTP = true;
-                            // TODO(trevnorris): Make sure index and seq are set.
+                            // TODO(heapwolf): Make sure index and seq are set.
                             if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
                               IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
                               ICoreWebView2SharedBuffer* shared_buf = buf.shared_buf;
@@ -1262,7 +1262,7 @@ namespace SSC {
                   webview->add_NewWindowRequested(
                     Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
-                        // TODO(trevnorris): Called when window.open() is called in JS, but the new
+                        // TODO(heapwolf): Called when window.open() is called in JS, but the new
                         // window won't have all the setup and request interception. This setup should
                         // be moved to another location where it can be run for any new window. Right
                         // now ipc won't work for any new window.
@@ -1317,7 +1317,7 @@ namespace SSC {
                           auto size = std::stoull(msg.get("size", "0"));
                           auto index = msg.index;
                           ICoreWebView2SharedBuffer* sharedBuffer = nullptr;
-                          // TODO(trevnorris): What to do if creation fails, or size == 0?
+                          // TODO(heapwolf): What to do if creation fails, or size == 0?
                           HRESULT cshr = environment->CreateSharedBuffer(size, &sharedBuffer);
                           String additionalData = "{\"seq\":\"";
                           additionalData += seq;
@@ -1330,7 +1330,7 @@ namespace SSC {
                             convertStringToWString(additionalData).c_str()
                           );
                           IPC::MessageBuffer msg_buf(sharedBuffer, size);
-                          // TODO(trevnorris): This will leak memory if the buffer is created and
+                          // TODO(heapwolf): This will leak memory if the buffer is created and
                           // placed on the map then never removed. Since there's no Window cleanup
                           // that will remove unused buffers when the window is closed.
                           w->bridge->router.setMappedBuffer(index, seq, msg_buf);
@@ -1483,7 +1483,11 @@ namespace SSC {
 
   void Window::kill () {
     if (this->controller != nullptr) this->controller->Close();
-    if (this->window != nullptr) DestroyWindow(this->window);
+    if (this->window != nullptr) {
+      if (menubar != NULL) DestroyMenu(menubar);
+      if (menutray != NULL) DestroyMenu(menutray);
+      DestroyWindow(this->window);
+    }
   }
 
   void Window::showInspector () {
@@ -1491,9 +1495,10 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
-    if (this->onExit != nullptr) 
-    {
+    if (this->onExit != nullptr) {
       std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
+      if (menubar != NULL) DestroyMenu(menubar);
+      if (menutray != NULL) DestroyMenu(menutray);
       this->onExit(code);
     }
     else {
@@ -1679,28 +1684,47 @@ namespace SSC {
     this->height = height;
   }
 
+  void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
+    setMenu(seq, value, true);
+  }
+
   void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
-    SSC::String menu = value;
+    setMenu(seq, value, false);
+  }
 
-    HMENU hMenubar = GetMenu(window);
+  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+    if (source.empty()) return void(0);
+    auto menuSource = replace(SSC::String(source), "%%", "\n");
 
-    // deserialize the menu
-    menu = replace(menu, "%%", "\n");
+    NOTIFYICONDATA nid;
 
-    // split on ;
-    auto menus = split(menu, ';');
+    if (isTrayMenu) {
+      menutray = CreatePopupMenu();
+      nid.cbSize = sizeof(NOTIFYICONDATA);
+      nid.hWnd = window;
+      nid.uID = 1;
+      nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+      nid.uCallbackMessage = WM_APP + 1;
+      nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
+    } else {
+      menubar = GetMenu(window);
+    }
+
+    auto menus = split(menuSource, ';');
     int itemId = 0;
 
     for (auto m : menus) {
-      auto menu = split(m, '\n');
-      auto line = trim(menu[0]);
+      auto menuSource = split(m, '\n');
+      auto line = trim(menuSource[0]);
       if (line.empty()) continue;
       auto menuTitle = split(line, ':')[0];
 
-      HMENU hMenu = CreateMenu();
+      HMENU subMenu;
+      if (!isTrayMenu) subMenu = CreateMenu();
+      if (isTrayMenu) lstrcpy(nid.szTip, menuTitle.c_str());
 
-      for (int i = 1; i < menu.size(); i++) {
-        auto line = trim(menu[i]);
+      for (int i = 1; i < menuSource.size(); i++) {
+        auto line = trim(menuSource[i]);
         if (line.size() == 0) continue;
 
         if (line.empty()) {
@@ -1708,7 +1732,11 @@ namespace SSC {
         }
 
         if (line.find("---") != -1) {
-          AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+          if (isTrayMenu) {
+            AppendMenuW(menutray, MF_SEPARATOR, 0, NULL);
+          } else {
+            AppendMenuW(subMenu, MF_SEPARATOR, 0, NULL);
+          }
           continue;
         }
 
@@ -1739,28 +1767,46 @@ namespace SSC {
         }
 
         auto display = SSC::String(title + "\t" + accl);
-        AppendMenuA(hMenu, MF_STRING, itemId, display.c_str());
+
+        if (isTrayMenu) {
+          AppendMenuA(menutray, MF_STRING, itemId, display.c_str());
+        } else {
+          AppendMenuA(subMenu, MF_STRING, itemId, display.c_str());
+        }
+
         menuMap[itemId] = SSC::String(title + "\t" + menuTitle);
         itemId++;
       }
 
-      AppendMenuA(hMenubar, MF_POPUP, (UINT_PTR) hMenu, menuTitle.c_str());
+      if (!isTrayMenu) {
+        AppendMenuA(menubar, MF_POPUP, (UINT_PTR) subMenu, menuTitle.c_str());
+      }
     }
 
-    MENUINFO Info;
-    Info.cbSize = sizeof(Info);
-    Info.fMask = MIM_BACKGROUND | MFT_OWNERDRAW;
-    Info.hbrBack = CreateSolidBrush(RGB(0, 0, 0));
-    SetMenuInfo(hMenubar, &Info);
+    if (isTrayMenu) {
+      Shell_NotifyIcon(NIM_ADD, &nid);
 
-    RECT rc;
-    rc.top = 0;
-    rc.left = 0;
-    rc.bottom = 0;
-    rc.right = 0;
-    InvalidateRect(this->window, &rc, true);
-    DrawMenuBar(this->window);
-    RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+      POINT pt;
+      GetCursorPos(&pt);
+      SetForegroundWindow(window);
+      TrackPopupMenu(menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, window, NULL);
+      PostMessage(window, WM_NULL, 0, 0);
+    } else {
+      MENUINFO Info;
+      Info.cbSize = sizeof(Info);
+      Info.fMask = MIM_BACKGROUND | MFT_OWNERDRAW;
+      Info.hbrBack = CreateSolidBrush(RGB(0, 0, 0));
+      SetMenuInfo(menubar, &Info);
+
+      RECT rc;
+      rc.top = 0;
+      rc.left = 0;
+      rc.bottom = 0;
+      rc.right = 0;
+      InvalidateRect(this->window, &rc, true);
+      DrawMenuBar(this->window);
+      RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+    }
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -1866,9 +1912,7 @@ namespace SSC {
       }
 
       case WM_COMMAND: {
-        if (w == nullptr) {
-          break;
-        }
+        if (w == nullptr) break;
 
         String meta(w->menuMap[wParam]);
         auto parts = split(meta, '\t');
@@ -1894,15 +1938,14 @@ namespace SSC {
       }
 
       case WM_SETTINGCHANGE: {
-        // TODO(trevnorris): Dark mode
+        // TODO(heapwolf): Dark mode
         break;
       }
 
       case WM_CREATE: {
-        // TODO(trevnorris): Dark mode
+        // TODO(heapwolf): Dark mode
         SetWindowTheme(hWnd, L"Explorer", NULL);
-        HMENU hMenubar = CreateMenu();
-        SetMenu(hWnd, hMenubar);
+        SetMenu(hWnd, CreateMenu());
         break;
       }
 
@@ -1927,6 +1970,17 @@ namespace SSC {
             if (window != nullptr) {
               window->bridge->router.emit("applicationurl", json.str());
             }
+          }
+        }
+        break;
+      }
+
+      case WM_APP + 1: {
+        if (w == nullptr) break;
+
+        switch (lParam) {
+          case WM_RBUTTONDOWN: {
+            break;
           }
         }
         break;
