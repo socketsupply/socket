@@ -1785,12 +1785,6 @@ namespace SSC {
 
     if (isTrayMenu) {
       Shell_NotifyIcon(NIM_ADD, &nid);
-
-      POINT pt;
-      GetCursorPos(&pt);
-      SetForegroundWindow(window);
-      TrackPopupMenu(menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, window, NULL);
-      PostMessage(window, WM_NULL, 0, 0);
     } else {
       MENUINFO Info;
       Info.cbSize = sizeof(Info);
@@ -1911,6 +1905,19 @@ namespace SSC {
         break;
       }
 
+      case WM_APP + 1: {
+        // handle right-click on the system tray icon
+        if (lParam == WM_RBUTTONDOWN) {
+          POINT pt;
+          GetCursorPos(&pt);
+          SetForegroundWindow(hwnd);
+          TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+          PostMessage(hwnd, WM_NULL, 0, 0);
+        }
+
+        // fall through to WM_COMMAND!!
+      }
+
       case WM_COMMAND: {
         if (w == nullptr) break;
 
@@ -1970,17 +1977,6 @@ namespace SSC {
             if (window != nullptr) {
               window->bridge->router.emit("applicationurl", json.str());
             }
-          }
-        }
-        break;
-      }
-
-      case WM_APP + 1: {
-        if (w == nullptr) break;
-
-        switch (lParam) {
-          case WM_RBUTTONDOWN: {
-            break;
           }
         }
         break;
