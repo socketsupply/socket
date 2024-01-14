@@ -222,6 +222,8 @@ namespace SSC {
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& menu);
+      void setMenu (const String& seq, const String& menu, const bool& isTrayMenu);
+      void setTrayMenu (const String& seq, const String& menu);
       void showInspector ();
       int openExternal (const String& s);
 
