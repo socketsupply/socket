@@ -48,6 +48,11 @@ namespace SSC {
       }
 
       auto window = windowManager->getWindow(message.index);
+      static auto userConfig = SSC::getUserConfig();
+
+      if (userConfig["application_agent"] == "true") {
+        gtk_window_set_skip_taskbar_hint(GTK_WINDOW(window), TRUE);
+      }
 
       if (window == nullptr) {
         return reply(IPC::Result::Err { message, JSON::Object::Entries {

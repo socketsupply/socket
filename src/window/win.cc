@@ -620,25 +620,43 @@ namespace SSC {
       hotkey(this)
   {
     static auto userConfig = SSC::getUserConfig();
+    const bool isAgent = userConfig["application_agent"] == "true";
     app.isReady = false;
 
     this->index = opts.index;
-    window = CreateWindowEx(
-      opts.headless
-        ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
-        : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
-      userConfig["meta_bundle_identifier"].c_str(),
-      userConfig["meta_title"].c_str(),
-      WS_OVERLAPPEDWINDOW,
-      100000,
-      100000,
-      opts.width,
-      opts.height,
-      NULL,
-      NULL,
-      app.hInstance,
-      NULL
-    );
+    if (isAgent && opts.index == 0) {
+      window = CreateWindowEx(
+        WS_EX_TOOLWINDOW,
+        userConfig["meta_bundle_identifier"].c_str(),
+        userConfig["meta_title"].c_str(),
+        WS_POPUP,
+        100000,
+        100000,
+        opts.width,
+        opts.height,
+        NULL,
+        NULL,
+        app.hInstance,
+        NULL
+      );
+    } else {
+      window = CreateWindowEx(
+        opts.headless
+          ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+          : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
+        userConfig["meta_bundle_identifier"].c_str(),
+        userConfig["meta_title"].c_str(),
+        WS_OVERLAPPEDWINDOW,
+        100000,
+        100000,
+        opts.width,
+        opts.height,
+        NULL,
+        NULL,
+        app.hInstance,
+        NULL
+      );
+    }
 
     HRESULT initResult = OleInitialize(NULL);
 
@@ -649,6 +667,7 @@ namespace SSC {
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
+
     this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
       this->eval(js);
     };
@@ -661,7 +680,7 @@ namespace SSC {
     ChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
 
     UpdateWindow(window);
-    ShowWindow(window, SW_SHOW);
+    ShowWindow(window, isAgent ? SW_HIDE : SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
     // this is something like "C:\\Users\\josep\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
