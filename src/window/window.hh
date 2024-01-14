@@ -169,6 +169,7 @@ namespace SSC {
       GtkWidget *webview = nullptr;
       GtkWidget *window = nullptr;
       GtkWidget *menubar = nullptr;
+      GtkWidget *menutray = nullptr;
       GtkWidget *vbox = nullptr;
       GtkWidget *popup = nullptr;
       std::vector<String> draggablePayload;
