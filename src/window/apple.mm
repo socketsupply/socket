@@ -1309,58 +1309,63 @@ namespace SSC {
         inView:nil];
   }
 
-  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
-    SSC::String menu = SSC::String(value);
+  void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
+    this->setMenu(seq, value, true);
+  }
 
-    NSMenu *mainMenu;
+  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+    this->setMenu(seq, value, false);
+  }
+
+  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+    if (NSApp == nil) return;
+    SSC::String menuSource = SSC::String(source);
+
+    NSStatusItem *statusItem;
     NSString *title;
+    NSMenu *menu;
     NSMenu *appleMenu;
     NSMenu *serviceMenu;
     NSMenu *windowMenu;
     NSMenu *editMenu;
-    NSMenu *dynamicMenu;
+    NSMenu *ctx;
     NSMenuItem *menuItem;
 
-    if (NSApp == nil) return;
-
-    mainMenu = [[NSMenu alloc] init];
-
-    // Create the main menu bar
-    [NSApp setMainMenu: mainMenu];
-    [mainMenu release];
-    mainMenu = nil;
-
-    // Create the application menu
+    menu = [[NSMenu alloc] init];
+    // menu = [[NSMenu alloc] initWithTitle:@""];
 
     // id appName = [[NSProcessInfo processInfo] processName];
     // title = [@"About " stringByAppendingString:appName];
 
     // deserialize the menu
-    menu = replace(menu, "%%", "\n");
+    menuSource = replace(menuSource, "%%", "\n");
 
     // split on ;
-    auto menus = split(menu, ';');
+    auto menus = split(menuSource, ';');
 
     for (auto m : menus) {
-      auto menu = split(m, '\n');
+      auto menuSource = split(m, '\n');
+      if (menuSource.size() == 0) continue;
+
       auto i = -1;
 
       // find the first non-empty line
       std::string line = "";
-      while (line.empty() && ++i < menu.size()) {
-        line = trim(menu[i]);
+      while (line.empty() && ++i < menuSource.size()) {
+        line = trim(menuSource[i]);
       }
-      if (i == menu.size()) {
+
+      if (i == menuSource.size()) {
         continue;
       }
 
       auto menuTitle = split(line, ':')[0];
-      NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
-      dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
+      NSString* nssTitle = [NSString stringWithUTF8String: menuTitle.c_str()];
+      ctx = isTrayMenu ? menu : [[NSMenu alloc] initWithTitle: nssTitle];
       bool isDisabled = false;
 
-      while (++i < menu.size()) {
-        line = trim(menu[i]);
+      while (++i < menuSource.size()) {
+        line = trim(menuSource[i]);
         if (line.empty()) continue;
 
         auto parts = split(line, ':');
@@ -1434,10 +1439,9 @@ namespace SSC {
         // if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
 
         if (title.find("---") != -1) {
-          NSMenuItem *sep = [NSMenuItem separatorItem];
-          [dynamicMenu addItem:sep];
+          [ctx addItem: [NSMenuItem separatorItem]];
         } else {
-          menuItem = [dynamicMenu
+          menuItem = [ctx
             addItemWithTitle: nssTitle
             action: NSSelectorFromString(nssSelector)
             keyEquivalent: nssKey
@@ -1456,12 +1460,45 @@ namespace SSC {
         [menuItem setTag:0]; // only contextMenu uses the tag
       }
 
-      menuItem = [[NSMenuItem alloc] initWithTitle:nssTitle action:nil keyEquivalent:@""];
+      if (!isTrayMenu) {
+        // create a top level menu item
+        menuItem = [[NSMenuItem alloc] initWithTitle:nssTitle action:nil keyEquivalent:@""];
+        [menu addItem: menuItem];
+        // set its submenu
+        [menuItem setSubmenu: ctx];
+        [menuItem release];
+        [ctx release];
+      }
+    }
 
-      [[NSApp mainMenu] addItem:menuItem];
-      [menuItem setSubmenu:dynamicMenu];
-      [menuItem release];
-      [dynamicMenu release];
+    if (isTrayMenu) {
+      [menu setAutoenablesItems: NO];
+
+      auto userConfig = SSC::getUserConfig();
+      auto bundlePath = [[[NSBundle mainBundle] resourcePath] UTF8String];
+      auto path = SSC::fs::path { bundlePath / SSC::fs::path { userConfig["tray_icon"] } };
+
+      NSString *imagePath = [NSString stringWithUTF8String: path.c_str()];
+      NSImage *image = [[NSImage alloc] initWithContentsOfFile: imagePath];
+      NSSize newSize = NSMakeSize(32, 32);
+      NSImage *resizedImage = [[NSImage alloc] initWithSize:newSize];
+      [resizedImage lockFocus];
+      [image drawInRect:NSMakeRect(0, 0, newSize.width, newSize.height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
+      [resizedImage unlockFocus];
+
+      statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
+      [statusItem retain];
+
+      if (image) statusItem.button.image = resizedImage;
+      statusItem.button.toolTip = [NSString stringWithUTF8String: userConfig["tray_tooltip"].c_str()];
+      [statusItem setMenu: menu];
+    } else {
+      [NSApp setMainMenu: menu];
+    }
+
+    if (menu) {
+      [menu release];
+      menu = nil;
     }
 
     if (seq.size() > 0) {

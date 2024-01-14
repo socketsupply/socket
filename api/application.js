@@ -198,6 +198,7 @@ export async function exit (code = 0) {
  * @param {object} options - an options object
  * @param {string} options.value - the menu layout
  * @param {number} options.index - the window to target (if applicable)
+ * @param {boolean} isTrayMenu - use the menu to create a tray menu
  * @return {Promise<ipc.Result>}
  *
  * Socket Runtime provides a minimalist DSL that makes it easy to create
@@ -281,7 +282,7 @@ export async function exit (code = 0) {
  * ```
  *
  */
-export async function setSystemMenu (o) {
+export async function setSystemMenu (o, isTrayMenu) {
   const menu = o.value
 
   // validate the menu
@@ -355,7 +356,14 @@ export async function setSystemMenu (o) {
     }
   }
 
-  return await ipc.send('application.setSystemMenu', o)
+  return await ipc.send(isTrayMenu ? 'application.setTrayMenu' : 'application.setSystemMenu', o)
+}
+
+/**
+ * An alias to setSystemMenu for creating a tary menu
+ */
+export async function setTrayMenu (o) {
+  return await setSystemMenu(o, true)
 }
 
 /**
