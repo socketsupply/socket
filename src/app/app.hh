@@ -11,7 +11,6 @@ namespace SSC {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 @interface SSCApplicationDelegate : NSObject<NSApplicationDelegate>
 @property (nonatomic) SSC::App* app;
-@property (strong, nonatomic) NSStatusItem *statusItem;
 - (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls;
 
 - (BOOL) application: (NSApplication*) application

@@ -1323,6 +1323,7 @@ namespace SSC {
 
     NSStatusItem *statusItem;
     NSString *title;
+    NSString* nssTitle;
     NSMenu *menu;
     NSMenu *appleMenu;
     NSMenu *serviceMenu;
@@ -1360,7 +1361,7 @@ namespace SSC {
       }
 
       auto menuTitle = split(line, ':')[0];
-      NSString* nssTitle = [NSString stringWithUTF8String: menuTitle.c_str()];
+      nssTitle = [NSString stringWithUTF8String: menuTitle.c_str()];
       ctx = isTrayMenu ? menu : [[NSMenu alloc] initWithTitle: nssTitle];
       bool isDisabled = false;
 
@@ -1490,7 +1491,7 @@ namespace SSC {
       [statusItem retain];
 
       if (image) statusItem.button.image = resizedImage;
-      statusItem.button.toolTip = [NSString stringWithUTF8String: userConfig["tray_tooltip"].c_str()];
+      statusItem.button.toolTip = nssTitle;
       [statusItem setMenu: menu];
     } else {
       [NSApp setMainMenu: menu];

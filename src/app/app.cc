@@ -22,25 +22,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   qos
 );
 
-SSC::String getCwd() {
-  static SSC::String cwd = "";
-  #if defined(__linux__) && !defined(__ANDROID__)
-    try {
-      auto canonical = fs::canonical("/proc/self/exe");
-      cwd = fs::path(canonical).parent_path().string();
-    } catch (...) {}
-  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-    NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
-    cwd = [bundlePath UTF8String];
-  #elif defined(_WIN32)
-    wchar_t filename[MAX_PATH];
-    GetModuleFileNameW(NULL, filename, MAX_PATH);
-    auto path = fs::path { filename }.remove_filename();
-    cwd = path.string();
-  #endif
-  return cwd;
-}
-
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 @implementation SSCApplicationDelegate
 - (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls {
@@ -294,7 +275,24 @@ namespace SSC {
   }
 
   String App::getCwd () {
-    return getCwd();
+    static String cwd = "";
+
+    #if defined(__linux__) && !defined(__ANDROID__)
+      try {
+        auto canonical = fs::canonical("/proc/self/exe");
+        cwd = fs::path(canonical).parent_path().string();
+      } catch (...) {}
+    #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+      NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
+      cwd = [bundlePath UTF8String];
+    #elif defined(_WIN32)
+      wchar_t filename[MAX_PATH];
+      GetModuleFileNameW(NULL, filename, MAX_PATH);
+      auto path = fs::path { filename }.remove_filename();
+      cwd = path.string();
+    #endif
+
+    return cwd;
   }
 
   void App::setWindowManager (WindowManager* windowManager) {
