@@ -1133,39 +1133,50 @@ namespace SSC {
     this->height = height;
   }
 
-  void Window::setSystemMenu (const String &seq, const String &value) {
-    if (value.empty()) return void(0);
+  void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
+    this->setMenu(seq, value, true);
+  }
 
-    auto menu = String(value);
+  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+    this->setMenu(seq, value, false);
+  }
 
-    if (menubar == nullptr) {
-      menubar = gtk_menu_bar_new();
-    } else {
+  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+    if (source.empty()) return void(0);
+
+    auto menuSource = replace(String(source), "%%", "\n"); // copy and deserialize
+
+    auto clear = [](GtkWidget* menu) {
       GList *iter;
       GList *children = gtk_container_get_children(GTK_CONTAINER(menubar));
 
       for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
         gtk_widget_destroy(GTK_WIDGET(iter->data));
       }
+
       g_list_free(children);
+      return menu;
+    };
+
+    if (isTrayMenu) {
+      menutray = menutray == nullptr ? gtk_menu_new() : clear(menutray);
+    } else {
+      menubar = menubar == nullptr ? gtk_menu_bar_new() : clear(menubar);
     }
 
-    // deserialize the menu
-    menu = replace(menu, "%%", "\n");
-
-    // split on ;
-    auto menus = split(menu, ';');
+    auto menus = split(menuSource, ';');
 
     for (auto m : menus) {
-      auto menu = split(m, '\n');
-      auto line = trim(menu[0]);
+      auto menuSource = split(m, '\n');
+      auto line = trim(menuSource[0]);
       if (line.empty()) continue;
       auto menuTitle = split(line, ':')[0];
-      GtkWidget *subMenu = gtk_menu_new();
+      // if this is a tray menu, append directly to the tray instead of a submenu.
+      auto *ctx = isTrayMenu ? menutray : gtk_menu_new();
       GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
 
-      for (int i = 1; i < menu.size(); i++) {
-        auto line = trim(menu[i]);
+      for (int i = 1; i < menuSource.size(); i++) {
+        auto line = trim(menuSource[i]);
         if (line.empty()) continue;
         auto parts = split(line, ':');
         auto title = parts[0];
@@ -1246,15 +1257,29 @@ namespace SSC {
         }
 
         gtk_widget_set_name(item, menuTitle.c_str());
-        gtk_menu_shell_append(GTK_MENU_SHELL(subMenu), item);
+        gtk_menu_shell_append(GTK_MENU_SHELL(ctx), item);
       }
 
-      gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), subMenu);
-      gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
+      if (isTrayMenu) {
+        gtk_menu_shell_append(GTK_MENU_SHELL(menutray), menuItem);
+      } else {
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), ctx);
+        gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
+      }
     }
 
-    gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
-    gtk_widget_show_all(menubar);
+    if (isTrayMenu) {
+      GtkStatusIcon *trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
+      gtk_status_icon_set_tooltip_text(trayIcon, "Tray App");
+
+      g_signal_connect(trayIcon, "activate", G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+        gtk_menu_popup_at_pointer(GTK_MENU(menutray), NULL);
+      }, GDK_WINDOW(window));
+      gtk_widget_show_all(menutray);
+    } else {
+      gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
+      gtk_widget_show_all(menubar);
+    }
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);

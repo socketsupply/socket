@@ -1473,6 +1473,7 @@ namespace SSC {
     }
 
     if (isTrayMenu) {
+      [menu setTitle: nssTitle];
       [menu setAutoenablesItems: NO];
 
       auto userConfig = SSC::getUserConfig();
