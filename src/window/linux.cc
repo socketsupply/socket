@@ -1143,8 +1143,7 @@ namespace SSC {
 
   void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
     if (source.empty()) return void(0);
-
-    auto menuSource = replace(String(source), "%%", "\n"); // copy and deserialize
+    auto menuSource = replace(SSC::String(source), "%%", "\n"); // copy and deserialize
 
     auto clear = [](GtkWidget* menu) {
       GList *iter;
