@@ -1,4 +1,5 @@
 import { URLPattern } from './urlpattern/urlpattern.js'
+import application from '../application.js'
 import url from './url/url.js'
 
 const {
@@ -32,7 +33,27 @@ export function resolve (from, to) {
 }
 
 url.serializeURLOrigin = function (input) {
-  const { scheme, host } = input
+  const { scheme, protocol, host } = input
+
+  if (application.config.meta_application_protocol) {
+    if (
+      protocol &&
+      application.config.meta_application_protocol === protocol.slice(0, -1)
+    ) {
+      return `${protocol}//${serializeHost(host)}`
+    }
+
+    if (
+      scheme &&
+      application.config.meta_application_protocol === scheme
+    ) {
+      return `${scheme}://${serializeHost(host)}`
+    }
+  }
+
+  if (protocol === 'socket:' || protocol === 'ipc:') {
+    return `${protocol}//${serializeHost(host)}`
+  }
 
   if (scheme === 'socket' || scheme === 'ipc') {
     return `${scheme}://${serializeHost(host)}`
@@ -40,6 +61,15 @@ url.serializeURLOrigin = function (input) {
 
   return serializeURLOrigin(input)
 }
+
+const descriptors = Object.getOwnPropertyDescriptors(URL.prototype)
+Object.defineProperties(URL.prototype, {
+  ...descriptors,
+  origin: {
+    ...descriptors.origin,
+    get () { return url.serializeURLOrigin(this) }
+  }
+})
 
 export default URL
 export { URLPattern, URL, URLSearchParams, parseURL }
