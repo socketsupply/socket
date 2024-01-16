@@ -87,14 +87,9 @@
 @end
 #else
 @implementation SSCWindowDelegate
-- (void) userContentController: (WKUserContentController*) userContentController
-       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage
-{
-  // overloaded with `class_replaceMethod()`
-}
+- (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {}
 @end
 #endif
-
 @implementation SSCBridgedWebView
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 SSC::Vector<SSC::String> draggablePayload;
@@ -1049,7 +1044,20 @@ namespace SSC {
 
     // Initialize application
     [NSApplication sharedApplication];
-    [NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
+
+    if (userConfig["application_agent"] == "true") {
+      [NSApp setActivationPolicy: NSApplicationActivationPolicyAccessory];
+
+      if (this->opts.index == 0) {
+        [window setBackgroundColor: [NSColor clearColor]];
+        [window setAlphaValue: 0.0];
+        [window setIgnoresMouseEvents: YES];
+        [window setCanHide: NO];
+        [window setOpaque: NO];
+      }
+    } else {
+      [NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
+    }
 
     if (opts.headless) {
       [NSApp activateIgnoringOtherApps: NO];
@@ -1470,6 +1478,7 @@ namespace SSC {
 
     if (isTrayMenu) {
       [menu setTitle: nssTitle];
+      [menu setDelegate: (id)this->app.delegate]; // bring the main window to the front when clicked 
       [menu setAutoenablesItems: NO];
 
       auto userConfig = SSC::getUserConfig();
@@ -1484,19 +1493,13 @@ namespace SSC {
       [image drawInRect:NSMakeRect(0, 0, newSize.width, newSize.height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
       [resizedImage unlockFocus];
 
-      statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
-      [statusItem retain];
+      if (image) this->app.delegate.statusItem.button.image = resizedImage;
 
-      if (image) statusItem.button.image = resizedImage;
-      statusItem.button.toolTip = nssTitle;
-      [statusItem setMenu: menu];
+      [this->app.delegate.statusItem.button setToolTip: nssTitle];
+      [this->app.delegate.statusItem setMenu: menu];
+      [this->app.delegate.statusItem retain];
     } else {
       [NSApp setMainMenu: menu];
-    }
-
-    if (menu) {
-      [menu release];
-      menu = nil;
     }
 
     if (seq.size() > 0) {

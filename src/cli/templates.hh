@@ -1984,6 +1984,12 @@ width = 50%
 ; agent = true
 
 
+[tray]
+; The icon to be displayed in the operating system tray.
+; defalut value = ""
+;icon = "icon.png"
+
+
 [headless]
 ; The headless runner command. It is used when no OS specific runner is set.
 runner = ""
