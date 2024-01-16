@@ -1925,13 +1925,22 @@ namespace SSC {
       }
 
       case WM_APP + 1: {
-        // handle right-click on the system tray icon
-        if (lParam == WM_RBUTTONDOWN) {
+        const auto hwnd = w->app->window;
+        SetForegroundWindow(window);
+
+        if (/* determine if there is a menu defined for the tray or not */) {
           POINT pt;
           GetCursorPos(&pt);
-          SetForegroundWindow(hwnd);
-          TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
-          PostMessage(hwnd, WM_NULL, 0, 0);
+          TrackPopupMenu(menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+        }
+
+        PostMessage(hwnd, WM_NULL, 0, 0);
+
+        // broadcast an event to all the windows that the tray icon was clicked
+        if (app != nullptr && app->windowManager != nullptr) {
+          for (auto window : app->windowManager->windows) {
+            if (window != nullptr) window->bridge->router.emit("tray", "true");
+          }
         }
 
         // fall through to WM_COMMAND!!

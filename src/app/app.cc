@@ -24,6 +24,25 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 @implementation SSCApplicationDelegate
+- (void) applicationDidFinishLaunching: (NSNotification*) notification {
+  self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
+}
+
+- (void) menuWillOpen: (NSMenu*) menu {
+  auto app = self.app;
+  auto w = app->windowManager->getWindow(0)->window;
+  if (!w) return;
+
+  [w makeKeyAndOrderFront: nil];
+  [NSApp activateIgnoringOtherApps:YES];
+
+  if (app != nullptr && app->windowManager != nullptr) {
+    for (auto window : self.app->windowManager->windows) {
+      if (window != nullptr) window->bridge->router.emit("tray", "true");
+    }
+  }
+}
+
 - (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls {
   auto app = self.app;
   if (app != nullptr && app->windowManager != nullptr) {
