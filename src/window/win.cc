@@ -629,7 +629,7 @@ namespace SSC {
         WS_EX_TOOLWINDOW,
         userConfig["meta_bundle_identifier"].c_str(),
         userConfig["meta_title"].c_str(),
-        WS_POPUP,
+        WS_OVERLAPPEDWINDOW,
         100000,
         100000,
         opts.width,
@@ -680,7 +680,7 @@ namespace SSC {
     ChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
 
     UpdateWindow(window);
-    ShowWindow(window, isAgent ? SW_HIDE : SW_SHOW);
+    ShowWindow(window, isAgent ? SW_HIDE : SW_SHOWNORMAL);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
     // this is something like "C:\\Users\\josep\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
@@ -1721,10 +1721,12 @@ namespace SSC {
       menutray = CreatePopupMenu();
       nid.cbSize = sizeof(NOTIFYICONDATA);
       nid.hWnd = window;
-      nid.uID = 1;
+      nid.uID = 1871369;
       nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-      nid.uCallbackMessage = WM_APP + 1;
-      nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
+      nid.uCallbackMessage = WM_APP + 2;
+
+      nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+      // nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
     } else {
       menubar = GetMenu(window);
     }
@@ -1924,17 +1926,18 @@ namespace SSC {
         break;
       }
 
-      case WM_APP + 1: {
-        const auto hwnd = w->app->window;
-        SetForegroundWindow(window);
+      case WM_APP + 2: {
+        static auto userConfig = SSC::getUserConfig();
+        auto isAgent = userConfig.count("tray_icon") != 0;
 
-        if (/* determine if there is a menu defined for the tray or not */) {
+        SetForegroundWindow(hWnd);
+        if (isAgent) {
           POINT pt;
           GetCursorPos(&pt);
-          TrackPopupMenu(menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+          TrackPopupMenu(w->menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
         }
 
-        PostMessage(hwnd, WM_NULL, 0, 0);
+        PostMessage(hWnd, WM_NULL, 0, 0);
 
         // broadcast an event to all the windows that the tray icon was clicked
         if (app != nullptr && app->windowManager != nullptr) {
