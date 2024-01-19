@@ -1473,8 +1473,10 @@ export const wrap = dgram => {
       if (this.gate.has(pid) && opts.attempts === 0) return
       this.gate.set(pid, 1)
 
+      const ts = packet.usr1.length && Number(packet.usr1.toString())
+
       if (packet.hops >= this.maxHops) return
-      if (packet.message.timestamp + this.config.keepalive < Date.now()) return
+      if (!isNaN(ts) && ((ts + this.config.keepalive) < Date.now())) return
       if (packet.message.requesterPeerId === this.peerId) return // intro to myself?
       if (packet.message.responderPeerId === this.peerId) return // intro from myself?
 
@@ -1706,6 +1708,10 @@ export const wrap = dgram => {
       const peerAddress = packet.message.address
       const peerPort = packet.message.port
 
+      // prevents premature pruning; a peer is not directly connecting
+      const peer = this.peers.find(p => p.peerId === peerId)
+      if (peer) peer.lastUpdate = Date.now()
+
       // a rendezvous isn't relevant if it's too old, just drop the packet
       if (rendezvousDeadline && rendezvousDeadline < Date.now()) return
 
@@ -1809,7 +1815,8 @@ export const wrap = dgram => {
         const opts = {
           hops: packet.hops + 1,
           clusterId,
-          subclusterId
+          subclusterId,
+          usr1: String(Date.now())
         }
 
         const intro1 = await Packet.encode(new PacketIntro({ ...opts, message: message1 }))
