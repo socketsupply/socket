@@ -1,7 +1,6 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import debug from './index.js'
 
 /**
  * Hash function factory.
@@ -153,13 +152,13 @@ export const validatePacket = (o, constraints) => {
 
   for (const [key, con] of Object.entries(constraints)) {
     if (con.required && !o[key]) {
-      debug(new Error(`${key} is required (${JSON.stringify(o, null, 2)})`), JSON.stringify(o))
+      console.log(new Error(`${key} is required (${JSON.stringify(o, null, 2)})`), JSON.stringify(o))
     }
 
     const type = ({}).toString.call(o[key]).slice(8, -1).toLowerCase()
 
     if (o[key] && type !== con.type) {
-      debug(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
+      console.log(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
     }
   }
 }
@@ -369,7 +368,7 @@ export class Packet {
       bufs.push(buf)
     }
 
-    return Buffer.concat(bufs)
+    return Buffer.concat(bufs, FRAME_BYTES)
   }
 
   static decode (buf) {
@@ -411,7 +410,7 @@ export class PacketPong extends Packet {
       responderPeerId: { required: true, type: 'string' },
       cacheSummaryHash: { type: 'string' },
       port: { type: 'number' },
-      address: { required: true, type: 'string' },
+      address: { type: 'string' },
       uptime: { type: 'number' },
       cacheSize: { type: 'number' },
       natType: { type: 'number' },
@@ -429,8 +428,8 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ clock, hops, clusterId, subclusterId, message }) {
-    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, message })
+  constructor ({ clock, hops, clusterId, subclusterId, usr1, message }) {
+    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, usr1, message })
 
     validatePacket(message, {
       requesterPeerId: { required: true, type: 'string' },
@@ -439,7 +438,7 @@ export class PacketIntro extends Packet {
       natType: { required: true, type: 'number' },
       address: { required: true, type: 'string' },
       port: { required: true, type: 'number' },
-      timestamp: { required: true, type: 'number' }
+      timestamp: { type: 'number' }
     })
   }
 }

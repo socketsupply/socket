@@ -1,11 +1,23 @@
-import { sodium, randomBytes } from '../crypto.js'
+import { sodium } from '../crypto.js'
 import Buffer from '../buffer.js'
 import { sha256 } from './packets.js'
 import { isArrayLike, isBufferLike } from '../util.js'
 
+/**
+ * Class for handling encryption and key management.
+ */
 export class Encryption {
+  /**
+   * Mapping of public keys to key objects.
+   * @type {Object.<string, { publicKey: Uint8Array, privateKey: Uint8Array, ts: number }>}
+   */
   keys = {}
 
+  /**
+   * Creates a shared key based on the provided seed or generates a random one.
+   * @param {Uint8Array|string} seed - Seed for key generation.
+   * @returns {Promise<Uint8Array>} - Shared key.
+   */
   static async createSharedKey (seed) {
     await sodium.ready
 
@@ -13,6 +25,11 @@ export class Encryption {
     return sodium.randombytes_buf(32)
   }
 
+  /**
+   * Creates a key pair for signing and verification.
+   * @param {Uint8Array|string} seed - Seed for key generation.
+   * @returns {Promise<{ publicKey: Uint8Array, privateKey: Uint8Array }>} - Key pair.
+   */
   static async createKeyPair (seed) {
     await sodium.ready
     seed = seed || sodium.randombytes_buf(32)
@@ -24,31 +41,51 @@ export class Encryption {
     return sodium.crypto_sign_seed_keypair(seed)
   }
 
-  static async createId (str = randomBytes(32)) {
-    return await sha256(str)
-  }
-
-  static async createClusterId (value) {
+  /**
+   * Creates an ID using SHA-256 hash.
+   * @param {string} str - String to hash.
+   * @returns {Promise<Uint8Array>} - SHA-256 hash.
+   */
+  static async createId (str) {
     await sodium.ready
-    value = value || sodium.randombytes_buf(32)
-    return Buffer.from(value)
+    return await sha256(str || sodium.randombytes_buf(32))
   }
 
-  static async createSubclusterId (value) {
-    return Encryption.createClusterId(value)
+  /**
+   * Creates a cluster ID using SHA-256 hash with specified output size.
+   * @param {string} str - String to hash.
+   * @returns {Promise<Uint8Array>} - SHA-256 hash with specified output size.
+   */
+  static async createClusterId (str) {
+    await sodium.ready
+    return await sha256(str || sodium.randombytes_buf(32), { bytes: true })
   }
 
+  /**
+   * Adds a key pair to the keys mapping.
+   * @param {Uint8Array|string} publicKey - Public key.
+   * @param {Uint8Array} privateKey - Private key.
+   */
   add (publicKey, privateKey) {
     const to = Buffer.from(publicKey).toString('base64')
     this.keys[to] = { publicKey, privateKey, ts: Date.now() }
   }
 
+  /**
+   * Removes a key from the keys mapping.
+   * @param {Uint8Array|string} publicKey - Public key.
+   */
   remove (publicKey) {
     delete this.keys[Buffer.from(publicKey).toString('base64')]
   }
 
+  /**
+   * Checks if a key is in the keys mapping.
+   * @param {Uint8Array|string} to - Public key or Uint8Array.
+   * @returns {boolean} - True if the key is present, false otherwise.
+   */
   has (to) {
-    if (to.constructor.name === 'Uint8Array') {
+    if (to instanceof Uint8Array) {
       to = Buffer.from(to).toString('base64')
     }
 
@@ -56,8 +93,10 @@ export class Encryption {
   }
 
   /**
-   * @param {Buffer} b - The message to sign
-   * @param {Uint8Array} sk - The secret key to use
+   * Signs a message using the given secret key.
+   * @param {Buffer} b - The message to sign.
+   * @param {Uint8Array} sk - The secret key to use.
+   * @returns {Uint8Array} - Signature.
    */
   static sign (b, sk) {
     const ct = b.subarray(sodium.crypto_sign_BYTES)
@@ -66,9 +105,11 @@ export class Encryption {
   }
 
   /**
-   * @param {Buffer} b - The message to verify
-   * @param {Uint8Array} pk - The public key to use
-   * @return {number} - Returns non zero if the buffer could not be verified
+   * Verifies the signature of a message using the given public key.
+   * @param {Buffer} b - The message to verify.
+   * @param {Uint8Array} sig - The signature to check.
+   * @param {Uint8Array} pk - The public key to use.
+   * @returns {number} - Returns non-zero if the buffer could not be verified.
    */
   static verify (b, sig, pk) {
     if (sig.length !== sodium.crypto_sign_BYTES) return false
@@ -77,17 +118,11 @@ export class Encryption {
   }
 
   /**
-   * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
-   * ciphertext `message` for a `receiver` identity. Receivers who open the
-   * `message` ciphertext can be guaranteed non-repudiation without relying on
-   * the packet chain integrity.
-   *
-   * let m = Open(in, pk, sk)
-   * let sig = Slice(m, 0, 64)
-   * let ct = Slice(m, 64)
-   * if (verify(sig, ct, pk)) {
-   *   let out = open(ct, pk, sk)
-   * }
+   * Decrypts a sealed message for a specific receiver.
+   * @param {Buffer} message - The sealed message.
+   * @param {Object|string} v - Key object or public key.
+   * @returns {Buffer} - Decrypted message.
+   * @throws {Error} - Throws ENOKEY if the key is not found, EMALFORMED if the message is malformed, ENOTVERIFIED if the message cannot be verified.
    */
   open (message, v) {
     if (typeof v === 'string') v = this.keys[v]
@@ -111,6 +146,13 @@ export class Encryption {
     return Buffer.from(sodium.crypto_box_seal_open(ct, pk, sk))
   }
 
+  /**
+   * Opens a sealed message using the specified key.
+   * @param {Buffer} message - The sealed message.
+   * @param {Object|string} v - Key object or public key.
+   * @returns {Buffer} - Decrypted message.
+   * @throws {Error} - Throws ENOKEY if the key is not found.
+   */
   openMessage (message, v) {
     if (typeof v === 'string') v = this.keys[v]
     if (!v) throw new Error(`ENOKEY (key=${v})`)
@@ -120,11 +162,9 @@ export class Encryption {
     return Buffer.from(sodium.crypto_box_seal_open(message, pk, sk))
   }
 
-  sealMessage (message, publicKey) {
-    return sodium.crypto_box_seal(toUint8Array(message), toPK(publicKey))
-  }
-
   /**
+   * Seals a message for a specific receiver using their public key.
+   *
    * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
    * a plaintext `message` for a `receiver` identity. This prevents repudiation
    * attacks and doesn't rely on packet chain guarantees.
@@ -146,6 +186,11 @@ export class Encryption {
    *   Alice's signed plaintext gives Bob non-repudiation.
    *
    * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
+   *
+   * @param {Buffer} message - The message to seal.
+   * @param {Object|string} v - Key object or public key.
+   * @returns {Buffer} - Sealed message.
+   * @throws {Error} - Throws ENOKEY if the key is not found.
    */
   seal (message, v) {
     if (typeof v === 'string') v = this.keys[v]
@@ -161,6 +206,11 @@ export class Encryption {
   }
 }
 
+/**
+ * Converts an Ed25519 public key to a Curve25519 public key.
+ * @param {Uint8Array} pk - Ed25519 public key.
+ * @returns {Uint8Array} - Curve25519 public key.
+ */
 function toPK (pk) {
   try {
     return sodium.crypto_sign_ed25519_pk_to_curve25519(pk)
@@ -169,6 +219,11 @@ function toPK (pk) {
   return new Uint8Array(0)
 }
 
+/**
+ * Converts an Ed25519 secret key to a Curve25519 secret key.
+ * @param {Uint8Array} sk - Ed25519 secret key.
+ * @returns {Uint8Array} - Curve25519 secret key.
+ */
 function toSK (sk) {
   try {
     return sodium.crypto_sign_ed25519_sk_to_curve25519(sk)
@@ -177,22 +232,42 @@ function toSK (sk) {
   return new Uint8Array(0)
 }
 
+/**
+ * Converts different types of input to a Uint8Array.
+ * @param {Uint8Array|string|Buffer} buffer - Input buffer.
+ * @returns {Uint8Array} - Uint8Array representation of the input.
+ */
 const textEncoder = new TextEncoder()
 
+/**
+ * Converts different types of input to a Uint8Array.
+ * @param {Uint8Array|string|Buffer} buffer - Input buffer.
+ * @returns {Uint8Array} - Uint8Array representation of the input.
+ */
 function toUint8Array (buffer) {
   if (buffer instanceof Uint8Array) {
     return buffer
-  } else if (typeof buffer === 'string') {
+  }
+
+  if (typeof buffer === 'string') {
     return textEncoder.encode(buffer)
-  } else if (buffer?.buffer) {
+  }
+
+  if (buffer?.buffer instanceof ArrayBuffer) {
     return new Uint8Array(buffer.buffer)
-  } else if (isArrayLike(buffer) || isBufferLike(buffer)) {
-    return new Uint8Array(buffer)
-  } else if (buffer instanceof ArrayBuffer) {
+  }
+
+  if (isArrayLike(buffer) || isBufferLike(buffer)) {
     return new Uint8Array(buffer)
   }
 
-  return buffer && Symbol.iterator in buffer
-    ? new Uint8Array(buffer)
-    : new Uint8Array(0)
+  if (buffer instanceof ArrayBuffer) {
+    return new Uint8Array(buffer)
+  }
+
+  if (buffer && Symbol.iterator in buffer) {
+    return new Uint8Array(buffer)
+  }
+
+  return new Uint8Array(0)
 }
