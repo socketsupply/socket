@@ -1138,21 +1138,21 @@ namespace SSC {
     this->height = height;
   }
 
-  void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setTrayMenu (const String& seq, const String& value) {
     this->setMenu(seq, value, true);
   }
 
-  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setSystemMenu (const String& seq, const String& value) {
     this->setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+  void Window::setMenu (const String& seq, const String& source, const bool& isTrayMenu) {
     if (source.empty()) return void(0);
     auto menuSource = replace(SSC::String(source), "%%", "\n"); // copy and deserialize
 
-    auto clear = [](GtkWidget* menu) {
+    auto clear = [this](GtkWidget* menu) {
       GList *iter;
-      GList *children = gtk_container_get_children(GTK_CONTAINER(menubar));
+      GList *children = gtk_container_get_children(GTK_CONTAINER(this->menubar));
 
       for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
         gtk_widget_destroy(GTK_WIDGET(iter->data));
@@ -1276,9 +1276,15 @@ namespace SSC {
       GtkStatusIcon *trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
       gtk_status_icon_set_tooltip_text(trayIcon, "Tray App");
 
-      g_signal_connect(trayIcon, "activate", G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-        gtk_menu_popup_at_pointer(GTK_MENU(menutray), NULL);
-      }, GDK_WINDOW(window));
+      g_signal_connect(
+        trayIcon,
+        "activate",
+        G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+          auto w = static_cast<Window*>(arg);
+          gtk_menu_popup_at_pointer(GTK_MENU(w->menutray), NULL);
+        }),
+        this
+      );
       gtk_widget_show_all(menutray);
     } else {
       gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
