@@ -1,13 +1,29 @@
-import { wrap, Encryption, sha256, NAT } from './index.js'
+import { wrap, Encryption, sha256, NAT, RemotePeer } from './index.js'
 import { sodium } from '../crypto.js'
 import { Buffer } from '../buffer.js'
 import { isBufferLike } from '../util.js'
 import { CACHE_TTL } from './packets.js'
 
+/**
+ * Creates and manages a network bus for communication.
+ *
+ * @module networkBus
+ * @param {object} dgram - The dgram module for network communication.
+ * @param {object} events - The events module for event handling.
+ * @returns {Promise<events.EventEmitter>} - A promise that resolves to the network bus.
+ */
 export default (dgram, events) => {
   let _peer = null
   let bus = null
 
+  /**
+   * Initializes and returns the network bus.
+   *
+   * @async
+   * @function
+   * @param {object} options - Configuration options for the network bus.
+   * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
+   */
   return async (options = {}) => {
     if (bus) return bus
 
@@ -19,7 +35,7 @@ export default (dgram, events) => {
 
     if (!options.indexed) {
       if (!options.clusterId && !options.config?.clusterId) {
-        throw new Error('expected options.clusterId to be of type string')
+        throw new Error('expected options.clusterId')
       }
 
       if (typeof options.signingKeys !== 'object') throw new Error('expected options.signingKeys to be of type Object')
@@ -80,11 +96,35 @@ export default (dgram, events) => {
 
     bus.subclusters = new Map()
 
+    /**
+     * Gets the address information of the network peer.
+     *
+     * @function
+     * @returns {object} - The address information.
+     */
     bus.address = () => ({
       address: _peer.address,
       port: _peer.port,
       natType: NAT.toString(_peer.natType)
     })
+
+    /**
+     * Indexes a new peer in the network.
+     *
+     * @function
+     * @param {object} params - Peer information.
+     * @param {string} params.peerId - The peer ID.
+     * @param {string} params.address - The peer address.
+     * @param {number} params.port - The peer port.
+     * @throws {Error} - Throws an error if required parameters are missing.
+     */
+    bus.indexPeer = ({ peerId, address, port }) => {
+      if (!peerId) throw new Error('options.peerId required')
+      if (!address) throw new Error('options.address required')
+      if (!port) throw new Error('options.port required')
+
+      _peer.peers.push(new RemotePeer({ peerId, address, port, indexed: true }))
+    }
 
     bus.reconnect = () => {
       _peer.lastUpdate = 0
@@ -165,6 +205,16 @@ export default (dgram, events) => {
       return { opened, verified }
     }
 
+    /**
+     * Publishes an event to the network bus.
+     *
+     * @async
+     * @function
+     * @param {string} eventName - The name of the event.
+     * @param {any} value - The value associated with the event.
+     * @param {object} opts - Additional options for publishing.
+     * @returns {Promise<any>} - A promise that resolves to the published event details.
+     */
     bus.emit = async (eventName, value, opts = {}) => {
       return await _peer.publish(options.sharedKey, await pack(eventName, value, opts))
     }

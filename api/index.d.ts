@@ -5638,11 +5638,12 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketIntro extends Packet {
         static type: number;
-        constructor({ clock, hops, clusterId, subclusterId, message }: {
+        constructor({ clock, hops, clusterId, subclusterId, usr1, message }: {
             clock: any;
             hops: any;
             clusterId: any;
             subclusterId: any;
+            usr1: any;
             message: any;
         });
     }
@@ -5715,44 +5716,99 @@ declare module "socket:stream-relay/packets" {
     import { Buffer } from "socket:buffer";
 }
 declare module "socket:stream-relay/encryption" {
+    /**
+     * Class for handling encryption and key management.
+     */
     export class Encryption {
-        static createSharedKey(seed: any): Promise<any>;
-        static createKeyPair(seed: any): Promise<any>;
-        static createId(str?: Buffer): Promise<string>;
-        static createClusterId(value: any): Promise<any>;
-        static createSubclusterId(value: any): Promise<any>;
         /**
-         * @param {Buffer} b - The message to sign
-         * @param {Uint8Array} sk - The secret key to use
+         * Creates a shared key based on the provided seed or generates a random one.
+         * @param {Uint8Array|string} seed - Seed for key generation.
+         * @returns {Promise<Uint8Array>} - Shared key.
          */
-        static sign(b: Buffer, sk: Uint8Array): any;
+        static createSharedKey(seed: Uint8Array | string): Promise<Uint8Array>;
         /**
-         * @param {Buffer} b - The message to verify
-         * @param {Uint8Array} pk - The public key to use
-         * @return {number} - Returns non zero if the buffer could not be verified
+         * Creates a key pair for signing and verification.
+         * @param {Uint8Array|string} seed - Seed for key generation.
+         * @returns {Promise<{ publicKey: Uint8Array, privateKey: Uint8Array }>} - Key pair.
          */
-        static verify(b: Buffer, sig: any, pk: Uint8Array): number;
-        keys: {};
-        add(publicKey: any, privateKey: any): void;
-        remove(publicKey: any): void;
-        has(to: any): boolean;
+        static createKeyPair(seed: Uint8Array | string): Promise<{
+            publicKey: Uint8Array;
+            privateKey: Uint8Array;
+        }>;
         /**
-         * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
-         * ciphertext `message` for a `receiver` identity. Receivers who open the
-         * `message` ciphertext can be guaranteed non-repudiation without relying on
-         * the packet chain integrity.
+         * Creates an ID using SHA-256 hash.
+         * @param {string} str - String to hash.
+         * @returns {Promise<Uint8Array>} - SHA-256 hash.
+         */
+        static createId(str: string): Promise<Uint8Array>;
+        /**
+         * Creates a cluster ID using SHA-256 hash with specified output size.
+         * @param {string} str - String to hash.
+         * @returns {Promise<Uint8Array>} - SHA-256 hash with specified output size.
+         */
+        static createClusterId(str: string): Promise<Uint8Array>;
+        /**
+         * Signs a message using the given secret key.
+         * @param {Buffer} b - The message to sign.
+         * @param {Uint8Array} sk - The secret key to use.
+         * @returns {Uint8Array} - Signature.
+         */
+        static sign(b: Buffer, sk: Uint8Array): Uint8Array;
+        /**
+         * Verifies the signature of a message using the given public key.
+         * @param {Buffer} b - The message to verify.
+         * @param {Uint8Array} sig - The signature to check.
+         * @param {Uint8Array} pk - The public key to use.
+         * @returns {number} - Returns non-zero if the buffer could not be verified.
+         */
+        static verify(b: Buffer, sig: Uint8Array, pk: Uint8Array): number;
+        /**
+         * Mapping of public keys to key objects.
+         * @type {Object.<string, { publicKey: Uint8Array, privateKey: Uint8Array, ts: number }>}
+         */
+        keys: {
+            [x: string]: {
+                publicKey: Uint8Array;
+                privateKey: Uint8Array;
+                ts: number;
+            };
+        };
+        /**
+         * Adds a key pair to the keys mapping.
+         * @param {Uint8Array|string} publicKey - Public key.
+         * @param {Uint8Array} privateKey - Private key.
+         */
+        add(publicKey: Uint8Array | string, privateKey: Uint8Array): void;
+        /**
+         * Removes a key from the keys mapping.
+         * @param {Uint8Array|string} publicKey - Public key.
+         */
+        remove(publicKey: Uint8Array | string): void;
+        /**
+         * Checks if a key is in the keys mapping.
+         * @param {Uint8Array|string} to - Public key or Uint8Array.
+         * @returns {boolean} - True if the key is present, false otherwise.
+         */
+        has(to: Uint8Array | string): boolean;
+        /**
+         * Decrypts a sealed message for a specific receiver.
+         * @param {Buffer} message - The sealed message.
+         * @param {Object|string} v - Key object or public key.
+         * @returns {Buffer} - Decrypted message.
+         * @throws {Error} - Throws ENOKEY if the key is not found, EMALFORMED if the message is malformed, ENOTVERIFIED if the message cannot be verified.
+         */
+        open(message: Buffer, v: any | string): Buffer;
+        /**
+         * Opens a sealed message using the specified key.
+         * @param {Buffer} message - The sealed message.
+         * @param {Object|string} v - Key object or public key.
+         * @returns {Buffer} - Decrypted message.
+         * @throws {Error} - Throws ENOKEY if the key is not found.
+         */
+        openMessage(message: Buffer, v: any | string): Buffer;
+        /**
+         * Seals a message for a specific receiver using their public key.
          *
-         * let m = Open(in, pk, sk)
-         * let sig = Slice(m, 0, 64)
-         * let ct = Slice(m, 64)
-         * if (verify(sig, ct, pk)) {
-         *   let out = open(ct, pk, sk)
-         * }
-         */
-        open(message: any, v: any): any;
-        openMessage(message: any, v: any): any;
-        sealMessage(message: any, publicKey: any): any;
-        /**
          * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
          * a plaintext `message` for a `receiver` identity. This prevents repudiation
          * attacks and doesn't rely on packet chain guarantees.
@@ -5774,8 +5830,13 @@ declare module "socket:stream-relay/encryption" {
          *   Alice's signed plaintext gives Bob non-repudiation.
          *
          * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
+         *
+         * @param {Buffer} message - The message to seal.
+         * @param {Object|string} v - Key object or public key.
+         * @returns {Buffer} - Sealed message.
+         * @throws {Error} - Throws ENOKEY if the key is not found.
          */
-        seal(message: any, v: any): any;
+        seal(message: Buffer, v: any | string): Buffer;
     }
     import Buffer from "socket:buffer";
 }
@@ -6468,12 +6529,12 @@ declare module "socket:stream-relay/index" {
     export { Packet, sha256, Cache, Encryption, NAT };
 }
 declare module "socket:stream-relay/sugar" {
-    function _default(dgram: any, events: any): (options?: {}) => Promise<any>;
+    function _default(dgram: object, events: object): Promise<events.EventEmitter>;
     export default _default;
 }
 declare module "socket:node/index" {
     export default network;
-    export const network: (options?: {}) => Promise<any>;
+    export const network: Promise<events.EventEmitter>;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
@@ -7372,7 +7433,7 @@ declare module "socket:module" {
 }
 declare module "socket:network" {
     export default network;
-    export const network: (options?: {}) => Promise<any>;
+    export const network: Promise<events.EventEmitter>;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
