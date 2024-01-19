@@ -620,7 +620,7 @@ namespace SSC {
       hotkey(this)
   {
     static auto userConfig = SSC::getUserConfig();
-    const bool isAgent = userConfig["application_agent"] == "true";
+    const bool isAgent = userConfig["application_agent"] == "true" && opts.index == 0;
     app.isReady = false;
 
     this->index = opts.index;
@@ -1547,6 +1547,11 @@ namespace SSC {
   }
 
   void Window::show () {
+    static auto userConfig = SSC::getUserConfig();
+    auto isAgent = userConfig.count("application_agent") != 0;
+
+    if (isAgent && this->opts.index == 0) return;
+
     if (this->opts.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);
       UpdateWindow(window);
