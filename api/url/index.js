@@ -1,5 +1,4 @@
 import { URLPattern } from './urlpattern/urlpattern.js'
-import application from '../application.js'
 import url from './url/url.js'
 
 const {
@@ -35,17 +34,17 @@ export function resolve (from, to) {
 url.serializeURLOrigin = function (input) {
   const { scheme, protocol, host } = input
 
-  if (application.config.meta_application_protocol) {
+  if (globalThis.__args.config.meta_application_protocol) {
     if (
       protocol &&
-      application.config.meta_application_protocol === protocol.slice(0, -1)
+      globalThis.__args.config.meta_application_protocol === protocol.slice(0, -1)
     ) {
       return `${protocol}//${serializeHost(host)}`
     }
 
     if (
       scheme &&
-      application.config.meta_application_protocol === scheme
+      globalThis.__args.config.meta_application_protocol === scheme
     ) {
       return `${scheme}://${serializeHost(host)}`
     }
