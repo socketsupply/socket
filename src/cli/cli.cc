@@ -6169,7 +6169,7 @@ int main (const int argc, const char* argv[]) {
       );
 
       if (settings.count("mac_codesign_identity") == 0) {
-        log("'[mac.codesign] identity' key/value is required");
+        log("Configuration required. Add an 'identity = \"...\"' key-value pair under the '[mac.codesign]' section in the socket.ini file (hint: try, 'security find-identity -v -p codesigning')");
         exit(1);
       }
 
