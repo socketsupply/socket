@@ -234,6 +234,7 @@ export const wrap = dgram => {
     reflectionId = null
     reflectionTimeout = null
     reflectionStage = 0
+    reflectionRetry = 1
     reflectionFirstResponder = null
     peerId = ''
     isListening = false
@@ -665,8 +666,12 @@ export const wrap = dgram => {
       if (peers.length < 2) {
         if (this.onConnecting) this.onConnecting({ code: -1, status: 'Not enough pingable peers' })
         debug(this.peerId, 'XX REFLECT NOT ENOUGH PINGABLE PEERS - RETRYING')
-        return this._setTimeout(() => this.requestReflection(), 256)
+
+        if (++this.reflectionRetry > 16) this.reflectionRetry = 1
+        return this._setTimeout(() => this.requestReflection(), this.reflectionRetry * 256)
       }
+
+      this.reflectionRetry = 1
 
       const requesterPeerId = this.peerId
       const opts = { requesterPeerId, isReflection: true }
