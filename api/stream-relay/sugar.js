@@ -265,6 +265,11 @@ export default (dgram, events) => {
         sub._on(eventName, cb)
       }
 
+      sub.off = async (eventName, fn) => {
+        if (eventName[0] !== '#') eventName = await sha256(eventName)
+        sub.removeListener(eventName, fn)
+      }
+
       sub.join = () => _peer.join(sub.sharedKey, options)
 
       bus._on('#ready', () => {
