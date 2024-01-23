@@ -7,7 +7,7 @@ import { CACHE_TTL } from './packets.js'
 /**
  * Creates and manages a network bus for communication.
  *
- * @module networkBus
+ * @module Network
  * @param {object} dgram - The dgram module for network communication.
  * @param {object} events - The events module for event handling.
  * @returns {Promise<events.EventEmitter>} - A promise that resolves to the network bus.
@@ -268,7 +268,8 @@ export default (dgram, events) => {
       sub.join = () => _peer.join(sub.sharedKey, options)
 
       bus._on('#ready', () => {
-        _peer.join(sub.sharedKey, options)
+        const subcluster = bus.subclusters.get(sub.subclusterId.toString('base64'))
+        if (subcluster) _peer.join(subcluster.sharedKey, options)
       })
 
       _peer.join(sub.sharedKey, options)

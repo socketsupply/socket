@@ -6215,6 +6215,7 @@ declare module "socket:stream-relay/index" {
             reflectionId: any;
             reflectionTimeout: any;
             reflectionStage: number;
+            reflectionRetry: number;
             reflectionFirstResponder: any;
             peerId: string;
             isListening: boolean;
