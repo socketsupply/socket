@@ -16,6 +16,8 @@
 #define CHECK_FAILURE(...)
 #endif
 
+#define WM_SOCKET_TRY = WM_APP + 2
+
 using namespace Microsoft::WRL;
 
 namespace SSC {
@@ -1723,15 +1725,33 @@ namespace SSC {
     NOTIFYICONDATA nid;
 
     if (isTrayMenu) {
+      static auto userConfig = SSC::getUserConfig();
+
+      if (userConfig.count("tray_icon") > 0) {
+        auto iconPath = fs::path { getCwd() / fs::path { userConfig["tray_icon"] } };
+
+        HICON icon;
+
+        icon = (HICON) LoadImageA(
+          NULL,
+          iconPath.string().c_str(),
+          IMAGE_ICON,
+          GetSystemMetrics(SM_CXSMICON),
+          GetSystemMetrics(SM_CXSMICON),
+          LR_LOADFROMFILE
+        );
+      } else {
+        icon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
+      }
+
       menutray = CreatePopupMenu();
       nid.cbSize = sizeof(NOTIFYICONDATA);
       nid.hWnd = window;
       nid.uID = 1871369;
       nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-      nid.uCallbackMessage = WM_APP + 2;
 
-      nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-      // nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
+      nid.uCallbackMessage = WM_SOCKET_TRAY;
+      nid.hIcon = icon
     } else {
       menubar = GetMenu(window);
     }
@@ -1931,7 +1951,7 @@ namespace SSC {
         break;
       }
 
-      case WM_APP + 2: {
+      case WM_SOCKET_TRAY: {
         static auto userConfig = SSC::getUserConfig();
         auto isAgent = userConfig.count("tray_icon") != 0;
 

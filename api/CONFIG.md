@@ -208,6 +208,18 @@ Key | Default Value | Description
 :--- | :--- | :---
 title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS. defalut value = ""
 
+# `application`
+
+Key | Default Value | Description
+:--- | :--- | :---
+agent | false |  If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app.
+
+# `tray`
+
+Key | Default Value | Description
+:--- | :--- | :---
+icon |  |  The icon to be displayed in the operating system tray. defalut value = ""
+
 # `headless`
 
 Key | Default Value | Description
