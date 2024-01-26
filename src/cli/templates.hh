@@ -1987,7 +1987,7 @@ width = 50%
 [tray]
 ; The icon to be displayed in the operating system tray.
 ; defalut value = ""
-;icon = "icon.png"
+; icon = "icon.png"
 
 
 [headless]

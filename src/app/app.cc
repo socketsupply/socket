@@ -373,8 +373,8 @@ namespace SSC {
       NULL,
       iconPath.string().c_str(),
       IMAGE_ICON,
-      GetSystemMetrics(SM_CXSMICON),
-      GetSystemMetrics(SM_CXSMICON),
+      GetSystemMetrics(SM_CXICON),
+      GetSystemMetrics(SM_CXICON),
       LR_LOADFROMFILE
     );
 
