@@ -1273,8 +1273,19 @@ namespace SSC {
     }
 
     if (isTrayMenu) {
-      GtkStatusIcon *trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
-      gtk_status_icon_set_tooltip_text(trayIcon, "Tray App");
+      static auto userConfig = SSC::getUserConfig();
+      GtkStatusIcon *trayIcon;
+
+      if (userConfig.count("tray_icon") > 0) {
+        auto iconPath = fs::path { getCwd() / fs::path { userConfig["tray_icon"] } };
+        trayIcon = gtk_status_icon_new_from_file(iconPath);
+      } else {
+        trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
+      }
+
+      if (userConfig.count("tray_tooltip") > 0) {
+        gtk_status_icon_set_tooltip_text(trayIcon, userConfig["tray_tooltip"]);
+      }
 
       g_signal_connect(
         trayIcon,
