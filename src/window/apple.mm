@@ -918,10 +918,13 @@ namespace SSC {
       ];
     }
 
-    /* [webview
-      setValue: [NSNumber numberWithBool: YES]
-        forKey: @"drawsTransparentBackground"
-    ]; */
+    if (opts.transparent) {
+      [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
+    }
+
+    // set transparent background to WKWebView
+    // [webview setValue: [NSColor clearColor] forKey: @"backgroundColor"];
+    // [webview setOpaque: NO];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];

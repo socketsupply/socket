@@ -8,6 +8,7 @@ namespace SSC {
     bool resizable = true;
     bool frameless = false;
     bool utility = false;
+    bool transparent = false;
     bool canExit = false;
     float width = 0;
     float height = 0;
@@ -20,6 +21,7 @@ namespace SSC {
     int port = 0;
     bool isTest = false;
     bool headless = false;
+
     String cwd = "";
     String title = "";
     String url = "data:text/html,<html>";

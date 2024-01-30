@@ -261,6 +261,7 @@ namespace SSC {
     String defaultMaxWidth = "100%";
     String defaultMaxHeight = "100%";
     bool headless = false;
+    bool transparent = false;
     bool isTest;
     String argv = "";
     String cwd = "";
@@ -425,6 +426,7 @@ namespace SSC {
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
         this->options.headless = configuration.headless;
+        this->options.transparent = configuration.transparent;
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
         this->options.cwd = configuration.cwd;
@@ -586,6 +588,7 @@ namespace SSC {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
+          .transparent = opts.transparent,
           .canExit = opts.canExit,
           .width = width,
           .height = height,
@@ -628,6 +631,7 @@ namespace SSC {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
+          .transparent = opts.transparent,
           .canExit = true,
           .width = opts.width,
           .height = opts.height,
