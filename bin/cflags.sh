@@ -53,6 +53,7 @@ cflags+=(
   -fvisibility=hidden
   -I"$root/include"
   -I"$root/build/uv/include"
+  -I"$root/build"
   -I"$root/build/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
   -DSSC_VERSION_HASH=$(git rev-parse --short=8 HEAD)

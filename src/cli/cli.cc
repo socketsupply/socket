@@ -2933,6 +2933,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
+      flags += " -lllama";
       flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
@@ -4517,6 +4518,7 @@ int main (const int argc, const char* argv[]) {
             << " -L" + libdir
             << " -lsocket-runtime"
             << " -luv"
+            << " -lllama"
             << " -isysroot " << iosSdkPath << "/"
             << " -iframeworkwithsysroot /System/Library/Frameworks/"
             << " -F " << iosSdkPath << "/System/Library/Frameworks/"
@@ -4697,6 +4699,7 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/init.cc");
       files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
       files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libllama.a");
 
       pathResources = paths.pathBin;
 
@@ -5906,6 +5909,7 @@ int main (const int argc, const char* argv[]) {
             << " " << extraFlags
           #if defined(__linux__)
             << " -luv"
+            << " -lllama"
             << " -lsocket-runtime"
           #endif
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)

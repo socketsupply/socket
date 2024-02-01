@@ -669,6 +669,42 @@ namespace SSC {
           );
       };
 
+      class LLM : public Module {
+        public:
+          LLM (auto core) : Module(core) {}
+
+          struct LLMOptions {
+            unsigned int gpuLayers;
+            bool vocabOnly;
+            bool useMmap;
+            bool useMlock;
+          };
+
+          struct GrammarOptions {
+            std::string grammarCode;
+            bool printGrammar;
+          };
+
+          struct ContextOptions {
+            int32_t seed = -1;
+            int32_t batchSize = -1;
+            uint32_t contextSize = 4096;
+            int32_t threads = -1;
+            bool embedding;
+          };
+
+          void encode () {};
+          void decode () {};
+          void tokenBos () {};
+          void tokenEos ();
+          void tokenNl ();
+          void getContextSize ();
+          void printTimings ();
+          void getTokenString ();
+          void eval ();
+          void create ();
+      };
+
       class UDP : public Module {
         public:
           UDP (auto core) : Module(core) {}
@@ -725,6 +761,7 @@ namespace SSC {
       OS os;
       Platform platform;
       UDP udp;
+      LLM llm;
 
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Peer*> peers;
@@ -765,6 +802,7 @@ namespace SSC {
         fs(this),
         os(this),
         platform(this),
+        llm(this),
         udp(this)
       {
         this->posts = std::shared_ptr<Posts>(new Posts());

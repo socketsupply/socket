@@ -491,6 +491,80 @@ function determine_package_manager () {
   echo "$package_manager"
 }
 
+function determine_cc () {
+  local package_manager="$(determine_package_manager)"
+  local dpkg=""
+
+  command -v dpkg >/dev/null 2>&1 && dpkg="dpkg"
+
+  read_env_data
+
+  if [ ! "$CC" ]; then
+    # TODO(@mribbons): yum support
+    if [ -n "$dpkg" ]; then
+      tmp="$(mktemp)"
+      {
+        dpkg -S clang 2>&1| grep "clang" | cut -d" " -f 2 | while read clang; do
+        # Convert clang paths to path#version strings
+        bin_version="#$("$clang" --version|head -n1)#$clang"
+        echo "$bin_version";
+      done
+      } | sort -r | sed '/^##/d' | cut -d"#" -f 3 | head -n1 > "$tmp" # sort by version, remove lines without version, then cut out bin out to get the highest installed clang version
+      CC="$(cat "$tmp")"
+      rm -f "$tmp"
+
+      if [[ -z "$CC" ]]; then
+        echo >&2 "not ok - missing build tools, try \"sudo $package_manager clang-14\""
+        return 1
+      fi
+    elif command -v clang >/dev/null 2>&1; then
+      CC="$(command -v clang)"
+    elif command -v clang-16 >/dev/null 2>&1; then
+      CC="$(command -v clang-16)"
+    elif command -v clang-15 >/dev/null 2>&1; then
+      CC="$(command -v clang-15)"
+    elif command -v clang-14 >/dev/null 2>&1; then
+      CC="$(command -v clang-14)"
+    elif command -v clang-13 >/dev/null 2>&1; then
+      CC="$(command -v clang-13)"
+    elif command -v clang-12 >/dev/null 2>&1; then
+      CC="$(command -v clang-12)"
+    elif command -v clang-11 >/dev/null 2>&1; then
+      CC="$(command -v clang-11)"
+    elif command -v gcc >/dev/null 2>&1; then
+      CC="$(command -v gcc)"
+    fi
+
+    if [ "$host" = "Win32" ]; then
+      # POSIX doesn't handle quoted commands
+      # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+      # Make a temp link
+      write_log "h" "Win32: linking clang to /tmp"
+      CC_TMP=$(mktemp)
+      rm $CC_TMP
+      ln -s "$CC" $CC_TMP
+      CC=$CC_TMP
+      # Make tmp.etc look like clang.etc, makes clang output look correct
+      CC=$(echo $CC|sed 's/tmp\./clang\./')
+      mv $CC_TMP $CC
+    fi
+
+    if [ ! "$CC" ]; then
+      echo "not ok - could not determine \$CC environment variable"
+      return 1
+    fi
+
+    write_log "v" "warn - using '$CC' as CC"
+  fi
+
+  export CC
+
+  # win32 has partically escaping requirements, this is handled by install.ps1
+  if [[ "$host" != "Win32" ]]; then
+    update_env_data "CC=$CC"
+  fi
+}
+
 function determine_cxx () {
   local package_manager="$(determine_package_manager)"
   local dpkg=""
@@ -557,14 +631,11 @@ function determine_cxx () {
     write_log "v" "warn - using '$CXX' as CXX"
   fi
 
-  CC="${CXX/++/}"
-
   export CXX
-  export CC
+
   # win32 has partically escaping requirements, this is handled by install.ps1
   if [[ "$host" != "Win32" ]]; then
     update_env_data "CXX=$CXX"
-    update_env_data "CC=$CC"
   fi
 }
 
@@ -577,6 +648,7 @@ function first_time_experience_setup() {
   fi
 
   determine_cxx
+  determine_cc
 
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
@@ -628,6 +700,7 @@ function first_time_experience_setup() {
   fi
 
   determine_cxx || return $?
+  determine_cc || return $?
 
   if [[ "$target" == "android" ]]; then
     ## Android is not supported on linux-arm64, return early
