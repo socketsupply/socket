@@ -796,6 +796,9 @@ function _compile_llama {
   mkdir -p "$STAGING_DIR/include/"
   mkdir -p "$STAGING_DIR/src/"
 
+  cp -f $BUILD_DIR/llama/common/grammar-parser.cpp $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/common/common.cpp $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/common/sampling.cpp $STAGING_DIR/src
   cp -f $BUILD_DIR/llama/llama.cpp $STAGING_DIR/src
 
   cp -f $BUILD_DIR/llama/ggml.c $STAGING_DIR/src
@@ -805,12 +808,19 @@ function _compile_llama {
   cp -f $BUILD_DIR/llama/ggml-alloc.c $STAGING_DIR/src
 
   cp -f $BUILD_DIR/llama/*.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/grammar-parser.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/common.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/sampling.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/log.h $STAGING_DIR/include
 
   SRC=$STAGING_DIR/src
   DEST="$BUILD_DIR/$target-$platform"
 
+  mkdir -p "$DEST/include/llama"
+  mkdir -p "$DEST/lib"
+
   SOURCES=($SRC/ggml.c $SRC/ggml-quants.c $SRC/ggml-backend.c $SRC/ggml-alloc.c)
-  OBJECTS=($SRC/llama.o)
+  OBJECTS=($SRC/llama.o $SRC/grammar-parser.o $SRC/common.o $SRC/sampling.o)
 
   for src in "${SOURCES[@]}"; do
     $CC -std=c99 -c $src -o ${src/.c/.o} -Iinclude
@@ -818,10 +828,13 @@ function _compile_llama {
   done
 
   $CXX -std=c++2b -c $SRC/llama.cpp -Iinclude -o $SRC/llama.o 
+  $CXX -std=c++2b -c $SRC/grammar-parser.cpp -Iinclude -o $SRC/grammar-parser.o 
+  $CXX -std=c++2b -c $SRC/common.cpp -Iinclude -o $SRC/common.o 
+  $CXX -std=c++2b -c $SRC/sampling.cpp -Iinclude -o $SRC/sampling.o 
 
   ar crs $STAGING_DIR/build/lib/libllama.a "${OBJECTS[@]}"
 
-  cp "$STAGING_DIR/build/lib/libllama.a" "$DEST/lib"
+  cp -rf "$STAGING_DIR/build/lib/libllama.a" $DEST/lib/
   cp -rf "$STAGING_DIR/include/" "$DEST/include/llama"
 }
 

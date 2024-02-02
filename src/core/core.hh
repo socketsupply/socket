@@ -673,36 +673,18 @@ namespace SSC {
         public:
           LLM (auto core) : Module(core) {}
 
-          struct LLMOptions {
-            unsigned int gpuLayers;
-            bool vocabOnly;
-            bool useMmap;
-            bool useMlock;
-          };
+          void encode (const String seq, uint64_t id, Module::Callback cb) {};
+          void decode (const String seq, uint64_t id, Module::Callback cb) {};
+          void tokenBos (const String seq, uint64_t id, Module::Callback cb) {};
+          void tokenEos (const String seq, uint64_t id, Module::Callback cb);
+          void tokenNl (const String seq, uint64_t id, Module::Callback cb);
+          void getContextSize (const String seq, uint64_t id, Module::Callback cb);
+          void printTimings (const String seq, uint64_t id, Module::Callback cb);
+          void getTokenString (const String seq, uint64_t id, Module::Callback cb);
+          void eval (const String seq, uint64_t id, Module::Callback cb);
 
-          struct GrammarOptions {
-            std::string grammarCode;
-            bool printGrammar;
-          };
-
-          struct ContextOptions {
-            int32_t seed = -1;
-            int32_t batchSize = -1;
-            uint32_t contextSize = 4096;
-            int32_t threads = -1;
-            bool embedding;
-          };
-
-          void encode () {};
-          void decode () {};
-          void tokenBos () {};
-          void tokenEos ();
-          void tokenNl ();
-          void getContextSize ();
-          void printTimings ();
-          void getTokenString ();
-          void eval ();
-          void create ();
+          // to create a model, grammar, evaluator, context, or worker
+          void create (const String seq, uint64_t id, Module::Callback cb);
       };
 
       class UDP : public Module {
