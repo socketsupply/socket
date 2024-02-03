@@ -1,5 +1,5 @@
 /* global EventTarget, CustomEvent, GeolocationCoordinates, GeolocationPosition, GeolocationPositionError */
-import hooks from 'socket:hooks'
+import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 import os from '../os.js'
 
