@@ -82,12 +82,12 @@ const char * sapi_json_stringify_value (const sapi_json_any_t* json) {
       break;
   }
 
-  auto length = string.size();
+  size_t length = string.size();
 
   if (length > 0) {
-    auto bytes = json->context->memory.alloc<char>(length);
+    auto bytes = json->context->memory.alloc<char>(length + 1);
     if (bytes != nullptr) {
-      memcpy(bytes, string.c_str(), length);
+      strncpy(bytes, string.c_str(), length);
     }
 
     return bytes;
