@@ -907,6 +907,15 @@ MAIN {
 
       auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : 0;
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
+
+      if (targetWindowIndex >= SSC_MAX_WINDOWS && (message.get("headless") != "true" || message.get("debug") != "true")) {
+        const JSON::Object json = JSON::Object::Entries {
+          { "err", String("Cannot create window with an index beyond ") + std::to_string(SSC_MAX_WINDOWS) }
+        };
+        currentWindow->resolvePromise(seq, ERROR_STATE, json);
+        return;
+      }
+
       auto targetWindow = windowManager.getWindow(targetWindowIndex);
       auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
 
@@ -949,6 +958,8 @@ MAIN {
       options.maxWidth = message.get("maxWidth").size() ? currentWindow->getSizeInPixels(message.get("maxWidth"), screen.width) : screen.width;
       options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
 
+      options.canExit = message.get("canExit") == "true" ? true : false;
+      options.headless = message.get("headless") == "true" ? true : false;
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
@@ -983,7 +994,12 @@ MAIN {
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
       if (targetWindow) {
-        targetWindow->close(0);
+        if (targetWindow->opts.canExit) {
+          targetWindow->exit(0);
+        } else {
+          targetWindow->close(0);
+        }
+
         JSON::Object json = JSON::Object::Entries {
           { "data", targetWindow->json()},
         };
@@ -1360,13 +1376,13 @@ MAIN {
     .cwd = cwd,
     .appData = app.appData,
     .onMessage = onMessage,
-    .onExit = shutdownHandler
   });
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = app.appData["window_resizable"] == "false" ? false : true,
     .frameless = app.appData["window_frameless"] == "true" ? true : false,
-    .utility = app.appData["window_utility"] == "true" ? true : false
+    .utility = app.appData["window_utility"] == "true" ? true : false,
+    .onExit = shutdownHandler
   });
 
   defaultWindow->show(EMPTY_SEQ);
@@ -1388,7 +1404,7 @@ MAIN {
     } else {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + (fs::path(app.appData["meta_bundle_identifier"])  / "index.html").string()
+        "socket://" + app.appData["meta_bundle_identifier"] + "/index.html"
       );
     }
   }
