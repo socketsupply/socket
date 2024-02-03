@@ -77,11 +77,11 @@ function isArrayBuffer (object) {
  */
 export function findMessageTransfers (transfers, object, options = null) {
   if (isTypedArray(object) || ArrayBuffer.isView(object)) {
-    transfers.push(object.buffer)
+    add(object.buffer)
   } else if (isArrayBuffer(object)) {
-    transfers.push(object)
+    add(object)
   } else if (object instanceof MessagePort) {
-    transfers.push(object)
+    add(object)
   } else if (Array.isArray(object)) {
     for (const value of object) {
       findMessageTransfers(transfers, value, options)
@@ -100,6 +100,12 @@ export function findMessageTransfers (transfers, object, options = null) {
   }
 
   return transfers
+
+  function add (value) {
+    if (!transfers.includes(value)) {
+      transfers.push(value)
+    }
+  }
 }
 
 /**
@@ -228,25 +234,28 @@ export function applyContextDifferences (
         if (ref) {
           Reflect.set(currentContext, key, ref.value)
         } else if (script) {
-          const vmFunctionProxy = async function (...args) {
-            const scriptReferenceArgsKey = `__vmScriptReferenceArgs_${reference.id}__`
+          const container = {
+            async [key] (...args) {
+              const scriptReferenceArgsKey = `__vmScriptReferenceArgs_${reference.id}__`
 
-            Reflect.set(contextReference, scriptReferenceArgsKey, args)
-            Reflect.set(contextReference, reference.id, reference)
+              Reflect.set(contextReference, scriptReferenceArgsKey, args)
+              Reflect.set(contextReference, reference.id, reference)
 
-            const result = await script.runInContext(contextReference, {
-              mode: 'classic',
-              source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
-            })
+              const result = await script.runInContext(contextReference, {
+                mode: 'classic',
+                source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
+              })
 
-            Reflect.deleteProperty(contextReference, reference.id)
-            Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
+              Reflect.deleteProperty(contextReference, reference.id)
+              Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
 
-            return result
+              return result
+            }
           }
 
-          putReference(new Reference(reference.id, vmFunctionProxy, contextReference))
-          Reflect.set(currentContext, key, vmFunctionProxy)
+          const proxyFunction = container[key].bind(null)
+          putReference(new Reference(reference.id, proxyFunction, contextReference))
+          Reflect.set(currentContext, key, proxyFunction)
         }
       }
     } else if (Reflect.has(currentContext, key)) {
@@ -669,6 +678,11 @@ export class Script extends EventTarget {
     return this.#ready
   }
 
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @return {gc.Finalizer}
+   * @ignore
+   */
   [gc.finalizer] () {
     return {
       args: [this.id],
@@ -679,12 +693,25 @@ export class Script extends EventTarget {
     }
   }
 
+  /**
+   * Destroy the script execution context.
+   * @return {Promise}
+   */
   async destroy () {
     await this.ready
     const worker = await getContextWorker()
     worker.port.postMessage({ id: this.#id, type: 'destroy' })
   }
 
+  /**
+   * Run `source` JavaScript in given context. The script context execution
+   * context is preserved until the `context` object that points to it is
+   * garbage collected or there are no longer any references to it and its
+   * associated `Script` instance.
+   * @param {ScriptOptions=} [options]
+   * @param {object=} [context]
+   * @return {Promise<any>}
+   */
   async runInContext (context, options = null) {
     await this.ready
 
@@ -697,7 +724,7 @@ export class Script extends EventTarget {
 
     const transfer = []
     const nonce = crypto.randomBytes(8).toString('base64')
-    const mode = options?.mode ?? 'module'
+    const mode = options?.type ?? options?.mode ?? detectFunctionSourceType(source)
     const id = this.#id
 
     return await new Promise((resolve, reject) => {
@@ -742,6 +769,13 @@ export class Script extends EventTarget {
     })
   }
 
+  /**
+   * Run `source` JavaScript in new context. The script context is destroyed after
+   * execution. This is typically a "one off" isolated run.
+   * @param {ScriptOptions=} [options]
+   * @param {object=} [context]
+   * @return {Promise<any>}
+   */
   async runInNewContext (context, options = null) {
     await this.ready
 
@@ -754,7 +788,7 @@ export class Script extends EventTarget {
 
     const transfer = []
     const nonce = crypto.randomBytes(8).toString('base64')
-    const mode = options?.mode ?? 'module'
+    const mode = options?.type ?? options?.mode ?? detectFunctionSourceType(source)
     const id = crypto.randomBytes(8).toString('base64')
 
     const result = await new Promise((resolve, reject) => {
@@ -802,6 +836,11 @@ export class Script extends EventTarget {
     return result
   }
 
+  /**
+   * Run `source` JavaScript in this current context (`globalThis`).
+   * @param {ScriptOptions=} [options]
+   * @return {Promise<any>}
+   */
   async runInThisContext (options = null) {
     const filename = options?.filename || this.filename
     const fn = compileFunction(options?.source ?? this.#source, {
@@ -976,6 +1015,10 @@ export async function getContextWorker () {
   return await contextWorker.ready
 }
 
+/**
+ * Terminates the VM script context window.
+ * @ignore
+ */
 export async function terminateContextWindow () {
   const pendingContextWindow = getContextWindow()
 
@@ -994,6 +1037,10 @@ export async function terminateContextWindow () {
   }
 }
 
+/**
+ * Terminates the VM script context worker.
+ * @ignore
+ */
 export async function terminateContextWorker () {
   if (!contextWorker) {
     return
@@ -1003,6 +1050,10 @@ export async function terminateContextWorker () {
   worker.port.postMessage({ type: 'terminate-worker' })
 }
 
+/**
+ * Creates a prototype object of known global reserved intrinsics.
+ * @ignore
+ */
 export function createIntrinsics () {
   const descriptors = Object.create(null)
   const propertyNames = Object.getOwnPropertyNames(globalThis)
@@ -1030,6 +1081,12 @@ export function createIntrinsics () {
   return Object.create(null, descriptors)
 }
 
+/**
+ * Creates a global proxy object for context execution.
+ * @ignore
+ * @param {object} context
+ * @return {Proxy}
+ */
 export function createGlobalObject (context) {
   const prototype = Object.getPrototypeOf(globalThis)
   const intrinsics = createIntrinsics()
@@ -1184,16 +1241,38 @@ export function createGlobalObject (context) {
   })
 }
 
+/**
+ * @ignore
+ * @param {string} source
+ * @return {boolean}
+ */
+export function detectFunctionSourceType (source) {
+  return /^\s*(import|export)\s.*$/gm.test(source) ? 'module' : 'classic'
+}
+
+/**
+ * Compiles `source`  with `options` into a function.
+ * @ignore
+ * @param {string} source
+ * @param {object=} [options]
+ * @return {function}
+ */
 export function compileFunction (source, options = null) {
-  if (options?.type !== 'classic') {
+  options = { ...options }
+  // detect source type naively
+  if (!options?.type) {
+    options.type = detectFunctionSourceType(source)
+  }
+
+  if (options?.type === 'module') {
     const blob = new Blob([source], { type: 'text/javascript' })
     const url = URL.createObjectURL(blob)
     const moduleSource = `
       const module = await import("${url}")
       const exports = {}
 
-      if (module.default) {
-        return module.default
+      if (module.default !== undefined) {
+        exports.default = module.default
       }
 
       for (const key in module) {
@@ -1202,6 +1281,7 @@ export function compileFunction (source, options = null) {
 
       return exports
     `
+
     return compileFunction(moduleSource, {
       ...options,
       type: 'classic',
@@ -1224,6 +1304,16 @@ export function compileFunction (source, options = null) {
   }
 }
 
+/**
+ * Run `source` JavaScript in given context. The script context execution
+ * context is preserved until the `context` object that points to it is
+ * garbage collected or there are no longer any references to it and its
+ * associated `Script` instance.
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @param {object=} [context]
+ * @return {Promise<any>}
+ */
 export async function runInContext (source, options, context) {
   const script = scripts.get(options?.context ?? context) ?? new Script(source, options)
 
@@ -1231,23 +1321,41 @@ export async function runInContext (source, options, context) {
     scripts.set(options?.context ?? context, script)
   }
 
-  return await script.runInContext(options?.context ?? context, { source })
+  return await script.runInContext(options?.context ?? context, { ...options, source })
 }
 
+/**
+ * Run `source` JavaScript in new context. The script context is destroyed after
+ * execution. This is typically a "one off" isolated run.
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @param {object=} [context]
+ * @return {Promise<any>}
+ */
 export async function runInNewContext (source, options, context) {
   const script = new Script(source, options)
-  const result = await script.runInNewContext(options.context ?? context)
+  const result = await script.runInNewContext(options.context ?? context, options)
   await script.destroy()
   return result
 }
 
+/**
+ * Run `source` JavaScript in this current context (`globalThis`).
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @return {Promise<any>}
+ */
 export async function runInThisContext (source, options) {
   const script = new Script(source, options)
-  const result = await script.runInThisContext()
+  const result = await script.runInThisContext(options)
   await script.destroy()
   return result
 }
 
+/**
+ * @ignore
+ * @param {Reference} reference
+ */
 export function putReference (reference) {
   const { value } = reference
   if (
@@ -1262,6 +1370,12 @@ export function putReference (reference) {
   references.index.set(reference.id, reference)
 }
 
+/**
+ * Create a `Reference` for a `value` in a script `context`.
+ * @param {any} value
+ * @param {object} context
+ * @return {Reference}
+ */
 export function createReference (value, context) {
   const id = crypto.randomBytes(8).toString('base64')
   const reference = new Reference(id, value, context)
@@ -1269,10 +1383,19 @@ export function createReference (value, context) {
   return reference
 }
 
+/**
+ * Get a script context by ID or values
+ * @param {string|object|function} id
+ * @return {Reference?}
+ */
 export function getReference (id) {
   return references.get(id) ?? references.index.get(id)
 }
 
+/**
+ * Remove a script context reference by ID.
+ * @param {string} id
+ */
 export function removeReference (id) {
   const reference = getReference(id)
   references.index.delete(id)
@@ -1281,12 +1404,25 @@ export function removeReference (id) {
   }
 }
 
+/**
+ * Get all transferable values in the `object` hierarchy.
+ * @param {object} object
+ * @return {object[]}
+ */
+export function getTrasferables (object) {
+  const transferables = []
+  findMessageTransfers(transferables, object)
+  return transferables
+}
+
 export default {
   compileFunction,
   createReference,
   getContextWindow,
   getContextWorker,
   getReference,
+  getTrasferables,
+  putReference,
   Reference,
   removeReference,
   runInContext,
