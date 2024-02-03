@@ -14,6 +14,10 @@
 #define SSC_MAX_WINDOWS 32
 #endif
 
+#ifndef SSC_MAX_WINDOWS_RESERVED
+#define SSC_MAX_WINDOWS_RESERVED 16
+#endif
+
 #if defined(_WIN32)
 #define WM_HANDLE_DEEP_LINK WM_APP + 1
 #endif
@@ -21,11 +25,13 @@
 namespace SSC {
   // forward
   class Dialog;
+  class Window;
 }
 
 #if defined(__APPLE__)
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 @interface SSCWindowDelegate : NSObject
+@property (nonatomic) SSC::Window* window;
 @end
 
 @interface SSCUIPickerDelegate : NSObject<
@@ -89,15 +95,6 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
                        initiatedByFrame: (WKFrameInfo*) frame
                                    type: (WKMediaCaptureType) type
                         decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-
--                       (void) _webView: (WKWebView*) webView
-  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-
--                        (void) _webView: (WKWebView*) webView
-   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
 #endif
 
 -                     (void) webView: (WKWebView*) webView
@@ -151,6 +148,7 @@ namespace SSC {
       int index = 0;
       int width = 0;
       int height = 0;
+      bool exiting = false;
     #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
     #endif
@@ -261,7 +259,8 @@ namespace SSC {
     String defaultMaxWidth = "100%";
     String defaultMaxHeight = "100%";
     bool headless = false;
-    bool isTest;
+    bool isTest = false;
+    bool canExit = false;
     String argv = "";
     String cwd = "";
     Map appData;
@@ -334,7 +333,11 @@ namespace SSC {
               manager.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
-              status = WindowStatus::WINDOW_CLOSED;
+              if (this->opts.canExit) {
+                status = WindowStatus::WINDOW_EXITED;
+              } else {
+                status = WindowStatus::WINDOW_CLOSED;
+              }
             }
           }
 
@@ -389,8 +392,8 @@ namespace SSC {
 
       WindowManager (App &app) :
         app(app),
-        inits(SSC_MAX_WINDOWS),
-        windows(SSC_MAX_WINDOWS)
+        inits(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED),
+        windows(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED)
     {
       if (isDebugEnabled()) {
         lastDebugLogLine = std::chrono::system_clock::now();
@@ -506,7 +509,6 @@ namespace SSC {
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<ManagedWindow*>(window);
-
           inits[window->index] = false;
           windows[window->index] = nullptr;
 
