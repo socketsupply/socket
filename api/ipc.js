@@ -295,7 +295,7 @@ function getRequestResponse (request, options) {
   return response
 }
 
-function maybeMakeError (error, caller) {
+export function maybeMakeError (error, caller) {
   const errors = {
     AbortError: getErrorClass('AbortError'),
     AggregateError: getErrorClass('AggregateError'),
