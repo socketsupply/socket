@@ -1429,6 +1429,11 @@ Watch for changes at `path` calling `callback`
  import { send } from 'socket:ipc'
  ```
 
+## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L298)
+
+This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
+
+
 ## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1100)
 
 Emit event to be dispatched on `window` object.
