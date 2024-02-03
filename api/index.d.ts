@@ -7234,6 +7234,275 @@ declare module "socket:test" {
     export default test;
     import test from "socket:test/index";
 }
+declare module "socket:internal/globals" {
+    /**
+     * Gets a runtime global value by name.
+     * @ignore
+     * @param {string} name
+     * @return {any|null}
+     */
+    export function get(name: string): any | null;
+    /**
+     * Symbolic global registry
+     * @ignore
+     */
+    export class GlobalsRegistry {
+        get global(): any;
+        symbol(name: any): symbol;
+        register(name: any, value: any): any;
+        get(name: any): any;
+    }
+    export default registry;
+    const registry: any;
+}
+declare module "socket:internal/shared-worker" {
+    export class SharedHybridWorkerProxy extends EventTarget {
+        constructor(url: any, options: any);
+        onChannelMessage(event: any): void;
+        get id(): any;
+        get port(): any;
+        #private;
+    }
+    export class SharedHybridWorker extends EventTarget {
+        constructor(url: any, nameOrOptions: any);
+        get port(): any;
+        #private;
+    }
+    export const SharedWorker: {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export default SharedWorker;
+}
+declare module "socket:worker" {
+    export { SharedWorker };
+    /**
+     * @type {import('dom').Worker}
+     */
+    export const Worker: any;
+    export default Worker;
+    import SharedWorker from "socket:internal/shared-worker";
+}
+declare module "socket:vm" {
+    /**
+     * @ignore
+     * @param {object[]} transfer
+     * @param {object} object
+     * @param {object=} [options]
+     * @return {object[]}
+     */
+    export function findMessageTransfers(transfers: any, object: object, options?: object | undefined): object[];
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyInputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyOutputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function filterNonTransferableValues(context: object): void;
+    /**
+     * @ignore
+     * @param {object=} [currentContext]
+     * @param {object=} [updatedContext]
+     * @param {object=} [contextReference]
+     * @return {{ deletions: string[], merges: string[] }}
+     */
+    export function applyContextDifferences(currentContext?: object | undefined, updatedContext?: object | undefined, contextReference?: object | undefined, preserveScriptArgs?: boolean): {
+        deletions: string[];
+        merges: string[];
+    };
+    /**
+     * Wrap a JavaScript function source.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     */
+    export function wrapFunctionSource(source: string, options?: object | undefined): string;
+    /**
+     * Gets the VM context window.
+     * This function will create it if it does not already exist.
+     * The current window will be used on Android or iOS platforms as there can
+     * only be one window.
+     * @return {Promise<import('./window.js').ApplicationWindow}
+     */
+    export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
+    /**
+     * Gets the `SharedWorker` that for the VM context.
+     * @return {Promise<SharedWorker>}
+     */
+    export function getContextWorker(): Promise<SharedWorker>;
+    export function terminateContextWindow(): Promise<void>;
+    export function terminateContextWorker(): Promise<void>;
+    export function createIntrinsics(): any;
+    export function createGlobalObject(context: any): any;
+    export function compileFunction(source: any, options?: any): any;
+    export function runInContext(source: any, options: any, context: any): Promise<any>;
+    export function runInNewContext(source: any, options: any, context: any): Promise<any>;
+    export function runInThisContext(source: any, options: any): Promise<any>;
+    export function putReference(reference: any): void;
+    export function createReference(value: any, context: any): Reference;
+    export function getReference(id: any): any;
+    export function removeReference(id: any): void;
+    /**
+     * A container for a context worker message channel that looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterface extends EventTarget {
+        get channel(): any;
+        get port(): any;
+        destroy(): void;
+        #private;
+    }
+    /**
+     * A container proxy for a context worker message channel that
+     * looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterfaceProxy extends EventTarget {
+        constructor(globals: any);
+        get port(): any;
+        #private;
+    }
+    /**
+     * Global reserved values that a script context may not modify.
+     * @type {string[]}
+     */
+    export const RESERVED_GLOBAL_INTRINSICS: string[];
+    /**
+     * A unique reference to a value owner by a "context object" and a
+     * `Script` instance.
+     */
+    export class Reference {
+        /**
+         * `Reference` class constructor.
+         * @param {string} id
+         * @param {any} value
+         * @param {object=} [context]
+         */
+        constructor(id: string, value: any, context?: object | undefined);
+        /**
+         * The unique id of the reference
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The underling primitive type of the reference value.
+         * @ignore
+         * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
+         */
+        get type(): "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+        /**
+         * The underlying value of the reference.
+         * @type {any?}
+         */
+        get value(): any;
+        /**
+         * The `Script` this value belongs to, if available.
+         * @type {Script?}
+         */
+        get script(): Script;
+        /**
+         * The "context object" this reference value belongs to.
+         * @type {object?}
+         */
+        get context(): any;
+        /**
+         * Releases strongly held value and weak references
+         * to the "context object".
+         */
+        release(): void;
+        /**
+         * Converts this `Reference` to a JSON object.
+         * @param {boolean=} [includeValue = false]
+         */
+        toJSON(includeValue?: boolean | undefined): {
+            __vmScriptReference__: boolean;
+            id: string;
+            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+            value: any;
+        } | {
+            __vmScriptReference__: boolean;
+            id: string;
+            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+            value?: undefined;
+        };
+        #private;
+    }
+    /**
+     * @typedef {{
+     *  filename?: string,
+     *  context?: object
+     * }} ScriptOptions
+     */
+    /**
+     * A `Script` is a container for raw JavaScript to be executed in
+     * a completely isolated virtual machine context, optionally with
+     * user supplied context. Context objects references are not actually
+     * shared, but instead provided to the script execution context using the
+     * structured cloning algorithm used by the Message Channel API. Context
+     * differences are computed and applied after execution so the user supplied
+     * context object realizes context changes after script execution. All script
+     * sources run in an "async" context so a "top level await" should work.
+     */
+    export class Script extends EventTarget {
+        /**
+         * `Script` class constructor
+         * @param {string} source
+         * @param {ScriptOptions} [options]
+         */
+        constructor(source: string, options?: ScriptOptions);
+        /**
+         * The script identifier.
+         */
+        get id(): any;
+        /**
+         * The source for this script.
+         * @type {string}
+         */
+        get source(): string;
+        /**
+         * The filename for this script.
+         * @type {string}
+         */
+        get filename(): string;
+        /**
+         * A promise that resolves when the script is ready.
+         * @type {Promise<Boolean>}
+         */
+        get ready(): Promise<boolean>;
+        destroy(): Promise<void>;
+        runInContext(context: any, options?: any): Promise<any>;
+        runInNewContext(context: any, options?: any): Promise<any>;
+        runInThisContext(options?: any): Promise<any>;
+        #private;
+    }
+    namespace _default {
+        export { compileFunction };
+        export { createReference };
+        export { getContextWindow };
+        export { getContextWorker };
+        export { getReference };
+        export { Reference };
+        export { removeReference };
+        export { runInContext };
+        export { runInNewContext };
+        export { runInThisContext };
+        export { Script };
+    }
+    export default _default;
+    export type ScriptOptions = {
+        filename?: string;
+        context?: object;
+    };
+    import { SharedWorker } from "socket:worker";
+}
 declare module "socket:module" {
     export function isBuiltin(name: any): boolean;
     /**
@@ -7269,6 +7538,19 @@ declare module "socket:module" {
         test: typeof test;
         util: typeof util;
         url: any;
+        vm: {
+            compileFunction: typeof import("socket:vm").compileFunction;
+            createReference: typeof import("socket:vm").createReference;
+            getContextWindow: typeof import("socket:vm").getContextWindow;
+            getContextWorker: typeof import("socket:vm").getContextWorker;
+            getReference: typeof import("socket:vm").getReference;
+            Reference: typeof import("socket:vm").Reference;
+            removeReference: typeof import("socket:vm").removeReference;
+            runInContext: typeof import("socket:vm").runInContext;
+            runInNewContext: typeof import("socket:vm").runInNewContext;
+            runInThisContext: typeof import("socket:vm").runInThisContext;
+            Script: typeof import("socket:vm").Script;
+        };
     };
     export const builtinModules: {
         buffer: typeof buffer;
@@ -7293,6 +7575,19 @@ declare module "socket:module" {
         test: typeof test;
         util: typeof util;
         url: any;
+        vm: {
+            compileFunction: typeof import("socket:vm").compileFunction;
+            createReference: typeof import("socket:vm").createReference;
+            getContextWindow: typeof import("socket:vm").getContextWindow;
+            getContextWorker: typeof import("socket:vm").getContextWorker;
+            getReference: typeof import("socket:vm").getReference;
+            Reference: typeof import("socket:vm").Reference;
+            removeReference: typeof import("socket:vm").removeReference;
+            runInContext: typeof import("socket:vm").runInContext;
+            runInNewContext: typeof import("socket:vm").runInNewContext;
+            runInThisContext: typeof import("socket:vm").runInThisContext;
+            Script: typeof import("socket:vm").Script;
+        };
     };
     /**
      * CommonJS module scope source wrapper.
@@ -7938,55 +8233,6 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
-declare module "socket:internal/globals" {
-    /**
-     * Gets a runtime global value by name.
-     * @ignore
-     * @param {string} name
-     * @return {any|null}
-     */
-    export function get(name: string): any | null;
-    /**
-     * Symbolic global registry
-     * @ignore
-     */
-    export class GlobalsRegistry {
-        get global(): any;
-        symbol(name: any): symbol;
-        register(name: any, value: any): any;
-        get(name: any): any;
-    }
-    export default registry;
-    const registry: any;
-}
-declare module "socket:internal/shared-worker" {
-    export class SharedHybridWorkerProxy extends EventTarget {
-        constructor(url: any, options: any);
-        onChannelMessage(event: any): void;
-        get id(): any;
-        get port(): any;
-        #private;
-    }
-    export class SharedHybridWorker extends EventTarget {
-        constructor(url: any, nameOrOptions: any);
-        get port(): any;
-        #private;
-    }
-    export const SharedWorker: {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export default SharedWorker;
-}
-declare module "socket:worker" {
-    export { SharedWorker };
-    /**
-     * @type {import('dom').Worker}
-     */
-    export const Worker: any;
-    export default Worker;
-    import SharedWorker from "socket:internal/shared-worker";
-}
 declare module "socket:internal/events" {
     /**
      * An event dispatched when an application URL is opening the application.
@@ -8370,6 +8616,68 @@ declare module "socket:test/harness" {
     };
     import * as exports from "socket:test/harness";
     
+}
+declare module "socket:vm/init" {
+    export {};
+}
+declare function reportError(e: any): void;
+declare function reportError(err: any): void;
+declare function isTypedArray(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function findMessageTransfers(transfers: any, object: any): any;
+declare const Uint8ArrayPrototype: Uint8Array;
+declare const TypedArrayPrototype: any;
+declare const TypedArray: any;
+declare class Client extends EventTarget {
+    constructor(id: any, port: any);
+    id: any;
+    port: any;
+    onMessage(event: any): void;
+    postMessage(...args: any[]): any;
+}
+declare class Realm {
+    constructor(state: any, port: any);
+    /**
+     * The `MessagePort` for the VM realm.
+     * @type {MessagePort}
+     */
+    port: MessagePort;
+    /**
+     * A reference to the top level worker statae
+     * @type {State}
+     */
+    state: State;
+    /**
+     * Known content worlds that exist in a realm
+     * @type {Map<String, World>}
+     */
+    worlds: Map<string, World>;
+    get clients(): Map<any, any>;
+    postMessage(...args: any[]): void;
+}
+declare class State {
+    static init(): State;
+    /**
+     * All known connected `MessagePort` instances
+     * @type {MessagePort[]}
+     */
+    ports: MessagePort[];
+    /**
+     * Pending events to be dispatched to realm
+     * @type {MessageEvent[]}
+     */
+    pending: MessageEvent[];
+    /**
+     * The realm for all virtual machines. This is a headless webview
+     */
+    realm: any;
+    clients: Map<any, any>;
+    onConnect(event: any): void;
+    init(): void;
+    onPortMessage(port: any, event: any): void;
+}
+declare module "socket:vm/world" {
+    export {};
 }
 type MenuItemSelection = {
     title: string
