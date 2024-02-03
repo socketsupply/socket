@@ -51,7 +51,9 @@ namespace SSC {
     }
 
     context->lastUpdated = now;
-    context->watcher->callback(path.string(), events, *context);
+    if (events.size() == 1) {
+      context->watcher->callback(path.string(), events, *context);
+    }
   }
 
   void FileSystemWatcher::handleEventCallback (
@@ -143,7 +145,6 @@ namespace SSC {
       }
 
       if (existsInWatchedDirectory) {
-        printf("ignore %s\n", path.c_str());
         continue;
       }
 
@@ -193,7 +194,7 @@ namespace SSC {
           }
         }
 
-          // start (or restart)
+        // start (or restart)
         status = uv_fs_event_start(
           &handle->event,
           FileSystemWatcher::handleEventCallback,
