@@ -107,7 +107,7 @@ class PermissionStatus extends EventTarget {
     })
 
     if (this.#signal?.aborted === true) {
-      this.removePermissionChangeListener()
+      this.#removePermissionChangeListener()
     }
 
     if (typeof this.#signal?.addEventListener === 'function') {
@@ -176,9 +176,11 @@ class PermissionStatus extends EventTarget {
    */
   [gc.finalizer] () {
     return {
-      args: [this.removePermissionChangeListener],
+      args: [this.#removePermissionChangeListener],
       handle (removePermissionChangeListener) {
-        removePermissionChangeListener()
+        if (typeof removePermissionChangeListener === 'function') {
+          removePermissionChangeListener()
+        }
       }
     }
   }
