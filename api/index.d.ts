@@ -1521,13 +1521,6 @@ declare module "socket:diagnostics/channels" {
     };
     export default registry;
 }
-declare module "socket:worker" {
-    /**
-     * @type {import('dom').Worker}
-     */
-    export const Worker: any;
-    export default Worker;
-}
 declare module "socket:diagnostics/metric" {
     export class Metric {
         init(): void;
@@ -1580,14 +1573,26 @@ declare module "socket:diagnostics/window" {
         };
     }
     export class WorkerMetric extends Metric {
-        /**
-         * @type {Worker}
-         */
-        static GlobalWorker: Worker;
         constructor(options: any);
+        GlobalWorker: {
+            new (scriptURL: string | URL, options?: WorkerOptions): Worker;
+            prototype: Worker;
+        };
         channel: import("socket:diagnostics/channels").Channel;
         Worker: {
-            new (url: any, options: any, ...args: any[]): {};
+            new (url: any, options: any, ...args: any[]): {
+                onmessage: (this: Worker, ev: MessageEvent<any>) => any;
+                onmessageerror: (this: Worker, ev: MessageEvent<any>) => any;
+                postMessage(message: any, transfer: Transferable[]): void;
+                postMessage(message: any, options?: StructuredSerializeOptions): void;
+                terminate(): void;
+                addEventListener<K extends keyof WorkerEventMap>(type: K, listener: (this: Worker, ev: WorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+                addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+                removeEventListener<K_1 extends keyof WorkerEventMap>(type: K_1, listener: (this: Worker, ev: WorkerEventMap[K_1]) => any, options?: boolean | EventListenerOptions): void;
+                removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+                dispatchEvent(event: Event): boolean;
+                onerror: (this: AbstractWorker, ev: ErrorEvent) => any;
+            };
         };
     }
     export const metrics: {
@@ -1606,7 +1611,6 @@ declare module "socket:diagnostics/window" {
     }
     export default _default;
     import { Metric } from "socket:diagnostics/metric";
-    import { Worker } from "socket:worker";
 }
 declare module "socket:diagnostics/index" {
     /**
@@ -2510,6 +2514,13 @@ declare module "socket:fs/dir" {
 }
 declare module "socket:hooks" {
     /**
+     * Wait for a hook event to occur.
+     * @template {Event | T extends Event}
+     * @param {string|function} nameOrFunction
+     * @return {Promise<T>}
+     */
+    export function wait(nameOrFunction: string | Function): Promise<T>;
+    /**
      * Wait for the global Window, Document, and Runtime to be ready.
      * The callback function is called exactly once.
      * @param {function} callback
@@ -2699,6 +2710,14 @@ declare module "socket:hooks" {
          */
         get isWindowContext(): boolean;
         /**
+         * Wait for a hook event to occur.
+         * @template {Event | T extends Event}
+         * @param {string|function} nameOrFunction
+         * @param {WaitOptions=} [options]
+         * @return {Promise<T>}
+         */
+        wait(nameOrFunction: string | Function, options?: WaitOptions | undefined): Promise<T>;
+        /**
          * Wait for the global Window, Document, and Runtime to be ready.
          * The callback function is called exactly once.
          * @param {function} callback
@@ -2785,6 +2804,9 @@ declare module "socket:hooks" {
         #private;
     }
     export default hooks;
+    export type WaitOptions = {
+        signal?: AbortSignal;
+    };
     /**
      * `Hooks` single instance.
      * @ignore
@@ -3908,6 +3930,13 @@ declare module "socket:window" {
             value?: (string | object) | undefined;
         }): Promise<ipc.Result>;
         /**
+         * Post a message to a window
+         * TODO(@jwerle): research using `BroadcastChannel` instead
+         * @param {object} message
+         * @return {Promise}
+         */
+        postMessage(message: object): Promise<any>;
+        /**
          * Opens an URL in the default browser.
          * @param {object} options
          * @returns {Promise<ipc.Result>}
@@ -3988,6 +4017,7 @@ declare module "socket:application" {
      * @param {boolean=} [opts.frameless=false] - whether the window is frameless
      * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
      * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+     * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
      * @return {Promise<ApplicationWindow>}
      */
     export function createWindow(opts: {
@@ -4004,6 +4034,7 @@ declare module "socket:application" {
         frameless?: boolean | undefined;
         utility?: boolean | undefined;
         canExit?: boolean | undefined;
+        headless?: boolean | undefined;
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
@@ -7905,6 +7936,13 @@ declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
+}
+declare module "socket:worker" {
+    /**
+     * @type {import('dom').Worker}
+     */
+    export const Worker: any;
+    export default Worker;
 }
 declare module "socket:internal/events" {
     /**
