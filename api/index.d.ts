@@ -3394,6 +3394,7 @@ declare module "socket:crypto" {
     
 }
 declare module "socket:ipc" {
+    export function maybeMakeError(error: any, caller: any): any;
     /**
      * Parses `seq` as integer value
      * @param {string|number} seq
@@ -7937,12 +7938,54 @@ declare module "socket:stream-relay" {
     export default def;
     import def from "socket:stream-relay/index";
 }
+declare module "socket:internal/globals" {
+    /**
+     * Gets a runtime global value by name.
+     * @ignore
+     * @param {string} name
+     * @return {any|null}
+     */
+    export function get(name: string): any | null;
+    /**
+     * Symbolic global registry
+     * @ignore
+     */
+    export class GlobalsRegistry {
+        get global(): any;
+        symbol(name: any): symbol;
+        register(name: any, value: any): any;
+        get(name: any): any;
+    }
+    export default registry;
+    const registry: any;
+}
+declare module "socket:internal/shared-worker" {
+    export class SharedHybridWorkerProxy extends EventTarget {
+        constructor(url: any, options: any);
+        onChannelMessage(event: any): void;
+        get id(): any;
+        get port(): any;
+        #private;
+    }
+    export class SharedHybridWorker extends EventTarget {
+        constructor(url: any, nameOrOptions: any);
+        get port(): any;
+        #private;
+    }
+    export const SharedWorker: {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export default SharedWorker;
+}
 declare module "socket:worker" {
+    export { SharedWorker };
     /**
      * @type {import('dom').Worker}
      */
     export const Worker: any;
     export default Worker;
+    import SharedWorker from "socket:internal/shared-worker";
 }
 declare module "socket:internal/events" {
     /**
@@ -8025,24 +8068,6 @@ declare module "socket:internal/geolocation" {
         export { clearWatch };
     }
     export default _default;
-}
-declare module "socket:internal/globals" {
-    /**
-     * Gets a global by name.
-     * @ignore
-     */
-    export function get(name: any): any;
-    export default registry;
-    /**
-     * Symbolic global registry
-     * @ignore
-     */
-    const registry: {
-        readonly global: any;
-        symbol(name: any): symbol;
-        register(name: any, value: any): any;
-        get(name: any): any;
-    };
 }
 declare module "socket:internal/webassembly" {
     /**
@@ -8175,15 +8200,20 @@ declare module "socket:internal/monkeypatch" {
     const patches: {};
 }
 declare module "socket:internal/init" {
-    const _default: any;
+    namespace _default {
+        export { location };
+    }
     export default _default;
+    import location from "socket:location";
 }
 declare module "socket:internal/worker" {
-    export function onWorkerMessage(event: any): any;
+    export function onWorkerMessage(event: any): Promise<any>;
     export function addEventListener(eventName: any, callback: any, ...args: any[]): any;
     export function removeEventListener(eventName: any, callback: any, ...args: any[]): any;
     export function dispatchEvent(event: any): any;
     export function postMessage(message: any, ...args: any[]): any;
+    export function close(): any;
+    export const WorkerGlobalScopePrototype: any;
     /**
      * The absolute `URL` of the internal worker initialization entry.
      * @ignore
@@ -8208,6 +8238,11 @@ declare module "socket:internal/worker" {
      * @type {object}
      */
     export const worker: object;
+    /**
+     * A reference to the global worker scope.
+     * @type {WorkerGlobalScope}
+     */
+    export const self: WorkerGlobalScope;
     namespace _default {
         export { RUNTIME_WORKER_ID };
         export { removeEventListener };
@@ -8215,6 +8250,7 @@ declare module "socket:internal/worker" {
         export { dispatchEvent };
         export { postMessage };
         export { source };
+        export { close };
         export { url };
     }
     export default _default;
