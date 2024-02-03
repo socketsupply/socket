@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        connect-src http: https: ipc: socket:;
+        script-src https: blob: socket: 'unsafe-eval' 'unsafe-inline';
+        worker-src blob: socket: 'unsafe-eval' 'unsafe-inline';
+        img-src 'none';
+        child-src 'none';
+        object-src 'none';
+      "
+    />
+    <script charset="utf-8" type="module" src="./world.js"></script>
+  </head>
+  <body>
+  </body>
+</html>
