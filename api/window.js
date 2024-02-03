@@ -297,12 +297,15 @@ export class ApplicationWindow {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.send can only be used from the current window')
     }
+
     if (!Number.isInteger(options.window) && options.backend !== true) {
       throw new Error('window should be an integer')
     }
+
     if (options.backend === true && options.window != null) {
       throw new Error('backend option cannot be used together with window option')
     }
+
     if (typeof options.event !== 'string' || options.event.length === 0) {
       throw new Error('event should be a non-empty string')
     }
@@ -323,6 +326,25 @@ export class ApplicationWindow {
       event: options.event,
       value: encodeURIComponent(value)
     })
+  }
+
+  /**
+   * Post a message to a window
+   * TODO(@jwerle): research using `BroadcastChannel` instead
+   * @param {object} message
+   * @return {Promise}
+   */
+  async postMessage (message) {
+    if (this.#index === this.#senderWindowIndex) {
+      globalThis.dispatchEvent(new MessageEvent('message', message))
+    } else {
+      return await ipc.send('window.send', {
+        index: this.#senderWindowIndex,
+        targetWindowIndex: this.#index,
+        event: 'message',
+        value: encodeURIComponent(message.data)
+      })
+    }
   }
 
   /**
