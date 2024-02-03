@@ -2,6 +2,7 @@
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
 import { ApplicationURLEvent } from './events.js'
+import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
@@ -174,6 +175,9 @@ export function init () {
 
     // buffer
     Buffer,
+
+    // workers
+    SharedWorker,
 
     // platform detection
     isSocketRuntime: true
