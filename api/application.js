@@ -41,6 +41,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+ * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -61,7 +62,10 @@ export async function createWindow (opts) {
     minWidth: opts.minWidth ?? 0,
     minHeight: opts.minHeight ?? 0,
     maxWidth: opts.maxWidth ?? '100%',
-    maxHeight: opts.maxHeight ?? '100%'
+    maxHeight: opts.maxHeight ?? '100%',
+    headless: opts.headless === true,
+    // @ts-ignore
+    debug: opts.debug === true // internal
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
@@ -69,9 +73,11 @@ export async function createWindow (opts) {
     (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width > 0))) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
+
   if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
     options.width = opts.width
   }
+
   if (typeof opts.width === 'number') {
     options.width = opts.width.toString()
   }
@@ -81,9 +87,11 @@ export async function createWindow (opts) {
     (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height > 0))) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
+
   if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
     options.height = opts.height
   }
+
   if (typeof opts.height === 'number') {
     options.height = opts.height.toString()
   }
@@ -128,7 +136,7 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
-  if (os.platform() === 'ios') {
+  if (os.platform() === 'ios' || os.platform() === 'android') {
     return {
       0: new ApplicationWindow({
         index: 0,
