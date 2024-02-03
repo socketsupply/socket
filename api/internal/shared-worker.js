@@ -190,7 +190,7 @@ export const SharedWorker = (
     (os.platform() === 'android' && isInFrame)
       ? SharedHybridWorkerProxy
       : SharedHybridWorker
-    )
+  )
 )
 
 if (!isInFrame) {
