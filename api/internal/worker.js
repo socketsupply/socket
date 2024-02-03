@@ -1,30 +1,30 @@
-/* global EventTarget, CustomEvent */
+/* global reportError, EventTarget, CustomEvent */
 import './init.js'
 
 import { rand64 } from '../crypto.js'
 import globals from './globals.js'
-import console from '../console.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
-const WorkerGlobalScopePrototype = globalThis.WorkerGlobalScope?.prototype ?? {}
+export const WorkerGlobalScopePrototype = globalThis.WorkerGlobalScope?.prototype ?? {}
 
-// level 1 worker `EventTarget` 'message' listener
+// determine if in actual worker scope
+const isWorkerScope = Boolean(globalThis.self && !globalThis.window)
+
+// conencted `MessagePort` instances when in `SharedWorker` mode
+const ports = []
+
+// level 1 Worker `EventTarget` 'message' listener
 let onmessage = null
 
-// events are routed through this `EventTarget`
-const eventTarget = new EventTarget()
+// level 1 Worker `EventTarget` 'connect' listener
+let onconnect = null
 
-// handle worker messages that are eventually propgated to `eventTarget`
-globalThis.addEventListener('message', onWorkerMessage)
-globalThis.addEventListener('runtime-xhr-post-queue', (event) => {
-  const { id, seq, params } = event.detail
-  globals.get('RuntimeXHRPostQueue').dispatch(
-    id,
-    seq,
-    params
-  )
-})
+// 'close' state for a polyfilled `SharedWorker`
+let isClosed = false
+
+// events are routed through this `EventTarget`
+const workerGlobalScopeEventTarget = new EventTarget()
 
 /**
  * The absolute `URL` of the internal worker initialization entry.
@@ -39,14 +39,14 @@ export const url = new URL(import.meta.url)
  * @ignore
  * @type {string}
  */
-export const source = globalThis.RUNTIME_WORKER_LOCATION || url.searchParams.get('source')
+export const source = globalThis.RUNTIME_WORKER_LOCATION ?? url.searchParams.get('source') ?? null
 
 /**
  * A unique identifier for this worker made available on the global scope
  * @ignore
  * @type {string}
  */
-export const RUNTIME_WORKER_ID = globalThis.RUNTIME_WORKER_ID || rand64().toString()
+export const RUNTIME_WORKER_ID = globalThis.RUNTIME_WORKER_ID ?? rand64().toString()
 
 /**
  * Internally scoped event interface for a worker context.
@@ -57,20 +57,61 @@ export const worker = {
   postMessage: globalThis.postMessage.bind(globalThis),
   addEventListener: globalThis.addEventListener.bind(globalThis),
   removeEventListener: globalThis.removeEventListener.bind(globalThis),
-  dispatchEvent: globalThis.dispatchEvent.bind(globalThis)
+  dispatchEvent: globalThis.dispatchEvent.bind(globalThis),
+  close: globalThis.close.bind(globalThis)
 }
 
-// wait for everything to be ready, then import
-hooks.onReady(async () => {
-  try {
-    // @ts-ignore
-    await import(source)
-  } catch (err) {
-    console.error(
-      'RuntimeWorker: Failed to import worker:', err
+/**
+ * A reference to the global worker scope.
+ * @type {WorkerGlobalScope}
+ */
+export const self = globalThis.self || globalThis
+
+if (isWorkerScope) {
+  // handle worker messages that are eventually propgated to `workerGlobalScopeEventTarget`
+  globalThis.addEventListener('message', onWorkerMessage)
+  globalThis.addEventListener('runtime-xhr-post-queue', function onXHRPostQueue (event) {
+    if (isClosed) {
+      globalThis.removeEventListener('runtime-xhr-post-queue', onXHRPostQueue)
+      return false
+    }
+
+    const { id, seq, params } = event.detail || {}
+    globals.get('RuntimeXHRPostQueue').dispatch(
+      id,
+      seq,
+      params
     )
-  }
-})
+  })
+}
+
+let promise = null
+
+if (source && typeof source === 'string') {
+  promise = new Promise((resolve) => {
+    // wait for everything to be ready, then import
+    hooks.onReady(async () => {
+      try {
+        // @ts-ignore
+        await import(source)
+        if (Array.isArray(globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG)) {
+          for (const message of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
+            globalThis.dispatchEvent(message)
+          }
+
+          globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.splice(
+            0,
+            globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.length
+          )
+        }
+      } catch (err) {
+        reportError(err)
+      }
+
+      resolve()
+    })
+  })
+}
 
 // overload worker event interfaces
 Object.defineProperties(WorkerGlobalScopePrototype, {
@@ -79,14 +120,35 @@ Object.defineProperties(WorkerGlobalScopePrototype, {
     get: () => onmessage,
     set: (value) => {
       if (typeof onmessage === 'function') {
-        eventTarget.removeEventListener('message', onmessage)
+        workerGlobalScopeEventTarget.removeEventListener('message', onmessage)
       }
 
       if (value === null || typeof value === 'function') {
         onmessage = value
-        eventTarget.addEventListener('message', onmessage)
+        workerGlobalScopeEventTarget.addEventListener('message', onmessage)
       }
     }
+  },
+
+  onconnect: {
+    configurable: false,
+    get: () => onconnect,
+    set: (value) => {
+      if (typeof onconnect === 'function') {
+        workerGlobalScopeEventTarget.removeEventListener('connect', onconnect)
+      }
+
+      if (value === null || typeof value === 'function') {
+        onconnect = value
+        workerGlobalScopeEventTarget.addEventListener('connect', onconnect)
+      }
+    }
+  },
+
+  close: {
+    configurable: false,
+    enumerable: false,
+    value: close
   },
 
   addEventListener: {
@@ -114,8 +176,9 @@ Object.defineProperties(WorkerGlobalScopePrototype, {
   }
 })
 
-export function onWorkerMessage (event) {
+export async function onWorkerMessage (event) {
   const { data } = event
+  await promise
 
   if (typeof data?.__runtime_worker_ipc_result === 'object') {
     const resultData = data?.__runtime_worker_ipc_result || {}
@@ -138,6 +201,19 @@ export function onWorkerMessage (event) {
     }
     event.stopImmediatePropagation()
     return false
+  } else if (typeof data?.__runtime_shared_worker === 'object') {
+    for (const port of data?.__runtime_shared_worker.ports) {
+      if (ports.includes(port)) {
+        ports.push(port)
+      }
+    }
+
+    workerGlobalScopeEventTarget.dispatchEvent(new MessageEvent('connect', {
+      ...data?.__runtime_shared_worker
+    }))
+
+    event.stopImmediatePropagation()
+    return false
   }
 
   return dispatchEvent(event)
@@ -145,7 +221,9 @@ export function onWorkerMessage (event) {
 
 export function addEventListener (eventName, callback, ...args) {
   if (eventName === 'message') {
-    return eventTarget.addEventListener(eventName, callback, ...args)
+    return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
+  } else if (eventName === 'connect') {
+    return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
   } else {
     return worker.addEventListener(eventName, callback, ...args)
   }
@@ -153,7 +231,9 @@ export function addEventListener (eventName, callback, ...args) {
 
 export function removeEventListener (eventName, callback, ...args) {
   if (eventName === 'message') {
-    return eventTarget.removeEventListener(eventName, callback, ...args)
+    return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
+  } else if (eventName === 'connect') {
+    return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
   } else {
     return worker.removeEventListener(eventName, callback, ...args)
   }
@@ -163,11 +243,27 @@ export function dispatchEvent (event) {
   if (hooks.globalEvents.includes(event.type)) {
     return worker.dispatchEvent(event)
   }
-  return eventTarget.dispatchEvent(event)
+  return workerGlobalScopeEventTarget.dispatchEvent(event)
 }
 
 export function postMessage (message, ...args) {
   return worker.postMessage(message, ...args)
+}
+
+export function close () {
+  isClosed = true
+  globalThis.removeEventListener('message', onWorkerMessage)
+
+  for (const port of ports) {
+    try {
+      port.close()
+    } catch {}
+  }
+
+  // release
+  ports.splice(0, ports.length)
+
+  return worker.close()
 }
 
 export default {
@@ -177,5 +273,6 @@ export default {
   dispatchEvent,
   postMessage,
   source,
+  close,
   url
 }
