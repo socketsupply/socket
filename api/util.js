@@ -523,7 +523,7 @@ export function inspect (value, options) {
       const formatWebkitErrorStackLine = (line) => {
         const [symbol = '', location = ''] = line.split('@')
         const output = []
-        const root = new URL('../', import.meta.url).pathname
+        const root = new URL('../', import.meta.url || globalThis.location.href).pathname
 
         let [context, lineno, colno] = (
           maybeURL(location)?.pathname?.split(/:/) ||
