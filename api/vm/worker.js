@@ -17,24 +17,37 @@ function isArrayBuffer (object) {
   return object instanceof ArrayBuffer
 }
 
-function findMessageTransfers (transfers, object) {
+function findMessageTransfers (transfers, object, options = null) {
   if (isTypedArray(object) || ArrayBuffer.isView(object)) {
-    transfers.push(object.buffer)
+    add(object.buffer)
   } else if (isArrayBuffer(object)) {
-    transfers.push(object)
+    add(object)
   } else if (object instanceof MessagePort) {
-    transfers.push(object)
+    add(object)
   } else if (Array.isArray(object)) {
     for (const value of object) {
-      findMessageTransfers(transfers, value)
+      findMessageTransfers(transfers, value, options)
     }
   } else if (object && typeof object === 'object') {
     for (const key in object) {
-      findMessageTransfers(transfers, object[key])
+      if (
+        key.startsWith('__vmScriptReferenceArgs_') &&
+        options?.ignoreScriptReferenceArgs === true
+      ) {
+        continue
+      }
+
+      findMessageTransfers(transfers, object[key], options)
     }
   }
 
   return transfers
+
+  function add (value) {
+    if (!transfers.includes(value)) {
+      transfers.push(value)
+    }
+  }
 }
 
 class Client extends EventTarget {
