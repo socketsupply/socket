@@ -111,7 +111,7 @@ class RuntimeWorker extends GlobalWorker {
    * @ignore
    */
   constructor (filename, options, ...args) {
-    const url = encodeURIComponent(new URL(filename, location.href || '/').toString())
+    const url = encodeURIComponent(new URL(filename, globalThis.location.href || '/').toString())
     const id = rand64()
 
     const preload = `
@@ -133,7 +133,24 @@ class RuntimeWorker extends GlobalWorker {
       value: '${url}'
     })
 
-    import 'socket://${location.hostname}/socket/internal/worker.js?source=${url}'
+    Object.defineProperty(globalThis, 'RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG', {
+      configurable: false,
+      enumerable: false,
+      value: []
+    })
+
+    globalThis.addEventListener('message', onInitialWorkerMessages)
+
+    function onInitialWorkerMessages (event) {
+      RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.push(event)
+    }
+
+    import '${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/worker.js?source=${url}'
+    import hooks from 'socket:hooks'
+
+    hooks.onReady(() => {
+      globalThis.removeEventListener('message', onInitialWorkerMessages)
+    })
     `.trim()
 
     const objectURL = URL.createObjectURL(
@@ -167,12 +184,15 @@ class RuntimeWorker extends GlobalWorker {
 
     globalThis.addEventListener('data', this.#onglobaldata)
 
+    const addEventListener = this.addEventListener.bind(this)
+    const removeEventListener = this.removeEventListener.bind(this)
+
     this.addEventListener = (eventName, ...args) => {
       if (eventName === 'message') {
         return eventTarget.addEventListener(eventName, ...args)
       }
 
-      return this.addEventListener(eventName, ...args)
+      return addEventListener(eventName, ...args)
     }
 
     this.removeEventListener = (eventName, ...args) => {
@@ -180,7 +200,7 @@ class RuntimeWorker extends GlobalWorker {
         return eventTarget.removeEventListener(eventName, ...args)
       }
 
-      return this.removeEventListener(eventName, ...args)
+      return removeEventListener(eventName, ...args)
     }
 
     Object.defineProperty(this, 'onmessage', {
@@ -268,7 +288,7 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     if (typeof url === 'string') {
       if (url.startsWith('/') || url.startsWith('.')) {
         try {
-          url = new URL(url, location.origin).toString()
+          url = new URL(url, globalThis.location.origin).toString()
         } catch {}
       }
     }
@@ -378,17 +398,19 @@ class ConcurrentQueue extends EventTarget {
 class RuntimeXHRPostQueue extends ConcurrentQueue {
   async dispatch (id, seq, params, headers, options = null) {
     if (options?.workerId) {
-      const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
-      if (worker) {
-        worker.postMessage({
-          __runtime_worker_event: {
-            type: 'runtime-xhr-post-queue',
-            detail: {
-              id, seq, params, headers
+      if (RuntimeWorker.pool.has(options.workerId)) {
+        const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
+        if (worker) {
+          worker.postMessage({
+            __runtime_worker_event: {
+              type: 'runtime-xhr-post-queue',
+              detail: {
+                id, seq, params, headers
+              }
             }
-          }
-        })
-        return
+          })
+          return
+        }
       }
     }
 
@@ -442,5 +464,12 @@ hooks.onReady(async () => {
 globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
+Object.defineProperty(globalThis, '__globals', {
+  enumerable: false,
+  configurable: false,
+  value: globals
+})
 
-export default null
+export default {
+  location
+}
