@@ -275,6 +275,70 @@ static void initRouterTable (Router *router) {
     );
   });
 
+  /**
+   * LLM
+   */
+  router->map("llm.createModel", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"path"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    Core::LLM::ModelOptions options;
+    options.path = message.get("path");
+
+    router->core->llm.createModel(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.createContext", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    Core::LLM::ContextOptions options;
+    options.modelId = modelId;
+
+    router->core->llm.createContext(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.parseGrammar", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"text"});
+
+    Core::LLM::GrammarOptions options;
+    options.text = message.get("text");
+
+    router->core->llm.parseGrammar(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.eval", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId", "contextId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    uint64_t contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(contextId, "contextId", std::stoi);
+
+    Core::LLM::WorkerOptions options;
+    options.modelId = modelId;
+    options.contextId = contextId;
+
+    router->core->llm.eval(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  /**
+   * Extensions
+   */
   router->map("extension.stats", [](auto message, auto router, auto reply) {
     auto extensions = Extension::all();
     auto name = message.get("name");

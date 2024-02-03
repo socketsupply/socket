@@ -673,6 +673,54 @@ namespace SSC {
         public:
           LLM (auto core) : Module(core) {}
 
+          class Model;
+          class Grammar;
+          class Evaluator;
+          class Context;
+          class Worker;
+
+          static std::map<uint64_t, Model*> models;
+          static std::map<uint64_t, Grammar*> grammars; // parsed grammars
+          static std::map<uint64_t, Evaluator*> evaluators;
+          static std::map<uint64_t, Context*> contexts;
+          static std::map<uint64_t, Worker*> workers;
+
+          struct ModelOptions {
+            std::filesystem::path path;
+            unsigned int gpuLayers;
+            bool vocabOnly;
+            bool useMmap;
+            bool useMlock;
+          };
+
+          struct ContextOptions {
+            uint64_t modelId;
+            int32_t seed = -1;
+            int32_t batchSize = -1;
+            bool logitsAll;
+            uint32_t contextSize = 4096;
+            int32_t threads = -1;
+            bool embedding;
+          };
+
+          struct GrammarOptions {
+            std::string text;
+            bool printGrammar;
+          };
+
+          struct WorkerOptions {
+            uint64_t modelId;
+            uint64_t contextId;
+            double temperature = 0.0f;
+            uint32_t topK = 40;
+            float topP = 0.85f;
+            float repeatPenalty = 1.5f;
+            std::vector<uint32_t> repeatPenaltyTokens;
+            float repeatPenaltyPresencePenalty = 0;
+            float repeatPenaltyFrequencyPenalty = 0;
+            uint64_t grammarEvaluationState = 0;
+          };
+
           void encode (const String seq, uint64_t id, Module::Callback cb) {};
           void decode (const String seq, uint64_t id, Module::Callback cb) {};
           void tokenBos (const String seq, uint64_t id, Module::Callback cb) {};
@@ -681,10 +729,12 @@ namespace SSC {
           void getContextSize (const String seq, uint64_t id, Module::Callback cb);
           void printTimings (const String seq, uint64_t id, Module::Callback cb);
           void getTokenString (const String seq, uint64_t id, Module::Callback cb);
-          void eval (const String seq, uint64_t id, Module::Callback cb);
 
           // to create a model, grammar, evaluator, context, or worker
-          void create (const String seq, uint64_t id, Module::Callback cb);
+          void createModel (const String seq, const ModelOptions options, Module::Callback cb);
+          void createContext (const String seq, const ContextOptions options, Module::Callback cb);
+          void parseGrammar (const String seq, const GrammarOptions options, Core::Module::Callback cb);
+          void eval (const String seq, WorkerOptions options, Module::Callback cb);
       };
 
       class UDP : public Module {
