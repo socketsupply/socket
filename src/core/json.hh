@@ -127,10 +127,12 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
+    #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       Any (size_t);
-      #if defined(__APPLE__)
+    #endif
+    #if defined(__APPLE__)
       Any (ssize_t);
-      #endif
+    #endif
       Any (const Number);
       Any (const char);
       Any (const char *);
