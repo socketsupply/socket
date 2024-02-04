@@ -8,6 +8,7 @@
 #include "../core/env.hh"
 #include "../core/config.hh"
 
+#include "hotkey.hh"
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
@@ -141,6 +142,7 @@ namespace SSC {
     public:
       App& app;
       WindowOptions opts;
+      HotKeyContext hotkey;
 
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
@@ -149,6 +151,7 @@ namespace SSC {
       int width = 0;
       int height = 0;
       bool exiting = false;
+
     #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
     #endif
