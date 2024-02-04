@@ -73,41 +73,8 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
           addJavascriptInterface(userMessageHandler, "external")
 
-          val assetManager = activity.applicationContext.resources.assets
           var baseUrl = "https://__BUNDLE_IDENTIFIER__$filename"
-          val stream = assetManager.open(filename.substring(1), 2)
-          var html = String(stream.readAllBytes())
-          val script = """<script type="text/javascript">$preload</script>"""
-
-          if (html.contains("<head>")) {
-            html = html.replace("<head>", """
-              <head>
-              $script
-            """)
-          } else if (html.contains("<body>")) {
-            html = html.replace("<body>", """
-              $script
-              <body>
-            """)
-          } else if (html.contains("<html>")){
-            html = html.replace("<html>", """
-              <html>
-              $script
-            """)
-          } else {
-            html = script + html
-          }
-
-          if (isDebugEnabled) {
-            val ts = java.time.Instant.now().toEpochMilli()
-            if (filename.contains("?")) {
-              baseUrl += "&$ts"
-            } else {
-              baseUrl += "?$ts"
-            }
-          }
-
-          loadDataWithBaseURL(baseUrl, html, "text/html", null, null)
+          loadUrl(baseUrl)
         }
       }
     })
