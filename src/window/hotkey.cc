@@ -806,7 +806,10 @@ namespace SSC {
 
     const auto& binding = this->bindings.at(id);
   #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
-    return UnregisterEventHotKey(binding.eventHotKeyRef) == 0;
+    if (UnregisterEventHotKey(binding.eventHotKeyRef) == 0) {
+      this->bindings.erase(id);
+      return true;
+    }
   #elif defined(__linux__) && !defined(__ANDROID__)
   #elif defined(_WIN32)
   #endif
