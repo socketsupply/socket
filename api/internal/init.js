@@ -1,4 +1,4 @@
-/* global Blob, ArrayBuffer */
+/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -76,11 +76,20 @@ if ((globalThis.window || globalThis.self) === globalThis) {
 
 // webview only features
 if ((globalThis.window) === globalThis) {
-  globalThis.addEventListener('dragdropfiles', async (event) => {
-    const { files } = event.detail
+  globalThis.addEventListener('platformdrop', async (event) => {
     const handles = []
-    if (Array.isArray(files)) {
-      for (const file of files) {
+    let target = globalThis
+    if (
+      typeof event.detail?.x === 'number' && typeof event.detail?.y === 'number'
+    ) {
+      target = (
+        globalThis.document.elementFromPoint(event.detail.x, event.detail.y) ??
+        globalThis
+      )
+    }
+
+    if (Array.isArray(event.detail?.files)) {
+      for (const file of event.detail.files) {
         if (typeof file === 'string') {
           const stats = await fs.stat(file)
           if (stats.isDirectory()) {
@@ -92,7 +101,85 @@ if ((globalThis.window) === globalThis) {
       }
     }
 
-    globalThis.dispatchEvent(new CustomEvent('dropfiles', { detail: { handles } }))
+    const dataTransfer = new DataTransfer()
+    const files = []
+
+    for (const handle of handles) {
+      if (typeof handle.getFile === 'function') {
+        const file = handle.getFile()
+        const buffer = new Uint8Array(await file.arrayBuffer())
+        files.push(new File(buffer, file.name, {
+          lastModified: file.lastModified,
+          type: file.type
+        }))
+      }
+    }
+
+    const fileList = Object.create(FileList.prototype, {
+      length: {
+        configurable: false,
+        enumerable: false,
+        get: () => files.length
+      },
+
+      item: {
+        configurable: false,
+        enumerable: false,
+        value: (index) => files[index] ?? null
+      },
+
+      [Symbol.iterator]: {
+        configurable: false,
+        enumerable: false,
+        get: () => files[Symbol.iterator]
+      }
+    })
+
+    for (let i = 0; i < handles.length; ++i) {
+      const file = files[i]
+      if (file) {
+        dataTransfer.items.add(file)
+      } else {
+        dataTransfer.items.add(handles[i].name, 'text/directory')
+      }
+    }
+
+    Object.defineProperties(dataTransfer, {
+      files: {
+        configurable: false,
+        enumerable: false,
+        value: fileList
+      }
+    })
+
+    const dropEvent = new DragEvent('drop', { dataTransfer })
+    Object.defineProperty(dropEvent, 'detail', {
+      value: {
+        handles
+      }
+    })
+
+    let index = 0
+    for (const item of dropEvent.dataTransfer.items) {
+      const handle = handles[index++]
+      Object.defineProperties(item, {
+        getAsFileSystemHandle: {
+          configurable: false,
+          enumerable: false,
+          value: async () => handle
+        }
+      })
+    }
+
+    target.dispatchEvent(dropEvent)
+
+    if (handles.length) {
+      globalThis.dispatchEvent(new CustomEvent('dropfiles', {
+        detail: {
+          handles
+        }
+      }))
+    }
   })
 }
 
