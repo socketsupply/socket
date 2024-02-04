@@ -12,6 +12,17 @@ namespace SSC {
 @interface SSCApplicationDelegate : NSObject<NSApplicationDelegate>
 @property (nonatomic) SSC::App* app;
 - (void) application: (NSApplication*) application openURLs: (NSArray<NSURL*>*) urls;
+
+- (BOOL) application: (NSApplication*) application
+continueUserActivity: (NSUserActivity*) userActivity
+  restorationHandler: (void (^)(NSArray*)) restorationHandler;
+
+              - (BOOL) application: (NSApplication*) application
+  willContinueUserActivityWithType: (NSString*) userActivityType;
+
+                 - (void) application: (NSApplication*) application
+didFailToContinueUserActivityWithType: (NSString*) userActivityType
+                                error: (NSError*) error;
 @end
 #endif
 
