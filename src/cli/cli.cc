@@ -2920,6 +2920,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework Network";
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
+      flags += " -framework Carbon";
       flags += " -framework Cocoa";
       flags += " -framework OSLog";
       flags += " -DMACOS=1";
