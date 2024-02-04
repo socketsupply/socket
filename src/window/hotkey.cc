@@ -548,6 +548,7 @@ namespace SSC {
   }
 
   void HotKeyContext::init (IPC::Bridge* bridge) {
+    static auto userConfig = SSC::getUserConfig()
     this->bridge = bridge;
 
   #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
@@ -580,6 +581,13 @@ namespace SSC {
         return reply(IPC::Result::Err { message, err });
       }
 
+      if (userConfig["permissions_allow_hotkeys"] == "false") {
+        auto err = JSON::Object::Entries {
+          {"type", "SecurityError"},
+          {"message", "The HotKey API is not allowed."}
+        };
+        return reply(IPC::Result::Err { message, err });
+      }
 
       auto binding = this->bind(expression);
 
@@ -609,6 +617,14 @@ namespace SSC {
     this->bridge->router.map("window.hotkey.unbind", [=, this](auto message, auto router, auto reply) mutable {
       HotKeyBinding::ID id;
       const auto expression = message.get("expression");
+
+      if (userConfig["permissions_allow_hotkeys"] == "false") {
+        auto err = JSON::Object::Entries {
+          {"type", "SecurityError"},
+          {"message", "The HotKey API is not allowed."}
+        };
+        return reply(IPC::Result::Err { message, err });
+      }
 
       if (expression.size() > 0) {
         if (this->hasBindingForExpression(expression)) {
@@ -684,11 +700,28 @@ namespace SSC {
     });
 
     this->bridge->router.map("window.hotkey.reset", [=, this](auto message, auto router, auto reply) mutable {
+      if (userConfig["permissions_allow_hotkeys"] == "false") {
+        auto err = JSON::Object::Entries {
+          {"type", "SecurityError"},
+          {"message", "The HotKey API is not allowed."}
+        };
+        return reply(IPC::Result::Err { message, err });
+      }
+
       return reply(IPC::Result { message.seq, message });
     });
 
     this->bridge->router.map("window.hotkey.bindings", [=, this](auto message, auto router, auto reply) mutable {
       auto data = JSON::Array::Entries {};
+
+      if (userConfig["permissions_allow_hotkeys"] == "false") {
+        auto err = JSON::Object::Entries {
+          {"type", "SecurityError"},
+          {"message", "The HotKey API is not allowed."}
+        };
+        return reply(IPC::Result::Err { message, err });
+      }
+
       for (const auto& entry : this->bindings) {
         const auto& binding = entry.second;
         auto sequence = JSON::Array::Entries {};
@@ -714,6 +747,14 @@ namespace SSC {
       static const HotKeyCodeMap map;
       auto modifiers = JSON::Object::Entries {};
       auto keys = JSON::Object::Entries {};
+
+      if (userConfig["permissions_allow_hotkeys"] == "false") {
+        auto err = JSON::Object::Entries {
+          {"type", "SecurityError"},
+          {"message", "The HotKey API is not allowed."}
+        };
+        return reply(IPC::Result::Err { message, err });
+      }
 
       for (const auto& entry : map.modifiers) {
         modifiers.insert(entry);
@@ -744,6 +785,11 @@ namespace SSC {
 
   const HotKeyBinding HotKeyContext::bind (HotKeyBinding::Expression expression) {
     Lock lock(this->mutex);
+    static auto userConfig = SSC::getUserConfig();
+
+    if (userConfig["permissions_allow_hotkeys"] == "false") {
+      return HotKeyBinding(0, "");
+    }
 
     if (this->bridge == nullptr) {
       return HotKeyBinding(0, "");
