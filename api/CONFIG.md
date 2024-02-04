@@ -74,9 +74,7 @@ sources[] |  |  Configure your project to watch for sources that could change wh
 
 Key | Default Value | Description
 :--- | :--- | :---
-root | "/" |  Make root open index.html
-default_index | "" |  Set default 'index.html' path to open for implicit routes
-watch | false |  Tell the webview to watch for changes in its resources
+headers[] | "" | 
 
 # `webview.watch`
 
@@ -207,7 +205,7 @@ utility | false |  If the window is utility window or not.
 
 Key | Default Value | Description
 :--- | :--- | :---
-title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. defalut value = ""
+title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS. defalut value = ""
 
 # `headless`
 
