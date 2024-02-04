@@ -3868,6 +3868,12 @@ declare module "socket:internal/events" {
 }
 declare module "socket:window/hotkey" {
     /**
+     * Normalizes an expression string.
+     * @param {string} expression
+     * @return {string}
+     */
+    export function normalizeExpression(expression: string): string;
+    /**
      * Bind a global hotkey expression.
      * @param {string} expression
      * @param {object=} [options]
@@ -3937,6 +3943,12 @@ declare module "socket:window/hotkey" {
          * @type {string?}
          */
         get expression(): string;
+        /**
+         * Unbinds this hotkey expression.
+         * @param {object=} poptions]
+         * @return {Promise}
+         */
+        unbind(options?: any): Promise<any>;
         #private;
     }
     namespace _default {
