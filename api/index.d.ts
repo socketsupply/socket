@@ -7338,18 +7338,98 @@ declare module "socket:vm" {
      * @return {Promise<SharedWorker>}
      */
     export function getContextWorker(): Promise<SharedWorker>;
+    /**
+     * Terminates the VM script context window.
+     * @ignore
+     */
     export function terminateContextWindow(): Promise<void>;
+    /**
+     * Terminates the VM script context worker.
+     * @ignore
+     */
     export function terminateContextWorker(): Promise<void>;
+    /**
+     * Creates a prototype object of known global reserved intrinsics.
+     * @ignore
+     */
     export function createIntrinsics(): any;
-    export function createGlobalObject(context: any): any;
-    export function compileFunction(source: any, options?: any): any;
-    export function runInContext(source: any, options: any, context: any): Promise<any>;
-    export function runInNewContext(source: any, options: any, context: any): Promise<any>;
-    export function runInThisContext(source: any, options: any): Promise<any>;
-    export function putReference(reference: any): void;
-    export function createReference(value: any, context: any): Reference;
-    export function getReference(id: any): any;
-    export function removeReference(id: any): void;
+    /**
+     * Creates a global proxy object for context execution.
+     * @ignore
+     * @param {object} context
+     * @return {Proxy}
+     */
+    export function createGlobalObject(context: object): ProxyConstructor;
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function detectFunctionSourceType(source: string): boolean;
+    /**
+     * Compiles `source`  with `options` into a function.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     * @return {function}
+     */
+    export function compileFunction(source: string, options?: object | undefined): Function;
+    /**
+     * Run `source` JavaScript in given context. The script context execution
+     * context is preserved until the `context` object that points to it is
+     * garbage collected or there are no longer any references to it and its
+     * associated `Script` instance.
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in new context. The script context is destroyed after
+     * execution. This is typically a "one off" isolated run.
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in this current context (`globalThis`).
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @return {Promise<any>}
+     */
+    export function runInThisContext(source: string, options?: ScriptOptions | undefined): Promise<any>;
+    /**
+     * @ignore
+     * @param {Reference} reference
+     */
+    export function putReference(reference: Reference): void;
+    /**
+     * Create a `Reference` for a `value` in a script `context`.
+     * @param {any} value
+     * @param {object} context
+     * @return {Reference}
+     */
+    export function createReference(value: any, context: object): Reference;
+    /**
+     * Get a script context by ID or values
+     * @param {string|object|function} id
+     * @return {Reference?}
+     */
+    export function getReference(id: string | object | Function): Reference | null;
+    /**
+     * Remove a script context reference by ID.
+     * @param {string} id
+     */
+    export function removeReference(id: string): void;
+    /**
+     * Get all transferable values in the `object` hierarchy.
+     * @param {object} object
+     * @return {object[]}
+     */
+    export function getTrasferables(object: object): object[];
     /**
      * A container for a context worker message channel that looks like a "worker".
      * @ignore
@@ -7477,10 +7557,35 @@ declare module "socket:vm" {
          * @type {Promise<Boolean>}
          */
         get ready(): Promise<boolean>;
-        destroy(): Promise<void>;
-        runInContext(context: any, options?: any): Promise<any>;
-        runInNewContext(context: any, options?: any): Promise<any>;
-        runInThisContext(options?: any): Promise<any>;
+        /**
+         * Destroy the script execution context.
+         * @return {Promise}
+         */
+        destroy(): Promise<any>;
+        /**
+         * Run `source` JavaScript in given context. The script context execution
+         * context is preserved until the `context` object that points to it is
+         * garbage collected or there are no longer any references to it and its
+         * associated `Script` instance.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in new context. The script context is destroyed after
+         * execution. This is typically a "one off" isolated run.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInNewContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in this current context (`globalThis`).
+         * @param {ScriptOptions=} [options]
+         * @return {Promise<any>}
+         */
+        runInThisContext(options?: ScriptOptions | undefined): Promise<any>;
         #private;
     }
     namespace _default {
@@ -7489,6 +7594,8 @@ declare module "socket:vm" {
         export { getContextWindow };
         export { getContextWorker };
         export { getReference };
+        export { getTrasferables };
+        export { putReference };
         export { Reference };
         export { removeReference };
         export { runInContext };
@@ -7544,6 +7651,8 @@ declare module "socket:module" {
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
+            getTrasferables: typeof import("socket:vm").getTrasferables;
+            putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;
             runInContext: typeof import("socket:vm").runInContext;
@@ -7581,6 +7690,8 @@ declare module "socket:module" {
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
+            getTrasferables: typeof import("socket:vm").getTrasferables;
+            putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;
             runInContext: typeof import("socket:vm").runInContext;
@@ -8624,7 +8735,7 @@ declare function reportError(e: any): void;
 declare function reportError(err: any): void;
 declare function isTypedArray(object: any): boolean;
 declare function isArrayBuffer(object: any): boolean;
-declare function findMessageTransfers(transfers: any, object: any): any;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;
 declare const TypedArray: any;
