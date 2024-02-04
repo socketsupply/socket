@@ -1,5 +1,7 @@
-import { test } from 'socket:test'
 import ApplicationWindow, { constants, formatURL } from 'socket:window'
+import * as hotkey from 'socket:window/hotkey'
+import { test } from 'socket:test'
+import os from 'socket:os'
 
 test('window constants', (t) => {
   t.equal(ApplicationWindow.constants.WINDOW_ERROR, -1, 'ApplicationWindow.constants.WINDOW_ERROR is -1')
@@ -39,3 +41,15 @@ test('formatURL', (t) => {
     'socket://co.socketsupply.socket.tests/index.html'
   )
 })
+
+if (!/android|ios/.test(os.platform())) {
+  test('window - hotkey', async (t) => {
+    const binding = await hotkey.bind('ctrl + k')
+    t.ok(binding && typeof binding === 'object', 'binding is an object')
+    let bindings = await hotkey.getBindings()
+    t.ok(bindings?.length === 1, 'one binding exists in bindings array')
+    await binding.unbind()
+    bindings = await hotkey.getBindings()
+    t.ok(bindings?.length === 0, 'no binding exists in bindings array after unbind')
+  })
+}
