@@ -295,6 +295,13 @@ static void initRouterTable (Router *router) {
     router->core->llm.createModel(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("llm.destroyModel", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId"});
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+    router->core->llm.destroyModel(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   router->map("llm.createContext", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"modelId"});
 
@@ -311,6 +318,13 @@ static void initRouterTable (Router *router) {
     router->core->llm.createContext(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("llm.destoryContext", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"contextId"});
+    uint64_t contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(contextId, "contextId", std::stoi);
+    router->core->llm.destroyContext(message.seq, contextId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   router->map("llm.createEvaluator", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"grammarId"});
 
@@ -324,6 +338,13 @@ static void initRouterTable (Router *router) {
     router->core->llm.createEvaluator(message.seq, grammarId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("llm.destroyEvaluator", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"evaluatorId"});
+    uint64_t evaluatorId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(evaluatorId, "evaluatorId", std::stoi);
+    router->core->llm.destroyEvaluator(message.seq, evaluatorId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   router->map("llm.parseGrammar", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"text"});
 
@@ -335,6 +356,13 @@ static void initRouterTable (Router *router) {
     options.text = message.get("text");
 
     router->core->llm.parseGrammar(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.destoryGrammar", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"grammarId"});
+    uint64_t grammarId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(grammarId, "grammarId", std::stoi);
+    router->core->llm.destroyGrammar(message.seq, grammarId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("llm.decode", [](auto message, auto router, auto reply) {

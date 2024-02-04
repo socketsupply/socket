@@ -353,6 +353,11 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
+  void Core::LLM::destroyModel (const String seq, const uint64_t id, Core::Module::Callback cb) {
+    if (LLM::models.at(id)) LLM::models.erase(id);
+    cb(seq, JSON::Object{}, Post{});
+  }
+
   void Core::LLM::encode (const String seq, uint64_t contextId, String text, Core::Module::Callback cb) {
     auto hasContext = LLM::models.count(contextId) == 1;
 
@@ -563,6 +568,11 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
+  void Core::LLM::destroyEvaluator (const String seq, const uint64_t id, Core::Module::Callback cb) {
+    if (LLM::evaluators.at(id)) LLM::evaluators.erase(id);
+    cb(seq, JSON::Object{}, Post{});
+  }
+
   void Core::LLM::createContext (const String seq, ContextOptions options, Core::Module::Callback cb) {
     auto hasModel = LLM::models.count(options.modelId) == 1;
 
@@ -592,6 +602,11 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
+  void Core::LLM::destroyContext (const String seq, const uint64_t id, Core::Module::Callback cb) {
+    if (LLM::contexts.at(id)) LLM::contexts.erase(id);
+    cb(seq, JSON::Object{}, Post{});
+  }
+
   void Core::LLM::parseGrammar (const String seq, const GrammarOptions options, Core::Module::Callback cb) {
     uint64_t grammarId = rand64();
     auto grammar = new Grammar(options.text);
@@ -615,5 +630,10 @@ namespace SSC {
     };
 
     cb(seq, json, Post{});
+  }
+
+  void Core::LLM::destroyGrammar (const String seq, const uint64_t id, Core::Module::Callback cb) {
+    if (LLM::grammars.at(id)) LLM::grammars.erase(id);
+    cb(seq, JSON::Object{}, Post{});
   }
 }

@@ -8,6 +8,8 @@
  * import { Model, Context, Grammar } from 'socket:llm'
  * ```
  */
+import ipc from './ipc.js'
+import gc from './gc.js'
 
 export class LlamaModel {
   _modelId = null
@@ -72,7 +74,7 @@ export class LlamaModel {
       useMlock
     }
 
-    const { data, err } = sendSync('llm.createModel', params, { cache: true })
+    const { data, err } = ipc.sendSync('llm.createModel', params, { cache: true })
 
     if (err) {
       throw new Error(err)
@@ -80,12 +82,30 @@ export class LlamaModel {
 
     this._modelId = data.modelId
   }
+
+  [gc.finalizer] () {
+    return {
+      args: [this._modelId],
+      async handle (modelId) {
+        return await ipc.send('llm.destroyModel', { modelId }, { cache: true })
+      }
+    }
+  }
 }
 
 
 export class LlamaGrammar {
   constructor () {
 
+  }
+
+  [gc.finalizer] () {
+    return {
+      args: [this._grammarId],
+      async handle (grammarId) {
+        return await ipc.send('llm.destroyGrammar', { grammarId }, { cache: true })
+      }
+    }
   }
 }
 
@@ -121,7 +141,7 @@ export class LlamaContext {
       threads
     }
 
-    const { data, err } = sendSync('llm.createContext', params, { cache: true })
+    const { data, err } = ipc.sendSync('llm.createContext', params, { cache: true })
 
     if (err) {
       throw new Error(err)
@@ -130,10 +150,19 @@ export class LlamaContext {
     this._contextId = data.contextId
 
     if (prependBos) {
-      const { data, err } = sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
+      const { data, err } = ipc.sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
       if (err) throw new Error(err)
 
       this._prependTokens.unshift(data.token)
+    }
+  }
+
+  [gc.finalizer] () {
+    return {
+      args: [this._contextId],
+      async handle (contextId) {
+        return await ipc.send('llm.destroyContext', { contextId }, { cache: true })
+      }
     }
   }
 
@@ -143,17 +172,17 @@ export class LlamaContext {
   encode (text) {
     if (text === '') return new Uint32Array()
 
-    const { data, err } = sendSync('llm.encode', { modelId: this._contextId }, { cache: true })
+    const { data, err } = ipc.sendSync('llm.encode', { modelId: this._contextId }, { cache: true })
     if (err) throw new Error(err)
 
-    return Uint32Array.from(data.result)
+    return Uint32Array.from(data)
   }
 
   /**
    * @returns {Token | null} The BOS (Beginning Of Sequence) token.
    */
   getBosToken () {
-    const { data, err } = sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
+    const { data, err } = ipc.sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
     if (err) throw new Error(err)
 
     if (data.token === -1)
@@ -174,5 +203,14 @@ export class LlamaGrammarEvaluationState {
       topK,
       topP
     } = args
+  }
+
+  [gc.finalizer] () {
+    return {
+      args: [this._evaluatorId],
+      async handle (evaluatorId) {
+        return await ipc.send('llm.destroyEvaluator', { evaluatorId }, { cache: true })
+      }
+    }
   }
 }

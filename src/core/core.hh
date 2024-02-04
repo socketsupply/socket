@@ -731,9 +731,13 @@ namespace SSC {
 
           // to create a model, grammar, evaluator, context, or worker
           void createModel (const String seq, const ModelOptions options, Module::Callback cb);
+          void destroyModel (const String seq, const uint64_t id, Core::Module::Callback cb);
           void createContext (const String seq, const ContextOptions options, Module::Callback cb);
+          void destroyContext (const String seq, const uint64_t id, Core::Module::Callback cb);
           void createEvaluator (const String seq, const uint64_t grammarId, Module::Callback cb);
+          void destroyEvaluator (const String seq, const uint64_t id, Core::Module::Callback cb);
           void parseGrammar (const String seq, const GrammarOptions options, Core::Module::Callback cb);
+          void destroyGrammar (const String seq, const uint64_t id, Core::Module::Callback cb);
           void eval (const String seq, WorkerOptions options, Module::Callback cb);
       };
 
