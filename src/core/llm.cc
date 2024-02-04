@@ -95,18 +95,21 @@ namespace SSC {
         model = LLM::models[options.modelId];
       }
 
-      std::vector<uint32_t> encode (SSC::String& text) {
+      std::vector<uint8_t> encode (SSC::String& text) {
         std::vector<llama_token> tokens = llama_tokenize(ctx, text, false);
-        std::vector<uint32_t> result;
+        std::vector<uint8_t> bytes;
 
-        for (size_t i = 0; i < tokens.size(); ++i) {
-          result[i] = static_cast<uint32_t>(tokens[i]);
+        for (const auto& token : tokens) {
+          bytes.push_back((token & 0x000000ff));
+          bytes.push_back((token & 0x0000ff00) >> 8);
+          bytes.push_back((token & 0x00ff0000) >> 16);
+          bytes.push_back((token & 0xff000000) >> 24);
         }
 
-        return result;
+        return bytes;
       };
 
-      SSC::String decode (std::vector<llama_token> tokens) {
+      SSC::String decode (std::vector<uint32_t> tokens) {
         std::stringstream ss;
         for (size_t i = 0; i < tokens.size(); i++) {
           const std::string piece = llama_token_to_piece(ctx, (llama_token)tokens[i]);
@@ -338,7 +341,6 @@ namespace SSC {
   void Core::LLM::createModel (const String seq, const ModelOptions options, Core::Module::Callback cb) {
     auto model = new LLM::Model(options);
     uint64_t modelId = rand64();
-
     LLM::models.insert_or_assign(modelId, model);
 
     auto json = JSON::Object::Entries {
@@ -346,6 +348,187 @@ namespace SSC {
       {"data", JSON::Object::Entries {
         {"workerId", std::to_string(modelId)}
       }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::encode (const String seq, uint64_t contextId, String text, Core::Module::Callback cb) {
+    auto hasContext = LLM::models.count(contextId) == 1;
+
+    if (!hasContext) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.encode"},
+        {"err", JSON::Object::Entries {
+          {"contextId", std::to_string(contextId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto context = LLM::contexts.at(contextId);
+    auto encoded = context->encode(text);
+    auto data = new char[encoded.size()]{0};
+    size_t offset = 0;
+
+    for (const auto& byte : encoded) {
+      data[offset++] = byte;
+    }
+
+    auto headers = Headers {{
+      {"content-type" ,"application/octet-stream"},
+      {"content-length", (int) offset}
+    }};
+
+    Post post;
+    post.id = rand64();
+    post.body = data;
+    post.length = (int) offset;
+    post.headers = headers.str();
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.encoded"},
+      {"data", JSON::Object::Entries {
+        {"contextId", std::to_string(contextId)}
+      }}
+    };
+
+    cb(seq, json, post);
+  }
+
+  void Core::LLM::decode (const String seq, uint64_t contextId, std::vector<uint32_t> tokens, Core::Module::Callback cb) {
+    auto hasContext = LLM::models.count(contextId) == 1;
+
+    if (!hasContext) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.decode"},
+        {"err", JSON::Object::Entries {
+          {"contextId", std::to_string(contextId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+  
+    auto context = LLM::contexts.at(contextId);
+    auto decoded = context->decode(tokens);
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.decode"},
+      {"data",  decoded}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::tokenBos (const String seq, const uint64_t modelId, Core::Module::Callback cb) {
+    auto hasModel = LLM::models.count(modelId) == 1;
+
+    if (!hasModel) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.tokenBos"},
+        {"err", JSON::Object::Entries {
+          {"modelId", std::to_string(modelId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto model = LLM::models.at(modelId);
+    auto token = model->tokenBos();
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.tokenBos"},
+      {"data", JSON::Object::Entries {
+        {"token", std::to_string(token)}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::tokenEos (const String seq, const uint64_t modelId, Core::Module::Callback cb) {
+    auto hasModel = LLM::models.count(modelId) == 1;
+
+    if (!hasModel) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.tokenEos"},
+        {"err", JSON::Object::Entries {
+          {"modelId", std::to_string(modelId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto model = LLM::models.at(modelId);
+    auto token = model->tokenEos();
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.tokenEos"},
+      {"data", JSON::Object::Entries {
+        {"token", std::to_string(token)}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::tokenNl (const String seq, const uint64_t modelId, Core::Module::Callback cb) {
+    auto hasModel = LLM::models.count(modelId) == 1;
+
+    if (!hasModel) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.tokenNl"},
+        {"err", JSON::Object::Entries {
+          {"modelId", std::to_string(modelId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto model = LLM::models.at(modelId);
+    auto token = model->tokenNl();
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.tokenNl"},
+      {"data", JSON::Object::Entries {
+        {"token", std::to_string(token)}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::getTokenString (const String seq, const uint64_t modelId, uint32_t token, Core::Module::Callback cb) {
+    auto hasModel = LLM::models.count(modelId) == 1;
+
+    if (!hasModel) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.getTokenString"},
+        {"err", JSON::Object::Entries {
+          {"modelId", std::to_string(modelId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto model = LLM::models.at(modelId);
+    auto str = model->getTokenString(token);
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.tokenNl"},
+      {"data", str}
     };
 
     cb(seq, json, Post{});

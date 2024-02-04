@@ -127,9 +127,39 @@ export class LlamaContext {
       throw new Error(err)
     }
 
+    this._contextId = data.contextId
+
     if (prependBos) {
-      this._prependTokens.unshift(this._ctx.tokenBos())
+      const { data, err } = sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
+      if (err) throw new Error(err)
+
+      this._prependTokens.unshift(data.token)
     }
+  }
+
+  /**
+   * @returns {Uint32Array} The BOS (Beginning Of Sequence) token.
+   */
+  encode (text) {
+    if (text === '') return new Uint32Array()
+
+    const { data, err } = sendSync('llm.encode', { modelId: this._contextId }, { cache: true })
+    if (err) throw new Error(err)
+
+    return Uint32Array.from(data.result)
+  }
+
+  /**
+   * @returns {Token | null} The BOS (Beginning Of Sequence) token.
+   */
+  getBosToken () {
+    const { data, err } = sendSync('llm.tokenBos', { modelId: this._model._modelId }, { cache: true })
+    if (err) throw new Error(err)
+
+    if (data.token === -1)
+        return null;
+
+    return data.token;
   }
 
   async *evaluate () {

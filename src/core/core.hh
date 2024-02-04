@@ -720,14 +720,14 @@ namespace SSC {
             float repeatPenaltyFrequencyPenalty = 0;
           };
 
-          void encode (const String seq, uint64_t id, Module::Callback cb) {};
-          void decode (const String seq, uint64_t id, Module::Callback cb) {};
-          void tokenBos (const String seq, uint64_t id, Module::Callback cb) {};
+          void encode (const String seq, uint64_t contextId, String text, Core::Module::Callback cb);
+          void decode (const String seq, uint64_t contextId, std::vector<uint32_t> tokens, Core::Module::Callback cb);
+          void tokenBos (const String seq, uint64_t id, Module::Callback cb);
           void tokenEos (const String seq, uint64_t id, Module::Callback cb);
           void tokenNl (const String seq, uint64_t id, Module::Callback cb);
           void getContextSize (const String seq, uint64_t id, Module::Callback cb);
           void printTimings (const String seq, uint64_t id, Module::Callback cb);
-          void getTokenString (const String seq, uint64_t id, Module::Callback cb);
+          void getTokenString (const String seq, const uint64_t modelId, uint32_t token, Core::Module::Callback cb);
 
           // to create a model, grammar, evaluator, context, or worker
           void createModel (const String seq, const ModelOptions options, Module::Callback cb);

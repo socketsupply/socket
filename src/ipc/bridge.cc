@@ -337,6 +337,98 @@ static void initRouterTable (Router *router) {
     router->core->llm.parseGrammar(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("llm.decode", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"contextId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto length = message.buffer.size;
+    const char* bytes = message.buffer.bytes;
+
+    std::vector<uint32_t> tokens;
+    for (int i = 0; i < length; i += 4) {
+      auto token = bytes[i] | (bytes[i+1] << 8) | (bytes[i+2] << 16) | (bytes[i+3] << 24);
+      tokens.push_back(token);
+    }
+
+    uint64_t contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(contextId, "contextId", std::stoi);
+
+    router->core->llm.decode(message.seq, contextId, tokens, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.encode", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"contextId", "text"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(contextId, "contextId", std::stoi);
+
+    auto text = message.get("text");
+
+    router->core->llm.encode(message.seq, contextId, text, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.tokenBos", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    router->core->llm.tokenBos(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.tokenEos", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    router->core->llm.tokenEos(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.tokenNl", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    router->core->llm.tokenNl(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("llm.getTokenString", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"modelId", "token"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    uint32_t token = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "modelId", std::stoi);
+
+    router->core->llm.getTokenString(message.seq, modelId, token, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   router->map("llm.eval", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"modelId", "contextId"});
 
