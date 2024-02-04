@@ -267,7 +267,7 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>MainMenu</string>
 
   <key>NSPrincipalClass</key>
-  <string>AtomApplication</string>
+  <string>NSApplication</string>
 
   <key>CFBundleURLTypes</key>
   <array>
@@ -281,6 +281,10 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
     </dict>
   </array>
 
+  <key>NSUserActivityTypes</key>
+  <array>
+    <string>NSUserActivityTypeBrowsingWeb</string>
+  </array>
 
   <!-- Application configuration -->
   <key>NSLocationDefaultAccuracyReduced</key>
@@ -365,13 +369,14 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSAppTransportSecurity</key>
   <dict>
     <key>NSAllowsArbitraryLoads</key>
-    <false/>
+    <true/>
 
     <key>NSAllowsLocalNetworking</key>
     <true/>
 
     <key>NSExceptionDomains</key>
     <dict>
+{{macos_app_transport_security_domain_exceptions}}
       <key>127.0.0.1</key>
       <dict>
         <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
@@ -491,6 +496,8 @@ constexpr auto gAndroidManifest = R"XML(
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="{{meta_application_protocol}}" />
       </intent-filter>
+
+      {{android_activity_intent_filters}}
     </activity>
   </application>
 </manifest>
@@ -1708,6 +1715,11 @@ root = "/"
 ; default value: false
 watch = true
 
+; Custom headers injected on all webview routes
+[webview]
+; default value: ""
+; headers[] = "X-Custom-Header: Some-Value"
+
 [webview.watch]
 ; Configure webview to reload when a file changes
 ; default value: true
@@ -1948,7 +1960,7 @@ width = 50%
 ; utility = false
 
 [window.alert]
-; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead.
+; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS.
 ; defalut value = ""
 ; title = ""
 
