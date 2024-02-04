@@ -40,6 +40,87 @@ static dispatch_queue_t queue = dispatch_queue_create(
     }
   }
 }
+
+- (BOOL) application: (NSApplication*) application
+continueUserActivity: (NSUserActivity*) userActivity
+  restorationHandler: (void (^)(NSArray*)) restorationHandler
+{
+  return [self
+                         application: application
+    willContinueUserActivityWithType: userActivity.activityType
+  ];
+}
+
+              - (BOOL) application: (NSApplication*) application
+  willContinueUserActivityWithType: (NSString*) userActivityType
+{
+  static auto userConfig = SSC::getUserConfig();
+  auto webpageURL = application.userActivity.webpageURL;
+
+  if (userActivityType == nullptr) {
+    return NO;
+  }
+
+  if (webpageURL == nullptr) {
+    return NO;
+  }
+
+  if (webpageURL.host == nullptr) {
+    return NO;
+  }
+
+  auto activityType = SSC::String(userActivityType.UTF8String);
+
+  if (activityType != SSC::String(NSUserActivityTypeBrowsingWeb.UTF8String)) {
+    return NO;
+  }
+
+  auto host = SSC::String(webpageURL.host.UTF8String);
+  auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
+
+  if (links.size() == 0) {
+    return NO;
+  }
+
+  bool exists = false;
+
+  for (const auto& link : links) {
+    const auto parts = SSC::split(link, '?');
+    if (host == parts[0]) {
+      exists = true;
+      break;
+    }
+  }
+
+  if (!exists) {
+    return NO;
+  }
+
+  auto url = SSC::String(webpageURL.absoluteString.UTF8String);
+
+  SSC::JSON::Object json = SSC::JSON::Object::Entries {{ "url", url }};
+
+  bool emitted = false;
+
+  for (auto window : self.app->windowManager->windows) {
+    if (window != nullptr) {
+      window->bridge->router.emit("applicationurl", json.str());
+      emitted = true;
+    }
+  }
+
+  if (!emitted) {
+    return NO;
+  }
+
+  return YES;
+}
+
+                 - (void) application: (NSApplication*) application
+didFailToContinueUserActivityWithType: (NSString*) userActivityType
+                                error: (NSError*) error {
+  debug("application:didFailToContinueUserActivityWithType:error: %@", error);
+}
 @end
 #endif
 #endif
