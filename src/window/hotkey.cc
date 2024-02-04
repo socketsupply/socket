@@ -548,7 +548,7 @@ namespace SSC {
   }
 
   void HotKeyContext::init (IPC::Bridge* bridge) {
-    static auto userConfig = SSC::getUserConfig()
+    static auto userConfig = SSC::getUserConfig();
     this->bridge = bridge;
 
   #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
