@@ -127,6 +127,7 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
+      Any (size_t);
       #if defined(__APPLE__)
       Any (ssize_t);
       #endif
