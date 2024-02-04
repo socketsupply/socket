@@ -568,6 +568,7 @@ namespace SSC {
       nullptr
     );
   #elif defined(__linux__) && !defined(__ANDROID__)
+    // TODO(@jwerle)
   #elif defined(_WIN32)
   #endif
 
@@ -819,6 +820,7 @@ namespace SSC {
       return HotKeyBinding(0, "");
     }
   #elif defined(__linux__) && !defined(__ANDROID__)
+    // TODO(@jwerle)
   #elif defined(_WIN32)
     auto status = RegisterHotKey(
       this->window->window,
@@ -857,7 +859,12 @@ namespace SSC {
       return true;
     }
   #elif defined(__linux__) && !defined(__ANDROID__)
+    // TODO(@jwerle)
   #elif defined(_WIN32)
+    if (UnregisterHotKey(this->window->window, id)) {
+      this->bindings.erase(id);
+      return true;
+    }
   #endif
 
     return false;
