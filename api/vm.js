@@ -241,21 +241,45 @@ export function applyContextDifferences (
               Reflect.set(contextReference, scriptReferenceArgsKey, args)
               Reflect.set(contextReference, reference.id, reference)
 
-              const result = await script.runInContext(contextReference, {
-                mode: 'classic',
-                source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
-              })
-
-              Reflect.deleteProperty(contextReference, reference.id)
-              Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
-
-              return result
+              try {
+                return await script.runInContext(contextReference, {
+                  mode: 'classic',
+                  source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
+                })
+                // eslint-disable-next-line
+              } catch (err) {
+                throw err
+              } finally {
+                Reflect.deleteProperty(contextReference, reference.id)
+                Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
+              }
             }
           }
 
+          // bind `null` this for proxy function
           const proxyFunction = container[key].bind(null)
-          putReference(new Reference(reference.id, proxyFunction, contextReference))
-          Reflect.set(currentContext, key, proxyFunction)
+          // wrap into container for named function, called in tail with an
+          // intentional omission of `await` for an async call stack collapse
+          // this preserves naming in `console.log`:
+          //   [AsyncFunction: functionName]
+          // while also removing an unneeded tail call in a stack trace
+          const containerForNamedFunction = {
+            async [key] (...args) { return proxyFunction(...args) }
+          }
+
+          // the reference ID was created on the other side, just use it here
+          // instead of creating a new one which will preserve the binding
+          // between this caller context and the realm world where the script
+          // execution is actually occuring
+          putReference(new Reference(
+            reference.id,
+            containerForNamedFunction[key],
+            contextReference)
+          )
+
+          // emplace an actual function on `currentContext` at the property
+          // `key` which will do the actual proxy call to the VM script
+          Reflect.set(currentContext, key, containerForNamedFunction[key])
         }
       }
     } else if (Reflect.has(currentContext, key)) {
