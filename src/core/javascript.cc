@@ -29,7 +29,7 @@ namespace SSC {
     const String& event,
     const String& value
   ) {
-    return getEmitToRenderProcessJavaScript(event, value, "window", JSON::Object {});
+    return getEmitToRenderProcessJavaScript(event, value, "globalThis", JSON::Object {});
   }
 
   String getEmitToRenderProcessJavaScript (
