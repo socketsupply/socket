@@ -146,6 +146,11 @@ namespace SSC::JSON {
     this->type = Type::Number;
   }
 
+  Any::Any (size_t number) {
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
+    this->type = Type::Number;
+  }
+
   #if defined(__APPLE__)
   Any::Any (ssize_t  number) {
     this->pointer = std::shared_ptr<void>(new Number((double) number));
