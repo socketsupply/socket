@@ -3790,6 +3790,161 @@ declare module "socket:window/constants" {
     export * as _default from "socket:window/constants";
     
 }
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An event dispacted for a registered global hotkey expression.
+     */
+    export class HotKeyEvent extends MessageEvent<any> {
+        /**
+         * `HotKeyEvent` class constructor.
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * The global unique ID for this hotkey binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this hotkey binding.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized hotkey expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the hotkey binding.
+         * @type {string?}
+         */
+        get expression(): string;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+        export { HotKeyEvent };
+    }
+    export default _default;
+}
+declare module "socket:window/hotkey" {
+    /**
+     * Bind a global hotkey expression.
+     * @param {string} expression
+     * @param {object=} [options]
+     * @return {Promise<Binding>}
+     */
+    export function bind(expression: string, options?: object | undefined): Promise<Binding>;
+    /**
+     * Bind a global hotkey expression.
+     * @param {string} expression
+     * @param {object=} [options]
+     * @return {Promise<Binding>}
+     */
+    export function unbind(id: any, options?: object | undefined): Promise<Binding>;
+    /**
+     * Get all known globally register hotkey bindings.
+     * @param {object=} [options]
+     * @return {Promise<Binding[]>}
+     */
+    export function getBindings(options?: object | undefined): Promise<Binding[]>;
+    /**
+     * Get all known possible keyboard modifier and key mappings for
+     * expression bindings.
+     * @param {object=} [options]
+     * @return {Promise<{ keys: object, modifiers: object }>}
+     */
+    export function getMappings(options?: object | undefined): Promise<{
+        keys: object;
+        modifiers: object;
+    }>;
+    /**
+     * A map of weakly held `Binding` instances.
+     * @type {Map<number, WeakRef<Binding>>}
+     */
+    export const bindings: Map<number, WeakRef<Binding>>;
+    /**
+     * An `EventTarget` container for a hotkey binding.
+     */
+    export class Binding extends EventTarget {
+        /**
+         * `Binding` class constructor.
+         * @ignore
+         * @param {object} data
+         */
+        constructor(data: object);
+        /**
+         * `true` if the binding is valid, otherwise `false.
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * The global unique ID for this binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this binding expression.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the binding.
+         * @type {string?}
+         */
+        get expression(): string;
+        #private;
+    }
+    namespace _default {
+        export { bind };
+        export { unbind };
+    }
+    export default _default;
+}
 declare module "socket:window" {
     /**
      * @param {string} url
@@ -3803,6 +3958,10 @@ declare module "socket:window" {
      */
     export class ApplicationWindow {
         static constants: typeof statuses;
+        static hotkey: {
+            bind: typeof import("socket:window/hotkey").bind;
+            unbind: typeof import("socket:window/hotkey").unbind;
+        };
         constructor({ index, ...options }: {
             [x: string]: any;
             index: any;
@@ -3812,6 +3971,10 @@ declare module "socket:window" {
          * @return {number} - the index of the window
          */
         get index(): number;
+        /**
+         * @type {import('./window/hotkey.js').default}
+         */
+        get hotkey(): any;
         /**
          * Get the size of the window
          * @return {{ width: number, height: number }} - the size of the window
@@ -4003,6 +4166,7 @@ declare module "socket:window" {
         off(event: string, cb: (arg0: any) => void): void;
         #private;
     }
+    export { hotkey };
     export default ApplicationWindow;
     /**
      * @ignore
@@ -4010,6 +4174,7 @@ declare module "socket:window" {
     export const constants: typeof statuses;
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
+    import hotkey from "socket:window/hotkey";
 }
 declare module "socket:application" {
     /**
@@ -8358,49 +8523,6 @@ declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
-}
-declare module "socket:internal/events" {
-    /**
-     * An event dispatched when an application URL is opening the application.
-     */
-    export class ApplicationURLEvent extends Event {
-        /**
-         * `ApplicationURLEvent` class constructor.
-         * @param {string=} [type]
-         * @param {object=} [options]
-         */
-        constructor(type?: string | undefined, options?: object | undefined);
-        /**
-         * `true` if the application URL is valid (parses correctly).
-         * @type {boolean}
-         */
-        get isValid(): boolean;
-        /**
-         * Data associated with the `ApplicationURLEvent`.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The original source URI
-         * @type {?string}
-         */
-        get source(): string;
-        /**
-         * The `URL` for the `ApplicationURLEvent`.
-         * @type {?URL}
-         */
-        get url(): URL;
-        /**
-         * String tag name for an `ApplicationURLEvent` instance.
-         * @type {string}
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    namespace _default {
-        export { ApplicationURLEvent };
-    }
-    export default _default;
 }
 declare module "socket:internal/geolocation" {
     /**
