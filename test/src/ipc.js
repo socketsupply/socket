@@ -19,6 +19,7 @@ test('ipc exports', async (t) => {
     'ERROR',
     'kDebugEnabled',
     'primordials',
+    'maybeMakeError',
     'Message',
     'parseSeq',
     'postMessage',
