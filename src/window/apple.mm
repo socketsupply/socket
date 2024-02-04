@@ -904,10 +904,13 @@ namespace SSC {
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
     config.processPool = [WKProcessPool new];
+
+    /**
     [config.websiteDataStore.httpCookieStore
       setCookiePolicy: WKCookiePolicyAllow
       completionHandler: ^(){}
     ];
+    */
 
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
