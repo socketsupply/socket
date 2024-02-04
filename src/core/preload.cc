@@ -72,6 +72,29 @@ namespace SSC {
       }
     }
 
+    // buffer `applicationurl` events
+    preload += (
+        "  Object.defineProperty(                                            \n"
+        "    globalThis,                                                     \n"
+        "    'APPLICATION_URL_EVENT_BACKLOG',                                \n"
+        "    { enumerable: false, configurable: false, value: [] }           \n"
+        "  );                                                                \n"
+        "                                                                    \n"
+        "  globalThis.addEventListener('applicationurl', (e) => {            \n"
+        "    if (document.readyState !== 'complete') {                       \n"
+        "      APPLICATION_URL_EVENT_BACKLOG.push(e);                        \n"
+        "    }                                                               \n"
+        "  });                                                               \n"
+        "                                                                    \n"
+        "  globalThis.addEventListener(' __runtime_init__', () => {          \n"
+        "    if (Array.isArray(APPLICATION_URL_EVENT_BACKLOG)) {             \n"
+        "      for (const event of APPLICATION_URL_EVENT_BACKLOG) {          \n"
+        "        globalThis.dispatchEvent(event);                            \n"
+        "      }                                                             \n"
+        "    }                                                               \n"
+        "  }, { once: true });                                               \n"
+    );
+
     if (opts.appData.contains("webview_watch") && opts.appData.at("webview_watch") == "true") {
       if (
         !opts.appData.contains("webview_watch_reload") ||
@@ -79,7 +102,7 @@ namespace SSC {
       ) {
           preload += (
             "  globalThis.addEventListener('filedidchange', () => {            \n"
-            "  location.reload()                                               \n"
+            "    location.reload()                                             \n"
             "  });                                                             \n"
         );
       }
