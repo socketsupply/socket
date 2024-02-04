@@ -23,6 +23,7 @@ namespace SSC {
 
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
+    this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
