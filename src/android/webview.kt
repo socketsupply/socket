@@ -335,6 +335,8 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
+    val activity = this.activity.get() ?: return null
+    val runtime = activity.runtime
     var url = request.url
 
     // should be set in window loader
@@ -354,6 +356,10 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
       if (resolved != null && resolved.redirect) {
         redirect = true
+      }
+
+      if (path == null) {
+        return null
       }
 
       if (redirect && resolved != null) {
@@ -384,6 +390,10 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         return response
       }
 
+      if (path.startsWith("/")) {
+        path = path.substring(1, path.length)
+      }
+
       url = android.net.Uri.Builder()
         .scheme("https")
         .authority("appassets.androidplatform.net")
@@ -411,11 +421,23 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
           java.io.FileInputStream(file)
         )
 
-        response.responseHeaders = mapOf(
+        val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+        val headers = mutableMapOf(
           "Access-Control-Allow-Origin" to "*",
           "Access-Control-Allow-Headers" to "*",
           "Access-Control-Allow-Methods" to "*"
         )
+
+        for (line in webviewHeaders) {
+          val parts = line.split(":", limit = 2)
+          if (parts.size == 2) {
+            val key = parts[0].trim()
+            val value = parts[1].trim()
+            headers[key] = value
+          }
+        }
+
+        response.responseHeaders = headers.toMap()
 
         return response
       } else {
@@ -449,13 +471,26 @@ export default module
         java.io.PipedInputStream(stream)
       )
 
-      response.responseHeaders = mapOf(
+      val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+      val headers = mutableMapOf(
         "Access-Control-Allow-Origin" to "*",
         "Access-Control-Allow-Headers" to "*",
         "Access-Control-Allow-Methods" to "*"
       )
 
-      // prevent piped streams blocking each other, have to write on a separate thread if data > 1024 bytes
+      for (line in webviewHeaders) {
+        val parts = line.split(":", limit = 2)
+        if (parts.size == 2) {
+          val key = parts[0].trim()
+          val value = parts[1].trim()
+          headers[key] = value
+        }
+      }
+
+      response.responseHeaders = headers.toMap()
+
+      // prevent piped streams blocking each other,
+      // have to write on a separate thread if data > 1024 bytes
       kotlin.concurrent.thread {
         stream.write(moduleTemplate.toByteArray(), 0, moduleTemplate.length)
         stream.close()
@@ -464,14 +499,94 @@ export default module
       return response
     }
 
+    val assetManager = activity.getAssetManager()
+    var path = url.path
+    if (path != null && path.endsWith(".html") == true) {
+      path = path.replace("/assets/", "")
+      val preload = activity.window.getJavaScriptPreloadSource()
+      val assetStream = try {
+        assetManager.open(path, 2)
+      } catch (err: Error) {
+        return null
+      }
+
+      var html = String(assetStream.readAllBytes())
+      val script = """<script type="text/javascript">$preload</script>"""
+      val stream = java.io.PipedOutputStream()
+      val response = android.webkit.WebResourceResponse(
+        "text/html",
+        "utf-8",
+        java.io.PipedInputStream(stream)
+      )
+
+      val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+      val headers = mutableMapOf(
+        "Access-Control-Allow-Origin" to "*",
+        "Access-Control-Allow-Headers" to "*",
+        "Access-Control-Allow-Methods" to "*"
+      )
+
+      for (line in webviewHeaders) {
+        val parts = line.split(":", limit = 2)
+        if (parts.size == 2) {
+          val key = parts[0].trim()
+          val value = parts[1].trim()
+          headers[key] = value
+        }
+      }
+
+      response.responseHeaders = headers.toMap()
+
+      if (html.contains("<head>")) {
+        html = html.replace("<head>", """
+        <head>
+        $script
+        """)
+      } else if (html.contains("<body>")) {
+        html = html.replace("<body>", """
+        $script
+        <body>
+        """)
+      } else if (html.contains("<html>")){
+        html = html.replace("<html>", """
+        <html>
+        $script
+        """)
+      } else {
+        html = script + html
+      }
+
+      kotlin.concurrent.thread {
+        stream.write(html.toByteArray(), 0, html.length)
+        stream.close()
+      }
+
+      return response
+    }
+
     val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
+
     if (assetLoaderResponse != null) {
-      assetLoaderResponse.responseHeaders = mapOf(
+
+      val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+      val headers = mutableMapOf(
         "Origin" to "${url.scheme}://${url.host}",
         "Access-Control-Allow-Origin" to "*",
         "Access-Control-Allow-Headers" to "*",
         "Access-Control-Allow-Methods" to "*"
       )
+
+      for (line in webviewHeaders) {
+        val parts = line.split(":", limit = 2)
+        if (parts.size == 2) {
+          val key = parts[0].trim()
+          val value = parts[1].trim()
+          headers[key] = value
+        }
+      }
+
+      assetLoaderResponse.responseHeaders = headers.toMap()
+
       return assetLoaderResponse
     }
 
@@ -504,11 +619,23 @@ export default module
             java.io.PipedInputStream(stream)
           )
 
-          response.responseHeaders = mapOf(
+          val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+          val headers = mutableMapOf(
             "Access-Control-Allow-Origin" to "*",
             "Access-Control-Allow-Headers" to "*",
             "Access-Control-Allow-Methods" to "*"
           )
+
+          for (line in webviewHeaders) {
+            val parts = line.split(":", limit = 2)
+            if (parts.size == 2) {
+              val key = parts[0].trim()
+              val value = parts[1].trim()
+              headers[key] = value
+            }
+          }
+
+          response.responseHeaders = headers.toMap()
 
           stream.close()
           return response
@@ -527,7 +654,7 @@ export default module
           "Access-Control-Allow-Methods" to "*"
         )
 
-        if (activity.get()?.onSchemeRequest(request, response, stream) == true) {
+        if (activity.onSchemeRequest(request, response, stream) == true) {
           return response
         }
 
@@ -560,10 +687,13 @@ export default module
  * @see https://developer.android.com/reference/kotlin/android/app/Activity
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
-open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
+abstract class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open protected val TAG = "WebViewActivity"
 
   open lateinit var client: WebViewClient
+  abstract var runtime: Runtime
+  abstract var window: Window
+
   open var webview: android.webkit.WebView? = null
 
   fun evaluateJavaScript (
