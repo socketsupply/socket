@@ -617,6 +617,7 @@ namespace SSC {
     static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
+    this->index = opts.index;
     window = CreateWindow(
       userConfig["meta_bundle_identifier"].c_str(),
       userConfig["meta_title"].c_str(),
@@ -1002,6 +1003,7 @@ namespace SSC {
                               headers += "Content-Length: ";
                               headers += std::to_string(length);
                               headers += "\n";
+                              headers += userConfig["webview_headers"];
 
                               handled = true;
 
@@ -1147,6 +1149,7 @@ namespace SSC {
                                   headers += "Content-Length: ";
                                   headers += std::to_string(fileSize.QuadPart);
                                   headers += "\n";
+                                  headers += userConfig["webview_headers"];
 
                                   if (SHCreateStreamOnFileA(path.c_str(), STGM_READ, &stream) == S_OK) {
                                     env->CreateWebResourceResponse(
