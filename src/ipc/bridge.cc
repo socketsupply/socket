@@ -279,7 +279,7 @@ static void initRouterTable (Router *router) {
    * LLM
    */
   router->map("llm.createModel", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"path"});
+    auto err = validateMessageParameters(message, {"path", "gpuLayers", "vocabOnly", "useMmap", "useMlock"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
@@ -287,6 +287,10 @@ static void initRouterTable (Router *router) {
 
     Core::LLM::ModelOptions options;
     options.path = message.get("path");
+    options.gpuLayers = message.get("gpuLayers").compare("true");
+    options.vocabOnly = message.get("vocabOnly").compare("true");
+    options.useMmap = message.get("useMmap").compare("true");
+    options.useMlock = message.get("useMlock").compare("true");
 
     router->core->llm.createModel(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
