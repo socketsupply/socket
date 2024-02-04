@@ -143,7 +143,7 @@ int lastY = 0;
   }
 
   const auto data = SSC::JSON::Object::Entries {
-    {"count", count},
+    {"count", (unsigned int) count},
     {"inbound", inbound},
     {"x", x},
     {"y", y}
@@ -208,14 +208,14 @@ int lastY = 0;
   const auto location = [self convertPoint: event.locationInWindow fromView :nil];
   const auto x = std::to_string(location.x);
   const auto y = std::to_string(location.y);
-  const auto count = std::to_string(draggablePayload.size());
+  const auto count = draggablePayload.size();
 
   if (((int) location.x) == lastX || ((int) location.y) == lastY) {
     return [super mouseDown: event];
   }
 
   const auto data = SSC::JSON::Object::Entries {
-    {"count", count},
+    {"count", (unsigned int) count},
     {"x", x},
     {"y", y}
   };
