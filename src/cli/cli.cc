@@ -6870,7 +6870,8 @@ int main (const int argc, const char* argv[]) {
           sourcesWatcher->options.debounce = std::atoi(timeout.c_str());
         } catch (Exception e) {
           log(
-            "ERROR: Invalid value given for '[build.watch] debounce_timeout': " + timeout
+            "ERROR: Invalid value given for '[build.watch] debounce_timeout': '" + timeout + "'. " +
+            "Expecting an integer value in milliseconds"
           );
           exit(1);
         }
