@@ -1776,6 +1776,9 @@ reload = true
 ; default value: true
 ; allow_airplay = true
 
+; Allow/Disallow HotKey binding registration (desktop only)
+; default value: true
+; allow_hotkeys = true
 
 [debug]
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
