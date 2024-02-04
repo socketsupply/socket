@@ -307,8 +307,25 @@ static void initRouterTable (Router *router) {
     router->core->llm.createContext(message.seq, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("llm.createEvaluator", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"grammarId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t grammarId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(grammarId, "grammarId", std::stoi);
+
+    router->core->llm.createEvaluator(message.seq, grammarId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   router->map("llm.parseGrammar", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"text"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
 
     Core::LLM::GrammarOptions options;
     options.text = message.get("text");

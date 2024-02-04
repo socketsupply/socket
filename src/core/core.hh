@@ -683,7 +683,6 @@ namespace SSC {
           static std::map<uint64_t, Grammar*> grammars; // parsed grammars
           static std::map<uint64_t, Evaluator*> evaluators;
           static std::map<uint64_t, Context*> contexts;
-          static std::map<uint64_t, Worker*> workers;
 
           struct ModelOptions {
             std::filesystem::path path;
@@ -711,6 +710,7 @@ namespace SSC {
           struct WorkerOptions {
             uint64_t modelId;
             uint64_t contextId;
+            uint64_t evaluatorId;
             double temperature = 0.0f;
             uint32_t topK = 40;
             float topP = 0.85f;
@@ -718,7 +718,6 @@ namespace SSC {
             std::vector<uint32_t> repeatPenaltyTokens;
             float repeatPenaltyPresencePenalty = 0;
             float repeatPenaltyFrequencyPenalty = 0;
-            uint64_t grammarEvaluationState = 0;
           };
 
           void encode (const String seq, uint64_t id, Module::Callback cb) {};
@@ -733,6 +732,7 @@ namespace SSC {
           // to create a model, grammar, evaluator, context, or worker
           void createModel (const String seq, const ModelOptions options, Module::Callback cb);
           void createContext (const String seq, const ContextOptions options, Module::Callback cb);
+          void createEvaluator (const String seq, const uint64_t grammarId, Module::Callback cb);
           void parseGrammar (const String seq, const GrammarOptions options, Core::Module::Callback cb);
           void eval (const String seq, WorkerOptions options, Module::Callback cb);
       };

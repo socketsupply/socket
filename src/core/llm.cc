@@ -65,13 +65,14 @@ namespace SSC {
 
   class Core::LLM::Evaluator {
     public:
-      Grammar* grammarDef;
+      Grammar* g;
       llama_grammar *grammar = nullptr;
 
-      Evaluator (Grammar* grammarDef) : grammarDef(grammarDef) {
-        std::vector<const llama_grammar_element *> grammar_rules(grammarDef->parsed_grammar.c_rules());
+      Evaluator (Grammar* g) : g(g) {
+        std::vector<const llama_grammar_element *> grammar_rules(g->parsed_grammar.c_rules());
+
         grammar = llama_grammar_init(
-          grammar_rules.data(), grammar_rules.size(), grammarDef->parsed_grammar.symbol_ids.at("root")
+          grammar_rules.data(), grammar_rules.size(), g->parsed_grammar.symbol_ids.at("root")
         );
       }
 
@@ -118,32 +119,12 @@ namespace SSC {
       uint32_t size () {
         return llama_n_ctx(ctx);
       }
-
-      void eval (uv_loop_t* loop, const WorkerOptions& options) {
-        auto work = new uv_work_t;
-
-        work->data = this;
-
-        int r = uv_queue_work(
-          loop,
-          work,
-          [](uv_work_t *req) {
-            Context* self = static_cast<Context*>(req->data);
-
-          },
-          [](uv_work_t *req, int status) {
-            Context* self = static_cast<Context*>(req->data);
-          }
-        );
-      }
   };
 
   class Core::LLM::Worker {
-    Context* ctx;
     Evaluator* grammar_evaluation_state;
     bool use_grammar = false;
     std::vector<llama_token> tokens;
-    llama_token result;
     float temperature = 0.0f;
     uint32_t top_k = 40;
     float top_p = 0.85f;
@@ -156,8 +137,13 @@ namespace SSC {
     std::string status = "";
 
     public:
+      Context* ctx;
+      String seq;
+      Core::Module::Callback cb;
+      llama_token result;
+
       Worker (Core::LLM::WorkerOptions options) {
-        bool hasEvaluator = evaluators.count(options.grammarEvaluationState);
+        bool hasEvaluator = LLM::evaluators.count(options.evaluatorId);
 
         if (options.temperature != 0.0f) {
           temperature = options.temperature;
@@ -190,8 +176,8 @@ namespace SSC {
           repeat_penalty_frequency_penalty = options.repeatPenaltyFrequencyPenalty;
         }
 
-        if (options.grammarEvaluationState != 0 && hasEvaluator) {
-          grammar_evaluation_state = evaluators.at(options.grammarEvaluationState);
+        if (hasEvaluator) {
+          grammar_evaluation_state = LLM::evaluators.at(options.evaluatorId);
           use_grammar = true;
         }
       }
@@ -292,13 +278,60 @@ namespace SSC {
 
   void Core::LLM::eval (const String seq, const WorkerOptions options, Core::Module::Callback cb) {
     this->core->dispatchEventLoop([=, this]() {
-      Worker worker(options);
-      worker.execute();
 
-      // result
+      if (!LLM::models.count(options.modelId)) {
+        auto json = JSON::Object::Entries {
+          {"source", "llm.eval"},
+          {"err", JSON::Object::Entries {
+            {"modelId", std::to_string(options.modelId)}
+          }}
+        };
 
-      auto json = JSON::Object::Entries {};
-      return cb(seq, json, Post{});
+        cb(seq, json, Post{});
+        return;
+      }
+
+      if (!LLM::contexts.count(options.contextId)) {
+        auto json = JSON::Object::Entries {
+          {"source", "llm.eval"},
+          {"err", JSON::Object::Entries {
+            {"contextId", std::to_string(options.modelId)}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      auto worker = new Worker(options);
+      worker->ctx = LLM::contexts.at(options.contextId);
+      worker->seq = seq;
+      worker->cb = cb;
+
+      auto work = new uv_work_t;
+      work->data = worker;
+
+      int r = uv_queue_work(
+        this->core->getEventLoop(),
+        work,
+        [](uv_work_t *req) {
+          Worker* worker = static_cast<Worker*>(req->data);
+          worker->execute();
+        },
+        [](uv_work_t *req, int status) {
+          Worker* worker = static_cast<Worker*>(req->data);
+
+          auto json = JSON::Object::Entries {
+            {"source", "llm.eval"},
+            {"data", JSON::Object::Entries {
+              {"token", std::to_string(worker->result)}
+            }}
+          };
+
+          worker->cb(String(worker->seq), json, Post{});
+          delete worker;
+        }
+      );
     });
   }
 
@@ -306,12 +339,41 @@ namespace SSC {
     auto model = new LLM::Model(options);
     uint64_t modelId = rand64();
 
-    LLM::models[modelId] = model;
+    LLM::models.insert_or_assign(modelId, model);
 
     auto json = JSON::Object::Entries {
       {"source", "llm.createModel"},
       {"data", JSON::Object::Entries {
         {"workerId", std::to_string(modelId)}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::LLM::createEvaluator (const String seq, const uint64_t grammarId, Core::Module::Callback cb) {
+    auto hasGrammar = LLM::models.count(grammarId) == 1;
+
+    if (!hasGrammar) {
+      auto json = JSON::Object::Entries {
+        {"source", "llm.createEvaluator"},
+        {"err", JSON::Object::Entries {
+          {"grammarId", std::to_string(grammarId)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto grammar = LLM::grammars.at(grammarId);
+    auto evaluator = new LLM::Evaluator(grammar);
+    uint64_t evaluatorId = rand64();
+
+    auto json = JSON::Object::Entries {
+      {"source", "llm.createEvaluator"},
+      {"data", JSON::Object::Entries {
+        {"evaluatorId", std::to_string(evaluatorId)}
       }}
     };
 
@@ -330,11 +392,12 @@ namespace SSC {
       };
 
       cb(seq, json, Post{});
+      return;
     }
 
     auto context = new Context(options);
     uint64_t contextId = rand64();
-    LLM::contexts[contextId] = context;
+    LLM::contexts.insert_or_assign(contextId, context);
 
     auto json = JSON::Object::Entries {
       {"source", "llm.createContext"},
@@ -349,7 +412,7 @@ namespace SSC {
   void Core::LLM::parseGrammar (const String seq, const GrammarOptions options, Core::Module::Callback cb) {
     uint64_t grammarId = rand64();
     auto grammar = new Grammar(options.text);
-    grammars[grammarId] = grammar;
+    grammars.insert_or_assign(grammarId, grammar);
 
     if (!grammar->state) {
       auto json = JSON::Object::Entries {
