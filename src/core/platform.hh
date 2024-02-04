@@ -27,6 +27,7 @@
 #include <UIKit/UIKit.h>
 #else
 #include <Cocoa/Cocoa.h>
+#include <Carbon/Carbon.h>
 #include <objc/objc-runtime.h>
 #endif // `TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR`
 #endif // `__APPLE__`
