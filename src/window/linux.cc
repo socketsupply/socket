@@ -14,7 +14,11 @@ namespace SSC {
     Window *window;
   };
 
-  Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
+  Window::Window (App& app, WindowOptions opts)
+    : app(app),
+      opts(opts),
+      hotkey(this)
+  {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
     this->popupId = 0;
@@ -25,6 +29,8 @@ namespace SSC {
 
     this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
+    this->hotkey.init(this->bridge);
+
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };

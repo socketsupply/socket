@@ -614,7 +614,11 @@ namespace SSC {
     };
   };
 
-  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+  Window::Window (App& app, WindowOptions opts)
+    : app(app),
+      opts(opts),
+      hotkey(this)
+  {
     static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
@@ -641,6 +645,7 @@ namespace SSC {
     this->drop = new DragDrop(this);
 
     this->bridge = new IPC::Bridge(app.core);
+    this->hotkey.init(this->bridge);
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
@@ -1887,6 +1892,11 @@ namespace SSC {
 
       case WM_CLOSE: {
         w->close(0);
+        break;
+      }
+
+      case WM_HOTKEY: {
+        w->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
         break;
       }
 

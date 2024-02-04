@@ -651,7 +651,11 @@ int lastY = 0;
 namespace SSC {
   static bool isDelegateSet = false;
 
-  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+  Window::Window (App& app, WindowOptions opts)
+    : app(app),
+      opts(opts),
+      hotkey(this)
+  {
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
@@ -705,6 +709,7 @@ namespace SSC {
 
     this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
+    this->hotkey.init(this->bridge);
 
     this->bridge->router.dispatchFunction = [this] (auto callback) {
       this->app.dispatch(callback);
