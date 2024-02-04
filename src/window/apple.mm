@@ -1,4 +1,5 @@
 #include "window.hh"
+#include "../ipc/ipc.hh"
 
 @implementation SSCNavigationDelegate
 -                    (void) webView: (WKWebView*) webview
@@ -10,27 +11,65 @@
   ) {
     static auto userConfig = SSC::getUserConfig();
     static const auto devHost = SSC::getDevHost();
+    static const auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
 
     auto base = SSC::String(webview.URL.absoluteString.UTF8String);
     auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
 
-    if (request.starts_with(userConfig["meta_application_protocol"])) {
-      decisionHandler(WKNavigationActionPolicyCancel);
+    const auto applinks = SSC::parseStringList(userConfig["meta_application_links"], ' ');
+    bool hasAppLink = false;
 
+    if (applinks.size() > 0 && navigationAction.request.URL.host != nullptr) {
+      auto host = SSC::String(navigationAction.request.URL.host.UTF8String);
+      for (const auto& applink : applinks) {
+        const auto parts = SSC::split(applink, '?');
+        if (host == parts[0]) {
+          hasAppLink = true;
+          break;
+        }
+      }
+    }
+
+    if (hasAppLink) {
       if (self.bridge != nullptr) {
+        decisionHandler(WKNavigationActionPolicyCancel);
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
           "url", request
         }};
 
         self.bridge->router.emit("applicationurl", json.str());
+        return;
       }
+    }
+
+    if (
+      userConfig["meta_application_protocol"].size() > 0 &&
+      request.starts_with(userConfig["meta_application_protocol"])
+    ) {
+      if (self.bridge != nullptr) {
+        decisionHandler(WKNavigationActionPolicyCancel);
+
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+          "url", request
+        }};
+
+        self.bridge->router.emit("applicationurl", json.str());
+        return;
+      }
+    }
+
+    if (request.starts_with("socket:")) {
+      decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
 
-    if (request.find("socket:") != 0 && request.find(devHost) != 0) {
-      decisionHandler(WKNavigationActionPolicyCancel);
+    if (request.starts_with(devHost)) {
+      decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
+
+    decisionHandler(WKNavigationActionPolicyCancel);
+    return;
   }
 
   decisionHandler(WKNavigationActionPolicyAllow);
@@ -546,20 +585,6 @@ int lastY = 0;
 
   decisionHandler(WKPermissionDecisionGrant);
 }
-
--                       (void) _webView: (WKWebView*) webView
-  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                       (void) _webView: (WKWebView*) webView
-   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
 #endif
 
 -                     (void) webView: (WKWebView*) webView
@@ -703,6 +728,7 @@ namespace SSC {
 
     static auto userConfig = SSC::getUserConfig();
 
+    this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
 
     this->bridge->router.dispatchFunction = [this] (auto callback) {
@@ -752,7 +778,7 @@ namespace SSC {
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
-    // config.limitsNavigationsToAppBoundDomains = YES;
+    config.limitsNavigationsToAppBoundDomains = YES;
 
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"ipc"];
@@ -760,17 +786,31 @@ namespace SSC {
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"socket"];
 
+    [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
+
     WKPreferences* prefs = [config preferences];
     prefs.javaScriptCanOpenWindowsAutomatically = YES;
 
     @try {
       if (userConfig["permissions_allow_fullscreen"] == "false") {
         [prefs setValue: @NO forKey: @"fullScreenEnabled"];
+        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
       }
     } @catch (NSException *error) {
       debug("Failed to set preference: 'fullScreenEnabled': %@", error);
+    }
+
+    @try {
+      if (userConfig["permissions_allow_fullscreen"] == "false") {
+        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
     }
 
     if (SSC::isDebugEnabled()) {
@@ -860,9 +900,14 @@ namespace SSC {
       debug("%@", error);
     }
 
+    config.defaultWebpagePreferences.allowsContentJavaScript = YES;
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
     config.processPool = [WKProcessPool new];
+    [config.websiteDataStore.httpCookieStore
+      setCookiePolicy: WKCookiePolicyAllow
+      completionHandler: ^(){}
+    ];
 
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
@@ -926,7 +971,6 @@ namespace SSC {
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
     //
-    bool exiting = false;
 
     windowDelegate = [SSCWindowDelegate new];
     navigationDelegate = [SSCNavigationDelegate new];
@@ -946,9 +990,12 @@ namespace SSC {
         @selector(windowShouldClose:),
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
-            if (exiting) return true;
-
             auto window = (Window*) objc_getAssociatedObject(self, "window");
+            if (!window) {
+              return true;
+            }
+
+            if (exiting) return true;
 
             if (window->opts.canExit) {
               exiting = true;
@@ -994,6 +1041,10 @@ namespace SSC {
           [=](id self, SEL _cmd, id item) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
 
+            if (!window) {
+              return;
+            }
+
             id menuItem = (id) item;
             SSC::String title = [[menuItem title] UTF8String];
             SSC::String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
@@ -1032,19 +1083,6 @@ namespace SSC {
 
   Window::~Window () {
     this->close(0);
-
-    #if !__has_feature(objc_arc)
-    if (this->window) {
-      [this->window release];
-    }
-
-    if (this->webview) {
-      [this->webview release];
-    }
-    #endif
-
-    this->window = nullptr;
-    this->webview = nullptr;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1066,6 +1104,7 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
+    exiting = true;
     this->close(code);;
     if (onExit != nullptr) onExit(code);
   }
@@ -1076,7 +1115,12 @@ namespace SSC {
   void Window::close (int code) {
     if (this->window != nullptr) {
       [this->window performClose: nil];
+
       this->window = nullptr;
+    }
+
+    if (this->webview) {
+      this->webview = nullptr;
     }
 
     if (this->windowDelegate != nullptr) {
@@ -1092,8 +1136,8 @@ namespace SSC {
   void Window::hide () {
     if (this->window) {
       [this->window orderOut: this->window];
+      this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
     }
-    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
   }
 
   void Window::eval (const SSC::String& js) {
