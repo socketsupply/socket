@@ -2558,6 +2558,7 @@ static void registerSchemeHandler (Router *router) {
   0);
 
   webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
+    static auto userConfig = SSC::getUserConfig();
     bool isModule = false;
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
@@ -2688,10 +2689,18 @@ static void registerSchemeHandler (Router *router) {
     auto size = fs::file_size(path);
     auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
     auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
 
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
     soup_message_headers_append(headers, "access-control-allow-methods", "*");
     soup_message_headers_append(headers, "access-control-allow-headers", "*");
+
+    for (const auto& line : webviewHeaders) {
+      auto pair = split(trim(line), ':');
+      auto key = trim(pair[0]);
+      auto value = trim(pair[1]);
+      soup_message_headers_append(headers, key.c_str(), value.c_str());
+    }
 
     webkit_uri_scheme_response_set_http_headers(response, headers);
 
@@ -2789,12 +2798,21 @@ static void registerSchemeHandler (Router *router) {
   message.isHTTP = true;
   message.cancel = std::make_shared<MessageCancellation>();
 
+  auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+  auto headers = [NSMutableDictionary dictionary];
+
+  for (const auto& line : webviewHeaders) {
+    auto pair = split(trim(line), ':');
+    auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
+    auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+    headers[key] = value;
+  }
+
+  headers[@"access-control-allow-origin"] = @"*";
+  headers[@"access-control-allow-methods"] = @"*";
+  headers[@"access-control-allow-headers"] = @"*";
+
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
-    auto headers = [NSMutableDictionary dictionary];
-
-    headers[@"access-control-allow-origin"] = @"*";
-    headers[@"access-control-allow-methods"] = @"*";
-
     auto response = [[NSHTTPURLResponse alloc]
       initWithURL: request.URL
        statusCode: 200
@@ -2813,7 +2831,6 @@ static void registerSchemeHandler (Router *router) {
 
   if (String(request.URL.scheme.UTF8String) == "socket") {
     auto host = request.URL.host;
-    auto headers = [NSMutableDictionary dictionary];
     auto components = [NSURLComponents
             componentsWithURL: request.URL
       resolvingAgainstBaseURL: YES
@@ -2887,9 +2904,6 @@ static void registerSchemeHandler (Router *router) {
           return;
         } else {
           auto url = [NSURL fileURLWithPath: @(mount.path.c_str())];
-          headers[@"access-control-allow-origin"] = @"*";
-          headers[@"access-control-allow-methods"] = @"*";
-          headers[@"access-control-allow-headers"] = @"*";
 
           if (path.ends_with(".wasm")) {
             headers[@"content-type"] = @("application/wasm");
@@ -3037,10 +3051,6 @@ static void registerSchemeHandler (Router *router) {
       fileExistsAtPath: components.path
            isDirectory: NULL];
 
-    headers[@"access-control-allow-origin"] = @"*";
-    headers[@"access-control-allow-methods"] = @"*";
-    headers[@"access-control-allow-headers"] = @"*";
-
     components.path = @(path.c_str());
 
     if (exists && data) {
@@ -3094,9 +3104,7 @@ static void registerSchemeHandler (Router *router) {
   if (message.name == "post") {
     auto id = std::stoull(message.get("id"));
     auto post = self.router->core->getPost(id);
-    auto headers = [NSMutableDictionary dictionary];
 
-    headers[@"access-control-allow-origin"] = @"*";
     headers[@"content-length"] = [@(post.length) stringValue];
 
     if (post.headers.size() > 0) {
@@ -3159,8 +3167,10 @@ static void registerSchemeHandler (Router *router) {
 
     auto id = result.id;
     auto headers = [NSMutableDictionary dictionary];
+
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
+    headers[@"access-control-allow-headers"] = @"*";
 
     for (const auto& header : result.headers.entries) {
       auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
@@ -3259,7 +3269,7 @@ static void registerSchemeHandler (Router *router) {
   });
 
   if (!invoked) {
-    NSMutableDictionary* headers = [NSMutableDictionary dictionary];
+    auto headers = [NSMutableDictionary dictionary];
     auto json = JSON::Object::Entries {
       {"err", JSON::Object::Entries {
         {"message", "Not found"},
@@ -3273,6 +3283,7 @@ static void registerSchemeHandler (Router *router) {
     auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
     headers[@"access-control-allow-origin"] = @"*";
+    headers[@"access-control-allow-headers"] = @"*";
     headers[@"content-length"] = [@(msg.size()) stringValue];
 
     auto response = [[NSHTTPURLResponse alloc]
