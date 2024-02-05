@@ -29,6 +29,7 @@ import { maybeMakeError } from './ipc.js'
 import { SharedWorker } from './worker.js'
 import application from './application.js'
 import globals from './internal/globals.js'
+import process from './process.js'
 import console from './console.js'
 import crypto from './crypto.js'
 import os from './os.js'
@@ -80,22 +81,29 @@ export function findMessageTransfers (transfers, object, options = null) {
     add(object.buffer)
   } else if (isArrayBuffer(object)) {
     add(object)
-  } else if (object instanceof MessagePort) {
-    add(object)
   } else if (Array.isArray(object)) {
     for (const value of object) {
       findMessageTransfers(transfers, value, options)
     }
   } else if (object && typeof object === 'object') {
-    for (const key in object) {
-      if (
-        key.startsWith('__vmScriptReferenceArgs_') &&
-        options?.ignoreScriptReferenceArgs === true
-      ) {
-        continue
-      }
+    if (
+      object instanceof MessagePort || (
+        typeof object.postMessage === 'function' &&
+        Object.getPrototypeOf(object).constructor.name === 'MessagePort'
+      )
+    ) {
+      add(object)
+    } else {
+      for (const key in object) {
+        if (
+          key.startsWith('__vmScriptReferenceArgs_') &&
+          options?.ignoreScriptReferenceArgs === true
+        ) {
+          continue
+        }
 
-      findMessageTransfers(transfers, object[key], options)
+        findMessageTransfers(transfers, object[key], options)
+      }
     }
   }
 
@@ -892,7 +900,11 @@ export async function getContextWindow () {
   const currentWindow = await application.getCurrentWindow()
 
   // just return the current window for android/ios as there can only ever be one
-  if (os.platform() === 'ios' || os.platform() === 'android') {
+  if (
+    os.platform() === 'ios' ||
+    os.platform() === 'android' ||
+    (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
+   ) {
     contextWindow = currentWindow
 
     if (!contextWindow.frame) {
@@ -979,7 +991,11 @@ export async function getContextWorker () {
   }
 
   // just return the current window for android/ios as there can only ever be one
-  if (os.platform() === 'ios' || os.platform() === 'android') {
+  if (
+    os.platform() === 'ios' ||
+    os.platform() === 'android' ||
+    (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
+   ) {
     if (globalThis.window && globalThis.top === globalThis.window) {
       // inside global top window
       contextWorker = new ContextWorkerInterface()
