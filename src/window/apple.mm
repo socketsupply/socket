@@ -328,7 +328,7 @@ int lastY = 0;
 
   if (significantMoveX || significantMoveY) {
     const auto data = SSC::JSON::Object::Entries {
-      {"count", draggablePayload.size()},
+      {"count", (unsigned int) draggablePayload.size()},
       {"x", x},
       {"y", y}
     };
