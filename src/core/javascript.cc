@@ -73,9 +73,6 @@ namespace SSC {
       "  return;                                                             \n"
       "}                                                                     \n"
       "                                                                      \n"
-      "const event = new CustomEvent(name, { detail, ...options });          \n"
-      "target.dispatchEvent(event);                                          \n"
-      "                                                                      \n"
       "if (name === 'drag') {                                                \n"
       "  return globalThis.dispatchEvent(new CustomEvent('platformdrag', {   \n"
       "    detail                                                            \n"
@@ -90,6 +87,10 @@ namespace SSC {
       "        .filter(Boolean)                                              \n"
       "    }                                                                 \n"
       "  }));                                                                \n"
+      "                                                                      \n"
+      "const event = new CustomEvent(name, { detail, ...options });          \n"
+      "target.dispatchEvent(event);                                          \n"
+      "                                                                      \n"
       "}                                                                     \n"
     );
   }
