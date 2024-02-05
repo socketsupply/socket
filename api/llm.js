@@ -11,7 +11,7 @@
 import ipc from './ipc.js'
 import gc from './gc.js'
 
-export class LlamaModel {
+export class Model {
   _modelId = null
 
   /**
@@ -93,10 +93,49 @@ export class LlamaModel {
   }
 }
 
+export class Grammar {
+  /**
+   * > GBNF files are supported.
+   * > More info here: [github:ggerganov/llama.cpp:grammars/README.md](
+   * > https://github.com/ggerganov/llama.cpp/blob/f5fe98d11bdf9e7797bcfb05c0c3601ffc4b9d26/grammars/README.md)
+   * @param {object} options
+   * @param {string} options.grammar - GBNF grammar
+   * @param {string[]} [options.stopStrings] - Consider any of these texts as EOS for the generated out.
+   */
+  constructor (args) {
+    const {
+      grammar,
+      stopStrings = [],
+      trimWhitespaceSuffix = false,
+      printGrammar = false
+    } = args
 
-export class LlamaGrammar {
-  constructor () {
+    const params = {
+      text: grammar
+    }
 
+    const { data, err } = ipc.sendSync('llm.createGrammar', params, { cache: true })
+
+    if (err) {
+      throw new Error(err)
+    }
+
+    this._grammarId = data.grammarId
+    this._stopStrings = stopStrings ?? []
+    this._trimWhitespaceSuffix = trimWhitespaceSuffix
+    this._grammarText = grammar
+  }
+
+  get grammar(): string {
+    return this._grammarText;
+  }
+
+  get stopStrings() {
+    return this._stopStrings;
+  }
+
+  get trimWhitespaceSuffix() {
+    return this._trimWhitespaceSuffix;
   }
 
   [gc.finalizer] () {
@@ -109,12 +148,24 @@ export class LlamaGrammar {
   }
 }
 
-export class LlamaContext {
+export class Context {
   _contextId = null
   _model = null
   _prependBos = true;
   _prependTokens = [];
 
+  /**
+   * @typedef {Object} ContextOptions
+   * @property {LlamaModel} model - The model to use.
+   * @property {boolean} [prependBos] - Whether to prepend Beginning Of Sequence token.
+   * @property {LlamaGrammar} [grammar] - This option is deprecated. Use the `grammar` option on `LlamaChatSession`'s `prompt` function or the `grammarEvaluationState` option on `LlamaContext`'s `evaluate` function instead. This property is hidden from the documentation.
+   * @property {(number|null)} [seed] - If null, a random seed will be used.
+   * @property {number} [contextSize] - Text context size.
+   * @property {number} [batchSize] - Prompt processing batch size.
+   * @property {boolean} [logitsAll] - The llama_eval() call computes all logits, not just the last one.
+   * @property {boolean} [embedding] - Embedding mode only.
+   * @property {number} [threads] - Number of threads to use to evaluate tokens.
+   */
   constructor (args) {
     const  {
       model,
@@ -196,7 +247,7 @@ export class LlamaContext {
   }
 }
 
-export class LlamaGrammarEvaluationState {
+export class GrammarEvaluationState {
   constructor (args) {
     const {
       temperature,
