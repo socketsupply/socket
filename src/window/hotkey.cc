@@ -1,4 +1,5 @@
 #include "hotkey.hh"
+#include "window.hh"
 #include "../core/string.hh"
 #include "../core/json.hh"
 #include "../ipc/ipc.hh"
@@ -385,8 +386,8 @@ namespace SSC {
     keys.insert_or_assign("left alt", VK_LMENU);
     keys.insert_or_assign("right control", VK_RCONTROL);
     keys.insert_or_assign("right ctrl", VK_RCONTROL);
-    keys.insert_or_assign("left control", VK_LCONTLOL);
-    keys.insert_or_assign("left ctrl", VK_LCONTLOL);
+    keys.insert_or_assign("left control", VK_LCONTROL);
+    keys.insert_or_assign("left ctrl", VK_LCONTROL);
     keys.insert_or_assign("volume up", VK_VOLUME_UP);
     keys.insert_or_assign("volume down", VK_VOLUME_DOWN);
     keys.insert_or_assign("volume mute", VK_VOLUME_MUTE);
@@ -825,8 +826,8 @@ namespace SSC {
     auto status = RegisterHotKey(
       this->window->window,
       (int) binding.id,
-      bindings.modifiers,
-      bindings.keys
+      binding.modifiers,
+      binding.keys
     );
 
     if (!status) {
