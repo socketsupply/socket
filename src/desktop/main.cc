@@ -908,7 +908,7 @@ MAIN {
       auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : 0;
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
 
-      if (targetWindowIndex >= SSC_MAX_WINDOWS && (message.get("headless") != "true" || message.get("debug") != "true")) {
+      if (targetWindowIndex >= SSC_MAX_WINDOWS && message.get("headless") != "true" && message.get("debug") != "true") {
         const JSON::Object json = JSON::Object::Entries {
           { "err", String("Cannot create window with an index beyond ") + std::to_string(SSC_MAX_WINDOWS) }
         };
