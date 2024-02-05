@@ -175,6 +175,7 @@ namespace SSC {
       int popupId;
     #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+      bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
       ICoreWebView2 *webview = nullptr;
       HMENU systemMenu;
