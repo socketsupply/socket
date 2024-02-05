@@ -1,5 +1,6 @@
 /* global MessageChannel, MessagePort, EventTarget, Worker */
 import { murmur3, randomBytes } from '../crypto.js'
+import process from '../process.js'
 import globals from './globals.js'
 import os from '../os.js'
 import gc from '../gc.js'
@@ -185,13 +186,22 @@ export class SharedHybridWorker extends EventTarget {
 
 const isInFrame = globalThis.window && globalThis.top !== globalThis.window
 
-export const SharedWorker = (
-  globalThis.SharedWorker ?? (
-    (os.platform() === 'android' && isInFrame)
-      ? SharedHybridWorkerProxy
-      : SharedHybridWorker
-  )
-)
+export function getSharedWorkerImplementationForPlatform () {
+  if (
+    os.platform() === 'android' ||
+    (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
+  ) {
+    if (isInFrame) {
+      return SharedHybridWorkerProxy
+    }
+
+    return SharedHybridWorker
+  }
+
+  return globalThis.SharedWorker ?? SharedHybridWorker
+}
+
+export const SharedWorker = getSharedWorkerImplementationForPlatform()
 
 if (!isInFrame) {
   const channel = new MessageChannel()
