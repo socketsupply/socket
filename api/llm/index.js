@@ -12,8 +12,6 @@ import ipc from '../ipc.js'
 import gc from '../gc.js'
 import { getGbnfGrammarForGbnfJsonSchema, validateObjectAgainstGbnfSchema } from './gbnf.js'
 
-export { getGbnfGrammarForGbnfJsonSchema }
-
 /**
  * Retrieves the completion text based on the provided input text and a list of full texts.
  *
@@ -36,7 +34,7 @@ function getTextCompletion (text, fullText) {
 /**
  * Abstract class representing a Chat Prompt Wrapper.
  */
-export class ChatPromptWrapper {
+class ChatPromptWrapper {
   /**
    * The name of the wrapper.
    * @type {string}
@@ -91,7 +89,7 @@ export class ChatPromptWrapper {
 /**
  * Class representing a General Chat Prompt Wrapper.
  */
-export class GeneralChatPromptWrapper extends ChatPromptWrapper {
+class GeneralChatPromptWrapper extends ChatPromptWrapper {
   /**
    * The name of the wrapper.
    * @type {string}
@@ -187,7 +185,7 @@ export class GeneralChatPromptWrapper extends ChatPromptWrapper {
   }
 }
 
-export class Model {
+class Model {
   _modelId = null
 
   /**
@@ -261,7 +259,7 @@ export class Model {
   }
 }
 
-export class Grammar {
+class Grammar {
   /**
    * > GBNF files are supported.
    * > More info here: [github:ggerganov/llama.cpp:grammars/README.md](
@@ -319,7 +317,7 @@ export class Grammar {
  * Class representing a JsonSchemaGrammar.
  * @template {Readonly<GbnfJsonSchema>} T
  */
-export class JsonSchemaGrammar extends Grammar {
+class JsonSchemaGrammar extends Grammar {
   /**
    * Creates an instance of JsonSchemaGrammar.
    * @param {T} schema - The Gbnf JSON schema to use for parsing.
@@ -348,7 +346,7 @@ export class JsonSchemaGrammar extends Grammar {
   }
 }
 
-export class Context {
+class Context {
   _contextId = null
   _model = null
   _prependBos = true
@@ -446,7 +444,7 @@ export class Context {
   }
 }
 
-export class GrammarEvaluationState {
+class GrammarEvaluationState {
   constructor (args) {
     const {
       grammar
@@ -473,4 +471,15 @@ export class GrammarEvaluationState {
       }
     }
   }
+}
+
+export {
+  getGbnfGrammarForGbnfJsonSchema
+  ChatPromptWrapper,
+  Context,
+  GeneralChatPromptWrapper,
+  Grammar,
+  GrammarEvaluationState,
+  JsonSchemaGrammar,
+  Model,
 }
