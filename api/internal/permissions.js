@@ -33,8 +33,8 @@ const isLinux = os.platform() === 'linux'
  * @return {function}
  */
 function getPlatformFunction (name) {
-  if (!globalThis.window?.navigator?.permissions?.[name]) return null
-  const value = globalThis.window.navigator.permissions[name]
+  if (!globalThis.navigator?.permissions?.[name]) return null
+  const value = globalThis.navigator.permissions[name]
   return value.bind(globalThis.navigator.permissions)
 }
 
@@ -233,7 +233,9 @@ export async function query (descriptor, options) {
       }
     }
 
-    return platform.query(descriptor)
+    if (typeof platform.query === 'function') {
+      return platform.query(descriptor)
+    }
   }
 
   const result = await ipc.request('permissions.query', { name, signal: options?.signal })
