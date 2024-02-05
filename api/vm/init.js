@@ -57,6 +57,7 @@ class State {
   }
 
   init () {
+    globalThis.addEventListener('message', this.onMessage)
     hooks.onReady(async () => {
       this.worker = await vm.getContextWorker()
       this.worker.port.addEventListener('message', this.onWorkerMessage)
@@ -76,8 +77,6 @@ class State {
           })
         }
       }
-
-      globalThis.addEventListener('message', this.onMessage)
     })
   }
 
