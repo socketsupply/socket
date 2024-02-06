@@ -3904,10 +3904,138 @@ declare module "socket:window/hotkey" {
         modifiers: object;
     }>;
     /**
-     * A map of weakly held `Binding` instances.
-     * @type {Map<number, WeakRef<Binding>>}
+     * Adds an event listener to the global active bindings.
+     * @param {string} type
+     * @param {function(Event)} listener
+     * @param {(boolean|object)=} [optionsOrUseCapture]
      */
-    export const bindings: Map<number, WeakRef<Binding>>;
+    export function addEventListener(type: string, listener: (arg0: Event) => any, optionsOrUseCapture?: (boolean | object) | undefined): void;
+    /**
+     * Removes  an event listener to the global active bindings.
+     * @param {string} type
+     * @param {function(Event)} listener
+     * @param {(boolean|object)=} [optionsOrUseCapture]
+     */
+    export function removeEventListener(type: string, listener: (arg0: Event) => any, optionsOrUseCapture?: (boolean | object) | undefined): void;
+    /**
+     * A high level bindings container map that dispatches events.
+     */
+    export class Bindings extends EventTarget {
+        /**
+         * `Bindings` class constructor.
+         * @ignore
+         * @param {EventTarget} [sourceEventTarget]
+         */
+        constructor(sourceEventTarget?: EventTarget);
+        /**
+         * Global `HotKeyEvent` event listener for `Binding` instance event dispatch.
+         * @ignore
+         * @param {import('../internal/events.js').HotKeyEvent} event
+         */
+        onHotKey(event: import('../internal/events.js').HotKeyEvent): void;
+        /**
+         * Intializes bindings
+         */
+        init(): Promise<void>;
+        /**
+         * The number of `Binding` instances in the mapping.
+         * @type {number}
+         */
+        get size(): number;
+        /**
+         * Get a binding by `id`
+         * @param {number} id
+         * @return {Binding}
+         */
+        get(id: number): Binding;
+        /**
+         * Set a `binding` a by `id`.
+         * @param {number} id
+         * @param {Binding} binding
+         */
+        set(id: number, binding: Binding): void;
+        /**
+         * Delete a binding by `id`
+         * @param {number} id
+         * @return {boolean}
+         */
+        delete(id: number): boolean;
+        /**
+         * Returns `true` if a binding existss in the mapping, otherwise `false`.
+         * @return {boolean}
+         */
+        has(id: any): boolean;
+        /**
+         * Known `Binding` values in the mapping.
+         * @return {{ next: function(): { value: Binding|undefined, done: boolean } }}
+         */
+        values(): {
+            next: () => {
+                value: Binding | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` keys in the mapping.
+         * @return {{ next: function(): { value: number|undefined, done: boolean } }}
+         */
+        keys(): {
+            next: () => {
+                value: number | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` ids in the mapping.
+         * @return {{ next: function(): { value: number|undefined, done: boolean } }}
+         */
+        ids(): {
+            next: () => {
+                value: number | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` ids and values in the mapping.
+         * @return {{ next: function(): { value: [number, Binding]|undefined, done: boolean } }}
+         */
+        entries(): {
+            next: () => {
+                value: [number, Binding] | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Bind a global hotkey expression.
+         * @param {string} expression
+         * @return {Promise<Binding>}
+         */
+        bind(expression: string): Promise<Binding>;
+        /**
+         * Bind a global hotkey expression.
+         * @param {string} expression
+         * @return {Promise<Binding>}
+         */
+        unbind(expression: string): Promise<Binding>;
+        /**
+         * Returns an array of all active bindings for the application.
+         * @return {Promise<Binding[]>}
+         */
+        active(): Promise<Binding[]>;
+        /**
+         * Resets all active bindings in the application.
+         * @param {boolean=} [currentContextOnly]
+         * @return {Promise}
+         */
+        reset(currentContextOnly?: boolean | undefined): Promise<any>;
+        #private;
+    }
+    /**
+     * A container for all the bindings currently bound
+     * by this window context.
+     * @type {Bindings}
+     */
+    export const bindings: Bindings;
     /**
      * An `EventTarget` container for a hotkey binding.
      */
@@ -3944,16 +4072,23 @@ declare module "socket:window/hotkey" {
          */
         get expression(): string;
         /**
+         * Binds this hotkey expression.
+         * @return {Promise<Binding>}
+         */
+        bind(): Promise<Binding>;
+        /**
          * Unbinds this hotkey expression.
-         * @param {object=} poptions]
          * @return {Promise}
          */
-        unbind(options?: any): Promise<any>;
+        unbind(): Promise<any>;
         #private;
     }
     namespace _default {
         export { bind };
         export { unbind };
+        export { bindings };
+        export { addEventListener };
+        export { removeEventListener };
     }
     export default _default;
 }
@@ -3973,6 +4108,9 @@ declare module "socket:window" {
         static hotkey: {
             bind: typeof import("socket:window/hotkey").bind;
             unbind: typeof import("socket:window/hotkey").unbind;
+            bindings: import("socket:window/hotkey").Bindings;
+            addEventListener: typeof import("socket:window/hotkey").addEventListener;
+            removeEventListener: typeof import("socket:window/hotkey").removeEventListener;
         };
         constructor({ index, ...options }: {
             [x: string]: any;
