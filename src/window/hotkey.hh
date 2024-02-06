@@ -8,6 +8,7 @@
 namespace SSC {
   // forward
   class Window;
+  class HotKeyContext;
 
   class HotKeyCodeMap {
     public:
@@ -32,6 +33,14 @@ namespace SSC {
       using Sequence = Vector<Token>;
       using Expression = String;
 
+    #if defined(__linux__) && !defined(__ANDROID__)
+      struct GTKKeyPressEventContext {
+        HotKeyContext* context = nullptr;
+        ID id = 0;
+        guint signal = 0;
+      };
+    #endif
+
       static Sequence parseExpression (Expression input);
 
       HotKeyCodeMap codeMap;
@@ -46,10 +55,6 @@ namespace SSC {
     #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       // Apple Carbon API
       EventHotKeyRef eventHotKeyRef;
-    #elif defined(__linux__) && !defined(__ANDROID__)
-      // TODO
-    #elif defined(_WIN32)
-      // TODO
     #endif
 
       HotKeyBinding (ID id, Expression input);
@@ -64,9 +69,10 @@ namespace SSC {
       // Apple Carbon API
       EventTargetRef eventTarget;
     #elif defined(__linux__) && !defined(__ANDROID__)
-      // TODO
-    #elif defined(_WIN32)
-      // TODO
+      std::map<
+        HotKeyBinding::ID,
+        HotKeyBinding::GTKKeyPressEventContext
+      > gtkKeyPressEventContexts;
     #endif
 
       Window* window = nullptr;
