@@ -27,8 +27,9 @@ namespace SSC {
 
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
-    this->index = opts.index;
+    this->index = this->opts.index;
     this->bridge = new IPC::Bridge(app.core);
+
     this->hotkey.init(this->bridge);
 
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
@@ -192,9 +193,8 @@ namespace SSC {
       this
     );
 
-
     static auto userConfig = SSC::getUserConfig();
-    auto webContext = webkit_web_context_get_default();
+    auto webContext = this->bridge->router.webkitWebContext;
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
     auto policies = webkit_website_policies_new_with_policies(
@@ -969,6 +969,7 @@ namespace SSC {
   void Window::show () {
     gtk_widget_realize(this->window);
 
+    this->index = this->opts.index;
     if (this->opts.headless == false) {
       gtk_widget_show_all(this->window);
       gtk_window_present(GTK_WINDOW(this->window));
