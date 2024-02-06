@@ -740,7 +740,7 @@ namespace SSC {
         w->eval(getEmitToRenderProcessJavaScript(
           "dropin",
           json.str(),
-          "document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ")",
+          "globalThis",
           options
         ));
 
