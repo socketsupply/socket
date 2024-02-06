@@ -275,6 +275,8 @@ namespace SSC::IPC {
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
       NSTimer* notificationPollTimer = nullptr;
+    #elif defined(__linux__) && !defined(__ANDROID__)
+      WebKitWebContext* webkitWebContext = nullptr;
     #endif
 
       Router ();
