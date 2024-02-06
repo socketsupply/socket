@@ -626,12 +626,69 @@ namespace SSC {
     );
   #endif
 
-    this->bridge->router.map("window.hotkey.bind", [=, this](auto message, auto router, auto reply) mutable {
+    this->bridge->router.map("window.hotkey.bind", [this](auto message, auto router, auto reply) mutable {
+      static auto userConfig = SSC::getUserConfig();
+
+      if (message.has("id")) {
+        HotKeyBinding::ID id;
+
+        try {
+          id = std::stoul(message.get("id"));
+        } catch (...) {
+          auto err = JSON::Object::Entries {
+            {"message", "Invalid 'id' given in parameters"}
+          };
+
+          return reply(IPC::Result::Err { message, err });
+        }
+
+        if (!this->bindings.contains(id)) {
+          auto err = JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Invalid 'id' given in parameters"}
+          };
+
+          return reply(IPC::Result::Err { message, err });
+        }
+
+        auto& binding = this->bindings.at(id);
+
+        if (!binding.isValid()) {
+          auto err = JSON::Object::Entries {
+            {"message", "Invalid 'expression' in parameters"}
+          };
+
+          return reply(IPC::Result::Err { message, err });
+        }
+
+        if (!this->bind(binding.expression).isValid()) {
+          auto err = JSON::Object::Entries {
+            {"message", "Failed to bind existing binding expression to context"}
+          };
+          return reply(IPC::Result::Err { message, err });
+        }
+
+        auto sequence = JSON::Array::Entries {};
+
+        for (const auto& token : binding.sequence) {
+          sequence.push_back(token);
+        }
+
+        auto data = JSON::Object::Entries {
+          {"expression", binding.expression},
+          {"sequence", sequence},
+          {"hash", binding.hash},
+          {"id", binding.id}
+        };
+
+        return reply(IPC::Result::Data { message, data });
+      }
+
       auto expression = message.get("expression");
 
       if (expression.size() == 0) {
         auto err = JSON::Object::Entries {
-          {"message", "Expression 'expression' in parameters"}
+          {"message", "Expecting 'expression' in parameters"}
         };
         return reply(IPC::Result::Err { message, err });
       }
@@ -660,7 +717,7 @@ namespace SSC {
       }
 
       auto data = JSON::Object::Entries {
-        {"expression", expression},
+        {"expression", binding.expression},
         {"sequence", sequence},
         {"hash", binding.hash},
         {"id", binding.id}
@@ -669,7 +726,8 @@ namespace SSC {
       reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.unbind", [=, this](auto message, auto router, auto reply) mutable {
+    this->bridge->router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
+      static auto userConfig = SSC::getUserConfig();
       HotKeyBinding::ID id;
       const auto expression = message.get("expression");
 
@@ -754,7 +812,9 @@ namespace SSC {
       return reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.reset", [=, this](auto message, auto router, auto reply) mutable {
+    this->bridge->router.map("window.hotkey.reset", [this](auto message, auto router, auto reply) mutable {
+      static auto userConfig = SSC::getUserConfig();
+
       if (userConfig["permissions_allow_hotkeys"] == "false") {
         auto err = JSON::Object::Entries {
           {"type", "SecurityError"},
@@ -766,7 +826,8 @@ namespace SSC {
       return reply(IPC::Result { message.seq, message });
     });
 
-    this->bridge->router.map("window.hotkey.bindings", [=, this](auto message, auto router, auto reply) mutable {
+    this->bridge->router.map("window.hotkey.bindings", [this](auto message, auto router, auto reply) mutable {
+      static auto userConfig = SSC::getUserConfig();
       auto data = JSON::Array::Entries {};
 
       if (userConfig["permissions_allow_hotkeys"] == "false") {
@@ -798,8 +859,10 @@ namespace SSC {
       return reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.mappings", [=, this](auto message, auto router, auto reply) mutable {
+    this->bridge->router.map("window.hotkey.mappings", [this](auto message, auto router, auto reply) mutable {
+      static auto userConfig = SSC::getUserConfig();
       static const HotKeyCodeMap map;
+
       auto modifiers = JSON::Object::Entries {};
       auto keys = JSON::Object::Entries {};
 
@@ -850,59 +913,68 @@ namespace SSC {
       return HotKeyBinding(0, "");
     }
 
-    if (this->hasBindingForExpression(expression)) {
-      return this->getBindingForExpression(expression);
-    }
+    const auto exists = this->hasBindingForExpression(expression);
 
-    auto binding = HotKeyBinding(nextGlobalBindingID, expression);
+    auto binding = exists
+      ? getBindingForExpression(expression)
+      : HotKeyBinding(nextGlobalBindingID, expression);
 
   #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
-    EventHotKeyID eventHotKeyID;
-    eventHotKeyID.id = binding.id;
-    eventHotKeyID.signature = binding.id;
+    if (!exists) {
+      EventHotKeyID eventHotKeyID;
+      eventHotKeyID.id = binding.id;
+      eventHotKeyID.signature = binding.id;
 
-    auto status = RegisterEventHotKey(
-      binding.keys,
-      binding.modifiers,
-      eventHotKeyID,
-      eventTarget,
-      0,
-      &binding.eventHotKeyRef
-    );
+      const auto status = RegisterEventHotKey(
+        binding.keys,
+        binding.modifiers,
+        eventHotKeyID,
+        eventTarget,
+        0,
+        &binding.eventHotKeyRef
+      );
 
-    if (status != 0) {
-      return HotKeyBinding(0, "");
+      if (status != 0) {
+        return HotKeyBinding(0, "");
+      }
     }
   #elif defined(__linux__) && !defined(__ANDROID__)
     static const HotKeyCodeMap hotKeyCodeMap;
-    this->gtkKeyPressEventContexts.insert_or_assign(
-      binding.id,
-      HotKeyBinding::GTKKeyPressEventContext { this, binding.id }
-    );
 
-    auto& context = this->gtkKeyPressEventContexts.at(binding.id);
-    context.signal = g_signal_connect(
-      this->window->window,
-      "key-press-event",
-      G_CALLBACK(gtkKeyPressEventHandlerCallback),
-      &context
-    );
+    if (!this->gtkKeyPressEventContexts.contains(binding.id)) {
+      this->gtkKeyPressEventContexts.insert_or_assign(
+        binding.id,
+        HotKeyBinding::GTKKeyPressEventContext { this, binding.id }
+      );
+
+      auto& context = this->gtkKeyPressEventContexts.at(binding.id);
+      context.signal = g_signal_connect(
+        this->window->window,
+        "key-press-event",
+        G_CALLBACK(gtkKeyPressEventHandlerCallback),
+        &context
+      );
+    }
   #elif defined(_WIN32)
-    auto status = RegisterHotKey(
-      this->window->window,
-      (int) binding.id,
-      binding.modifiers,
-      binding.keys
-    );
+    if (!exists) {
+      const auto status = RegisterHotKey(
+        this->window->window,
+        (int) binding.id,
+        binding.modifiers,
+        binding.keys
+      );
 
-    if (!status) {
-      return HotKeyBinding(0, "");
+      if (!status) {
+        return HotKeyBinding(0, "");
+      }
     }
   #endif
 
-    this->bindingIds.push_back(binding.id);
-    nextGlobalBindingID = nextGlobalBindingID + 1;
-    this->bindings.insert_or_assign(binding.id, binding);
+    if (!exists) {
+      this->bindingIds.push_back(binding.id);
+      nextGlobalBindingID = nextGlobalBindingID + 1;
+      this->bindings.insert_or_assign(binding.id, binding);
+    }
 
     return binding;
   }
@@ -977,7 +1049,8 @@ namespace SSC {
   }
 
   bool HotKeyContext::onHotKeyBindingCallback (HotKeyBinding::ID id) {
-    if (this->bridge != nullptr && this->bindings.contains(id)) {
+    auto app = App::instance();
+    if (app != nullptr && this->bindings.contains(id)) {
       const auto& binding = this->bindings.at(id);
 
       if (!binding.isValid()) {
@@ -998,9 +1071,7 @@ namespace SSC {
       };
 
       auto json = JSON::Object{ data };
-
-      // dispatch 'hotkey' event to webview
-      return this->bridge->router.emit("hotkey", json.str());
+      return this->window->bridge->router.emit("hotkey", json.str());
     }
 
     return false;
