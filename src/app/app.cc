@@ -136,7 +136,10 @@ namespace SSC {
   }
 
   App::App () {
-    SSC::applicationInstance = this;
+    if (applicationInstance == nullptr) {
+      SSC::applicationInstance = this;
+    }
+
     this->core = new Core();
     auto cwd = getCwd();
     uv_chdir(cwd.c_str());
@@ -149,6 +152,12 @@ namespace SSC {
     this->delegate.app = this;
     NSApplication.sharedApplication.delegate =  this->delegate;
   #endif
+  }
+
+  App::~App () {
+    if (applicationInstance == this) {
+      applicationInstance = nullptr;
+    }
   }
 
   int App::run () {
