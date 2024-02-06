@@ -10,180 +10,8 @@
  */
 import ipc from '../ipc.js'
 import gc from '../gc.js'
+import { ChatPromptWrapper, ChatMLChatPromptWrapper, GeneralChatPromptWrapper } from './chat.js'
 import { getGbnfGrammarForGbnfJsonSchema, validateObjectAgainstGbnfSchema } from './gbnf.js'
-
-/**
- * Retrieves the completion text based on the provided input text and a list of full texts.
- *
- * @param {string | null} text - The input text for which completion is sought.
- * @param {string | string[]} fullText - A single full text string or an array of full text strings to search for completion.
- * @returns {string | null} - The completion text if found, or null if not found.
- */
-function getTextCompletion (text, fullText) {
-  if (text == null) return null
-
-  const fullTexts = typeof fullText === 'string' ? [fullText] : fullText
-
-  for (const fullText of fullTexts) {
-    if (fullText.startsWith(text)) return fullText.slice(text.length)
-  }
-
-  return null
-}
-
-/**
- * Abstract class representing a Chat Prompt Wrapper.
- */
-class ChatPromptWrapper {
-  /**
-   * The name of the wrapper.
-   * @type {string}
-   * @abstract
-   */
-  wrapperName = ''
-
-  /**
-   * Wraps a prompt with system prompt if it's not the first prompt.
-   *
-   * @param {string} prompt - The prompt to wrap.
-   * @param {Object} options - Options for wrapping the prompt.
-   * @param {string} options.systemPrompt - The system prompt to prepend.
-   * @param {number} options.promptIndex - The index of the prompt.
-   * @returns {string} - The wrapped prompt.
-   */
-  wrapPrompt (prompt, { systemPrompt, promptIndex }) {
-    if (promptIndex === 0) {
-      return systemPrompt + '\n' + prompt
-    } else {
-      return prompt
-    }
-  }
-
-  /**
-   * Retrieves an array of stop strings.
-   *
-   * @returns {string[]} - An array of stop strings.
-   */
-  getStopStrings () {
-    return []
-  }
-
-  /**
-   * Retrieves the default stop string.
-   *
-   * @returns {string} - The default stop string.
-   * @throws {Error} - If the prompt wrapper has no stop strings defined.
-   */
-  getDefaultStopString () {
-    const stopStrings = this.getStopStrings()
-    const stopString = stopStrings[0]
-
-    if (stopString == null || stopString.length === 0) {
-      throw new Error(`Prompt wrapper "${this.wrapperName}" has no stop strings`)
-    }
-
-    return stopString
-  }
-}
-
-/**
- * Class representing a General Chat Prompt Wrapper.
- */
-class GeneralChatPromptWrapper extends ChatPromptWrapper {
-  /**
-   * The name of the wrapper.
-   * @type {string}
-   * @readonly
-   */
-  constructor ({ instructionName = 'Human', responseName = 'Assistant' } = {}) {
-    super()
-
-    /**
-     * The name of the wrapper.
-     * @type {string}
-     * @readonly
-     */
-    this.wrapperName = 'General'
-
-    /**
-     * The name of the instruction.
-     * @type {string}
-     * @private
-     */
-    this._instructionName = instructionName
-
-    /**
-     * The name of the response.
-     * @type {string}
-     * @private
-     */
-    this._responseName = responseName
-  }
-
-  /**
-     * Wraps a prompt with system prompt or response names.
-     *
-     * @param {string} prompt - The prompt to wrap.
-     * @param {Object} options - Options for wrapping the prompt.
-     * @param {string} options.systemPrompt - The system prompt to prepend.
-     * @param {number} options.promptIndex - The index of the prompt.
-     * @param {string | null} options.lastStopString - The last stop string.
-     * @param {string | null} options.lastStopStringSuffix - The last stop string suffix.
-     * @returns {string} - The wrapped prompt.
-     */
-  wrapPrompt (prompt, { systemPrompt, promptIndex, lastStopString, lastStopStringSuffix }) {
-    if (promptIndex === 0) { return systemPrompt + `\n\n### ${this._instructionName}:\n` + prompt + `\n\n### ${this._responseName}:\n` }
-
-    return this._getPromptPrefix(lastStopString, lastStopStringSuffix) + prompt + `\n\n### ${this._responseName}:\n`
-  }
-
-  /**
-   * Retrieves an array of stop strings.
-   *
-   * @returns {string[]} - An array of stop strings.
-   */
-  getStopStrings () {
-    return [
-            `\n\n### ${this._instructionName}`,
-            `### ${this._instructionName}`,
-            `\n\n### ${this._responseName}`,
-            `### ${this._responseName}`,
-            '<end>'
-    ]
-  }
-
-  /**
-   * Retrieves the default stop string.
-   *
-   * @returns {string} - The default stop string.
-   */
-  getDefaultStopString () {
-    return `\n\n### ${this._instructionName}`
-  }
-
-  /**
-   * Gets the prompt prefix based on the last stop string and suffix.
-   *
-   * @private
-   * @param {string | null} lastStopString - The last stop string.
-   * @param {string | null} lastStopStringSuffix - The last stop string suffix.
-   * @returns {string} - The prompt prefix.
-   */
-  _getPromptPrefix (lastStopString, lastStopStringSuffix) {
-    const isEnd = lastStopString === '<end>'
-
-    const a = isEnd
-      ? lastStopStringSuffix
-      : ((lastStopString ?? '') + (lastStopStringSuffix ?? ''))
-
-    const b = [
-      `\n\n### ${this._instructionName}:\n`,
-      `### ${this._instructionName}:\n`
-    ]
-
-    return getTextCompletion(a, b) ?? `\n\n### ${this._instructionName}:\n`
-  }
-}
 
 class Model {
   _modelId = null
@@ -460,9 +288,9 @@ class Context {
     if (evalTokens.length === 0) return
 
     while (true) {
-      const param = {
-        contextId,
-        modelId,
+      const params = {
+        contextId: this._contextId,
+        modelId: this._model._modelId,
         temperature,
         topK,
         topP,
@@ -476,7 +304,7 @@ class Context {
       }
 
       const { data: nextToken, err } = await ipc.send('llm.eval', params, { cache: true })
-      if (err) throw new Erorr(err)
+      if (err) throw new Error(err)
 
       // the assistant finished answering
       if (nextToken === this._ctx.tokenEos()) break
@@ -519,9 +347,9 @@ class GrammarEvaluationState {
 }
 
 export {
-  getGbnfGrammarForGbnfJsonSchema,
-  ChatPromptWrapper,
   Context,
+  ChatPromptWrapper,
+  ChatMLChatPromptWrapper,
   GeneralChatPromptWrapper,
   Grammar,
   GrammarEvaluationState,
