@@ -61,6 +61,7 @@ namespace SSC {
 
       App (int);
       App ();
+      ~App ();
 
       int run ();
       void kill ();
