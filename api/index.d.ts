@@ -7448,6 +7448,10 @@ declare module "socket:internal/globals" {
     const registry: any;
 }
 declare module "socket:internal/shared-worker" {
+    export function getSharedWorkerImplementationForPlatform(): {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
     export class SharedHybridWorkerProxy extends EventTarget {
         constructor(url: any, options: any);
         onChannelMessage(event: any): void;
