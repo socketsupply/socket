@@ -641,9 +641,9 @@ namespace SSC {
           .width = opts.width,
           .height = opts.height,
           .index = 0,
-      #ifdef PORT
+        #ifdef PORT
           .port = PORT,
-      #endif
+        #endif
           .appData = opts.appData
         });
       }
