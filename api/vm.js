@@ -904,7 +904,7 @@ export async function getContextWindow () {
     os.platform() === 'ios' ||
     os.platform() === 'android' ||
     (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
-   ) {
+  ) {
     contextWindow = currentWindow
 
     if (!contextWindow.frame) {
@@ -995,7 +995,7 @@ export async function getContextWorker () {
     os.platform() === 'ios' ||
     os.platform() === 'android' ||
     (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
-   ) {
+  ) {
     if (globalThis.window && globalThis.top === globalThis.window) {
       // inside global top window
       contextWorker = new ContextWorkerInterface()
