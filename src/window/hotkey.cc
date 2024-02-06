@@ -47,6 +47,51 @@ namespace SSC {
 
     return noErr;
   }
+#elif defined(__linux__) && !defined(__ANDROID__)
+  static bool gtkKeyPressEventHandlerCallback (
+    GtkWidget* widget,
+    GdkEventKey* event,
+    gpointer userData
+  ) {
+    // bail early if somehow user data is `nullptr`,
+    // meaning we are unable to deteremine a `HotKeyBinding::GTKKeyPressEventContext`
+    if (userData == nullptr) {
+      return false;
+    }
+
+    auto context = reinterpret_cast<HotKeyBinding::GTKKeyPressEventContext*>(userData);
+
+    // if the context was removed somehow, bail early
+    if (
+      context == nullptr ||
+      context->context == nullptr ||
+      context->context->bridge == nullptr
+    ) {
+      return false;
+    }
+
+    if (context->context->bindings.contains(context->id)) {
+      static const HotKeyCodeMap map;
+      const auto &binding = context->context->bindings.at(context->id);
+      if (binding.keys != event->keyval) {
+        return false;
+      }
+
+      for (const auto& token : binding.sequence) {
+        const auto code = map.get(token);
+        if (map.isModifier(token)) {
+          if (!(event->state & code)) {
+            return false;
+          }
+        }
+      }
+
+      context->context->onHotKeyBindingCallback(context->id);
+      return true;
+    }
+
+    return false;
+  }
 #endif
 
   HotKeyCodeMap::HotKeyCodeMap () {
@@ -300,16 +345,15 @@ namespace SSC {
     keys.insert_or_assign("left", GDK_KEY_Left);
     keys.insert_or_assign("right", GDK_KEY_Right);
 
-    modifiers.insert_or_assign("meta", GDK_META_MASK);
-    modifiers.insert_or_assign("right alt", GDK_META_MASK);
 
     modifiers.insert_or_assign("command", GDK_SUPER_MASK);
     modifiers.insert_or_assign("super", GDK_SUPER_MASK);
     modifiers.insert_or_assign("cmd", GDK_SUPER_MASK);
 
-    modifiers.insert_or_assign("option", GDK_ALT_MASK);
-    modifiers.insert_or_assign("opt", GDK_ALT_MASK);
-    modifiers.insert_or_assign("alt", GDK_ALT_MASK);
+    modifiers.insert_or_assign("option", GDK_META_MASK);
+    modifiers.insert_or_assign("meta", GDK_META_MASK);
+    modifiers.insert_or_assign("opt", GDK_META_MASK);
+    modifiers.insert_or_assign("alt", GDK_META_MASK);
 
     modifiers.insert_or_assign("control", GDK_CONTROL_MASK);
     modifiers.insert_or_assign("ctrl", GDK_CONTROL_MASK);
@@ -568,9 +612,6 @@ namespace SSC {
       this,
       nullptr
     );
-  #elif defined(__linux__) && !defined(__ANDROID__)
-    // TODO(@jwerle)
-  #elif defined(_WIN32)
   #endif
 
     this->bridge->router.map("window.hotkey.bind", [=, this](auto message, auto router, auto reply) mutable {
@@ -821,7 +862,19 @@ namespace SSC {
       return HotKeyBinding(0, "");
     }
   #elif defined(__linux__) && !defined(__ANDROID__)
-    // TODO(@jwerle)
+    static const HotKeyCodeMap hotKeyCodeMap;
+    this->gtkKeyPressEventContexts.insert_or_assign(
+      binding.id,
+      HotKeyBinding::GTKKeyPressEventContext { this, binding.id }
+    );
+
+    auto& context = this->gtkKeyPressEventContexts.at(binding.id);
+    context.signal = g_signal_connect(
+      this->window->window,
+      "key-press-event",
+      G_CALLBACK(gtkKeyPressEventHandlerCallback),
+      &context
+    );
   #elif defined(_WIN32)
     auto status = RegisterHotKey(
       this->window->window,
@@ -845,7 +898,7 @@ namespace SSC {
   bool HotKeyContext::unbind (HotKeyBinding::ID id) {
     Lock lock(this->mutex);
 
-    if (this->bridge == nullptr) {
+    if (this->bridge == nullptr || this->window == nullptr) {
       return false;
     }
 
@@ -860,7 +913,19 @@ namespace SSC {
       return true;
     }
   #elif defined(__linux__) && !defined(__ANDROID__)
-    // TODO(@jwerle)
+    if (this->window->window == nullptr) {
+      return false;
+    }
+
+    this->bindings.erase(id);
+
+    if (this->gtkKeyPressEventContexts.contains(id)) {
+      auto& context = this->gtkKeyPressEventContexts.at(id);
+      this->gtkKeyPressEventContexts.erase(id);
+      g_signal_handler_disconnect(this->window->window, context.signal);
+    }
+
+    return true;
   #elif defined(_WIN32)
     if (UnregisterHotKey(this->window->window, id)) {
       this->bindings.erase(id);
