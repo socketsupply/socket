@@ -548,6 +548,18 @@ namespace SSC {
         [](auto ch) { return std::tolower(ch); }
       );
 
+      token = replace(token, "ctrl", "control");
+
+      if (token == "cmd") {
+        token = "command";
+      } else if (token == "opt") {
+        token = "option";
+      } else if (token == "left opt") {
+        token = "left option";
+      } else if (token == "right opt") {
+        token = "right option";
+      }
+
       if (std::find(sequence.begin(), sequence.end(), token) == sequence.end()) {
         sequence.push_back(token);
       }
