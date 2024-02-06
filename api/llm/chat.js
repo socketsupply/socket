@@ -470,18 +470,19 @@ export class ChatSession {
       this._lastStopString = null
       this._lastStopStringSuffix = null
 
-      const { text, stopReason, stopString, stopStringSuffix } =
-                await this._evalTokens(this._ctx.encode(promptText), {
-                  onToken,
-                  signal,
-                  maxTokens,
-                  temperature,
-                  topK,
-                  topP,
-                  grammar,
-                  trimWhitespaceSuffix,
-                  repeatPenalty: repeatPenalty === false ? { lastTokens: 0 } : repeatPenalty
-                })
+      const encoded = this._ctx.encode({ text: promptText })
+      const { text, stopReason, stopString, stopStringSuffix } = await this._evalTokens(encoded, {
+          onToken,
+          signal,
+          maxTokens,
+          temperature,
+          topK,
+          topP,
+          grammar,
+          trimWhitespaceSuffix,
+          repeatPenalty: repeatPenalty === false ? { lastTokens: 0 } : repeatPenalty
+        })
+
       this._lastStopString = stopString
       this._lastStopStringSuffix = stopStringSuffix
 
@@ -548,7 +549,8 @@ export class ChatSession {
       return Uint32Array.from(punishTokens)
     }
 
-    const evaluationIterator = this._ctx.evaluate(tokens, {
+    const evaluationIterator = this._ctx.eval(tokens, {
+      tokens,
       temperature,
       topK,
       topP,

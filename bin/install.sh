@@ -230,7 +230,7 @@ function _build_cli {
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
-  local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
+  local cflags=(-undefined dynamic_lookup -DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_headers=()
   if [[ -z "$ignore_header_mtimes" ]]; then
@@ -519,6 +519,7 @@ function _prepare {
 
   if [ ! -d "$BUILD_DIR/llama" ]; then
     git clone --depth=1 https://github.com/socketsupply/llama.cpp.git "$BUILD_DIR/llama" > /dev/null 2>&1
+    git rev-parse HEAD > "$BUILD_DIR/llama/COMMIT.txt"
     rm -rf $BUILD_DIR/llama/.git
     die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
   fi
@@ -819,6 +820,9 @@ function _compile_llama {
   mkdir -p "$DEST/include/llama"
   mkdir -p "$DEST/lib"
 
+  ## -DLLAMA_COMMIT=\"$(cat COMMIT.txt)\"
+  local cxxflags=(-std=c++2b $("$root/bin/cflags.sh"))
+
   SOURCES=($SRC/ggml.c $SRC/ggml-quants.c $SRC/ggml-backend.c $SRC/ggml-alloc.c)
   OBJECTS=($SRC/llama.o $SRC/grammar-parser.o $SRC/common.o $SRC/sampling.o)
 
@@ -827,10 +831,10 @@ function _compile_llama {
     OBJECTS+=(${src/.c/.o})
   done
 
-  $CXX -std=c++2b -c $SRC/llama.cpp -Iinclude -o $SRC/llama.o 
-  $CXX -std=c++2b -c $SRC/grammar-parser.cpp -Iinclude -o $SRC/grammar-parser.o 
-  $CXX -std=c++2b -c $SRC/common.cpp -Iinclude -o $SRC/common.o 
-  $CXX -std=c++2b -c $SRC/sampling.cpp -Iinclude -o $SRC/sampling.o 
+  $CXX "${cxxflags[@]}" -c $SRC/llama.cpp -Iinclude -o $SRC/llama.o 
+  $CXX "${cxxflags[@]}" -c $SRC/grammar-parser.cpp -Iinclude -o $SRC/grammar-parser.o 
+  $CXX "${cxxflags[@]}" -c $SRC/common.cpp -Iinclude -o $SRC/common.o 
+  $CXX "${cxxflags[@]}" -c $SRC/sampling.cpp -Iinclude -o $SRC/sampling.o 
 
   ar crs $STAGING_DIR/build/lib/libllama.a "${OBJECTS[@]}"
 

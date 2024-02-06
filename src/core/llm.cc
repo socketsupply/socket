@@ -1,3 +1,8 @@
+int LLAMA_BUILD_NUMBER = 2038; // TODO(@heapwolf): pull from compile-time defs
+char const *LLAMA_COMMIT = "socket"; // TODO(@heapwolf): pull from compile-time defs
+char const *LLAMA_COMPILER = "socket"; // TODO(@heapwolf): pull from compile-time defs
+char const *LLAMA_BUILD_TARGET = "socket"; // TODO(@heapwolf): pull from compile-time defs
+
 #include "core.hh"
 #include <llama/llama.h>
 #include <llama/grammar-parser.h>
@@ -5,6 +10,11 @@
 #include "uv.h"
 
 namespace SSC {
+  std::map<uint64_t, Core::LLM::Model*> Core::LLM::models;
+  std::map<uint64_t, Core::LLM::Grammar*> Core::LLM::grammars; // parsed grammars
+  std::map<uint64_t, Core::LLM::Evaluator*> Core::LLM::evaluators;
+  std::map<uint64_t, Core::LLM::Context*> Core::LLM::contexts;
+
   class Core::LLM::Model {
     public:
       llama_model_params model_params;
@@ -92,7 +102,7 @@ namespace SSC {
       int n_cur = 0;
 
       Context (ContextOptions options) {
-        model = LLM::models[options.modelId];
+        model = Core::LLM::models.at(options.modelId);
       }
 
       std::vector<uint8_t> encode (SSC::String& text) {
@@ -146,7 +156,7 @@ namespace SSC {
       llama_token result;
 
       Worker (Core::LLM::WorkerOptions options) {
-        bool hasEvaluator = LLM::evaluators.count(options.evaluatorId);
+        bool hasEvaluator = Core::LLM::evaluators.count(options.evaluatorId);
 
         if (options.temperature != 0.0f) {
           temperature = options.temperature;
@@ -180,7 +190,7 @@ namespace SSC {
         }
 
         if (hasEvaluator) {
-          grammar_evaluation_state = LLM::evaluators.at(options.evaluatorId);
+          grammar_evaluation_state = Core::LLM::evaluators.at(options.evaluatorId);
           use_grammar = true;
         }
       }
@@ -569,7 +579,7 @@ namespace SSC {
   }
 
   void Core::LLM::destroyEvaluator (const String seq, const uint64_t id, Core::Module::Callback cb) {
-    if (LLM::evaluators.at(id)) LLM::evaluators.erase(id);
+    if (Core::LLM::evaluators.at(id)) Core::LLM::evaluators.erase(id);
     cb(seq, JSON::Object{}, Post{});
   }
 
