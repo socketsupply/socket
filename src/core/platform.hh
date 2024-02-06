@@ -37,6 +37,7 @@
 #include <cstring>
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
 #endif // `__linux__`
 
