@@ -598,6 +598,7 @@ MAIN {
     createProcess(true);
 
     shutdownHandler = [&](int signum) {
+      unlink(appInstanceLock.c_str());
       if (process != nullptr) {
         process->kill();
       }
@@ -1342,6 +1343,7 @@ MAIN {
   // we clean up the windows and the backend process.
   //
   shutdownHandler = [&](int code) {
+    unlink(appInstanceLock.c_str());
     if (process != nullptr) {
       process->kill();
     }
@@ -1406,12 +1408,14 @@ MAIN {
     .cwd = cwd,
     .appData = app.appData,
     .onMessage = onMessage,
+    .onExit = shutdownHandler
   });
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = app.appData["window_resizable"] == "false" ? false : true,
     .frameless = app.appData["window_frameless"] == "true" ? true : false,
     .utility = app.appData["window_utility"] == "true" ? true : false,
+    .canExit = true,
     .onExit = shutdownHandler
   });
 
