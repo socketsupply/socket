@@ -598,7 +598,9 @@ MAIN {
     createProcess(true);
 
     shutdownHandler = [&](int signum) {
+    #if defined(__linux__)
       unlink(appInstanceLock.c_str());
+    #endif
       if (process != nullptr) {
         process->kill();
       }
@@ -1343,7 +1345,9 @@ MAIN {
   // we clean up the windows and the backend process.
   //
   shutdownHandler = [&](int code) {
+  #if defined(__linux__)
     unlink(appInstanceLock.c_str());
+  #endif
     if (process != nullptr) {
       process->kill();
     }
