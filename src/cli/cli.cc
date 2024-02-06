@@ -1054,8 +1054,9 @@ int runApp (const Path& path, const String& args, bool headless) {
     headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
-    [](SSC::String const &out) { std::cout << out << std::endl; },
-    [](SSC::String const &out) { std::cerr << out << std::endl; }
+    [](const auto& output) { std::cout << output << std::endl; },
+    [](const auto& output) { std::cerr << output << std::endl; },
+    [](const auto& output) { signalHandler(std::atoi(output.c_str()));  }
   );
 
   appPid = appProcess->open();
