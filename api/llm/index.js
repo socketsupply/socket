@@ -474,12 +474,12 @@ class GrammarEvaluationState {
 }
 
 export {
-  getGbnfGrammarForGbnfJsonSchema
+  getGbnfGrammarForGbnfJsonSchema,
   ChatPromptWrapper,
   Context,
   GeneralChatPromptWrapper,
   Grammar,
   GrammarEvaluationState,
   JsonSchemaGrammar,
-  Model,
+  Model
 }

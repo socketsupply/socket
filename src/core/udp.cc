@@ -446,7 +446,6 @@ namespace SSC {
           {"content-length", nread}
         }};
 
-        Post post{};
         post.id = rand64();
         post.body = buf->base;
         post.length = (int) nread;
