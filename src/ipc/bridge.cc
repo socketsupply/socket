@@ -2469,16 +2469,11 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-#if defined(__linux__) && !defined(__ANDROID__)
-  // prevent this function from registering the `ipc://`
-  // URI scheme handler twice
-  static std::atomic<bool> registered = false;
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  if (registered) return;
-  registered = true;
 
-  auto ctx = webkit_web_context_get_default();
+#if defined(__linux__) && !defined(__ANDROID__)
+  auto ctx = router->webkitWebContext;
   auto security = webkit_web_context_get_security_manager(ctx);
 
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
@@ -4018,9 +4013,6 @@ namespace SSC::IPC {
   Router::Router () {
     static auto userConfig = SSC::getUserConfig();
 
-    initRouterTable(this);
-    registerSchemeHandler(this);
-
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
     this->locationObserver = [SSCLocationObserver new];
@@ -4029,7 +4021,13 @@ namespace SSC::IPC {
     [this->schemeHandler setRouter: this];
     [this->locationObserver setRouter: this];
     [this->networkStatusObserver setRouter: this];
+
+  #elif defined(__linux__) && !defined(__ANDROID__)
+    this->webkitWebContext = webkit_web_context_new();
   #endif
+
+    initRouterTable(this);
+    registerSchemeHandler(this);
 
     this->preserveCurrentTable();
 
