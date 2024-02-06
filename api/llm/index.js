@@ -439,8 +439,53 @@ class Context {
     return data.token
   }
 
-  async * evaluate () {
+  async * eval (tokens, args) {
+    const {
+      temperature,
+      topK,
+      topP,
+      grammarEvaluationState,
+      repeatPenalty
+    } = args
 
+    let evalTokens = tokens
+
+    if (this._prependTokens.length > 0) {
+      const tokenArray = this._prependTokens.concat(Array.from(tokens))
+
+      evalTokens = Uint32Array.from(tokenArray)
+      this._prependTokens = []
+    }
+
+    if (evalTokens.length === 0) return
+
+    while (true) {
+      const param = {
+        contextId,
+        modelId,
+        temperature,
+        topK,
+        topP,
+        repeatPenalty: repeatPenalty?.penalty,
+        repeatPenaltyTokens: repeatPenalty?.punishTokens instanceof Function
+          ? repeatPenalty.punishTokens()
+          : repeatPenalty?.punishTokens,
+        repeatPenaltyPresencePenalty: repeatPenalty?.presencePenalty,
+        repeatPenaltyFrequencyPenalty: repeatPenalty?.frequencyPenalty,
+        grammarEvaluationState: grammarEvaluationState?._state
+      }
+
+      const { data: nextToken, err } = await ipc.send('llm.eval', params, { cache: true })
+      if (err) throw new Erorr(err)
+
+      // the assistant finished answering
+      if (nextToken === this._ctx.tokenEos()) break
+
+      yield nextToken
+
+      // Create tokens for the next eval.
+      evalTokens = Uint32Array.from([nextToken])
+    }
   }
 }
 
