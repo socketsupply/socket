@@ -1,5 +1,4 @@
-/* global EventTarget */
-import { HotKeyEvent } from '../internal/events.js'
+/* global HotKeyEvent, EventTarget */
 import ipc from '../ipc.js'
 import os from '../os.js'
 
@@ -13,7 +12,6 @@ if (!/android|ios/.test(os.platform())) {
  * @param {import('../internal/events.js').HotKeyEvent} event
  */
 function onHotKey (event) {
-  console.log({ event })
   const { id } = event.data ?? {}
   const binding = bindings.get(id)?.deref?.()
   if (binding) {
