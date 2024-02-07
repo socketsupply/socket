@@ -33,6 +33,10 @@ namespace SSC {
       using Sequence = Vector<Token>;
       using Expression = String;
 
+      struct Options {
+        bool passive = true;
+      };
+
     #if defined(__linux__) && !defined(__ANDROID__)
       struct GTKKeyPressEventContext {
         HotKeyContext* context = nullptr;
@@ -51,6 +55,8 @@ namespace SSC {
 
       Expression expression;
       Sequence sequence;
+
+      Options options;
 
     #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       // Apple Carbon API
@@ -89,7 +95,10 @@ namespace SSC {
 
       void init (IPC::Bridge* bridge);
       void reset ();
-      const HotKeyBinding bind (HotKeyBinding::Expression expression);
+      const HotKeyBinding bind (
+        HotKeyBinding::Expression expression,
+        HotKeyBinding::Options options = {}
+      );
       bool unbind (HotKeyBinding::ID id);
       bool hasBindingForExpression (HotKeyBinding::Expression expression) const;
       const HotKeyBinding getBindingForExpression (HotKeyBinding::Expression expression) const;
