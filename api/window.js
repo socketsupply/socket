@@ -253,7 +253,7 @@ export class ApplicationWindow {
    * @return {Promise<object>}
    */
   async setContextMenu (options) {
-    return await menu.setContextMenu(options)
+    return await menu.context.set(options)
   }
 
   /**
