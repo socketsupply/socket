@@ -11,7 +11,7 @@
  import { createWindow } from 'socket:application'
  ```
 
-## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L24)
+## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L27)
 
 Returns the current window index
 
@@ -19,7 +19,7 @@ Returns the current window index
 | :---         | :--- | :---        |
 | Not specified | number |  |
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L47)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L50)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -45,7 +45,7 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L112)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L115)
 
 Returns the current screen size.
 
@@ -53,7 +53,7 @@ Returns the current screen size.
 | :---         | :--- | :---        |
 | Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L138)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L141)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -65,7 +65,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<Object.<number, ApplicationWindow>> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L168)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L171)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -77,7 +77,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L178)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L181)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -85,7 +85,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L187)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L190)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -97,7 +97,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L284)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L287)
 
 Set the native menu for the app.
 
@@ -192,16 +192,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L288)
-
-This is a `FunctionDeclaration` named `setMenu` in `api/application.js`, it's exported but undocumented.
-
-
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L368)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L294)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L377)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L303)
 
 Set the enabled state of the system menu.
 
@@ -213,23 +208,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L385)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L311)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L391)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L317)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L397)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L323)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L402)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L328)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L408)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L334)
 
 
 
@@ -242,7 +237,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L416)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L342)
 
 
 
@@ -2447,11 +2442,11 @@ Retrieves the computed styles for a given element.
  `socket:application` methods like `getCurrentWindow`, `createWindow`,
  `getWindow`, and `getWindows`.
 
-## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L33)
+## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L34)
 
  Represents a window in the application
 
-### [`index()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L62)
+### [`index()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L63)
 
 Get the index of the window
 
@@ -2459,11 +2454,11 @@ Get the index of the window
 | :---         | :--- | :---        |
 | Not specified | number | the index of the window |
 
-### [`hotkey()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L69)
+### [`hotkey()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L70)
 
 
 
-### [`getSize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L77)
+### [`getSize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L78)
 
 Get the size of the window
 
@@ -2471,7 +2466,7 @@ Get the size of the window
 | :---         | :--- | :---        |
 | Not specified | { width: number, height: number  | } - the size of the window |
 
-### [`getTitle()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L88)
+### [`getTitle()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L89)
 
 Get the title of the window
 
@@ -2479,7 +2474,7 @@ Get the title of the window
 | :---         | :--- | :---        |
 | Not specified | string | the title of the window |
 
-### [`getStatus()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L96)
+### [`getStatus()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L97)
 
 Get the status of the window
 
@@ -2487,7 +2482,7 @@ Get the status of the window
 | :---         | :--- | :---        |
 | Not specified | string | the status of the window |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L104)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L105)
 
 Close the window
 
@@ -2495,7 +2490,7 @@ Close the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> | the options of the window |
 
-### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L119)
+### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L120)
 
 Shows the window
 
@@ -2503,7 +2498,7 @@ Shows the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L128)
+### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L129)
 
 Hides the window
 
@@ -2511,7 +2506,7 @@ Hides the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`maximize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L137)
+### [`maximize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L138)
 
 Maximize the window
 
@@ -2519,7 +2514,7 @@ Maximize the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`minimize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L146)
+### [`minimize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L147)
 
 Minimize the window
 
@@ -2527,7 +2522,7 @@ Minimize the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`restore()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L155)
+### [`restore()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L156)
 
 Restore the window
 
@@ -2535,7 +2530,7 @@ Restore the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L165)
+### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L166)
 
 Sets the title of the window
 
@@ -2547,7 +2542,7 @@ Sets the title of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L178)
+### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L179)
 
 Sets the size of the window
 
@@ -2561,7 +2556,7 @@ Sets the size of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L218)
+### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L219)
 
 Navigate the window to a given path
 
@@ -2573,7 +2568,7 @@ Navigate the window to a given path
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L227)
+### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L228)
 
 Opens the Web Inspector for the window
 
@@ -2581,7 +2576,7 @@ Opens the Web Inspector for the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L244)
+### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L245)
 
 Sets the background color of the window
 
@@ -2597,7 +2592,7 @@ Sets the background color of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L254)
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L255)
 
 Opens a native context menu.
 
@@ -2609,7 +2604,7 @@ Opens a native context menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L271)
+### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L264)
 
 Shows a native open file dialog.
 
@@ -2621,7 +2616,7 @@ Shows a native open file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L289)
+### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L282)
 
 Shows a native save file dialog.
 
@@ -2633,7 +2628,7 @@ Shows a native save file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L307)
+### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L300)
 
 Shows a native directory dialog.
 
@@ -2645,7 +2640,7 @@ Shows a native directory dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L332)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L325)
 
 This is a high-level API that you should use instead of `ipc.send` when
  you want to send a message to another window or to the backend.
@@ -2659,7 +2654,7 @@ This is a high-level API that you should use instead of `ipc.send` when
 | options.event | string |  | false | the event to send |
 | options.value | string \| object |  | true | the value to send |
 
-### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L373)
+### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L366)
 
 Post a message to a window
  TODO(@jwerle): research using `BroadcastChannel` instead
@@ -2672,7 +2667,7 @@ Post a message to a window
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L391)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L384)
 
 Opens an URL in the default browser.
 
@@ -2684,7 +2679,7 @@ Opens an URL in the default browser.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L402)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L395)
 
 Adds a listener to the window.
 
@@ -2693,7 +2688,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L420)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L413)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2702,7 +2697,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L437)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L430)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2711,7 +2706,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L453)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L446)
 
 Removes a listener from the window.
 
@@ -2720,7 +2715,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L466)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L459)
 
 Removes all listeners from the window.
 
@@ -2728,7 +2723,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L482)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L475)
 
 Removes a listener from the window. An alias for `removeListener`.
 

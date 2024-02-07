@@ -543,6 +543,53 @@ declare module "socket:util" {
     import * as exports from "socket:util";
     
 }
+declare module "socket:window/constants" {
+    export const WINDOW_ERROR: -1;
+    export const WINDOW_NONE: 0;
+    export const WINDOW_CREATING: 10;
+    export const WINDOW_CREATED: 11;
+    export const WINDOW_HIDING: 20;
+    export const WINDOW_HIDDEN: 21;
+    export const WINDOW_SHOWING: 30;
+    export const WINDOW_SHOWN: 31;
+    export const WINDOW_CLOSING: 40;
+    export const WINDOW_CLOSED: 41;
+    export const WINDOW_EXITING: 50;
+    export const WINDOW_EXITED: 51;
+    export const WINDOW_KILLING: 60;
+    export const WINDOW_KILLED: 61;
+    export * as _default from "socket:window/constants";
+    
+}
+declare module "socket:location" {
+    export function toString(): string;
+    export const globalLocation: Location | {
+        origin: string;
+        host: string;
+        hostname: string;
+        pathname: string;
+        href: string;
+    };
+    export const href: string;
+    export const protocol: "socket:";
+    export const hostname: string;
+    export const host: string;
+    export const search: string;
+    export const hash: string;
+    export const pathname: string;
+    export const origin: string;
+    namespace _default {
+        export { origin };
+        export { href };
+        export { protocol };
+        export { hostname };
+        export { host };
+        export { search };
+        export { pathname };
+        export { toString };
+    }
+    export default _default;
+}
 declare module "socket:console" {
     export function patchGlobalConsole(globalConsole: any, options?: {}): any;
     export const globalConsole: globalThis.Console;
@@ -804,35 +851,6 @@ declare module "socket:process" {
     }
     export default process;
     const process: any;
-}
-declare module "socket:location" {
-    export function toString(): string;
-    export const globalLocation: Location | {
-        origin: string;
-        host: string;
-        hostname: string;
-        pathname: string;
-        href: string;
-    };
-    export const href: string;
-    export const protocol: "socket:";
-    export const hostname: string;
-    export const host: string;
-    export const search: string;
-    export const hash: string;
-    export const pathname: string;
-    export const origin: string;
-    namespace _default {
-        export { origin };
-        export { href };
-        export { protocol };
-        export { hostname };
-        export { host };
-        export { search };
-        export { pathname };
-        export { toString };
-    }
-    export default _default;
 }
 declare module "socket:path/path" {
     /**
@@ -1282,7 +1300,7 @@ declare module "socket:path/index" {
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
-    export const delimiter: ":" | ";";
+    export const delimiter: ";" | ":";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
     export const dirname: typeof posix.win32.dirname;
@@ -3772,23 +3790,151 @@ declare module "socket:ipc" {
     import * as exports from "socket:ipc";
     
 }
-declare module "socket:window/constants" {
-    export const WINDOW_ERROR: -1;
-    export const WINDOW_NONE: 0;
-    export const WINDOW_CREATING: 10;
-    export const WINDOW_CREATED: 11;
-    export const WINDOW_HIDING: 20;
-    export const WINDOW_HIDDEN: 21;
-    export const WINDOW_SHOWING: 30;
-    export const WINDOW_SHOWN: 31;
-    export const WINDOW_CLOSING: 40;
-    export const WINDOW_CLOSED: 41;
-    export const WINDOW_EXITING: 50;
-    export const WINDOW_EXITED: 51;
-    export const WINDOW_KILLING: 60;
-    export const WINDOW_KILLED: 61;
-    export * as _default from "socket:window/constants";
-    
+declare module "socket:application/menu" {
+    /**
+     * Internal IPC for setting an application menu
+     * @ignore
+     */
+    export function setMenu(options: any, type: any): Promise<ipc.Result>;
+    /**
+     * Internal IPC for setting an application context menu
+     * @ignore
+     */
+    export function setContextMenu(options: any): Promise<any>;
+    /**
+     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
+     */
+    export class Menu extends EventTarget {
+        /**
+         * `Menu` class constructor.
+         * @ignore
+         * @param {string} type
+         */
+        constructor(type: string);
+        /**
+         * The `Menu` instance type.
+         * @type {('context'|'system'|'tray')?}
+         */
+        get type(): "tray" | "system" | "context";
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * Set the menu layout for this `Menu` instance.
+         * @param {string|object} layoutOrOptions
+         * @param {object=} [options]
+         */
+        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
+        #private;
+    }
+    /**
+     * A container for various `Menu` instances.
+     */
+    export class MenuContainer extends EventTarget {
+        /**
+         * `MenuContainer` class constructor.
+         * @param {EventTarget} [sourceEventTarget]
+         * @param {object=} [options]
+         */
+        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * The `TrayMenu` instance for the application.
+         * @type {TrayMenu}
+         */
+        get tray(): TrayMenu;
+        /**
+         * The `SystemMenu` instance for the application.
+         * @type {SystemMenu}
+         */
+        get system(): SystemMenu;
+        /**
+         * The `ContextMenu` instance for the application.
+         * @type {ContextMenu}
+         */
+        get context(): ContextMenu;
+        #private;
+    }
+    /**
+     * A `Menu` instance that represents a context menu.
+     */
+    export class ContextMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the system menu.
+     */
+    export class SystemMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the tray menu.
+     */
+    export class TrayMenu extends Menu {
+        constructor();
+    }
+    /**
+     * The application tray menu.
+     * @type {TrayMenu}
+     */
+    export const tray: TrayMenu;
+    /**
+     * The application system menu.
+     * @type {SystemMenu}
+     */
+    export const system: SystemMenu;
+    /**
+     * The application context menu.
+     * @type {ContextMenu}
+     */
+    export const context: ContextMenu;
+    /**
+     * The application menus container.
+     * @type {MenuContainer}
+     */
+    export const container: MenuContainer;
+    export default container;
+    import ipc from "socket:ipc";
 }
 declare module "socket:internal/events" {
     /**
@@ -3836,9 +3982,9 @@ declare module "socket:internal/events" {
          * `HotKeyEvent` class constructor.
          * @ignore
          * @param {string=} [type]
-         * @param {object=} [options]
+         * @param {object=} [data]
          */
-        constructor(type?: string | undefined, options?: object | undefined);
+        constructor(type?: string | undefined, data?: object | undefined);
         /**
          * The global unique ID for this hotkey binding.
          * @type {number?}
@@ -3860,8 +4006,44 @@ declare module "socket:internal/events" {
          */
         get expression(): string;
     }
+    /**
+     * An event dispacted when a menu item is selected.
+     */
+    export class MenuItemEvent extends MessageEvent<any> {
+        /**
+         * `MenuItemEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         * @param {import('../application/menu.js').Menu} menu
+         */
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
+        /**
+         * The `Menu` this event has been dispatched for.
+         * @type {import('../application/menu.js').Menu?}
+         */
+        get menu(): import("socket:application/menu").Menu;
+        /**
+         * The title of the menu item.
+         * @type {string?}
+         */
+        get title(): string;
+        /**
+         * An optional tag value for the menu item that may also be the
+         * parent menu item title.
+         * @type {string?}
+         */
+        get tag(): string;
+        /**
+         * The parent title of the menu item.
+         * @type {string?}
+         */
+        get parent(): string;
+        #private;
+    }
     namespace _default {
         export { ApplicationURLEvent };
+        export { MenuItemEvent };
         export { HotKeyEvent };
     }
     export default _default;
@@ -4544,7 +4726,6 @@ declare module "socket:application" {
      *
      */
     export function setSystemMenu(o: any): Promise<ipc.Result>;
-    export function setMenu(o: any, isTrayMenu: any): Promise<ipc.Result>;
     /**
      * An alias to setSystemMenu for creating a tary menu
      */
@@ -4555,6 +4736,7 @@ declare module "socket:application" {
      * @return {Promise<ipc.Result>}
      */
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
+    export { menu };
     /**
      * Socket Runtime version.
      * @type {object} - an object containing the version information
@@ -4587,6 +4769,7 @@ declare module "socket:application" {
     export default exports;
     import ApplicationWindow from "socket:window";
     import ipc from "socket:ipc";
+    import menu from "socket:application/menu";
     import * as exports from "socket:application";
     
 }
