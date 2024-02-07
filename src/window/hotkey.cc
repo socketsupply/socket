@@ -23,14 +23,14 @@ namespace SSC {
     // bail early if somehow user data is `nullptr`,
     // meaning we are unable to deteremine a `HotKeyContext`
     if (userData == nullptr) {
-      return noErr;
+      return eventNotHandledErr;
     }
 
     auto context = reinterpret_cast<HotKeyContext*>(userData);
 
     // if the context was removed somehow, bail early
     if (context == nullptr || context->bridge == nullptr) {
-      return noErr;
+      return eventNotHandledErr;
     }
 
     GetEventParameter(
@@ -43,9 +43,19 @@ namespace SSC {
       &eventHotKeyID
     );
 
+
     context->onHotKeyBindingCallback(eventHotKeyID.id);
 
-    return noErr;
+    if (context->bindings.contains(eventHotKeyID.id)) {
+      const auto& binding = context->bindings.at(eventHotKeyID.id);
+      if (binding.options.passive) {
+        return eventNotHandledErr;
+      }
+
+      return noErr;
+    }
+
+    return eventNotHandledErr;
   }
 #elif defined(__linux__) && !defined(__ANDROID__)
   static bool gtkKeyPressEventHandlerCallback (
@@ -73,6 +83,7 @@ namespace SSC {
     if (context->context->bindings.contains(context->id)) {
       static const HotKeyCodeMap map;
       const auto &binding = context->context->bindings.at(context->id);
+
       if (binding.keys != event->keyval) {
         return false;
       }
@@ -87,6 +98,11 @@ namespace SSC {
       }
 
       context->context->onHotKeyBindingCallback(context->id);
+
+      if (binding.options.passive) {
+        return false;
+      }
+
       return true;
     }
 
@@ -152,7 +168,6 @@ namespace SSC {
     keys.insert_or_assign("space", kVK_Space);
     keys.insert_or_assign("delete", kVK_Delete);
     keys.insert_or_assign("escape", kVK_Escape);
-    keys.insert_or_assign("shift", kVK_Shift);
     keys.insert_or_assign("caps lock", kVK_CapsLock);
     keys.insert_or_assign("right shift", kVK_RightShift);
     keys.insert_or_assign("right option", kVK_RightOption);
@@ -296,7 +311,6 @@ namespace SSC {
     keys.insert_or_assign("space", GDK_KEY_space);
     keys.insert_or_assign("delete", GDK_KEY_Delete);
     keys.insert_or_assign("escape", GDK_KEY_Escape);
-    keys.insert_or_assign("shift", GDK_KEY_Shift_L);
     keys.insert_or_assign("left shift", GDK_KEY_Shift_L);
     keys.insert_or_assign("caps lock", GDK_KEY_Caps_Lock);
     keys.insert_or_assign("right shift", GDK_KEY_Shift_R);
@@ -418,7 +432,6 @@ namespace SSC {
     keys.insert_or_assign("backspace", VK_BACK);
     keys.insert_or_assign("delete", VK_DELETE);
     keys.insert_or_assign("escape", VK_ESCAPE);
-    keys.insert_or_assign("shift", VK_LSHIFT);
     keys.insert_or_assign("left shift", VK_LSHIFT);
     keys.insert_or_assign("right shift", VK_RSHIFT);
     keys.insert_or_assign("caps lock", VK_CAPITAL);
@@ -612,7 +625,7 @@ namespace SSC {
     // Carbon API event type spec
     static const EventTypeSpec eventTypeSpec = {
       .eventClass = kEventClassKeyboard,
-      .eventKind = kEventHotKeyPressed
+      .eventKind = kEventHotKeyReleased
     };
 
     eventTarget = GetApplicationEventTarget();
@@ -628,6 +641,12 @@ namespace SSC {
 
     this->bridge->router.map("window.hotkey.bind", [this](auto message, auto router, auto reply) mutable {
       static auto userConfig = SSC::getUserConfig();
+      HotKeyBinding::Options options;
+      options.passive = true; // default
+
+      if (message.has("passive")) {
+        options.passive = message.get("passive") == "true";
+      }
 
       if (message.has("id")) {
         HotKeyBinding::ID id;
@@ -661,7 +680,7 @@ namespace SSC {
           return reply(IPC::Result::Err { message, err });
         }
 
-        if (!this->bind(binding.expression).isValid()) {
+        if (!this->bind(binding.expression, options).isValid()) {
           auto err = JSON::Object::Entries {
             {"message", "Failed to bind existing binding expression to context"}
           };
@@ -701,7 +720,7 @@ namespace SSC {
         return reply(IPC::Result::Err { message, err });
       }
 
-      auto binding = this->bind(expression);
+      auto binding = this->bind(expression, options);
 
       if (!binding.isValid()) {
         auto err = JSON::Object::Entries {
@@ -901,7 +920,10 @@ namespace SSC {
     this->bindingIds.clear();
   }
 
-  const HotKeyBinding HotKeyContext::bind (HotKeyBinding::Expression expression) {
+  const HotKeyBinding HotKeyContext::bind (
+    HotKeyBinding::Expression expression,
+    HotKeyBinding::Options options
+  ) {
     Lock lock(this->mutex);
     static auto userConfig = SSC::getUserConfig();
 
