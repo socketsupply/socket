@@ -1050,14 +1050,15 @@ namespace SSC {
 
                               if (mount.path.size() > 0) {
                                 if (mount.resolution.redirect) {
+                                  auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(mount.resolution.path) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(mount.resolution.path) + L"\n"
+                                      convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                       ).c_str(),
                                     &res
                                   );
@@ -1069,14 +1070,15 @@ namespace SSC {
                               } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
+                                auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
                                   301,
                                   L"Moved Permanently",
                                   WString(
-                                    convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
+                                    convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                     ).c_str(),
                                   &res
                                   );
