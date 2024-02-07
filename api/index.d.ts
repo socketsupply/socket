@@ -3906,14 +3906,16 @@ declare module "socket:window/hotkey" {
         modifiers: object;
     }>;
     /**
-     * Adds an event listener to the global active bindings.
+     * Adds an event listener to the global active bindings. This function is just
+     * proxy to `bindings.addEventListener`.
      * @param {string} type
      * @param {function(Event)} listener
      * @param {(boolean|object)=} [optionsOrUseCapture]
      */
     export function addEventListener(type: string, listener: (arg0: Event) => any, optionsOrUseCapture?: (boolean | object) | undefined): void;
     /**
-     * Removes  an event listener to the global active bindings.
+     * Removes  an event listener to the global active bindings. This function is
+     * just a proxy to `bindings.removeEventListener`
      * @param {string} type
      * @param {function(Event)} listener
      * @param {(boolean|object)=} [optionsOrUseCapture]
@@ -3936,14 +3938,38 @@ declare module "socket:window/hotkey" {
          */
         onHotKey(event: import('../internal/events.js').HotKeyEvent): void;
         /**
-         * Intializes bindings
-         */
-        init(): Promise<void>;
-        /**
          * The number of `Binding` instances in the mapping.
          * @type {number}
          */
         get size(): number;
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'hotkey'` event listener.
+         * @ignore
+         * @type {function(HotKeyEvent)?}
+         */
+        set onhotkey(onhotkey: (arg0: hotkeyEvent) => any);
+        /**
+         * Level 1 'hotkey'` event listener.
+         * @type {function(hotkeyEvent)?}
+         */
+        get onhotkey(): (arg0: hotkeyEvent) => any;
+        /**
+         * Initializes bindings from global context.
+         * @ignore
+         * @return {Promise}
+         */
+        init(): Promise<any>;
         /**
          * Get a binding by `id`
          * @param {number} id
@@ -3963,7 +3989,7 @@ declare module "socket:window/hotkey" {
          */
         delete(id: number): boolean;
         /**
-         * Returns `true` if a binding existss in the mapping, otherwise `false`.
+         * Returns `true` if a binding exists in the mapping, otherwise `false`.
          * @return {boolean}
          */
         has(id: any): boolean;
@@ -4034,25 +4060,19 @@ declare module "socket:window/hotkey" {
          * Implements the `Iterator` protocol for each currently registered
          * active binding in this window context. The `AsyncIterator` protocol
          * will probe for all gloally active bindings.
-         * @return {Iterator}
+         * @return {Iterator<Binding>}
          */
-        [Symbol.iterator](): Iterator<any, any, undefined>;
+        [Symbol.iterator](): Iterator<Binding>;
         /**
          * Implements the `AsyncIterator` protocol for each globally active
          * binding registered to the application. This differs from the `Iterator`
          * protocol as this will probe for _all_ active bindings in the entire
          * application context.
-         * @return {AsyncGenerator}
+         * @return {AsyncGenerator<Binding>}
          */
-        [Symbol.asyncIterator](): AsyncGenerator;
+        [Symbol.asyncIterator](): AsyncGenerator<Binding>;
         #private;
     }
-    /**
-     * A container for all the bindings currently bound
-     * by this window context.
-     * @type {Bindings}
-     */
-    export const bindings: Bindings;
     /**
      * An `EventTarget` container for a hotkey binding.
      */
@@ -4094,6 +4114,17 @@ declare module "socket:window/hotkey" {
          */
         get expression(): string;
         /**
+         * Setter for the level 1 'hotkey'` event listener.
+         * @ignore
+         * @type {function(HotKeyEvent)?}
+         */
+        set onhotkey(onhotkey: (arg0: hotkeyEvent) => any);
+        /**
+         * Level 1 'hotkey'` event listener.
+         * @type {function(hotkeyEvent)?}
+         */
+        get onhotkey(): (arg0: hotkeyEvent) => any;
+        /**
          * Binds this hotkey expression.
          * @return {Promise<Binding>}
          */
@@ -4111,6 +4142,12 @@ declare module "socket:window/hotkey" {
         [Symbol.asyncIterator](): AsyncGenerator;
         #private;
     }
+    /**
+     * A container for all the bindings currently bound
+     * by this window context.
+     * @type {Bindings}
+     */
+    export const bindings: Bindings;
     export default bindings;
 }
 declare module "socket:window" {
