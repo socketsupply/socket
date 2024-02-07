@@ -10,12 +10,15 @@
  * ```
  */
 
-import ipc, { primordials } from './ipc.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
+import ipc, { primordials } from './ipc.js'
+import menu, { setMenu } from './application/menu.js'
 import os from './os.js'
 
 import * as exports from './application.js'
+
+export { menu }
 
 /**
  * Returns the current window index
@@ -282,91 +285,14 @@ export async function exit (code = 0) {
  *
  */
 export async function setSystemMenu (o) {
-  return await setMenu(o, false)
-}
-
-export async function setMenu (o, isTrayMenu) {
-  const menu = o.value
-
-  // validate the menu
-  if (typeof menu !== 'string' || menu.trim().length === 0) {
-    throw new Error('Menu must be a non-empty string')
-  }
-
-  const menus = menu.match(/\w+:\n/g)
-  if (!menus) {
-    throw new Error('Menu must have a valid format')
-  }
-  const menuTerminals = menu.match(/;/g)
-  const delta = menus.length - (menuTerminals?.length ?? 0)
-
-  if ((delta !== 0) && (delta !== -1)) {
-    throw new Error(`Expected ${menuTerminals.length} ';', found ${menus}.`)
-  }
-
-  const lines = menu.split('\n')
-  const e = new Error()
-  const frame = e.stack.split('\n')[2]
-  const callerLineNo = frame.split(':').reverse()[1]
-
-  // Use this link to test the regex (https://regexr.com/7lhqe)
-  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*.*))$/m
-  const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
-
-  for (let i = 0; i < lines.length; i++) {
-    const lineText = lines[i].trim()
-    if (lineText.length === 0) {
-      continue // Empty line
-    }
-    if (lineText[0] === ';') {
-      continue // End of submenu
-    }
-
-    let err
-
-    const match = lineText.match(validLineRegex)
-    if (!match) {
-      err = 'Unsupported syntax'
-    } else {
-      const label = match[1] || match[2]
-      if (label.startsWith('---')) {
-        continue // Valid separator
-      }
-      const binding = match[3]
-      if (label.length === 0) {
-        err = 'Missing label'
-      } else if (label.includes(':')) {
-        err = 'Invalid label contains ":"'
-      } else if (binding) {
-        const [accelerator, modifiersRaw] = binding.split(/ *\+ */)
-        const modifiers = modifiersRaw?.replace(';', '').split(', ') ?? []
-        if (validModifiers.test(accelerator)) {
-          err = 'Missing accelerator'
-        } else {
-          for (const modifier of modifiers) {
-            if (!validModifiers.test(modifier)) {
-              err = `Invalid modifier "${modifier}"`
-              break
-            }
-          }
-        }
-      }
-    }
-
-    if (err) {
-      const lineNo = Number(callerLineNo) + i
-      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
-    }
-  }
-
-  return await ipc.send(isTrayMenu ? 'application.setTrayMenu' : 'application.setSystemMenu', o)
+  return await setMenu(o, 'system')
 }
 
 /**
  * An alias to setSystemMenu for creating a tary menu
  */
 export async function setTrayMenu (o) {
-  return await setMenu(o, true)
+  return await setMenu(o, 'tray')
 }
 
 /**
