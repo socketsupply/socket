@@ -1222,23 +1222,31 @@ namespace SSC {
 
             if (key.size() > 0) {
               auto accelerator = split(parts[1], '+');
+              auto modifier = trim(accelerator[1]);
+              // normalize modifier to lower case
+              std::transform(
+                modifier.begin(),
+                modifier.end(),
+                modifier.begin(),
+                [](auto ch) { return std::tolower(ch); }
+              );
               key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
               GdkModifierType mask = (GdkModifierType)(0);
               bool isShift = String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
 
               if (accelerator.size() > 1) {
-                if (accelerator[1].find("Meta") != -1) {
+                if (modifier.find("meta") != -1 || modifier.find("super") != -1) {
                   mask = (GdkModifierType)(mask | GDK_META_MASK);
                 }
 
-                if (accelerator[1].find("CommandOrControl") != -1) {
+                if (modifier.find("commandorcontrol") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
-                } else if (accelerator[1].find("Control") != -1) {
+                } else if (modifier.find("control") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
                 }
 
-                if (accelerator[1].find("Alt") != -1) {
+                if (modifier.find("alt") != -1) {
                   mask = (GdkModifierType)(mask | GDK_MOD1_MASK);
                 }
               }
@@ -1313,10 +1321,23 @@ namespace SSC {
       static auto userConfig = SSC::getUserConfig();
       static auto app = App::instance();
       GtkStatusIcon *trayIcon;
+      auto cwd = app->getcwd();
+      auto trayIconPath = String("application_tray_icon");
 
-      if (userConfig.count("tray_icon") > 0) {
-        auto iconPath = fs::path (app->getcwd()) / userConfig["tray_icon"];
-        trayIcon = gtk_status_icon_new_from_file(iconPath.string().c_str());
+      if (fs::exists(fs::path(cwd) / (trayIconPath + ".png"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".png")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".jpg"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".jpg")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".jpeg"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".jpeg")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".ico"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".ico")).string();
+      } else {
+        trayIconPath = "";
+      }
+
+      if (trayIconPath.size() > 0) {
+        trayIcon = gtk_status_icon_new_from_file(trayIconPath.c_str());
       } else {
         trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
       }

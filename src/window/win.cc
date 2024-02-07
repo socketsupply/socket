@@ -1726,15 +1726,29 @@ namespace SSC {
 
     if (isTrayMenu) {
       static auto userConfig = SSC::getUserConfig();
+      static auto app = App::instance();
 
-      if (userConfig.count("tray_icon") > 0) {
-        auto iconPath = fs::path { getCwd() / fs::path { userConfig["tray_icon"] } };
+      auto cwd = app->getcwd();
+      auto trayIconPath = String("application_tray_icon");
 
+      if (fs::exists(fs::path(cwd) / (trayIconPath + ".png"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".png")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".jpg"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".jpg")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".jpeg"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".jpeg")).string();
+      } else if (fs::exists(fs::path(cwd) / (trayIconPath + ".ico"))) {
+        trayIconPath = (fs::path(cwd) / (trayIconPath + ".ico")).string();
+      } else {
+        trayIconPath = "";
+      }
+
+      if (trayIconPath.size() > 0) {
         HICON icon;
 
         icon = (HICON) LoadImageA(
           NULL,
-          iconPath.string().c_str(),
+          trayIconPath.c_str(),
           IMAGE_ICON,
           GetSystemMetrics(SM_CXSMICON),
           GetSystemMetrics(SM_CXSMICON),
@@ -1805,6 +1819,7 @@ namespace SSC {
             accl = replace(accl, "CommandOrControl", "Ctrl");
             accl = replace(accl, "Command", "Ctrl");
             accl = replace(accl, "Control", "Ctrl");
+            accl = replace(accl, "Super", "Meta");
           }
 
           if (isShift) {
