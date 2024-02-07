@@ -35,8 +35,8 @@ class PermissionRequest (callback: (Boolean) -> Unit) {
 open class MainActivity : WebViewActivity() {
   override open protected val TAG = "Mainctivity"
   open lateinit var notificationChannel: android.app.NotificationChannel
-  open lateinit var runtime: Runtime
-  open lateinit var window: Window
+  override open lateinit var runtime: Runtime
+  override open lateinit var window: Window
 
   val permissionRequests = mutableListOf<PermissionRequest>()
   val filePicker = WebViewFilePicker(this)

@@ -29,7 +29,7 @@ namespace SSC {
     const String& event,
     const String& value
   ) {
-    return getEmitToRenderProcessJavaScript(event, value, "window", JSON::Object {});
+    return getEmitToRenderProcessJavaScript(event, value, "globalThis", JSON::Object {});
   }
 
   String getEmitToRenderProcessJavaScript (
@@ -67,13 +67,27 @@ namespace SSC {
       "  return;                                                             \n"
       "}                                                                     \n"
       "                                                                      \n"
+      "if (name === 'message') {                                             \n"
+      "  const event = new MessageEvent(name, { data: detail });             \n"
+      "  target.dispatchEvent(event);                                        \n"
+      "  return;                                                             \n"
+      "}                                                                     \n"
+      "                                                                      \n"
       "const event = new CustomEvent(name, { detail, ...options });          \n"
       "target.dispatchEvent(event);                                          \n"
       "                                                                      \n"
+      "if (name === 'drag') {                                                \n"
+      "  return globalThis.dispatchEvent(new CustomEvent('platformdrag', {   \n"
+      "    detail                                                            \n"
+      "  }));                                                                \n"
+      "}                                                                     \n"
+      "                                                                      \n"
       "if (name === 'dropin' || name === 'drop') {                           \n"
-      "  globalThis.dispatchEvent(new CustomEvent('dragdropfiles', {         \n"
+      "  globalThis.dispatchEvent(new CustomEvent('platformdrop', {          \n"
       "    detail: {                                                         \n"
-      "      files: Array.from(detail?.src || detail?.files).filter(Boolean) \n"
+      "      ...detail,                                                      \n"
+      "      files: Array.from(detail?.src || detail?.files || [])           \n"
+      "        .filter(Boolean)                                              \n"
       "    }                                                                 \n"
       "  }));                                                                \n"
       "}                                                                     \n"

@@ -1,4 +1,4 @@
-/* global Blob, ArrayBuffer */
+/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -76,11 +76,20 @@ if ((globalThis.window || globalThis.self) === globalThis) {
 
 // webview only features
 if ((globalThis.window) === globalThis) {
-  globalThis.addEventListener('dragdropfiles', async (event) => {
-    const { files } = event.detail
+  globalThis.addEventListener('platformdrop', async (event) => {
     const handles = []
-    if (Array.isArray(files)) {
-      for (const file of files) {
+    let target = globalThis
+    if (
+      typeof event.detail?.x === 'number' && typeof event.detail?.y === 'number'
+    ) {
+      target = (
+        globalThis.document.elementFromPoint(event.detail.x, event.detail.y) ??
+        globalThis
+      )
+    }
+
+    if (Array.isArray(event.detail?.files)) {
+      for (const file of event.detail.files) {
         if (typeof file === 'string') {
           const stats = await fs.stat(file)
           if (stats.isDirectory()) {
@@ -92,7 +101,85 @@ if ((globalThis.window) === globalThis) {
       }
     }
 
-    globalThis.dispatchEvent(new CustomEvent('dropfiles', { detail: { handles } }))
+    const dataTransfer = new DataTransfer()
+    const files = []
+
+    for (const handle of handles) {
+      if (typeof handle.getFile === 'function') {
+        const file = handle.getFile()
+        const buffer = new Uint8Array(await file.arrayBuffer())
+        files.push(new File(buffer, file.name, {
+          lastModified: file.lastModified,
+          type: file.type
+        }))
+      }
+    }
+
+    const fileList = Object.create(FileList.prototype, {
+      length: {
+        configurable: false,
+        enumerable: false,
+        get: () => files.length
+      },
+
+      item: {
+        configurable: false,
+        enumerable: false,
+        value: (index) => files[index] ?? null
+      },
+
+      [Symbol.iterator]: {
+        configurable: false,
+        enumerable: false,
+        get: () => files[Symbol.iterator]
+      }
+    })
+
+    for (let i = 0; i < handles.length; ++i) {
+      const file = files[i]
+      if (file) {
+        dataTransfer.items.add(file)
+      } else {
+        dataTransfer.items.add(handles[i].name, 'text/directory')
+      }
+    }
+
+    Object.defineProperties(dataTransfer, {
+      files: {
+        configurable: false,
+        enumerable: false,
+        value: fileList
+      }
+    })
+
+    const dropEvent = new DragEvent('drop', { dataTransfer })
+    Object.defineProperty(dropEvent, 'detail', {
+      value: {
+        handles
+      }
+    })
+
+    let index = 0
+    for (const item of dropEvent.dataTransfer.items) {
+      const handle = handles[index++]
+      Object.defineProperties(item, {
+        getAsFileSystemHandle: {
+          configurable: false,
+          enumerable: false,
+          value: async () => handle
+        }
+      })
+    }
+
+    target.dispatchEvent(dropEvent)
+
+    if (handles.length) {
+      globalThis.dispatchEvent(new CustomEvent('dropfiles', {
+        detail: {
+          handles
+        }
+      }))
+    }
   })
 }
 
@@ -111,7 +198,7 @@ class RuntimeWorker extends GlobalWorker {
    * @ignore
    */
   constructor (filename, options, ...args) {
-    const url = encodeURIComponent(new URL(filename, location.href || '/').toString())
+    const url = encodeURIComponent(new URL(filename, globalThis.location.href || '/').toString())
     const id = rand64()
 
     const preload = `
@@ -133,7 +220,24 @@ class RuntimeWorker extends GlobalWorker {
       value: '${url}'
     })
 
-    import 'socket://${location.hostname}/socket/internal/worker.js?source=${url}'
+    Object.defineProperty(globalThis, 'RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG', {
+      configurable: false,
+      enumerable: false,
+      value: []
+    })
+
+    globalThis.addEventListener('message', onInitialWorkerMessages)
+
+    function onInitialWorkerMessages (event) {
+      RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.push(event)
+    }
+
+    import '${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/worker.js?source=${url}'
+    import hooks from 'socket:hooks'
+
+    hooks.onReady(() => {
+      globalThis.removeEventListener('message', onInitialWorkerMessages)
+    })
     `.trim()
 
     const objectURL = URL.createObjectURL(
@@ -167,12 +271,15 @@ class RuntimeWorker extends GlobalWorker {
 
     globalThis.addEventListener('data', this.#onglobaldata)
 
+    const addEventListener = this.addEventListener.bind(this)
+    const removeEventListener = this.removeEventListener.bind(this)
+
     this.addEventListener = (eventName, ...args) => {
       if (eventName === 'message') {
         return eventTarget.addEventListener(eventName, ...args)
       }
 
-      return this.addEventListener(eventName, ...args)
+      return addEventListener(eventName, ...args)
     }
 
     this.removeEventListener = (eventName, ...args) => {
@@ -180,7 +287,7 @@ class RuntimeWorker extends GlobalWorker {
         return eventTarget.removeEventListener(eventName, ...args)
       }
 
-      return this.removeEventListener(eventName, ...args)
+      return removeEventListener(eventName, ...args)
     }
 
     Object.defineProperty(this, 'onmessage', {
@@ -268,7 +375,7 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     if (typeof url === 'string') {
       if (url.startsWith('/') || url.startsWith('.')) {
         try {
-          url = new URL(url, location.origin).toString()
+          url = new URL(url, globalThis.location.origin).toString()
         } catch {}
       }
     }
@@ -378,17 +485,19 @@ class ConcurrentQueue extends EventTarget {
 class RuntimeXHRPostQueue extends ConcurrentQueue {
   async dispatch (id, seq, params, headers, options = null) {
     if (options?.workerId) {
-      const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
-      if (worker) {
-        worker.postMessage({
-          __runtime_worker_event: {
-            type: 'runtime-xhr-post-queue',
-            detail: {
-              id, seq, params, headers
+      if (RuntimeWorker.pool.has(options.workerId)) {
+        const worker = RuntimeWorker.pool.get(options.workerId)?.deref?.()
+        if (worker) {
+          worker.postMessage({
+            __runtime_worker_event: {
+              type: 'runtime-xhr-post-queue',
+              detail: {
+                id, seq, params, headers
+              }
             }
-          }
-        })
-        return
+          })
+          return
+        }
       }
     }
 
@@ -442,5 +551,12 @@ hooks.onReady(async () => {
 globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
+Object.defineProperty(globalThis, '__globals', {
+  enumerable: false,
+  configurable: false,
+  value: globals
+})
 
-export default null
+export default {
+  location
+}

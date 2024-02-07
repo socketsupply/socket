@@ -199,7 +199,7 @@ extern "C" {
     jobject self,
     jstring keyString
   ) {
-    static const auto config = SSC::getUserConfig();
+    static auto config = SSC::getUserConfig();
     auto runtime = Runtime::from(env, self);
 
     if (runtime == nullptr) {
@@ -208,6 +208,7 @@ extern "C" {
     }
 
     auto key = StringWrap(env, keyString).str();
-    return env->NewStringUTF(key.c_str());
+    auto value = config[key];
+    return env->NewStringUTF(value.c_str());
   }
 }

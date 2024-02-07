@@ -509,9 +509,9 @@ void handleBuildPhaseForUserScript (
   do {
     char prefix[4096] = {0};
     std::memcpy(
-    prefix,
-    pathResourcesRelativeToUserBuild.string().c_str(),
-    pathResourcesRelativeToUserBuild.string().size()
+      prefix,
+      pathResourcesRelativeToUserBuild.string().c_str(),
+      pathResourcesRelativeToUserBuild.string().size()
     );
 
     // @TODO(jwerle): use `Env::set()` if #148 is closed
@@ -596,11 +596,12 @@ void handleBuildPhaseForUserScript (
 Vector<Path> handleBuildPhaseForCopyMappedFiles (
   const Map settings,
   const String& targetPlatform,
-  const Path pathResourcesRelativeToUserBuild
+  const Path pathResourcesRelativeToUserBuild,
+  bool includeBuildCopyFiles = true
 ) {
   Vector<Path> copyMapFiles;
 
-  if (settings.contains("build_copy")) {
+  if (includeBuildCopyFiles && settings.contains("build_copy")) {
     const Path pathInput = settings.contains("build_copy") && settings.at("build_copy").size() > 0
       ? settings.at("build_copy")
       : "src";
@@ -3021,6 +3022,31 @@ int main (const int argc, const char* argv[]) {
         settings["mac_minimum_supported_version"] = "13.0.0";
       }
 
+      settings["macos_app_transport_security_domain_exceptions"] = "";
+
+      if (settings["meta_application_links"].size() > 0) {
+        const auto links = parseStringList(trim(settings["meta_application_links"]), ' ');
+
+        for (const auto link : links) {
+          auto domain = split(link, '?')[0];
+          settings["macos_app_transport_security_domain_exceptions"] += (
+            "      <key>" + domain + "</key>\n"
+            "      <dict>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionRequiresForwardSecrecy</key>\n"
+            "        <false/>\n"
+            "        <key>NSIncludesSubdomains</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionMinimumTLSVersion</key>\n"
+            "        <string>1.0</string>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>\n"
+            "        <false/>\n"
+            "      </dict>\n"
+          );
+        }
+      }
+
       auto plistInfo = tmpl(gMacOSInfoPList, settings);
 
       writeFile(paths.pathPackage / pathBase / "Info.plist", plistInfo);
@@ -3327,6 +3353,25 @@ int main (const int argc, const char* argv[]) {
           settings["android_allow_cleartext"] = "android:usesCleartextTraffic=\"true\"\n";
         } else {
           settings["android_allow_cleartext"] = "";
+        }
+      }
+
+      settings["android_activity_intent_filters"] = "";
+      if (settings["meta_application_links"].size() > 0) {
+        const auto links = parseStringList(trim(settings["meta_application_links"]), ' ');
+        for (const auto link : links) {
+          const auto parts = split(link, '?');
+          const auto host = parts[0];
+          settings["android_activity_intent_filters"] += (
+            "        <intent-filter android:autoVerify=\"true\">\n"
+            "          <action android:name=\"android.intent.action.VIEW\" />\n"
+            "          <category android:name=\"android.intent.category.DEFAULT\" />\n"
+            "          <category android:name=\"android.intent.category.BROWSABLE\" />\n"
+            "          <data android:scheme=\"http\" />\n"
+            "          <data android:scheme=\"https\" />\n"
+            "          <data android:host=\"" + host + "\" />\n"
+            "        </intent-filter>\n"
+          );
         }
       }
 
@@ -4896,13 +4941,30 @@ int main (const int argc, const char* argv[]) {
         );
       }
 
+      if (settings["meta_application_links"].size() > 0) {
+        const auto links = parseStringList(trim(settings["meta_application_links"]), ' ');
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.developer.associated-domains</key>\n"
+          "  <array>\n"
+        );
+
+        for (const auto link : links) {
+          entitlementSettings["configured_entitlements"] += (
+            "    <string>applinks:" + link + "</string>\n"
+          );
+        }
+
+        entitlementSettings["configured_entitlements"] += (
+          "  </array>\n"
+        );
+      }
+
       if (flagDebugMode) {
         entitlementSettings["configured_entitlements"] += (
           "  <key>get-task-allow</key>\n"
           "  <true/>\n "
         );
       }
-
 
       writeFile(
         pathToDist / "socket.entitlements",
@@ -6067,6 +6129,24 @@ int main (const int argc, const char* argv[]) {
         "  <true/>\n"
       );
 
+      if (settings["meta_application_links"].size() > 0) {
+        const auto links = parseStringList(trim(settings["meta_application_links"]), ' ');
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.developer.associated-domains</key>\n"
+          "  <array>\n"
+        );
+
+        for (const auto link : links) {
+          entitlementSettings["configured_entitlements"] += (
+            "    <string>applinks:" + link + "</string>\n"
+          );
+        }
+
+        entitlementSettings["configured_entitlements"] += (
+          "  </array>\n"
+        );
+      }
+
       if (settings["permissions_allow_user_media"] != "false") {
         if (settings["permissions_allow_camera"] != "false") {
           entitlementSettings["configured_entitlements"] += (
@@ -6759,6 +6839,13 @@ int main (const int argc, const char* argv[]) {
     if (flagShouldWatch) {
       Vector<String> sources;
 
+      auto copyMapFiles = handleBuildPhaseForCopyMappedFiles(
+        settings,
+        targetPlatform,
+        pathResourcesRelativeToUserBuild,
+        false
+      );
+
       if (settings.contains("build_watch_sources")) {
         const auto buildWatchSources = parseStringList(trim(settings["build_watch_sources"]), ' ');
         for (const auto& source : buildWatchSources) {
@@ -6776,12 +6863,29 @@ int main (const int argc, const char* argv[]) {
       sources.push_back((fs::current_path() / "socket.ini").string());
 
       sourcesWatcher = new FileSystemWatcher(sources);
+
+      if (settings["build_watch_debounce_timeout"].size() > 0) {
+        const auto timeout = settings["build_watch_debounce_timeout"];
+        try {
+          sourcesWatcher->options.debounce = std::atoi(timeout.c_str());
+        } catch (Exception e) {
+          log(
+            "ERROR: Invalid value given for '[build.watch] debounce_timeout': '" + timeout + "'. " +
+            "Expecting an integer value in milliseconds"
+          );
+          exit(1);
+        }
+      }
+
       auto watchingSources = sourcesWatcher->start([=](
         const String& path,
         const Vector<FileSystemWatcher::Event>& events,
         const FileSystemWatcher::Context& context
       ) {
+        log("File '" + path + "' did change");
+
         auto settingsForSourcesWatcher = settings;
+
         extendMap(
           settingsForSourcesWatcher,
           INI::parse(readFile(targetPath / "socket.ini"))
@@ -6800,8 +6904,6 @@ int main (const int argc, const char* argv[]) {
           targetPlatform,
           pathResourcesRelativeToUserBuild
         );
-
-        log("File '" + path + "' did change");
       });
 
       if (!watchingSources) {

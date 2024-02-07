@@ -23,6 +23,7 @@ namespace SSC {
 
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
+    this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
@@ -739,7 +740,7 @@ namespace SSC {
         w->eval(getEmitToRenderProcessJavaScript(
           "dropin",
           json.str(),
-          "document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ")",
+          "globalThis",
           options
         ));
 
@@ -1004,6 +1005,18 @@ namespace SSC {
     if (opts.canExit) {
       this->exit(code);
     }
+  }
+
+  void Window::maximize () {
+    gtk_window_maximize(GTK_WINDOW(window));
+  }
+
+  void Window::minimize () {
+    gtk_window_iconify(GTK_WINDOW(window));
+  }
+
+  void Window::restore () {
+    gtk_window_deiconify(GTK_WINDOW(window));
   }
 
   void Window::navigate (const String &seq, const String &url) {

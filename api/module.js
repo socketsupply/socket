@@ -31,6 +31,7 @@ import stream from './stream.js'
 import test from './test.js'
 import url from './url.js'
 import util from './util.js'
+import vm from './vm.js'
 
 /**
  * @typedef {function(string, Module, function): undefined} ModuleResolver
@@ -175,14 +176,15 @@ export const builtins = {
   stream,
   test,
   util,
-  url
+  url,
+  vm
 }
 
 // alias
 export const builtinModules = builtins
 
 export function isBuiltin (name) {
-  name = name.replace(/^socket:/, '')
+  name = name.replace(/^(socket|node):/, '')
 
   if (name in builtins) {
     return true

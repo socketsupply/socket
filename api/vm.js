@@ -1,0 +1,1456 @@
+/**
+ * @module VM
+ *
+ * This module enables compiling and running JavaScript source code in an
+ * isolated execution context optionally with a user supplied context object.
+ *
+ * Example usage:
+ * ```js
+ * import fs from 'socket:fs/promises'
+ * import vm from 'socket:vm'
+ *
+ * const data = await fs.readFile('data.json')
+ * const context = { data, value: null }
+ * const source = `
+ *   const text = new TextDecoder().decode(data)
+ *   const json = JSON.parse(text)
+ *
+ *   // get `.value` from parsed JSON and set it to global `value`
+ *   // that exists on the user context
+ *   value = json.value
+ * `
+ * const result = await vm.runIntContext(source, context)
+ * console.log(context.value) // set from `json.value` in VM context
+ * ```
+ */
+
+/* global ErrorEvent, EventTarget, MessagePort */
+import { maybeMakeError } from './ipc.js'
+import { SharedWorker } from './worker.js'
+import application from './application.js'
+import globals from './internal/globals.js'
+import console from './console.js'
+import crypto from './crypto.js'
+import os from './os.js'
+import gc from './gc.js'
+
+const AsyncFunction = (async () => {}).constructor
+const Uint8ArrayPrototype = Uint8Array.prototype
+const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
+const TypedArray = TypedArrayPrototype.constructor
+
+const VM_WINDOW_INDEX = 47
+const VM_WINDOW_TITLE = 'socket:vm'
+const VM_WINDOW_PATH = `${globalThis.origin}/socket/vm/index.html`
+
+let contextWorker = null
+let contextWindow = null
+
+// A weak mapping of context objects to `Script` instances where "context"
+// objects own the `Script` until the "context" is no longer stronglyheld
+// in which the `Script` eventually becomes garbage collected triggering
+// the `gc.finalizer` callback to be invoked cleaning up any allocated
+// resources for the script context such as iframes and workers or any
+// resources created in the script "world" in the VM realm
+const scripts = new WeakMap()
+
+// A weak mapping of values to reference objects
+const references = Object.assign(new WeakMap(), {
+  // A mapping of reference IDs to weakly held `Reference` instances
+  index: new Map()
+})
+
+function isTypedArray (object) {
+  return object instanceof TypedArray
+}
+
+function isArrayBuffer (object) {
+  return object instanceof ArrayBuffer
+}
+
+/**
+ * @ignore
+ * @param {object[]} transfer
+ * @param {object} object
+ * @param {object=} [options]
+ * @return {object[]}
+ */
+export function findMessageTransfers (transfers, object, options = null) {
+  if (isTypedArray(object) || ArrayBuffer.isView(object)) {
+    add(object.buffer)
+  } else if (isArrayBuffer(object)) {
+    add(object)
+  } else if (object instanceof MessagePort) {
+    add(object)
+  } else if (Array.isArray(object)) {
+    for (const value of object) {
+      findMessageTransfers(transfers, value, options)
+    }
+  } else if (object && typeof object === 'object') {
+    for (const key in object) {
+      if (
+        key.startsWith('__vmScriptReferenceArgs_') &&
+        options?.ignoreScriptReferenceArgs === true
+      ) {
+        continue
+      }
+
+      findMessageTransfers(transfers, object[key], options)
+    }
+  }
+
+  return transfers
+
+  function add (value) {
+    if (!transfers.includes(value)) {
+      transfers.push(value)
+    }
+  }
+}
+
+/**
+ * @ignore
+ * @param {object} context
+ */
+export function applyInputContextReferences (context) {
+  if (!context || typeof context !== 'object') {
+    return
+  }
+
+  visitObject(context)
+
+  function visitObject (object) {
+    for (const key in object) {
+      const value = object[key]
+      if (value && typeof value === 'object') {
+        if (value.__vmScriptReference__ === true && value.id) {
+          const reference = getReference(value.id)
+          if (reference) {
+            object[key] = reference.value
+            Object.defineProperty(context, value.id, {
+              configurable: false,
+              enumerable: false,
+              value: reference.value
+            })
+          }
+        } else {
+          visitObject(value)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @ignore
+ * @param {object} context
+ */
+export function applyOutputContextReferences (context) {
+  if (!context || typeof context !== 'object') {
+    return
+  }
+
+  visitObject(context)
+
+  function visitObject (object) {
+    for (const key in object) {
+      if (key.startsWith('__vmScriptReferenceArgs_')) {
+        Reflect.deleteProperty(object, key)
+        continue
+      }
+
+      const value = object[key]
+      if (value && typeof value === 'object') {
+        if (!(value.__vmScriptReference__ === true && value.id)) {
+          visitObject(value)
+        }
+      }
+
+      if (typeof value === 'function') {
+        const reference = getReference(value) ?? createReference(value, context)
+        object[key] = reference.toJSON()
+      }
+    }
+  }
+}
+
+/**
+ * @ignore
+ * @param {object} context
+ */
+export function filterNonTransferableValues (context) {
+  if (!context || typeof context !== 'object') {
+    return
+  }
+
+  visitObject(context)
+
+  function visitObject (object) {
+    for (const key in object) {
+      const value = object[key]
+      if (value && typeof value === 'object') {
+        visitObject(value)
+      } else if (typeof value === 'function') {
+        const reference = getReference(value)
+        if (reference) {
+          object[key] = reference.toJSON()
+        } else {
+          Reflect.deleteProperty(object, key)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @ignore
+ * @param {object=} [currentContext]
+ * @param {object=} [updatedContext]
+ * @param {object=} [contextReference]
+ * @return {{ deletions: string[], merges: string[] }}
+ */
+export function applyContextDifferences (
+  currentContext = null,
+  updatedContext = null,
+  contextReference = null,
+  preserveScriptArgs = false
+) {
+  if (!currentContext || typeof currentContext !== 'object') {
+    return
+  }
+
+  const deletions = []
+  const merges = []
+  const script = scripts.get(contextReference ?? currentContext)
+
+  for (const key in updatedContext) {
+    const updatedValue = Reflect.get(updatedContext, key)
+
+    if (updatedValue?.__vmScriptReference__ === true) {
+      const reference = updatedValue
+
+      if (reference.type === 'function') {
+        const ref = getReference(reference.id)
+        if (ref) {
+          Reflect.set(currentContext, key, ref.value)
+        } else if (script) {
+          const container = {
+            async [key] (...args) {
+              const scriptReferenceArgsKey = `__vmScriptReferenceArgs_${reference.id}__`
+
+              Reflect.set(contextReference, scriptReferenceArgsKey, args)
+              Reflect.set(contextReference, reference.id, reference)
+
+              try {
+                return await script.runInContext(contextReference, {
+                  mode: 'classic',
+                  source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
+                })
+                // eslint-disable-next-line
+              } catch (err) {
+                throw err
+              } finally {
+                Reflect.deleteProperty(contextReference, reference.id)
+                Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
+              }
+            }
+          }
+
+          // bind `null` this for proxy function
+          const proxyFunction = container[key].bind(null)
+          // wrap into container for named function, called in tail with an
+          // intentional omission of `await` for an async call stack collapse
+          // this preserves naming in `console.log`:
+          //   [AsyncFunction: functionName]
+          // while also removing an unneeded tail call in a stack trace
+          const containerForNamedFunction = {
+            async [key] (...args) { return proxyFunction(...args) }
+          }
+
+          // the reference ID was created on the other side, just use it here
+          // instead of creating a new one which will preserve the binding
+          // between this caller context and the realm world where the script
+          // execution is actually occuring
+          putReference(new Reference(
+            reference.id,
+            containerForNamedFunction[key],
+            contextReference)
+          )
+
+          // emplace an actual function on `currentContext` at the property
+          // `key` which will do the actual proxy call to the VM script
+          Reflect.set(currentContext, key, containerForNamedFunction[key])
+        }
+      }
+    } else if (Reflect.has(currentContext, key)) {
+      const currentValue = Reflect.get(currentContext, key)
+      if (
+        currentValue && typeof currentValue === 'object' &&
+        updatedValue && typeof updatedValue === 'object'
+      ) {
+        merges.push([key, currentValue, updatedValue])
+      } else {
+        Reflect.set(currentContext, key, updatedValue)
+      }
+    } else {
+      Reflect.set(currentContext, key, updatedValue)
+    }
+  }
+
+  for (const key in currentContext) {
+    if (!preserveScriptArgs && key.startsWith('__vmScriptReferenceArgs_')) {
+      Reflect.deleteProperty(currentContext, key)
+    }
+
+    if (!Reflect.has(updatedContext, key)) {
+      deletions.push(key)
+      Reflect.deleteProperty(currentContext, key)
+    }
+  }
+
+  for (const merge of merges) {
+    const [key, currentValue, updatedValue] = merge
+    if (isTypedArray(updatedValue) || isArrayBuffer(updatedValue)) {
+      Reflect.set(currentContext, key, updatedValue)
+    } else if (!Array.isArray(currentValue) && Array.isArray(updatedValue)) {
+      Reflect.set(currentContext, key, updatedValue)
+    } else if (Array.isArray(currentValue) && Array.isArray(updatedValue)) {
+      currentValue.length = updatedValue.length
+      for (let i = 0; i < updatedValue.length; ++i) {
+        Reflect.set(currentValue, i, Reflect.get(updatedValue, i))
+      }
+    } else {
+      applyContextDifferences(currentValue, updatedValue, contextReference)
+    }
+  }
+
+  return { deletions, merges: merges.map((merge) => merge[0]) }
+}
+
+/**
+ * Wrap a JavaScript function source.
+ * @ignore
+ * @param {string} source
+ * @param {object=} [options]
+ */
+export function wrapFunctionSource (source, options = null) {
+  if (source.includes('return') || source.includes(';') || source.includes('throw')) {
+    source = `{ ${source} }`
+  } else if (source.includes('\n')) {
+    const parts = source.trim().split('\n')
+    const last = parts.pop()
+    const tmp = last.trim()
+    if (
+      !/^(if|return|while|do|switch|let|var|const|for)/.test(tmp) &&
+      !/^[{|;|/]/.test(tmp) &&
+      !/}$/.test(tmp) &&
+      !/\w\s*=\*\w/.test(tmp)
+    ) {
+      source = parts.concat(`return ${last}`).join('\n')
+    }
+
+    source = `{ ${source} }`
+  }
+
+  return `
+    with (this) { return ((${options?.async ? 'async' : ''} () => ${source})()) }
+    //# sourceURL=${options?.filename || 'wrapped-function-source.js'}
+  `.trim()
+}
+
+/**
+ * A container for a context worker message channel that looks like a "worker".
+ * @ignore
+ */
+export class ContextWorkerInterface extends EventTarget {
+  #channel = null
+
+  constructor () {
+    super()
+
+    this.#channel = new MessageChannel()
+  }
+
+  get channel () {
+    return this.#channel
+  }
+
+  get port () {
+    return this.#channel.port1
+  }
+
+  destroy () {
+    try {
+      this.#channel.port1.close()
+      this.#channel.port2.close()
+    } catch {}
+
+    this.#channel = null
+  }
+}
+
+/**
+ * A container proxy for a context worker message channel that
+ * looks like a "worker".
+ * @ignore
+ */
+export class ContextWorkerInterfaceProxy extends EventTarget {
+  #globals = null
+  constructor (globals) {
+    super()
+    this.#globals = globals
+    gc.ref(this)
+  }
+
+  get port () {
+    return this.#globals.get('vm.contextWorker')?.channel?.port2
+  }
+
+  [gc.finalizer] () {
+    return {
+      args: [this.port],
+      async handle (port) {
+        if (port) {
+          try {
+            port.close()
+          } catch {}
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Global reserved values that a script context may not modify.
+ * @type {string[]}
+ */
+export const RESERVED_GLOBAL_INTRINSICS = [
+  '__args',
+  '__globals',
+  'top',
+  'self',
+  'this',
+  'window',
+  'globalThis',
+  'globalObject',
+  'webkit',
+  'chrome',
+  'external',
+  'postMessage',
+  'console',
+  'globalThis',
+  'Infinity',
+  'NaN',
+  'undefined',
+  'eval',
+  'isFinite',
+  'isNaN',
+  'parseFloat',
+  'parseInt',
+  'decodeURI',
+  'decodeURIComponent',
+  'encodeURI',
+  'encodeURIComponent',
+  'AggregateError',
+  'Array',
+  'ArrayBuffer',
+  'Atomics',
+  'BigInt',
+  'BigInt64Array',
+  'BigUint64Array',
+  'Boolean',
+  'DataView',
+  'Date',
+  'Error',
+  'EvalError',
+  'FinalizationRegistry',
+  'Float32Array',
+  'Float64Array',
+  'Function',
+  'Int8Array',
+  'Int16Array',
+  'Int32Array',
+  'Map',
+  'Number',
+  'Object',
+  'Promise',
+  'Proxy',
+  'RangeError',
+  'ReferenceError',
+  'RegExp',
+  'Set',
+  'SharedArrayBuffer',
+  'String',
+  'Symbol',
+  'SyntaxError',
+  'TypeError',
+  'Uint8Array',
+  'Uint8ClampedArray',
+  'Uint16Array',
+  'Uint32Array',
+  'URIError',
+  'WeakMap',
+  'WeakRef',
+  'WeakSet',
+  'Atomics',
+  'JSON',
+  'Math',
+  'Reflect'
+]
+
+/**
+ * A unique reference to a value owner by a "context object" and a
+ * `Script` instance.
+ */
+export class Reference {
+  /**
+   * The underlying reference ID.
+   * @ignore
+   * @type {string}
+   */
+  #id = null
+
+  /**
+   * The underling primitive type of the reference value.
+   * @ignore
+   * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
+   */
+  #type = 'undefined'
+
+  /**
+   * A strong reference to the underlying value.
+   * @ignore
+   * @type {any?}
+   */
+  #value = null
+
+  /**
+   * A weak reference to the underlying "context object", if available.
+   * @ignore
+   * @type {WeakRef?}
+   */
+  #context = null
+
+  /**
+   * `Reference` class constructor.
+   * @param {string} id
+   * @param {any} value
+   * @param {object=} [context]
+   */
+  constructor (id, value, context = null) {
+    this.#id = id
+    this.#type = value !== null ? typeof value : 'undefined'
+    this.#value = value !== null && value !== undefined
+      ? value
+      : null
+
+    this.#context = context !== null && context !== undefined
+      ? new WeakRef(context)
+      : null
+  }
+
+  /**
+   * The unique id of the reference
+   * @type {string}
+   */
+  get id () {
+    return this.#id
+  }
+
+  /**
+   * The underling primitive type of the reference value.
+   * @ignore
+   * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
+   */
+  get type () {
+    return this.#type
+  }
+
+  /**
+   * The underlying value of the reference.
+   * @type {any?}
+   */
+  get value () {
+    return this.#value
+  }
+
+  /**
+   * The `Script` this value belongs to, if available.
+   * @type {Script?}
+   */
+  get script () {
+    return scripts.get(this.context) ?? null
+  }
+
+  /**
+   * The "context object" this reference value belongs to.
+   * @type {object?}
+   */
+  get context () {
+    return this.#context?.deref?.() ?? null
+  }
+
+  /**
+   * Releases strongly held value and weak references
+   * to the "context object".
+   */
+  release () {
+    this.#value = null
+    this.#context = null
+  }
+
+  /**
+   * Converts this `Reference` to a JSON object.
+   * @param {boolean=} [includeValue = false]
+   */
+  toJSON (includeValue = false) {
+    const { value, type, id } = this
+
+    if (includeValue) {
+      return { __vmScriptReference__: true, id, type, value }
+    }
+
+    return { __vmScriptReference__: true, id, type }
+  }
+}
+
+/**
+ * @typedef {{
+ *  filename?: string,
+ *  context?: object
+ * }} ScriptOptions
+ */
+
+/**
+ * A `Script` is a container for raw JavaScript to be executed in
+ * a completely isolated virtual machine context, optionally with
+ * user supplied context. Context objects references are not actually
+ * shared, but instead provided to the script execution context using the
+ * structured cloning algorithm used by the Message Channel API. Context
+ * differences are computed and applied after execution so the user supplied
+ * context object realizes context changes after script execution. All script
+ * sources run in an "async" context so a "top level await" should work.
+ */
+export class Script extends EventTarget {
+  #id = null
+  #ready = null
+  #source = null
+  #context = null
+  #filename = '<script>'
+
+  /**
+   * `Script` class constructor
+   * @param {string} source
+   * @param {ScriptOptions} [options]
+   */
+  constructor (source, options = null) {
+    super()
+
+    if (typeof source !== 'string') {
+      throw new TypeError('Script source must be a string')
+    }
+
+    if (!source) {
+      throw new TypeError('Script source cannot be empty')
+    }
+
+    this.#id = crypto.randomBytes(8).toString('base64')
+    this.#source = source
+    this.#context = options?.context ?? null
+
+    if (typeof options?.filename === 'string' && options.filename) {
+      this.#filename = options.filename
+    }
+
+    gc.ref(this)
+
+    this.#ready = getContextWindow()
+      .then(getContextWorker())
+      .catch((error) => {
+        this.dispatchEvent(new ErrorEvent('error', { error }))
+      })
+  }
+
+  /**
+   * The script identifier.
+   */
+  get id () {
+    return this.#id
+  }
+
+  /**
+   * The source for this script.
+   * @type {string}
+   */
+  get source () {
+    return this.#source
+  }
+
+  /**
+   * The filename for this script.
+   * @type {string}
+   */
+  get filename () {
+    return this.#filename
+  }
+
+  /**
+   * A promise that resolves when the script is ready.
+   * @type {Promise<Boolean>}
+   */
+  get ready () {
+    return this.#ready
+  }
+
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @return {gc.Finalizer}
+   * @ignore
+   */
+  [gc.finalizer] () {
+    return {
+      args: [this.id],
+      async handle (id) {
+        const worker = await getContextWorker()
+        worker.port.postMessage({ id, type: 'destroy' })
+      }
+    }
+  }
+
+  /**
+   * Destroy the script execution context.
+   * @return {Promise}
+   */
+  async destroy () {
+    await this.ready
+    const worker = await getContextWorker()
+    worker.port.postMessage({ id: this.#id, type: 'destroy' })
+  }
+
+  /**
+   * Run `source` JavaScript in given context. The script context execution
+   * context is preserved until the `context` object that points to it is
+   * garbage collected or there are no longer any references to it and its
+   * associated `Script` instance.
+   * @param {ScriptOptions=} [options]
+   * @param {object=} [context]
+   * @return {Promise<any>}
+   */
+  async runInContext (context, options = null) {
+    await this.ready
+
+    const contextReference = context ?? this.context
+    context = { ...(context ?? this.#context) }
+
+    const filename = options?.filename || this.filename
+    const worker = await getContextWorker()
+    const source = options?.source ?? this.#source
+
+    const transfer = []
+    const nonce = crypto.randomBytes(8).toString('base64')
+    const mode = options?.type ?? options?.mode ?? detectFunctionSourceType(source)
+    const id = this.#id
+
+    return await new Promise((resolve, reject) => {
+      findMessageTransfers(transfer, context)
+      filterNonTransferableValues(context)
+
+      worker.port.postMessage({ type: 'client', id })
+      worker.port.postMessage({
+        type: 'script',
+        filename,
+        context,
+        source,
+        nonce,
+        mode,
+        id
+      }, {
+        transfer
+      })
+
+      worker.port.addEventListener('message', onMessage)
+
+      function onMessage (event) {
+        if (
+          event.data?.id === id &&
+          event.data?.nonce === nonce &&
+          event.data?.type === 'result'
+        ) {
+          worker.port.removeEventListener('message', onMessage)
+          if (event.data.context) {
+            applyContextDifferences(contextReference, event.data.context, contextReference)
+          }
+
+          if (event.data.err) {
+            reject(maybeMakeError(event.data.err))
+          } else {
+            const result = { data: event.data.data }
+            applyContextDifferences(result, event.data, contextReference)
+            resolve(result.data)
+          }
+        }
+      }
+    })
+  }
+
+  /**
+   * Run `source` JavaScript in new context. The script context is destroyed after
+   * execution. This is typically a "one off" isolated run.
+   * @param {ScriptOptions=} [options]
+   * @param {object=} [context]
+   * @return {Promise<any>}
+   */
+  async runInNewContext (context, options = null) {
+    await this.ready
+
+    const contextReference = context ?? this.context
+    context = { ...context }
+
+    const filename = options?.filename || this.filename
+    const worker = await getContextWorker()
+    const source = options?.source ?? this.#source
+
+    const transfer = []
+    const nonce = crypto.randomBytes(8).toString('base64')
+    const mode = options?.type ?? options?.mode ?? detectFunctionSourceType(source)
+    const id = crypto.randomBytes(8).toString('base64')
+
+    const result = await new Promise((resolve, reject) => {
+      findMessageTransfers(transfer, context)
+      filterNonTransferableValues(context)
+
+      worker.port.postMessage({ type: 'client', id })
+      worker.port.postMessage({
+        type: 'script',
+        filename,
+        context,
+        source,
+        nonce,
+        mode,
+        id
+      }, {
+        transfer
+      })
+
+      worker.port.addEventListener('message', onMessage)
+
+      function onMessage (event) {
+        if (
+          event.data?.id === id &&
+          event.data?.nonce === nonce &&
+          event.data?.type === 'result'
+        ) {
+          worker.port.removeEventListener('message', onMessage)
+          if (event.data.context) {
+            applyContextDifferences(contextReference, event.data.context, contextReference)
+          }
+
+          if (event.data.err) {
+            reject(maybeMakeError(event.data.err))
+          } else {
+            const result = { data: event.data.data }
+            applyContextDifferences(result, event.data, contextReference)
+            resolve(result.data)
+          }
+        }
+      }
+    })
+
+    worker.port.postMessage({ id, type: 'destroy' })
+    return result
+  }
+
+  /**
+   * Run `source` JavaScript in this current context (`globalThis`).
+   * @param {ScriptOptions=} [options]
+   * @return {Promise<any>}
+   */
+  async runInThisContext (options = null) {
+    const filename = options?.filename || this.filename
+    const fn = compileFunction(options?.source ?? this.#source, {
+      async: true,
+      filename
+    })
+
+    return await fn()
+  }
+}
+
+/**
+ * Gets the VM context window.
+ * This function will create it if it does not already exist.
+ * The current window will be used on Android or iOS platforms as there can
+ * only be one window.
+ * @return {Promise<import('./window.js').ApplicationWindow}
+ */
+export async function getContextWindow () {
+  if (contextWindow) {
+    await contextWindow.ready
+    return contextWindow
+  }
+
+  const currentWindow = await application.getCurrentWindow()
+
+  // just return the current window for android/ios as there can only ever be one
+  if (os.platform() === 'ios' || os.platform() === 'android') {
+    contextWindow = currentWindow
+
+    if (!contextWindow.frame) {
+      const frameId = `__${os.platform()}-vm-frame__`
+      const existingFrame = globalThis.document.querySelector(
+        `iframe[id="${frameId}"]`
+      )
+
+      if (existingFrame) {
+        existingFrame.parentElement.removeChild(existingFrame)
+      }
+
+      const frame = globalThis.document.createElement('iframe')
+
+      frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
+      frame.src = VM_WINDOW_PATH
+      frame.id = frameId
+
+      Object.assign(frame.style, {
+        display: 'none',
+        height: 0,
+        width: 0
+      })
+
+      const target = (
+        globalThis.document.head ??
+        globalThis.document.body ??
+        globalThis.document
+      )
+
+      target.appendChild(frame)
+      contextWindow.frame = frame
+      contextWindow.ready = new Promise((resolve, reject) => {
+        frame.onload = resolve
+        frame.onerror = (event) => {
+          reject(new Error('Failed to load VM context window frame', {
+            cause: event.error ?? event
+          }))
+        }
+      })
+    }
+
+    await contextWindow.ready
+    return contextWindow
+  }
+
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+  const pendingContextWindow = (
+    existingContextWindow ??
+    application.createWindow({
+      canExit: true,
+      headless: true,
+      debug: true,
+      index: VM_WINDOW_INDEX,
+      title: VM_WINDOW_TITLE,
+      path: VM_WINDOW_PATH
+    })
+  )
+
+  const promises = []
+  promises.push(pendingContextWindow)
+
+  if (!existingContextWindow) {
+    const eventName = `vm:${VM_WINDOW_INDEX}:ready`
+    promises.push(new Promise((resolve) => {
+      globalThis.addEventListener(eventName, resolve, { once: true })
+    }))
+  }
+
+  const ready = Promise.all(promises)
+  await ready
+  contextWindow = await pendingContextWindow
+  contextWindow.ready = ready
+  return contextWindow
+}
+
+/**
+ * Gets the `SharedWorker` that for the VM context.
+ * @return {Promise<SharedWorker>}
+ */
+export async function getContextWorker () {
+  if (contextWorker) {
+    return await contextWorker.ready
+  }
+
+  // just return the current window for android/ios as there can only ever be one
+  if (os.platform() === 'ios' || os.platform() === 'android') {
+    if (globalThis.window && globalThis.top === globalThis.window) {
+      // inside global top window
+      contextWorker = new ContextWorkerInterface()
+      contextWorker.ready = Promise.resolve(contextWorker)
+      globals.register('vm.contextWorker', contextWorker)
+    } else if (
+      globalThis.window &&
+      globalThis.top !== globalThis.window &&
+      globalThis.location.pathname === new URL(VM_WINDOW_PATH).pathname
+    ) {
+      // inside realm frame
+      contextWorker = new ContextWorkerInterfaceProxy(globalThis.top.__globals)
+      contextWorker.ready = Promise.resolve(contextWorker)
+    } else {
+      throw new TypeError('Unable to determine VM context worker')
+    }
+  } else {
+    contextWorker = new SharedWorker(`${globalThis.origin}/socket/vm/worker.js`, {
+      type: 'module'
+    })
+
+    contextWorker.ready = new Promise((resolve, reject) => {
+      contextWorker.addEventListener('error', (event) => {
+        reject(new Error('Failed to initialize VM Context SharedWorker', {
+          cause: event.error ?? event
+        }))
+      }, { once: true })
+
+      contextWorker.port.addEventListener('message', (event) => {
+        if (event.data === 'VM_SHARED_WORKER_ACK') {
+          resolve(contextWorker)
+        }
+      }, { once: true })
+    })
+  }
+
+  contextWorker.port.start()
+  contextWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'terminate-worker') {
+      if (typeof contextWorker?.destroy === 'function') {
+        contextWorker.destroy()
+      }
+
+      // unref
+      contextWorker = null
+
+      if (
+        globalThis.window &&
+        globalThis.top !== globalThis.window &&
+        globalThis.location.pathname === new URL(VM_WINDOW_INDEX).pathname
+      ) {
+        globalThis.top.__globals.register('vm.contextWorker', contextWorker)
+      }
+    }
+  })
+
+  return await contextWorker.ready
+}
+
+/**
+ * Terminates the VM script context window.
+ * @ignore
+ */
+export async function terminateContextWindow () {
+  const pendingContextWindow = getContextWindow()
+
+  if (contextWindow.frame?.parentElement) {
+    contextWindow.frame.parentElement.removeChild(contextWindow.frame)
+  }
+
+  contextWindow = null
+  const currentContextWindow = await pendingContextWindow
+  await currentContextWindow.close()
+
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+
+  if (existingContextWindow) {
+    await existingContextWindow.close()
+  }
+}
+
+/**
+ * Terminates the VM script context worker.
+ * @ignore
+ */
+export async function terminateContextWorker () {
+  if (!contextWorker) {
+    return
+  }
+
+  const worker = await getContextWorker()
+  worker.port.postMessage({ type: 'terminate-worker' })
+}
+
+/**
+ * Creates a prototype object of known global reserved intrinsics.
+ * @ignore
+ */
+export function createIntrinsics () {
+  const descriptors = Object.create(null)
+  const propertyNames = Object.getOwnPropertyNames(globalThis)
+  const propertySymbols = Object.getOwnPropertySymbols(globalThis)
+
+  for (const property of propertyNames) {
+    const intrinsic = Object.getOwnPropertyDescriptor(globalThis, property)
+    const descriptor = Object.assign(Object.create(null), {
+      configurable: false,
+      enumerable: true,
+      value: intrinsic.value ?? globalThis[property] ?? undefined
+    })
+
+    descriptors[property] = descriptor
+  }
+
+  for (const symbol of propertySymbols) {
+    descriptors[symbol] = {
+      configurable: false,
+      enumberale: false,
+      value: globalThis[symbol]
+    }
+  }
+
+  return Object.create(null, descriptors)
+}
+
+/**
+ * Creates a global proxy object for context execution.
+ * @ignore
+ * @param {object} context
+ * @return {Proxy}
+ */
+export function createGlobalObject (context) {
+  const prototype = Object.getPrototypeOf(globalThis)
+  const intrinsics = createIntrinsics()
+  const descriptors = Object.getOwnPropertyDescriptors(intrinsics)
+  const globalObject = Object.create(prototype, descriptors)
+
+  const symbols = Object.getOwnPropertySymbols(intrinsics)
+  const target = Object.create(null)
+
+  // restore symbols
+  for (const symbol of symbols) {
+    try {
+      Object.defineProperty(globalObject, symbol, intrinsics[symbol])
+    } catch {}
+  }
+
+  return new Proxy(target, {
+    get (_, property, receiver) {
+      if (property === 'console') {
+        return console
+      }
+
+      if (context && property in context) {
+        return Reflect.get(context, property)
+      }
+
+      if (property === 'top') {
+        return null
+      }
+
+      if (property in globalObject) {
+        return Reflect.get(globalObject, property)
+      }
+    },
+
+    set (_, property, value) {
+      if (context) {
+        if (Reflect.isExtensible(context)) {
+          Reflect.set(context, property, value)
+          return true
+        }
+
+        return false
+      }
+
+      if (property === 'top') {
+        return false
+      }
+
+      Reflect.set(globalObject, property, value)
+      return true
+    },
+
+    getPrototypeOf (_) {
+      if (context) {
+        return Reflect.getPrototypeOf(context)
+      }
+
+      return prototype
+    },
+
+    setPrototypeOf (_, prototype) {
+      return false
+    },
+
+    defineProperty (_, property, descriptor) {
+      if (RESERVED_GLOBAL_INTRINSICS.includes(property)) {
+        return false
+      }
+
+      if (context) {
+        Reflect.defineProperty(context, property, descriptor)
+        return true
+      }
+
+      Reflect.defineProperty(globalObject, property, descriptor)
+      return true
+    },
+
+    deleteProperty (_, property) {
+      if (RESERVED_GLOBAL_INTRINSICS.includes(property)) {
+        return false
+      }
+
+      if (context) {
+        return Reflect.deleteProperty(context, property)
+      }
+
+      return Reflect.deleteProperty(globalObject, property)
+    },
+
+    getOwnPropertyDescriptor (_, property) {
+      if (context) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(context, property)
+        if (descriptor) {
+          return descriptor
+        }
+      }
+
+      if (property === 'top') {
+        return { enumerable: false, configurable: false, value: null }
+      }
+
+      return Reflect.getOwnPropertyDescriptor(globalObject, property)
+    },
+
+    has (_, property) {
+      if (context && Reflect.has(context, property)) {
+        return true
+      }
+
+      if (property === 'top') {
+        return true
+      }
+
+      return Reflect.has(globalObject, property)
+    },
+
+    isExtensible (_) {
+      if (context) {
+        return Reflect.isExtensible(context)
+      }
+
+      return true
+    },
+
+    ownKeys (_) {
+      const keys = []
+      if (context) {
+        keys.push(...Reflect.ownKeys(context))
+      }
+
+      keys.push(...Reflect
+        .ownKeys(globalObject)
+        .filter((key) => {
+          if (key === 'top') return false
+          return true
+        })
+      )
+
+      return Array.from(new Set(keys))
+    },
+
+    preventExtensions (_) {
+      if (context) {
+        Reflect.preventExtensions(context)
+        return true
+      }
+
+      return false
+    }
+  })
+}
+
+/**
+ * @ignore
+ * @param {string} source
+ * @return {boolean}
+ */
+export function detectFunctionSourceType (source) {
+  return /^\s*(import|export)\s.*$/gm.test(source) ? 'module' : 'classic'
+}
+
+/**
+ * Compiles `source`  with `options` into a function.
+ * @ignore
+ * @param {string} source
+ * @param {object=} [options]
+ * @return {function}
+ */
+export function compileFunction (source, options = null) {
+  options = { ...options }
+  // detect source type naively
+  if (!options?.type) {
+    options.type = detectFunctionSourceType(source)
+  }
+
+  if (options?.type === 'module') {
+    const blob = new Blob([source], { type: 'text/javascript' })
+    const url = URL.createObjectURL(blob)
+    const moduleSource = `
+      const module = await import("${url}")
+      const exports = {}
+
+      if (module.default !== undefined) {
+        exports.default = module.default
+      }
+
+      for (const key in module) {
+        exports[key] = module[key]
+      }
+
+      return exports
+    `
+
+    return compileFunction(moduleSource, {
+      ...options,
+      type: 'classic',
+      async: true,
+      wrap: false
+    })
+  } else {
+    const globalObject = createGlobalObject(options?.context)
+    const wrappedSource = options?.wrap === false
+      ? source
+      : wrapFunctionSource(source, options)
+
+    const compiled = options?.async === true
+      // eslint-disable-next-line
+      ? new AsyncFunction(wrappedSource)
+      // eslint-disable-next-line
+      : new Function(wrappedSource)
+
+    return compiled.bind(globalObject)
+  }
+}
+
+/**
+ * Run `source` JavaScript in given context. The script context execution
+ * context is preserved until the `context` object that points to it is
+ * garbage collected or there are no longer any references to it and its
+ * associated `Script` instance.
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @param {object=} [context]
+ * @return {Promise<any>}
+ */
+export async function runInContext (source, options, context) {
+  const script = scripts.get(options?.context ?? context) ?? new Script(source, options)
+
+  if (options?.context ?? context) {
+    scripts.set(options?.context ?? context, script)
+  }
+
+  return await script.runInContext(options?.context ?? context, { ...options, source })
+}
+
+/**
+ * Run `source` JavaScript in new context. The script context is destroyed after
+ * execution. This is typically a "one off" isolated run.
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @param {object=} [context]
+ * @return {Promise<any>}
+ */
+export async function runInNewContext (source, options, context) {
+  const script = new Script(source, options)
+  const result = await script.runInNewContext(options.context ?? context, options)
+  await script.destroy()
+  return result
+}
+
+/**
+ * Run `source` JavaScript in this current context (`globalThis`).
+ * @param {string} source
+ * @param {ScriptOptions=} [options]
+ * @return {Promise<any>}
+ */
+export async function runInThisContext (source, options) {
+  const script = new Script(source, options)
+  const result = await script.runInThisContext(options)
+  await script.destroy()
+  return result
+}
+
+/**
+ * @ignore
+ * @param {Reference} reference
+ */
+export function putReference (reference) {
+  const { value } = reference
+  if (
+    value &&
+    typeof value !== 'string' &&
+    typeof value !== 'number' &&
+    typeof value !== 'boolean'
+  ) {
+    references.set(value, reference)
+  }
+
+  references.index.set(reference.id, reference)
+}
+
+/**
+ * Create a `Reference` for a `value` in a script `context`.
+ * @param {any} value
+ * @param {object} context
+ * @return {Reference}
+ */
+export function createReference (value, context) {
+  const id = crypto.randomBytes(8).toString('base64')
+  const reference = new Reference(id, value, context)
+  putReference(reference)
+  return reference
+}
+
+/**
+ * Get a script context by ID or values
+ * @param {string|object|function} id
+ * @return {Reference?}
+ */
+export function getReference (id) {
+  return references.get(id) ?? references.index.get(id)
+}
+
+/**
+ * Remove a script context reference by ID.
+ * @param {string} id
+ */
+export function removeReference (id) {
+  const reference = getReference(id)
+  references.index.delete(id)
+  if (reference) {
+    references.delete(reference.value)
+  }
+}
+
+/**
+ * Get all transferable values in the `object` hierarchy.
+ * @param {object} object
+ * @return {object[]}
+ */
+export function getTrasferables (object) {
+  const transferables = []
+  findMessageTransfers(transferables, object)
+  return transferables
+}
+
+export default {
+  compileFunction,
+  createReference,
+  getContextWindow,
+  getContextWorker,
+  getReference,
+  getTrasferables,
+  putReference,
+  Reference,
+  removeReference,
+  runInContext,
+  runInNewContext,
+  runInThisContext,
+  Script
+}

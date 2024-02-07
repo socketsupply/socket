@@ -65,7 +65,12 @@
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
+import { toProperCase } from './util.js'
 import location from './location.js'
+
+/**
+ * @typedef {{ signal?: AbortSignal }} WaitOptions
+ */
 
 // primordial setup
 const EventTargetPrototype = {
@@ -115,7 +120,7 @@ function proxyGlobalEvents (global, target) {
           url: event.url.toString()
         }))
       } else if (error) {
-        const { message, filename = import.meta.url } = error
+        const { message, filename = import.meta.url || globalThis.location.href } = error
         dispatchEvent(target, new ErrorEvent(type, { message, filename, error, detail }))
       } else if (type && data) {
         dispatchEvent(target, new MessageEvent(type, { origin, data, detail }))
@@ -349,6 +354,54 @@ export class Hooks extends EventTarget {
   }
 
   /**
+   * Wait for a hook event to occur.
+   * @template {Event | T extends Event}
+   * @param {string|function} nameOrFunction
+   * @param {WaitOptions=} [options]
+   * @return {Promise<T>}
+   */
+  async wait (nameOrFunction, options = null) {
+    const signal = options?.signal ?? null
+
+    if (typeof nameOrFunction === 'string') {
+      const name = /** @type {string} */ (nameOrFunction)
+      const method = `on${toProperCase(name.toLowerCase())}`
+
+      if (typeof this[method] === 'function') {
+        return await new Promise((resolve) => {
+          const removeEventListener = this[method](resolve)
+
+          if (signal?.aborted) {
+            removeEventListener()
+          } else if (signal) {
+            addEventListenerOnce(signal, 'abort', removeEventListener)
+          }
+        })
+      }
+    } else if (typeof nameOrFunction === 'function') {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        this.constructor.prototype,
+        /** @type {function} */ (nameOrFunction).name
+      )
+
+      if (descriptor?.value === nameOrFunction) {
+        return await new Promise((resolve) => {
+          const removeEventListener = /** @type {function} */ (nameOrFunction)
+            .call(this, resolve)
+
+          if (signal?.aborted) {
+            removeEventListener()
+          } else if (signal) {
+            addEventListenerOnce(signal, 'abort', removeEventListener)
+          }
+        })
+      }
+    }
+
+    throw new TypeError(`${nameOrFunction} is not a valid hook to wait for`)
+  }
+
+  /**
    * Wait for the global Window, Document, and Runtime to be ready.
    * The callback function is called exactly once.
    * @param {function} callback
@@ -511,6 +564,16 @@ export class Hooks extends EventTarget {
  * @ignore
  */
 const hooks = new Hooks()
+
+/**
+ * Wait for a hook event to occur.
+ * @template {Event | T extends Event}
+ * @param {string|function} nameOrFunction
+ * @return {Promise<T>}
+ */
+export async function wait (nameOrFunction) {
+  return await hooks.wait(nameOrFunction)
+}
 
 /**
  * Wait for the global Window, Document, and Runtime to be ready.

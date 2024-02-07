@@ -1,5 +1,4 @@
 import { IllegalConstructor } from '../util.js'
-import { Worker } from '../worker.js'
 import { Metric } from './metric.js'
 import registry from './channels.js'
 import process from '../process.js'
@@ -181,15 +180,11 @@ export class XMLHttpRequestMetric extends Metric {
 }
 
 export class WorkerMetric extends Metric {
-  /**
-   * @type {Worker}
-   */
-  static GlobalWorker = Worker
-
   constructor (options) {
     super()
+    this.GlobalWorker = globalThis.Worker
     this.channel = dc.channel('Worker')
-    this.Worker = class Worker extends WorkerMetric.GlobalWorker {
+    this.Worker = class Worker extends this.GlobalWorker {
       constructor (url, options, ...args) {
         super(url, options, ...args)
         dc.channel('Worker').publish({ worker: this, url, options })
@@ -203,7 +198,7 @@ export class WorkerMetric extends Metric {
 
   destroy () {
     this.channel.reset()
-    globalThis.Worker = WorkerMetric.GlobalWorker
+    globalThis.Worker = this.GlobalWorker
   }
 }
 

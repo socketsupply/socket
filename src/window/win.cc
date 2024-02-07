@@ -617,6 +617,7 @@ namespace SSC {
     static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
+    this->index = opts.index;
     window = CreateWindow(
       userConfig["meta_bundle_identifier"].c_str(),
       userConfig["meta_title"].c_str(),
@@ -1002,6 +1003,7 @@ namespace SSC {
                               headers += "Content-Length: ";
                               headers += std::to_string(length);
                               headers += "\n";
+                              headers += userConfig["webview_headers"];
 
                               handled = true;
 
@@ -1040,21 +1042,23 @@ namespace SSC {
                                 path = path.substr(0, path.size() - 2);
                               }
 
+                              auto parsedPath = IPC::Router::parseURL(path);
                               auto rootPath = this->modulePath.parent_path();
-                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
-                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
+                              auto resolved = IPC::Router::resolveURLPathForWebView(parsedPath.path, rootPath.string());
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(parsedPath.path);
                               path = resolved.path;
 
                               if (mount.path.size() > 0) {
                                 if (mount.resolution.redirect) {
+                                  auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(mount.resolution.path) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(mount.resolution.path) + L"\n"
+                                      convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                       ).c_str(),
                                     &res
                                   );
@@ -1066,14 +1070,15 @@ namespace SSC {
                               } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
+                                auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
                                   301,
                                   L"Moved Permanently",
                                   WString(
-                                    convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
+                                    convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                     ).c_str(),
                                   &res
                                   );
@@ -1147,6 +1152,7 @@ namespace SSC {
                                   headers += "Content-Length: ";
                                   headers += std::to_string(fileSize.QuadPart);
                                   headers += "\n";
+                                  headers += userConfig["webview_headers"];
 
                                   if (SHCreateStreamOnFileA(path.c_str(), STGM_READ, &stream) == S_OK) {
                                     env->CreateWebResourceResponse(
@@ -1439,6 +1445,18 @@ namespace SSC {
     } else {
       this->hide();
     }
+  }
+
+  void Window::maximize () {
+    ShowWindow(window, SW_MAXIMIZE);
+  }
+
+  void Window::minimize () {
+    ShowWindow(window, SW_MINIMIZE);
+  }
+
+  void Window::restore () {
+    ShowWindow(window, SW_RESTORE);
   }
 
   void Window::show () {

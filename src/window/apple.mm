@@ -1,4 +1,5 @@
 #include "window.hh"
+#include "../ipc/ipc.hh"
 
 @implementation SSCNavigationDelegate
 -                    (void) webView: (WKWebView*) webview
@@ -10,27 +11,65 @@
   ) {
     static auto userConfig = SSC::getUserConfig();
     static const auto devHost = SSC::getDevHost();
+    static const auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
 
     auto base = SSC::String(webview.URL.absoluteString.UTF8String);
     auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
 
-    if (request.starts_with(userConfig["meta_application_protocol"])) {
-      decisionHandler(WKNavigationActionPolicyCancel);
+    const auto applinks = SSC::parseStringList(userConfig["meta_application_links"], ' ');
+    bool hasAppLink = false;
 
+    if (applinks.size() > 0 && navigationAction.request.URL.host != nullptr) {
+      auto host = SSC::String(navigationAction.request.URL.host.UTF8String);
+      for (const auto& applink : applinks) {
+        const auto parts = SSC::split(applink, '?');
+        if (host == parts[0]) {
+          hasAppLink = true;
+          break;
+        }
+      }
+    }
+
+    if (hasAppLink) {
       if (self.bridge != nullptr) {
+        decisionHandler(WKNavigationActionPolicyCancel);
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
           "url", request
         }};
 
         self.bridge->router.emit("applicationurl", json.str());
+        return;
       }
+    }
+
+    if (
+      userConfig["meta_application_protocol"].size() > 0 &&
+      request.starts_with(userConfig["meta_application_protocol"])
+    ) {
+      if (self.bridge != nullptr) {
+        decisionHandler(WKNavigationActionPolicyCancel);
+
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+          "url", request
+        }};
+
+        self.bridge->router.emit("applicationurl", json.str());
+        return;
+      }
+    }
+
+    if (request.starts_with("socket:")) {
+      decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
 
-    if (request.find("socket:") != 0 && request.find(devHost) != 0) {
-      decisionHandler(WKNavigationActionPolicyCancel);
+    if (request.starts_with(devHost)) {
+      decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
+
+    decisionHandler(WKNavigationActionPolicyCancel);
+    return;
   }
 
   decisionHandler(WKNavigationActionPolicyAllow);
@@ -63,183 +102,172 @@ SSC::Vector<SSC::String> draggablePayload;
 int lastX = 0;
 int lastY = 0;
 
-- (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
+- (BOOL) wantsPeriodicDraggingUpdates {
+  return YES;
+}
+
+- (BOOL) prepareForDragOperation: (id<NSDraggingInfo>) info {
   [info setDraggingFormation: NSDraggingFormationNone];
-  return NO;
+  return YES;
 }
 
-- (void) draggingExited: (id<NSDraggingInfo>)info {
-  NSPoint pos = [info draggingLocation];
-  auto x = std::to_string(pos.x);
-  auto y = std::to_string([self frame].size.height - pos.y);
-
-  SSC::String json = (
-    "{\"x\":" + x + ","
-    "\"y\":" + y + "}"
-  );
-
-  auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json);
-  draggablePayload.clear();
-
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+- (BOOL) performDragOperation: (id<NSDraggingInfo>) info {
+  return YES;
 }
 
-- (NSDragOperation) draggingUpdated:(id <NSDraggingInfo>)info {
-  NSPoint pos = [info draggingLocation];
-  auto x = std::to_string(pos.x);
-  auto y = std::to_string([self frame].size.height - pos.y);
+- (void) concludeDragOperation: (id<NSDraggingInfo>) info {
+}
 
-  int count = draggablePayload.size();
-  bool inbound = false;
+- (void) updateDraggingItemsForDrag: (id<NSDraggingInfo>) info {
+}
+
+- (NSDragOperation) draggingEntered: (id<NSDraggingInfo>) info {
+  const auto json = SSC::JSON::Object {};
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("dragenter", json.str());
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+  [self draggingUpdated: info];
+  return NSDragOperationGeneric;
+}
+
+- (NSDragOperation) draggingUpdated: (id<NSDraggingInfo>) info {
+  const auto position = info.draggingLocation;
+  const auto x = std::to_string(position.x);
+  const auto y = std::to_string(self.frame.size.height - position.y);
+
+  auto count = draggablePayload.size();
+  auto inbound = false;
 
   if (count == 0) {
     inbound = true;
     count = [info numberOfValidItemsForDrop];
   }
 
-  SSC::String json = (
-    "{\"count\":" + std::to_string(count) + ","
-    "\"inbound\":" + (inbound ? "true" : "false") + ","
-    "\"x\":" + x + ","
-    "\"y\":" + y + "}"
-  );
+  const auto data = SSC::JSON::Object::Entries {
+    {"count", (unsigned int) count},
+    {"inbound", inbound},
+    {"x", x},
+    {"y", y}
+  };
 
-  auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
+  const auto json = SSC::JSON::Object {data};
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json.str());
 
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
-  return NSDragOperationGeneric;
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+  return [super draggingUpdated: info];
 }
 
-- (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
-  [self draggingUpdated: info];
+- (void) draggingExited: (id<NSDraggingInfo>) info {
+  const auto position = info.draggingLocation;
+  const auto x = std::to_string(position.x);
+  const auto y = std::to_string(self.frame.size.height - position.y);
 
-  auto payload = SSC::getEmitToRenderProcessJavaScript("dragenter", "{}");
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
-  return NSDragOperationGeneric;
-}
+  const auto data = SSC::JSON::Object::Entries {
+    {"x", x},
+    {"y", y}
+  };
 
-- (void) draggingEnded: (id<NSDraggingInfo>)info {
-  NSPasteboard *pboard = [info draggingPasteboard];
-  NSPoint pos = [info draggingLocation];
-  int y = [self frame].size.height - pos.y;
+  const auto json = SSC::JSON::Object {data};
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json.str());
 
-  NSArray<Class> *classes = @[[NSURL class]];
-  NSDictionary *options = @{};
-  NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
-
-  // if (NSPointInRect([info draggingLocation], self.frame)) {
-    // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
-    // so we need to flip the y coordinate to convert to browser coordinates
-
-  SSC::StringStream ss;
-  int len = [files count];
-  ss << "[";
-
-  for (int i = 0; i < len; i++) {
-    NSURL *url = files[i];
-    SSC::String path = [[url path] UTF8String];
-    // path = SSC::replace(path, "\"", "'");
-    // path = SSC::replace(path, "\\", "\\\\");
-    ss << "\"" << path << "\"";
-
-    if (i < len - 1) {
-      ss << ",";
-    }
-  }
-
-  ss << "]";
-
-  SSC::String json = (
-    "{\"files\": " + ss.str() + ","
-    "\"x\":" + std::to_string(pos.x) + ","
-    "\"y\":" + std::to_string(y) + "}"
-  );
-
-  auto payload = SSC::getEmitToRenderProcessJavaScript("dropin", json);
-
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
-  // }
-
-  // [super draggingEnded:info];
-}
-
-- (void) updateEvent: (NSEvent*)event {
-  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
-  auto x = std::to_string(location.x);
-  auto y = std::to_string(location.y);
-  auto count = std::to_string(draggablePayload.size());
-
-  if (((int) location.x) == lastX || ((int) location.y) == lastY) {
-    [super mouseDown:event];
-    return;
-  }
-
-  SSC::String json = (
-    "{\"count\":" + count + ","
-    "\"x\":" + x + ","
-    "\"y\":" + y + "}"
-  );
-
-  auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
-
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
-}
-
-- (void) mouseUp: (NSEvent*)event {
-  [super mouseUp:event];
-
-  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
-  int x = location.x;
-  int y = location.y;
-
-  auto sx = std::to_string(x);
-  auto sy = std::to_string(y);
-
-  auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
-  auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
-
-  if (significantMoveX || significantMoveY) {
-    for (auto path : draggablePayload) {
-      path = SSC::replace(path, "\"", "'");
-
-      SSC::String json = (
-        "{\"src\":\"" + path + "\","
-        "\"x\":" + sx + ","
-        "\"y\":" + sy + "}"
-      );
-
-      auto payload = SSC::getEmitToRenderProcessJavaScript("drop", json);
-
-      [self evaluateJavaScript:
-        [NSString stringWithUTF8String: payload.c_str()]
-        completionHandler:nil];
-    }
-  }
-
-  SSC::String json = (
-    "{\"x\":" + sx + ","
-    "\"y\":" + sy + "}"
-  );
-
-  auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json);
-
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
-}
-
-- (void) mouseDown: (NSEvent*)event {
   draggablePayload.clear();
 
-  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
-  auto x = std::to_string(location.x);
-  auto y = std::to_string(location.y);
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+}
+
+- (void) draggingEnded: (id<NSDraggingInfo>) info {
+  const auto pasteboard = info.draggingPasteboard;
+  const auto position = info.draggingLocation;
+  const auto x = position.x;
+  const auto y = self.frame.size.height - position.y;
+
+  const auto pasteboardFiles = [pasteboard
+    readObjectsForClasses: @[NSURL.class]
+                  options: @{}
+  ];
+
+  auto files = SSC::JSON::Array::Entries {};
+
+  for (NSURL* file in pasteboardFiles) {
+    files.push_back(file.path.UTF8String);
+  }
+
+  const auto data = SSC::JSON::Object::Entries {
+    {"files", files},
+    {"x", x},
+    {"y", y}
+  };
+
+  const auto json = SSC::JSON::Object { data };
+  debug("files: %s", json.str().c_str());
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("dropin", json.str());
+
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+}
+
+- (void) updateEvent: (NSEvent*) event {
+  const auto location = [self convertPoint: event.locationInWindow fromView :nil];
+  const auto x = std::to_string(location.x);
+  const auto y = std::to_string(location.y);
+  const auto count = draggablePayload.size();
+
+  if (((int) location.x) == lastX || ((int) location.y) == lastY) {
+    return [super mouseDown: event];
+  }
+
+  const auto data = SSC::JSON::Object::Entries {
+    {"count", (unsigned int) count},
+    {"x", x},
+    {"y", y}
+  };
+
+  const auto json = SSC::JSON::Object { data };
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json.str());
+
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+}
+
+- (void) mouseUp: (NSEvent*) event {
+  [super mouseUp: event];
+
+  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
+  const auto x = location.x;
+  const auto y = location.y;
+
+  const auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
+  const auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
+
+  if (significantMoveX || significantMoveY) {
+    for (const auto& path : draggablePayload) {
+      const auto data = SSC::JSON::Object::Entries {
+        {"src", path},
+        {"x", x},
+        {"y", y}
+      };
+
+      const auto json = SSC::JSON::Object { data };
+      const auto payload = SSC::getEmitToRenderProcessJavaScript("drop", json.str());
+
+      [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+    }
+  }
+
+  const auto data = SSC::JSON::Object::Entries {
+    {"x", x},
+    {"y", y}
+  };
+
+  const auto json = SSC::JSON::Object { data };
+  auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json.str());
+
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
+}
+
+- (void) mouseDown: (NSEvent*) event {
+  draggablePayload.clear();
+
+  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
+  const auto x = std::to_string(location.x);
+  const auto y = std::to_string(location.y);
 
   lastX = (int) location.x;
   lastY = (int) location.y;
@@ -253,24 +281,25 @@ int lastY = 0;
     "})()");
 
   [self
-    evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
-     completionHandler: ^(id result, NSError *error) {
+    evaluateJavaScript: @(js.c_str())
+     completionHandler: ^(id result, NSError *error)
+  {
     if (error) {
       NSLog(@"%@", error);
-      [super mouseDown:event];
+      [super mouseDown: event];
       return;
     }
 
-    if (![result isKindOfClass:[NSString class]]) {
-      [super mouseDown:event];
+    if (![result isKindOfClass: NSString.class]) {
+      [super mouseDown: event];
       return;
     }
 
-    SSC::Vector<SSC::String> files =
-      SSC::split(SSC::String([result UTF8String]), ';');
+    const auto string = SSC::String([result UTF8String]);
+    const auto files = SSC::split(string, ';');
 
     if (files.size() == 0) {
-      [super mouseDown:event];
+      [super mouseDown: event];
       return;
     }
 
@@ -279,93 +308,74 @@ int lastY = 0;
   }];
 }
 
-- (void) mouseDragged: (NSEvent*)event {
-  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+- (void) mouseDragged: (NSEvent*) event {
+  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
   [super mouseDragged:event];
-
-  /* NSPoint currentLocation;
-  NSPoint newOrigin;
-
-  NSRect  screenFrame = [[NSScreen mainScreen] frame];
-  NSRect  windowFrame = [self frame];
-
-  currentLocation = [NSEvent mouseLocation];
-  newOrigin.x = currentLocation.x - lastX;
-  newOrigin.y = currentLocation.y - lastY;
-
-  if ((newOrigin.y+windowFrame.size.height) > (screenFrame.origin.y+screenFrame.size.height)){
-    newOrigin.y=screenFrame.origin.y + (screenFrame.size.height-windowFrame.size.height);
-  }
-
-  [[self window] setFrameOrigin:newOrigin]; */
 
   if (!NSPointInRect(location, self.frame)) {
     auto payload = SSC::getEmitToRenderProcessJavaScript("dragexit", "{}");
-    [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
+    [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
   }
 
-  if (draggablePayload.size() == 0) return;
+  if (draggablePayload.size() == 0) {
+    return;
+  }
 
-  int x = location.x;
-  int y = location.y;
-
-  auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
-  auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
+  const auto x = location.x;
+  const auto y = location.y;
+  const auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
+  const auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
 
   if (significantMoveX || significantMoveY) {
-    auto sx = std::to_string(x);
-    auto sy = std::to_string(y);
-    auto count = std::to_string(draggablePayload.size());
+    const auto data = SSC::JSON::Object::Entries {
+      {"count", (unsigned int) draggablePayload.size()},
+      {"x", x},
+      {"y", y}
+    };
 
-    SSC::String json = (
-      "{\"count\":" + count + ","
-      "\"x\":" + sx + ","
-      "\"y\":" + sy + "}"
-    );
+    const auto json = SSC::JSON::Object { data };
+    const auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json.str());
 
-    auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
-
-    [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
+    [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
   }
 
-  if (NSPointInRect(location, self.frame)) return;
+  if (NSPointInRect(location, self.frame)) {
+    return;
+  }
 
-  NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
-  [pboard declareTypes: @[(NSString*) kPasteboardTypeFileURLPromise] owner:self];
+  const auto pasteboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
+  const auto dragItems = [NSMutableArray new];
+  const auto iconSize = NSMakeSize(32, 32); // according to documentation
 
-  NSMutableArray* dragItems = [[NSMutableArray alloc] init];
-  NSSize iconSize = NSMakeSize(32, 32); // according to documentation
-  NSRect imageLocation;
-  NSPoint dragPosition = [self
-    convertPoint: [event locationInWindow]
-    fromView: nil];
+  [pasteboard declareTypes: @[(NSString*) kPasteboardTypeFileURLPromise] owner:self];
 
+  auto dragPosition = [self convertPoint: event.locationInWindow fromView: nil];
   dragPosition.x -= 16;
   dragPosition.y -= 16;
+
+  NSRect imageLocation;
   imageLocation.origin = dragPosition;
   imageLocation.size = iconSize;
 
-  for (auto& file : draggablePayload) {
-    NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
-    NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
+  for (const auto& file : draggablePayload) {
+    const auto url = [NSURL fileURLWithPath: @(file.c_str())];
+    const auto icon = [NSWorkspace.sharedWorkspace iconForContentType: UTTypeURL];
 
-    NSImage* icon = [[NSWorkspace sharedWorkspace] iconForContentType: UTTypeURL];
+    NSArray* (^providerBlock)() = ^NSArray* () {
+      const auto component = [
+        [NSDraggingImageComponent.alloc initWithKey: NSDraggingImageComponentIconKey
+      ] retain];
 
-    NSArray* (^providerBlock)() = ^NSArray*() {
-      NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
-        initWithKey: NSDraggingImageComponentIconKey] retain];
-
-      comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
-      comp.contents = icon;
-      return @[comp];
+      component.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
+      component.contents = icon;
+      return @[component];
     };
 
-    NSDraggingItem* dragItem;
-    auto provider = [[NSFilePromiseProvider alloc] initWithFileType:@"public.url" delegate: self];
-    [provider setUserInfo: [NSString stringWithUTF8String:file.c_str()]];
-    dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: provider];
+    auto provider = [NSFilePromiseProvider.alloc initWithFileType: @"public.url" delegate: self];
+
+    [provider setUserInfo: @(file.c_str())];
+
+    auto dragItem = [NSDraggingItem.alloc initWithPasteboardWriter: provider];
 
     dragItem.draggingFrame = NSMakeRect(
       dragPosition.x,
@@ -378,57 +388,61 @@ int lastY = 0;
     [dragItems addObject: dragItem];
   }
 
-  NSDraggingSession* session = [self
+  auto session = [self
       beginDraggingSessionWithItems: dragItems
                               event: event
-                             source: self];
+                             source: self
+  ];
 
   session.draggingFormation = NSDraggingFormationPile;
   draggablePayload.clear();
 }
 
-- (NSDragOperation)draggingSession:(NSDraggingSession*)session
-    sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
-  return NSDragOperationCopy;
+-       (NSDragOperation) draggingSession: (NSDraggingSession*) session
+    sourceOperationMaskForDraggingContext: (NSDraggingContext) context
+{
+  return NSDragOperationGeneric;
 }
 
-- (void) filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider writePromiseToURL:(NSURL *)url
-  completionHandler:(void (^)(NSError *errorOrNil))completionHandler
+- (void) filePromiseProvider: (NSFilePromiseProvider*) filePromiseProvider
+           writePromiseToURL: (NSURL*) url
+           completionHandler: (void (^)(NSError *errorOrNil)) completionHandler
 {
-  SSC::String dest = [[url path] UTF8String];
-  SSC::String src([[filePromiseProvider userInfo] UTF8String]);
+  const auto dest = SSC::String(url.path.UTF8String);
+  const auto src = SSC::String([filePromiseProvider.userInfo UTF8String]);
+  const auto data = [@"" dataUsingEncoding: NSUTF8StringEncoding];
 
-  NSData *data = [@"" dataUsingEncoding:NSUTF8StringEncoding];
-  [data writeToURL:url atomically:YES];
+  [data writeToURL: url atomically: YES];
 
-  SSC::String json = (
-    "{\"src\":\"" + src + "\","
-    "\"dest\":\"" + dest + "\"}"
-  );
+  const auto json = SSC::JSON::Object {
+    SSC::JSON::Object::Entries {
+      {"src", src},
+      {"dest", dest}
+    }
+  };
 
-  SSC::String js = SSC::getEmitToRenderProcessJavaScript("dropout", json);
+  const auto payload = SSC::getEmitToRenderProcessJavaScript("dropout", json.str());
 
-  [self
-    evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
-     completionHandler: nil
-  ];
+  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
 
   completionHandler(nil);
 }
 
-- (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
-  SSC::String file(std::to_string(SSC::rand64()) + ".download");
-  return [NSString stringWithUTF8String:file.c_str()];
+- (NSString*) filePromiseProvider: (NSFilePromiseProvider*) filePromiseProvider
+                  fileNameForType: (NSString*) fileType
+{
+  const auto id = SSC::rand64();
+  const auto filename = std::to_string(id) + ".download";
+  return @(filename.c_str());
 }
-
 
 -             (void) webView: (WKWebView*) webView
   runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
             initiatedByFrame: (WKFrameInfo*) frame
            completionHandler: (void (^)(NSArray<NSURL*>*URLs)) completionHandler
 {
-  auto acceptedFileExtensions = parameters._acceptedFileExtensions;
-  auto acceptedMIMETypes = parameters._acceptedMIMETypes;
+  const auto acceptedFileExtensions = parameters._acceptedFileExtensions;
+  const auto acceptedMIMETypes = parameters._acceptedMIMETypes;
   SSC::StringStream contentTypesSpec;
 
   for (NSString* acceptedMIMEType in acceptedMIMETypes) {
@@ -543,20 +557,6 @@ int lastY = 0;
     decisionHandler(WKPermissionDecisionDeny);
     return;
   }
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                       (void) _webView: (WKWebView*) webView
-  requestGeolocationPermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                       (void) _webView: (WKWebView*) webView
-   requestGeolocationPermissionForFrame: (WKFrameInfo*) frame
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
 
   decisionHandler(WKPermissionDecisionGrant);
 }
@@ -703,6 +703,7 @@ namespace SSC {
 
     static auto userConfig = SSC::getUserConfig();
 
+    this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core);
 
     this->bridge->router.dispatchFunction = [this] (auto callback) {
@@ -752,7 +753,7 @@ namespace SSC {
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
-    // config.limitsNavigationsToAppBoundDomains = YES;
+    config.limitsNavigationsToAppBoundDomains = YES;
 
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"ipc"];
@@ -760,17 +761,31 @@ namespace SSC {
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"socket"];
 
+    [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
+
     WKPreferences* prefs = [config preferences];
     prefs.javaScriptCanOpenWindowsAutomatically = YES;
 
     @try {
       if (userConfig["permissions_allow_fullscreen"] == "false") {
         [prefs setValue: @NO forKey: @"fullScreenEnabled"];
+        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
       } else {
         [prefs setValue: @YES forKey: @"fullScreenEnabled"];
+        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
       }
     } @catch (NSException *error) {
       debug("Failed to set preference: 'fullScreenEnabled': %@", error);
+    }
+
+    @try {
+      if (userConfig["permissions_allow_fullscreen"] == "false") {
+        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
+      } else {
+        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
     }
 
     if (SSC::isDebugEnabled()) {
@@ -860,9 +875,17 @@ namespace SSC {
       debug("%@", error);
     }
 
+    config.defaultWebpagePreferences.allowsContentJavaScript = YES;
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
     config.processPool = [WKProcessPool new];
+
+    /**
+    [config.websiteDataStore.httpCookieStore
+      setCookiePolicy: WKCookiePolicyAllow
+      completionHandler: ^(){}
+    ];
+    */
 
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
@@ -926,7 +949,6 @@ namespace SSC {
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
     //
-    bool exiting = false;
 
     windowDelegate = [SSCWindowDelegate new];
     navigationDelegate = [SSCNavigationDelegate new];
@@ -946,9 +968,12 @@ namespace SSC {
         @selector(windowShouldClose:),
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
-            if (exiting) return true;
-
             auto window = (Window*) objc_getAssociatedObject(self, "window");
+            if (!window) {
+              return true;
+            }
+
+            if (exiting) return true;
 
             if (window->opts.canExit) {
               exiting = true;
@@ -994,6 +1019,10 @@ namespace SSC {
           [=](id self, SEL _cmd, id item) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
 
+            if (!window) {
+              return;
+            }
+
             id menuItem = (id) item;
             SSC::String title = [[menuItem title] UTF8String];
             SSC::String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
@@ -1032,19 +1061,6 @@ namespace SSC {
 
   Window::~Window () {
     this->close(0);
-
-    #if !__has_feature(objc_arc)
-    if (this->window) {
-      [this->window release];
-    }
-
-    if (this->webview) {
-      [this->webview release];
-    }
-    #endif
-
-    this->window = nullptr;
-    this->webview = nullptr;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1066,6 +1082,7 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
+    exiting = true;
     this->close(code);;
     if (onExit != nullptr) onExit(code);
   }
@@ -1076,7 +1093,12 @@ namespace SSC {
   void Window::close (int code) {
     if (this->window != nullptr) {
       [this->window performClose: nil];
+
       this->window = nullptr;
+    }
+
+    if (this->webview) {
+      this->webview = nullptr;
     }
 
     if (this->windowDelegate != nullptr) {
@@ -1089,11 +1111,23 @@ namespace SSC {
     }
   }
 
+  void Window::maximize () {
+    [this->window zoom: this->window];
+  }
+
+  void Window::minimize () {
+    [this->window miniaturize: this->window];
+  }
+
+  void Window::restore () {
+    [this->window deminiaturize: this->window];
+  }
+
   void Window::hide () {
     if (this->window) {
       [this->window orderOut: this->window];
+      this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
     }
-    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
   }
 
   void Window::eval (const SSC::String& js) {

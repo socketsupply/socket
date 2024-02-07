@@ -66,7 +66,7 @@ namespace SSC {
             return memory;
           }
 
-          template <typename T> T* alloc (unsigned int size) {
+          template <typename T> T* alloc (size_t size) {
             auto memory = new T[size]{0};
             push([memory]() { delete [] memory; });
             return memory;
