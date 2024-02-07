@@ -86,18 +86,17 @@ namespace SSC {
       "}                                                                     \n"
       "                                                                      \n"
       "if (name === 'dropin' || name === 'drop') {                           \n"
-      "  globalThis.dispatchEvent(new CustomEvent('platformdrop', {          \n"
+      "  return globalThis.dispatchEvent(new CustomEvent('platformdrop', {          \n"
       "    detail: {                                                         \n"
       "      ...detail,                                                      \n"
       "      files: Array.from(detail?.src || detail?.files || [])           \n"
       "        .filter(Boolean)                                              \n"
       "    }                                                                 \n"
       "  }));                                                                \n"
+      "}                                                                     \n"
       "                                                                      \n"
       "const event = new CustomEvent(name, { detail, ...options });          \n"
       "target.dispatchEvent(event);                                          \n"
-      "                                                                      \n"
-      "}                                                                     \n"
     );
   }
 
