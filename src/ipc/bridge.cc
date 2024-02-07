@@ -3861,7 +3861,7 @@ namespace SSC::IPC {
     return Router::WebViewURLPathResolution{};
   };
 
-  Router::WebViewURLComponents parseURL(const SSC::String& url) {
+  Router::WebViewURLComponents Router::parseURL(const SSC::String& url) {
     Router::WebViewURLComponents components;
     components.originalUrl = url;
 
