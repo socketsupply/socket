@@ -160,7 +160,7 @@ namespace SSC {
     }
 
     this->core = new Core();
-    auto cwd = getCwd();
+    auto cwd = getcwd();
     uv_chdir(cwd.c_str());
   }
 
@@ -293,7 +293,7 @@ namespace SSC {
   #endif
   }
 
-  String App::getCwd () {
+  String App::getcwd () {
     static String cwd = "";
 
     #if defined(__linux__) && !defined(__ANDROID__)
@@ -367,7 +367,7 @@ namespace SSC {
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
-    auto iconPath = fs::path { getCwd() / fs::path { "index.ico" } };
+    auto iconPath = fs::path { getcwd() / fs::path { "index.ico" } };
 
     HICON icon = (HICON) LoadImageA(
       NULL,
