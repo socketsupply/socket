@@ -2606,8 +2606,9 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    auto resolved = Router::resolveURLPathForWebView(path, cwd);
-    auto mount = Router::resolveNavigatorMountForWebView(path);
+    auto parsedPath = Router::parseURL(path);
+    auto resolved = Router::resolveURLPathForWebView(parsedPath.path, cwd);
+    auto mount = Router::resolveNavigatorMountForWebView(parsedPath.path);
     path = resolved.path;
 
     if (mount.path.size() > 0) {
@@ -3858,6 +3859,32 @@ namespace SSC::IPC {
     // If no valid path is found, return empty string
     return Router::WebViewURLPathResolution{};
   };
+
+  Router::WebViewURLComponents parseURL(const SSC::String& url) {
+    Router::WebViewURLComponents components;
+    components.originalUrl = url;
+
+    size_t queryPos = url.find('?');
+    size_t fragmentPos = url.find('#');
+
+    if (queryPos != SSC::String::npos) {
+      components.path = url.substr(0, queryPos);
+    } else if (fragmentPos != SSC::String::npos) {
+      components.path = url.substr(0, fragmentPos);
+    } else {
+      components.path = url;
+    }
+
+    if (queryPos != SSC::String::npos) { // Extract the query string
+      components.queryString = url.substr(queryPos + 1, fragmentPos != SSC::String::npos ? fragmentPos - queryPos - 1 : SSC::String::npos);
+    }
+
+    if (fragmentPos != SSC::String::npos) { // Extract the fragment
+      components.fragment = url.substr(fragmentPos + 1);
+    }
+
+    return components;
+  }
 
   static const Map getWebViewNavigatorMounts () {
     static const auto userConfig = getUserConfig();

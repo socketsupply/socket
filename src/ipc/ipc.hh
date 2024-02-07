@@ -245,6 +245,14 @@ namespace SSC::IPC {
         String route; // root path in webview navigator
       };
 
+      struct WebViewURLComponents {
+        String originalUrl;
+        String queryString;
+        String fragment;
+        String path;
+      };
+
+      static WebViewURLComponents parseURL(const String& url);
       static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
       static WebViewNavigatorMount resolveNavigatorMountForWebView (const String& path);
 
