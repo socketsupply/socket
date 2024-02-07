@@ -1,4 +1,5 @@
-/* global Event, EventTarget, HotKeyEvent, reportError */
+/* global Event, EventTarget, ErrorEvent, reportError */
+import { HotKeyEvent } from '../internal/events.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
@@ -23,15 +24,31 @@ export function normalizeExpression (expression) {
 export class Bindings extends EventTarget {
   /**
    * A map of weakly held `Binding` instances.
+   * @ignore
    * @type {Map<number, WeakRef<Binding>>}
    */
   #map = new Map()
 
   /**
    * The source `EventTarget` to listen for 'hotkey' events on
+   * @ignore
    * @type {EventTarget}
    */
   #sourceEventTarget = null
+
+  /**
+   * Level 1 'error'` event listener.
+   * @ignore
+   * @type {function(ErrorEvent)?}
+   */
+  #onerror = null
+
+  /**
+   * Level 1 'hotkey'` event listener.
+   * @ignore
+   * @type {function(HotKeyEvent)?}
+   */
+  #onhotkey = null
 
   /**
    * `Bindings` class constructor.
@@ -53,37 +70,74 @@ export class Bindings extends EventTarget {
   }
 
   /**
-   * Intializes bindings
-   */
-  async init () {
-    for (const binding of await getBindings()) {
-      await binding.bind()
-    }
-  }
-
-  /**
-   * Implements `gc.finalizer` for gc'd resource cleanup.
-   * @return {gc.Finalizer}
-   * @ignore
-   */
-  [gc.finalizer] () {
-    return {
-      args: [this.#map, this.#sourceEventTarget, this.onHotKey],
-      handle (map, sourceEventTarget, onHotKey) {
-        map.clear()
-        if (sourceEventTarget) {
-          sourceEventTarget.removeEventListener('hotkey', onHotKey)
-        }
-      }
-    }
-  }
-
-  /**
    * The number of `Binding` instances in the mapping.
    * @type {number}
    */
   get size () {
     return this.#map.size
+  }
+
+  /**
+   * Level 1 'error'` event listener.
+   * @type {function(ErrorEvent)?}
+   */
+  get onerror () {
+    return this.#onerror ?? null
+  }
+
+  /**
+   * Setter for the level 1 'error'` event listener.
+   * @ignore
+   * @type {function(ErrorEvent)?}
+   */
+  set onerror (onerror) {
+    if (this.#onerror) {
+      this.removeEventListener('error', this.#onerror)
+    }
+
+    if (typeof onerror === 'function') {
+      this.#onerror = onerror
+      this.addEventListener('error', onerror)
+    }
+  }
+
+  /**
+   * Level 1 'hotkey'` event listener.
+   * @type {function(hotkeyEvent)?}
+   */
+  get onhotkey () {
+    return this.#onhotkey ?? null
+  }
+
+  /**
+   * Setter for the level 1 'hotkey'` event listener.
+   * @ignore
+   * @type {function(HotKeyEvent)?}
+   */
+  set onhotkey (onhotkey) {
+    if (this.#onhotkey) {
+      this.removeEventListener('hotkey', this.#onhotkey)
+    }
+
+    if (typeof onhotkey === 'function') {
+      this.#onhotkey = onhotkey
+      this.addEventListener('hotkey', onhotkey)
+    }
+  }
+
+  /**
+   * Initializes bindings from global context.
+   * @ignore
+   * @return {Promise}
+   */
+  async init () {
+    try {
+      for (const binding of await getBindings()) {
+        await binding.bind()
+      }
+    } catch (error) {
+      this.dispatchEvent(new ErrorEvent('error', { error }))
+    }
   }
 
   /**
@@ -132,7 +186,7 @@ export class Bindings extends EventTarget {
   }
 
   /**
-   * Returns `true` if a binding existss in the mapping, otherwise `false`.
+   * Returns `true` if a binding exists in the mapping, otherwise `false`.
    * @return {boolean}
    */
   has (id) {
@@ -227,7 +281,7 @@ export class Bindings extends EventTarget {
    * Implements the `Iterator` protocol for each currently registered
    * active binding in this window context. The `AsyncIterator` protocol
    * will probe for all gloally active bindings.
-   * @return {Iterator}
+   * @return {Iterator<Binding>}
    */
   [Symbol.iterator] () {
     return this.values()
@@ -238,21 +292,31 @@ export class Bindings extends EventTarget {
    * binding registered to the application. This differs from the `Iterator`
    * protocol as this will probe for _all_ active bindings in the entire
    * application context.
-   * @return {AsyncGenerator}
+   * @return {AsyncGenerator<Binding>}
    */
   async * [Symbol.asyncIterator] () {
     for (const binding of await this.active()) {
       yield binding
     }
   }
-}
 
-/**
- * A container for all the bindings currently bound
- * by this window context.
- * @type {Bindings}
- */
-export const bindings = new Bindings()
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @return {gc.Finalizer}
+   * @ignore
+   */
+  [gc.finalizer] () {
+    return {
+      args: [this.#map, this.#sourceEventTarget, this.onHotKey],
+      handle (map, sourceEventTarget, onHotKey) {
+        map.clear()
+        if (sourceEventTarget) {
+          sourceEventTarget.removeEventListener('hotkey', onHotKey)
+        }
+      }
+    }
+  }
+}
 
 /**
  * An `EventTarget` container for a hotkey binding.
@@ -285,6 +349,13 @@ export class Binding extends EventTarget {
    * @type {string?}
    */
   #expression = null
+
+  /**
+   * Level 1 'hotkey'` event listener.
+   * @ignore
+   * @type {function(HotKeyEvent)?}
+   */
+  #onhotkey = null
 
   /**
    * `Binding` class constructor.
@@ -360,6 +431,30 @@ export class Binding extends EventTarget {
    */
   get expression () {
     return this.#expression
+  }
+
+  /**
+   * Level 1 'hotkey'` event listener.
+   * @type {function(hotkeyEvent)?}
+   */
+  get onhotkey () {
+    return this.#onhotkey ?? null
+  }
+
+  /**
+   * Setter for the level 1 'hotkey'` event listener.
+   * @ignore
+   * @type {function(HotKeyEvent)?}
+   */
+  set onhotkey (onhotkey) {
+    if (this.#onhotkey) {
+      this.removeEventListener('hotkey', this.#onhotkey)
+    }
+
+    if (typeof onhotkey === 'function') {
+      this.#onhotkey = onhotkey
+      this.addEventListener('hotkey', onhotkey)
+    }
   }
 
   /**
@@ -528,7 +623,8 @@ export async function getMappings (options = null) {
 }
 
 /**
- * Adds an event listener to the global active bindings.
+ * Adds an event listener to the global active bindings. This function is just
+ * proxy to `bindings.addEventListener`.
  * @param {string} type
  * @param {function(Event)} listener
  * @param {(boolean|object)=} [optionsOrUseCapture]
@@ -538,7 +634,8 @@ export function addEventListener (type, listener, optionsOrUseCapture) {
 }
 
 /**
- * Removes  an event listener to the global active bindings.
+ * Removes  an event listener to the global active bindings. This function is
+ * just a proxy to `bindings.removeEventListener`
  * @param {string} type
  * @param {function(Event)} listener
  * @param {(boolean|object)=} [optionsOrUseCapture]
@@ -546,5 +643,12 @@ export function addEventListener (type, listener, optionsOrUseCapture) {
 export function removeEventListener (type, listener, optionsOrUseCapture) {
   return bindings.removeEventListener(type, listener, optionsOrUseCapture)
 }
+
+/**
+ * A container for all the bindings currently bound
+ * by this window context.
+ * @type {Bindings}
+ */
+export const bindings = new Bindings()
 
 export default bindings
