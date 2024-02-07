@@ -1352,6 +1352,7 @@ namespace SSC {
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
           auto w = static_cast<Window*>(arg);
           gtk_menu_popup_at_pointer(GTK_MENU(w->menutray), NULL);
+          w->bridge->router.emit("tray", "true");
         }),
         this
       );
