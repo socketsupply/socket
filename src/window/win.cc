@@ -1450,11 +1450,11 @@ namespace SSC {
   }
 
   void Window::minimize () {
-    ShowWindow(hwnd, SW_MINIMIZE);
+    ShowWindow(window, SW_MINIMIZE);
   }
 
   void Window::restore () {
-    ShowWindow(hwnd, SW_RESTORE);
+    ShowWindow(window, SW_RESTORE);
   }
 
   void Window::show () {

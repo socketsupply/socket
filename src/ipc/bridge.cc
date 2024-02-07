@@ -2613,7 +2613,7 @@ static void registerSchemeHandler (Router *router) {
 
     if (mount.path.size() > 0) {
       if (mount.resolution.redirect) {
-        auto redirectURL = path;
+        auto redirectURL = resolved.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -2637,7 +2637,7 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
       path = userConfig["webview_default_index"];
     } else if (resolved.redirect) {
-      auto redirectURL = path;
+      auto redirectURL = resolved.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
       auto redirectSource = String(
         "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
       );
@@ -2875,13 +2875,14 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
+      auto parsedPath = Router::parseURL(path);
       auto resolved = Router::resolveURLPathForWebView(path, basePath);
       auto mount = Router::resolveNavigatorMountForWebView(path);
       path = resolved.path;
 
       if (mount.path.size() > 0) {
         if (mount.resolution.redirect) {
-          auto redirectURL = mount.resolution.path;
+          auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
           auto redirectSource = String(
             "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
           );
@@ -2965,7 +2966,7 @@ static void registerSchemeHandler (Router *router) {
           return;
         }
       } else if (resolved.redirect) {
-        auto redirectURL = path;
+        auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
