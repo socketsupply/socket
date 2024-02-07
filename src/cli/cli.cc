@@ -1050,6 +1050,14 @@ int runApp (const Path& path, const String& args, bool headless) {
 
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
+  if (platform.linux) {
+    // unlink lock file that may existk
+    static const auto bundleIdentifier = settings["meta_bundle_identifier"];
+    static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
+    static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
+    unlink(appInstanceLock.c_str());
+  }
+
   appProcess = new SSC::Process(
     headlessCommand + prefix + cmd,
     args + " --from-ssc",
