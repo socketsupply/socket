@@ -139,7 +139,14 @@ export class MenuItemEvent extends MessageEvent {
    * @param {import('../application/menu.js').Menu} menu
    */
   constructor (type = 'menuitem', data = null, menu = null) {
-    super(type, { data })
+    super(type, {
+      data: {
+        type: data?.type ?? null,
+        title: data?.title ?? null,
+        parent: data?.parent ?? null
+      }
+    })
+
     this.#menu = menu
   }
 
@@ -165,7 +172,7 @@ export class MenuItemEvent extends MessageEvent {
    * @type {string?}
    */
   get tag () {
-    return this.parent
+    return this.data?.parent
   }
 
   /**
@@ -173,6 +180,10 @@ export class MenuItemEvent extends MessageEvent {
    * @type {string?}
    */
   get parent () {
+    if (this.menu?.type !== 'system') {
+      return null
+    }
+
     return this.data?.parent ?? null
   }
 }
