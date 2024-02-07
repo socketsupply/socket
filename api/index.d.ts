@@ -3876,10 +3876,12 @@ declare module "socket:window/hotkey" {
     /**
      * Bind a global hotkey expression.
      * @param {string} expression
-     * @param {object=} [options]
+     * @param {{ passive?: boolean }} [options]
      * @return {Promise<Binding>}
      */
-    export function bind(expression: string, options?: object | undefined): Promise<Binding>;
+    export function bind(expression: string, options?: {
+        passive?: boolean;
+    }): Promise<Binding>;
     /**
      * Bind a global hotkey expression.
      * @param {string} expression
@@ -4028,6 +4030,21 @@ declare module "socket:window/hotkey" {
          * @return {Promise}
          */
         reset(currentContextOnly?: boolean | undefined): Promise<any>;
+        /**
+         * Implements the `Iterator` protocol for each currently registered
+         * active binding in this window context. The `AsyncIterator` protocol
+         * will probe for all gloally active bindings.
+         * @return {Iterator}
+         */
+        [Symbol.iterator](): Iterator<any, any, undefined>;
+        /**
+         * Implements the `AsyncIterator` protocol for each globally active
+         * binding registered to the application. This differs from the `Iterator`
+         * protocol as this will probe for _all_ active bindings in the entire
+         * application context.
+         * @return {AsyncGenerator}
+         */
+        [Symbol.asyncIterator](): AsyncGenerator;
         #private;
     }
     /**
@@ -4047,10 +4064,15 @@ declare module "socket:window/hotkey" {
          */
         constructor(data: object);
         /**
-         * `true` if the binding is valid, otherwise `false.
+         * `true` if the binding is valid, otherwise `false`.
          * @type {boolean}
          */
         get isValid(): boolean;
+        /**
+         * `true` if the binding is considered active, otherwise `false`.
+         * @type {boolean}
+         */
+        get isActive(): boolean;
         /**
          * The global unique ID for this binding.
          * @type {number?}
@@ -4081,16 +4103,15 @@ declare module "socket:window/hotkey" {
          * @return {Promise}
          */
         unbind(): Promise<any>;
+        /**
+         * Implements the `AsyncIterator` protocol for async 'hotkey' events
+         * on this binding instance.
+         * @return {AsyncGenerator}
+         */
+        [Symbol.asyncIterator](): AsyncGenerator;
         #private;
     }
-    namespace _default {
-        export { bind };
-        export { unbind };
-        export { bindings };
-        export { addEventListener };
-        export { removeEventListener };
-    }
-    export default _default;
+    export default bindings;
 }
 declare module "socket:window" {
     /**
@@ -4105,13 +4126,7 @@ declare module "socket:window" {
      */
     export class ApplicationWindow {
         static constants: typeof statuses;
-        static hotkey: {
-            bind: typeof import("socket:window/hotkey").bind;
-            unbind: typeof import("socket:window/hotkey").unbind;
-            bindings: import("socket:window/hotkey").Bindings;
-            addEventListener: typeof import("socket:window/hotkey").addEventListener;
-            removeEventListener: typeof import("socket:window/hotkey").removeEventListener;
-        };
+        static hotkey: import("socket:window/hotkey").Bindings;
         constructor({ index, ...options }: {
             [x: string]: any;
             index: any;
@@ -4124,7 +4139,7 @@ declare module "socket:window" {
         /**
          * @type {import('./window/hotkey.js').default}
          */
-        get hotkey(): any;
+        get hotkey(): import("socket:window/hotkey").Bindings;
         /**
          * Get the size of the window
          * @return {{ width: number, height: number }} - the size of the window
