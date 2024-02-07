@@ -824,7 +824,8 @@ namespace SSC {
   String getResolveMenuSelectionJavaScript (
     const String& seq,
     const String& title,
-    const String& parent
+    const String& parent,
+    const String type = "system"
   );
 
   String getResolveToRenderProcessJavaScript (
