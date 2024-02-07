@@ -122,6 +122,33 @@ export class ApplicationWindow {
   }
 
   /**
+   * Maximize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async maximize () {
+    const response = await ipc.send('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Minimize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async minimize () {
+    const response = await ipc.send('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Restore the window
+   * @return {Promise<ipc.Result>}
+   */
+  async restore () {
+    const response = await ipc.send('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
    * Sets the title of the window
    * @param {string} title - the title of the window
    * @return {Promise<ipc.Result>}

@@ -1270,19 +1270,25 @@ MAIN {
     }
 
     if (message.name == "window.maximize") {
-      window->maximize();
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      targetWindow->maximize();
       window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
       return;
     }
 
     if (message.name == "window.minimize") {
-      window->minimize();
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      targetWindow->minimize();
       window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
       return;
     }
 
     if (message.name == "window.restore") {
-      window->restore();
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      targetWindow->restore();
       window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
       return;
     }
