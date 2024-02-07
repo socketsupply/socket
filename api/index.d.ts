@@ -4673,60 +4673,24 @@ declare module "socket:bootstrap" {
     }
     import { EventEmitter } from "socket:events";
 }
-declare module "socket:net" {
-    export default exports;
-    export class Server extends EventEmitter {
-        constructor(options: any, handler: any);
-        _connections: number;
-        id: BigInt;
-        onconnection(data: any): void;
-        listen(port: any, address: any, cb: any): this;
-        _address: {
-            port: any;
-            address: any;
-            family: any;
-        };
-        connections: {};
-        address(): {
-            port: any;
-            address: any;
-            family: any;
-        };
-        close(cb: any): void;
-        getConnections(cb: any): void;
-        unref(): this;
+declare module "socket:ip" {
+    /**
+     * Normalizes input as an IPv4 address string
+     * @param {string|object|string[]|Uint8Array} input
+     * @return {string}
+     */
+    export function normalizeIPv4(input: string | object | string[] | Uint8Array): string;
+    /**
+     * Determines if an input `string` is in IP address version 4 format.
+     * @param {string|object|string[]|Uint8Array} input
+     * @return {boolean}
+     */
+    export function isIPv4(input: string | object | string[] | Uint8Array): boolean;
+    namespace _default {
+        export { normalizeIPv4 };
+        export { isIPv4 };
     }
-    export class Socket extends Duplex {
-        _server: any;
-        _address: any;
-        allowHalfOpen: boolean;
-        _flowing: boolean;
-        setNoDelay(enable: any): void;
-        setKeepAlive(enabled: any): void;
-        _onTimeout(): void;
-        address(): any;
-        _final(cb: any): this;
-        destroySoon(): void;
-        __write(data: any): void;
-        _read(cb: any): any;
-        pause(): this;
-        resume(): this;
-        connect(...args: any[]): this;
-        id: BigInt;
-        remotePort: any;
-        remoteAddress: any;
-        unref(): this;
-        [kLastWriteQueueSize]: any;
-    }
-    export function connect(...args: any[]): exports.Socket;
-    export function createServer(...args: any[]): exports.Server;
-    export function getNetworkInterfaces(o: any): any;
-    export function isIPv4(s: any): boolean;
-    import * as exports from "socket:net";
-    import { EventEmitter } from "socket:events";
-    import { Duplex } from "socket:stream";
-    const kLastWriteQueueSize: unique symbol;
-    
+    export default _default;
 }
 declare module "socket:dns/promises" {
     /**
