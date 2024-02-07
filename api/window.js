@@ -14,6 +14,7 @@ import * as statuses from './window/constants.js'
 import location from './location.js'
 import { URL } from './url.js'
 import hotkey from './window/hotkey.js'
+import menu from './application/menu.js'
 import ipc from './ipc.js'
 
 /**
@@ -252,15 +253,7 @@ export class ApplicationWindow {
    * @return {Promise<object>}
    */
   async setContextMenu (options) {
-    const o = Object
-      .entries(options)
-      .flatMap(a => a.join(':'))
-      .join('_')
-    const { data, err } = await ipc.send('window.setContextMenu', o)
-    if (err) {
-      throw err
-    }
-    return data
+    return await menu.setContextMenu(options)
   }
 
   /**
