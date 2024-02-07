@@ -70,7 +70,7 @@ namespace SSC {
       void exit (int code);
       void restart ();
       void dispatch (std::function<void()>);
-      SSC::String getCwd ();
+      String getcwd ();
       void setWindowManager (WindowManager*);
       WindowManager* getWindowManager () const;
   };
