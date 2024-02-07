@@ -1269,6 +1269,24 @@ MAIN {
       return;
     }
 
+    if (message.name == "window.maximize") {
+      window->maximize();
+      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      return;
+    }
+
+    if (message.name == "window.minimize") {
+      window->minimize();
+      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      return;
+    }
+
+    if (message.name == "window.restore") {
+      window->restore();
+      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      return;
+    }
+
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, value);
