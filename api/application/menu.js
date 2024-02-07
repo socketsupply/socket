@@ -132,6 +132,26 @@ export class Menu extends EventTarget {
    */
   async set (layoutOrOptions, options = null) {
     if (this.type === 'context') {
+      if (Array.isArray(layoutOrOptions)) {
+        const object = {}
+
+        for (const item of layoutOrOptions) {
+          object[item] = true
+        }
+
+        layoutOrOptions = object
+      } else if (typeof layoutOrOptions === 'string') {
+        const object = {}
+        const lines = layoutOrOptions.split('\n')
+
+        for (const line of lines) {
+          const [key, value] = line.trim().split(':').map((value) => value.trim())
+          object[key] = value
+        }
+
+        layoutOrOptions = object
+      }
+
       options = /** @type {object} */ (layoutOrOptions)
       const result = await setContextMenu(options)
 
@@ -140,6 +160,45 @@ export class Menu extends EventTarget {
       }
 
       return result.data
+    }
+
+    if (typeof layoutOrOptions === 'object') {
+      const descriptor = layoutOrOptions
+      const buffer = []
+
+      function visit (value, indent = 0) {
+        const padding = ''.padStart(indent)
+        if (typeof value === 'string') {
+          buffer.push(value)
+        } else if (value && typeof value === 'object') {
+          buffer.push(padding, '\n')
+          for (const key in value) {
+            const v = value[key]
+            buffer.push(padding, `${key}:\n`)
+            visit(v, indent + 2)
+            buffer.push(padding, ';', '\n')
+          }
+        }
+      }
+
+      if (Array.isArray(layoutOrOptions)) {
+        for (const item of layoutOrOptions) {
+          if (item && typeof item === 'object') {
+            for (const key in item) {
+              buffer.push(`${key}: ${item};\n`)
+            }
+          }
+        }
+      } else {
+        for (const key in descriptor) {
+          const value = descriptor[key]
+          buffer.push(`${key}: `)
+          visit(value, 2)
+          buffer.push(';', '\n')
+        }
+      }
+
+      layoutOrOptions = buffer.join('').trim()
     }
 
     const layout = /** @type {string} */ (layoutOrOptions)
