@@ -3846,6 +3846,21 @@ declare module "socket:window" {
          */
         hide(): Promise<ipc.Result>;
         /**
+         * Maximize the window
+         * @return {Promise<ipc.Result>}
+         */
+        maximize(): Promise<ipc.Result>;
+        /**
+         * Minimize the window
+         * @return {Promise<ipc.Result>}
+         */
+        minimize(): Promise<ipc.Result>;
+        /**
+         * Restore the window
+         * @return {Promise<ipc.Result>}
+         */
+        restore(): Promise<ipc.Result>;
+        /**
          * Sets the title of the window
          * @param {string} title - the title of the window
          * @return {Promise<ipc.Result>}
