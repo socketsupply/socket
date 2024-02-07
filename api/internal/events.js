@@ -1,5 +1,4 @@
 /* global MessageEvent */
-import application from '../application.js'
 
 /**
  * An event dispatched when an application URL is opening the application.
@@ -60,7 +59,7 @@ export class ApplicationURLEvent extends Event {
    * @type {?URL}
    */
   get url () {
-    const protocol = application.config.meta_application_protocol
+    const protocol = globalThis.__args.config.meta_application_protocol ?? ''
     let { source } = this
 
     if (!source) {
@@ -87,10 +86,10 @@ export class HotKeyEvent extends MessageEvent {
    * `HotKeyEvent` class constructor.
    * @ignore
    * @param {string=} [type]
-   * @param {object=} [options]
+   * @param {object=} [data]
    */
-  constructor (type = 'hotkey', options = null) {
-    super(type, { data: options })
+  constructor (type = 'hotkey', data = null) {
+    super(type, { data })
   }
 
   /**
@@ -126,7 +125,60 @@ export class HotKeyEvent extends MessageEvent {
   }
 }
 
+/**
+ * An event dispacted when a menu item is selected.
+ */
+export class MenuItemEvent extends MessageEvent {
+  #menu = null
+
+  /**
+   * `MenuItemEvent` class constructor
+   * @ignore
+   * @param {string=} [type]
+   * @param {object=} [data]
+   * @param {import('../application/menu.js').Menu} menu
+   */
+  constructor (type = 'menuitem', data = null, menu = null) {
+    super(type, { data })
+    this.#menu = menu
+  }
+
+  /**
+   * The `Menu` this event has been dispatched for.
+   * @type {import('../application/menu.js').Menu?}
+   */
+  get menu () {
+    return this.#menu
+  }
+
+  /**
+   * The title of the menu item.
+   * @type {string?}
+   */
+  get title () {
+    return this.data?.title ?? null
+  }
+
+  /**
+   * An optional tag value for the menu item that may also be the
+   * parent menu item title.
+   * @type {string?}
+   */
+  get tag () {
+    return this.parent
+  }
+
+  /**
+   * The parent title of the menu item.
+   * @type {string?}
+   */
+  get parent () {
+    return this.data?.parent ?? null
+  }
+}
+
 export default {
   ApplicationURLEvent,
+  MenuItemEvent,
   HotKeyEvent
 }
