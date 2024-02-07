@@ -201,6 +201,9 @@ namespace SSC {
       void kill ();
       void exit (int code);
       void close (int code);
+      void minimize();
+      void maximize();
+      void restore();
       void navigate (const String&, const String&);
       String getTitle ();
       void setTitle (const String&);

@@ -1007,6 +1007,18 @@ namespace SSC {
     }
   }
 
+  void Window::maximize () {
+    gtk_window_maximize(GTK_WINDOW(window));
+  }
+
+  void Window::minimize () {
+    gtk_window_iconify(GTK_WINDOW(window));
+  }
+
+  void Window::restore () {
+    gtk_window_deiconify(GTK_WINDOW(window));
+  }
+
   void Window::navigate (const String &seq, const String &url) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
 

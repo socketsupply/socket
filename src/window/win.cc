@@ -1444,6 +1444,18 @@ namespace SSC {
     }
   }
 
+  void Window::maximize () {
+    ShowWindow(window, SW_MAXIMIZE);
+  }
+
+  void Window::minimize () {
+    ShowWindow(hwnd, SW_MINIMIZE);
+  }
+
+  void Window::restore () {
+    ShowWindow(hwnd, SW_RESTORE);
+  }
+
   void Window::show () {
     if (this->opts.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);

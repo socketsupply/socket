@@ -1111,6 +1111,18 @@ namespace SSC {
     }
   }
 
+  void Window::maximize () {
+    [this->window zoom: this->window];
+  }
+
+  void Window::minimize () {
+    [this->window miniaturize: this->window];
+  }
+
+  void Window::restore () {
+    [this->window deminiaturize: this->window];
+  }
+
   void Window::hide () {
     if (this->window) {
       [this->window orderOut: this->window];
