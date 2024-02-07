@@ -1,4 +1,4 @@
-/* global EventTarget, HotKeyEvent, reportError */
+/* global Event, EventTarget, HotKeyEvent, reportError */
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
@@ -100,7 +100,7 @@ export class Bindings extends EventTarget {
     }
 
     const e = new HotKeyEvent('hotkey', event.data)
-    e.binding = binding ?? null
+    e.binding = this.get(id) ?? new Binding(event.data)
     this.dispatchEvent(e)
   }
 
@@ -222,6 +222,29 @@ export class Bindings extends EventTarget {
       }
     }
   }
+
+  /**
+   * Implements the `Iterator` protocol for each currently registered
+   * active binding in this window context. The `AsyncIterator` protocol
+   * will probe for all gloally active bindings.
+   * @return {Iterator}
+   */
+  [Symbol.iterator] () {
+    return this.values()
+  }
+
+  /**
+   * Implements the `AsyncIterator` protocol for each globally active
+   * binding registered to the application. This differs from the `Iterator`
+   * protocol as this will probe for _all_ active bindings in the entire
+   * application context.
+   * @return {AsyncGenerator}
+   */
+  async * [Symbol.asyncIterator] () {
+    for (const binding of await this.active()) {
+      yield binding
+    }
+  }
 }
 
 /**
@@ -292,11 +315,19 @@ export class Binding extends EventTarget {
   }
 
   /**
-   * `true` if the binding is valid, otherwise `false.
+   * `true` if the binding is valid, otherwise `false`.
    * @type {boolean}
    */
   get isValid () {
     return this.id && this.hash && this.expression && this.sequence.length
+  }
+
+  /**
+   * `true` if the binding is considered active, otherwise `false`.
+   * @type {boolean}
+   */
+  get isActive () {
+    return this.isValid && bindings.has(this.id)
   }
 
   /**
@@ -346,15 +377,38 @@ export class Binding extends EventTarget {
   async unbind () {
     await unbind(this.id)
   }
+
+  /**
+   * Implements the `AsyncIterator` protocol for async 'hotkey' events
+   * on this binding instance.
+   * @return {AsyncGenerator}
+   */
+  async * [Symbol.asyncIterator] () {
+    while (this.isActive) {
+      yield await new Promise((resolve) => {
+        this.addEventListener(
+          'hotkey',
+          (event) => queueMicrotask(() => resolve(event.data)),
+          { once: true }
+        )
+      })
+    }
+  }
 }
 
 /**
  * Bind a global hotkey expression.
  * @param {string} expression
- * @param {object=} [options]
+ * @param {{ passive?: boolean }} [options]
  * @return {Promise<Binding>}
  */
 export async function bind (expression, options = null) {
+  const params = {}
+
+  if (typeof options?.passive === 'boolean') {
+    params.passive = options.passive
+  }
+
   if (/android|ios/.test(os.platform())) {
     throw new TypeError(`The HotKey API is not supported on '${os.platform()}'`)
   }
@@ -362,24 +416,26 @@ export async function bind (expression, options = null) {
   await hooks.wait('ready')
 
   if (typeof expression === 'number') {
-    const id = /** @type {number} */ (expression)
-    const result = await ipc.request('window.hotkey.bind', { id }, options)
-
-    if (result.err) {
-      throw result.err
-    }
-
-    return bindings.get(result.data.id) ?? new Binding(result.data)
+    params.id = /** @type {number} */ (expression)
+  } else if (typeof expression === 'string') {
+    params.expression = normalizeExpression(expression)
+  } else {
+    throw new TypeError('Expecting expression argument to be a string')
   }
 
-  expression = normalizeExpression(expression)
-  const result = await ipc.request('window.hotkey.bind', { expression }, options)
+  const result = await ipc.request('window.hotkey.bind', params, options)
 
   if (result.err) {
     throw result.err
   }
 
-  return bindings.get(result.data.id) ?? new Binding(result.data)
+  if (bindings.has(result.data.id)) {
+    return bindings.get(result.data.id)
+  }
+
+  const binding = new Binding(result.data)
+  binding.dispatchEvent(new Event('bind'))
+  return binding
 }
 
 /**
@@ -389,7 +445,7 @@ export async function bind (expression, options = null) {
  * @return {Promise<Binding>}
  */
 export async function unbind (id, options = null) {
-  let result = null
+  const params = {}
 
   await hooks.wait('ready')
 
@@ -397,19 +453,28 @@ export async function unbind (id, options = null) {
     throw new TypeError(`The HotKey API is not supported on '${os.platform()}'`)
   }
 
-  if (typeof id === 'string') {
-    const expression = normalizeExpression(/* @type {string} */ (id))
-    result = await ipc.request('window.hotkey.unbind', { expression }, options)
+  if (typeof id === 'number') {
+    params.id = id
+  } else if (typeof id === 'string') {
+    params.expression = normalizeExpression(/** @type {string} */ (id))
   } else {
-    result = await ipc.request('window.hotkey.unbind', { id }, options)
+    throw new TypeError('Expecting expression argument to be a string')
   }
+
+  const result = await ipc.request('window.hotkey.unbind', params, options)
 
   if (result.err) {
     throw result.err
   }
 
-  if (result.data?.id) {
-    bindings.delete(result.data.id)
+  if (!result.data?.id) {
+    return
+  }
+
+  if (bindings.has(result.data.id)) {
+    const binding = bindings.get(result.data.id)
+    binding.dispatchEvent(new Event('unbind'))
+    bindings.delete(binding.id)
   }
 }
 
@@ -482,10 +547,4 @@ export function removeEventListener (type, listener, optionsOrUseCapture) {
   return bindings.removeEventListener(type, listener, optionsOrUseCapture)
 }
 
-export default {
-  bind,
-  unbind,
-  bindings,
-  addEventListener,
-  removeEventListener
-}
+export default bindings
