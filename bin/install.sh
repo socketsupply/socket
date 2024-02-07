@@ -230,7 +230,7 @@ function _build_cli {
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
-  local cflags=(-undefined dynamic_lookup -DSSC_CLI $("$root/bin/cflags.sh"))
+  local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_headers=()
   if [[ -z "$ignore_header_mtimes" ]]; then
@@ -308,6 +308,7 @@ function _build_cli {
       "${static_libs[@]}"                        \
       "${cflags[@]}"                             \
       "${ldflags[@]}"                            \
+      -undefined dynamic_lookup                  \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""

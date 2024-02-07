@@ -13,6 +13,8 @@ import gc from '../gc.js'
 import { ChatPromptWrapper, ChatMLChatPromptWrapper, GeneralChatPromptWrapper } from './chat.js'
 import { getGbnfGrammarForGbnfJsonSchema, validateObjectAgainstGbnfSchema } from './gbnf.js'
 
+import * as exports from './index.js'
+
 class Model {
   _modelId = null
 
@@ -107,7 +109,7 @@ class Grammar {
       text: grammar
     }
 
-    const { data, err } = ipc.sendSync('llm.createGrammar', params, { cache: true })
+    const { data, err } = ipc.sendSync('llm.parseGrammar', params, { cache: true })
 
     if (err) {
       throw new Error(err)
@@ -345,6 +347,8 @@ class GrammarEvaluationState {
     }
   }
 }
+
+export default exports
 
 export {
   Context,

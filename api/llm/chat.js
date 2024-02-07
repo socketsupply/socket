@@ -1,5 +1,4 @@
-import { defaultChatSystemPrompt } from '../config.js'
-import { Model, GrammarEvaluationState } from '../index.js'
+import { Model, GrammarEvaluationState } from './index.js'
 
 /**
  * Retrieves the completion text based on the provided input text and a list of full texts.
@@ -695,7 +694,11 @@ function generateContextTextFromConversationHistory (
   chatPromptWrapper,
   conversationHistory,
   {
-    systemPrompt = defaultChatSystemPrompt,
+    systemPrompt = (
+      "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible.\n" +
+      "If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. " +
+      "If you don't know the answer to a question, please don't share false information."
+    ),
     currentPromptIndex = 0,
     lastStopString = null,
     lastStopStringSuffix = null
