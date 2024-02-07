@@ -1028,8 +1028,28 @@ namespace SSC {
             SSC::String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
             SSC::String parent = [[[menuItem menu] title] UTF8String];
             SSC::String seq = std::to_string([menuItem tag]);
+            SSC::String key = [[menuItem keyEquivalent] UTF8String];
+            id representedObject = [menuItem representedObject];
+            String type = "system";
 
-            window->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
+            // "contextMenu" is parent menu identifier used in `setContextMenu()`
+            if (parent == "contextMenu") {
+              parent = "";
+              type = "context";
+            }
+
+            if (representedObject != nullptr) {
+              const auto parts = split([representedObject UTF8String], ':');
+              if (parts.size() > 0) {
+                type = parts[0];
+              }
+
+              if (parts.size() > 1) {
+                parent = trim(parts[1]);
+              }
+            }
+
+            window->eval(getResolveMenuSelectionJavaScript(seq, title, parent, type));
           }),
         "v@:@:@:"
       );
@@ -1272,49 +1292,61 @@ namespace SSC {
   }
 
   void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
-    auto menuItems = split(value, '_');
-    auto id = std::stoi(seq.substr(1)); // remove the 'R' prefix
+    const auto mouseLocation = NSEvent.mouseLocation;
+    const auto contextMenu = [[NSMenu.alloc initWithTitle: @"contextMenu"] autorelease];
+    const auto location = NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y));
+    const auto menuItems = split(value, '_');
+    // remove the 'R' prefix as we'll use this value in the menu item "tag" property
+    const auto id = std::stoi(seq.substr(1));
 
-    NSPoint mouseLocation = [NSEvent mouseLocation];
-    NSMenu *pMenu = [[[NSMenu alloc] initWithTitle:@"contextMenu"] autorelease];
-    NSMenuItem *menuItem;
+    // context menu item index
     int index = 0;
 
-    for (auto item : menuItems) {
-      if (trim(item).size() == 0) continue;
+    for (const auto& item : menuItems) {
+      if (trim(item).size() == 0) {
+        continue;
+      }
 
       if (item.find("---") != -1) {
-        NSMenuItem *sep = [NSMenuItem separatorItem];
-        [pMenu addItem:sep];
+        const auto separator  = NSMenuItem.separatorItem;
+        [contextMenu addItem: separator];
         index++;
         continue;
       }
 
-      auto pair = split(trim(item), ':');
+      const auto pair = split(trim(item), ':');
+      const auto title = pair[0];
 
-      NSString* nssTitle = [NSString stringWithUTF8String:pair[0].c_str()];
-      NSString* nssKey = @"";
-
-      if (pair.size() > 1) {
-        nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
-      }
-
-      menuItem = [pMenu
-        insertItemWithTitle:nssTitle
-        action:@selector(menuItemSelected:)
-        keyEquivalent:nssKey
-        atIndex:index
+      // create context menu item with title at index offset
+      auto menuItem = [contextMenu
+        insertItemWithTitle: @(title.c_str())
+                     action: @selector(menuItemSelected:)
+              keyEquivalent: @("")
+                    atIndex: index
       ];
 
-      [menuItem setTag:id];
+      // use represented object as type indicator with extra
+      // information to store in "parent" if available, otherwise just the
+      // application menu category type ('context', 'system', or 'tray')
+      if (pair.size() > 1) {
+        menuItem.representedObject = @((String("context:") + trim(pair[1])).c_str());
+      } else {
+        menuItem.representedObject = @((String("context")).c_str());
+      }
+
+      // use menu item tag to store the promise resolution sequence index
+      menuItem.tag = id;
 
       index++;
     }
 
-    [pMenu
-      popUpMenuPositioningItem:pMenu.itemArray[0]
-        atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y))
-        inView:nil];
+    // actually show the context menu at the current mouse location with
+    // the first context menu item as the initial item
+    [contextMenu
+      popUpMenuPositioningItem: contextMenu.itemArray[0]
+                    atLocation: location
+                        inView: nil
+    ];
   }
 
   void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
@@ -1369,6 +1401,22 @@ namespace SSC {
       ctx = isTrayMenu ? menu : [[NSMenu alloc] initWithTitle: nssTitle];
       bool isDisabled = false;
 
+      if (isTrayMenu && menuSource.size() == 1) {
+        auto menuParts = split(line, ':');
+        auto action = @("menuItemSelected:");
+        menuItem = [ctx
+          addItemWithTitle: @(menuTitle.c_str())
+          action: NSSelectorFromString(action)
+          keyEquivalent: @""
+        ];
+
+        if (menuParts.size() > 1) {
+          [menuItem setRepresentedObject: @((String("tray:") + trim(menuParts[1])).c_str())];
+        } else {
+          [menuItem setRepresentedObject: @("tray")];
+        }
+      }
+
       while (++i < menuSource.size()) {
         line = trim(menuSource[i]);
         if (line.empty()) continue;
@@ -1404,7 +1452,7 @@ namespace SSC {
                 modifier.compare("meta") == 0
               ) {
                 mask |= NSEventModifierFlagCommand;
-              } else if (modifier.compare("commandorcontrol") == 0 ||) {
+              } else if (modifier.compare("commandorcontrol")) {
                 mask |= NSEventModifierFlagCommand;
                 mask |= NSEventModifierFlagControl;
               } else if (modifier.compare("control") == 0) {
