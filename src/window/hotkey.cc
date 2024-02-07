@@ -511,7 +511,6 @@ namespace SSC {
       [](auto ch) { return std::tolower(ch); }
     );
 
-
     if (keys.contains(key)) {
       return keys.at(key);
     }

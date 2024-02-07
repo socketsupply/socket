@@ -1390,13 +1390,26 @@ namespace SSC {
 
             for (int i = 1; i < accelerator.size(); i++) {
               auto modifier = trim(accelerator[i]);
-              if (modifier.compare("CommandOrControl") == 0) {
+              // normalize modifier to lower case
+              std::transform(
+                modifier.begin(),
+                modifier.end(),
+                modifier.begin(),
+                [](auto ch) { return std::tolower(ch); }
+              );
+
+              if (
+                modifier.compare("command") == 0 ||
+                modifier.compare("super") == 0 ||
+                modifier.compare("meta") == 0
+              ) {
                 mask |= NSEventModifierFlagCommand;
-              } else if (modifier.compare("Meta") == 0) {
+              } else if (modifier.compare("commandorcontrol") == 0 ||) {
                 mask |= NSEventModifierFlagCommand;
-              } else if (modifier.compare("Control") == 0) {
                 mask |= NSEventModifierFlagControl;
-              } else if (modifier.compare("Alt") == 0) {
+              } else if (modifier.compare("control") == 0) {
+                mask |= NSEventModifierFlagControl;
+              } else if (modifier.compare("alt") == 0 || modifier.compare("option") == 0) {
                 mask |= NSEventModifierFlagOption;
               }
             }
@@ -1483,9 +1496,22 @@ namespace SSC {
 
       auto userConfig = SSC::getUserConfig();
       auto bundlePath = [[[NSBundle mainBundle] resourcePath] UTF8String];
-      auto path = SSC::fs::path { bundlePath / SSC::fs::path { userConfig["tray_icon"] } };
+      auto cwd = SSC::fs::path(bundlePath);
+      auto trayIconPath = String("application_tray_icon");
 
-      NSString *imagePath = [NSString stringWithUTF8String: path.c_str()];
+      if (SSC::fs::exists(SSC::fs::path(cwd) / (trayIconPath + ".png"))) {
+        trayIconPath = (SSC::fs::path(cwd) / (trayIconPath + ".png")).string();
+      } else if (SSC::fs::exists(SSC::fs::path(cwd) / (trayIconPath + ".jpg"))) {
+        trayIconPath = (SSC::fs::path(cwd) / (trayIconPath + ".jpg")).string();
+      } else if (SSC::fs::exists(SSC::fs::path(cwd) / (trayIconPath + ".jpeg"))) {
+        trayIconPath = (SSC::fs::path(cwd) / (trayIconPath + ".jpeg")).string();
+      } else if (SSC::fs::exists(SSC::fs::path(cwd) / (trayIconPath + ".ico"))) {
+        trayIconPath = (SSC::fs::path(cwd) / (trayIconPath + ".ico")).string();
+      } else {
+        trayIconPath = "";
+      }
+
+      NSString *imagePath = [NSString stringWithUTF8String: trayIconPath.c_str()];
       NSImage *image = [[NSImage alloc] initWithContentsOfFile: imagePath];
       NSSize newSize = NSMakeSize(32, 32);
       NSImage *resizedImage = [[NSImage alloc] initWithSize:newSize];
