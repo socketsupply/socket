@@ -412,7 +412,7 @@ export async function setMenu (options, type) {
 
     // Use this link to test the regex (https://regexr.com/7lhqe)
     const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*.*))$/m
-    const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
+    const validModifiers = /^(Alt|Option|CommandOrControl|Control|Meta|Super)$/i
 
     for (let i = 0; i < lines.length; i++) {
       const lineText = lines[i].trim()
