@@ -1147,12 +1147,15 @@ namespace SSC {
   }
 
   void Window::setMenu (const String& seq, const String& source, const bool& isTrayMenu) {
-    if (source.empty()) return void(0);
+    if (source.empty()) {
+      return;
+    }
+
     auto menuSource = replace(SSC::String(source), "%%", "\n"); // copy and deserialize
 
     auto clear = [this](GtkWidget* menu) {
       GList *iter;
-      GList *children = gtk_container_get_children(GTK_CONTAINER(this->menubar));
+      GList *children = gtk_container_get_children(GTK_CONTAINER(menu));
 
       for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
         gtk_widget_destroy(GTK_WIDGET(iter->data));
@@ -1172,12 +1175,32 @@ namespace SSC {
 
     for (auto m : menus) {
       auto menuSource = split(m, '\n');
+      if (menuSource.size() == 0) continue;
       auto line = trim(menuSource[0]);
       if (line.empty()) continue;
-      auto menuTitle = split(line, ':')[0];
+      auto menuParts = split(line, ':');
+      auto menuTitle = menuParts[0];
       // if this is a tray menu, append directly to the tray instead of a submenu.
       auto *ctx = isTrayMenu ? menutray : gtk_menu_new();
       GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
+
+      if (isTrayMenu && menuSource.size() == 1) {
+        if (menuParts.size() > 1) {
+          gtk_widget_set_name(menuItem, trim(menuParts[1]).c_str());
+        }
+
+        g_signal_connect(
+          G_OBJECT(menuItem),
+          "activate",
+          G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+            auto w = static_cast<Window*>(arg);
+            auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+            auto parent = gtk_widget_get_name(t);
+            w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "tray"));
+          }),
+          this
+        );
+      }
 
       for (int i = 1; i < menuSource.size(); i++) {
         auto line = trim(menuSource[i]);
@@ -1237,27 +1260,41 @@ namespace SSC {
             }
           }
 
-          g_signal_connect(
-            G_OBJECT(item),
-            "activate",
-            G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-              auto w = static_cast<Window*>(arg);
-              auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
-              auto parent = gtk_widget_get_name(t);
+          if (isTrayMenu) {
+            g_signal_connect(
+              G_OBJECT(item),
+              "activate",
+              G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+                auto w = static_cast<Window*>(arg);
+                auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+                auto parent = gtk_widget_get_name(t);
 
-              if (String(title).find("About") == 0) {
-                return w->about();
-              }
+                w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "tray"));
+              }),
+              this
+            );
+          } else {
+            g_signal_connect(
+              G_OBJECT(item),
+              "activate",
+              G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+                auto w = static_cast<Window*>(arg);
+                auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+                auto parent = gtk_widget_get_name(t);
 
-              if (String(title).find("Quit") == 0) {
-                return w->exit(0);
-              }
+                if (String(title).find("About") == 0) {
+                  return w->about();
+                }
 
-              w->eval(getResolveMenuSelectionJavaScript("0", title, parent));
-            }),
-            this
-          );
+                if (String(title).find("Quit") == 0) {
+                  return w->exit(0);
+                }
 
+                w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
+              }),
+              this
+            );
+          }
         }
 
         gtk_widget_set_name(item, menuTitle.c_str());
@@ -1274,17 +1311,18 @@ namespace SSC {
 
     if (isTrayMenu) {
       static auto userConfig = SSC::getUserConfig();
+      static auto app = App::instance();
       GtkStatusIcon *trayIcon;
 
       if (userConfig.count("tray_icon") > 0) {
-        auto iconPath = fs::path { getCwd() / fs::path { userConfig["tray_icon"] } };
-        trayIcon = gtk_status_icon_new_from_file(iconPath);
+        auto iconPath = fs::path (app->getcwd()) / userConfig["tray_icon"];
+        trayIcon = gtk_status_icon_new_from_file(iconPath.string().c_str());
       } else {
         trayIcon = gtk_status_icon_new_from_icon_name("utilities-terminal");
       }
 
       if (userConfig.count("tray_tooltip") > 0) {
-        gtk_status_icon_set_tooltip_text(trayIcon, userConfig["tray_tooltip"]);
+        gtk_status_icon_set_tooltip_text(trayIcon, userConfig["tray_tooltip"].c_str());
       }
 
       g_signal_connect(
@@ -1335,7 +1373,7 @@ namespace SSC {
     if (popupMenu != nullptr) {
       gtk_menu_popdown((GtkMenu *) popupMenu);
       gtk_widget_destroy(popupMenu);
-      this->eval(getResolveMenuSelectionJavaScript(seq, "", "contextMenu"));
+      this->eval(getResolveMenuSelectionJavaScript(seq, "", "contextMenu", "context"));
     }
   }
 
@@ -1384,7 +1422,7 @@ namespace SSC {
           auto pair = split(meta, ';');
           auto seq = pair[0];
 
-          window->eval(getResolveMenuSelectionJavaScript(seq, title, "contextMenu"));
+          window->eval(getResolveMenuSelectionJavaScript(seq, title, "contextMenu", "context"));
         }),
         this
       );
