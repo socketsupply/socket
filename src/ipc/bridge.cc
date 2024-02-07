@@ -2613,7 +2613,15 @@ static void registerSchemeHandler (Router *router) {
 
     if (mount.path.size() > 0) {
       if (mount.resolution.redirect) {
-        auto redirectURL = resolved.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+        auto redirectURL = resolved.path;
+        if (parsedPath.queryString.size() > 0) {
+          redirectURL += "?" + parsedPath.queryString;
+        }
+
+        if (parsedPath.fragment.size() > 0) {
+          redirectURL += "#" + parsedPath.fragment;
+        }
+
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -2637,7 +2645,15 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
       path = userConfig["webview_default_index"];
     } else if (resolved.redirect) {
-      auto redirectURL = resolved.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+      auto redirectURL = resolved.path;
+      if (parsedPath.queryString.size() > 0) {
+        redirectURL += "?" + parsedPath.queryString;
+      }
+
+      if (parsedPath.fragment.size() > 0) {
+        redirectURL += "#" + parsedPath.fragment;
+      }
+
       auto redirectSource = String(
         "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
       );
