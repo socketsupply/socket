@@ -1042,9 +1042,10 @@ namespace SSC {
                                 path = path.substr(0, path.size() - 2);
                               }
 
+                              auto parsedPath = IPC::Router::parseURL(path);
                               auto rootPath = this->modulePath.parent_path();
-                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
-                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
+                              auto resolved = IPC::Router::resolveURLPathForWebView(parsedPath.path, rootPath.string());
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(parsedPath.path);
                               path = resolved.path;
 
                               if (mount.path.size() > 0) {
