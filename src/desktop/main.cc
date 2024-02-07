@@ -1269,27 +1269,31 @@ MAIN {
       return;
     }
 
-    if (message.name == "window.maximize") {
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      targetWindow->maximize();
-      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
-      return;
-    }
+    bool isMaximize = message.name == "window.maximize";
+    bool isMinimize = message.name == "window.minimize";
+    bool isRestore = message.name == "window.restore";
 
-    if (message.name == "window.minimize") {
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
+    if (isMaximize || isMinimize || isRestore) {
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      targetWindow->minimize();
-      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
-      return;
-    }
 
-    if (message.name == "window.restore") {
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      targetWindow->restore();
-      window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      if (isMaximize) {
+        targetWindow->maximize();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
+      if (isMinimize) {
+        targetWindow->minimize();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
+      if (isRestore) {
+        targetWindow->restore();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
       return;
     }
 
