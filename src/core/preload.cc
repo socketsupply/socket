@@ -53,22 +53,24 @@ namespace SSC {
       "                                                                      \n"
     );
 
-    const auto start = argv.find("--test=");
-    if (start != std::string::npos) {
-      auto end = argv.find("'", start);
-      if (end == std::string::npos) {
-        end = argv.size();
-      }
-      const auto file = argv.substr(start + 7, end - start - 7);
-      if (file.size() > 0) {
-        preload += (
-          "  document.addEventListener('DOMContentLoaded', () => {           \n"
-          "    const script = document.createElement('script')               \n"
-          "    script.setAttribute('type', 'module')                         \n"
-          "    script.setAttribute('src', '" + file + "')                    \n"
-          "    document.head.appendChild(script)                             \n"
-          "  });                                                             \n"
-        );
+    if (opts.index == 0) {
+      const auto start = argv.find("--test=");
+      if (start != std::string::npos) {
+        auto end = argv.find("'", start);
+        if (end == std::string::npos) {
+          end = argv.size();
+        }
+        const auto file = argv.substr(start + 7, end - start - 7);
+        if (file.size() > 0) {
+          preload += (
+            "  document.addEventListener('DOMContentLoaded', () => {           \n"
+            "    const script = document.createElement('script')               \n"
+            "    script.setAttribute('type', 'module')                         \n"
+            "    script.setAttribute('src', '" + file + "')                    \n"
+            "    document.head.appendChild(script)                             \n"
+            "  });                                                             \n"
+          );
+        }
       }
     }
 
