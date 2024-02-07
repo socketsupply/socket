@@ -4869,6 +4869,20 @@ int main (const int argc, const char* argv[]) {
       // TODO Copy the files into place
     }
 
+    if (settings["tray_icon"].size() > 0) {
+      auto trayIconPath = fs::path(settings["tray_icon"]);
+      if (!fs::exists(trayIconPath)) {
+        log("WARNING: Tray icon path at '[tray] icon' does not exist");
+      } else {
+        const auto extname = trayIconPath.extension().string();
+        fs::copy(
+          trayIconPath,
+          pathResources / (String("application_tray_icon") + extname),
+          fs::copy_options::update_existing | fs::copy_options::recursive
+        );
+      }
+    }
+
     handleBuildPhaseForUserScript(
       settings,
       targetPlatform,
