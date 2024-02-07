@@ -2498,7 +2498,31 @@ Hides the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L129)
+### [`maximize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L128)
+
+Maximize the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+### [`minimize()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L137)
+
+Minimize the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+### [`restore()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L146)
+
+Restore the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L156)
 
 Sets the title of the window
 
@@ -2510,7 +2534,7 @@ Sets the title of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L142)
+### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L169)
 
 Sets the size of the window
 
@@ -2524,7 +2548,7 @@ Sets the size of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L182)
+### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L209)
 
 Navigate the window to a given path
 
@@ -2536,7 +2560,7 @@ Navigate the window to a given path
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L191)
+### [`showInspector()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L218)
 
 Opens the Web Inspector for the window
 
@@ -2544,7 +2568,7 @@ Opens the Web Inspector for the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L208)
+### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L235)
 
 Sets the background color of the window
 
@@ -2560,7 +2584,7 @@ Sets the background color of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L218)
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L245)
 
 Opens a native context menu.
 
@@ -2572,7 +2596,7 @@ Opens a native context menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L235)
+### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L262)
 
 Shows a native open file dialog.
 
@@ -2584,7 +2608,7 @@ Shows a native open file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L253)
+### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L280)
 
 Shows a native save file dialog.
 
@@ -2596,7 +2620,7 @@ Shows a native save file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L271)
+### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L298)
 
 Shows a native directory dialog.
 
@@ -2608,7 +2632,7 @@ Shows a native directory dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L296)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L323)
 
 This is a high-level API that you should use instead of `ipc.send` when
  you want to send a message to another window or to the backend.
@@ -2622,7 +2646,7 @@ This is a high-level API that you should use instead of `ipc.send` when
 | options.event | string |  | false | the event to send |
 | options.value | string \| object |  | true | the value to send |
 
-### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L337)
+### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L364)
 
 Post a message to a window
  TODO(@jwerle): research using `BroadcastChannel` instead
@@ -2635,7 +2659,7 @@ Post a message to a window
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L355)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L382)
 
 Opens an URL in the default browser.
 
@@ -2647,7 +2671,7 @@ Opens an URL in the default browser.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L366)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L393)
 
 Adds a listener to the window.
 
@@ -2656,7 +2680,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L384)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L411)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2665,7 +2689,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L401)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L428)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2674,7 +2698,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L417)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L444)
 
 Removes a listener from the window.
 
@@ -2683,7 +2707,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L430)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L457)
 
 Removes all listeners from the window.
 
@@ -2691,7 +2715,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L446)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L473)
 
 Removes a listener from the window. An alias for `removeListener`.
 
