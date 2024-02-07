@@ -1276,7 +1276,9 @@ MAIN {
     if (isMaximize || isMinimize || isRestore) {
       const auto currentIndex = message.index;
       const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0
+        ? std::stoi(message.get("targetWindowIndex"))
+        : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
 
       if (isMaximize) {
