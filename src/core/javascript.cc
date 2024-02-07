@@ -103,12 +103,14 @@ namespace SSC {
   String getResolveMenuSelectionJavaScript (
     const String& seq,
     const String& title,
-    const String& parent
+    const String& parent,
+    const String type
   ) {
     return createJavaScript("resolve-menu-selection.js",
       "const detail = {                                                      \n"
       "  title: decodeURIComponent(`" + title + "`),                         \n"
       "  parent: decodeURIComponent(`" + parent + "`),                       \n"
+      "  type: `" + type +"`,                                                \n"
       "  state: '0'                                                          \n"
       "};                                                                    \n"
       "                                                                      \n"
