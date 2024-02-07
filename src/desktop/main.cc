@@ -231,7 +231,7 @@ MAIN {
   const SSC::String ERROR_STATE = "1";
   const SSC::String EMPTY_SEQ = SSC::String("");
 
-  auto cwd = app.getCwd();
+  auto cwd = app.getcwd();
   app.appData = userConfig;
 
   SSC::String suffix = "";
@@ -253,7 +253,8 @@ MAIN {
   auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
 #if defined(__linux__)
-  static auto appInstanceLock = String("/tmp/") + bundleIdentifier + ".lock";
+  static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
+  static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
   auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
   auto appProtocol = userConfig["meta_application_protocol"];
   auto dbusError = DBusError {}; dbus_error_init(&dbusError);
