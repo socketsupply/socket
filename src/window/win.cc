@@ -1093,7 +1093,15 @@ namespace SSC {
 
                               if (mount.path.size() > 0) {
                                 if (mount.resolution.redirect) {
-                                  auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+                                  auto redirectURL = mount.resolution.path;
+                                  if (parsedPath.queryString.size() > 0) {
+                                    redirectURL += "?" + parsedPath.queryString;
+                                  }
+
+                                  if (parsedPath.fragment.size() > 0) {
+                                    redirectURL += "#" + parsedPath.fragment;
+                                  }
+
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
@@ -1113,7 +1121,15 @@ namespace SSC {
                               } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
-                                auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+                                auto redirectURL = resolved.path;
+                                if (parsedPath.queryString.size() > 0) {
+                                  redirectURL += "?" + parsedPath.queryString;
+                                }
+
+                                if (parsedPath.fragment.size() > 0) {
+                                  redirectURL += "#" + parsedPath.fragment;
+                                }
+
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
