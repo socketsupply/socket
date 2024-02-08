@@ -185,7 +185,7 @@ Key | Default Value | Description
 :--- | :--- | :---
 cmd |  |  The command to execute to spawn the “back-end” process.
 icon |  |  The icon to use for identifying your app on Windows.
-logo |  |  The icon to use for identifying your app on Windows.
+logo |  |  The icon to use for identifying your app on Windows, relative to copied path resources
 pfx |  |  A relative path to the pfx file used for signing.
 
 # `window`
@@ -218,7 +218,7 @@ agent | false |  If agent is set to true, the app will not display in the tab/wi
 
 Key | Default Value | Description
 :--- | :--- | :---
-icon |  |  The icon to be displayed in the operating system tray. defalut value = ""
+icon |  |  The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format. defalut value = ""
 
 # `headless`
 
