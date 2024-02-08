@@ -30,6 +30,13 @@ export class Bindings extends EventTarget {
   #map = new Map()
 
   /**
+   * A `BroadcastChannel` for hot key bindings
+   * @ignore
+   * @type {BroadcastChannel}
+   */
+  #channel = new BroadcastChannel('window.hotkey.bindings')
+
+  /**
    * The source `EventTarget` to listen for 'hotkey' events on
    * @ignore
    * @type {EventTarget}
@@ -60,9 +67,15 @@ export class Bindings extends EventTarget {
 
     this.onHotKey = this.onHotKey.bind(this)
     this.#sourceEventTarget = sourceEventTarget
+    this.#channel.addEventListener('message', (event) => {
+      this.onHotKey(event)
+    })
 
     if (!/android|ios/.test(os.platform())) {
       sourceEventTarget.addEventListener('hotkey', this.onHotKey)
+      sourceEventTarget.addEventListener('hotkey', (event) => {
+        this.#channel.postMessage(event.data)
+      })
     }
 
     gc.ref(this)
