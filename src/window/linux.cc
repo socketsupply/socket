@@ -14,7 +14,11 @@ namespace SSC {
     Window *window;
   };
 
-  Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
+  Window::Window (App& app, WindowOptions opts)
+    : app(app),
+      opts(opts),
+      hotkey(this)
+  {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
     this->popupId = 0;
@@ -23,8 +27,11 @@ namespace SSC {
 
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
-    this->index = opts.index;
+    this->index = this->opts.index;
     this->bridge = new IPC::Bridge(app.core);
+
+    this->hotkey.init(this->bridge);
+
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
@@ -186,9 +193,8 @@ namespace SSC {
       this
     );
 
-
     static auto userConfig = SSC::getUserConfig();
-    auto webContext = webkit_web_context_get_default();
+    auto webContext = this->bridge->router.webkitWebContext;
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
     auto policies = webkit_website_policies_new_with_policies(
@@ -963,6 +969,7 @@ namespace SSC {
   void Window::show () {
     gtk_widget_realize(this->window);
 
+    this->index = this->opts.index;
     if (this->opts.headless == false) {
       gtk_widget_show_all(this->window);
       gtk_window_present(GTK_WINDOW(this->window));
@@ -1005,6 +1012,18 @@ namespace SSC {
     if (opts.canExit) {
       this->exit(code);
     }
+  }
+
+  void Window::maximize () {
+    gtk_window_maximize(GTK_WINDOW(window));
+  }
+
+  void Window::minimize () {
+    gtk_window_iconify(GTK_WINDOW(window));
+  }
+
+  void Window::restore () {
+    gtk_window_deiconify(GTK_WINDOW(window));
   }
 
   void Window::navigate (const String &seq, const String &url) {

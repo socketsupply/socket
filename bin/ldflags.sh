@@ -83,6 +83,7 @@ done
 if [[ "$host" = "Darwin" ]]; then
   if (( !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR )); then
     ldflags+=("-framework" "Cocoa")
+    ldflags+=("-framework" "Carbon")
   fi
 
   if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then

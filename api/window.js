@@ -13,6 +13,7 @@ import { isValidPercentageValue } from './util.js'
 import * as statuses from './window/constants.js'
 import location from './location.js'
 import { URL } from './url.js'
+import hotkey from './window/hotkey.js'
 import ipc from './ipc.js'
 
 /**
@@ -37,6 +38,7 @@ export class ApplicationWindow {
   // TODO(@chicoxyzzy): add parent and children? (needs native process support)
 
   static constants = statuses
+  static hotkey = hotkey
 
   constructor ({ index, ...options }) {
     this.#index = index
@@ -59,6 +61,13 @@ export class ApplicationWindow {
    */
   get index () {
     return this.#index
+  }
+
+  /**
+   * @type {import('./window/hotkey.js').default}
+   */
+  get hotkey () {
+    return hotkey
   }
 
   /**
@@ -118,6 +127,33 @@ export class ApplicationWindow {
    */
   async hide () {
     const response = await ipc.send('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Maximize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async maximize () {
+    const response = await ipc.send('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Minimize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async minimize () {
+    const response = await ipc.send('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Restore the window
+   * @return {Promise<ipc.Result>}
+   */
+  async restore () {
+    const response = await ipc.send('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -452,7 +488,10 @@ export class ApplicationWindow {
   }
 }
 
+export { hotkey }
+
 export default ApplicationWindow
+
 /**
  * @ignore
  */

@@ -2674,16 +2674,11 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-#if defined(__linux__) && !defined(__ANDROID__)
-  // prevent this function from registering the `ipc://`
-  // URI scheme handler twice
-  static std::atomic<bool> registered = false;
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  if (registered) return;
-  registered = true;
 
-  auto ctx = webkit_web_context_get_default();
+#if defined(__linux__) && !defined(__ANDROID__)
+  auto ctx = router->webkitWebContext;
   auto security = webkit_web_context_get_security_manager(ctx);
 
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
@@ -2811,13 +2806,22 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    auto resolved = Router::resolveURLPathForWebView(path, cwd);
-    auto mount = Router::resolveNavigatorMountForWebView(path);
+    auto parsedPath = Router::parseURL(path);
+    auto resolved = Router::resolveURLPathForWebView(parsedPath.path, cwd);
+    auto mount = Router::resolveNavigatorMountForWebView(parsedPath.path);
     path = resolved.path;
 
     if (mount.path.size() > 0) {
       if (mount.resolution.redirect) {
-        auto redirectURL = path;
+        auto redirectURL = resolved.path;
+        if (parsedPath.queryString.size() > 0) {
+          redirectURL += "?" + parsedPath.queryString;
+        }
+
+        if (parsedPath.fragment.size() > 0) {
+          redirectURL += "#" + parsedPath.fragment;
+        }
+
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -2841,7 +2845,15 @@ static void registerSchemeHandler (Router *router) {
     } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
       path = userConfig["webview_default_index"];
     } else if (resolved.redirect) {
-      auto redirectURL = path;
+      auto redirectURL = resolved.path;
+      if (parsedPath.queryString.size() > 0) {
+        redirectURL += "?" + parsedPath.queryString;
+      }
+
+      if (parsedPath.fragment.size() > 0) {
+        redirectURL += "#" + parsedPath.fragment;
+      }
+
       auto redirectSource = String(
         "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
       );
@@ -3079,13 +3091,14 @@ static void registerSchemeHandler (Router *router) {
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
+      auto parsedPath = Router::parseURL(path);
       auto resolved = Router::resolveURLPathForWebView(path, basePath);
       auto mount = Router::resolveNavigatorMountForWebView(path);
       path = resolved.path;
 
       if (mount.path.size() > 0) {
         if (mount.resolution.redirect) {
-          auto redirectURL = mount.resolution.path;
+          auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
           auto redirectSource = String(
             "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
           );
@@ -3169,7 +3182,7 @@ static void registerSchemeHandler (Router *router) {
           return;
         }
       } else if (resolved.redirect) {
-        auto redirectURL = path;
+        auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -4064,6 +4077,32 @@ namespace SSC::IPC {
     return Router::WebViewURLPathResolution{};
   };
 
+  Router::WebViewURLComponents Router::parseURL(const SSC::String& url) {
+    Router::WebViewURLComponents components;
+    components.originalUrl = url;
+
+    size_t queryPos = url.find('?');
+    size_t fragmentPos = url.find('#');
+
+    if (queryPos != SSC::String::npos) {
+      components.path = url.substr(0, queryPos);
+    } else if (fragmentPos != SSC::String::npos) {
+      components.path = url.substr(0, fragmentPos);
+    } else {
+      components.path = url;
+    }
+
+    if (queryPos != SSC::String::npos) { // Extract the query string
+      components.queryString = url.substr(queryPos + 1, fragmentPos != SSC::String::npos ? fragmentPos - queryPos - 1 : SSC::String::npos);
+    }
+
+    if (fragmentPos != SSC::String::npos) { // Extract the fragment
+      components.fragment = url.substr(fragmentPos + 1);
+    }
+
+    return components;
+  }
+
   static const Map getWebViewNavigatorMounts () {
     static const auto userConfig = getUserConfig();
   #if defined(_WIN32)
@@ -4179,9 +4218,6 @@ namespace SSC::IPC {
   Router::Router () {
     static auto userConfig = SSC::getUserConfig();
 
-    initRouterTable(this);
-    registerSchemeHandler(this);
-
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
     this->locationObserver = [SSCLocationObserver new];
@@ -4190,7 +4226,13 @@ namespace SSC::IPC {
     [this->schemeHandler setRouter: this];
     [this->locationObserver setRouter: this];
     [this->networkStatusObserver setRouter: this];
+
+  #elif defined(__linux__) && !defined(__ANDROID__)
+    this->webkitWebContext = webkit_web_context_new();
   #endif
+
+    initRouterTable(this);
+    registerSchemeHandler(this);
 
     this->preserveCurrentTable();
 

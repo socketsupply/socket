@@ -1,13 +1,17 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
-import { ApplicationURLEvent } from './events.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
+
+import {
+  ApplicationURLEvent,
+  HotKeyEvent
+} from './events.js'
 
 import {
   File,
@@ -165,6 +169,7 @@ export function init () {
 
     // events
     ApplicationURLEvent,
+    HotKeyEvent,
 
     // file
     File,

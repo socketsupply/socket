@@ -598,6 +598,9 @@ MAIN {
     createProcess(true);
 
     shutdownHandler = [&](int signum) {
+    #if defined(__linux__)
+      unlink(appInstanceLock.c_str());
+    #endif
       if (process != nullptr) {
         process->kill();
       }
@@ -908,7 +911,7 @@ MAIN {
       auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : 0;
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
 
-      if (targetWindowIndex >= SSC_MAX_WINDOWS && (message.get("headless") != "true" || message.get("debug") != "true")) {
+      if (targetWindowIndex >= SSC_MAX_WINDOWS && message.get("headless") != "true" && message.get("debug") != "true") {
         const JSON::Object json = JSON::Object::Entries {
           { "err", String("Cannot create window with an index beyond ") + std::to_string(SSC_MAX_WINDOWS) }
         };
@@ -1269,6 +1272,36 @@ MAIN {
       return;
     }
 
+    bool isMaximize = message.name == "window.maximize";
+    bool isMinimize = message.name == "window.minimize";
+    bool isRestore = message.name == "window.restore";
+
+    if (isMaximize || isMinimize || isRestore) {
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0
+        ? std::stoi(message.get("targetWindowIndex"))
+        : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      if (isMaximize) {
+        targetWindow->maximize();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
+      if (isMinimize) {
+        targetWindow->minimize();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
+      if (isRestore) {
+        targetWindow->restore();
+        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
+      }
+
+      return;
+    }
+
     if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, value);
@@ -1312,6 +1345,9 @@ MAIN {
   // we clean up the windows and the backend process.
   //
   shutdownHandler = [&](int code) {
+  #if defined(__linux__)
+    unlink(appInstanceLock.c_str());
+  #endif
     if (process != nullptr) {
       process->kill();
     }
@@ -1376,12 +1412,14 @@ MAIN {
     .cwd = cwd,
     .appData = app.appData,
     .onMessage = onMessage,
+    .onExit = shutdownHandler
   });
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = app.appData["window_resizable"] == "false" ? false : true,
     .frameless = app.appData["window_frameless"] == "true" ? true : false,
     .utility = app.appData["window_utility"] == "true" ? true : false,
+    .canExit = true,
     .onExit = shutdownHandler
   });
 

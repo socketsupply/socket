@@ -1,4 +1,5 @@
 #include "extension.hh"
+#include <string.h>
 
 const sapi_json_type_t sapi_json_typeof (const sapi_json_any_t* json) {
   if (json->isNull()) return SAPI_JSON_TYPE_NULL;
@@ -87,7 +88,11 @@ const char * sapi_json_stringify_value (const sapi_json_any_t* json) {
   if (length > 0) {
     auto bytes = json->context->memory.alloc<char>(length + 1);
     if (bytes != nullptr) {
-      strncpy(bytes, string.c_str(), length);
+    #if defined(_WIN32)
+      strncat_s(bytes, length + 1, string.c_str(), length);
+    #else
+      strncat(bytes, string.c_str(), length);
+    #endif
     }
 
     return bytes;

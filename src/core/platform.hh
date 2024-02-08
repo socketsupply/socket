@@ -27,6 +27,7 @@
 #include <UIKit/UIKit.h>
 #else
 #include <Cocoa/Cocoa.h>
+#include <Carbon/Carbon.h>
 #include <objc/objc-runtime.h>
 #endif // `TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR`
 #endif // `__APPLE__`
@@ -36,6 +37,7 @@
 #include <cstring>
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
 #endif // `__linux__`
 

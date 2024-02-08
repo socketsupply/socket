@@ -8,6 +8,7 @@
 #include "../core/env.hh"
 #include "../core/config.hh"
 
+#include "hotkey.hh"
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
@@ -141,6 +142,7 @@ namespace SSC {
     public:
       App& app;
       WindowOptions opts;
+      HotKeyContext hotkey;
 
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
@@ -149,6 +151,7 @@ namespace SSC {
       int width = 0;
       int height = 0;
       bool exiting = false;
+
     #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
     #endif
@@ -175,6 +178,7 @@ namespace SSC {
       int popupId;
     #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+      bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
       ICoreWebView2 *webview = nullptr;
       HMENU systemMenu;
@@ -201,6 +205,9 @@ namespace SSC {
       void kill ();
       void exit (int code);
       void close (int code);
+      void minimize();
+      void maximize();
+      void restore();
       void navigate (const String&, const String&);
       String getTitle ();
       void setTitle (const String&);
@@ -634,9 +641,9 @@ namespace SSC {
           .width = opts.width,
           .height = opts.height,
           .index = 0,
-      #ifdef PORT
+        #ifdef PORT
           .port = PORT,
-      #endif
+        #endif
           .appData = opts.appData
         });
       }

@@ -245,6 +245,14 @@ namespace SSC::IPC {
         String route; // root path in webview navigator
       };
 
+      struct WebViewURLComponents {
+        String originalUrl;
+        String queryString;
+        String fragment;
+        String path;
+      };
+
+      static WebViewURLComponents parseURL(const String& url);
       static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
       static WebViewNavigatorMount resolveNavigatorMountForWebView (const String& path);
 
@@ -267,6 +275,8 @@ namespace SSC::IPC {
       SSCIPCSchemeHandler* schemeHandler = nullptr;
       SSCIPCSchemeTasks* schemeTasks = nullptr;
       NSTimer* notificationPollTimer = nullptr;
+    #elif defined(__linux__) && !defined(__ANDROID__)
+      WebKitWebContext* webkitWebContext = nullptr;
     #endif
 
       Router ();

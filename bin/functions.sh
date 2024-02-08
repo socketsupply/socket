@@ -658,42 +658,42 @@ function first_time_experience_setup() {
       if [[ "$package_manager" == "apt install" ]]; then
         log_and_run sudo apt update || return $?
         log_and_run sudo apt install -y   \
+          build-essential                 \
+          clang-14                        \
           git                             \
           libwebkit2gtk-4.1-dev           \
-          build-essential                 \
           libc++abi-14-dev                \
           libc++-14-dev                   \
           libdbus-1-dev                   \
           pkg-config                      \
-          clang-14                        \
           || return $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
         log_and_run sudo pacman -Syu      \
-          git                             \
-          webkit2gtk-4.1                  \
-          base-devel                      \
-          libc++abi-14                    \
-          libc++1-14                      \
           clang-14                        \
-          pkgconf                         \
+          base-devel                      \
+          git                             \
+          libc++1-14                      \
+          libc++abi-14                    \
           libdbus                         \
+          pkgconf                         \
+          webkit2gtk-4.1                  \
           || return $?
       elif [[ "$package_manager" == "dnf install" ]]; then
         log_and_run sudo dnf install      \
-          make                            \
           automake                        \
+          clang14-devel                   \
+          clang14-libs                    \
+          dbus-devel                      \
           gcc                             \
           gcc-c++                         \
           kernel-devel                    \
-          clang14-devel                   \
-          clang14-libs                    \
           libcxx-devel                    \
           libcxxabi-devel                 \
+          make                            \
           webkit2gtk4.1-devel             \
-          dbus-devel                      \
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
-        echo "warn - yum package manager is not suppored yet. Please try to install from npm or from source."
+        echo "warn - yum package manager is not suppored yet. Please try to install dependencies manually."
         exit 1
       fi
     fi

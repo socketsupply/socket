@@ -337,8 +337,6 @@ namespace SSC {
       if (list != 0) {
         draggablePayload = SSC::split(SSC::String(list), ';');
 
-        GlobalUnlock(list);
-        ReleaseStgMedium(&medium);
 
         SSC::String json = (
           "{"
@@ -352,6 +350,9 @@ namespace SSC {
         auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
         this->window->eval(payload);
       }
+
+      GlobalUnlock(list);
+      ReleaseStgMedium(&medium);
 
       return S_OK;
     };
@@ -613,12 +614,19 @@ namespace SSC {
     };
   };
 
-  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+  Window::Window (App& app, WindowOptions opts)
+    : app(app),
+      opts(opts),
+      hotkey(this)
+  {
     static auto userConfig = SSC::getUserConfig();
     app.isReady = false;
 
     this->index = opts.index;
-    window = CreateWindow(
+    window = CreateWindowEx(
+      opts.headless
+        ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+        : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
       userConfig["meta_bundle_identifier"].c_str(),
       userConfig["meta_title"].c_str(),
       WS_OVERLAPPEDWINDOW,
@@ -637,6 +645,7 @@ namespace SSC {
     this->drop = new DragDrop(this);
 
     this->bridge = new IPC::Bridge(app.core);
+    this->hotkey.init(this->bridge);
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
@@ -655,7 +664,16 @@ namespace SSC {
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
-    SSC::String preload = createPreload(opts);
+    // this is something like "C:\\Users\\josep\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
+    auto EDGE_RUNTIME_DIRECTORY = convertStringToWString(trim(Env::get("SOCKET_EDGE_RUNTIME_DIRECTORY")));
+
+    if (EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)) {
+      usingCustomEdgeRuntimeDirectory = true;
+      opts.appData["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
+      debug("Using Edge Runtime Directory: %ls", EDGE_RUNTIME_DIRECTORY.c_str());
+    } else {
+      EDGE_RUNTIME_DIRECTORY = L"";
+    }
 
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
@@ -706,17 +724,17 @@ namespace SSC {
 
     options4->SetCustomSchemeRegistrations(2, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
 
-    auto init = [&]() -> HRESULT {
+    auto init = [&, opts]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
-        nullptr,
+        EDGE_RUNTIME_DIRECTORY.size() > 0 ? EDGE_RUNTIME_DIRECTORY.c_str() : nullptr,
         (path + L"/" + filename).c_str(),
         options.Get(),
         Microsoft::WRL::Callback<IEnvHandler>(
-          [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+          [&, opts](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
             env->CreateCoreWebView2Controller(
               window,
               Microsoft::WRL::Callback<IConHandler>(
-                [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+                [&, opts](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
                   static auto userConfig = SSC::getUserConfig();
                   if (c != nullptr) {
                     controller = c;
@@ -734,6 +752,7 @@ namespace SSC {
                   Settings->put_IsScriptEnabled(TRUE);
                   Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                   Settings->put_IsWebMessageEnabled(TRUE);
+                  Settings->put_AreHostObjectsAllowed(TRUE);
                   Settings->put_IsStatusBarEnabled(FALSE);
 
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
@@ -772,6 +791,12 @@ namespace SSC {
                     return TRUE;
                   }, (LPARAM)window);
 
+		  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
+                   convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
+		    this->modulePath.parent_path().c_str(),
+		    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
+		  );
+
                   EventRegistrationToken tokenNavigation;
 
                   webview->add_NavigationStarting(
@@ -804,12 +829,26 @@ namespace SSC {
                   );
 
                   EventRegistrationToken tokenSchemaFilter;
-                  webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
+                  webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
                   webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
                   webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
+
+                  ICoreWebView2_22* webview22 = nullptr;
+                  webview->QueryInterface(IID_PPV_ARGS(&webview22));
+
+		  if (webview22 != nullptr) {
+		    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
+                      L"*",
+                      COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
+                      COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
+                    );
+
+		    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
+		  }
+
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                      [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
+                      [&, opts](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
                         static auto userConfig = SSC::getUserConfig();
                         static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
@@ -965,6 +1004,10 @@ namespace SSC {
                                 : "socket/" + uri
                             );
 
+			    const auto parts = split(path, '?');
+			    const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
+			    path = parts[0];
+
                             auto ext = fs::path(path).extension().string();
 
                             if (ext.size() > 0 && !ext.starts_with(".")) {
@@ -1042,21 +1085,31 @@ namespace SSC {
                                 path = path.substr(0, path.size() - 2);
                               }
 
+                              auto parsedPath = IPC::Router::parseURL(path);
                               auto rootPath = this->modulePath.parent_path();
-                              auto resolved = IPC::Router::resolveURLPathForWebView(path, rootPath.string());
-                              auto mount = IPC::Router::resolveNavigatorMountForWebView(path);
+                              auto resolved = IPC::Router::resolveURLPathForWebView(parsedPath.path, rootPath.string());
+                              auto mount = IPC::Router::resolveNavigatorMountForWebView(parsedPath.path);
                               path = resolved.path;
 
                               if (mount.path.size() > 0) {
                                 if (mount.resolution.redirect) {
+                                  auto redirectURL = mount.resolution.path;
+                                  if (parsedPath.queryString.size() > 0) {
+                                    redirectURL += "?" + parsedPath.queryString;
+                                  }
+
+                                  if (parsedPath.fragment.size() > 0) {
+                                    redirectURL += "#" + parsedPath.fragment;
+                                  }
+
                                   ICoreWebView2WebResourceResponse* res = nullptr;
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(mount.resolution.path) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(mount.resolution.path) + L"\n"
+                                      convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                       ).c_str(),
                                     &res
                                   );
@@ -1068,14 +1121,23 @@ namespace SSC {
                               } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
                                 path = userConfig["webview_default_index"];
                               } else if (resolved.redirect) {
+                                auto redirectURL = resolved.path;
+                                if (parsedPath.queryString.size() > 0) {
+                                  redirectURL += "?" + parsedPath.queryString;
+                                }
+
+                                if (parsedPath.fragment.size() > 0) {
+                                  redirectURL += "#" + parsedPath.fragment;
+                                }
+
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
                                   301,
                                   L"Moved Permanently",
                                   WString(
-                                    convertStringToWString("Location: ") + convertStringToWString(path) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(path) + L"\n"
+                                    convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
                                     ).c_str(),
                                   &res
                                   );
@@ -1211,6 +1273,10 @@ namespace SSC {
                     &tokenNewWindow
                   );
 
+                  WindowOptions options = opts;
+                  webview->QueryInterface(IID_PPV_ARGS(&webview22));
+                  options.appData["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
+                  auto preload = createPreload(options);
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires
                     // Consider using w->preloadJavascript, but apps work without this
@@ -1442,6 +1508,18 @@ namespace SSC {
     } else {
       this->hide();
     }
+  }
+
+  void Window::maximize () {
+    ShowWindow(window, SW_MAXIMIZE);
+  }
+
+  void Window::minimize () {
+    ShowWindow(window, SW_MINIMIZE);
+  }
+
+  void Window::restore () {
+    ShowWindow(window, SW_RESTORE);
   }
 
   void Window::show () {
@@ -1830,6 +1908,11 @@ namespace SSC {
 
       case WM_CLOSE: {
         w->close(0);
+        break;
+      }
+
+      case WM_HOTKEY: {
+        w->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
         break;
       }
 

@@ -3790,6 +3790,366 @@ declare module "socket:window/constants" {
     export * as _default from "socket:window/constants";
     
 }
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An event dispacted for a registered global hotkey expression.
+     */
+    export class HotKeyEvent extends MessageEvent<any> {
+        /**
+         * `HotKeyEvent` class constructor.
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * The global unique ID for this hotkey binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this hotkey binding.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized hotkey expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the hotkey binding.
+         * @type {string?}
+         */
+        get expression(): string;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+        export { HotKeyEvent };
+    }
+    export default _default;
+}
+declare module "socket:window/hotkey" {
+    /**
+     * Normalizes an expression string.
+     * @param {string} expression
+     * @return {string}
+     */
+    export function normalizeExpression(expression: string): string;
+    /**
+     * Bind a global hotkey expression.
+     * @param {string} expression
+     * @param {{ passive?: boolean }} [options]
+     * @return {Promise<Binding>}
+     */
+    export function bind(expression: string, options?: {
+        passive?: boolean;
+    }): Promise<Binding>;
+    /**
+     * Bind a global hotkey expression.
+     * @param {string} expression
+     * @param {object=} [options]
+     * @return {Promise<Binding>}
+     */
+    export function unbind(id: any, options?: object | undefined): Promise<Binding>;
+    /**
+     * Get all known globally register hotkey bindings.
+     * @param {object=} [options]
+     * @return {Promise<Binding[]>}
+     */
+    export function getBindings(options?: object | undefined): Promise<Binding[]>;
+    /**
+     * Get all known possible keyboard modifier and key mappings for
+     * expression bindings.
+     * @param {object=} [options]
+     * @return {Promise<{ keys: object, modifiers: object }>}
+     */
+    export function getMappings(options?: object | undefined): Promise<{
+        keys: object;
+        modifiers: object;
+    }>;
+    /**
+     * Adds an event listener to the global active bindings. This function is just
+     * proxy to `bindings.addEventListener`.
+     * @param {string} type
+     * @param {function(Event)} listener
+     * @param {(boolean|object)=} [optionsOrUseCapture]
+     */
+    export function addEventListener(type: string, listener: (arg0: Event) => any, optionsOrUseCapture?: (boolean | object) | undefined): void;
+    /**
+     * Removes  an event listener to the global active bindings. This function is
+     * just a proxy to `bindings.removeEventListener`
+     * @param {string} type
+     * @param {function(Event)} listener
+     * @param {(boolean|object)=} [optionsOrUseCapture]
+     */
+    export function removeEventListener(type: string, listener: (arg0: Event) => any, optionsOrUseCapture?: (boolean | object) | undefined): void;
+    /**
+     * A high level bindings container map that dispatches events.
+     */
+    export class Bindings extends EventTarget {
+        /**
+         * `Bindings` class constructor.
+         * @ignore
+         * @param {EventTarget} [sourceEventTarget]
+         */
+        constructor(sourceEventTarget?: EventTarget);
+        /**
+         * Global `HotKeyEvent` event listener for `Binding` instance event dispatch.
+         * @ignore
+         * @param {import('../internal/events.js').HotKeyEvent} event
+         */
+        onHotKey(event: import('../internal/events.js').HotKeyEvent): void;
+        /**
+         * The number of `Binding` instances in the mapping.
+         * @type {number}
+         */
+        get size(): number;
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'hotkey'` event listener.
+         * @ignore
+         * @type {function(HotKeyEvent)?}
+         */
+        set onhotkey(onhotkey: (arg0: hotkeyEvent) => any);
+        /**
+         * Level 1 'hotkey'` event listener.
+         * @type {function(hotkeyEvent)?}
+         */
+        get onhotkey(): (arg0: hotkeyEvent) => any;
+        /**
+         * Initializes bindings from global context.
+         * @ignore
+         * @return {Promise}
+         */
+        init(): Promise<any>;
+        /**
+         * Get a binding by `id`
+         * @param {number} id
+         * @return {Binding}
+         */
+        get(id: number): Binding;
+        /**
+         * Set a `binding` a by `id`.
+         * @param {number} id
+         * @param {Binding} binding
+         */
+        set(id: number, binding: Binding): void;
+        /**
+         * Delete a binding by `id`
+         * @param {number} id
+         * @return {boolean}
+         */
+        delete(id: number): boolean;
+        /**
+         * Returns `true` if a binding exists in the mapping, otherwise `false`.
+         * @return {boolean}
+         */
+        has(id: any): boolean;
+        /**
+         * Known `Binding` values in the mapping.
+         * @return {{ next: function(): { value: Binding|undefined, done: boolean } }}
+         */
+        values(): {
+            next: () => {
+                value: Binding | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` keys in the mapping.
+         * @return {{ next: function(): { value: number|undefined, done: boolean } }}
+         */
+        keys(): {
+            next: () => {
+                value: number | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` ids in the mapping.
+         * @return {{ next: function(): { value: number|undefined, done: boolean } }}
+         */
+        ids(): {
+            next: () => {
+                value: number | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Known `Binding` ids and values in the mapping.
+         * @return {{ next: function(): { value: [number, Binding]|undefined, done: boolean } }}
+         */
+        entries(): {
+            next: () => {
+                value: [number, Binding] | undefined;
+                done: boolean;
+            };
+        };
+        /**
+         * Bind a global hotkey expression.
+         * @param {string} expression
+         * @return {Promise<Binding>}
+         */
+        bind(expression: string): Promise<Binding>;
+        /**
+         * Bind a global hotkey expression.
+         * @param {string} expression
+         * @return {Promise<Binding>}
+         */
+        unbind(expression: string): Promise<Binding>;
+        /**
+         * Returns an array of all active bindings for the application.
+         * @return {Promise<Binding[]>}
+         */
+        active(): Promise<Binding[]>;
+        /**
+         * Resets all active bindings in the application.
+         * @param {boolean=} [currentContextOnly]
+         * @return {Promise}
+         */
+        reset(currentContextOnly?: boolean | undefined): Promise<any>;
+        /**
+         * Implements the `Iterator` protocol for each currently registered
+         * active binding in this window context. The `AsyncIterator` protocol
+         * will probe for all gloally active bindings.
+         * @return {Iterator<Binding>}
+         */
+        [Symbol.iterator](): Iterator<Binding>;
+        /**
+         * Implements the `AsyncIterator` protocol for each globally active
+         * binding registered to the application. This differs from the `Iterator`
+         * protocol as this will probe for _all_ active bindings in the entire
+         * application context.
+         * @return {AsyncGenerator<Binding>}
+         */
+        [Symbol.asyncIterator](): AsyncGenerator<Binding>;
+        #private;
+    }
+    /**
+     * An `EventTarget` container for a hotkey binding.
+     */
+    export class Binding extends EventTarget {
+        /**
+         * `Binding` class constructor.
+         * @ignore
+         * @param {object} data
+         */
+        constructor(data: object);
+        /**
+         * `true` if the binding is valid, otherwise `false`.
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * `true` if the binding is considered active, otherwise `false`.
+         * @type {boolean}
+         */
+        get isActive(): boolean;
+        /**
+         * The global unique ID for this binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this binding expression.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the binding.
+         * @type {string?}
+         */
+        get expression(): string;
+        /**
+         * Setter for the level 1 'hotkey'` event listener.
+         * @ignore
+         * @type {function(HotKeyEvent)?}
+         */
+        set onhotkey(onhotkey: (arg0: hotkeyEvent) => any);
+        /**
+         * Level 1 'hotkey'` event listener.
+         * @type {function(hotkeyEvent)?}
+         */
+        get onhotkey(): (arg0: hotkeyEvent) => any;
+        /**
+         * Binds this hotkey expression.
+         * @return {Promise<Binding>}
+         */
+        bind(): Promise<Binding>;
+        /**
+         * Unbinds this hotkey expression.
+         * @return {Promise}
+         */
+        unbind(): Promise<any>;
+        /**
+         * Implements the `AsyncIterator` protocol for async 'hotkey' events
+         * on this binding instance.
+         * @return {AsyncGenerator}
+         */
+        [Symbol.asyncIterator](): AsyncGenerator;
+        #private;
+    }
+    /**
+     * A container for all the bindings currently bound
+     * by this window context.
+     * @type {Bindings}
+     */
+    export const bindings: Bindings;
+    export default bindings;
+}
 declare module "socket:window" {
     /**
      * @param {string} url
@@ -3803,6 +4163,7 @@ declare module "socket:window" {
      */
     export class ApplicationWindow {
         static constants: typeof statuses;
+        static hotkey: import("socket:window/hotkey").Bindings;
         constructor({ index, ...options }: {
             [x: string]: any;
             index: any;
@@ -3812,6 +4173,10 @@ declare module "socket:window" {
          * @return {number} - the index of the window
          */
         get index(): number;
+        /**
+         * @type {import('./window/hotkey.js').default}
+         */
+        get hotkey(): import("socket:window/hotkey").Bindings;
         /**
          * Get the size of the window
          * @return {{ width: number, height: number }} - the size of the window
@@ -3845,6 +4210,21 @@ declare module "socket:window" {
          * @return {Promise<ipc.Result>}
          */
         hide(): Promise<ipc.Result>;
+        /**
+         * Maximize the window
+         * @return {Promise<ipc.Result>}
+         */
+        maximize(): Promise<ipc.Result>;
+        /**
+         * Minimize the window
+         * @return {Promise<ipc.Result>}
+         */
+        minimize(): Promise<ipc.Result>;
+        /**
+         * Restore the window
+         * @return {Promise<ipc.Result>}
+         */
+        restore(): Promise<ipc.Result>;
         /**
          * Sets the title of the window
          * @param {string} title - the title of the window
@@ -3988,6 +4368,7 @@ declare module "socket:window" {
         off(event: string, cb: (arg0: any) => void): void;
         #private;
     }
+    export { hotkey };
     export default ApplicationWindow;
     /**
      * @ignore
@@ -3995,6 +4376,7 @@ declare module "socket:window" {
     export const constants: typeof statuses;
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
+    import hotkey from "socket:window/hotkey";
 }
 declare module "socket:application" {
     /**
@@ -4291,60 +4673,24 @@ declare module "socket:bootstrap" {
     }
     import { EventEmitter } from "socket:events";
 }
-declare module "socket:net" {
-    export default exports;
-    export class Server extends EventEmitter {
-        constructor(options: any, handler: any);
-        _connections: number;
-        id: BigInt;
-        onconnection(data: any): void;
-        listen(port: any, address: any, cb: any): this;
-        _address: {
-            port: any;
-            address: any;
-            family: any;
-        };
-        connections: {};
-        address(): {
-            port: any;
-            address: any;
-            family: any;
-        };
-        close(cb: any): void;
-        getConnections(cb: any): void;
-        unref(): this;
+declare module "socket:ip" {
+    /**
+     * Normalizes input as an IPv4 address string
+     * @param {string|object|string[]|Uint8Array} input
+     * @return {string}
+     */
+    export function normalizeIPv4(input: string | object | string[] | Uint8Array): string;
+    /**
+     * Determines if an input `string` is in IP address version 4 format.
+     * @param {string|object|string[]|Uint8Array} input
+     * @return {boolean}
+     */
+    export function isIPv4(input: string | object | string[] | Uint8Array): boolean;
+    namespace _default {
+        export { normalizeIPv4 };
+        export { isIPv4 };
     }
-    export class Socket extends Duplex {
-        _server: any;
-        _address: any;
-        allowHalfOpen: boolean;
-        _flowing: boolean;
-        setNoDelay(enable: any): void;
-        setKeepAlive(enabled: any): void;
-        _onTimeout(): void;
-        address(): any;
-        _final(cb: any): this;
-        destroySoon(): void;
-        __write(data: any): void;
-        _read(cb: any): any;
-        pause(): this;
-        resume(): this;
-        connect(...args: any[]): this;
-        id: BigInt;
-        remotePort: any;
-        remoteAddress: any;
-        unref(): this;
-        [kLastWriteQueueSize]: any;
-    }
-    export function connect(...args: any[]): exports.Socket;
-    export function createServer(...args: any[]): exports.Server;
-    export function getNetworkInterfaces(o: any): any;
-    export function isIPv4(s: any): boolean;
-    import * as exports from "socket:net";
-    import { EventEmitter } from "socket:events";
-    import { Duplex } from "socket:stream";
-    const kLastWriteQueueSize: unique symbol;
-    
+    export default _default;
 }
 declare module "socket:dns/promises" {
     /**
@@ -7256,6 +7602,10 @@ declare module "socket:internal/globals" {
     const registry: any;
 }
 declare module "socket:internal/shared-worker" {
+    export function getSharedWorkerImplementationForPlatform(): {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
     export class SharedHybridWorkerProxy extends EventTarget {
         constructor(url: any, options: any);
         onChannelMessage(event: any): void;
@@ -8343,49 +8693,6 @@ declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
-}
-declare module "socket:internal/events" {
-    /**
-     * An event dispatched when an application URL is opening the application.
-     */
-    export class ApplicationURLEvent extends Event {
-        /**
-         * `ApplicationURLEvent` class constructor.
-         * @param {string=} [type]
-         * @param {object=} [options]
-         */
-        constructor(type?: string | undefined, options?: object | undefined);
-        /**
-         * `true` if the application URL is valid (parses correctly).
-         * @type {boolean}
-         */
-        get isValid(): boolean;
-        /**
-         * Data associated with the `ApplicationURLEvent`.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The original source URI
-         * @type {?string}
-         */
-        get source(): string;
-        /**
-         * The `URL` for the `ApplicationURLEvent`.
-         * @type {?URL}
-         */
-        get url(): URL;
-        /**
-         * String tag name for an `ApplicationURLEvent` instance.
-         * @type {string}
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    namespace _default {
-        export { ApplicationURLEvent };
-    }
-    export default _default;
 }
 declare module "socket:internal/geolocation" {
     /**

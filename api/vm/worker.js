@@ -63,7 +63,11 @@ class Client extends EventTarget {
   }
 
   onMessage (event) {
-    this.dispatchEvent(event)
+    try {
+      this.dispatchEvent(new MessageEvent(event.type, { data: event.data }))
+    } catch (err) {
+      console.warn(err)
+    }
   }
 
   postMessage (...args) {

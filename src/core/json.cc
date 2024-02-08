@@ -146,12 +146,19 @@ namespace SSC::JSON {
     this->type = Type::Number;
   }
 
-  #if defined(__APPLE__)
-  Any::Any (ssize_t  number) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+  Any::Any (size_t number) {
     this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
-  #endif
+#endif
+
+#if defined(__APPLE__)
+  Any::Any (ssize_t number) {
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
+    this->type = Type::Number;
+  }
+#endif
 
   Any::Any (const Number number) {
     this->pointer = std::shared_ptr<void>(new Number(number));

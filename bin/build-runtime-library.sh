@@ -108,6 +108,10 @@ declare sources=(
 declare test_headers=()
 declare cflags
 
+if [[ "$platform" = "desktop" ]]; then
+  sources+=("$root/src/window/hotkey.cc")
+fi
+
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
   android_fte
