@@ -16,8 +16,6 @@
 #define CHECK_FAILURE(...)
 #endif
 
-#define WM_SOCKET_TRY = WM_APP + 2
-
 using namespace Microsoft::WRL;
 
 namespace SSC {
@@ -1719,13 +1717,13 @@ namespace SSC {
   }
 
   void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+    static auto userConfig = SSC::getUserConfig();
     if (source.empty()) return void(0);
     auto menuSource = replace(SSC::String(source), "%%", "\n");
 
     NOTIFYICONDATA nid;
 
     if (isTrayMenu) {
-      static auto userConfig = SSC::getUserConfig();
       static auto app = App::instance();
 
       auto cwd = app->getcwd();
@@ -1743,9 +1741,8 @@ namespace SSC {
         trayIconPath = "";
       }
 
+      HICON icon;
       if (trayIconPath.size() > 0) {
-        HICON icon;
-
         icon = (HICON) LoadImageA(
           NULL,
           trayIconPath.c_str(),
@@ -1765,7 +1762,7 @@ namespace SSC {
       nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
 
       nid.uCallbackMessage = WM_SOCKET_TRAY;
-      nid.hIcon = icon
+      nid.hIcon = icon;
     } else {
       menubar = GetMenu(window);
     }
@@ -1781,7 +1778,14 @@ namespace SSC {
 
       HMENU subMenu;
       if (!isTrayMenu) subMenu = CreateMenu();
-      if (isTrayMenu) lstrcpy(nid.szTip, menuTitle.c_str());
+      if (isTrayMenu) lstrcpy(nid.szTip, userConfig["meta_title"].c_str());
+
+      if (isTrayMenu && menuSource.size() == 1) {
+        auto menuParts = split(line, ':');
+        auto title = menuParts[0];
+        menuTrayMap[itemId] =  line;
+        AppendMenuA(menutray, MF_STRING, itemId++, title.c_str());
+      }
 
       for (int i = 1; i < menuSource.size(); i++) {
         auto line = trim(menuSource[i]);
@@ -1831,11 +1835,12 @@ namespace SSC {
 
         if (isTrayMenu) {
           AppendMenuA(menutray, MF_STRING, itemId, display.c_str());
+          menuTrayMap[itemId] = SSC::String(title + ":" +(parts.size() > 1 ? parts[1] : ""));
         } else {
           AppendMenuA(subMenu, MF_STRING, itemId, display.c_str());
+          menuMap[itemId] = SSC::String(title + "\t" + menuTitle);
         }
 
-        menuMap[itemId] = SSC::String(title + "\t" + menuTitle);
         itemId++;
       }
 
@@ -1922,7 +1927,7 @@ namespace SSC {
 
     DestroyMenu(hPopupMenu);
     if (selection == 0) return;
-    this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu"));
+    this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
   }
 
   int Window::openExternal (const SSC::String& url) {
@@ -1970,21 +1975,25 @@ namespace SSC {
         static auto userConfig = SSC::getUserConfig();
         auto isAgent = userConfig.count("tray_icon") != 0;
 
-        SetForegroundWindow(hWnd);
-        if (isAgent) {
-          POINT pt;
-          GetCursorPos(&pt);
-          TrackPopupMenu(w->menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
-        }
-
-        PostMessage(hWnd, WM_NULL, 0, 0);
-
-        // broadcast an event to all the windows that the tray icon was clicked
-        if (app != nullptr && app->windowManager != nullptr) {
-          for (auto window : app->windowManager->windows) {
-            if (window != nullptr) window->bridge->router.emit("tray", "true");
+	if (lParam == WM_LBUTTONDOWN) {
+          SetForegroundWindow(hWnd);
+          if (isAgent) {
+            POINT pt;
+            GetCursorPos(&pt);
+            TrackPopupMenu(w->menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
           }
-        }
+
+          PostMessage(hWnd, WM_NULL, 0, 0);
+
+          // broadcast an event to all the windows that the tray icon was clicked
+          if (app != nullptr && app->windowManager != nullptr) {
+            for (auto window : app->windowManager->windows) {
+              if (window != nullptr) {
+                window->bridge->router.emit("tray", "true");
+	      }
+            }
+          }
+	}
 
         // fall through to WM_COMMAND!!
       }
@@ -1992,25 +2001,35 @@ namespace SSC {
       case WM_COMMAND: {
         if (w == nullptr) break;
 
-        String meta(w->menuMap[wParam]);
-        auto parts = split(meta, '\t');
+	if (w->menuMap.contains(wParam)) {
+          String meta(w->menuMap[wParam]);
+          auto parts = split(meta, '\t');
 
-        if (parts.size() > 1) {
-          auto title = parts[0];
-          auto parent = parts[1];
+          if (parts.size() > 1) {
+            auto title = parts[0];
+            auto parent = parts[1];
 
-          if (String(title).find("About") == 0) {
-            w->about();
-            break;
+            if (String(title).find("About") == 0) {
+              w->about();
+              break;
+            }
+
+            if (String(title).find("Quit") == 0) {
+              w->exit(0);
+              break;
+            }
+
+            w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
           }
-
-          if (String(title).find("Quit") == 0) {
-            w->exit(0);
-            break;
-          }
-
-          w->eval(getResolveMenuSelectionJavaScript("0", title, parent));
-        }
+	} else if (w->menuTrayMap.contains(wParam)) {
+          String meta(w->menuTrayMap[wParam]);
+          auto parts = split(meta, ':');
+	  if (parts.size() > 0) {
+            auto title = trim(parts[0]);
+            auto tag = parts.size() > 1 ? trim(parts[1]) : "";
+            w->eval(getResolveMenuSelectionJavaScript("0", title, tag, "tray"));
+	  }
+	}
 
         break;
       }
