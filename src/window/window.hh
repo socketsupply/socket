@@ -21,6 +21,7 @@
 
 #if defined(_WIN32)
 #define WM_HANDLE_DEEP_LINK WM_APP + 1
+#define WM_SOCKET_TRAY WM_APP + 2
 #endif
 
 namespace SSC {
@@ -190,6 +191,7 @@ namespace SSC {
       DragDrop* drop;
       HWND window;
       std::map<int, std::string> menuMap;
+      std::map<int, std::string> menuTrayMap;
       void resize (HWND window);
     #endif
 
