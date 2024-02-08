@@ -1,4 +1,4 @@
-/* global Event, EventTarget, ErrorEvent, reportError */
+/* global Event, EventTarget, ErrorEvent */
 import { HotKeyEvent } from '../internal/events.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
@@ -57,6 +57,8 @@ export class Bindings extends EventTarget {
    */
   #onhotkey = null
 
+  #clock = globalThis.performance.now()
+
   /**
    * `Bindings` class constructor.
    * @ignore
@@ -74,12 +76,15 @@ export class Bindings extends EventTarget {
     if (!/android|ios/.test(os.platform())) {
       sourceEventTarget.addEventListener('hotkey', this.onHotKey)
       sourceEventTarget.addEventListener('hotkey', (event) => {
-        this.#channel.postMessage(event.data)
+        const { id } = event.data ?? {}
+        if (!this.has(id)) {
+          this.#channel.postMessage(event.data)
+        }
       })
     }
 
     gc.ref(this)
-    this.init().catch(reportError)
+    this.init()
   }
 
   /**
@@ -161,6 +166,12 @@ export class Bindings extends EventTarget {
   onHotKey (event) {
     const { id } = event.data ?? {}
     const binding = this.get(id)
+
+    if (event.timeStamp < this.#clock) {
+      return false
+    }
+
+    this.#clock = event.timeStamp
 
     if (binding) {
       binding.dispatchEvent(new HotKeyEvent('hotkey', event.data))
