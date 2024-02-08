@@ -1050,13 +1050,13 @@ int runApp (const Path& path, const String& args, bool headless) {
 
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
-  if (platform.linux) {
+#if defined(__linux__)
     // unlink lock file that may existk
     static const auto bundleIdentifier = settings["meta_bundle_identifier"];
     static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
     static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
     unlink(appInstanceLock.c_str());
-  }
+#endif
 
   appProcess = new SSC::Process(
     headlessCommand + prefix + cmd,
@@ -2285,6 +2285,13 @@ int main (const int argc, const char* argv[]) {
         // copy icon.png
         fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
         log("icon.png created in " + targetPath.string() + "/src");
+
+	if (platform.win) {
+          // copy icon.ico
+          fs::copy(trim(prefixFile("assets/icon.ico")), targetPath / "src" / "icon.ico", fs::copy_options::overwrite_existing);
+          log("icon.ico created in " + targetPath.string() + "/src");
+
+	}
       } else {
         log("Current directory was not empty. Assuming index.html and icon are already in place.");
       }
@@ -4850,6 +4857,24 @@ int main (const int argc, const char* argv[]) {
         paths.pathResourcesRelativeToUserBuild /
         "AppxManifest.xml"
       };
+
+      if (settings["win_icon"].size() > 0) {
+        auto winIconPath = fs::path(settings["win_icon"]);
+        if (!fs::exists(winIconPath)) {
+          log("WARNING: Windows icon path at '[win] icon' does not exist");
+        } else {
+          const auto extname = winIconPath.extension().string();
+          fs::copy(
+            winIconPath,
+            pathResources,
+            fs::copy_options::update_existing | fs::copy_options::recursive
+          );
+        }
+      }
+
+      if (settings["win_logo"].size() == 0 && settings["win_icon"].size() > 0) {
+        settings["win_logo"] = fs::path(settings["win_icon"]).filename().string();
+      }
 
       // internal, used in the manifest
       if (settings["meta_version"].size() > 0) {

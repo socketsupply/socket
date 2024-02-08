@@ -1923,10 +1923,10 @@ headers = native-module1.hh
 ; cmd = "node backend/index.js"
 
 ; The icon to use for identifying your app on Windows.
-icon = "src/icon.png"
+icon = "src/icon.ico"
 
-; The icon to use for identifying your app on Windows.
-logo = "src/icons/icon.png"
+; The icon to use for identifying your app on Windows, relative to copied path resources
+logo = "icon.ico"
 
 ; A relative path to the pfx file used for signing.
 ; pfx = "certs/cert.pfx"
@@ -1985,7 +1985,7 @@ width = 50%
 
 
 [tray]
-; The icon to be displayed in the operating system tray.
+; The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format.
 ; defalut value = ""
 ; icon = "icon.png"
 
