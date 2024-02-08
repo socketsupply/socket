@@ -4118,7 +4118,7 @@ declare module "socket:window/hotkey" {
          * @ignore
          * @param {import('../internal/events.js').HotKeyEvent} event
          */
-        onHotKey(event: import('../internal/events.js').HotKeyEvent): void;
+        onHotKey(event: import('../internal/events.js').HotKeyEvent): boolean;
         /**
          * The number of `Binding` instances in the mapping.
          * @type {number}
