@@ -367,7 +367,11 @@ namespace SSC {
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
-    auto iconPath = fs::path { getcwd() / fs::path { "index.ico" } };
+    if (userConfig["win_logo"].size() == 0 && userConfig["win_icon"].size() > 0) {
+      userConfig["win_logo"] = fs::path(userConfig["win_icon"]).filename().string();
+    }
+
+    auto iconPath = fs::path { getcwd() / fs::path { userConfig["win_logo"] } };
 
     HICON icon = (HICON) LoadImageA(
       NULL,
