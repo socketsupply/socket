@@ -1895,7 +1895,7 @@ static void initRouterTable (Router *router) {
           }
 
           auto error = [NSError
-            errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+            errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
             code: -1
             userInfo: @{
               NSLocalizedDescriptionKey: reason
@@ -2008,7 +2008,9 @@ static void initRouterTable (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    if (!router->isReady) router->isReady = true;
+    if (message.value == "runtimeinit") {
+      router->isReady = true;
+    }
 
     router->core->platform.event(
       message.seq,
@@ -2166,6 +2168,160 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, true);
+    reply(Result::Data { message, JSON::Object {}});
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.clients.claim", [](auto message, auto router, auto reply) {
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.clients.openWindow", [](auto message, auto router, auto reply) {
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.register", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scriptURL", "scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto options = ServiceWorkerContainer::RegistrationOptions {
+      .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
+      .scope = message.get("scope"),
+      .scriptURL = message.get("scriptURL")
+    };
+
+    const auto registration = router->core->serviceWorker.registerServiceWorker(options);
+    auto json = JSON::Object {
+      JSON::Object::Entries {
+        {"registration", registration.json()},
+        {"client", JSON::Object::Entries {
+          {"id", std::to_string(router->bridge->id)}
+        }}
+      }
+    };
+
+    auto& clients = router->core->serviceWorker.registrations.at(options.scope).clients;
+    bool clientExists = false;
+    for (const auto& client : clients) {
+      if (client.id == router->bridge->id) {
+        clientExists = true;
+        break;
+      }
+    }
+
+    if (!clientExists) {
+      clients.push_back(ServiceWorkerContainer::Client { router->bridge->id });
+    }
+
+    reply(Result::Data { message, json });
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.unregister", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto scope = message.get("scope");
+    router->core->serviceWorker.unregisterServiceWorker(scope);
+
+    return reply(Result::Data { message, JSON::Object {} });
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.getRegistration", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto scope = message.get("scope");
+
+    for (const auto& entry : router->core->serviceWorker.registrations) {
+      const auto& registration = entry.second;
+      if (registration.options.scope.starts_with(scope)) {
+        auto json = JSON::Object {
+          JSON::Object::Entries {
+            {"registration", registration.json()},
+            {"client", JSON::Object::Entries {
+              {"id", std::to_string(router->bridge->id)}
+            }}
+          }
+        };
+
+        return reply(Result::Data { message, json });
+      }
+    }
+
+    return reply(Result::Data { message, JSON::Object {} });
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.getRegistrations", [](auto message, auto router, auto reply) {
+    auto json = JSON::Array::Entries {};
+    for (const auto& entry : router->core->serviceWorker.registrations) {
+      const auto& registration = entry.second;
+      json.push_back(registration.json());
+    }
+    return reply(Result::Data { message, json });
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.skipWaiting", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->serviceWorker.skipWaiting(id);
+
+    reply(Result::Data { message, JSON::Object {}});
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.startMessages", [](auto message, auto router, auto reply) {
+  });
+
+  /**
+   * TODO
+   */
+  router->map("serviceWorker.updateState", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "state"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->serviceWorker.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2853,6 +3009,7 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     bool isModule = false;
+
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     const auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String) + "/ui";
   #else
@@ -2961,6 +3118,74 @@ static void registerSchemeHandler (Router *router) {
         if (userConfig.contains("webview_default_index")) {
           path = userConfig["webview_default_index"];
         } else {
+          if (self.router->core->serviceWorker.registrations.size() > 0) {
+            auto fetchRequest = ServiceWorkerContainer::FetchRequest {
+              String(request.URL.path.UTF8String)
+            };
+
+            fetchRequest.client.id = self.router->bridge->id;
+            if (request.URL.query != nullptr) {
+              fetchRequest.query = String(request.URL.query.UTF8String);
+            }
+
+            if (request.allHTTPHeaderFields != nullptr) {
+              for (NSString* key in request.allHTTPHeaderFields) {
+                const auto value = [request.allHTTPHeaderFields objectForKey: key];
+                if (value != nullptr) {
+                  const auto entry = String(key.UTF8String) + ": " + String(value.UTF8String);
+                  fetchRequest.headers.push_back(entry);
+                }
+              }
+            }
+
+            const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) {
+              auto headers = [NSMutableDictionary dictionary];
+              auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+
+              for (const auto& line : webviewHeaders) {
+                auto pair = split(trim(line), ':');
+                auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
+                auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+                headers[key] = value;
+              }
+
+              headers[@"access-control-allow-origin"] = @"*";
+              headers[@"access-control-allow-methods"] = @"*";
+              headers[@"access-control-allow-headers"] = @"*";
+
+              for (const auto& entry : res.headers) {
+                auto pair = split(trim(entry), ':');
+                auto key = @(trim(pair[0]).c_str());
+                auto value = @(trim(pair[1]).c_str());
+                headers[key] = value;
+              }
+
+              auto data = [NSData dataWithBytes: res.buffer.bytes length: res.buffer.size];
+              auto response = [[NSHTTPURLResponse alloc]
+                initWithURL: request.URL
+                statusCode: res.statusCode
+                HTTPVersion: @"HTTP/1.1"
+                headerFields: headers
+              ];
+
+              [task didReceiveResponse: response];
+
+              if (res.buffer.size  && data.length > 0) {
+                [task didReceiveData: data];
+              }
+
+              [task didFinish];
+
+            #if !__has_feature(objc_arc)
+              [response release];
+            #endif
+            });
+
+            if (fetched) {
+              return;
+            }
+          }
+
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: request.URL
             statusCode: 404
@@ -3091,25 +3316,46 @@ static void registerSchemeHandler (Router *router) {
 
     components.scheme = @("socket");
     headers[@"content-location"] = components.URL.absoluteString;
+    const auto absoluteURL = String(components.URL.absoluteString.UTF8String);
+    const auto socketModulePrefix = "socket://" + userConfig["meta_bundle_identifier"] + "/socket/";
 
-    auto statusCode = exists ? 200 : 404;
-    auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: components.URL
-       statusCode: statusCode
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: headers
-    ];
-
-    [task didReceiveResponse: response];
-
-    if (data && data.length > 0) {
-      [task didReceiveData: data];
+    if (!isModule && absoluteURL.starts_with(socketModulePrefix)) {
+      isModule = true;
     }
-    [task didFinish];
+
+    dispatch_async(queue, ^{
+      if (
+        !isModule && (
+          absoluteURL.ends_with(".js") ||
+          absoluteURL.ends_with(".cjs") ||
+          absoluteURL.ends_with(".mjs")
+        )
+      ) {
+        while (!self.router->isReady) {
+          msleep(1);
+        }
+      }
+
+      auto statusCode = exists ? 200 : 404;
+      auto response = [NSHTTPURLResponse.alloc
+         initWithURL: components.URL
+          statusCode: statusCode
+         HTTPVersion: @"HTTP/1.1"
+        headerFields: headers
+      ];
+
+      [task didReceiveResponse: response];
+
+      if (data && data.length > 0) {
+        [task didReceiveData: data];
+      }
+
+      [task didFinish];
 
     #if !__has_feature(objc_arc)
-    [response release];
+      [response release];
     #endif
+    });
 
     return;
   }
@@ -3409,7 +3655,7 @@ static void registerSchemeHandler (Router *router) {
       }
 
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
         code: -1
         userInfo: @{
           NSLocalizedDescriptionKey: reason
@@ -3455,7 +3701,7 @@ static void registerSchemeHandler (Router *router) {
     static auto userConfig = SSC::getUserConfig();
     if (!isAuthorized) {
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
         code: -1
         userInfo: @{
           @"Error reason": @("Location observer could not be activated")
@@ -3705,6 +3951,7 @@ namespace SSC::IPC {
   Bridge::Bridge (Core *core) : router() {
     static auto userConfig = SSC::getUserConfig();
 
+    this->id = rand64();
     this->core = core;
     this->router.core = core;
     this->router.bridge = this;
@@ -3838,7 +4085,7 @@ namespace SSC::IPC {
     }
 
     // Resolve the full path
-    fs::path fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
+    const auto fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
 
     // 1. Try the given path if it's a file
     if (fs::is_regular_file(fullPath)) {
@@ -3846,7 +4093,7 @@ namespace SSC::IPC {
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
-    fs::path indexPath = fullPath / fs::path("index.html");
+    const auto indexPath = fullPath / fs::path("index.html");
     if (fs::is_regular_file(indexPath)) {
       if (fullPath.string().ends_with("\\") || fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
@@ -3862,7 +4109,7 @@ namespace SSC::IPC {
     }
 
     // 3. Check if appending a .html file extension gives a valid file
-    fs::path htmlPath = fullPath;
+    auto htmlPath = fullPath;
     htmlPath.replace_extension(".html");
     if (fs::is_regular_file(htmlPath)) {
       return Router::WebViewURLPathResolution{"/" + replace(fs::relative(htmlPath, basePath).string(), "\\\\", "/")};
