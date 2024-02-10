@@ -263,12 +263,12 @@ namespace SSC::IPC {
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
       BufferMap buffers;
-      bool isReady = false;
       Mutex mutex;
       Table table;
       Listeners listeners;
       Core *core = nullptr;
       Bridge *bridge = nullptr;
+      AtomicBool isReady = false;
     #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
       SSCLocationObserver* locationObserver = nullptr;
@@ -320,6 +320,8 @@ namespace SSC::IPC {
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
+      uint64_t id = 0;
+      // AtomicBool isReady = false;
     #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
       FileSystemWatcher* fileSystemWatcher = nullptr;
     #endif
