@@ -270,6 +270,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     });
   };
 
+  core->serviceWorker.init(bridge);
   auto appFrame = [[UIScreen mainScreen] bounds];
 
   self.window = [[UIWindow alloc] initWithFrame: appFrame];
