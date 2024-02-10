@@ -16,6 +16,7 @@ namespace SSC::android {
     this->bridge = bridge;
     this->config = SSC::getUserConfig();
     this->pointer = reinterpret_cast<jlong>(this);
+    this->bridge->runtime->serviceWorker.init(reinterpret_cast<IPC::Bridge*>(this->bridge));
 
     StringStream stream;
 
