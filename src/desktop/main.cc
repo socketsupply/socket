@@ -1433,6 +1433,21 @@ MAIN {
 
   defaultWindow->show(EMPTY_SEQ);
 
+  if (app.appData["permissions_allow_service_worker"] != "false") {
+    auto serviceWorkerWindow = windowManager.createWindow({
+      .canExit = false,
+      .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
+      // .headless = true,
+    });
+
+    app.core->serviceWorker.init(serviceWorkerWindow->bridge);
+    serviceWorkerWindow->show(EMPTY_SEQ);
+    serviceWorkerWindow->navigate(
+      EMPTY_SEQ,
+      "socket://" + app.appData["meta_bundle_identifier"] + "/socket/service-worker/index.html"
+    );
+  }
+
   if (_port > 0) {
     defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
     defaultWindow->setSystemMenu(EMPTY_SEQ, String(
