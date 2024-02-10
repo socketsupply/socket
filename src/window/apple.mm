@@ -59,11 +59,13 @@
     }
 
     if (request.starts_with("socket:")) {
+      self.bridge->router.isReady = false;
       decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
 
     if (request.starts_with(devHost)) {
+      self.bridge->router.isReady = false;
       decisionHandler(WKNavigationActionPolicyAllow);
       return;
     }
@@ -72,6 +74,7 @@
     return;
   }
 
+  self.bridge->router.isReady = false;
   decisionHandler(WKNavigationActionPolicyAllow);
 }
 
@@ -893,7 +896,7 @@ namespace SSC {
       debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
     }
 
-    WKUserContentController* controller = [config userContentController];
+    WKUserContentController* controller = config.userContentController;
 
     // Add preload script, normalizing the interface to be cross-platform.
     SSC::String preload = createPreload(opts);
@@ -901,14 +904,14 @@ namespace SSC {
     WKUserScript* userScript = [WKUserScript alloc];
 
     [userScript
-      initWithSource: [NSString stringWithUTF8String:preload.c_str()]
-      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+        initWithSource: @(preload.c_str())
+         injectionTime: WKUserScriptInjectionTimeAtDocumentStart
       forMainFrameOnly: NO
     ];
 
     [controller addUserScript: userScript];
 
-    webview = [[SSCBridgedWebView alloc]
+    webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect
       configuration: config
     ];
