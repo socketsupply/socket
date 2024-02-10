@@ -1,5 +1,5 @@
-#ifndef SSC_FILE_SYSTEM_WATCHER
-#define SSC_FILE_SYSTEM_WATCHER
+#ifndef SSC_FILE_SYSTEM_WATCHER_H
+#define SSC_FILE_SYSTEM_WATCHER_H
 
 #include "platform.hh"
 #include "types.hh"
