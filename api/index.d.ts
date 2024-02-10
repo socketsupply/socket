@@ -8921,6 +8921,54 @@ declare module "socket:internal/geolocation" {
     }
     export default _default;
 }
+declare module "socket:service-worker/state" {
+    export const channel: BroadcastChannel;
+    export const state: any;
+    export default state;
+}
+declare module "socket:service-worker/instance" {
+    export function createServiceWorker(currentState?: any): any;
+    export const SHARED_WORKER_URL: URL;
+    const _default: any;
+    export default _default;
+}
+declare module "socket:service-worker/registration" {
+    export class ServiceWorkerRegistration {
+        constructor(info: any, serviceWorker: any);
+        get scope(): any;
+        get updateViaCache(): string;
+        get installing(): any;
+        get waiting(): any;
+        get active(): any;
+        set onupdatefound(onupdatefound: any);
+        get onupdatefound(): any;
+        get navigationPreload(): any;
+        getNotifications(): Promise<any[]>;
+        showNotification(): Promise<void>;
+        unregister(): Promise<void>;
+        update(): Promise<void>;
+        #private;
+    }
+    export default ServiceWorkerRegistration;
+}
+declare module "socket:service-worker/container" {
+    export class ServiceWorkerContainer extends EventTarget {
+        init(): void;
+        register(scriptURL: any, options?: any): Promise<ServiceWorkerRegistration>;
+        getRegistration(clientURL: any): Promise<ServiceWorkerRegistration>;
+        getRegistrations(): Promise<ServiceWorkerRegistration[]>;
+        get ready(): any;
+        get controller(): any;
+        startMessages(): void;
+    }
+    export default ServiceWorkerContainer;
+    import { ServiceWorkerRegistration } from "socket:service-worker/registration";
+}
+declare module "socket:internal/service-worker" {
+    export const serviceWorker: ServiceWorkerContainer;
+    export default serviceWorker;
+    import { ServiceWorkerContainer } from "socket:service-worker/container";
+}
 declare module "socket:internal/webassembly" {
     /**
      * The `instantiateStreaming()` function compiles and instantiates a WebAssembly
@@ -9107,6 +9155,88 @@ declare module "socket:internal/worker" {
     }
     export default _default;
 }
+declare module "socket:service-worker/clients" {
+    export class Client {
+        postMessage(message: any, optionsOrTransferables?: any): any;
+        #private;
+    }
+    export class WindowClient extends Client {
+        focus(): void;
+        navigate(): void;
+    }
+    export class Clients {
+        get(id: any): Promise<void>;
+        matchAll(): Promise<void>;
+        openWindow(): Promise<void>;
+        claim(): Promise<void>;
+    }
+    export default Clients;
+}
+declare module "socket:service-worker/events" {
+    export class ExtendableEvent extends Event {
+        waitUntil(promise: any): void;
+        waitsFor(): Promise<any>;
+        get pendingPromises(): number;
+        get isActive(): boolean;
+        #private;
+    }
+    export class FetchEvent extends ExtendableEvent {
+        constructor(type?: string, options?: any);
+        get handled(): any;
+        get request(): any;
+        get clientId(): any;
+        get isReload(): boolean;
+        get preloadResponse(): Promise<any>;
+        respondWith(response: any): void;
+        #private;
+    }
+    namespace _default {
+        export { ExtendableEvent };
+        export { FetchEvent };
+    }
+    export default _default;
+}
+declare module "socket:service-worker/global" {
+    export class ServiceWorkerGlobalScope {
+        get ExtendableEvent(): typeof ExtendableEvent;
+        get FetchEvent(): typeof FetchEvent;
+        get serviceWorker(): any;
+        set registration(value: any);
+        get registration(): any;
+        get clients(): Clients;
+        set onactivate(listener: any);
+        get onactivate(): any;
+        set onmessage(listener: any);
+        get onmessage(): any;
+        set oninstall(listener: any);
+        get oninstall(): any;
+        set onfetch(listener: any);
+        get onfetch(): any;
+        skipWaiting(): Promise<void>;
+    }
+    const _default: ServiceWorkerGlobalScope;
+    export default _default;
+    import { ExtendableEvent } from "socket:service-worker/events";
+    import { FetchEvent } from "socket:service-worker/events";
+    import { Clients } from "socket:service-worker/clients";
+}
+declare module "socket:service-worker/init" {
+    const _default: any;
+    export default _default;
+}
+declare function isTypedArray(object: any): boolean;
+declare function isTypedArray(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
+declare const Uint8ArrayPrototype: Uint8Array;
+declare const TypedArrayPrototype: any;
+declare const TypedArray: any;
+declare const ports: any[];
+declare module "socket:service-worker/worker" {
+    export {};
+}
 declare module "socket:test/harness" {
     /**
      * @typedef {import('./index').Test} Test
@@ -9226,10 +9356,11 @@ declare module "socket:test/harness" {
 declare module "socket:vm/init" {
     export {};
 }
-declare function reportError(e: any): void;
-declare function reportError(err: any): void;
+declare function isTypedArray(object: any): boolean;
 declare function isTypedArray(object: any): boolean;
 declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;
