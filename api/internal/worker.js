@@ -1,4 +1,4 @@
-/* global reportError, EventTarget, CustomEvent */
+/* global reportError, EventTarget, CustomEvent, MessageEvent */
 import './init.js'
 
 import { rand64 } from '../crypto.js'
@@ -95,8 +95,8 @@ if (source && typeof source === 'string') {
         // @ts-ignore
         await import(source)
         if (Array.isArray(globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG)) {
-          for (const message of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
-            globalThis.dispatchEvent(message)
+          for (const event of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
+            globalThis.dispatchEvent(new MessageEvent(event.type, event))
           }
 
           globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.splice(
@@ -216,7 +216,7 @@ export async function onWorkerMessage (event) {
     return false
   }
 
-  return dispatchEvent(event)
+  return dispatchEvent(new MessageEvent(event.type, event))
 }
 
 export function addEventListener (eventName, callback, ...args) {
@@ -240,9 +240,10 @@ export function removeEventListener (eventName, callback, ...args) {
 }
 
 export function dispatchEvent (event) {
-  if (hooks.globalEvents.includes(event.type)) {
+  if (event.type !== 'message') {
     return worker.dispatchEvent(event)
   }
+
   return workerGlobalScopeEventTarget.dispatchEvent(event)
 }
 
