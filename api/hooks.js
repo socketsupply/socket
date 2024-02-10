@@ -135,7 +135,6 @@ function proxyGlobalEvents (global, target) {
 
 // state
 let isGlobalLoaded = false
-let isRuntimeInitialized = false
 
 export const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 
@@ -277,7 +276,7 @@ export class Hooks extends EventTarget {
    * @type {boolean}
    */
   get isRuntimeReady () {
-    return isRuntimeInitialized
+    return Boolean(globalThis.__RUNTIME_INIT_NOW__)
   }
 
   /**
@@ -325,14 +324,12 @@ export class Hooks extends EventTarget {
     const { isWorkerContext, document, global } = this
     const readyState = document?.readyState
 
-    isRuntimeInitialized = Boolean(global.__RUNTIME_INIT_NOW__)
-
     proxyGlobalEvents(global, this)
 
     // if runtime is initialized, then 'DOMContentLoaded' (document),
     // 'load' (window), and the 'init' (window) events have all been dispatched
     // prior to hook initialization
-    if (isRuntimeInitialized) {
+    if (this.isRuntimeReady) {
       dispatchLoadEvent(this)
       dispatchInitEvent(this)
       dispatchReadyEvent(this)
@@ -340,7 +337,6 @@ export class Hooks extends EventTarget {
     }
 
     addEventListenerOnce(global, RUNTIME_INIT_EVENT_NAME, () => {
-      isRuntimeInitialized = true
       dispatchInitEvent(this)
       dispatchReadyEvent(this)
     })
