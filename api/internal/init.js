@@ -1,4 +1,4 @@
-/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList */
+/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -217,7 +217,7 @@ class RuntimeWorker extends GlobalWorker {
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_LOCATION', {
       configurable: false,
       enumerable: false,
-      value: '${url}'
+      value: decodeURIComponent('${url}')
     })
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG', {
@@ -305,41 +305,43 @@ class RuntimeWorker extends GlobalWorker {
       }
     })
 
-    this.addEventListener('message', (event) => {
-      const { data } = event
-      if (data?.__runtime_worker_ipc_request) {
-        const request = data.__runtime_worker_ipc_request
-        if (
-          typeof request?.message === 'string' &&
-          request.message.startsWith('ipc://')
-        ) {
-          queueMicrotask(async () => {
-            try {
-              // eslint-disable-next-line no-use-before-define
-              const message = ipc.Message.from(request.message, request.bytes)
-              const options = { bytes: message.bytes }
-              // eslint-disable-next-line no-use-before-define
-              const result = await ipc.request(message.name, message.rawParams, options)
-              const transfer = []
+    queueMicrotask(() => {
+      addEventListener('message', (event) => {
+        const { data } = event
+        if (data?.__runtime_worker_ipc_request) {
+          const request = data.__runtime_worker_ipc_request
+          if (
+            typeof request?.message === 'string' &&
+            request.message.startsWith('ipc://')
+          ) {
+            queueMicrotask(async () => {
+              try {
+                // eslint-disable-next-line no-use-before-define
+                const message = ipc.Message.from(request.message, request.bytes)
+                const options = { bytes: message.bytes }
+                // eslint-disable-next-line no-use-before-define
+                const result = await ipc.request(message.name, message.rawParams, options)
+                const transfer = []
 
-              if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
-                transfer.push(result.data)
-              }
-
-              this.postMessage({
-                __runtime_worker_ipc_result: {
-                  message: message.toJSON(),
-                  result: result.toJSON()
+                if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
+                  transfer.push(result.data)
                 }
-              }, transfer)
-            } catch (err) {
-              console.warn('RuntimeWorker:', err)
-            }
-          })
+
+                this.postMessage({
+                  __runtime_worker_ipc_result: {
+                    message: message.toJSON(),
+                    result: result.toJSON()
+                  }
+                }, transfer)
+              } catch (err) {
+                console.warn('RuntimeWorker:', err)
+              }
+            })
+          }
+        } else {
+          return eventTarget.dispatchEvent(new MessageEvent(event.type, event))
         }
-      } else {
-        return eventTarget.dispatchEvent(event)
-      }
+      })
     })
   }
 
@@ -428,8 +430,6 @@ import globals from './globals.js'
 import ipc from '../ipc.js'
 
 import '../console.js'
-
-const isWorkerLike = !globalThis.window && globalThis.self && globalThis.postMessage
 
 class ConcurrentQueue extends EventTarget {
   concurrency = Infinity
@@ -534,11 +534,9 @@ hooks.onLoad(() => {
 // async preload modules
 hooks.onReady(async () => {
   try {
-    if (!isWorkerLike) {
-      // precache fs.constants
-      await ipc.request('fs.constants', {}, { cache: true })
-    }
-
+    // precache fs.constants
+    await ipc.request('fs.constants', {}, { cache: true })
+    await import('../worker.js')
     await import('../diagnostics.js')
     await import('../fs/fds.js')
     await import('../fs/constants.js')
@@ -556,6 +554,8 @@ Object.defineProperty(globalThis, '__globals', {
   configurable: false,
   value: globals
 })
+
+ipc.send('platform.event', 'runtimeinit').catch(reportError)
 
 export default {
   location
