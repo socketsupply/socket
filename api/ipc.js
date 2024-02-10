@@ -33,7 +33,7 @@
  * ```
  */
 
-/* global webkit, chrome, external */
+/* global webkit, chrome, external, reportError */
 import {
   AbortError,
   InternalError,
@@ -303,6 +303,7 @@ export function maybeMakeError (error, caller) {
     GeolocationPositionError: getErrorClass('GeolocationPositionError'),
     IndexSizeError: getErrorClass('IndexSizeError'),
     InternalError,
+    DOMException: getErrorClass('DOMContentLoaded'),
     InvalidAccessError: getErrorClass('InvalidAccessError'),
     NetworkError: getErrorClass('NetworkError'),
     NotAllowedError: getErrorClass('NotAllowedError'),
@@ -331,7 +332,7 @@ export function maybeMakeError (error, caller) {
   delete error.type
 
   if (type in errors) {
-    err = new errors[type](error.message || '')
+    err = new errors[type](error.message || '', error.code)
   } else {
     for (const E of Object.values(errors)) {
       if ((E.code && type === E.code) || (code && code === E.code)) {
@@ -1470,15 +1471,25 @@ Object.freeze(primordials)
 initializeXHRIntercept()
 
 if (typeof globalThis?.window !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
+  if (globalThis.document.readyState === 'complete') {
     queueMicrotask(async () => {
       try {
         await send('platform.event', 'domcontentloaded')
       } catch (err) {
-        console.error('ERR:', err)
+        reportError(err)
       }
     })
-  })
+  } else {
+    globalThis.document.addEventListener('DOMContentLoaded', () => {
+      queueMicrotask(async () => {
+        try {
+          await send('platform.event', 'domcontentloaded')
+        } catch (err) {
+          reportError(err)
+        }
+      })
+    })
+  }
 }
 
 // eslint-disable-next-line
