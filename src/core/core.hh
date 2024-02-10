@@ -10,6 +10,7 @@
 #include "json.hh"
 #include "platform.hh"
 #include "preload.hh"
+#include "service_worker_container.hh"
 #include "string.hh"
 #include "types.hh"
 #include "version.hh"
@@ -47,7 +48,7 @@ namespace SSC {
   String FormatError (DWORD error, String source);
 #endif
 
-   
+
   // forward
   class Core;
 
@@ -719,6 +720,7 @@ namespace SSC {
           );
       };
 
+      ServiceWorkerContainer serviceWorker;
       Diagnostics diagnostics;
       DNS dns;
       FS fs;
@@ -765,7 +767,8 @@ namespace SSC {
         fs(this),
         os(this),
         platform(this),
-        udp(this)
+        udp(this),
+        serviceWorker(this)
       {
         this->posts = std::shared_ptr<Posts>(new Posts());
         initEventLoop();
