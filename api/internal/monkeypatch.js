@@ -1,6 +1,7 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
+import serviceWorker from './service-worker.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
@@ -34,7 +35,7 @@ const natives = {}
 const patches = {}
 
 export function init () {
-  if (applied || !globalThis.window) {
+  if (applied || globalThis.self !== globalThis) {
     return { natives, patches }
   }
 
@@ -76,7 +77,11 @@ export function init () {
         if (nativeImplementation !== implementation) {
           // let this fail, the environment implementation may not be writable
           try {
-            target[actualName] = implementation
+            Object.defineProperty(
+              target,
+              actualName,
+              Object.getOwnPropertyDescriptor(implementations, actualName)
+            )
           } catch {}
 
           patches[actualName] = implementation
@@ -188,42 +193,57 @@ export function init () {
     isSocketRuntime: true
   })
 
-  // navigator
-  install({ geolocation, permissions }, globalThis.navigator, 'navigator')
+  if (globalThis.navigator) {
+    // environment navigator
+    install({
+      geolocation,
+      permissions,
+      serviceWorker
+    }, globalThis.navigator, 'navigator')
+
+    // manually install 'navigator.serviceWorker' accessors from prototype
+    Object.defineProperties(
+      globalThis.navigator.serviceWorker,
+      Object.getOwnPropertyDescriptors(Object.getPrototypeOf(serviceWorker))
+    )
+
+    serviceWorker.init.call(globalThis.navigator.serviceWorker)
+  }
 
   // WebAssembly
   install(WebAssembly, globalThis.WebAssembly, 'WebAssembly')
 
   applied = true
-  // create <title> tag in document if it doesn't exist
-  globalThis.document.title ||= ''
-  // initial value
-  globalThis.document.addEventListener('DOMContentLoaded', () => {
-    const title = globalThis.document.title
-    if (title.length !== 0) {
-      const index = globalThis.__args.index
-      const o = new URLSearchParams({ value: title, index }).toString()
-      ipc.postMessage(`ipc://window.setTitle?${o}`)
-    }
-  })
 
-  //
-  // globalThis.document is uncofigurable property so we need to use MutationObserver here
-  //
-  const observer = new MutationObserver((mutationList) => {
-    for (const mutation of mutationList) {
-      if (mutation.type === 'childList') {
+  if (globalThis.document) {
+    // create <title> tag in document if it doesn't exist
+    globalThis.document.title ||= ''
+    // initial value
+    globalThis.document.addEventListener('DOMContentLoaded', () => {
+      const title = globalThis.document.title
+      if (title.length !== 0) {
         const index = globalThis.__args.index
-        const title = mutation.addedNodes[0].textContent
         const o = new URLSearchParams({ value: title, index }).toString()
         ipc.postMessage(`ipc://window.setTitle?${o}`)
       }
-    }
-  })
+    })
 
-  const titleElement = document.querySelector('head > title')
-  if (titleElement) {
-    observer.observe(titleElement, { childList: true })
+    // globalThis.document is unconfigurable property so we need to use MutationObserver here
+    const observer = new MutationObserver((mutationList) => {
+      for (const mutation of mutationList) {
+        if (mutation.type === 'childList') {
+          const index = globalThis.__args.index
+          const title = mutation.addedNodes[0].textContent
+          const o = new URLSearchParams({ value: title, index }).toString()
+          ipc.postMessage(`ipc://window.setTitle?${o}`)
+        }
+      }
+    })
+
+    const titleElement = document.querySelector('head > title')
+    if (titleElement) {
+      observer.observe(titleElement, { childList: true })
+    }
   }
 
   return { natives, patches }
