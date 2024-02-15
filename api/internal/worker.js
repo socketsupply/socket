@@ -104,6 +104,7 @@ if (source && typeof source === 'string') {
             globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.length
           )
         }
+        globalThis.postMessage({ __runtime_worker_init: true })
       } catch (err) {
         reportError(err)
       }
