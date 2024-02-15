@@ -271,15 +271,20 @@ static dispatch_queue_t queue = dispatch_queue_create(
   };
 
   core->serviceWorker.init(bridge);
-  auto appFrame = [[UIScreen mainScreen] bounds];
-
-  self.window = [[UIWindow alloc] initWithFrame: appFrame];
-
-  UIViewController *viewController = [[UIViewController alloc] init];
-  viewController.view.frame = appFrame;
-  self.window.rootViewController = viewController;
 
   auto userConfig = SSC::getUserConfig();
+  const auto resourcePath = NSBundle.mainBundle.resourcePath;
+  const auto cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
+  const auto argv = userConfig["ssc_argv"];
+  const auto appFrame = UIScreen.mainScreen.bounds;
+  const auto viewController = [UIViewController new];
+  const auto config = [WKWebViewConfiguration new];
+  const auto processInfo = NSProcessInfo.processInfo;
+
+  viewController.view.frame = appFrame;
+
+  self.window = [UIWindow.alloc initWithFrame: appFrame];
+  self.window.rootViewController = viewController;
 
   StringStream env;
 
@@ -300,12 +305,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   env << String("width=" + std::to_string(appFrame.size.width) + "&");
   env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
-  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
-  NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
-  const auto argv = userConfig["ssc_argv"];
-
-  uv_chdir(cwd.UTF8String);
-
   WindowOptions opts {
     .debug = isDebugEnabled(),
     .isTest = argv.find("--test") != -1,
@@ -314,47 +313,56 @@ static dispatch_queue_t queue = dispatch_queue_create(
     .appData = userConfig
   };
 
+  opts.clientId = bridge->id;
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
-  String  preload = createPreload(opts);
+  bridge->preload = createPreload(opts, {
+    .module = true
+  });
 
-  WKUserScript* initScript = [[WKUserScript alloc]
-    initWithSource: [NSString stringWithUTF8String: preload.c_str()]
-    injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-    forMainFrameOnly: NO];
+  uv_chdir(cwd.UTF8String);
 
-  WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
+  [config setValue: @YES forKey: @"allowUniversalAccessFromFileURLs"];
 
-  [config setURLSchemeHandler: bridge->router.schemeHandler
-                 forURLScheme: @"ipc"];
-
-  [config setURLSchemeHandler: bridge->router.schemeHandler
-                 forURLScheme: @"socket"];
-
-  self.content = [config userContentController];
-
-  [self.content addScriptMessageHandler:self name: @"external"];
-  [self.content addUserScript: initScript];
-
-  self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
-  self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-  WKPreferences* prefs = self.webview.configuration.preferences;
-
-  [self.webview.configuration
-    setValue: @YES
-      forKey: @"allowUniversalAccessFromFileURLs"
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"ipc"
   ];
 
-  [self.webview.configuration.preferences
-    setValue: @YES
-      forKey: @"allowFileAccessFromFileURLs"
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"socket"
   ];
 
-  [self.webview.configuration.preferences
-    setValue: @YES
-      forKey: @"javaScriptEnabled"
+  self.content = config.userContentController;
+
+  [self.content
+    addScriptMessageHandler: self
+                       name: @"external"
   ];
+
+  self.webview = [SSCBridgedWebView.alloc
+     initWithFrame: appFrame
+     configuration: config
+  ];
+
+  self.webview.autoresizingMask = (
+    UIViewAutoresizingFlexibleWidth |
+    UIViewAutoresizingFlexibleHeight
+  );
+
+  self.webview.customUserAgent = [NSString
+    stringWithFormat: @("Mozilla/5.0 (iPhone; CPU iPhone OS %d_%d_%d like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1 SocketRuntime/%s"),
+    processInfo.operatingSystemVersion.majorVersion,
+    processInfo.operatingSystemVersion.minorVersion,
+    processInfo.operatingSystemVersion.patchVersion,
+    SSC::VERSION_STRING.c_str()
+  ];
+
+  const auto prefs = self.webview.configuration.preferences;
+
+  [prefs setValue: @YES forKey: @"allowFileAccessFromFileURLs" ];
+  [prefs setValue: @YES forKey: @"javaScriptEnabled" ];
 
   if (userConfig["permissions_allow_fullscreen"] == "false") {
     [prefs setValue: @NO forKey: @"fullScreenEnabled"];
