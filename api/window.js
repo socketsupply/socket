@@ -32,8 +32,10 @@ export function formatURL (url) {
  * Represents a window in the application
  */
 export class ApplicationWindow {
+  #id = null
   #index
   #options
+  #channel = null
   #senderWindowIndex = globalThis.__args.index
   #listeners = {}
   // TODO(@chicoxyzzy): add parent and children? (needs native process support)
@@ -42,8 +44,10 @@ export class ApplicationWindow {
   static hotkey = hotkey
 
   constructor ({ index, ...options }) {
+    this.#id = options?.id
     this.#index = index
     this.#options = options
+    this.#channel = new BroadcastChannel(`window.${this.#id}`)
   }
 
   #updateOptions (response) {
@@ -51,9 +55,18 @@ export class ApplicationWindow {
     if (err) {
       throw new Error(err)
     }
-    const { index, ...options } = data
+    const { id, index, ...options } = data
+    this.#id = id ?? null
     this.#options = options
     return data
+  }
+
+  /**
+   * The unique ID of this window.
+   * @type {string}
+   */
+  get id () {
+    return this.#id
   }
 
   /**
@@ -69,6 +82,14 @@ export class ApplicationWindow {
    */
   get hotkey () {
     return hotkey
+  }
+
+  /**
+   * The broadcast channel for this window.
+   * @type {BroadcastChannel}
+   */
+  get channel () {
+    return this.#channel
   }
 
   /**
