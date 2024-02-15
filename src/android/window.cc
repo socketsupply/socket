@@ -51,9 +51,10 @@ namespace SSC::android {
     options.appData = this->config;
     options.argv = argv;
     options.isTest = argv.find("--test") != -1;
+    options.clientId = this->bridge->id;
 
     preloadSource = createPreload(options, PreloadOptions {
-      .module = false
+      .module = true
     });
   }
 
