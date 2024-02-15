@@ -1,12 +1,15 @@
 #include "codec.hh"
+#include "core.hh"
 #include "preload.hh"
 #include "string.hh"
+#include "config.hh"
 
 namespace SSC {
   String createPreload (
     const WindowOptions opts,
     const PreloadOptions preloadOptions
   ) {
+    static auto userConfig = SSC::getUserConfig();
     auto argv = opts.argv;
   #ifdef _WIN32
     // Escape backslashes in paths.
@@ -27,11 +30,32 @@ namespace SSC {
       "    value: [" +argv + "],                                             \n"
       "    enumerable: true                                                  \n"
       "  },                                                                  \n"
-      "  config: {                                                           \n"
-      "    value: {},                                                        \n"
+      "  client: {                                                           \n"
+      "    configurable: false,                                              \n"
       "    enumerable: true,                                                 \n"
-      "    writable: true,                                                   \n"
-      "    configurable: true                                                \n"
+      "    writable: false,                                                  \n"
+      "    value: {                                                          \n"
+      "      id: globalThis.window && globalThis.top !== globalThis.window   \n"
+      "        ? '" + std::to_string(rand64()) + "'                          \n"
+      "        : globalThis.window && globalThis.top                         \n"
+      "          ? '" + std::to_string(opts.clientId) + "'                   \n"
+      "          : null,                                                     \n"
+      "      type: globalThis.window                                         \n"
+      "        ? 'window'                                                    \n"
+      "        : 'worker',                                                   \n"
+      "      frameType:                                                      \n"
+      "        globalThis.window && globalThis.top !== globalThis.window     \n"
+      "        ? 'nested'                                                    \n"
+      "        : globalThis.window && globalThis.top                         \n"
+      "          ? 'top-level'                                               \n"
+      "          : 'none'                                                    \n"
+      "    }                                                                 \n"
+      "  },                                                                  \n"
+      "  config: {                                                           \n"
+      "    configurable: false,                                              \n"
+      "    enumerable: true,                                                 \n"
+      "    writable: false,                                                  \n"
+      "    value: {}                                                         \n"
       "  },                                                                  \n"
       "  debug: {                                                            \n"
       "    value: Boolean(" + std::to_string(opts.debug) + "),               \n"
@@ -89,12 +113,19 @@ namespace SSC {
         "    }                                                               \n"
         "  });                                                               \n"
         "                                                                    \n"
-        "  globalThis.addEventListener(' __runtime_init__', () => {          \n"
+        "  globalThis.addEventListener('__runtime_init__', () => {           \n"
         "    if (Array.isArray(APPLICATION_URL_EVENT_BACKLOG)) {             \n"
         "      for (const event of APPLICATION_URL_EVENT_BACKLOG) {          \n"
-        "        globalThis.dispatchEvent(event);                            \n"
+        "        globalThis.dispatchEvent(                                   \n"
+        "          new ApplicationURLEvent(event.type, event)                \n"
+        "        );                                                          \n"
         "      }                                                             \n"
         "    }                                                               \n"
+        "                                                                    \n"
+        "    APPLICATION_URL_EVENT_BACKLOG.splice(                           \n"
+        "      0,                                                            \n"
+        "      APPLICATION_URL_EVENT_BACKLOG.length - 1                      \n"
+        "    );                                                              \n"
         "  }, { once: true });                                               \n"
     );
 
@@ -104,9 +135,9 @@ namespace SSC {
         opts.appData.at("webview_watch_reload") != "false"
       ) {
           preload += (
-            "  globalThis.addEventListener('filedidchange', () => {            \n"
-            "    location.reload()                                             \n"
-            "  });                                                             \n"
+            "  globalThis.addEventListener('filedidchange', () => {          \n"
+            "    location.reload()                                           \n"
+            "  });                                                           \n"
         );
       }
     }
@@ -158,6 +189,7 @@ namespace SSC {
     }
 
     preload += (
+      "  Object.freeze(globalThis.__args.client);                            \n"
       "  Object.freeze(globalThis.__args.config);                            \n"
       "  Object.freeze(globalThis.__args.argv);                              \n"
       "  Object.freeze(globalThis.__args.env);                               \n"
@@ -185,16 +217,38 @@ namespace SSC {
     );
 
     preload += (
-      "if (document.readyState === 'complete') {                             \n"
-      "  import('socket:internal/init').catch(console.error);                \n"
-      "} else {                                                              \n"
-      "  document.addEventListener('readystatechange', () => {               \n"
-      "    if (/interactive|complete/.test(document.readyState)) {           \n"
-      "      import('socket:internal/init').catch(console.error);            \n"
-      "    }                                                                 \n"
-      "  }, { once: true });                                                 \n"
+      "function __postMessage__ (...args) {                                  \n"
+      "  if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {   \n"
+      "    return webkit.messageHandlers.external.postMessage(...args)       \n"
+      "  } else if (globalThis?.chrome?.webview?.postMessage) {              \n"
+      "    return chrome.webview.postMessage(...args)                        \n"
+      "  } else if (globalThis?.external?.postMessage) {                     \n"
+      "    return external.postMessage(...args)                              \n"
+      "  }                                                                   \n"
+      "                                                                      \n"
+      "  throw new TypeError(                                                \n"
+      "    'Could not determine postMessage during init preload.'            \n"
+      "  )                                                                   \n"
       "}                                                                     \n"
     );
+
+    if (preloadOptions.module) {
+      preload += (
+        "\nimport 'socket:internal/init'                                     \n"
+      );
+    } else {
+      preload += (
+        "if (document.readyState === 'complete') {                           \n"
+        "  import('socket:internal/init').catch(console.error);              \n"
+        "} else {                                                            \n"
+        "  document.addEventListener('readystatechange', () => {             \n"
+        "    if (/interactive|complete/.test(document.readyState)) {         \n"
+        "      import('socket:internal/init').catch(console.error);          \n"
+        "    }                                                               \n"
+        "  }, { once: true });                                               \n"
+        "}                                                                   \n"
+      );
+    }
 
     return preload;
   }
