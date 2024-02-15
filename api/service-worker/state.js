@@ -1,13 +1,20 @@
 /* global reportError */
+import application from '../application.js'
 import ipc from '../ipc.js'
 
-export const channel = new BroadcastChannel('service-worker-state')
+export const channel = new BroadcastChannel('serviceWorker.state')
 
 const descriptors = {
   channel: {
     configurable: false,
     enumerable: false,
     value: channel
+  },
+
+  clients: {
+    configurable: false,
+    enumerable: true,
+    value: Object.create(null)
   },
 
   notify: {
@@ -17,10 +24,12 @@ const descriptors = {
     async value (type) {
       channel.postMessage({ [type]: this[type] })
 
-      if (type === 'serviceWorker') {
+      if (this.id && type === 'serviceWorker') {
         await ipc.request('serviceWorker.updateState', {
           id: this.id,
-          state: this.serviceWorker.state
+          scope: this.serviceWorker.scope,
+          state: this.serviceWorker.state,
+          scriptURL: this.serviceWorker.scriptURL
         })
       }
     }
@@ -34,7 +43,16 @@ const descriptors = {
         configurable: false,
         enumerable: true,
         writable: true,
-        value: '/'
+        value: globalThis.window
+          ? new URL('.', globalThis.location.href).pathname
+          : '/'
+      },
+
+      scriptURL: {
+        configurable: false,
+        enumerable: false,
+        writable: true,
+        value: null
       },
 
       state: {
@@ -50,20 +68,6 @@ const descriptors = {
 if (!globalThis.window) {
   Object.assign(descriptors, {
     id: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    scriptURL: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    scope: {
       configurable: false,
       enumerable: false,
       writable: true,
@@ -95,7 +99,7 @@ if (!globalThis.window) {
       configurable: false,
       enumerable: false,
       writable: true,
-      value: reportError
+      value: reportError.bind(globalThis)
     }
   })
 }
@@ -103,12 +107,90 @@ if (!globalThis.window) {
 export const state = Object.create(null, descriptors)
 
 channel.addEventListener('message', (event) => {
-  if (event.data.serviceWorker) {
-    const scope = new URL(globalThis.location.href).pathname
+  if (event.data?.serviceWorker) {
+    const scope = new URL('.', globalThis.location.href).pathname
     if (scope.startsWith(event.data.serviceWorker.scope)) {
       Object.assign(state.serviceWorker, event.data.serviceWorker)
     }
+  } else if (event.data?.clients?.get?.id) {
+    if (event.data.clients.get.id === globalThis.__args.client.id) {
+      channel.postMessage({
+        clients: {
+          get: {
+            result: {
+              client: {
+                id: globalThis.__args.client.id,
+                url: globalThis.location.pathname + globalThis.location.search,
+                type: globalThis.__args.client.type,
+                index: globalThis.__args.index,
+                frameType: globalThis.__args.client.frameType
+              }
+            }
+          }
+        }
+      })
+    }
+  } else if (event.data?.clients?.matchAll) {
+    const type = event.data.clients.matchAll?.type ?? 'window'
+    if (type === 'all' || type === globalThis.__args.type) {
+      channel.postMessage({
+        clients: {
+          matchAll: {
+            result: {
+              client: {
+                id: globalThis.__args.client.id,
+                url: globalThis.location.pathname + globalThis.location.search,
+                type: globalThis.__args.client.type,
+                index: globalThis.__args.index,
+                frameType: globalThis.__args.client.frameType
+              }
+            }
+          }
+        }
+      })
+    }
   }
 })
+
+if (globalThis.document) {
+  channel.addEventListener('message', async (event) => {
+    if (event.data?.client?.id === globalThis.__args.client.id) {
+      if (event.data.client.focus === true) {
+        const currentWindow = await application.getCurrentWindow()
+        try {
+          await currentWindow.restore()
+        } catch {}
+        globalThis.focus()
+      }
+    }
+  })
+
+  globalThis.document.addEventListener('visibilitychange', (event) => {
+    channel.postMessage({
+      client: {
+        id: globalThis.__args.client.id,
+        visibilityState: globalThis.document.visibilityState
+      }
+    })
+  })
+
+  globalThis.addEventListener('focus', (event) => {
+    channel.postMessage({
+      client: {
+        id: globalThis.__args.client.id,
+        focused: true
+      }
+    })
+  })
+
+  globalThis.addEventListener('blur', (event) => {
+    channel.postMessage({
+      client: {
+        id: globalThis.__args.client.id,
+        focused: false
+      }
+    })
+  })
+}
 
 export default state
