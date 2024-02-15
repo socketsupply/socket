@@ -2,6 +2,11 @@
 
 #include "../ipc/ipc.hh"
 
+// TODO(@jwerle): create a better platform macro to drop this garbage below
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__)) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+#include "../app/app.hh"
+#endif
+
 namespace SSC {
   static IPC::Bridge* serviceWorkerBridge = nullptr;
 
@@ -41,7 +46,40 @@ namespace SSC {
   }
 
   void ServiceWorkerContainer::init (IPC::Bridge* bridge) {
+    Lock lock(this->mutex);
+
     this->bridge = bridge;
+    this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
+      uint64_t id = 0;
+
+      try {
+        id = std::stoull(message.get("id"));
+      } catch (...) {
+        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+          {"message", "Invalid 'id' given in parameters"}
+        }});
+      }
+
+      do {
+        Lock lock(this->mutex);
+        if (!this->fetchRequests.contains(id)) {
+          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
+          }});
+        }
+      } while (0);
+
+      const auto& request = this->fetchRequests.at(id);
+      const auto post = Post { 0, 0, request.buffer.bytes, request.buffer.size };
+      reply(IPC::Result { message.seq, message, JSON::Object {}, post });
+
+      do {
+        Lock lock(this->mutex);
+        this->fetchRequests.erase(id);
+      } while (0);
+    });
+
     this->bridge->router.map("serviceWorker.fetch.response", [this](auto message, auto router, auto reply) mutable {
       uint64_t clientId = 0;
       uint64_t id = 0;
@@ -63,14 +101,17 @@ namespace SSC {
         }});
       }
 
-      if (!this->fetches.contains(id)) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"type", "NotFoundError"},
-          {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
-        }});
-      }
+      do {
+        Lock lock(this->mutex);
+        if (!this->fetchCallbacks.contains(id)) {
+          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+          }});
+        }
+      } while (0);
 
-      const auto callback = this->fetches.at(id);
+      const auto callback = this->fetchCallbacks.at(id);
 
       try {
         statusCode = std::stoi(message.get("statusCode"));
@@ -89,33 +130,39 @@ namespace SSC {
         { clientId }
       };
 
-      this->fetches.erase(id);
+      // no `app` pointer or on mobile, just call callback
       callback(response);
+      reply(IPC::Result { message.seq, message });
+
+      do {
+        Lock lock(this->mutex);
+        this->fetchCallbacks.erase(id);
+        if (this->fetchRequests.contains(id)) {
+          this->fetchRequests.erase(id);
+        }
+      } while(0);
     });
   }
 
-  const ServiceWorkerContainer::Registration ServiceWorkerContainer::registerServiceWorker (
+  const ServiceWorkerContainer::Registration& ServiceWorkerContainer::registerServiceWorker (
     const RegistrationOptions& options
   ) {
+    Lock lock(this->mutex);
+
     if (this->registrations.contains(options.scope)) {
       auto& registration = this->registrations.at(options.scope);
-
-      if (this->bridge != nullptr) {
-        this->bridge->router.emit("serviceWorker.register", registration.json().str());
-      }
 
       return registration;
     }
 
-    const auto id = rand64();
-    const auto registration = Registration {
-      id,
+    this->registrations.insert_or_assign(options.scope, Registration {
+      rand64(),
       options.scriptURL,
       Registration::State::Registered,
       options
-    };
+    });
 
-    this->registrations.insert_or_assign(options.scope, registration);
+    const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
       this->bridge->router.emit("serviceWorker.register", registration.json().str());
@@ -125,11 +172,13 @@ namespace SSC {
   }
 
   bool ServiceWorkerContainer::unregisterServiceWorker (String scopeOrScriptURL) {
+    Lock lock(this->mutex);
+
     const auto& scope = scopeOrScriptURL;
     const auto& scriptURL = scopeOrScriptURL;
 
     if (this->registrations.contains(scope)) {
-      const auto registration = this->registrations.at(scope);
+      const auto& registration = this->registrations.at(scope);
       this->registrations.erase(scope);
       if (this->bridge != nullptr) {
         return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
@@ -138,7 +187,7 @@ namespace SSC {
 
     for (const auto& entry : this->registrations) {
       if (entry.second.scriptURL == scriptURL) {
-        const auto registration = this->registrations.at(entry.first);
+        const auto& registration = this->registrations.at(entry.first);
         this->registrations.erase(entry.first);
         if (this->bridge != nullptr) {
           return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
@@ -150,6 +199,8 @@ namespace SSC {
   }
 
   bool ServiceWorkerContainer::unregisterServiceWorker (uint64_t id) {
+    Lock lock(this->mutex);
+
     for (const auto& entry : this->registrations) {
       if (entry.second.id == id) {
         return this->unregisterServiceWorker(entry.first);
@@ -160,6 +211,8 @@ namespace SSC {
   }
 
   void ServiceWorkerContainer::skipWaiting (uint64_t id) {
+    Lock lock(this->mutex);
+
     for (auto& entry : this->registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
@@ -179,6 +232,8 @@ namespace SSC {
   }
 
   void ServiceWorkerContainer::updateState (uint64_t id, const String& stateString) {
+    Lock lock(this->mutex);
+
     for (auto& entry : this->registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
@@ -207,7 +262,9 @@ namespace SSC {
     }
   }
 
-  bool ServiceWorkerContainer::fetch (FetchRequest request, FetchCallback callback) {
+  bool ServiceWorkerContainer::fetch (const FetchRequest& request, FetchCallback callback) {
+    Lock lock(this->mutex);
+
     if (this->bridge == nullptr) {
       return false;
     }
@@ -228,6 +285,7 @@ namespace SSC {
 
         const auto fetch = JSON::Object::Entries {
           {"id", std::to_string(id)},
+          {"method", request.method},
           {"pathname", request.pathname},
           {"query", request.query},
           {"headers", headers},
@@ -236,11 +294,15 @@ namespace SSC {
 
         auto json = registration.json();
         json.set("fetch", fetch);
-        this->fetches.insert_or_assign(id, callback);
+
+        this->fetchCallbacks.insert_or_assign(id, callback);
+        this->fetchRequests.insert_or_assign(id, request);
+
         return this->bridge->router.emit("serviceWorker.fetch", json.str());
       }
     }
 
+    debug("no registration found for fetch");
     return false;
   }
 }
