@@ -1,11 +1,9 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerRegistration } from './registration.js'
 import serviceWorker from './instance.js'
-import { Clients } from './clients.js'
+import clients from './clients.js'
 import state from './state.js'
 import ipc from '../ipc.js'
-
-const clients = new Clients()
 
 // events
 let onactivate = null

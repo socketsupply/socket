@@ -4,12 +4,20 @@ import state from './state.js'
 
 export const SHARED_WORKER_URL = new URL('./shared-worker.js', import.meta.url)
 
-export function createServiceWorker (currentState = state.serviceWorker.state) {
-  // events
+export function createServiceWorker (
+  currentState = state.serviceWorker.state,
+  options = null
+) {
+  // client message bus worker
   const sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+
+  // events
   const eventTarget = new EventTarget()
   let onstatechange = null
   let onerror = null
+
+  // state
+  let scriptURL = options?.scriptURL ?? null
 
   sharedWorker.port.start()
   sharedWorker.port.addEventListener('message', (event) => {
@@ -29,6 +37,12 @@ export function createServiceWorker (currentState = state.serviceWorker.state) {
       configurable: true,
       enumerable: false,
       get: () => currentState
+    },
+
+    scriptURL: {
+      configurable: true,
+      enumerable: false,
+      get: () => scriptURL
     },
 
     onerror: {
@@ -84,24 +98,28 @@ export function createServiceWorker (currentState = state.serviceWorker.state) {
     }
   })
 
-  state.channel.addEventListener('message', (event) => {
-    const { data } = event
-    if (data.serviceWorker) {
-      if (data.serviceWorker.state && data.serviceWorker.state !== currentState) {
-        const scope = new URL(globalThis.location.href).pathname
-        if (scope.startsWith(data.serviceWorker.scope)) {
-          currentState = data.serviceWorker.state
-          const event = new Event('statechange')
+  if (options?.subscribe !== false) {
+    state.channel.addEventListener('message', (event) => {
+      const { data } = event
+      if (data.serviceWorker) {
+        if (data.serviceWorker.state && data.serviceWorker.state !== currentState) {
+          const scope = new URL(globalThis.location.href).pathname
+          console.log('instance channel message', scope, data.serviceWorker.scope)
+          if (scope.startsWith(data.serviceWorker.scope)) {
+            currentState = data.serviceWorker.state
+            scriptURL = data.serviceWorker.scriptURL
+            const event = new Event('statechange')
 
-          Object.defineProperties(event, {
-            target: { value: serviceWorker }
-          })
+            Object.defineProperties(event, {
+              target: { value: serviceWorker }
+            })
 
-          eventTarget.dispatchEvent(event)
+            eventTarget.dispatchEvent(event)
+          }
         }
       }
-    }
-  })
+    })
+  }
 
   return serviceWorker
 }

@@ -1,8 +1,10 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
 import { InvertedPromise } from '../util.js'
+import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
+import ipc from '../ipc.js'
 
 const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
 
@@ -29,9 +31,8 @@ async function onMessage (event) {
     let module = null
 
     state.id = id
-    state.scope = scope
-    state.scriptURL = scriptURL
     state.serviceWorker.scope = scope
+    state.serviceWorker.scriptURL = scriptURL
 
     try {
       module = await import(scriptURL)
@@ -116,6 +117,12 @@ async function onMessage (event) {
         })
       }
 
+      if (!state.activate) {
+        globalThis.addEventListener('activate', () => {
+          clients.claim()
+        })
+      }
+
       globalThis.addEventListener('fetch', async (event) => {
         const { request } = event
         const context = {
@@ -126,6 +133,14 @@ async function onMessage (event) {
 
           async handled () {
             return await event.handled
+          },
+
+          async client () {
+            if (event.clientId) {
+              return await clients.get(event.clientId)
+            }
+
+            return null
           }
         }
 
@@ -146,7 +161,7 @@ async function onMessage (event) {
         if (response) {
           promise.resolve(response)
         } else {
-          promise.resolve(new Response('', { status: 400 }))
+          promise.resolve(new Response('', { status: 404 }))
         }
       })
     }
@@ -178,15 +193,25 @@ async function onMessage (event) {
     state.serviceWorker.state = 'activated'
     await state.notify('serviceWorker')
     events.delete(event)
-    // TODO(@jwerle): handle 'activate'
   }
 
-  if (data?.fetch) {
+  if (data?.fetch?.request) {
+    if (/post|put/i.test(data.fetch.request.method)) {
+      const result = await ipc.request('serviceWorker.fetch.request.body', {
+        id: data.fetch.request.id
+      })
+
+      if (result.data) {
+        data.fetch.request.body = result.data
+      }
+    }
+
     const event = new FetchEvent('fetch', {
       clientId: data.fetch.client.id,
       fetchId: data.fetch.request.id,
       request: new Request(data.fetch.request.url, {
-        method: data.fetch.request.method ?? 'GET'
+        method: data.fetch.request.method ?? 'GET',
+        body: data.fetch.request.body
       })
     })
 

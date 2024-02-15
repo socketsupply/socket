@@ -25,6 +25,7 @@ class ServiceWorkerInfo {
 
 globalThis.addEventListener('serviceWorker.register', onRegister)
 globalThis.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
+globalThis.addEventListener('serviceWorker.activate', onActivate)
 globalThis.addEventListener('serviceWorker.fetch', onFetch)
 
 async function onRegister (event) {
@@ -50,6 +51,10 @@ async function onRegister (event) {
 }
 
 async function onSkipWaiting (event) {
+  onActivate(event)
+}
+
+async function onActivate (event) {
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {

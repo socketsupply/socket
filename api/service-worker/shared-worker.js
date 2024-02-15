@@ -1,4 +1,3 @@
-/* global reportError */
 const Uint8ArrayPrototype = Uint8Array.prototype
 const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 const TypedArray = TypedArrayPrototype.constructor
