@@ -810,11 +810,11 @@ namespace SSC {
                     return TRUE;
                   }, (LPARAM)window);
 
-		  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
-                   convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
-		    this->modulePath.parent_path().c_str(),
-		    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
-		  );
+                  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
+                    convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
+                    this->modulePath.parent_path().c_str(),
+                    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
+                  );
 
                   EventRegistrationToken tokenNavigation;
 
@@ -855,15 +855,15 @@ namespace SSC {
                   ICoreWebView2_22* webview22 = nullptr;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
 
-		  if (webview22 != nullptr) {
-		    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
+                  if (webview22 != nullptr) {
+                    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
                       L"*",
                       COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
                       COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
                     );
 
-		    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
-		  }
+                    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
+                  }
 
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
@@ -915,6 +915,7 @@ namespace SSC {
                             204,
                             L"OK",
                             L"Connection: keep-alive\n"
+                            L"Cache-Control: no-cache\n"
                             L"Access-Control-Allow-Headers: *\n"
                             L"Access-Control-Allow-Origin: *\n"
                             L"Access-Control-Allow-Methods: GET, POST, PUT, HEAD\n",
@@ -980,6 +981,7 @@ namespace SSC {
                             }
 
                             headers += "Connection: keep-alive\n";
+                            headers += "Cache-Control: no-cache\n";
                             headers += "Access-Control-Allow-Headers: *\n";
                             headers += "Access-Control-Allow-Origin: *\n";
                             headers += "Content-Length: ";
@@ -1023,9 +1025,9 @@ namespace SSC {
                                 : "socket/" + uri
                             );
 
-			    const auto parts = split(path, '?');
-			    const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
-			    path = parts[0];
+                            const auto parts = split(path, '?');
+                            const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
+                            path = parts[0];
 
                             auto ext = fs::path(path).extension().string();
 
@@ -1059,6 +1061,7 @@ namespace SSC {
                               auto length = moduleSource.size();
 
                               headers = "Content-Type: text/javascript\n";
+                              headers += "Cache-Control: no-cache\n";
                               headers += "Connection: keep-alive\n";
                               headers += "Access-Control-Allow-Headers: *\n";
                               headers += "Access-Control-Allow-Origin: *\n";
@@ -1225,6 +1228,7 @@ namespace SSC {
                                   headers = "Content-Type: ";
                                   headers += convertWStringToString(mimeType) + "\n";
                                   headers += "Connection: keep-alive\n";
+                                  headers += "Cache-Control: no-cache\n";
                                   headers += "Access-Control-Allow-Headers: *\n";
                                   headers += "Access-Control-Allow-Origin: *\n";
                                   headers += "Content-Length: ";
@@ -1295,6 +1299,7 @@ namespace SSC {
                   WindowOptions options = opts;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
                   options.appData["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
+                  options.clientId = this->bridge->id;
                   auto preload = createPreload(options);
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires

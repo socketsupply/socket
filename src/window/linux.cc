@@ -800,6 +800,7 @@ namespace SSC {
       this
     );
 
+    opts.clientId = this->bridge->id;
     String preload = createPreload(opts);
 
     WebKitUserContentManager *manager =
