@@ -1,10 +1,12 @@
 ![image](https://github.com/socketsupply/socket/assets/136109/93abfcbe-e880-4548-b3e0-dc7e09292ca6)
 
+
 ### Description
 
 Web Developers use `Socket runtime` to create apps for any OS, desktop, and mobile. You can use plain old HTML, CSS, and JavaScript, as well as your favorite front-end libraries like Next.js, React, Svelte, or Vue.  
 
 The `Socket runtime CLI` outputs hybrid native-web apps that combine your code with the runtime. Your code is rendered using the OS's native "WebView" component. Platform features are implemented natively and made available to the JavaScript environment in a way that is secure and fully sandboxed on every platform. Native APIs like Bluetooth and UDP make local-first and peer-to-peer software design patterns as first class considerations.
+
 
 ### Features
 
@@ -16,9 +18,49 @@ The `Socket runtime CLI` outputs hybrid native-web apps that combine your code w
 * Maintainable &mdash; Socket runtime has Zero external dependencies, and a smaller code base than any other competing project.
 * Lean & Fast &mdash; Socket runtime has a smaller memory footprint and creates smaller binaries than any other competing project.
 
+
+### Compatibility Matrix
+
+> [!NOTE]
+> Socket supports many of the Node.js APIs. It is **NOT** a drop in replacement for Node.js, nor will it ever be since socket is for building software and node.js is for building servers. Below is a high level overview of partially supported APIs and modules.
+
+| Module            | Node.js    | Socket    |
+| ----------------- | ---------- | --------- |
+| assert            | ✔︎          | ⏱         |
+| async/await       | ✔︎          | ✔︎         |
+| buffer            | ✔︎          | ✔︎️         |
+| child_process     | ✔︎          | ✔︎️  \*     |
+| console           | ✔︎          | ✔︎         |
+| crypto            | ✔︎          | ✔︎  \*     |
+| dgram             | ✔︎          | ✔︎️         |
+| dns               | ✔︎          | ✔︎️         |
+| os                | ✔︎          | ✔︎️         |
+| encoding          | ✔︎          | ✔︎         |
+| events            | ✔︎          | ✔︎         |
+| fetch             | ✔︎          | ✔︎         |
+| fs/promises       | ✔︎          | ✔︎         |
+| fs                | ✔︎          | ✔︎         |
+| path              | ✔︎          | ✔︎         |
+| process           | ✔︎          | ✔︎         |
+| streams           | ✔︎          | ✔︎         |
+| string_decoder    | ✔︎          | ⏱         |
+| test              | ✔︎          | ✔︎️         |
+| timers            | ✔︎          | ⏱         |
+| uuid              | ✔︎          | ⏱         |
+| vm                | ✔︎          | ✔︎         |
+| ESM               | ✔︎          | ✔︎         |
+| CJS               | ✔︎          | ✔︎         |
+| URL               | ✔︎          | ✔︎         |
+
+_⏱ = planned support_
+_\* = Supported but Works differently; may be refactored to match the nodejs API_
+_\*\* = Use fetch instead_
+
+
 ### FAQ
 
 Check the FAQs on our [Website](https://socketsupply.co/guides/#faq) to learn more.
+
 
 ### Building your first Socket app!
 
@@ -37,6 +79,7 @@ The `Socket Runtime` documentation covers Socket APIs, includes examples, multip
 
 `Socket` provides a built-in `test runner` similar to `node:test` which outputs the test results in [TAP](https://testanything.org/) format.
  You can also check [`test/`](test/) for the unit and integration test suite.
+
 
 ### Contributing
 
