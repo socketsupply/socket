@@ -1,4 +1,4 @@
-/* global MessageEvent */
+/* global Event, MessageEvent */
 
 /**
  * An event dispatched when an application URL is opening the application.
