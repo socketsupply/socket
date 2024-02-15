@@ -1488,7 +1488,7 @@ MAIN {
           std::cin >> value;
         }
 
-        if (value.size() > 0 && defaultWindow->bridge->router.isReady) {
+        if (value.size() > 0) {
           defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
           value.clear();
         }

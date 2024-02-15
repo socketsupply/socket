@@ -2002,14 +2002,10 @@ static void initRouterTable (Router *router) {
    * @param data Optional data associated with the platform event.
    */
   router->map("platform.event", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"value"});
+    const auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
-    }
-
-    if (message.value == "runtimeinit") {
-      router->isReady = true;
     }
 
     router->core->platform.event(
@@ -2174,12 +2170,6 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
-  router->map("serviceWorker.clients.claim", [](auto message, auto router, auto reply) {
-  });
-
-  /**
-   * TODO
-   */
   router->map("serviceWorker.clients.openWindow", [](auto message, auto router, auto reply) {
   });
 
@@ -2202,25 +2192,9 @@ static void initRouterTable (Router *router) {
     const auto registration = router->core->serviceWorker.registerServiceWorker(options);
     auto json = JSON::Object {
       JSON::Object::Entries {
-        {"registration", registration.json()},
-        {"client", JSON::Object::Entries {
-          {"id", std::to_string(router->bridge->id)}
-        }}
+        {"registration", registration.json()}
       }
     };
-
-    auto& clients = router->core->serviceWorker.registrations.at(options.scope).clients;
-    bool clientExists = false;
-    for (const auto& client : clients) {
-      if (client.id == router->bridge->id) {
-        clientExists = true;
-        break;
-      }
-    }
-
-    if (!clientExists) {
-      clients.push_back(ServiceWorkerContainer::Client { router->bridge->id });
-    }
 
     reply(Result::Data { message, json });
   });
@@ -2651,6 +2625,7 @@ static void registerSchemeHandler (Router *router) {
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
+      soup_message_headers_append(headers, "cache-control", "no-cache");
       for (const auto& header : result.headers.entries) {
         soup_message_headers_append(headers, header.key.c_str(), header.value.c_str());
       }
@@ -2859,9 +2834,11 @@ static void registerSchemeHandler (Router *router) {
     auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
     auto webviewHeaders = split(userConfig["webview_headers"], '\n');
 
+    soup_message_headers_append(headers, "cache-control", "no-cache");
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
     soup_message_headers_append(headers, "access-control-allow-methods", "*");
     soup_message_headers_append(headers, "access-control-allow-headers", "*");
+    soup_message_headers_append(headers, "access-control-allow-credentials", "true");
 
     for (const auto& line : webviewHeaders) {
       auto pair = split(trim(line), ':');
@@ -2960,13 +2937,24 @@ static void registerSchemeHandler (Router *router) {
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto fileManager = [[NSFileManager alloc] init];
 
-  auto request = task.request;
-  auto url = String(request.URL.absoluteString.UTF8String);
+  const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+  const auto request = task.request;
+  const auto url = String(request.URL.absoluteString.UTF8String);
+
+  uint64_t clientId = self.router->bridge->id;
+
+  if (request.allHTTPHeaderFields != nullptr) {
+    if (request.allHTTPHeaderFields[@"runtime-client-id"] != nullptr) {
+      try {
+        clientId = std::stoull(request.allHTTPHeaderFields[@"runtime-client-id"].UTF8String);
+      } catch (...) {}
+    }
+  }
+
   auto message = Message(url, true);
   message.isHTTP = true;
   message.cancel = std::make_shared<MessageCancellation>();
 
-  auto webviewHeaders = split(userConfig["webview_headers"], '\n');
   auto headers = [NSMutableDictionary dictionary];
 
   for (const auto& line : webviewHeaders) {
@@ -2976,9 +2964,11 @@ static void registerSchemeHandler (Router *router) {
     headers[key] = value;
   }
 
+  headers[@"cache-control"] = @"no-cache";
   headers[@"access-control-allow-origin"] = @"*";
   headers[@"access-control-allow-methods"] = @"*";
   headers[@"access-control-allow-headers"] = @"*";
+  headers[@"access-control-allow-credentials"] = @"true";
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto response = [[NSHTTPURLResponse alloc]
@@ -3120,10 +3110,12 @@ static void registerSchemeHandler (Router *router) {
         } else {
           if (self.router->core->serviceWorker.registrations.size() > 0) {
             auto fetchRequest = ServiceWorkerContainer::FetchRequest {
-              String(request.URL.path.UTF8String)
+              String(request.URL.path.UTF8String),
+              String(request.HTTPMethod.UTF8String)
             };
 
-            fetchRequest.client.id = self.router->bridge->id;
+            fetchRequest.client.id = clientId;
+
             if (request.URL.query != nullptr) {
               fetchRequest.query = String(request.URL.query.UTF8String);
             }
@@ -3138,7 +3130,13 @@ static void registerSchemeHandler (Router *router) {
               }
             }
 
+            [self enqueueTask: task withMessage: message];
+
             const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) {
+              if (![self waitingForTask: task]) {
+                return;
+              }
+
               auto headers = [NSMutableDictionary dictionary];
               auto webviewHeaders = split(userConfig["webview_headers"], '\n');
 
@@ -3149,9 +3147,11 @@ static void registerSchemeHandler (Router *router) {
                 headers[key] = value;
               }
 
+              headers[@"access-control-allow-credentials"] = @"true";
               headers[@"access-control-allow-origin"] = @"*";
               headers[@"access-control-allow-methods"] = @"*";
               headers[@"access-control-allow-headers"] = @"*";
+              headers[@"cache-control"] = @"no-cache";
 
               for (const auto& entry : res.headers) {
                 auto pair = split(trim(entry), ':');
@@ -3316,28 +3316,40 @@ static void registerSchemeHandler (Router *router) {
 
     components.scheme = @("socket");
     headers[@"content-location"] = components.URL.absoluteString;
-    const auto absoluteURL = String(components.URL.absoluteString.UTF8String);
     const auto socketModulePrefix = "socket://" + userConfig["meta_bundle_identifier"] + "/socket/";
+
+    const auto absoluteURL = String(components.URL.absoluteString.UTF8String);
+    const auto absoluteURLPathExtension = components.URL.pathExtension != nullptr
+      ? String(components.URL.pathExtension.UTF8String)
+      : String("");
+
 
     if (!isModule && absoluteURL.starts_with(socketModulePrefix)) {
       isModule = true;
     }
 
-    dispatch_async(queue, ^{
-      if (
-        !isModule && (
-          absoluteURL.ends_with(".js") ||
-          absoluteURL.ends_with(".cjs") ||
-          absoluteURL.ends_with(".mjs")
-        )
-      ) {
-        while (!self.router->isReady) {
-          msleep(1);
-        }
+    if (absoluteURLPathExtension.ends_with("html")) {
+      const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
+      auto html = String(string.UTF8String);
+      const auto script = String(
+        "\n<script type=\"module\">" + self.router->bridge->preload + "</script>\n"
+      );
+
+      if (html.find("<head>") != String::npos) {
+        html = replace(html, "<head>", String("<head>" + script));
+      } else if (html.find("<body>") != String::npos) {
+        html = replace(html, "<body>", String("<body>" + script));
+      } else if (html.find("<html>") != String::npos) {
+        html = replace(html, "<html>", String("<html>" + script));
+      } else {
+        html = script + html;
       }
 
-      auto statusCode = exists ? 200 : 404;
-      auto response = [NSHTTPURLResponse.alloc
+      data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+    }
+
+      const auto statusCode = exists ? 200 : 404;
+      const auto response = [NSHTTPURLResponse.alloc
          initWithURL: components.URL
           statusCode: statusCode
          HTTPVersion: @"HTTP/1.1"
@@ -3355,7 +3367,6 @@ static void registerSchemeHandler (Router *router) {
     #if !__has_feature(objc_arc)
       [response release];
     #endif
-    });
 
     return;
   }
@@ -3427,9 +3438,11 @@ static void registerSchemeHandler (Router *router) {
     auto id = result.id;
     auto headers = [NSMutableDictionary dictionary];
 
+    headers[@"cache-control"] = @"no-cache";
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
+    headers[@"access-control-allow-credentials"] = @"true";
 
     for (const auto& header : result.headers.entries) {
       auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
@@ -3438,8 +3451,8 @@ static void registerSchemeHandler (Router *router) {
     }
 
     NSData* data = nullptr;
-    if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [=](
+    if (result.post.eventStream != nullptr) {
+      *result.post.eventStream = [=](
         const char* name,
         const char* data,
         bool finished
@@ -3448,17 +3461,17 @@ static void registerSchemeHandler (Router *router) {
           return false;
         }
 
-        auto event_name = [NSString stringWithUTF8String: name];
-        auto event_data = [NSString stringWithUTF8String: data];
+        auto eventName = [NSString stringWithUTF8String: name];
+        auto eventData = [NSString stringWithUTF8String: data];
 
-        if (event_name.length > 0 || event_data.length > 0) {
-          auto event =
-              event_name.length > 0 && event_data.length > 0
-                  ? [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
-                                               event_name, event_data]
-              : event_data.length > 0
-                  ? [NSString stringWithFormat:@"data: %@\n\n", event_data]
-                  : [NSString stringWithFormat:@"event: %@\n\n", event_name];
+        if (eventName.length > 0 || eventData.length > 0) {
+          auto event = eventName.length > 0 && eventData.length > 0
+            ? [NSString stringWithFormat:
+                @"event: %@\ndata: %@\n\n", eventName, eventData
+              ]
+            : eventData.length > 0
+              ? [NSString stringWithFormat: @"data: %@\n\n", eventData]
+              : [NSString stringWithFormat: @"event: %@\n\n", eventName];
 
           [task didReceiveData: [event dataUsingEncoding:NSUTF8StringEncoding]];
         }
@@ -3472,8 +3485,8 @@ static void registerSchemeHandler (Router *router) {
       };
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
-    } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [=](
+    } else if (result.post.chunkStream != nullptr) {
+      *result.post.chunkStream = [=](
         const char* chunk,
         size_t chunk_size,
         bool finished
@@ -3541,6 +3554,7 @@ static void registerSchemeHandler (Router *router) {
     auto str = [NSString stringWithUTF8String: msg.c_str()];
     auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
+    headers[@"access-control-allow-credentials"] = @"true";
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
     headers[@"content-length"] = [@(msg.size()) stringValue];
@@ -3782,8 +3796,8 @@ static void registerSchemeHandler (Router *router) {
 
 - (void)            locationManager: (CLLocationManager*) locationManager
   didFinishDeferredUpdatesWithError: (NSError*) error {
-  debug("locationManager:didFinishDeferredUpdatesWithError: %@", error);
  // TODO(@jwerle): handle deferred error
+  debug("locationManager:didFinishDeferredUpdatesWithError: %@", error);
 }
 
 - (void) locationManagerDidPauseLocationUpdates: (CLLocationManager*) locationManager {
