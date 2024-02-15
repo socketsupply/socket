@@ -511,7 +511,7 @@ export default module
       }
 
       var html = String(assetStream.readAllBytes())
-      val script = """<script type="text/javascript">$preload</script>"""
+      val script = """<script type="module">$preload</script>"""
       val stream = java.io.PipedOutputStream()
       val response = android.webkit.WebResourceResponse(
         "text/html",
