@@ -114,6 +114,14 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
 @property (nonatomic) SSC::IPC::Bridge* bridge;
+-    (void) webView: (WKWebView*) webView
+  didFailNavigation: (WKNavigation*) navigation
+          withError: (NSError*) error;
+
+-               (void) webView: (WKWebView*) webView
+  didFailProvisionalNavigation: (WKNavigation*) navigation
+                     withError: (NSError*) error;
+
 -                  (void) webView: (WKWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
@@ -385,8 +393,14 @@ namespace SSC {
           JSON::Object json () {
             auto index = this->opts.index;
             auto size = this->getSize();
+            uint64_t id = 0;
+
+            if (this->bridge != nullptr) {
+              id = this->bridge->id;
+            }
 
             return JSON::Object::Entries {
+              { "id", std::to_string(id) },
               { "index", index },
               { "title", this->getTitle() },
               { "width", size.width },

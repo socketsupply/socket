@@ -29,6 +29,7 @@ namespace SSC {
     Map appData;
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
+    uint64_t clientId = 0;
   };
 }
 #endif

@@ -2,9 +2,23 @@
 #include "../ipc/ipc.hh"
 
 @implementation SSCNavigationDelegate
+-    (void) webView: (WKWebView*) webView
+  didFailNavigation: (WKNavigation*) navigation
+          withError: (NSError*) error
+{
+  // TODO(@jwerle)
+}
+
+-               (void) webView: (WKWebView*) webView
+  didFailProvisionalNavigation: (WKNavigation*) navigation
+                     withError: (NSError*) error {
+  // TODO(@jwerle)
+}
+
 -                    (void) webView: (WKWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler
+{
   if (
     webview.URL.absoluteString.UTF8String != nullptr &&
     navigationAction.request.URL.absoluteString.UTF8String != nullptr
@@ -58,23 +72,12 @@
       }
     }
 
-    if (request.starts_with("socket:")) {
-      self.bridge->router.isReady = false;
-      decisionHandler(WKNavigationActionPolicyAllow);
+    if (!request.starts_with("socket:") && !request.starts_with(devHost)) {
+      decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
-
-    if (request.starts_with(devHost)) {
-      self.bridge->router.isReady = false;
-      decisionHandler(WKNavigationActionPolicyAllow);
-      return;
-    }
-
-    decisionHandler(WKNavigationActionPolicyCancel);
-    return;
   }
 
-  self.bridge->router.isReady = false;
   decisionHandler(WKNavigationActionPolicyAllow);
 }
 
@@ -196,7 +199,6 @@ int lastY = 0;
   };
 
   const auto json = SSC::JSON::Object { data };
-  debug("files: %s", json.str().c_str());
   const auto payload = SSC::getEmitToRenderProcessJavaScript("dropin", json.str());
 
   [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
@@ -880,15 +882,41 @@ namespace SSC {
 
     config.defaultWebpagePreferences.allowsContentJavaScript = YES;
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
-    config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
+    config.websiteDataStore = WKWebsiteDataStore.defaultDataStore;
     config.processPool = [WKProcessPool new];
 
-    /**
     [config.websiteDataStore.httpCookieStore
-      setCookiePolicy: WKCookiePolicyAllow
+        setCookiePolicy: WKCookiePolicyAllow
       completionHandler: ^(){}
     ];
-    */
+
+    [config
+      setValue: @YES
+        forKey: @"allowUniversalAccessFromFileURLs"
+    ];
+
+    [config.preferences
+      setValue: @YES
+        forKey: @"allowFileAccessFromFileURLs"
+    ];
+
+    [config.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"socket"
+    ];
+
+    [config.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"ipc"
+    ];
+
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
+      [config.processPool
+        performSelector: @selector(_registerURLSchemeAsSecure:)
+        withObject: @"http"
+      ];
+    }
 
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
@@ -898,51 +926,24 @@ namespace SSC {
 
     WKUserContentController* controller = config.userContentController;
 
+    opts.clientId = this->bridge->id;
+
     // Add preload script, normalizing the interface to be cross-platform.
-    SSC::String preload = createPreload(opts);
-
-    WKUserScript* userScript = [WKUserScript alloc];
-
-    [userScript
-        initWithSource: @(preload.c_str())
-         injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-      forMainFrameOnly: NO
-    ];
-
-    [controller addUserScript: userScript];
+    this->bridge->preload = createPreload(opts, { .module = true });
 
     webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect
       configuration: config
     ];
 
-    [webview.configuration
-      setValue: @YES
-        forKey: @"allowUniversalAccessFromFileURLs"
+    const auto processInfo = NSProcessInfo.processInfo;
+    webview.customUserAgent = [NSString
+      stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
+      processInfo.operatingSystemVersion.majorVersion,
+      processInfo.operatingSystemVersion.minorVersion,
+      processInfo.operatingSystemVersion.patchVersion,
+      SSC::VERSION_STRING.c_str()
     ];
-
-    [webview.configuration.preferences
-      setValue: @YES
-        forKey: @"allowFileAccessFromFileURLs"
-    ];
-
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"socket"
-    ];
-
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"ipc"
-    ];
-
-    static const auto devHost = SSC::getDevHost();
-    if (devHost.starts_with("http:")) {
-      [webview.configuration.processPool
-        performSelector: @selector(_registerURLSchemeAsSecure:)
-        withObject: @"http"
-      ];
-    }
 
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
