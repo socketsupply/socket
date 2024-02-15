@@ -240,11 +240,11 @@ export function removeEventListener (eventName, callback, ...args) {
 }
 
 export function dispatchEvent (event) {
-  if (event.type !== 'message') {
-    return worker.dispatchEvent(event)
+  if (event.type === 'message' || event.type === 'connect') {
+    return workerGlobalScopeEventTarget.dispatchEvent(event)
   }
 
-  return workerGlobalScopeEventTarget.dispatchEvent(event)
+  return worker.dispatchEvent(event)
 }
 
 export function postMessage (message, ...args) {
