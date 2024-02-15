@@ -21,6 +21,7 @@ import location from '../location.js'
 import { URL } from '../url.js'
 import mime from '../mime.js'
 import path from '../path.js'
+import ipc from '../ipc.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -299,8 +300,20 @@ class RuntimeWorker extends GlobalWorker {
 
     globalThis.addEventListener('data', this.#onglobaldata)
 
+    const postMessage = this.postMessage.bind(this)
     const addEventListener = this.addEventListener.bind(this)
     const removeEventListener = this.removeEventListener.bind(this)
+
+    const postMessageQueue = []
+    let isReady = false
+
+    this.postMessage = (...args) => {
+      if (!isReady) {
+        postMessageQueue.push(args)
+      } else {
+        return postMessage(...args)
+      }
+    }
 
     this.addEventListener = (eventName, ...args) => {
       if (eventName === 'message') {
@@ -336,7 +349,15 @@ class RuntimeWorker extends GlobalWorker {
     queueMicrotask(() => {
       addEventListener('message', (event) => {
         const { data } = event
-        if (data?.__runtime_worker_ipc_request) {
+        if (data?.__runtime_worker_init === true) {
+          isReady = true
+
+          for (const args of postMessageQueue) {
+            postMessage(...args)
+          }
+
+          postMessageQueue.splice(0, postMessageQueue.length)
+        } else if (data?.__runtime_worker_ipc_request) {
           const request = data.__runtime_worker_ipc_request
           if (
             typeof request?.message === 'string' &&
@@ -348,7 +369,17 @@ class RuntimeWorker extends GlobalWorker {
                 const message = ipc.Message.from(request.message, request.bytes)
                 const options = { bytes: message.bytes }
                 // eslint-disable-next-line no-use-before-define
-                const result = await ipc.request(message.name, message.rawParams, options)
+                let result = message.name.startsWith('application.')
+                  ? await ipc.send(message.name, message.rawParams, options)
+                  : await ipc.request(message.name, message.rawParams, options)
+
+                if (result.err?.type === 'NotFoundError') {
+                  const otherResult = await ipc.send(message.name, message.rawParams, options)
+                  if (!otherResult.err) {
+                    result = otherResult
+                  }
+                }
+
                 const transfer = []
 
                 if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
@@ -360,7 +391,7 @@ class RuntimeWorker extends GlobalWorker {
                     message: message.toJSON(),
                     result: result.toJSON()
                   }
-                }, transfer)
+                }, { transfer })
               } catch (err) {
                 console.warn('RuntimeWorker:', err)
               }
@@ -461,7 +492,6 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 import hooks, { RuntimeInitEvent } from '../hooks.js'
 import { config } from '../application.js'
 import globals from './globals.js'
-import ipc from '../ipc.js'
 
 import '../console.js'
 
