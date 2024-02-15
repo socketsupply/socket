@@ -105,14 +105,26 @@ namespace SSC {
   };
 
   struct Post {
+    using EventStreamCallback = std::function<bool(
+      const char*,
+      const char*,
+      bool
+    )>;
+
+    using ChunkStreamCallback = std::function<bool(
+      const char*,
+      size_t,
+      bool
+    )>;
+
     uint64_t id = 0;
     uint64_t ttl = 0;
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
     String workerId = "";
-    std::shared_ptr<std::function<bool(const char*, const char*, bool)>> event_stream;
-    std::shared_ptr<std::function<bool(const char*, size_t, bool)>> chunk_stream;
+    std::shared_ptr<EventStreamCallback> eventStream;
+    std::shared_ptr<ChunkStreamCallback> chunkStream;
   };
 
   using Posts = std::map<uint64_t, Post>;

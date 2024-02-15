@@ -38,7 +38,6 @@ namespace SSC {
         String scriptURL;
         State state = State::Registered;
         RegistrationOptions options;
-        Vector<Client> clients;
         const SSC::JSON::Object json () const;
       };
 
@@ -49,8 +48,10 @@ namespace SSC {
 
       struct FetchRequest {
         String pathname;
+        String method;
         String query;
         Vector<String> headers;
+        FetchBuffer buffer;
         Client client;
       };
 
@@ -65,23 +66,27 @@ namespace SSC {
       using Registrations = std::map<String, Registration>;
       using FetchCallback = std::function<void(const FetchResponse)>;
       using FetchCallbacks = std::map<uint64_t, FetchCallback>;
+      using FetchRequests = std::map<uint64_t, FetchRequest>;
 
+      Mutex mutex;
       Core* core = nullptr;
       IPC::Bridge* bridge = nullptr;
       Registrations registrations;
-      FetchCallbacks fetches;
+
+      FetchRequests fetchRequests;
+      FetchCallbacks fetchCallbacks;
 
       ServiceWorkerContainer (Core* core);
       ~ServiceWorkerContainer ();
 
       void init (IPC::Bridge* bridge);
-      const Registration registerServiceWorker (const RegistrationOptions& options);
+      const Registration& registerServiceWorker (const RegistrationOptions& options);
       bool unregisterServiceWorker (uint64_t id);
       bool unregisterServiceWorker (String scopeOrScriptURL);
       void skipWaiting (uint64_t id);
       void updateState (uint64_t id, const String& stateString);
-
-      bool fetch (FetchRequest request, FetchCallback callback);
+      bool fetch (const FetchRequest& request, FetchCallback callback);
+      bool claimClients (const String& scope);
   };
 }
 
