@@ -207,7 +207,12 @@ export function init () {
       Object.getOwnPropertyDescriptors(Object.getPrototypeOf(serviceWorker))
     )
 
+    // manually initialize `ServiceWorkerContainer` instance with the
+    // runtime implementations
     serviceWorker.init.call(globalThis.navigator.serviceWorker)
+
+    // TODO(@jwerle): handle 'popstate' for service workers
+    // globalThis.addEventListener('popstate', (event) => { })
   }
 
   // WebAssembly
