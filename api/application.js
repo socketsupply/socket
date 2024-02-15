@@ -152,14 +152,33 @@ export async function getWindows (indices) {
   }
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
+
   if (!Array.isArray(resultIndices)) {
     throw new Error('Indices list must be an array of integer numbers')
   }
+
   for (const index of resultIndices) {
     throwOnInvalidIndex(index)
   }
-  const { data: windows } = await ipc.send('application.getWindows', resultIndices)
-  return Object.fromEntries(windows.map(window => [Number(window.index), new ApplicationWindow(window)]))
+
+  const result = await ipc.send('application.getWindows', resultIndices)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  // 0 indexed based key to `ApplicationWindow` object map
+  const windows = {}
+
+  if (!Array.isArray(result.data)) {
+    return windows
+  }
+
+  for (const data of result.data) {
+    windows[data.index] = new ApplicationWindow(data)
+  }
+
+  return windows
 }
 
 /**
