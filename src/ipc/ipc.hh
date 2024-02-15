@@ -117,6 +117,15 @@ namespace SSC::IPC {
 #endif
 
 namespace SSC::IPC {
+  struct Client {
+    struct CurrentRequest {
+      String url;
+    };
+
+    String id;
+    CurrentRequest currentRequest;
+  };
+
   struct MessageBuffer {
     size_t size = 0;
     char* bytes = nullptr;
@@ -145,6 +154,8 @@ namespace SSC::IPC {
     public:
       using Seq = String;
       MessageBuffer buffer;
+      Client client;
+
       String value = "";
       String name = "";
       String uri = "";
@@ -268,7 +279,6 @@ namespace SSC::IPC {
       Listeners listeners;
       Core *core = nullptr;
       Bridge *bridge = nullptr;
-      AtomicBool isReady = false;
     #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
       SSCLocationObserver* locationObserver = nullptr;
@@ -320,8 +330,8 @@ namespace SSC::IPC {
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
+      String preload = "";
       uint64_t id = 0;
-      // AtomicBool isReady = false;
     #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
       FileSystemWatcher* fileSystemWatcher = nullptr;
     #endif
