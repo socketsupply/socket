@@ -19,6 +19,8 @@ import { CustomEvent, ErrorEvent } from '../events.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import { URL } from '../url.js'
+import mime from '../mime.js'
+import path from '../path.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -91,11 +93,33 @@ if ((globalThis.window) === globalThis) {
     if (Array.isArray(event.detail?.files)) {
       for (const file of event.detail.files) {
         if (typeof file === 'string') {
-          const stats = await fs.stat(file)
-          if (stats.isDirectory()) {
-            handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
-          } else {
-            handles.push(await createFileSystemFileHandle(file, { writable: false }))
+          try {
+            const stats = await fs.stat(file)
+            if (stats.isDirectory()) {
+              handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
+            } else {
+              handles.push(await createFileSystemFileHandle(file, { writable: false }))
+            }
+          } catch (err) {
+            try {
+              // try to read from navigator
+              const response = await fetch(file)
+              if (response.ok) {
+                const lastModified = Date.now()
+                const buffer = new Uint8Array(await response.arrayBuffer())
+                const types = await mime.lookup(path.extname(file).slice(1))
+                const type = types[0]?.mime ?? ''
+
+                handles.push(await createFileSystemFileHandle(
+                  new File(buffer, { lastModified, type }),
+                  { writable: false }
+                ))
+              } else {
+                console.warn('platformdrop: ', err)
+              }
+            } catch (err) {
+              console.warn('platformdrop: ', err)
+            }
           }
         }
       }
@@ -207,6 +231,10 @@ class RuntimeWorker extends GlobalWorker {
       enumerable: false,
       value: ${JSON.stringify(globalThis.__args)}
     })
+
+    globalThis.__args.client.id = '${id}'
+    globalThis.__args.client.type = 'worker'
+    globalThis.__args.client.frameType = 'none'
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
       configurable: false,
@@ -384,12 +412,18 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
     const value = open.call(this, method, url, isAsyncRequest !== false, ...args)
 
-    if (typeof globalThis.RUNTIME_WORKER_ID === 'string') {
-      this.setRequestHeader('Runtime-Worker-ID', globalThis.RUNTIME_WORKER_ID)
-    }
+    this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
 
     if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
       this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
+    }
+
+    if (globalThis.top && globalThis.top !== globalThis) {
+      this.setRequestHeader('Runtime-Frame-Type', 'nested')
+    } else if (!globalThis.window && globalThis.self === globalThis) {
+      this.setRequestHeader('Runtime-Frame-Type', 'worker')
+    } else {
+      this.setRequestHeader('Runtime-Frame-Type', 'top-level')
     }
 
     return value
@@ -524,7 +558,45 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
   }
 }
 
-hooks.onLoad(() => {
+hooks.onLoad(async () => {
+  const serviceWorkerScripts = config['webview_service-workers']
+  const pending = []
+  if (serviceWorkerScripts) {
+    for (const serviceWorkerScript of serviceWorkerScripts.split(' ')) {
+      let scriptURL = serviceWorkerScript.trim()
+
+      if (!scriptURL.startsWith('/') && scriptURL.startsWith('.')) {
+        if (!URL.canParse(scriptURL, globalThis.location.href)) {
+          scriptURL = `./${scriptURL}`
+        }
+      }
+
+      const promise = globalThis.navigator.serviceWorker.register(scriptURL)
+
+      pending.push(promise)
+
+      promise
+        .then((registration) => {
+          if (registration) {
+            console.log('ServiceWorker registered in preload: %s', scriptURL)
+          } else {
+            console.warn(
+              'ServiceWorker failed to register in preload: %s',
+              scriptURL
+            )
+          }
+        })
+        .catch((err) => {
+          console.error(
+            'ServiceWorker registration error occurred in preload: %s:',
+            scriptURL,
+            err
+          )
+        })
+    }
+  }
+
+  await Promise.all(pending)
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
     globalThis.dispatchEvent(new RuntimeInitEvent())
