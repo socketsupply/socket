@@ -307,7 +307,7 @@ Function Bits-Download {
   $url=$params[0]
   $dest=$params[1]
   # use bitsadmin because iwr has no error reporting
-  $jobId = "$(New-Guid)"
+  $jobId = "$([guid]::NewGuid())"
   $bts="bitsadmin"
   (iex "$bts /create $jobId") > $null
   (iex "$bts /setpriority $jobId high") > $null
@@ -912,7 +912,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
 
   if ($all_deps_accepted) {
     # Install process will write exit code back to this file
-    $deps_status_file="$($env:Temp)\socket-deps-$(New-Guid).dat"
+    $deps_status_file="$($env:Temp)\socket-deps-$([guid]::NewGuid()).dat"
     Write-Log "d" "deps_status_file: $deps_status_file"
 
     if ($install_tasks.Count -gt 0) {
@@ -932,11 +932,11 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
       }
 
       $script = "$($script)
-      Write-Output ""0"" > ""$deps_status_file.final""
-  "
+        Write-Output ""0"" > ""$deps_status_file.final""
+      "
 
       if ($debug) {
-        $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+        $install_script_name="$($env:Temp)\socket-deps-$([guid]::NewGuid()).ps1"
         Write-Log "d" "Writing install script to $install_script_name"
         Write-Output "$script".replace("\""", """") > $install_script_name
       }
@@ -955,7 +955,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
         }
 
         if ($debug) {
-          $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+          $install_script_name="$($env:Temp)\socket-deps-$([guid]::NewGuid()).ps1"
           Write-Log "d" "Writing intall script to $install_script_name"
           Write-Output "$script".replace("\""", """") > $install_script_name
         } else {
