@@ -317,7 +317,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
   bridge->preload = createPreload(opts, {
-    .module = true
+    .module = true,
+    .wrap = true
   });
 
   uv_chdir(cwd.UTF8String);

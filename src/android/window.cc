@@ -54,7 +54,8 @@ namespace SSC::android {
     options.clientId = this->bridge->id;
 
     preloadSource = createPreload(options, PreloadOptions {
-      .module = true
+      .module = true,
+      .wrap = true
     });
   }
 

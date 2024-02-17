@@ -46,6 +46,7 @@
 
     if (hasAppLink) {
       if (self.bridge != nullptr) {
+        debug("CANCEL #1: %s", request.c_str());
         decisionHandler(WKNavigationActionPolicyCancel);
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
           "url", request
@@ -58,9 +59,11 @@
 
     if (
       userConfig["meta_application_protocol"].size() > 0 &&
-      request.starts_with(userConfig["meta_application_protocol"])
+      request.starts_with(userConfig["meta_application_protocol"]) &&
+      !request.starts_with("socket://" + userConfig["meta_bundle_identifier"])
     ) {
       if (self.bridge != nullptr) {
+        debug("CANCEL #2: %s", request.c_str());
         decisionHandler(WKNavigationActionPolicyCancel);
 
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
@@ -73,6 +76,7 @@
     }
 
     if (!request.starts_with("socket:") && !request.starts_with(devHost)) {
+      debug("CANCEL #3: %s", request.c_str());
       decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
@@ -766,6 +770,9 @@ namespace SSC {
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"socket"];
 
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"node"];
+
     [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
 
     WKPreferences* prefs = [config preferences];
@@ -929,7 +936,10 @@ namespace SSC {
     opts.clientId = this->bridge->id;
 
     // Add preload script, normalizing the interface to be cross-platform.
-    this->bridge->preload = createPreload(opts, { .module = true });
+    this->bridge->preload = createPreload(opts, {
+      .module = true,
+      .wrap = true
+    });
 
     webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect

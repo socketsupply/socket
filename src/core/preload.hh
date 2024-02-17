@@ -6,6 +6,7 @@
 namespace SSC {
   struct PreloadOptions {
     bool module = false;
+    bool wrap = false;
   };
 
   String createPreload (

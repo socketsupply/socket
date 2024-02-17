@@ -396,6 +396,7 @@ export async function rmdir (path) {
 }
 
 /**
+ * Get the stats of a file
  * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
@@ -405,6 +406,20 @@ export async function rmdir (path) {
 export async function stat (path, options) {
   return await visit(path, {}, async (handle) => {
     return await handle.stat(options)
+  })
+}
+
+/**
+ * Get the stats of a symbolic link.
+ * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
+ * @param {string | Buffer | URL} path
+ * @param {object?} [options]
+ * @param {boolean?} [options.bigint = false]
+ * @return {Promise<Stats>}
+ */
+export async function lstat (path, options) {
+  return await visit(path, {}, async (handle) => {
+    return await handle.lstat(options)
   })
 }
 

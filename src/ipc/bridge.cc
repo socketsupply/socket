@@ -2939,6 +2939,7 @@ static void registerSchemeHandler (Router *router) {
 
   const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
   const auto request = task.request;
+  const auto scheme = String(request.URL.scheme.UTF8String);
   const auto url = String(request.URL.absoluteString.UTF8String);
 
   uint64_t clientId = self.router->bridge->id;
@@ -2987,7 +2988,7 @@ static void registerSchemeHandler (Router *router) {
     return;
   }
 
-  if (String(request.URL.scheme.UTF8String) == "socket") {
+  if (scheme == "socket" || scheme == "node") {
     auto host = request.URL.host;
     auto components = [NSURLComponents
             componentsWithURL: request.URL
@@ -3030,6 +3031,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     if (
+      scheme != "node" &&
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
@@ -3331,9 +3333,7 @@ static void registerSchemeHandler (Router *router) {
     if (absoluteURLPathExtension.ends_with("html")) {
       const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
       auto html = String(string.UTF8String);
-      const auto script = String(
-        "\n<script type=\"module\">" + self.router->bridge->preload + "</script>\n"
-      );
+      const auto script = self.router->bridge->preload;
 
       if (html.find("<head>") != String::npos) {
         html = replace(html, "<head>", String("<head>" + script));

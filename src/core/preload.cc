@@ -20,7 +20,13 @@ namespace SSC {
     }
   #endif
 
-    auto preload = String(
+    String preload = "";
+
+    if (preloadOptions.wrap) {
+      preload += "<script type=\"text/javascript\">\n";
+    }
+
+    preload += String(
       ";(() => {                                                             \n"
       "  if (globalThis.__args) return;                                      \n"
       "  globalThis.__args = {}                                              \n"
@@ -216,26 +222,19 @@ namespace SSC {
       "})();                                                                 \n"
     );
 
-    preload += (
-      "function __postMessage__ (...args) {                                  \n"
-      "  if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {   \n"
-      "    return webkit.messageHandlers.external.postMessage(...args)       \n"
-      "  } else if (globalThis?.chrome?.webview?.postMessage) {              \n"
-      "    return chrome.webview.postMessage(...args)                        \n"
-      "  } else if (globalThis?.external?.postMessage) {                     \n"
-      "    return external.postMessage(...args)                              \n"
-      "  }                                                                   \n"
-      "                                                                      \n"
-      "  throw new TypeError(                                                \n"
-      "    'Could not determine postMessage during init preload.'            \n"
-      "  )                                                                   \n"
-      "}                                                                     \n"
-    );
-
     if (preloadOptions.module) {
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+        preload += "<script type=\"module\">\n";
+      }
+
       preload += (
-        "\nimport 'socket:internal/init'                                     \n"
+        "import 'socket:internal/init'                                       \n"
       );
+
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+      }
     } else {
       preload += (
         "if (document.readyState === 'complete') {                           \n"
@@ -248,6 +247,10 @@ namespace SSC {
         "  }, { once: true });                                               \n"
         "}                                                                   \n"
       );
+
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+      }
     }
 
     return preload;

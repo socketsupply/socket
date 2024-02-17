@@ -269,6 +269,17 @@ namespace SSC {
       return false;
     }
 
+    for (const auto& entry : request.headers) {
+      const auto parts = split(trim(entry), ':');
+      if (parts.size() == 2) {
+        const auto key = trim(parts[0]);
+        const auto value = trim(parts[1]);
+        if (key == "runtime-worker-type" && value == "serviceworker") {
+          return false;
+        }
+      }
+    }
+
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
       if (request.pathname.starts_with(registration.options.scope)) {

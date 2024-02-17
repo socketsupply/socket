@@ -41,6 +41,10 @@ export class ExtendableEvent extends Event {
     return await this.#promise
   }
 
+  get awaiting () {
+    return this.waitsFor()
+  }
+
   get pendingPromises () {
     return this.#pendingPromiseCount
   }
@@ -118,6 +122,8 @@ export class FetchEvent extends ExtendableEvent {
         handled.resolve()
       } catch (err) {
         state.reportError(err)
+      } finally {
+        handled.resolve()
       }
     })
   }

@@ -131,7 +131,6 @@ export class WindowClient extends Client {
       throw new TypeError('WindowClient cannot navigate outside of origin')
     }
 
-    console.log('navigate', url)
     await this.#window.navigate(url.pathname + url.search)
     this.#url = url.pathname + url.search
     return this
