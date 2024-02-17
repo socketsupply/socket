@@ -27,7 +27,9 @@
  */
 import { EventEmitter } from './events.js'
 import * as exports from './stream.js'
+import web from './stream/web.js'
 
+export { web }
 export default exports
 
 const STREAM_DESTROYED = new Error('Stream was destroyed')

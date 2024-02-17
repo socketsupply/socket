@@ -453,6 +453,11 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
       this.setRequestHeader('Runtime-Frame-Type', 'nested')
     } else if (!globalThis.window && globalThis.self === globalThis) {
       this.setRequestHeader('Runtime-Frame-Type', 'worker')
+      if (globalThis.clients && globalThis.FetchEvent) {
+        this.setRequestHeader('Runtime-Worker-Type', 'serviceworker')
+      } else {
+        this.setRequestHeader('Runtime-Worker-Type', 'worker')
+      }
     } else {
       this.setRequestHeader('Runtime-Frame-Type', 'top-level')
     }

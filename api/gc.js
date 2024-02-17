@@ -1,6 +1,7 @@
 import { FinalizationRegistryCallbackError } from './errors.js'
 import diagnostics from './diagnostics.js'
 import { noop } from './util.js'
+import symbols from './internal/symbols.js'
 import console from './console.js'
 
 if (typeof FinalizationRegistry === 'undefined') {
@@ -137,8 +138,16 @@ export class Finalizer {
  * @return {boolean}
  */
 export async function ref (object, ...args) {
-  if (object && typeof object[kFinalizer] === 'function') {
-    const finalizer = Finalizer.from(await object[kFinalizer](...args))
+  if (
+    object && (
+      typeof object[kFinalizer] === 'function' ||
+      typeof object[symbols.dispose] === 'function'
+    )
+  ) {
+    const finalizer = Finalizer.from(
+      await (object[kFinalizer] || object[symbols.dispose]).call(object, ...args)
+    )
+
     const weakRef = new WeakRef(finalizer)
 
     finalizers.set(object, weakRef)
@@ -163,7 +172,12 @@ export function unref (object) {
     return false
   }
 
-  if (typeof object[kFinalizer] === 'function' && finalizers.has(object)) {
+  if (
+    finalizers.has(object) && (
+      typeof object[kFinalizer] === 'function' ||
+      typeof object[symbols.dispose] === 'function'
+    )
+  ) {
     const weakRef = finalizers.get(object)
 
     if (weakRef) {
@@ -202,7 +216,10 @@ export async function finalize (object, ...args) {
     if (finalizer instanceof Finalizer && await unref(object)) {
       await finalizationRegistryCallback(finalizer)
     } else {
-      const finalizer = Finalizer.from(await object[kFinalizer](...args))
+      const finalizer = Finalizer.from(
+        await (object[kFinalizer] || object[symbols.dispose]).call(object, ...args)
+      )
+
       await finalizationRegistryCallback(finalizer)
     }
     return true
