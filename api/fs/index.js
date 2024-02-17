@@ -754,7 +754,7 @@ export function rmdir (path, callback) {
 }
 
 /**
- *
+ * Get the stats of a file
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {object?} options
  * @param {string?} [options.encoding ? 'utf8']
@@ -782,6 +782,44 @@ export function stat (path, options, callback) {
 
     try {
       stats = await handle.stat(options)
+    } catch (err) {
+      callback(err)
+      return
+    }
+
+    callback(null, stats)
+  })
+}
+
+/**
+ * Get the stats of a symbolic link
+ * @param {string | Buffer | URL | number } path - filename or file descriptor
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ * @param {function(Error?, Stats?)} callback
+ */
+export function lstat (path, options, callback) {
+  if (typeof options === 'function') {
+    callback = options
+    options = {}
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  visit(path, {}, async (err, handle) => {
+    let stats = null
+
+    if (err) {
+      callback(err)
+      return
+    }
+
+    try {
+      stats = await handle.lstat(options)
     } catch (err) {
       callback(err)
       return
@@ -938,5 +976,6 @@ for (const key in exports) {
   const value = exports[key]
   if (key in promises && isFunction(value) && isFunction(promises[key])) {
     value[Symbol.for('nodejs.util.promisify.custom')] = promises[key]
+    value[Symbol.for('socket.util.promisify.custom')] = promises[key]
   }
 }

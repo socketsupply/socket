@@ -605,6 +605,27 @@ export class FileHandle extends EventEmitter {
   }
 
   /**
+   * Returns the stats of the underlying symbolic link.
+   * @param {object=} [options]
+   * @return {Promise<Stats>}
+   */
+  async lstat (options) {
+    if (this.closing || this.closed) {
+      throw new Error('FileHandle is not opened')
+    }
+
+    const result = await ipc.request('fs.lstat', { ...options, path: this.path })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    const stats = Stats.from(result.data, Boolean(options?.bigint))
+    stats.handle = this
+    return stats
+  }
+
+  /**
    * Synchronize a file's in-core state with storage device
    * @return {Promise}
    */
