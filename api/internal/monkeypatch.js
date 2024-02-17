@@ -1,6 +1,7 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
+import { setImmediate, clearImmediate } from './timers.js'
 import serviceWorker from './service-worker.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
@@ -8,6 +9,8 @@ import geolocation from './geolocation.js'
 import permissions from './permissions.js'
 import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
+import scheduler from './scheduler.js'
+import symbols from './symbols.js'
 
 import {
   ApplicationURLEvent,
@@ -144,6 +147,10 @@ export function init () {
     }
   }
 
+  try {
+    Symbol.dispose = symbols.dispose
+  } catch {}
+
   if (
     typeof globalThis.webkitSpeechRecognition === 'function' &&
     typeof globalThis.SpeechRecognition !== 'function'
@@ -189,9 +196,17 @@ export function init () {
     // workers
     SharedWorker,
 
+    // timers
+    setImmediate,
+    clearImmediate,
+
     // platform detection
     isSocketRuntime: true
   })
+
+  if (globalThis.scheduler) {
+    install(scheduler, globalThis.scheduler)
+  }
 
   if (globalThis.navigator) {
     // environment navigator

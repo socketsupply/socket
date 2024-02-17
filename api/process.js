@@ -12,16 +12,97 @@ import os from './os.js'
 
 let didEmitExitEvent = false
 
+export const env = Object.create({}, {
+  proxy: {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: new Proxy({}, {
+      get (_, property, receiver) {
+        if (Reflect.has(env, property)) {
+          return Reflect.get(env, property)
+        }
+
+        return Reflect.get(globalThis.__args.env, property)
+      },
+
+      set (_, property, value) {
+        return Reflect.set(env, property, value)
+      },
+
+      deleteProperty (_, property) {
+        return Reflect.deleteProperty(env, property)
+      },
+
+      has (_, property) {
+        return (
+          Reflect.has(env, property) ||
+          Reflect.has(globalThis.__args.env, property)
+        )
+      },
+
+      ownKeys (_) {
+        const keys = []
+        keys.push(...Reflect.ownKeys(env))
+        keys.push(...Reflect.ownKeys(globalThis.__args.env))
+        return Array.from(new Set(keys))
+      }
+    })
+  }
+})
+
 class Process extends EventEmitter {
-  arch = primordials.arch
-  argv = globalThis.__args?.argv ?? []
-  argv0 = globalThis.__args?.argv?.[0] ?? ''
-  cwd = () => primordials.cwd
-  env = { ...(globalThis.__args?.env ?? {}) }
-  exit = exit
-  homedir = homedir
-  platform = primordials.platform
-  version = primordials.version
+  get version () {
+    return primordials.version
+  }
+
+  get platform () {
+    return primordials.platform
+  }
+
+  get env () {
+    return env.proxy
+  }
+
+  get arch () {
+    return primordials.arch
+  }
+
+  get argv () {
+    return globalThis.__args?.argv ?? []
+  }
+
+  get argv0 () {
+    return this.argv[0] ?? ''
+  }
+
+  get execArgv () {
+    return []
+  }
+
+  cwd () {
+    return primordials.cwd
+  }
+
+  exit (code) {
+    return exit(code)
+  }
+
+  homedir () {
+    return homedir()
+  }
+
+  nextTick (callback) {
+    return nextTick(callback)
+  }
+
+  hrtime (time = [0, 0]) {
+    return hrtime(time)
+  }
+
+  memoryUsage () {
+    return memoryUsage
+  }
 }
 
 const isNode = Boolean(globalThis.process?.versions?.node)
@@ -40,7 +121,7 @@ export default process
  * @param {Function} callback
  */
 export function nextTick (callback) {
-  if (typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
+  if (isNode && typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
     process.nextTick(callback)
   } else if (typeof globalThis.setImmediate === 'function') {
     globalThis.setImmediate(callback)
@@ -98,6 +179,8 @@ if (typeof process.hrtime !== 'function') {
   process.hrtime = hrtime
 }
 
+process.hrtime.bigint = hrtime.bigint
+
 /**
  * @param {number=} [code=0] - The exit code. Default: 0.
  */
@@ -128,3 +211,5 @@ memoryUsage.rss = function rss () {
   const rusage = os.rusage()
   return rusage.ru_maxrss
 }
+
+process.memoryUsage.rss = memoryUsage.rss

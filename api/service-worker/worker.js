@@ -1,6 +1,7 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
 import { InvertedPromise } from '../util.js'
+import { createRequire } from '../module.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
@@ -33,6 +34,8 @@ async function onMessage (event) {
     state.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
+
+    globalThis.require = createRequire(scriptURL)
 
     try {
       module = await import(scriptURL)
@@ -154,6 +157,7 @@ async function onMessage (event) {
         } catch (err) {
           state.reportError(err)
           response = new Response(err.message, {
+            statusText: 'Internal Server Error',
             status: 500
           })
         }
@@ -161,7 +165,10 @@ async function onMessage (event) {
         if (response) {
           promise.resolve(response)
         } else {
-          promise.resolve(new Response('', { status: 404 }))
+          promise.resolve(new Response('', {
+            statusText: 'Not found',
+            status: 404
+          }))
         }
       })
     }

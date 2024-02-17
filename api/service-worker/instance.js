@@ -104,7 +104,6 @@ export function createServiceWorker (
       if (data.serviceWorker) {
         if (data.serviceWorker.state && data.serviceWorker.state !== currentState) {
           const scope = new URL(globalThis.location.href).pathname
-          console.log('instance channel message', scope, data.serviceWorker.scope)
           if (scope.startsWith(data.serviceWorker.scope)) {
             currentState = data.serviceWorker.state
             scriptURL = data.serviceWorker.scriptURL

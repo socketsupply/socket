@@ -1,6 +1,7 @@
 import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 import { URL } from './url.js'
+import mime from './mime.js'
 
 import * as exports from './util.js'
 
@@ -23,8 +24,50 @@ function maybeURL (...args) {
   }
 }
 
+export const TextDecoder = globalThis.TextDecoder
+export const TextEncoder = globalThis.TextEncoder
+export const isArray = Array.isArray.bind(Array)
+
+export function debug (section) {
+  let enabled = false
+  const env = globalThis.__args?.env ?? {}
+  const sections = [].concat(
+    (env.SOCKET_DEBUG ?? '').split(','),
+    (env.NODE_DEBUG ?? '').split(',')
+  ).map((section) => section.trim())
+
+  if (section && sections.includes(section)) {
+    enabled = true
+  }
+
+  function logger (...args) {
+    if (enabled) {
+      return console.debug(...args)
+    }
+  }
+
+  Object.defineProperty(logger, 'enabled', {
+    configurable: false,
+    enumerable: false,
+    get: () => enabled,
+    set: (value) => {
+      if (value === true) {
+        enabled = true
+      } else if (value === false) {
+        enabled = false
+      }
+    }
+  })
+
+  return logger
+}
+
 export function hasOwnProperty (object, property) {
   return ObjectPrototype.hasOwnProperty.call(object, String(property))
+}
+
+export function isDate (object) {
+  return object instanceof Date
 }
 
 export function isTypedArray (object) {
@@ -39,12 +82,35 @@ export function isArrayLike (object) {
   )
 }
 
+export function isError (object) {
+  return object && object instanceof Error
+}
+
+export function isSymbol (value) {
+  return typeof value === 'symbol'
+}
+
+export function isNumber (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    typeof value === 'number' ||
+    value instanceof Number
+  )
+}
+
+export function isBoolean (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    value === true ||
+    value === false ||
+    value instanceof Boolean
+  )
+}
+
 export function isArrayBufferView (buf) {
   return !Buffer.isBuffer(buf) && ArrayBuffer.isView(buf)
 }
 
 export function isAsyncFunction (object) {
-  return object instanceof AsyncFunction
+  return object && object instanceof AsyncFunction
 }
 
 export function isArgumentsObject (object) {
@@ -68,6 +134,32 @@ export function isObject (object) {
     object !== null &&
     typeof object === 'object'
   )
+}
+
+export function isUndefined (value) {
+  return value === undefined
+}
+
+export function isNull (value) {
+  return value === null
+}
+
+export function isNullOrUndefined (value) {
+  return isNull(value) || isUndefined(value)
+}
+
+export function isPrimitive (value) {
+  return (
+    isNullOrUndefined(value) ||
+    typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'symbol' ||
+    typeof value === 'boolean'
+  )
+}
+
+export function isRegExp (value) {
+  return value && value instanceof RegExp
 }
 
 export function isPlainObject (object) {
@@ -104,6 +196,10 @@ export function isClass (value) {
     typeof value === 'function' &&
     value.prototype.constructor !== Function
   )
+}
+
+export function isBuffer (value) {
+  return Buffer.isBuffer(value)
 }
 
 export function isPromiseLike (object) {
@@ -204,7 +300,12 @@ export function promisify (original) {
     }
 
     for (const key in original) {
-      object[key] = promisify(original[key])
+      const value = original[key]
+      if (typeof value === 'function' || (value && typeof value === 'object')) {
+        object[key] = promisify(original[key].bind(original))
+      } else {
+        object[key] = original[key]
+      }
     }
 
     Object.defineProperty(object, promisify.custom, {
@@ -219,6 +320,7 @@ export function promisify (original) {
   }
 
   if (typeof original !== 'function') {
+    console.log({ original })
     throw new TypeError('Expecting original to be a function or object.')
   }
 
@@ -823,5 +925,23 @@ export function isValidPercentageValue (input) {
 export function compareBuffers (a, b) {
   return toBuffer(a).compare(toBuffer(b))
 }
+
+export function inherits (Constructor, Super) {
+  Object.defineProperty(Constructor, 'super_', {
+    configurable: true,
+    writable: true,
+    value: Super,
+    __proto__: null
+  })
+
+  Object.setPrototypeO(Constructor.prototype, Super.prototype)
+}
+
+export function deprecate (...args) {
+  // noop
+}
+
+export const MIMEType = mime.MIMEType
+export const MIMEParams = mime.MIMEParams
 
 export default exports

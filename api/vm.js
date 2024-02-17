@@ -1455,6 +1455,10 @@ export function getTrasferables (object) {
   return transferables
 }
 
+export function createContext (object) {
+  return object
+}
+
 export default {
   compileFunction,
   createReference,
@@ -1468,5 +1472,6 @@ export default {
   runInContext,
   runInNewContext,
   runInThisContext,
-  Script
+  Script,
+  createContext
 }
