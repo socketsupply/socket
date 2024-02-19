@@ -195,6 +195,10 @@ export class Worker extends EventEmitter {
     return this.#worker.id
   }
 
+  get threadId () {
+    return this.id
+  }
+
   /**
    * A `Writable` standard input stream if `{ stdin: true }` was set when
    * creating this `Worker` instance.
@@ -316,6 +320,10 @@ export class Worker extends EventEmitter {
         }
       }
     })
+  }
+
+  postMessage (...args) {
+    this.#worker.postMessage(...args)
   }
 }
 
