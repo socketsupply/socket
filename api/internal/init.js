@@ -12,7 +12,7 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
-import './monkeypatch.js'
+import './primitives.js'
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { CustomEvent, ErrorEvent } from '../events.js'

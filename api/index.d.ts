@@ -488,9 +488,28 @@ declare module "socket:url/url/url" {
     const _default: any;
     export default _default;
 }
+declare module "socket:querystring" {
+    export function unescapeBuffer(s: any, decodeSpaces: any): any;
+    export function unescape(s: any, decodeSpaces: any): any;
+    export function escape(str: any): any;
+    export function stringify(obj: any, sep: any, eq: any, options: any): string;
+    export function parse(qs: any, sep: any, eq: any, options: any): {};
+    export function decode(qs: any, sep: any, eq: any, options: any): {};
+    export function encode(obj: any, sep: any, eq: any, options: any): string;
+    namespace _default {
+        export { decode };
+        export { encode };
+        export { parse };
+        export { stringify };
+        export { escape };
+        export { unescape };
+    }
+    export default _default;
+}
 declare module "socket:url/index" {
+    export function parse(input: any): any;
     export function resolve(from: any, to: any): any;
-    export const parse: any;
+    export function format(input: any): any;
     export default URL;
     export const URL: any;
     import { URLPattern } from "socket:url/urlpattern/urlpattern";
@@ -503,21 +522,205 @@ declare module "socket:url" {
     export default URL;
     import URL from "socket:url/index";
 }
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    export class MIMEParams extends Map<any, any> {
+        constructor();
+        constructor(entries?: readonly (readonly [any, any])[]);
+        constructor();
+        constructor(iterable?: Iterable<readonly [any, any]>);
+    }
+    export class MIMEType {
+        constructor(input: any);
+        set type(value: any);
+        get type(): any;
+        set subtype(value: any);
+        get subtype(): any;
+        get essence(): string;
+        toString(): string;
+        toJSON(): string;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { MIMEParams };
+        export { MIMEType };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
 declare module "socket:util" {
+    export function debug(section: any): {
+        (...args: any[]): void;
+        enabled: boolean;
+    };
     export function hasOwnProperty(object: any, property: any): any;
+    export function isDate(object: any): boolean;
     export function isTypedArray(object: any): boolean;
     export function isArrayLike(object: any): boolean;
+    export function isError(object: any): boolean;
+    export function isSymbol(value: any): boolean;
+    export function isNumber(value: any): boolean;
+    export function isBoolean(value: any): boolean;
     export function isArrayBufferView(buf: any): boolean;
     export function isAsyncFunction(object: any): boolean;
     export function isArgumentsObject(object: any): boolean;
     export function isEmptyObject(object: any): boolean;
     export function isObject(object: any): boolean;
+    export function isUndefined(value: any): boolean;
+    export function isNull(value: any): boolean;
+    export function isNullOrUndefined(value: any): boolean;
+    export function isPrimitive(value: any): boolean;
+    export function isRegExp(value: any): boolean;
     export function isPlainObject(object: any): boolean;
     export function isArrayBuffer(object: any): boolean;
     export function isBufferLike(object: any): boolean;
     export function isFunction(value: any): boolean;
     export function isErrorLike(error: any): boolean;
     export function isClass(value: any): boolean;
+    export function isBuffer(value: any): boolean;
     export function isPromiseLike(object: any): boolean;
     export function toString(object: any): string;
     export function toBuffer(object: any, encoding?: any): any;
@@ -537,9 +740,23 @@ declare module "socket:util" {
     export function noop(): void;
     export function isValidPercentageValue(input: any): boolean;
     export function compareBuffers(a: any, b: any): any;
+    export function inherits(Constructor: any, Super: any): void;
+    export function deprecate(...args: any[]): void;
+    export const TextDecoder: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoder;
+        prototype: TextDecoder;
+    };
+    export const TextEncoder: {
+        new (): TextEncoder;
+        prototype: TextEncoder;
+    };
+    export const isArray: any;
     export class IllegalConstructor {
     }
+    export const MIMEType: typeof mime.MIMEType;
+    export const MIMEParams: typeof mime.MIMEParams;
     export default exports;
+    import mime from "socket:mime";
     import * as exports from "socket:util";
     
 }
@@ -558,7 +775,8 @@ declare module "socket:window/constants" {
     export const WINDOW_EXITED: 51;
     export const WINDOW_KILLING: 60;
     export const WINDOW_KILLED: 61;
-    export * as _default from "socket:window/constants";
+    export default exports;
+    import * as exports from "socket:window/constants";
     
 }
 declare module "socket:location" {
@@ -654,7 +872,7 @@ declare module "socket:events" {
         prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#3@#detail": any;
+            "__#4@#detail": any;
             readonly detail: any;
         };
     };
@@ -663,8 +881,8 @@ declare module "socket:events" {
         prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#4@#detail": any;
-            "__#4@#data": any;
+            "__#5@#detail": any;
+            "__#5@#data": any;
             readonly detail: any;
             readonly data: any;
         };
@@ -674,8 +892,8 @@ declare module "socket:events" {
         prototype: ErrorEvent;
     } | {
         new (type: any, options: any): {
-            "__#5@#detail": any;
-            "__#5@#error": any;
+            "__#6@#detail": any;
+            "__#6@#error": any;
             readonly detail: any;
             readonly error: any;
         };
@@ -849,6 +1067,12 @@ declare module "socket:process" {
     export namespace memoryUsage {
         function rss(): any;
     }
+    export class ProcessEnvironmentEvent extends Event {
+        constructor(type: any, key: any, value: any);
+        key: any;
+        value: any;
+    }
+    export const env: any;
     export default process;
     const process: any;
 }
@@ -1648,6 +1872,13 @@ declare module "socket:diagnostics" {
     export default exports;
     import * as exports from "socket:diagnostics/index";
 }
+declare module "socket:internal/symbols" {
+    export const dispose: any;
+    namespace _default {
+        export { dispose };
+    }
+    export default _default;
+}
 declare module "socket:gc" {
     /**
      * Track `object` ref to call `Symbol.for('gc.finalize')` method when
@@ -1720,12 +1951,74 @@ declare module "socket:gc" {
         handle: any;
     }
 }
+declare module "socket:stream/web" {
+    export const ReadableStream: {
+        new (underlyingSource: UnderlyingByteSource, strategy?: {
+            highWaterMark?: number;
+        }): ReadableStream<Uint8Array>;
+        new <R = any>(underlyingSource: UnderlyingDefaultSource<R>, strategy?: QueuingStrategy<R>): ReadableStream<R>;
+        new <R_1 = any>(underlyingSource?: UnderlyingSource<R_1>, strategy?: QueuingStrategy<R_1>): ReadableStream<R_1>;
+        prototype: ReadableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultReader: {
+        new <R = any>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
+        prototype: ReadableStreamDefaultReader<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBReader: {
+        new (stream: ReadableStream<any>): ReadableStreamBYOBReader;
+        prototype: ReadableStreamBYOBReader;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBRequest: typeof UnsupportedStreamInterface;
+    export const ReadableByteStreamController: typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const TransformStream: {
+        new <I = any, O = any>(transformer?: Transformer<I, O>, writableStrategy?: QueuingStrategy<I>, readableStrategy?: QueuingStrategy<O>): TransformStream<I, O>;
+        prototype: TransformStream<any, any>;
+    } | typeof UnsupportedStreamInterface;
+    export const TransformStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const WritableStream: {
+        new <W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
+        prototype: WritableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultWriter: {
+        new <W = any>(stream: WritableStream<W>): WritableStreamDefaultWriter<W>;
+        prototype: WritableStreamDefaultWriter<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const ByteLengthQueuingStrategy: {
+        new (init: QueuingStrategyInit): ByteLengthQueuingStrategy;
+        prototype: ByteLengthQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const CountQueuingStrategy: {
+        new (init: QueuingStrategyInit): CountQueuingStrategy;
+        prototype: CountQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const TextEncoderStream: typeof UnsupportedStreamInterface;
+    export const TextDecoderStream: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoderStream;
+        prototype: TextDecoderStream;
+    } | typeof UnsupportedStreamInterface;
+    export const CompressionStream: {
+        new (format: CompressionFormat): CompressionStream;
+        prototype: CompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export const DecompressionStream: {
+        new (format: CompressionFormat): DecompressionStream;
+        prototype: DecompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export default exports;
+    class UnsupportedStreamInterface {
+    }
+    import * as exports from "socket:stream/web";
+    
+}
 declare module "socket:stream" {
     export function pipelinePromise(...streams: any[]): Promise<any>;
     export function pipeline(stream: any, ...streams: any[]): any;
     export function isStream(stream: any): boolean;
     export function isStreamx(stream: any): boolean;
     export function isReadStreamx(stream: any): any;
+    export { web };
     export default exports;
     export class FixedFIFO {
         constructor(hwm: any);
@@ -1873,6 +2166,7 @@ declare module "socket:stream" {
     }
     export class PassThrough extends exports.Transform {
     }
+    import web from "socket:stream/web";
     import * as exports from "socket:stream";
     import { EventEmitter } from "socket:events";
     
@@ -2276,6 +2570,12 @@ declare module "socket:fs/handle" {
          * @return {Promise<Stats>}
          */
         stat(options?: object | undefined): Promise<Stats>;
+        /**
+         * Returns the stats of the underlying symbolic link.
+         * @param {object=} [options]
+         * @return {Promise<Stats>}
+         */
+        lstat(options?: object | undefined): Promise<Stats>;
         /**
          * Synchronize a file's in-core state with storage device
          * @return {Promise}
@@ -3029,6 +3329,7 @@ declare module "socket:fs/promises" {
      */
     export function rmdir(path: string): Promise<any>;
     /**
+     * Get the stats of a file
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
@@ -3036,6 +3337,15 @@ declare module "socket:fs/promises" {
      * @return {Promise<Stats>}
      */
     export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
+    /**
+     * Get the stats of a symbolic link.
+     * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
+     * @param {string | Buffer | URL} path
+     * @param {object?} [options]
+     * @param {boolean?} [options.bigint = false]
+     * @return {Promise<Stats>}
+     */
+    export function lstat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
@@ -3099,11 +3409,26 @@ declare module "socket:fs/index" {
      */
     export function access(path: string | Buffer | URL, mode: any, callback?: ((arg0: Error | null) => any) | null): void;
     /**
-     * @ignore
+     * Synchronously check access a file for a given mode calling `callback`
+     * upon success or error.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @param {string | Buffer | URL} path
+     * @param {string?} [mode = F_OK(0)]
      */
-    export function appendFile(path: any, data: any, options: any, callback: any): void;
+    export function accessSync(path: string | Buffer | URL, mode?: string | null): boolean;
     /**
-     *
+     * Checks if a path exists
+     * @param {string | Buffer | URL} path
+     * @param {function(Boolean)?} [callback]
+     */
+    export function exists(path: string | Buffer | URL, callback?: ((arg0: boolean) => any) | null): void;
+    /**
+     * Checks if a path exists
+     * @param {string | Buffer | URL} path
+     * @param {function(Boolean)?} [callback]
+     */
+    export function existsSync(path: string | Buffer | URL): boolean;
+    /**
      * Asynchronously changes the permissions of a file.
      * No arguments other than a possible exception are given to the completion callback
      *
@@ -3115,6 +3440,14 @@ declare module "socket:fs/index" {
      */
     export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
     /**
+     * Synchronously changes the permissions of a file.
+     *
+     * @see {@link https://nodejs.org/api/fs.html#fschmodpath-mode-callback}
+     * @param {string | Buffer | URL} path
+     * @param {number} mode
+     */
+    export function chmodSync(path: string | Buffer | URL, mode: number): void;
+    /**
      * Changes ownership of file or directory at `path` with `uid` and `gid`.
      * @param {string} path
      * @param {number} uid
@@ -3122,6 +3455,13 @@ declare module "socket:fs/index" {
      * @param {function} callback
      */
     export function chown(path: string, uid: number, gid: number, callback: Function): void;
+    /**
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     */
+    export function chownSync(path: string, uid: number, gid: number): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
@@ -3138,6 +3478,14 @@ declare module "socket:fs/index" {
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
     export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
+    /**
+     * Synchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     */
+    export function copyFileSync(src: string, dest: string, flags: number): void;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
@@ -3197,6 +3545,10 @@ declare module "socket:fs/index" {
      */
     export function mkdir(path: any, options: any, callback: any): void;
     /**
+     * @ignore
+     */
+    export function mkdirSync(path: any, options: any): void;
+    /**
      * Asynchronously open a file calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
@@ -3247,6 +3599,14 @@ declare module "socket:fs/index" {
      */
     export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
+     * @param {string | Buffer | URL | number } path
+     * @param {object?|function(Error?, Buffer?)} [options]
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     */
+    export function readFileSync(path: string | Buffer | URL | number, options?: {}): any;
+    /**
      * Reads link at `path`
      * @param {string} path
      * @param {function(err, string)} callback
@@ -3272,7 +3632,15 @@ declare module "socket:fs/index" {
      */
     export function rmdir(path: string, callback: Function): void;
     /**
-     *
+     * Synchronously get the stats of a file
+     * @param {string | Buffer | URL | number } path - filename or file descriptor
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     */
+    export function statSync(path: string | Buffer | URL | number, options: object | null): promises.Stats;
+    /**
+     * Get the stats of a file
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {object?} options
      * @param {string?} [options.encoding ? 'utf8']
@@ -3281,6 +3649,16 @@ declare module "socket:fs/index" {
      * @param {function(Error?, Stats?)} callback
      */
     export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
+    /**
+     * Get the stats of a symbolic link
+     * @param {string | Buffer | URL | number } path - filename or file descriptor
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     * @param {function(Error?, Stats?)} callback
+     */
+    export function lstat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
@@ -3317,9 +3695,11 @@ declare module "socket:fs/index" {
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
+    import { Buffer } from "socket:buffer";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
+    import * as promises from "socket:fs/promises";
     import { Stats } from "socket:fs/stats";
     import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
@@ -3327,7 +3707,6 @@ declare module "socket:fs/index" {
     import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
-    import * as promises from "socket:fs/promises";
     import * as exports from "socket:fs/index";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
@@ -4351,6 +4730,11 @@ declare module "socket:window" {
             index: any;
         });
         /**
+         * The unique ID of this window.
+         * @type {string}
+         */
+        get id(): string;
+        /**
          * Get the index of the window
          * @return {number} - the index of the window
          */
@@ -4359,6 +4743,11 @@ declare module "socket:window" {
          * @type {import('./window/hotkey.js').default}
          */
         get hotkey(): import("socket:window/hotkey").Bindings;
+        /**
+         * The broadcast channel for this window.
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
         /**
          * Get the size of the window
          * @return {{ width: number, height: number }} - the size of the window
@@ -4612,12 +5001,10 @@ declare module "socket:application" {
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
-     * @return {Promise<Object.<number, ApplicationWindow>>}
      * @throws {Error} - if indices is not an array of integer numbers
+     * @return {Promise<Object.<number?, ApplicationWindow>>}
      */
-    export function getWindows(indices?: number[]): Promise<{
-        [x: number]: ApplicationWindow;
-    }>;
+    export function getWindows(indices?: number[]): Promise<any>;
     /**
      * Returns the ApplicationWindow instance for the given index
      * @param {number} index - the index of the window
@@ -4773,6 +5160,58 @@ declare module "socket:application" {
     import * as exports from "socket:application";
     
 }
+declare module "socket:test/fast-deep-equal" {
+    export default function equal(a: any, b: any): boolean;
+}
+declare module "socket:assert" {
+    export function assert(value: any, message?: any): void;
+    export function ok(value: any, message?: any): void;
+    export function equal(actual: any, expected: any, message?: any): void;
+    export function notEqual(actual: any, expected: any, message?: any): void;
+    export function strictEqual(actual: any, expected: any, message?: any): void;
+    export function notStrictEqual(actual: any, expected: any, message?: any): void;
+    export function deepEqual(actual: any, expected: any, message?: any): void;
+    export function notDeepEqual(actual: any, expected: any, message?: any): void;
+    export class AssertionError extends Error {
+        constructor(options: any);
+        actual: any;
+        expected: any;
+        operator: any;
+    }
+    const _default: typeof assert & {
+        AssertionError: typeof AssertionError;
+        ok: typeof ok;
+        equal: typeof equal;
+        notEqual: typeof notEqual;
+        strictEqual: typeof strictEqual;
+        notStrictEqual: typeof notStrictEqual;
+        deepEqual: typeof deepEqual;
+        notDeepEqual: typeof notDeepEqual;
+    };
+    export default _default;
+}
+declare module "socket:async_context" {
+    export class AsyncLocalStorage {
+        static bind(fn: any): void;
+        static snapshot(): void;
+        disable(): void;
+        getStore(): void;
+        enterWith(store: any): void;
+        run(store: any, callback: any, ...args: any[]): void;
+        exit(callback: any, ...args: any[]): void;
+    }
+    export class AsyncResource {
+    }
+    namespace _default {
+        export { AsyncLocalStorage };
+    }
+    export default _default;
+}
+declare module "socket:async_hooks" {
+    export * from "socket:async_context";
+    export default context;
+    import context from "socket:async_context";
+}
 declare module "socket:bluetooth" {
     export default exports;
     /**
@@ -4860,6 +5299,87 @@ declare module "socket:bootstrap" {
         cleanup(): void;
     }
     import { EventEmitter } from "socket:events";
+}
+declare module "socket:constants" {
+    export * from "socket:fs/constants";
+    export * from "socket:window/constants";
+    const _default: {
+        WINDOW_ERROR: -1;
+        WINDOW_NONE: 0;
+        WINDOW_CREATING: 10;
+        WINDOW_CREATED: 11;
+        WINDOW_HIDING: 20;
+        WINDOW_HIDDEN: 21;
+        WINDOW_SHOWING: 30;
+        WINDOW_SHOWN: 31;
+        WINDOW_CLOSING: 40;
+        WINDOW_CLOSED: 41;
+        WINDOW_EXITING: 50;
+        WINDOW_EXITED: 51;
+        WINDOW_KILLING: 60;
+        WINDOW_KILLED: 61;
+        default: typeof window;
+        COPYFILE_EXCL: 1;
+        COPYFILE_FICLONE: 2;
+        COPYFILE_FICLONE_FORCE: 4;
+        UV_DIRENT_UNKNOWN: any;
+        UV_DIRENT_FILE: any;
+        UV_DIRENT_DIR: any;
+        UV_DIRENT_LINK: any;
+        UV_DIRENT_FIFO: any;
+        UV_DIRENT_SOCKET: any;
+        UV_DIRENT_CHAR: any;
+        UV_DIRENT_BLOCK: any;
+        UV_FS_SYMLINK_DIR: any;
+        UV_FS_SYMLINK_JUNCTION: any;
+        O_RDONLY: any;
+        O_WRONLY: any;
+        O_RDWR: any;
+        O_APPEND: any;
+        O_ASYNC: any;
+        O_CLOEXEC: any;
+        O_CREAT: any;
+        O_DIRECT: any;
+        O_DIRECTORY: any;
+        O_DSYNC: any;
+        O_EXCL: any;
+        O_LARGEFILE: any;
+        O_NOATIME: any;
+        O_NOCTTY: any;
+        O_NOFOLLOW: any;
+        O_NONBLOCK: any;
+        O_NDELAY: any;
+        O_PATH: any;
+        O_SYNC: any;
+        O_TMPFILE: any;
+        O_TRUNC: any;
+        S_IFMT: any;
+        S_IFREG: any;
+        S_IFDIR: any;
+        S_IFCHR: any;
+        S_IFBLK: any;
+        S_IFIFO: any;
+        S_IFLNK: any;
+        S_IFSOCK: any;
+        S_IRWXU: any;
+        S_IRUSR: any;
+        S_IWUSR: any;
+        S_IXUSR: any;
+        S_IRWXG: any;
+        S_IRGRP: any;
+        S_IWGRP: any;
+        S_IXGRP: any;
+        S_IRWXO: any;
+        S_IROTH: any;
+        S_IWOTH: any;
+        S_IXOTH: any;
+        F_OK: any;
+        R_OK: any;
+        W_OK: any;
+        X_OK: any;
+    };
+    export default _default;
+    import window from "socket:window/constants";
 }
 declare module "socket:ip" {
     /**
@@ -5239,156 +5759,6 @@ declare module "socket:enumeration" {
     }
     export default Enumeration;
 }
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
-}
 declare module "socket:fs/web" {
     /**
      * Creates a new `File` instance from `filename`.
@@ -5612,6 +5982,7 @@ declare module "socket:extension" {
         export { stats };
     }
     export default _default;
+    export type Pointer = number;
     export type ExtensionLoadOptions = {
         allow: string[] | string;
         imports?: object;
@@ -5690,11 +6061,7 @@ declare module "socket:extension" {
     }
     const $type: unique symbol;
     /**
-     * {Pointer}
-     */
-    type $loaded = number;
-    /**
-     * @typedef {number} {Pointer}
+     * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
     import path from "socket:path";
@@ -5773,6 +6140,232 @@ declare module "socket:fetch" {
     export * from "socket:fetch/index";
     export default fetch;
     import fetch from "socket:fetch/index";
+}
+declare module "socket:http" {
+    export function get(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
+    export const METHODS: string[];
+    export const STATUS_CODES: {
+        100: string;
+        101: string;
+        102: string;
+        103: string;
+        200: string;
+        201: string;
+        202: string;
+        203: string;
+        204: string;
+        205: string;
+        206: string;
+        207: string;
+        208: string;
+        226: string;
+        300: string;
+        301: string;
+        302: string;
+        303: string;
+        304: string;
+        305: string;
+        307: string;
+        308: string;
+        400: string;
+        401: string;
+        402: string;
+        403: string;
+        404: string;
+        405: string;
+        406: string;
+        407: string;
+        408: string;
+        409: string;
+        410: string;
+        411: string;
+        412: string;
+        413: string;
+        414: string;
+        415: string;
+        416: string;
+        417: string;
+        418: string;
+        421: string;
+        422: string;
+        423: string;
+        424: string;
+        425: string;
+        426: string;
+        428: string;
+        429: string;
+        431: string;
+        451: string;
+        500: string;
+        501: string;
+        502: string;
+        503: string;
+        504: string;
+        505: string;
+        506: string;
+        507: string;
+        508: string;
+        509: string;
+        510: string;
+        511: string;
+    };
+    export class OutgoingMessage extends Writable {
+        headers: Headers;
+        get headersSent(): boolean;
+        get socket(): this;
+        get writableEnded(): boolean;
+        appendHeader(name: any, value: any): this;
+        setHeader(name: any, value: any): this;
+        flushHeaders(): void;
+        getHeader(name: any): string;
+        getHeaderNames(): string[];
+        getHeaders(): {
+            [k: string]: string;
+        };
+        hasHeader(name: any): boolean;
+        removeHeader(name: any): void;
+    }
+    export class ClientRequest extends OutgoingMessage {
+        url: any;
+        path: any;
+        host: any;
+        agent: any;
+        method: any;
+        protocol: string;
+    }
+    export class ServerResponse extends OutgoingMessage {
+        statusCode: number;
+        statusMessage: string;
+        req: any;
+    }
+    export class AgentOptions {
+        constructor(options: any);
+        keepAlive: boolean;
+        timeout: number;
+    }
+    export class Agent extends EventEmitter {
+        constructor(options: any);
+        defaultProtocol: string;
+        options: any;
+        createConnection(options: any, callback?: any): Duplex;
+    }
+    export const globalAgent: Agent;
+    namespace _default {
+        export { METHODS };
+        export { STATUS_CODES };
+        export { AgentOptions };
+        export { Agent };
+        export { globalAgent };
+        export { request };
+        export { OutgoingMessage };
+        export { ClientRequest };
+        export { ServerResponse };
+        export { get };
+    }
+    export default _default;
+    import { Writable } from "socket:stream";
+    import { EventEmitter } from "socket:events";
+    import { Duplex } from "socket:stream";
+    function request(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
+}
+declare module "socket:https" {
+    export function request(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
+    export function get(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
+    export const METHODS: string[];
+    export const STATUS_CODES: {
+        100: string;
+        101: string;
+        102: string;
+        103: string;
+        200: string;
+        201: string;
+        202: string;
+        203: string;
+        204: string;
+        205: string;
+        206: string;
+        207: string;
+        208: string;
+        226: string;
+        300: string;
+        301: string;
+        302: string;
+        303: string;
+        304: string;
+        305: string;
+        307: string;
+        308: string;
+        400: string;
+        401: string;
+        402: string;
+        403: string;
+        404: string;
+        405: string;
+        406: string;
+        407: string;
+        408: string;
+        409: string;
+        410: string;
+        411: string;
+        412: string;
+        413: string;
+        414: string;
+        415: string;
+        416: string;
+        417: string;
+        418: string;
+        421: string;
+        422: string;
+        423: string;
+        424: string;
+        425: string;
+        426: string;
+        428: string;
+        429: string;
+        431: string;
+        451: string;
+        500: string;
+        501: string;
+        502: string;
+        503: string;
+        504: string;
+        505: string;
+        506: string;
+        507: string;
+        508: string;
+        509: string;
+        510: string;
+        511: string;
+    };
+    const AgentOptions_base: typeof import("socket:http").AgentOptions;
+    export class AgentOptions extends AgentOptions_base {
+    }
+    const Agent_base: typeof import("socket:http").Agent;
+    export class Agent extends Agent_base {
+    }
+    const OutgoingMessage_base: typeof import("socket:http").OutgoingMessage;
+    export class OutgoingMessage extends OutgoingMessage_base {
+    }
+    const ClientRequest_base: typeof import("socket:http").ClientRequest;
+    export class ClientRequest extends ClientRequest_base {
+    }
+    const ServerResponse_base: typeof import("socket:http").ServerResponse;
+    export class ServerResponse extends ServerResponse_base {
+    }
+    export const globalAgent: Agent;
+    namespace _default {
+        export { METHODS };
+        export { STATUS_CODES };
+        export { AgentOptions };
+        export { Agent };
+        export { globalAgent };
+        export { request };
+        export { OutgoingMessage };
+        export { ClientRequest };
+        export { ServerResponse };
+        export { get };
+    }
+    export default _default;
 }
 declare module "socket:language" {
     /**
@@ -7118,8 +7711,37 @@ declare module "socket:index" {
     import { NAT } from "socket:node/index";
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
-declare module "socket:test/fast-deep-equal" {
-    export default function equal(a: any, b: any): boolean;
+declare module "socket:string_decoder" {
+    export function StringDecoder(encoding: any): void;
+    export class StringDecoder {
+        constructor(encoding: any);
+        encoding: any;
+        text: typeof utf16Text | typeof base64Text;
+        end: typeof utf16End | typeof base64End | typeof simpleEnd;
+        fillLast: typeof utf8FillLast;
+        write: typeof simpleWrite;
+        lastNeed: number;
+        lastTotal: number;
+        lastChar: Uint8Array;
+    }
+    export default StringDecoder;
+    function utf16Text(buf: any, i: any): any;
+    class utf16Text {
+        constructor(buf: any, i: any);
+        lastNeed: number;
+        lastTotal: number;
+    }
+    function base64Text(buf: any, i: any): any;
+    class base64Text {
+        constructor(buf: any, i: any);
+        lastNeed: number;
+        lastTotal: number;
+    }
+    function utf16End(buf: any): any;
+    function base64End(buf: any): any;
+    function simpleEnd(buf: any): any;
+    function utf8FillLast(buf: any): any;
+    function simpleWrite(buf: any): any;
 }
 declare module "socket:test/context" {
     export default function _default(GLOBAL_TEST_RUNNER: any): void;
@@ -7772,6 +8394,80 @@ declare module "socket:test" {
     export default test;
     import test from "socket:test/index";
 }
+declare module "socket:timers/timer" {
+    export class Timer {
+        static from(...args: any[]): void;
+        constructor(create: any, destroy: any);
+        get id(): number;
+        init(...args: any[]): void;
+        close(): boolean;
+        [Symbol.toPrimitive](): number;
+        #private;
+    }
+    export class Timeout extends Timer {
+        constructor();
+    }
+    export class Interval extends Timer {
+        constructor();
+    }
+    export class Immediate extends Timeout {
+    }
+    namespace _default {
+        export { Timer };
+        export { Immediate };
+        export { Timeout };
+        export { Interval };
+    }
+    export default _default;
+}
+declare module "socket:timers/promises" {
+    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
+    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
+    export function setImmediate(value?: any, options?: any): Promise<any>;
+    namespace _default {
+        export { setImmediate };
+        export { setInterval };
+        export { setTimeout };
+    }
+    export default _default;
+}
+declare module "socket:timers/scheduler" {
+    export function wait(delay: any, options?: any): Promise<any>;
+    export function postTask(callback: any, options?: any): Promise<any>;
+    namespace _default {
+        export { postTask };
+        export { setImmediate as yield };
+        export { wait };
+    }
+    export default _default;
+    import { setImmediate } from "socket:timers/promises";
+}
+declare module "socket:timers/index" {
+    export function setTimeout(callback: any, delay: any, ...args: any[]): void;
+    export function clearTimeout(timeout: any): void;
+    export function setInterval(callback: any, delay: any, ...args: any[]): void;
+    export function clearInterval(interval: any): void;
+    export function setImmediate(callback: any, ...args: any[]): void;
+    export function clearImmediate(immediate: any): void;
+    namespace _default {
+        export { promises };
+        export { scheduler };
+        export { setTimeout };
+        export { clearTimeout };
+        export { setInterval };
+        export { clearInterval };
+        export { setImmediate };
+        export { clearImmediate };
+    }
+    export default _default;
+    import promises from "socket:timers/promises";
+    import scheduler from "socket:timers/scheduler";
+}
+declare module "socket:timers" {
+    export * from "socket:timers/index";
+    export default exports;
+    import * as exports from "socket:timers/index";
+}
 declare module "socket:internal/globals" {
     /**
      * Gets a runtime global value by name.
@@ -7894,14 +8590,14 @@ declare module "socket:vm" {
      * Creates a prototype object of known global reserved intrinsics.
      * @ignore
      */
-    export function createIntrinsics(): any;
+    export function createIntrinsics(options: any): any;
     /**
      * Creates a global proxy object for context execution.
      * @ignore
      * @param {object} context
      * @return {Proxy}
      */
-    export function createGlobalObject(context: object): ProxyConstructor;
+    export function createGlobalObject(context: object, options: any): ProxyConstructor;
     /**
      * @ignore
      * @param {string} source
@@ -7972,6 +8668,7 @@ declare module "socket:vm" {
      * @return {object[]}
      */
     export function getTrasferables(object: object): object[];
+    export function createContext(object: any): any;
     /**
      * A container for a context worker message channel that looks like a "worker".
      * @ignore
@@ -8131,6 +8828,7 @@ declare module "socket:vm" {
         #private;
     }
     namespace _default {
+        export { createGlobalObject };
         export { compileFunction };
         export { createReference };
         export { getContextWindow };
@@ -8144,6 +8842,7 @@ declare module "socket:vm" {
         export { runInNewContext };
         export { runInThisContext };
         export { Script };
+        export { createContext };
     }
     export default _default;
     export type ScriptOptions = {
@@ -8151,6 +8850,179 @@ declare module "socket:vm" {
         context?: object;
     };
     import { SharedWorker } from "socket:worker";
+}
+declare module "socket:worker_threads/init" {
+    export const SHARE_ENV: unique symbol;
+    export const isMainThread: boolean;
+    export namespace state {
+        export { isMainThread };
+        export let parentPort: any;
+        export let mainPort: any;
+        export let workerData: any;
+        export let url: any;
+        export let env: {};
+        export let id: number;
+    }
+    namespace _default {
+        export { state };
+    }
+    export default _default;
+}
+declare module "socket:worker_threads" {
+    /**
+     * Set shared worker environment data.
+     * @param {string} key
+     * @param {any} value
+     */
+    export function setEnvironmentData(key: string, value: any): void;
+    /**
+     * Get shared worker environment data.
+     * @param {string} key
+     * @return {any}
+     */
+    export function getEnvironmentData(key: string): any;
+    /**
+     * A pool of known worker threads.
+     * @type {<Map<string, Worker>}
+     */
+    export const workers: <Map_1>() => <string, Worker_1>() => any;
+    /**
+     * `true` if this is the "main" thread, otherwise `false`
+     * The "main" thread is the top level webview window.
+     * @type {boolean}
+     */
+    export const isMainThread: boolean;
+    /**
+     * The main thread `MessagePort` which is `null` when the
+     * current context is not the "main thread".
+     * @type {MessagePort?}
+     */
+    export const mainPort: MessagePort | null;
+    /**
+     * A worker thread `BroadcastChannel` class.
+     */
+    export class BroadcastChannel extends globalThis.BroadcastChannel {
+    }
+    /**
+     * A worker thread `MessageChannel` class.
+     */
+    export class MessageChannel extends globalThis.MessageChannel {
+    }
+    /**
+     * A worker thread `MessagePort` class.
+     */
+    export class MessagePort extends globalThis.MessagePort {
+    }
+    /**
+     * The current unique thread ID.
+     * @type {number}
+     */
+    export const threadId: number;
+    /**
+     * The parent `MessagePort` instance
+     * @type {MessagePort?}
+     */
+    export const parentPort: MessagePort | null;
+    /**
+     * Transferred "worker data" when creating a new `Worker` instance.
+     * @type {any?}
+     */
+    export const workerData: any | null;
+    /**
+     * @typedef {{
+     *   env?: object,
+     *   stdin?: boolean = false,
+     *   stdout?: boolean = false,
+     *   stderr?: boolean = false,
+     *   workerData?: any,
+     *   transferList?: any[],
+     *   eval?: boolean = false
+     * }} WorkerOptions
+    
+    /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export class Worker extends EventEmitter {
+        /**
+         * `Worker` class constructor.
+         * @param {string} filename
+         * @param {WorkerOptions=} [options]
+         */
+        constructor(filename: string, options?: WorkerOptions | undefined);
+        /**
+         * Handles incoming worker messages.
+         * @ignore
+         * @param {MessageEvent} event
+         */
+        onWorkerMessage(event: MessageEvent): boolean;
+        /**
+         * Handles process environment change events
+         * @ignore
+         * @param {import('./process.js').ProcessEnvironmentEvent} event
+         */
+        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
+        /**
+         * The unique ID for this `Worker` thread instace.
+         * @type {number}
+         */
+        get id(): number;
+        /**
+         * A `Writable` standard input stream if `{ stdin: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Writable?}
+         */
+        get stdin(): Writable;
+        /**
+         * A `Readable` standard output stream if `{ stdout: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stdout(): Readable;
+        /**
+         * A `Readable` standard error stream if `{ stderr: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stderr(): Readable;
+        /**
+         * Terminates the `Worker` instance
+         */
+        terminate(): void;
+        #private;
+    }
+    namespace _default {
+        export { Worker };
+        export { isMainThread };
+        export { parentPort };
+        export { setEnvironmentData };
+        export { getEnvironmentData };
+        export { workerData };
+        export { threadId };
+        export { SHARE_ENV };
+    }
+    export default _default;
+    /**
+     * /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export type WorkerOptions = {
+        env?: object;
+        stdin?: boolean;
+        stdout?: boolean;
+        stderr?: boolean;
+        workerData?: any;
+        transferList?: any[];
+        eval?: boolean;
+    };
+    import { EventEmitter } from "socket:events";
+    import { Writable } from "socket:stream";
+    import { Readable } from "socket:stream";
+    import { SHARE_ENV } from "socket:worker_threads/init";
+    import init from "socket:worker_threads/init";
+    import { env } from "socket:process";
+    export { SHARE_ENV, init };
 }
 declare module "socket:module" {
     export function isBuiltin(name: any): boolean;
@@ -8160,13 +9032,106 @@ declare module "socket:module" {
      * @return {function}
      */
     export function createRequire(sourcePath: URL | string): Function;
-    export default exports;
     /**
      * A limited set of builtins exposed to CommonJS modules.
      */
     export const builtins: {
+        async_context: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
         buffer: typeof buffer;
         console: import("socket:console").Console;
+        constants: {
+            WINDOW_ERROR: -1;
+            WINDOW_NONE: 0;
+            WINDOW_CREATING: 10;
+            WINDOW_CREATED: 11;
+            WINDOW_HIDING: 20;
+            WINDOW_HIDDEN: 21;
+            WINDOW_SHOWING: 30;
+            WINDOW_SHOWN: 31;
+            WINDOW_CLOSING: 40;
+            WINDOW_CLOSED: 41;
+            WINDOW_EXITING: 50;
+            WINDOW_EXITED: 51;
+            WINDOW_KILLING: 60;
+            WINDOW_KILLED: 61;
+            default: typeof import("socket:window/constants");
+            COPYFILE_EXCL: 1;
+            COPYFILE_FICLONE: 2;
+            COPYFILE_FICLONE_FORCE: 4;
+            UV_DIRENT_UNKNOWN: any;
+            UV_DIRENT_FILE: any;
+            UV_DIRENT_DIR: any;
+            UV_DIRENT_LINK: any;
+            UV_DIRENT_FIFO: any;
+            UV_DIRENT_SOCKET: any;
+            UV_DIRENT_CHAR: any;
+            UV_DIRENT_BLOCK: any;
+            UV_FS_SYMLINK_DIR: any;
+            UV_FS_SYMLINK_JUNCTION: any;
+            O_RDONLY: any;
+            O_WRONLY: any;
+            O_RDWR: any;
+            O_APPEND: any;
+            O_ASYNC: any;
+            O_CLOEXEC: any;
+            O_CREAT: any;
+            O_DIRECT: any;
+            O_DIRECTORY: any;
+            O_DSYNC: any;
+            O_EXCL: any;
+            O_LARGEFILE: any;
+            O_NOATIME: any;
+            O_NOCTTY: any;
+            O_NOFOLLOW: any;
+            O_NONBLOCK: any;
+            O_NDELAY: any;
+            O_PATH: any;
+            O_SYNC: any;
+            O_TMPFILE: any;
+            O_TRUNC: any;
+            S_IFMT: any;
+            S_IFREG: any;
+            S_IFDIR: any;
+            S_IFCHR: any;
+            S_IFBLK: any;
+            S_IFIFO: any;
+            S_IFLNK: any;
+            S_IFSOCK: any;
+            S_IRWXU: any;
+            S_IRUSR: any;
+            S_IWUSR: any;
+            S_IXUSR: any;
+            S_IRWXG: any;
+            S_IRGRP: any;
+            S_IWGRP: any;
+            S_IXGRP: any;
+            S_IRWXO: any;
+            S_IROTH: any;
+            S_IWOTH: any;
+            S_IXOTH: any;
+            F_OK: any;
+            R_OK: any;
+            W_OK: any;
+            X_OK: any;
+        };
+        child_process: {};
+        crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
         'dns/promises': typeof dns.promises;
@@ -8177,17 +9142,199 @@ declare module "socket:module" {
         };
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
+        http: {
+            METHODS: string[];
+            STATUS_CODES: {
+                100: string;
+                101: string;
+                102: string;
+                103: string;
+                200: string;
+                201: string;
+                202: string;
+                203: string;
+                204: string;
+                205: string;
+                206: string;
+                207: string;
+                208: string;
+                226: string;
+                300: string;
+                301: string;
+                302: string;
+                303: string;
+                304: string;
+                305: string;
+                307: string;
+                308: string;
+                400: string;
+                401: string;
+                402: string;
+                403: string;
+                404: string;
+                405: string;
+                406: string;
+                407: string;
+                408: string;
+                409: string;
+                410: string;
+                411: string;
+                412: string;
+                413: string;
+                414: string;
+                415: string;
+                416: string;
+                417: string;
+                418: string;
+                421: string;
+                422: string;
+                423: string;
+                424: string;
+                425: string;
+                426: string;
+                428: string;
+                429: string;
+                431: string;
+                451: string;
+                500: string;
+                501: string;
+                502: string;
+                503: string;
+                504: string;
+                505: string;
+                506: string;
+                507: string;
+                508: string;
+                509: string;
+                510: string;
+                511: string;
+            };
+            AgentOptions: typeof import("socket:http").AgentOptions;
+            Agent: typeof import("socket:http").Agent;
+            globalAgent: import("socket:http").Agent;
+            request: (optionsOrURL: any, options: any, callback: any) => Promise<import("socket:http").ClientRequest>;
+            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            ClientRequest: typeof import("socket:http").ClientRequest;
+            ServerResponse: typeof import("socket:http").ServerResponse;
+            get: typeof import("socket:http").get;
+        };
         gc: any;
+        https: {
+            METHODS: string[];
+            STATUS_CODES: {
+                100: string;
+                101: string;
+                102: string;
+                103: string;
+                200: string;
+                201: string;
+                202: string;
+                203: string;
+                204: string;
+                205: string;
+                206: string;
+                207: string;
+                208: string;
+                226: string;
+                300: string;
+                301: string;
+                302: string;
+                303: string;
+                304: string;
+                305: string;
+                307: string;
+                308: string;
+                400: string;
+                401: string;
+                402: string;
+                403: string;
+                404: string;
+                405: string;
+                406: string;
+                407: string;
+                408: string;
+                409: string;
+                410: string;
+                411: string;
+                412: string;
+                413: string;
+                414: string;
+                415: string;
+                416: string;
+                417: string;
+                418: string;
+                421: string;
+                422: string;
+                423: string;
+                424: string;
+                425: string;
+                426: string;
+                428: string;
+                429: string;
+                431: string;
+                451: string;
+                500: string;
+                501: string;
+                502: string;
+                503: string;
+                504: string;
+                505: string;
+                506: string;
+                507: string;
+                508: string;
+                509: string;
+                510: string;
+                511: string;
+            };
+            AgentOptions: typeof import("socket:https").AgentOptions;
+            Agent: typeof import("socket:https").Agent;
+            globalAgent: import("socket:https").Agent;
+            request: typeof import("socket:https").request;
+            OutgoingMessage: typeof import("socket:https").OutgoingMessage;
+            ClientRequest: typeof import("socket:https").ClientRequest;
+            ServerResponse: typeof import("socket:https").ServerResponse;
+            get: typeof import("socket:https").get;
+        };
         ipc: typeof ipc;
-        module: typeof exports;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        mime: typeof mime;
+        net: {};
         os: typeof os;
         path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
         process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
         stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
         test: typeof test;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
         util: typeof util;
         url: any;
         vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
             compileFunction: typeof import("socket:vm").compileFunction;
             createReference: typeof import("socket:vm").createReference;
             getContextWindow: typeof import("socket:vm").getContextWindow;
@@ -8201,11 +9348,117 @@ declare module "socket:module" {
             runInNewContext: typeof import("socket:vm").runInNewContext;
             runInThisContext: typeof import("socket:vm").runInThisContext;
             Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
         };
     };
     export const builtinModules: {
+        async_context: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
         buffer: typeof buffer;
         console: import("socket:console").Console;
+        constants: {
+            WINDOW_ERROR: -1;
+            WINDOW_NONE: 0;
+            WINDOW_CREATING: 10;
+            WINDOW_CREATED: 11;
+            WINDOW_HIDING: 20;
+            WINDOW_HIDDEN: 21;
+            WINDOW_SHOWING: 30;
+            WINDOW_SHOWN: 31;
+            WINDOW_CLOSING: 40;
+            WINDOW_CLOSED: 41;
+            WINDOW_EXITING: 50;
+            WINDOW_EXITED: 51;
+            WINDOW_KILLING: 60;
+            WINDOW_KILLED: 61;
+            default: typeof import("socket:window/constants");
+            COPYFILE_EXCL: 1;
+            COPYFILE_FICLONE: 2;
+            COPYFILE_FICLONE_FORCE: 4;
+            UV_DIRENT_UNKNOWN: any;
+            UV_DIRENT_FILE: any;
+            UV_DIRENT_DIR: any;
+            UV_DIRENT_LINK: any;
+            UV_DIRENT_FIFO: any;
+            UV_DIRENT_SOCKET: any;
+            UV_DIRENT_CHAR: any;
+            UV_DIRENT_BLOCK: any;
+            UV_FS_SYMLINK_DIR: any;
+            UV_FS_SYMLINK_JUNCTION: any;
+            O_RDONLY: any;
+            O_WRONLY: any;
+            O_RDWR: any;
+            O_APPEND: any;
+            O_ASYNC: any;
+            O_CLOEXEC: any;
+            O_CREAT: any;
+            O_DIRECT: any;
+            O_DIRECTORY: any;
+            O_DSYNC: any;
+            O_EXCL: any;
+            O_LARGEFILE: any;
+            O_NOATIME: any;
+            O_NOCTTY: any;
+            O_NOFOLLOW: any;
+            O_NONBLOCK: any;
+            O_NDELAY: any;
+            O_PATH: any;
+            O_SYNC: any;
+            O_TMPFILE: any;
+            O_TRUNC: any;
+            S_IFMT: any;
+            S_IFREG: any;
+            S_IFDIR: any;
+            S_IFCHR: any;
+            S_IFBLK: any;
+            S_IFIFO: any;
+            S_IFLNK: any;
+            S_IFSOCK: any;
+            S_IRWXU: any;
+            S_IRUSR: any;
+            S_IWUSR: any;
+            S_IXUSR: any;
+            S_IRWXG: any;
+            S_IRGRP: any;
+            S_IWGRP: any;
+            S_IXGRP: any;
+            S_IRWXO: any;
+            S_IROTH: any;
+            S_IWOTH: any;
+            S_IXOTH: any;
+            F_OK: any;
+            R_OK: any;
+            W_OK: any;
+            X_OK: any;
+        };
+        child_process: {};
+        crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
         'dns/promises': typeof dns.promises;
@@ -8216,17 +9469,199 @@ declare module "socket:module" {
         };
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
+        http: {
+            METHODS: string[];
+            STATUS_CODES: {
+                100: string;
+                101: string;
+                102: string;
+                103: string;
+                200: string;
+                201: string;
+                202: string;
+                203: string;
+                204: string;
+                205: string;
+                206: string;
+                207: string;
+                208: string;
+                226: string;
+                300: string;
+                301: string;
+                302: string;
+                303: string;
+                304: string;
+                305: string;
+                307: string;
+                308: string;
+                400: string;
+                401: string;
+                402: string;
+                403: string;
+                404: string;
+                405: string;
+                406: string;
+                407: string;
+                408: string;
+                409: string;
+                410: string;
+                411: string;
+                412: string;
+                413: string;
+                414: string;
+                415: string;
+                416: string;
+                417: string;
+                418: string;
+                421: string;
+                422: string;
+                423: string;
+                424: string;
+                425: string;
+                426: string;
+                428: string;
+                429: string;
+                431: string;
+                451: string;
+                500: string;
+                501: string;
+                502: string;
+                503: string;
+                504: string;
+                505: string;
+                506: string;
+                507: string;
+                508: string;
+                509: string;
+                510: string;
+                511: string;
+            };
+            AgentOptions: typeof import("socket:http").AgentOptions;
+            Agent: typeof import("socket:http").Agent;
+            globalAgent: import("socket:http").Agent;
+            request: (optionsOrURL: any, options: any, callback: any) => Promise<import("socket:http").ClientRequest>;
+            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            ClientRequest: typeof import("socket:http").ClientRequest;
+            ServerResponse: typeof import("socket:http").ServerResponse;
+            get: typeof import("socket:http").get;
+        };
         gc: any;
+        https: {
+            METHODS: string[];
+            STATUS_CODES: {
+                100: string;
+                101: string;
+                102: string;
+                103: string;
+                200: string;
+                201: string;
+                202: string;
+                203: string;
+                204: string;
+                205: string;
+                206: string;
+                207: string;
+                208: string;
+                226: string;
+                300: string;
+                301: string;
+                302: string;
+                303: string;
+                304: string;
+                305: string;
+                307: string;
+                308: string;
+                400: string;
+                401: string;
+                402: string;
+                403: string;
+                404: string;
+                405: string;
+                406: string;
+                407: string;
+                408: string;
+                409: string;
+                410: string;
+                411: string;
+                412: string;
+                413: string;
+                414: string;
+                415: string;
+                416: string;
+                417: string;
+                418: string;
+                421: string;
+                422: string;
+                423: string;
+                424: string;
+                425: string;
+                426: string;
+                428: string;
+                429: string;
+                431: string;
+                451: string;
+                500: string;
+                501: string;
+                502: string;
+                503: string;
+                504: string;
+                505: string;
+                506: string;
+                507: string;
+                508: string;
+                509: string;
+                510: string;
+                511: string;
+            };
+            AgentOptions: typeof import("socket:https").AgentOptions;
+            Agent: typeof import("socket:https").Agent;
+            globalAgent: import("socket:https").Agent;
+            request: typeof import("socket:https").request;
+            OutgoingMessage: typeof import("socket:https").OutgoingMessage;
+            ClientRequest: typeof import("socket:https").ClientRequest;
+            ServerResponse: typeof import("socket:https").ServerResponse;
+            get: typeof import("socket:https").get;
+        };
         ipc: typeof ipc;
-        module: typeof exports;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        mime: typeof mime;
+        net: {};
         os: typeof os;
         path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
         process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
         stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
         test: typeof test;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
         util: typeof util;
         url: any;
         vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
             compileFunction: typeof import("socket:vm").compileFunction;
             createReference: typeof import("socket:vm").createReference;
             getContextWindow: typeof import("socket:vm").getContextWindow;
@@ -8240,6 +9675,18 @@ declare module "socket:module" {
             runInNewContext: typeof import("socket:vm").runInNewContext;
             runInThisContext: typeof import("socket:vm").runInThisContext;
             Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
         };
     };
     /**
@@ -8261,18 +9708,18 @@ declare module "socket:module" {
      * to the "main" module and global object (if possible).
      */
     export class Module extends EventTarget {
-        static set current(module: exports.Module);
+        static set current(module: Module);
         /**
          * A reference to the currently scoped module.
          * @type {Module?}
          */
-        static get current(): exports.Module;
-        static set previous(module: exports.Module);
+        static get current(): Module;
+        static set previous(module: Module);
         /**
          * A reference to the previously scoped module.
          * @type {Module?}
          */
-        static get previous(): exports.Module;
+        static get previous(): Module;
         /**
          * Module cache.
          * @ignore
@@ -8289,6 +9736,11 @@ declare module "socket:module" {
          */
         static wrapper: string;
         /**
+         * A limited set of builtins exposed to CommonJS modules.
+         * @type {object}
+         */
+        static builtins: object;
+        /**
          * Creates a `require` function from a source URL.
          * @param {URL|string} sourcePath
          * @return {function}
@@ -8298,7 +9750,7 @@ declare module "socket:module" {
          * The main entry module, lazily created.
          * @type {Module}
          */
-        static get main(): exports.Module;
+        static get main(): Module;
         /**
          * Wraps source in a CommonJS module scope.
          */
@@ -8396,21 +9848,26 @@ declare module "socket:module" {
          */
         [Symbol.toStringTag](): string;
     }
+    export default Module;
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
-    import * as exports from "socket:module";
+    import application from "socket:application";
     import buffer from "socket:buffer";
+    import crypto from "socket:crypto";
     import dgram from "socket:dgram";
     import dns from "socket:dns";
     import events from "socket:events";
     import fs from "socket:fs";
     import ipc from "socket:ipc";
+    import mime from "socket:mime";
     import os from "socket:os";
     import { posix as path } from "socket:path";
     import stream from "socket:stream";
-    import test from "socket:test";
+    import string_decoder from "socket:string_decoder";
     import util from "socket:util";
-    
+    import test from "socket:test";
+    import timers from "socket:timers";
+    import window from "socket:window";
 }
 declare module "socket:network" {
     export default network;
@@ -8925,13 +10382,22 @@ declare module "socket:internal/geolocation" {
     }
     export default _default;
 }
+declare module "socket:internal/timers" {
+    export function setImmediate(callback: any, ...args: any[]): number;
+    export function clearImmediate(immediate: any): void;
+    namespace _default {
+        export { setImmediate };
+        export let clearTimeout: typeof globalThis.clearTimeout;
+    }
+    export default _default;
+}
 declare module "socket:service-worker/state" {
     export const channel: BroadcastChannel;
     export const state: any;
     export default state;
 }
 declare module "socket:service-worker/instance" {
-    export function createServiceWorker(currentState?: any): any;
+    export function createServiceWorker(currentState?: any, options?: any): any;
     export const SHARED_WORKER_URL: URL;
     const _default: any;
     export default _default;
@@ -8957,7 +10423,19 @@ declare module "socket:service-worker/registration" {
 }
 declare module "socket:service-worker/container" {
     export class ServiceWorkerContainer extends EventTarget {
-        init(): void;
+        /**
+         * A special initialization function for augmenting the global
+         * `globalThis.navigator.serviceWorker` platform `ServiceWorkerContainer`
+         * instance.
+         *
+         * All functions MUST be sure to what a lexically bound `this` becomes as the
+         * target could change with respect to the `internal` `Map` instance which
+         * contains private implementation properties relevant to the runtime
+         * `ServiceWorkerContainer` internal state implementations.
+         * @ignore
+         * @private
+         */
+        private init;
         register(scriptURL: any, options?: any): Promise<ServiceWorkerRegistration>;
         getRegistration(clientURL: any): Promise<ServiceWorkerRegistration>;
         getRegistrations(): Promise<ServiceWorkerRegistration[]>;
@@ -8995,6 +10473,11 @@ declare module "socket:internal/webassembly" {
         export { instantiateStreaming };
     }
     export default _default;
+}
+declare module "socket:internal/scheduler" {
+    export * from "socket:timers/scheduler";
+    export default scheduler;
+    import scheduler from "socket:timers/scheduler";
 }
 declare module "socket:internal/pickers" {
     /**
@@ -9090,7 +10573,7 @@ declare module "socket:internal/pickers" {
     };
     import { FileSystemHandle } from "socket:fs/web";
 }
-declare module "socket:internal/monkeypatch" {
+declare module "socket:internal/primitives" {
     export function init(): {
         natives: {};
         patches: {};
@@ -9161,25 +10644,36 @@ declare module "socket:internal/worker" {
 }
 declare module "socket:service-worker/clients" {
     export class Client {
-        postMessage(message: any, optionsOrTransferables?: any): any;
+        constructor(options: any);
+        get id(): any;
+        get url(): any;
+        get type(): any;
+        get frameType(): any;
+        postMessage(message: any, optionsOrTransferables?: any): void;
         #private;
     }
     export class WindowClient extends Client {
-        focus(): void;
-        navigate(): void;
+        get focused(): boolean;
+        get ancestorOrigins(): any[];
+        get visibilityState(): string;
+        focus(): Promise<this>;
+        navigate(url: any): Promise<this>;
+        #private;
     }
     export class Clients {
-        get(id: any): Promise<void>;
-        matchAll(): Promise<void>;
-        openWindow(): Promise<void>;
+        get(id: any): Promise<Client>;
+        matchAll(options?: any): Promise<any>;
+        openWindow(url: any, options?: any): Promise<WindowClient>;
         claim(): Promise<void>;
     }
-    export default Clients;
+    const _default: Clients;
+    export default _default;
 }
 declare module "socket:service-worker/events" {
     export class ExtendableEvent extends Event {
         waitUntil(promise: any): void;
         waitsFor(): Promise<any>;
+        get awaiting(): Promise<any>;
         get pendingPromises(): number;
         get isActive(): boolean;
         #private;
@@ -9207,7 +10701,7 @@ declare module "socket:service-worker/global" {
         get serviceWorker(): any;
         set registration(value: any);
         get registration(): any;
-        get clients(): Clients;
+        get clients(): import("socket:service-worker/clients").Clients;
         set onactivate(listener: any);
         get onactivate(): any;
         set onmessage(listener: any);
@@ -9222,7 +10716,6 @@ declare module "socket:service-worker/global" {
     export default _default;
     import { ExtendableEvent } from "socket:service-worker/events";
     import { FetchEvent } from "socket:service-worker/events";
-    import { Clients } from "socket:service-worker/clients";
 }
 declare module "socket:service-worker/init" {
     const _default: any;
