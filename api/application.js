@@ -135,8 +135,8 @@ function throwOnInvalidIndex (index) {
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]} [indices] - the indices of the windows
- * @return {Promise<Object.<number, ApplicationWindow>>}
  * @throws {Error} - if indices is not an array of integer numbers
+ * @return {Promise<Object.<number?, ApplicationWindow>>}
  */
 export async function getWindows (indices) {
   if (os.platform() === 'ios' || os.platform() === 'android') {
