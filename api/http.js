@@ -106,19 +106,27 @@ export const STATUS_CODES = {
 
 export class OutgoingMessage extends Writable {
   headers = new Headers()
-  socket = null
 
   get headersSent () {
     return true
   }
 
+  get socket () {
+    return this
+  }
+
+  get writableEnded () {
+    return this._writableState?.ended === true
+  }
+
   appendHeader (name, value) {
-    this.headers.set(name.toLowerCase(), value)
+    this.headers.append(name.toLowerCase(), value)
     return this
   }
 
   setHeader (name, value) {
-    return this.appendHeader(name, value)
+    this.headers.set(name.toLowerCase(), value)
+    return this
   }
 
   flushHeaders () {
@@ -146,9 +154,38 @@ export class OutgoingMessage extends Writable {
   }
 }
 
-export class ClientRequest extends OutgoingMessage {}
+export class ClientRequest extends OutgoingMessage {
+  url = null
+  path = null
+  host = null
+  agent = null
+  method = null
 
-export class ServerResponse extends OutgoingMessage {}
+  constructor (options) {
+    super()
+    this.url = options?.url ?? null
+    this.agent = options?.agent ?? null
+    this.method = options?.method ?? null
+
+    if (this.url) {
+      const url = new URL(this.url, globalThis.location.href)
+      this.protocol = url.protocol
+      this.path = url.pathname
+      this.host = url.hostname
+      this.url = url.pathname + url.search
+    }
+  }
+}
+
+export class ServerResponse extends OutgoingMessage {
+  statusCode = 200
+  statusMessage = ''
+
+  constructor (req) {
+    super()
+    this.req = req
+  }
+}
 
 export class AgentOptions {
   keepAlive = false
@@ -311,9 +348,29 @@ async function request (optionsOrURL, options, callback) {
     }
   }
 
-  const request = new ClientRequest()
-  let stream = null
   let agent = null
+
+  if (options.agent) {
+    agent = options.agent
+  } else if (options.agent === false) {
+    agent = new (options.Agent ?? Agent)()
+  } else {
+    agent = globalAgent
+  }
+
+  let url = `${options.protocol ?? agent?.defaultProtocol ?? 'http:'}//${options.host || options.hostname}`
+
+  if (options.port) {
+    url += `:${options.port}`
+  }
+
+  url += options.pathname ?? '/'
+
+  const request = new ClientRequest({
+    method: options?.method ?? 'GET',
+    agent,
+    url
+  })
 
   options = {
     ...options,
@@ -335,15 +392,7 @@ async function request (optionsOrURL, options, callback) {
     }
   }
 
-  if (options.agent) {
-    agent = options.agent
-  } else if (options.agent === false) {
-    agent = new (options.Agent ?? Agent)()
-  } else {
-    agent = globalAgent
-  }
-
-  stream = agent.createConnection(options, callback)
+  const stream = agent.createConnection(options, callback)
 
   stream.on('finish', () => request.emit('finish'))
   stream.on('timeout', () => request.emit('timeout'))

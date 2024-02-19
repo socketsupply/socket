@@ -235,6 +235,10 @@ export function init () {
 
   applied = true
 
+  if (!Error.captureStackTrace) {
+    Error.captureStackTrace = function () {}
+  }
+
   if (globalThis.document) {
     // create <title> tag in document if it doesn't exist
     globalThis.document.title ||= ''

@@ -2757,9 +2757,10 @@ static void registerSchemeHandler (Router *router) {
         auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
         auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
         auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+        auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
         soup_message_headers_append(headers, "location", redirectURL.c_str());
-        soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+        soup_message_headers_append(headers, "content-location", contentLocation.c_str());
 
         webkit_uri_scheme_response_set_http_headers(response, headers);
         webkit_uri_scheme_response_set_content_type(response, "text/html");
@@ -2789,9 +2790,10 @@ static void registerSchemeHandler (Router *router) {
       auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+      auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
       soup_message_headers_append(headers, "location", redirectURL.c_str());
-      soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+      soup_message_headers_append(headers, "content-location", contentLocation.c_str());
 
       webkit_uri_scheme_response_set_http_headers(response, headers);
       webkit_uri_scheme_response_set_content_type(response, "text/html");
@@ -3317,7 +3319,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     components.scheme = @("socket");
-    headers[@"content-location"] = components.URL.absoluteString;
+    headers[@"content-location"] = components.URL.path;
     const auto socketModulePrefix = "socket://" + userConfig["meta_bundle_identifier"] + "/socket/";
 
     const auto absoluteURL = String(components.URL.absoluteString.UTF8String);

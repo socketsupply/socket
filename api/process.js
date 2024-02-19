@@ -12,7 +12,15 @@ import os from './os.js'
 
 let didEmitExitEvent = false
 
-export const env = Object.create({}, {
+export class ProcessEnvironmentEvent extends Event {
+  constructor (type, key, value) {
+    super(type)
+    this.key = key
+    this.value = value ?? undefined
+  }
+}
+
+export const env = Object.defineProperties(new EventTarget(), {
   proxy: {
     configurable: false,
     enumerable: false,
@@ -27,10 +35,16 @@ export const env = Object.create({}, {
       },
 
       set (_, property, value) {
+        if (Reflect.get(env, property) !== value) {
+          env.dispatchEvent(new ProcessEnvironmentEvent('set', property, value))
+        }
         return Reflect.set(env, property, value)
       },
 
       deleteProperty (_, property) {
+        if (Reflect.has(env, property)) {
+          env.dispatchEvent(new ProcessEnvironmentEvent('delete', property))
+        }
         return Reflect.deleteProperty(env, property)
       },
 

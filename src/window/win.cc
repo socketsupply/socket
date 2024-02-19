@@ -1125,13 +1125,14 @@ namespace SSC {
                                   }
 
                                   ICoreWebView2WebResourceResponse* res = nullptr;
+                                  auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
                                       convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
                                       ).c_str(),
                                     &res
                                   );
@@ -1152,6 +1153,7 @@ namespace SSC {
                                   redirectURL += "#" + parsedPath.fragment;
                                 }
 
+                                auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
@@ -1159,7 +1161,7 @@ namespace SSC {
                                   L"Moved Permanently",
                                   WString(
                                     convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
                                     ).c_str(),
                                   &res
                                   );
