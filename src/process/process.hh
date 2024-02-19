@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "../core/core.hh"
+#include "../core/types.hh"
 
 #ifndef WIFEXITED
 #define WIFEXITED(w) ((w) & 0x7f)

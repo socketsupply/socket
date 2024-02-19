@@ -9,6 +9,7 @@
 #include "io.hh"
 #include "json.hh"
 #include "platform.hh"
+#include "../process/process.hh"
 #include "preload.hh"
 #include "service_worker_container.hh"
 #include "string.hh"
@@ -682,6 +683,15 @@ namespace SSC {
           );
       };
 
+      class ChildProcess : public Module {
+        public:
+          ChildProcess (auto core) : Module(core) {}
+          std::map<uint64_t, Process*> processes;
+
+          void kill (const String seq, uint64_t id, const int signal, Module::Callback cb);
+          void spawn (const String seq, uint64_t id, const String cwd, Vector<String> args, Module::Callback cb);
+      };
+
       class UDP : public Module {
         public:
           UDP (auto core) : Module(core) {}
@@ -739,6 +749,7 @@ namespace SSC {
       OS os;
       Platform platform;
       UDP udp;
+      ChildProcess childProcess;
 
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Peer*> peers;
@@ -780,6 +791,7 @@ namespace SSC {
         os(this),
         platform(this),
         udp(this),
+        childProcess(this),
         serviceWorker(this)
       {
         this->posts = std::shared_ptr<Posts>(new Posts());
