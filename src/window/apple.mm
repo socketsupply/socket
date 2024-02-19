@@ -1435,6 +1435,7 @@ namespace SSC {
           if (parts[1].find("+") != -1) {
             auto accelerator = split(parts[1], '+');
             key = trim(accelerator[0]);
+            bool isShift = String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
 
             for (int i = 1; i < accelerator.size(); i++) {
               auto modifier = trim(accelerator[i]);
@@ -1445,6 +1446,10 @@ namespace SSC {
                 modifier.begin(),
                 [](auto ch) { return std::tolower(ch); }
               );
+
+              if (isShift || modifier.compare("shift") == 0) {
+                mask |= NSEventModifierFlagShift;
+              }
 
               if (
                 modifier.compare("command") == 0 ||
@@ -1474,6 +1479,8 @@ namespace SSC {
           if (title.compare("Cut") == 0) nssSelector = [NSString stringWithUTF8String:"cut:"];
           if (title.compare("Copy") == 0) nssSelector = [NSString stringWithUTF8String:"copy:"];
           if (title.compare("Paste") == 0) nssSelector = [NSString stringWithUTF8String:"paste:"];
+          if (title.compare("Undo") == 0) nssSelector = [NSString stringWithUTF8String:"undo:"];
+          if (title.compare("Redo") == 0) nssSelector = [NSString stringWithUTF8String:"redo:"];
           if (title.compare("Delete") == 0) nssSelector = [NSString stringWithUTF8String:"delete:"];
           if (title.compare("Select All") == 0) nssSelector = [NSString stringWithUTF8String:"selectAll:"];
         }
