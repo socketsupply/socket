@@ -46,7 +46,6 @@
 
     if (hasAppLink) {
       if (self.bridge != nullptr) {
-        debug("CANCEL #1: %s", request.c_str());
         decisionHandler(WKNavigationActionPolicyCancel);
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
           "url", request
@@ -63,7 +62,6 @@
       !request.starts_with("socket://" + userConfig["meta_bundle_identifier"])
     ) {
       if (self.bridge != nullptr) {
-        debug("CANCEL #2: %s", request.c_str());
         decisionHandler(WKNavigationActionPolicyCancel);
 
         SSC::JSON::Object json = SSC::JSON::Object::Entries {{
@@ -76,7 +74,6 @@
     }
 
     if (!request.starts_with("socket:") && !request.starts_with(devHost)) {
-      debug("CANCEL #3: %s", request.c_str());
       decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
@@ -884,7 +881,7 @@ namespace SSC {
         config.allowsAirPlayForMediaPlayback = YES;
       }
     } @catch (NSException *error) {
-      debug("%@", error);
+      debug("Failed to set preference 'allowsAirPlayForMediaPlayback': %@", error);
     }
 
     config.defaultWebpagePreferences.allowsContentJavaScript = YES;
@@ -983,17 +980,16 @@ namespace SSC {
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
-            if (!window) {
+            if (!window || window->exiting) {
               return true;
             }
 
-            if (exiting) return true;
-
             if (window->opts.canExit) {
-              exiting = true;
+              window->exiting = true;
               window->exit(0);
               return true;
             }
+
             window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
             window->hide();
             return false;
