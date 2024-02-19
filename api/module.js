@@ -11,6 +11,10 @@ import { Headers } from './ipc.js'
 import { URL } from './url.js'
 
 // builtins
+// eslint-disable-next-line
+import async_context from './async_context.js'
+// eslint-disable-next-line
+import async_hooks from './async_hooks.js'
 import application from './application.js'
 import assert from './assert.js'
 import buffer from './buffer.js'
@@ -41,6 +45,8 @@ import url from './url.js'
 import util from './util.js'
 import vm from './vm.js'
 import window from './window.js'
+// eslint-disable-next-line
+import worker_threads from './worker_threads.js'
 
 /**
  * @typedef {function(string, Module, function): undefined} ModuleResolver
@@ -57,6 +63,20 @@ class ModuleRequest {
     return request.load()
   }
 
+  static verifyRequestContentLocation (request) {
+    const headers = Headers.from(request)
+    const contentLocation = headers.get('content-location')
+    // if a content location was given, check extension name
+    if (URL.canParse(contentLocation, globalThis.location.href)) {
+      const url = new URL(contentLocation, globalThis.location.href)
+      if (!/js|json|mjs|cjs|jsx|ts|tsx/.test(path.extname(url.pathname))) {
+        return false
+      }
+    }
+
+    return true
+  }
+
   constructor (pathname, parent) {
     const origin = globalThis.location.origin.startsWith('blob:')
       ? new URL(new URL(globalThis.location.href).pathname).origin
@@ -71,6 +91,11 @@ class ModuleRequest {
     const request = new XMLHttpRequest()
     request.open('HEAD', id, false)
     request.send(null)
+
+    if (!ModuleRequest.verifyRequestContentLocation(request)) {
+      return 404
+    }
+
     return request.status
   }
 
@@ -89,6 +114,10 @@ class ModuleRequest {
 
     request.open('GET', id, false)
     request.send(null)
+
+    if (!ModuleRequest.verifyRequestContentLocation(request)) {
+      return null
+    }
 
     const headers = Headers.from(request)
     let responseText = null
@@ -199,11 +228,16 @@ function CommonJSModuleScope (
  * A limited set of builtins exposed to CommonJS modules.
  */
 export const builtins = {
+  // eslint-disable-next-line
+  async_context,
+  // eslint-disable-next-line
+  async_hooks,
   application,
   assert,
   buffer,
   console,
   constants,
+  child_process: {},
   crypto,
   dgram,
   dns,
@@ -212,8 +246,8 @@ export const builtins = {
   extension,
   fs,
   'fs/promises': fs.promises,
-  gc,
   http,
+  gc,
   https,
   ipc,
   language,
@@ -231,19 +265,21 @@ export const builtins = {
   'stream/web': stream.web,
   // eslint-disable-next-line
   string_decoder,
+  sys: util,
   test,
   timers,
   'timers/promises': timers.promises,
+  tty: {
+    isatty: () => false,
+    WriteStream: util.IllegalConstructor,
+    ReadStream: util.IllegalConstructor
+  },
   util,
   url,
   vm,
   window,
   // eslint-disable-next-line
-  worker_threads: {
-    BroadcastChannel: globalThis.BroadcastChannel,
-    MessageChannel: globalThis.MessageChannel,
-    MessagePort: globalThis.MessagePort
-  }
+  worker_threads
 }
 
 const socketRuntimeModules = [
@@ -749,10 +785,14 @@ export class Module extends EventTarget {
     return require
 
     function require (filename) {
+      if (filename.startsWith('/') || filename.startsWith('\\')) {
+        filename = filename.replace(process.cwd(), '')
+      }
+
       const resolvers = Array.from(Module.resolvers)
       const result = resolve(filename, resolvers)
 
-      if (typeof result === 'string') {
+      if (typeof result === 'string' && result.length < 256 && !/^[\s|\n]+/.test(result)) {
         const name = result.replace(/^(socket|node):/, '')
 
         if (
@@ -778,7 +818,7 @@ export class Module extends EventTarget {
 
       throw new ModuleNotFoundError(
         `Cannot find module ${filename}`,
-        this.children
+        module.children
       )
     }
 
@@ -823,7 +863,3 @@ export class Module extends EventTarget {
 export default Module
 
 builtins.module = Module
-
-// builtins should never be overloaded through this object, instead
-// a custom resolver should be used
-Object.freeze(Object.seal(builtins))

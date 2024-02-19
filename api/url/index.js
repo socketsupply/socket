@@ -1,5 +1,6 @@
 import { URLPattern } from './urlpattern/urlpattern.js'
 import url from './url/url.js'
+import qs from '../querystring.js'
 
 const {
   URL,
@@ -16,8 +17,20 @@ for (const key in globalThis.URL) {
 }
 
 URL.resolve = resolve
+URL.parse = parse
+URL.format = format
 
-export const parse = parseURL
+export function parse (input) {
+  if (URL.canParse(input)) {
+    return new URL(input)
+  }
+
+  if (URL.canParse(input, 'socket://')) {
+    return new URL(input, 'socket://')
+  }
+
+  return null
+}
 
 // lifted from node
 export function resolve (from, to) {
@@ -29,6 +42,72 @@ export function resolve (from, to) {
   }
 
   return resolved.toString()
+}
+
+export function format (input) {
+  if (!input || (typeof input !== 'string' && typeof input !== 'object')) {
+    throw new TypeError(
+      `The 'input' argument must be one of type object or string. Received: ${input}`
+    )
+  }
+
+  if (typeof input === 'string') {
+    if (!URL.canParse(input)) {
+      return ''
+    }
+
+    return new URL(input).toString()
+  }
+
+  let formatted = ''
+
+  if (!input.hostname) {
+    return ''
+  }
+
+  if (input.protocol) {
+    formatted += `${input.protocol}//`
+  }
+
+  if (input.username) {
+    formatted += encodeURIComponent(input.username)
+
+    if (input.password) {
+      formatted += `:${encodeURIComponent(input.password)}`
+    }
+
+    formatted += '@'
+  }
+
+  formatted += input.hostname
+
+  if (input.port) {
+    formatted += `:${input.port}`
+  }
+
+  if (input.pathname) {
+    formatted += input.pathname
+  }
+
+  if (input.query && typeof input.query === 'object') {
+    formatted += `?${qs.stringify(input.query)}`
+  } else if (input.query && typeof input.query === 'string') {
+    if (!input.query.startsWith('?')) {
+      formatted += '?'
+    }
+
+    formatted += encodeURIComponent(decodeURIComponent(input.query))
+  }
+
+  if (input.hash && typeof input.hash === 'string') {
+    if (!input.hash.startsWith('#')) {
+      formatted += '#'
+    }
+
+    formatted += input.hash
+  }
+
+  return formatted
 }
 
 url.serializeURLOrigin = function (input) {

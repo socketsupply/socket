@@ -18,7 +18,7 @@ import ipc from './ipc.js'
 import fs from './fs/promises.js'
 
 /**
- * @typedef {number} {Pointer}
+ * @typedef {number} Pointer
  */
 
 const $loaded = Symbol('loaded')

@@ -1,7 +1,8 @@
 import sugar from '../stream-relay/sugar.js'
 import { Cache, Packet, sha256, Encryption, NAT } from '../stream-relay/index.js'
-import events from 'events'
-import dgram from 'dgram'
+import worker from 'node:worker_threads'
+import events from 'node:events'
+import dgram from 'node:dgram'
 
 const network = sugar(dgram, events, worker)
 

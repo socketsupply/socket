@@ -377,7 +377,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
         response.responseHeaders = mapOf(
           "Location" to redirectURL,
-          "Content-Location" to redirectURL
+          "Content-Location" to resolved.path
         )
 
         response.setStatusCodeAndReasonPhrase(200, "OK")
