@@ -320,7 +320,6 @@ export function promisify (original) {
   }
 
   if (typeof original !== 'function') {
-    console.log({ original })
     throw new TypeError('Expecting original to be a function or object.')
   }
 
@@ -902,10 +901,11 @@ export function parseHeaders (headers) {
   }
 
   return headers
-    .split('\n')
+    .split(/\r?\n/)
     .map((l) => l.trim().split(':'))
-    .filter((e) => e.length === 2)
-    .map((e) => [e[0].trim().toLowerCase(), e[1].trim().toLowerCase()])
+    .filter((e) => e.length >= 2)
+    .map((e) => [e[0].trim().toLowerCase(), e.slice(1).join(':').trim().toLowerCase()])
+    .filter((e) => e[0].length && e[1].length)
 }
 
 export function noop () {}

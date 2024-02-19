@@ -24,6 +24,8 @@
  */
 
 import { isBufferLike, isFunction, noop } from '../util.js'
+import { rand64 } from '../crypto.js'
+import { Buffer } from '../buffer.js'
 import console from '../console.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
@@ -31,6 +33,7 @@ import gc from '../gc.js'
 import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
+import { normalizeFlags } from './flags.js'
 import * as constants from './constants.js'
 import * as promises from './promises.js'
 import { Watcher } from './watcher.js'
@@ -99,13 +102,54 @@ export function access (path, mode, callback) {
 }
 
 /**
- * @ignore
+ * Synchronously check access a file for a given mode calling `callback`
+ * upon success or error.
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+ * @param {string | Buffer | URL} path
+ * @param {string?} [mode = F_OK(0)]
  */
-export function appendFile (path, data, options, callback) {
+export function accessSync (path, mode) {
+  const result = ipc.sendSync('fs.access', { path, mode })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  // F_OK means access in any way
+  return mode === constants.F_OK ? true : (result.data?.mode && mode) > 0
 }
 
 /**
- *
+ * Checks if a path exists
+ * @param {string | Buffer | URL} path
+ * @param {function(Boolean)?} [callback]
+ */
+export function exists (path, callback) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  access(path, (err) => {
+    // eslint-disable-next-line
+    callback(err !== null)
+  })
+}
+
+/**
+ * Checks if a path exists
+ * @param {string | Buffer | URL} path
+ * @param {function(Boolean)?} [callback]
+ */
+export function existsSync (path) {
+  try {
+    accessSync(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Asynchronously changes the permissions of a file.
  * No arguments other than a possible exception are given to the completion callback
  *
@@ -131,6 +175,29 @@ export function chmod (path, mode, callback) {
   ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
+}
+
+/**
+ * Synchronously changes the permissions of a file.
+ *
+ * @see {@link https://nodejs.org/api/fs.html#fschmodpath-mode-callback}
+ * @param {string | Buffer | URL} path
+ * @param {number} mode
+ */
+export function chmodSync (path, mode) {
+  if (typeof mode !== 'number') {
+    throw new TypeError(`The argument 'mode' must be a 32-bit unsigned integer or an octal string. Received ${mode}`)
+  }
+
+  if (mode < 0 || !Number.isInteger(mode)) {
+    throw new RangeError(`The value of "mode" is out of range. It must be an integer. Received ${mode}`)
+  }
+
+  const result = ipc.sendSync('fs.chmod', { mode, path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -160,6 +227,32 @@ export function chown (path, uid, gid, callback) {
   ipc.request('fs.chown', { path, uid, gid }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
+}
+
+/**
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ */
+export function chownSync (path, uid, gid) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+  const result = ipc.sendSync('fs.chown', { path, uid, gid })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -212,6 +305,33 @@ export function copyFile (src, dest, flags, callback) {
   ipc.request('fs.copyFile', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
+}
+
+/**
+ * Synchronously copies `src` to `dest` calling `callback` upon success or error.
+ * @param {string} src - The source file path.
+ * @param {string} dest - The destination file path.
+ * @param {number} flags - Modifiers for copy operation.
+ * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+ */
+export function copyFileSync (src, dest, flags) {
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  const result = ipc.sendSync('fs.copyFile', { src, dest, flags })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -462,6 +582,32 @@ export function mkdir (path, options, callback) {
 }
 
 /**
+ * @ignore
+ */
+export function mkdirSync (path, options) {
+  if ((typeof options === 'undefined') || (typeof options === 'function')) {
+    throw new TypeError('options must be an object.')
+  }
+
+  const mode = options.mode || 0o777
+  const recursive = Boolean(options.recursive) // default to false
+
+  if (typeof mode !== 'number') {
+    throw new TypeError('mode must be a number.')
+  }
+
+  if (mode < 0 || !Number.isInteger(mode)) {
+    throw new RangeError('mode must be a positive finite number.')
+  }
+
+  const result = ipc.sendSync('fs.mkdir', { mode, path, recursive })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Asynchronously open a file calling `callback` upon success or error.
  * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
@@ -673,6 +819,66 @@ export function readFile (path, options = {}, callback) {
 }
 
 /**
+ * @param {string | Buffer | URL | number } path
+ * @param {object?|function(Error?, Buffer?)} [options]
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ */
+export function readFileSync (path, options = {}) {
+  if (typeof options === 'string') {
+    options = { encoding: options }
+  }
+
+  options = {
+    flags: 'r',
+    ...options
+  }
+
+  let result = null
+
+  const id = String(options?.id || rand64())
+  const stats = statSync(path)
+
+  result = ipc.sendSync('fs.open', {
+    id,
+    mode: FileHandle.DEFAULT_OPEN_MODE,
+    path,
+    flags: normalizeFlags(options.flags)
+  }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  result = ipc.sendSync('fs.read', {
+    id,
+    size: stats.size,
+    offset: 0
+  }, { responseType: 'arraybuffer' })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  const data = result.data
+
+  result = ipc.sendSync('fs.close', { id }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  const buffer = Buffer.from(data)
+
+  if (typeof options?.encoding === 'string') {
+    return buffer.toString(options.encoding)
+  }
+
+  return buffer
+}
+
+/**
  * Reads link at `path`
  * @param {string} path
  * @param {function(err, string)} callback
@@ -751,6 +957,23 @@ export function rmdir (path, callback) {
   ipc.request('fs.rmdir', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
+}
+
+/**
+ * Synchronously get the stats of a file
+ * @param {string | Buffer | URL | number } path - filename or file descriptor
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ */
+export function statSync (path, options) {
+  const result = ipc.sendSync('fs.stat', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  return Stats.from(result.data, Boolean(options?.bigint))
 }
 
 /**

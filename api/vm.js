@@ -19,7 +19,7 @@
  *   // that exists on the user context
  *   value = json.value
  * `
- * const result = await vm.runIntContext(source, context)
+ * const result = await vm.runInContext(source, context)
  * console.log(context.value) // set from `json.value` in VM context
  * ```
  */
@@ -1094,7 +1094,7 @@ export async function terminateContextWorker () {
  * Creates a prototype object of known global reserved intrinsics.
  * @ignore
  */
-export function createIntrinsics () {
+export function createIntrinsics (options) {
   const descriptors = Object.create(null)
   const propertyNames = Object.getOwnPropertyNames(globalThis)
   const propertySymbols = Object.getOwnPropertySymbols(globalThis)
@@ -1102,7 +1102,7 @@ export function createIntrinsics () {
   for (const property of propertyNames) {
     const intrinsic = Object.getOwnPropertyDescriptor(globalThis, property)
     const descriptor = Object.assign(Object.create(null), {
-      configurable: false,
+      configurable: options?.configurable === true,
       enumerable: true,
       value: intrinsic.value ?? globalThis[property] ?? undefined
     })
@@ -1112,7 +1112,7 @@ export function createIntrinsics () {
 
   for (const symbol of propertySymbols) {
     descriptors[symbol] = {
-      configurable: false,
+      configurable: options?.configurable === true,
       enumberale: false,
       value: globalThis[symbol]
     }
@@ -1127,9 +1127,9 @@ export function createIntrinsics () {
  * @param {object} context
  * @return {Proxy}
  */
-export function createGlobalObject (context) {
+export function createGlobalObject (context, options) {
   const prototype = Object.getPrototypeOf(globalThis)
-  const intrinsics = createIntrinsics()
+  const intrinsics = createIntrinsics(options)
   const descriptors = Object.getOwnPropertyDescriptors(intrinsics)
   const globalObject = Object.create(prototype, descriptors)
 
@@ -1143,7 +1143,8 @@ export function createGlobalObject (context) {
     } catch {}
   }
 
-  return new Proxy(target, {
+  const handler = {}
+  const traps = {
     get (_, property, receiver) {
       if (property === 'console') {
         return console
@@ -1194,16 +1195,21 @@ export function createGlobalObject (context) {
 
     defineProperty (_, property, descriptor) {
       if (RESERVED_GLOBAL_INTRINSICS.includes(property)) {
-        return false
-      }
-
-      if (context) {
-        Reflect.defineProperty(context, property, descriptor)
         return true
       }
+      console.log('defineProperty', { property })
 
-      Reflect.defineProperty(globalObject, property, descriptor)
-      return true
+      if (context) {
+        return (
+          Reflect.defineProperty(context, property, descriptor) &&
+          Reflect.getOwnPropertyDescriptor(context, property) !== undefined
+        )
+      }
+
+      return (
+        Reflect.defineProperty(globalObject, property, descriptor) &&
+        Reflect.getOwnPropertyDescriptor(globalObject, property) !== undefined
+      )
     },
 
     deleteProperty (_, property) {
@@ -1219,6 +1225,7 @@ export function createGlobalObject (context) {
     },
 
     getOwnPropertyDescriptor (_, property) {
+      console.log('getOwnPropertyDescriptor', { property })
       if (context) {
         const descriptor = Reflect.getOwnPropertyDescriptor(context, property)
         if (descriptor) {
@@ -1271,6 +1278,7 @@ export function createGlobalObject (context) {
     },
 
     preventExtensions (_) {
+      console.log('preventExtensions')
       if (context) {
         Reflect.preventExtensions(context)
         return true
@@ -1278,7 +1286,27 @@ export function createGlobalObject (context) {
 
       return false
     }
-  })
+  }
+
+  if (Array.isArray(options?.traps)) {
+    for (const trap of options.traps) {
+      if (typeof traps[trap] === 'function') {
+        handler[trap] = traps[trap]
+      }
+    }
+  } else if (options?.traps && typeof options?.traps === 'object') {
+    for (const key in traps) {
+      if (options.traps[key] !== false) {
+        handler[key] = traps[key]
+      }
+    }
+  } else {
+    for (const key in traps) {
+      handler[key] = traps[key]
+    }
+  }
+
+  return new Proxy(target, handler)
 }
 
 /**
@@ -1456,10 +1484,11 @@ export function getTrasferables (object) {
 }
 
 export function createContext (object) {
-  return object
+  return Object.assign(new EventTarget(), object)
 }
 
 export default {
+  createGlobalObject,
   compileFunction,
   createReference,
   getContextWindow,
