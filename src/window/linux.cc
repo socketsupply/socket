@@ -769,6 +769,17 @@ namespace SSC {
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
         w->close(0);
+
+        JSON::Object json = JSON::Object::Entries {
+          { "data", w->opts.index },
+        };
+
+        WindowManager* windowManager = w->app.getWindowManager();
+        for (auto w : windowManager->windows) {
+          if (w == nullptr) continue;
+          auto window = windowManager->getWindow(w->opts.index);
+          window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
+        }
       }),
       this
     );

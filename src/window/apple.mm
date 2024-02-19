@@ -969,8 +969,17 @@ namespace SSC {
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
-            if (!window) {
-              return true;
+            if (!window) return true;
+
+            JSON::Object json = JSON::Object::Entries {
+              { "data", window->opts.index },
+            };
+
+            WindowManager* windowManager = app.getWindowManager();
+            for (auto w : windowManager->windows) {
+              if (w == nullptr) continue;
+              auto window = windowManager->getWindow(w->opts.index);
+              window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
             }
 
             if (exiting) return true;
@@ -981,6 +990,7 @@ namespace SSC {
               return true;
             }
             window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
+            window->eval(getEmitToRenderProcessJavaScript("hide", "{}"));
             window->hide();
             return false;
           }),
@@ -1126,7 +1136,6 @@ namespace SSC {
   void Window::close (int code) {
     if (this->window != nullptr) {
       [this->window performClose: nil];
-
       this->window = nullptr;
     }
 
@@ -1145,20 +1154,22 @@ namespace SSC {
   }
 
   void Window::maximize () {
-    [this->window zoom: this->window];
+    if (this->window) [this->window zoom: this->window];
   }
 
   void Window::minimize () {
-    [this->window miniaturize: this->window];
+    if (this->window) [this->window miniaturize: this->window];
   }
 
   void Window::restore () {
-    [this->window deminiaturize: this->window];
+    if (this->window) [this->window deminiaturize: this->window];
   }
 
   void Window::hide () {
     if (this->window) {
+      this->eval(getEmitToRenderProcessJavaScript("hide", "{}"));
       [this->window orderOut: this->window];
+      // TODO (@heapwolf): deprecate windowHide
       this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
     }
   }

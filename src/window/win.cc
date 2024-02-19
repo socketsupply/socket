@@ -1526,6 +1526,17 @@ namespace SSC {
   }
 
   void Window::close (int code) {
+    JSON::Object json = JSON::Object::Entries {
+      { "data", this->opts.index },
+    };
+
+    WindowManager* windowManager = this->app.getWindowManager();
+    for (auto w : windowManager->windows) {
+      if (w == nullptr) continue;
+      auto window = windowManager->getWindow(w->opts.index);
+      window->eval(getEmitToRenderProcessJavaScript("close",  json.str()));
+    }
+
     if (opts.canExit) {
       this->exit(0);
       DestroyWindow(window);
