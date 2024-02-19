@@ -252,6 +252,50 @@ static void initRouterTable (Router *router) {
     reply(Result { message.seq, message });
   });
 
+  router->map("child_process.kill", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"signal"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+   
+    auto signal = message.get("signal");
+
+    router->core->childProcess.kill(message.seq, id, signal, [message, reply](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json, post });
+    });
+  });
+
+  router->map("child_process.spwan", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"args", "cwd", "id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto args = split(message.get("args"), 0x001);
+
+    if (args.size() == 0 || args.at(0).size() == 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "child_process.spawn"},
+        {"err", JSON::Object::Entries {
+          {"message", "Spawn requires at least one argument with a length greater than zero"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    auto cwd = message.get("cwd", getcwd());
+
+    router->core->childProcess.spawn(message.seq, id, cwd, args, [message, reply](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json, post });
+    });
+  });
+
   /**
    * Look up an IP address by `hostname`.
    * @param hostname Host name to lookup
