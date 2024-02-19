@@ -1251,7 +1251,7 @@ namespace SSC {
                 }
               }
 
-              if (isShift) {
+              if (isShift || modifier.find("shift") != -1) {
                 mask = (GdkModifierType)(mask | GDK_SHIFT_MASK);
               }
 
