@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "process.hh"
+#include "../core/core.hh"
 
 namespace SSC {
 
@@ -223,6 +224,14 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
 
     return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
   });
+}
+
+int Process::wait () {
+  do {
+    msleep(Process::PROCESS_WAIT_TIMEOUT);
+  } while (this->closed == false);
+
+  return this->status;
 }
 
 void Process::read() noexcept {
