@@ -189,13 +189,7 @@ namespace SSC {
       this->kill(this->getPID());
     }
 
-    int wait () {
-      do {
-        msleep(Process::PROCESS_WAIT_TIMEOUT);
-      } while (this->closed == false);
-
-      return this->status;
-    }
+    int wait ();
 
   private:
     Data data;

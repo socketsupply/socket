@@ -1,4 +1,5 @@
 #include "process.hh"
+#include "../core/core.hh"
 
 #include <cstring>
 #include <iostream>
@@ -51,6 +52,14 @@ Process::Process(
   this->command = command;
   this->argv = argv;
   this->path = path;
+}
+
+int Process::wait () {
+  do {
+    msleep(Process::PROCESS_WAIT_TIMEOUT);
+  } while (this->closed == false);
+
+  return this->status;
 }
 
 // Simple HANDLE wrapper to close it automatically from the destructor.
