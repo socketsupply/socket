@@ -613,7 +613,7 @@ hooks.onLoad(async () => {
       promise
         .then((registration) => {
           if (registration) {
-            console.log('ServiceWorker registered in preload: %s', scriptURL)
+            console.info('ServiceWorker registered in preload: %s', scriptURL)
           } else {
             console.warn(
               'ServiceWorker failed to register in preload: %s',
@@ -643,7 +643,6 @@ hooks.onReady(async () => {
   try {
     // precache fs.constants
     await ipc.request('fs.constants', {}, { cache: true })
-    await import('../worker.js')
     await import('../diagnostics.js')
     await import('../fs/fds.js')
     await import('../fs/constants.js')

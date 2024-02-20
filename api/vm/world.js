@@ -101,9 +101,17 @@ globalThis.addEventListener('message', async (event) => {
     }
 
     if (typeof result === 'function') {
-      result = vm.createReference(result, context)
-    } else if (typeof result === 'object') {
-      vm.applyOutputContextReferences(result)
+      result = vm.createReference(result, context).toJSON()
+    } else if (result && typeof result === 'object') {
+      if (
+        Object.getPrototypeOf(result) === Object.prototype ||
+        result instanceof Array
+      ) {
+        vm.applyOutputContextReferences(result)
+      } else {
+        vm.applyOutputContextReferences(result)
+        result = vm.createReference(result, context).toJSON(true)
+      }
     }
 
     vm.applyOutputContextReferences(context)
