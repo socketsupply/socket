@@ -102,10 +102,6 @@ class Process extends EventEmitter {
     return exit(code)
   }
 
-  homedir () {
-    return homedir()
-  }
-
   nextTick (callback) {
     return nextTick(callback)
   }
@@ -158,13 +154,6 @@ export function nextTick (callback) {
 
 if (typeof process.nextTick !== 'function') {
   process.nextTick = nextTick
-}
-
-/**
- * @returns {string} The home directory of the current user.
- */
-export function homedir () {
-  return globalThis.__args.env.HOME ?? ''
 }
 
 /**
