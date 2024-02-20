@@ -1808,7 +1808,7 @@ export function removeReference (id) {
  * @param {object} object
  * @return {object[]}
  */
-export function getTrasferables (object) {
+export function getTransferables (object) {
   const transferables = []
   findMessageTransfers(transferables, object)
   return transferables
@@ -1845,7 +1845,7 @@ export default {
   getContextWindow,
   getContextWorker,
   getReference,
-  getTrasferables,
+  getTransferables,
   putReference,
   Reference,
   removeReference,

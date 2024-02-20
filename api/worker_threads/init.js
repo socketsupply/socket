@@ -1,4 +1,4 @@
-import vm, { getTrasferables } from '../vm.js'
+import vm, { getTransferables } from '../vm.js'
 import { Writable, Readable } from '../stream.js'
 import process, { env } from '../process.js'
 
@@ -125,7 +125,7 @@ function onMainThreadMessage (event) {
     if (request.init.process?.stdout === true) {
       process.stdout = new Writable({
         write (data, cb) {
-          const transfer = getTrasferables(data)
+          const transfer = getTransferables(data)
           globalThis.postMessage({
             worker_threads: {
               process: {
@@ -142,7 +142,7 @@ function onMainThreadMessage (event) {
     if (request.init.process?.stderr === true) {
       process.stderr = new Writable({
         write (data, cb) {
-          const transfer = getTrasferables(data)
+          const transfer = getTransferables(data)
           globalThis.postMessage({
             worker_threads: {
               process: {

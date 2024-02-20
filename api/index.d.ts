@@ -8868,7 +8868,7 @@ declare module "socket:vm" {
      * @param {object} object
      * @return {object[]}
      */
-    export function getTrasferables(object: object): object[];
+    export function getTransferables(object: object): object[];
     /**
      * @ignore
      * @param {object} object
@@ -9073,7 +9073,7 @@ declare module "socket:vm" {
         export { getContextWindow };
         export { getContextWorker };
         export { getReference };
-        export { getTrasferables };
+        export { getTransferables };
         export { putReference };
         export { Reference };
         export { removeReference };
@@ -9407,7 +9407,7 @@ declare module "socket:module" {
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
-            getTrasferables: typeof import("socket:vm").getTrasferables;
+            getTransferables: typeof import("socket:vm").getTransferables;
             putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;
@@ -9735,7 +9735,7 @@ declare module "socket:module" {
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
-            getTrasferables: typeof import("socket:vm").getTrasferables;
+            getTransferables: typeof import("socket:vm").getTransferables;
             putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;

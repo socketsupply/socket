@@ -1,6 +1,6 @@
 import { Writable, Readable } from './stream.js'
 import init, { SHARE_ENV } from './worker_threads/init.js'
-import { getTrasferables } from './vm.js'
+import { getTransferables } from './vm.js'
 import { maybeMakeError } from './ipc.js'
 import { EventEmitter } from './events.js'
 import { env } from './process.js'
@@ -77,7 +77,7 @@ export function setEnvironmentData (key, value) {
   init.state.env[key] = value
 
   for (const worker of workers.values()) {
-    const transfer = getTrasferables(value)
+    const transfer = getTransferables(value)
     worker.postMessage({
       worker_threads: {
         env: { key, value }
@@ -139,7 +139,7 @@ export class Worker extends EventEmitter {
     if (options.stdin === true) {
       this.#stdin = new Writable({
         write (data, cb) {
-          const transfer = getTrasferables(data)
+          const transfer = getTransferables(data)
           this.#worker.postMessage(
             { worker_threads: { stdin: { data } } },
             { transfer }
@@ -162,7 +162,7 @@ export class Worker extends EventEmitter {
     this.#worker.addEventListener('message', this.onWorkerMessage)
 
     if (options.workerData) {
-      const transfer = options.transferList ?? getTrasferables(options.workerData)
+      const transfer = options.transferList ?? getTransferables(options.workerData)
       const message = {
         worker_threads: { workerData: options.workerData }
       }
