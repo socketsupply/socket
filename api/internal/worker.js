@@ -221,9 +221,7 @@ export async function onWorkerMessage (event) {
 }
 
 export function addEventListener (eventName, callback, ...args) {
-  if (eventName === 'message') {
-    return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
-  } else if (eventName === 'connect') {
+  if (eventName === 'message' || eventName === 'connect') {
     return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
   } else {
     return worker.addEventListener(eventName, callback, ...args)
@@ -231,9 +229,7 @@ export function addEventListener (eventName, callback, ...args) {
 }
 
 export function removeEventListener (eventName, callback, ...args) {
-  if (eventName === 'message') {
-    return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
-  } else if (eventName === 'connect') {
+  if (eventName === 'message' || eventName === 'connect') {
     return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
   } else {
     return worker.removeEventListener(eventName, callback, ...args)

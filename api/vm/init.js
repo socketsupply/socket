@@ -14,7 +14,7 @@ class World extends EventTarget {
     this.id = id
     this.frame = createWorld({ id })
     this.ready = new Promise((resolve) => {
-      this.frame.addEventListener('load', resolve, { once: true })
+      this.frame.contentWindow.addEventListener('load', resolve, { once: true })
     })
   }
 
@@ -137,7 +137,10 @@ class State {
   }
 
   onWorkerMessageError (event) {
-    console.error('onWorkerMessageError', event)
+    globalThis.reportError(
+      event.error ??
+      new Error('An unknown VM worker error occurred', { cause: event })
+    )
   }
 }
 

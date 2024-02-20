@@ -26,34 +26,36 @@ export const state = {
   id: 0
 }
 
-process.exit = (code) => {
-  globalThis.postMessage({
-    worker_threads: { process: { exit: { code } } }
+if (!isMainThread) {
+  process.exit = (code) => {
+    globalThis.postMessage({
+      worker_threads: { process: { exit: { code } } }
+    })
+  }
+
+  globalThis.addEventListener('message', onMainThreadMessage)
+  globalThis.addEventListener('error', (event) => {
+    propagateWorkerError(
+      event.error ??
+      new Error(
+        event.reason?.message ??
+        event.reason ??
+        'An unknown error occurred'
+      )
+    )
+  })
+
+  globalThis.addEventListener('unhandledrejection', (event) => {
+    propagateWorkerError(
+      event.error ??
+      new Error(
+        event.reason?.message ??
+        event.reason ??
+        'An unknown error occurred'
+      )
+    )
   })
 }
-
-globalThis.addEventListener('message', onMainThreadMessage)
-globalThis.addEventListener('error', (event) => {
-  propagateWorkerError(
-    event.error ??
-    new Error(
-      event.reason?.message ??
-      event.reason ??
-      'An unknown error occurred'
-    )
-  )
-})
-
-globalThis.addEventListener('unhandledrejection', (event) => {
-  propagateWorkerError(
-    event.error ??
-    new Error(
-      event.reason?.message ??
-      event.reason ??
-      'An unknown error occurred'
-    )
-  )
-})
 
 function propagateWorkerError (err) {
   globalThis.postMessage({
@@ -184,7 +186,7 @@ function onMainThreadMessage (event) {
     process.stdin.push(request.process.stdin.data)
   }
 
-  if (request) {
+  if (event.data?.worker_threads) {
     event.stopImmediatePropagation()
     return false
   }
