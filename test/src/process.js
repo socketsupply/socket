@@ -7,10 +7,6 @@ test('process', (t) => {
   t.ok(typeof process.addListener === 'function', 'process is an EventEmitter')
 })
 
-test('process.homedir()', (t) => {
-  t.ok(typeof process.homedir() === 'string', 'process.homedir() returns a string')
-})
-
 test('process.exit()', (t) => {
   t.ok(typeof process.exit === 'function', 'process.exit() is a function')
 })

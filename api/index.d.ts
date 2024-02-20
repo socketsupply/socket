@@ -931,6 +931,60 @@ declare module "socket:events" {
     import * as exports from "socket:events";
     
 }
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    /**
+     * Well known path to the application's "resources" folder.
+     * @type {?string}
+     */
+    export const RESOURCES: string | null;
+    /**
+     * Well known path to the application's "home" folder.
+     * This may be the user's HOME directory or the application container sandbox.
+     * @type {?string}
+     */
+    export const HOME: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { RESOURCES };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { MUSIC };
+        export { HOME };
+    }
+    export default _default;
+}
 declare module "socket:os" {
     /**
      * Returns the operating system CPU architecture for which Socket was compiled.
@@ -1028,6 +1082,11 @@ declare module "socket:os" {
      */
     export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
     /**
+     * Returns the home directory of the current user.
+     * @return {string}
+     */
+    export function homedir(): string;
+    /**
      * @type {string}
      * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
      */
@@ -1042,10 +1101,6 @@ declare module "socket:process" {
      * @param {Function} callback
      */
     export function nextTick(callback: Function): void;
-    /**
-     * @returns {string} The home directory of the current user.
-     */
-    export function homedir(): string;
     /**
      * Computed high resolution time as a `BigInt`.
      * @param {Array<number>?} [time]
@@ -1276,60 +1331,6 @@ declare module "socket:path/path" {
         url: string;
     });
     import { URL } from "socket:url/index";
-}
-declare module "socket:path/well-known" {
-    /**
-     * Well known path to the user's "Downloads" folder.
-     * @type {?string}
-     */
-    export const DOWNLOADS: string | null;
-    /**
-     * Well known path to the user's "Documents" folder.
-     * @type {?string}
-     */
-    export const DOCUMENTS: string | null;
-    /**
-     * Well known path to the user's "Pictures" folder.
-     * @type {?string}
-     */
-    export const PICTURES: string | null;
-    /**
-     * Well known path to the user's "Desktop" folder.
-     * @type {?string}
-     */
-    export const DESKTOP: string | null;
-    /**
-     * Well known path to the user's "Videos" folder.
-     * @type {?string}
-     */
-    export const VIDEOS: string | null;
-    /**
-     * Well known path to the user's "Music" folder.
-     * @type {?string}
-     */
-    export const MUSIC: string | null;
-    /**
-     * Well known path to the application's "resources" folder.
-     * @type {?string}
-     */
-    export const RESOURCES: string | null;
-    /**
-     * Well known path to the application's "home" folder.
-     * This may be the user's HOME directory or the application container sandbox.
-     * @type {?string}
-     */
-    export const HOME: string | null;
-    namespace _default {
-        export { DOWNLOADS };
-        export { DOCUMENTS };
-        export { RESOURCES };
-        export { PICTURES };
-        export { DESKTOP };
-        export { VIDEOS };
-        export { MUSIC };
-        export { HOME };
-    }
-    export default _default;
 }
 declare module "socket:path/win32" {
     /**
