@@ -1,8 +1,9 @@
-/* global ServiceWorker  */
 import { SharedWorker } from '../internal/shared-worker.js'
 import state from './state.js'
 
 export const SHARED_WORKER_URL = new URL('./shared-worker.js', import.meta.url)
+
+export const ServiceWorker = globalThis.ServiceWorker
 
 export function createServiceWorker (
   currentState = state.serviceWorker.state,

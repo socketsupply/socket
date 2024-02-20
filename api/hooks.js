@@ -72,19 +72,12 @@ import location from './location.js'
  * @typedef {{ signal?: AbortSignal }} WaitOptions
  */
 
-// primordial setup
-const EventTargetPrototype = {
-  addEventListener: Function.prototype.call.bind(EventTarget.prototype.addEventListener),
-  removeEventListener: Function.prototype.call.bind(EventTarget.prototype.removeEventListener),
-  dispatchEvent: Function.prototype.call.bind(EventTarget.prototype.dispatchEvent)
-}
-
-function addEventListener (target, type, callback) {
-  EventTargetPrototype.addEventListener(target, type, callback)
+function addEventListener (target, type, callback, ...args) {
+  target.addEventListener(type, callback, ...args)
 }
 
 function addEventListenerOnce (target, type, callback) {
-  EventTargetPrototype.addEventListener(target, type, callback, { once: true })
+  target.addEventListener(type, callback, { once: true })
 }
 
 async function waitForEvent (target, type) {
@@ -94,7 +87,7 @@ async function waitForEvent (target, type) {
 }
 
 function dispatchEvent (target, event) {
-  queueMicrotask(() => EventTargetPrototype.dispatchEvent(target, event))
+  queueMicrotask(() => target.dispatchEvent(event))
 }
 
 function dispatchInitEvent (target) {
@@ -114,20 +107,30 @@ function proxyGlobalEvents (global, target) {
     addEventListener(global, type, (event) => {
       const { type, data, detail = null, error } = event
       const { origin } = location
+
       if (type === 'applicationurl') {
         dispatchEvent(target, new ApplicationURLEvent(type, {
+          ...event,
+          origin,
           data: event.data,
           url: event.url.toString()
         }))
-      } else if (error) {
+      } else if (type === 'error' || error) {
         const { message, filename = import.meta.url || globalThis.location.href } = error
-        dispatchEvent(target, new ErrorEvent(type, { message, filename, error, detail }))
-      } else if (type && data) {
-        dispatchEvent(target, new MessageEvent(type, { origin, data, detail }))
+        dispatchEvent(target, new ErrorEvent(type, {
+          ...event,
+          message,
+          filename,
+          error,
+          detail,
+          origin
+        }))
+      } else if ((type && data) || type === 'message') {
+        dispatchEvent(target, new MessageEvent(type, { ...event, origin }))
       } else if (detail) {
-        dispatchEvent(target, new CustomEvent(type, { detail }))
+        dispatchEvent(target, new CustomEvent(type, { ...event, origin }))
       } else {
-        dispatchEvent(target, new Event(type))
+        dispatchEvent(target, new Event(type, { ...event, origin }))
       }
     })
   }
