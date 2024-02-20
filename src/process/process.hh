@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "../core/types.hh"
+#include "../core/string.hh"
 
 #ifndef WIFEXITED
 #define WIFEXITED(w) ((w) & 0x7f)
@@ -177,7 +178,8 @@ namespace SSC {
     void close_stdin() noexcept;
     id_type open() noexcept {
       if (this->command.size() == 0) return 0;
-      auto pid = open(this->command + this->argv, this->path);
+      auto str = SSC::trim(this->command + " " + this->argv);
+      auto pid = open(str, this->path);
       read();
       return pid;
     }

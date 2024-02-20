@@ -4,7 +4,7 @@ namespace SSC {
   // 
   // TODO(@heapwolf): clean up all threads on process exit
   //
-  void Core::ChildProcess::kill (const String seq, uint64_t id, const int signal, Module::Callback cb) {
+  void Core::ChildProcess::kill (const String seq, uint64_t id, int signal, Module::Callback cb) {
     this->core->dispatchEventLoop([=, this] {
       if (!this->processes.contains(id)) {
         auto json = JSON::Object::Entries {
@@ -103,7 +103,7 @@ namespace SSC {
 
           cb("-1", json, post);
         },
-        [=, this](SSC::String const &code){
+        [=, this](SSC::String const &code) {
           this->processes.erase(id);
 
           auto json = JSON::Object::Entries {
@@ -111,14 +111,26 @@ namespace SSC {
             {"data", JSON::Object::Entries {
               {"id", std::to_string(id)},
               {"status", "exit"},
-              {"pid", p->id}
+              {"code", std::stoi(code)}
             }}
           };
 
           cb("-1", json, Post{});
 
           this->core->dispatchEventLoop([=, this] {
+            auto code = p->wait();
             delete p;
+
+            auto json = JSON::Object::Entries {
+              {"source", "child_process.spawn"},
+              {"data", JSON::Object::Entries {
+                {"id", std::to_string(id)},
+                {"status", "close"},
+                {"code", code}
+              }}
+            };
+
+            cb("-1", json, Post{});
           });
         }
       );
