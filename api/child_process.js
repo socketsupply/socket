@@ -37,8 +37,8 @@ class ChildProcess extends events.EventEmitter {
       if (data.method === 'state') {
         if (this.#state.pid !== data.args[0].pid) this.emit('spawn')
         Object.assign(this.#state, data.args[0])
-        if (this.#state.lifecycle == 'exit') this.emit('exit', this.#state.exitCode)
-        if (this.#state.lifecycle == 'close') this.emit('close', this.#state.exitCode)
+        if (this.#state.lifecycle === 'exit') this.emit('exit', this.#state.exitCode)
+        if (this.#state.lifecycle === 'close') this.emit('close', this.#state.exitCode)
       }
 
       if (data.method === 'exit') {
