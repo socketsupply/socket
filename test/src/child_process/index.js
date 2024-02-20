@@ -10,7 +10,7 @@ test('basic spawn', async t => {
 
   await new Promise((resolve, reject) => {
     const c = spawn(command, args, options)
-    
+
     c.stdout.on('data', data => {
       if (Buffer.from(data).toString().includes('child_process')) {
         hasDir = true
