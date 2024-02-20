@@ -259,15 +259,19 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
    
-    auto signal = message.get("signal");
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    int signal;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
 
     router->core->childProcess.kill(message.seq, id, signal, [message, reply](auto seq, auto json, auto post) {
       reply(Result { seq, message, json, post });
     });
   });
 
-  router->map("child_process.spwan", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"args", "cwd", "id"});
+  router->map("child_process.spawn", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"args", "id"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
