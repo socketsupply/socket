@@ -546,7 +546,6 @@ export const RESERVED_GLOBAL_INTRINSICS = [
   'chrome',
   'external',
   'postMessage',
-  'console',
   'globalThis',
   'Infinity',
   'NaN',
