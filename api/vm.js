@@ -26,7 +26,7 @@
 
 /* global ErrorEvent, EventTarget, MessagePort */
 import { maybeMakeError } from './ipc.js'
-import { SharedWorker } from './worker.js'
+import { SharedWorker } from './internal/shared-worker.js'
 import application from './application.js'
 import globals from './internal/globals.js'
 import process from './process.js'

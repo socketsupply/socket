@@ -71,7 +71,7 @@ function propagateWorkerError (err) {
   })
 }
 
-function onMainThreadMessage (event) {
+async function onMainThreadMessage (event) {
   const request = event.data?.worker_threads ?? {}
 
   if (request.workerData) {
@@ -156,16 +156,16 @@ function onMainThreadMessage (event) {
       })
     }
 
+    if (request.init.eval === true) {
+      state.url = ''
+      await vm.runInThisContext(request.init.url).catch(propagateWorkerError)
+    } else {
+      await import(state.url).catch(propagateWorkerError)
+    }
+
     globalThis.postMessage({
       worker_threads: { online: { id: state.id } }
     })
-
-    if (request.init.eval === true) {
-      state.url = ''
-      vm.runInThisContext(request.init.url).catch(propagateWorkerError)
-    } else {
-      import(state.url).catch(propagateWorkerError)
-    }
   }
 
   if (request.env && typeof request.env === 'object') {
