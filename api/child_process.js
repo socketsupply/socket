@@ -360,7 +360,7 @@ export function spawn (command, args = [], options = null) {
   }
 
   const child = new ChildProcess(options)
-  child.worker.on('online', () => child.spawn(command, args))
+  child.worker.on('online', () => child.spawn(command, args, options))
   // TODO signal
   // TODO timeout
   return child
