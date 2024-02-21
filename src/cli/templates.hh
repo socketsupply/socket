@@ -199,6 +199,7 @@ constexpr auto gHelloWorld = R"HTML(
       content="
         connect-src https: file: ipc: socket: ws://localhost:*;
         script-src https: socket: http://localhost:* 'unsafe-eval';
+        worker-src blob: socket: 'unsafe-eval' 'unsafe-inline';
         img-src https: data: file: http://localhost:*;
         child-src 'none';
         object-src 'none';
