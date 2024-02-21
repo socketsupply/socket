@@ -427,7 +427,7 @@ test('fs.readFile', async (t) => {
 test('fs.readlink', async (t) => {
   await new Promise((resolve, reject) => {
     const link = path.join(FIXTURES, 'link.txt')
-    fs.readlink(link, (resolvedPath) => {
+    fs.readlink(link, (_, resolvedPath) => {
       t.ok(resolvedPath.endsWith('/file.txt'), 'link path matches the actual path')
       return resolve()
     })
@@ -438,7 +438,7 @@ test('fs.readlink', async (t) => {
 test('fs.realpath', async (t) => {
   await new Promise((resolve, reject) => {
     const link = path.join(FIXTURES, 'link.txt')
-    fs.realpath(link, (resolvedPath) => {
+    fs.realpath(link, (_, resolvedPath) => {
       t.ok(resolvedPath.endsWith('/file.txt'), 'link path matches the actual path')
       return resolve()
     })

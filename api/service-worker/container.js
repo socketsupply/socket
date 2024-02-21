@@ -21,7 +21,7 @@ class ServiceWorkerContainerInternalState {
   currentWindow = null
   sharedWorker = null
   controller = null
-  channel = new BroadcastChannel('ServiceWorkerContainer')
+  channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new InvertedPromise()
 
   // level 1 events

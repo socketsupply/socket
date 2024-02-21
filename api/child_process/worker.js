@@ -1,6 +1,7 @@
-import ipc from '../ipc.js'
 import { parentPort } from '../worker_threads.js'
-import process from 'socket:process'
+import process from '../process.js'
+import signal from '../signal.js'
+import ipc from '../ipc.js'
 
 const state = {}
 
@@ -15,6 +16,17 @@ const propagateWorkerError = err => parentPort.postMessage({
   }
 })
 
+if (process.stdin) {
+  process.stdin.on('data', async (data) => {
+    const { id } = state
+    const result = await ipc.write('child_process.spawn', { id }, data)
+
+    if (result.err) {
+      propagateWorkerError(result.err)
+    }
+  })
+}
+
 parentPort.onmessage = async ({ data: { id, method, args } }) => {
   if (method === 'spawn') {
     const command = args[0]
@@ -24,15 +36,23 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
     const params = {
       args: [command, ...Array.from(argv ?? [])].join('\u0001'),
       id,
-      cwd: opts?.cwd ?? ''
+      cwd: opts?.cwd ?? '',
+      stdin: opts?.stdin !== false,
+      stdout: opts?.stdout !== false,
+      stderr: opts?.stderr !== false
     }
 
-    const { data, err } = await ipc.send('child_process.spawn', params)
+    const result = await ipc.send('child_process.spawn', params)
 
-    if (err) return propagateWorkerError(err)
+    if (result.err) {
+      return propagateWorkerError(result.err)
+    }
 
-    state.id = BigInt(data.id)
-    state.pid = data.pid
+    state.id = BigInt(result.data.id)
+    state.pid = result.data.pid
+    state.spawnfile = command
+    state.spawnargs = argv
+    state.lifecycle = 'spawn'
 
     parentPort.postMessage({ method: 'state', args: [state] })
 
@@ -47,11 +67,15 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
       if (!data || BigInt(data.id) !== state.id) return
 
       if (source === 'child_process.spawn' && data.source === 'stdout') {
-        process.stdout.write(buffer)
+        if (process.stdout) {
+          process.stdout.write(buffer)
+        }
       }
 
       if (source === 'child_process.spawn' && data.source === 'stderr') {
-        process.stderr.write(buffer)
+        if (process.stderr) {
+          process.stderr.write(buffer)
+        }
       }
 
       if (source === 'child_process.spawn' && data.status === 'close') {
@@ -66,5 +90,19 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
         parentPort.postMessage({ method: 'state', args: [state] })
       }
     })
+  }
+
+  if (method === 'kill') {
+    const result = await ipc.send('child_process.kill', {
+      id: state.id,
+      signal: signal.getCode(args[0])
+    })
+
+    if (result.err) {
+      return propagateWorkerError(result.err)
+    }
+
+    state.lifecycle = 'kill'
+    parentPort.postMessage({ method: 'state', args: [state] })
   }
 }

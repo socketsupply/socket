@@ -497,7 +497,6 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 import hooks, { RuntimeInitEvent } from '../hooks.js'
 import { config } from '../application.js'
 import globals from './globals.js'
-
 import '../console.js'
 
 class ConcurrentQueue extends EventTarget {
@@ -641,11 +640,17 @@ hooks.onLoad(async () => {
 // async preload modules
 hooks.onReady(async () => {
   try {
-    // precache fs.constants
+    // precache 'fs.constants' and 'os.constants'
     await ipc.request('fs.constants', {}, { cache: true })
+    await ipc.request('os.constants', {}, { cache: true })
     await import('../diagnostics.js')
+    await import('../signal.js')
     await import('../fs/fds.js')
-    await import('../fs/constants.js')
+    await import('../constants.js')
+    const errors = await import('../errors.js')
+    // lazily install this
+    const errno = await import('../errno.js')
+    errors.ErrnoError.errno = errno
   } catch (err) {
     console.error(err.stack || err)
   }

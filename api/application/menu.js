@@ -50,7 +50,7 @@ export class Menu extends EventTarget {
   constructor (type) {
     super()
     this.#type = type
-    this.#channel = new BroadcastChannel(`application.menu.${type}`)
+    this.#channel = new BroadcastChannel(`socket.runtime.application.menu.${type}`)
 
     this.#channel.addEventListener('message', (event) => {
       this.dispatchEvent(new MenuItemEvent('menuitem', event.data, this))

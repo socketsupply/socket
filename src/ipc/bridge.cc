@@ -252,32 +252,64 @@ static void initRouterTable (Router *router) {
     reply(Result { message.seq, message });
   });
 
+  /**
+   * Kills an already spawned child process.
+   *
+   * @param id
+   * @param signal
+   */
   router->map("child_process.kill", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"signal"});
+  #if SSC_PLATFORM_MOBILE
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"}
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"id", "signal"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
-   
+
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     int signal;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "signal", std::stoi);
 
-    router->core->childProcess.kill(message.seq, id, signal, [message, reply](auto seq, auto json, auto post) {
-      reply(Result { seq, message, json, post });
-    });
+    router->core->childProcess.kill(
+      message.seq,
+      id,
+      signal,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  #endif
   });
 
+  /**
+   * Spawns a child process
+   *
+   * @param id
+   * @param args (command, ...args)
+   */
   router->map("child_process.spawn", [](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_MOBILE
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"}
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
     auto err = validateMessageParameters(message, {"args", "id"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto args = split(message.get("args"), 0x001);
+    auto args = split(message.get("args"), 0x0001);
 
     if (args.size() == 0 || args.at(0).size() == 0) {
       auto json = JSON::Object::Entries {
@@ -293,11 +325,56 @@ static void initRouterTable (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    auto cwd = message.get("cwd", getcwd());
+    const auto options = Core::ChildProcess::SpawnOptions {
+      .cwd = message.get("cwd", getcwd()),
+      .stdin = message.get("stdin") != "false",
+      .stdout = message.get("stdout") != "false",
+      .stderr = message.get("stderr") != "false"
+    };
 
-    router->core->childProcess.spawn(message.seq, id, cwd, args, [message, reply](auto seq, auto json, auto post) {
-      reply(Result { seq, message, json, post });
-    });
+    router->core->childProcess.spawn(
+      message.seq,
+      id,
+      args,
+      options,
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
+    );
+  #endif
+  });
+
+  /**
+   * Writes to an already spawned child process.
+   *
+   * @param id
+   */
+  router->map("child_process.write", [](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_MOBILE
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"}
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->childProcess.write(
+      message.seq,
+      id,
+      message.buffer.bytes,
+      message.buffer.size,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  #endif
   });
 
   /**
@@ -1706,6 +1783,13 @@ static void initRouterTable (Router *router) {
       buffer,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
+  });
+
+  /**
+   * Returns a mapping of operating  system constants.
+   */
+  router->map("os.constants", [](auto message, auto router, auto reply) {
+    router->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
