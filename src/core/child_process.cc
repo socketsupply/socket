@@ -28,7 +28,7 @@ namespace SSC {
       #ifdef _WIN32
         process->kill();
       #else
-        ::kill(process->id, signal);
+        ::kill(-process->id, signal);
       #endif
 
       cb(seq, JSON::Object{}, Post{});
