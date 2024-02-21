@@ -188,8 +188,54 @@ export class MenuItemEvent extends MessageEvent {
   }
 }
 
+/**
+ * An event dispacted when the application receives an OS signal
+ */
+export class SignalEvent extends MessageEvent {
+  #code = 0
+  #name = ''
+  #message = ''
+
+  /**
+   * `SignalEvent` class constructor
+   * @ignore
+   * @param {string=} [type]
+   * @param {object=} [options]
+   */
+  constructor (type, options) {
+    super(type, options)
+    this.#code = options?.code ?? 0
+    this.#name = type
+    this.#message = options?.message ?? ''
+  }
+
+  /**
+   * The code of the signal.
+   * @type {import('../signal.js').signal}
+   */
+  get code () {
+    return this.#code ?? 0
+  }
+
+  /**
+   * The name of the signal.
+   * @type {string}
+   */
+  get name () {
+    return this.#name
+  }
+
+  /**
+   * An optional message describing the signal
+   * @type {string}
+   */
+  get message () {
+    return this.#message ?? ''
+  }
+}
 export default {
   ApplicationURLEvent,
   MenuItemEvent,
+  SignalEvent,
   HotKeyEvent
 }

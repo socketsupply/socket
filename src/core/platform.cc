@@ -1,3 +1,4 @@
+#include "core.hh"
 #include "platform.hh"
 
 namespace SSC {
@@ -69,4 +70,255 @@ namespace SSC {
     .unix = true
   #endif
   };
+
+  void Core::Platform::event (
+    const String seq,
+    const String event,
+    const String data,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      // init page
+      if (event == "domcontentloaded") {
+        Lock lock(this->core->fs.mutex);
+
+        for (auto const &tuple : this->core->fs.descriptors) {
+          auto desc = tuple.second;
+          if (desc != nullptr) {
+            desc->stale = true;
+          } else {
+            this->core->fs.descriptors.erase(tuple.first);
+          }
+        }
+
+        #if !defined(__ANDROID__)
+        for (auto const &tuple : this->core->fs.watchers) {
+          auto watcher = tuple.second;
+          if (watcher != nullptr) {
+            watcher->stop();
+            delete watcher;
+          }
+        }
+
+        this->core->fs.watchers.clear();
+        #endif
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "platform.event"},
+        {"data", JSON::Object::Entries{}}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
+
+  void Core::Platform::notify (
+    const String seq,
+    const String title,
+    const String body,
+    Module::Callback cb
+  ) {
+#if defined(__APPLE__)
+    auto center = [UNUserNotificationCenter currentNotificationCenter];
+    auto content = [[UNMutableNotificationContent alloc] init];
+    content.body = [NSString stringWithUTF8String: body.c_str()];
+    content.title = [NSString stringWithUTF8String: title.c_str()];
+    content.sound = [UNNotificationSound defaultSound];
+
+    auto trigger = [UNTimeIntervalNotificationTrigger
+      triggerWithTimeInterval: 1.0f
+                      repeats: NO
+    ];
+
+    auto request = [UNNotificationRequest
+      requestWithIdentifier: @"LocalNotification"
+                    content: content
+                    trigger: trigger
+    ];
+
+    auto options = (
+      UNAuthorizationOptionAlert |
+      UNAuthorizationOptionBadge |
+      UNAuthorizationOptionSound
+    );
+
+    [center requestAuthorizationWithOptions: options
+                          completionHandler: ^(BOOL granted, NSError* error)
+    {
+      #if !__has_feature(objc_arc)
+      [content release];
+      [trigger release];
+      #endif
+
+      if (granted) {
+        auto json = JSON::Object::Entries {
+          {"source", "platform.notify"},
+          {"data", JSON::Object::Entries {}}
+        };
+
+        cb(seq, json, Post{});
+      } else if (error) {
+        [center addNotificationRequest: request
+                 withCompletionHandler: ^(NSError* error)
+        {
+          auto json = JSON::Object {};
+
+          #if !__has_feature(objc_arc)
+          [request release];
+          #endif
+
+          if (error) {
+            json = JSON::Object::Entries {
+              {"source", "platform.notify"},
+              {"err", JSON::Object::Entries {
+                {"message", [error.debugDescription UTF8String]}
+              }}
+            };
+
+            debug("Unable to create notification: %@", error.debugDescription);
+          } else {
+            json = JSON::Object::Entries {
+              {"source", "platform.notify"},
+              {"data", JSON::Object::Entries {}}
+            };
+          }
+
+         cb(seq, json, Post{});
+        }];
+      } else {
+        auto json = JSON::Object::Entries {
+          {"source", "platform.notify"},
+          {"err", JSON::Object::Entries {
+            {"message", "Failed to create notification"}
+          }}
+        };
+
+        cb(seq, json, Post{});
+      }
+
+      if (!error || granted) {
+        #if !__has_feature(objc_arc)
+        [request release];
+        #endif
+      }
+    }];
+#endif
+  }
+
+  void Core::Platform::openExternal (
+    const String seq,
+    const String value,
+    Module::Callback cb
+  ) {
+#if defined(__APPLE__)
+    auto string = [NSString stringWithUTF8String: value.c_str()];
+    auto url = [NSURL URLWithString: string];
+
+    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    auto app = [UIApplication sharedApplication];
+    [app openURL: url options: @{} completionHandler: ^(BOOL success) {
+      auto json = JSON::Object {};
+
+      if (!success) {
+        json = JSON::Object::Entries {
+          {"source", "platform.openExternal"},
+          {"err", JSON::Object::Entries {
+            {"message", "Failed to open external URL"}
+          }}
+        };
+      } else {
+        json = JSON::Object::Entries {
+          {"source", "platform.openExternal"},
+          {"data", JSON::Object::Entries {}}
+        };
+      }
+
+      cb(seq, json, Post{});
+    }];
+    #else
+    auto workspace = [NSWorkspace sharedWorkspace];
+    auto configuration = [NSWorkspaceOpenConfiguration configuration];
+    [workspace openURL: url
+         configuration: configuration
+     completionHandler: ^(NSRunningApplication *app, NSError *error)
+    {
+       auto json = JSON::Object {};
+       if (error) {
+         json = JSON::Object::Entries {
+           {"source", "platform.openExternal"},
+           {"err", JSON::Object::Entries {
+             {"message", [error.debugDescription UTF8String]}
+           }}
+         };
+       } else {
+        json = JSON::Object::Entries {
+          {"source", "platform.openExternal"},
+          {"data", JSON::Object::Entries {}}
+        };
+       }
+
+      cb(seq, json, Post{});
+    }];
+    #endif
+#elif defined(__linux__) && !defined(__ANDROID__)
+    auto list = gtk_window_list_toplevels();
+    auto json = JSON::Object {};
+
+    // initial state is a failure
+    json = JSON::Object::Entries {
+      {"source", "platform.openExternal"},
+      {"err", JSON::Object::Entries {
+        {"message", "Failed to open external URL"}
+      }}
+    };
+
+    if (list != nullptr) {
+      for (auto entry = list; entry != nullptr; entry = entry->next) {
+        auto window = GTK_WINDOW(entry->data);
+
+        if (window != nullptr && gtk_window_is_active(window)) {
+          auto err = (GError*) nullptr;
+          auto uri = value.c_str();
+          auto ts = GDK_CURRENT_TIME;
+
+          /**
+           * GTK may print a error in the terminal that looks like:
+           *
+           *   libva error: vaGetDriverNameByIndex() failed with unknown libva error, driver_name = (null)
+           *
+           * It doesn't prevent the URI from being opened.
+           * See https://github.com/intel/media-driver/issues/1349 for more info
+           */
+          auto success = gtk_show_uri_on_window(window, uri, ts, &err);
+
+          if (success) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"data", JSON::Object::Entries {}}
+            };
+          } else if (err != nullptr) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"err", JSON::Object::Entries {
+                {"message", err->message}
+              }}
+            };
+          }
+
+          break;
+        }
+      }
+
+      g_list_free(list);
+    }
+
+    cb(seq, json, Post{});
+#elif defined(_WIN32)
+    auto uri = value.c_str();
+    ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
+    // TODO how to detect success here. do we care?
+    cb(seq, JSON::Object{}, Post{});
+#endif
+  }
 }

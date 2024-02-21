@@ -8,6 +8,7 @@
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
+import signal from './signal.js'
 import os from './os.js'
 
 let didEmitExitEvent = false
@@ -123,6 +124,24 @@ const process = isNode
 if (!isNode) {
   EventEmitter.call(process)
 }
+
+signal.channel.addEventListener('message', (event) => {
+  if (event.data.signal) {
+    const code = event.data.signal
+    const name = signal.getName(code)
+    const message = signal.getMessage(code)
+    process.emit(name, name, code, message)
+  }
+})
+
+globalThis.addEventListener('signal', (event) => {
+  if (event.detail.signal) {
+    const code = event.detail.signal
+    const name = signal.getName(code)
+    const message = signal.getMessage(code)
+    process.emit(name, name, code, message)
+  }
+})
 
 export default process
 

@@ -12,7 +12,10 @@
 
 import ipc, { primordials } from './ipc.js'
 import { toProperCase } from './util.js'
+import constants from './os/constants.js'
 import { HOME } from './path/well-known.js'
+
+export { constants }
 
 const UNKNOWN = 'unknown'
 

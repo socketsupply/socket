@@ -34,7 +34,7 @@ export class Bindings extends EventTarget {
    * @ignore
    * @type {BroadcastChannel}
    */
-  #channel = new BroadcastChannel('window.hotkey.bindings')
+  #channel = new BroadcastChannel('socket.runtime.window.hotkey.bindings')
 
   /**
    * The source `EventTarget` to listen for 'hotkey' events on

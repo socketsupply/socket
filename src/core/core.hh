@@ -627,6 +627,7 @@ namespace SSC {
           static const int SEND_BUFFER = 0;
 
           OS (auto core) : Module(core) {}
+          void constants (const String seq, Module::Callback cb);
           void bufferSize (
             const String seq,
             uint64_t peerId,
@@ -683,14 +684,45 @@ namespace SSC {
           );
       };
 
+    #if SSC_PLATFORM_DESKTOP
       class ChildProcess : public Module {
         public:
-          ChildProcess (auto core) : Module(core) {}
-          std::map<uint64_t, Process*> processes;
+          using Handles = std::map<uint64_t, Process*>;
+          struct SpawnOptions {
+            String cwd;
+            bool stdin = true;
+            bool stdout = true;
+            bool stderr = true;
+          };
 
-          void kill (const String seq, uint64_t id, const int signal, Module::Callback cb);
-          void spawn (const String seq, uint64_t id, const String cwd, Vector<String> args, Module::Callback cb);
+          Handles handles;
+          Mutex mutex;
+
+          ChildProcess (auto core) : Module(core) {}
+          void spawn (
+            const String seq,
+            uint64_t id,
+            const Vector<String> args,
+            const SpawnOptions options,
+            Module::Callback cb
+          );
+
+          void kill (
+            const String seq,
+            uint64_t id,
+            int signal,
+            Module::Callback cb
+          );
+
+          void write (
+            const String seq,
+            uint64_t id,
+            char* buffer,
+            size_t size,
+            Module::Callback cb
+          );
       };
+    #endif
 
       class UDP : public Module {
         public:

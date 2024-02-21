@@ -14,6 +14,8 @@ import symbols from './symbols.js'
 
 import {
   ApplicationURLEvent,
+  MenuItemEvent,
+  SignalEvent,
   HotKeyEvent
 } from './events.js'
 
@@ -181,6 +183,8 @@ export function init () {
 
     // events
     ApplicationURLEvent,
+    MenuItemEvent,
+    SignalEvent,
     HotKeyEvent,
 
     // file
