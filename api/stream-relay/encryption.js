@@ -67,6 +67,9 @@ export class Encryption {
    * @param {Uint8Array} privateKey - Private key.
    */
   add (publicKey, privateKey) {
+    if (!publicKey) throw new Error('encryption.add expects publicKey')
+    if (!privateKey) throw new Error('encryption.add expects privateKey')
+
     const to = Buffer.from(publicKey).toString('base64')
     this.keys[to] = { publicKey, privateKey, ts: Date.now() }
   }
@@ -118,7 +121,35 @@ export class Encryption {
   }
 
   /**
-   * Decrypts a sealed message for a specific receiver.
+   * Opens a sealed message using the specified key.
+   * @param {Buffer} message - The sealed message.
+   * @param {Object|string} v - Key object or public key.
+   * @returns {Buffer} - Decrypted message.
+   * @throws {Error} - Throws ENOKEY if the key is not found.
+   */
+  openUnsigned (message, v) {
+    if (typeof v === 'string') v = this.keys[v]
+    if (!v) throw new Error(`ENOKEY (key=${v})`)
+
+    const pk = toPK(v.publicKey)
+    const sk = toSK(v.privateKey)
+    return Buffer.from(sodium.crypto_box_seal_open(message, pk, sk))
+  }
+
+  sealUnsigned (message, v) {
+    if (typeof v === 'string') v = this.keys[v]
+    if (!v) throw new Error(`ENOKEY (key=${v})`)
+
+    this.add(v.publicKey, v.privateKey)
+
+    const pk = toPK(v.publicKey)
+    const pt = toUint8Array(message)
+    const ct = sodium.crypto_box_seal(pt, pk)
+    return sodium.crypto_box_seal(toUint8Array(ct), pk)
+  }
+
+  /**
+   * Decrypts a sealed and signed message for a specific receiver.
    * @param {Buffer} message - The sealed message.
    * @param {Object|string} v - Key object or public key.
    * @returns {Buffer} - Decrypted message.
@@ -147,23 +178,7 @@ export class Encryption {
   }
 
   /**
-   * Opens a sealed message using the specified key.
-   * @param {Buffer} message - The sealed message.
-   * @param {Object|string} v - Key object or public key.
-   * @returns {Buffer} - Decrypted message.
-   * @throws {Error} - Throws ENOKEY if the key is not found.
-   */
-  openMessage (message, v) {
-    if (typeof v === 'string') v = this.keys[v]
-    if (!v) throw new Error(`ENOKEY (key=${v})`)
-
-    const pk = toPK(v.publicKey)
-    const sk = toSK(v.privateKey)
-    return Buffer.from(sodium.crypto_box_seal_open(message, pk, sk))
-  }
-
-  /**
-   * Seals a message for a specific receiver using their public key.
+   * Seals and signs a message for a specific receiver using their public key.
    *
    * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
    * a plaintext `message` for a `receiver` identity. This prevents repudiation

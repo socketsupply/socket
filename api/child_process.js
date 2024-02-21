@@ -31,7 +31,7 @@ class ChildProcess extends EventEmitter {
     pid: 0
   }
 
-  constructor (options) {
+  constructor (options = {}) {
     super()
 
     //
