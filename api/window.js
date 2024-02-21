@@ -47,7 +47,7 @@ export class ApplicationWindow {
     this.#id = options?.id
     this.#index = index
     this.#options = options
-    this.#channel = new BroadcastChannel(`window.${this.#id}`)
+    this.#channel = new BroadcastChannel(`socket.runtime.window.${this.#id}`)
   }
 
   #updateOptions (response) {

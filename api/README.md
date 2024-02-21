@@ -1071,7 +1071,7 @@ Reads link at `path`
 | path | string |  | false |  |
 | callback | function(err, string) |  | false |  |
 
-## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L905)
+## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L906)
 
 Computes real path for `path`
 
@@ -1080,7 +1080,7 @@ Computes real path for `path`
 | path | string |  | false |  |
 | callback | function(err, string) |  | false |  |
 
-## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L925)
+## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L926)
 
 Renames file or directory at `src` to `dest`.
 
@@ -1090,7 +1090,7 @@ Renames file or directory at `src` to `dest`.
 | dest | string |  | false |  |
 | callback | function |  | false |  |
 
-## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L948)
+## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L949)
 
 Removes directory at `path`.
 
@@ -1099,7 +1099,7 @@ Removes directory at `path`.
 | path | string |  | false |  |
 | callback | function |  | false |  |
 
-## [`statSync(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L969)
+## [`statSync(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L970)
 
 Synchronously get the stats of a file
 
@@ -1110,7 +1110,7 @@ Synchronously get the stats of a file
 | options.encoding ? utf8 | string? |  | true |  |
 | options.flag ? r | string? |  | true |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L988)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L989)
 
 Get the stats of a file
 
@@ -1123,7 +1123,7 @@ Get the stats of a file
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`lstat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1026)
+## [`lstat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1027)
 
 Get the stats of a symbolic link
 
@@ -1136,7 +1136,7 @@ Get the stats of a symbolic link
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?, Stats?) |  | false |  |
 
-## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1060)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1061)
 
 Creates a symlink of `src` at `dest`.
 
@@ -1145,7 +1145,7 @@ Creates a symlink of `src` at `dest`.
 | src | string |  | false |  |
 | dest | string |  | false |  |
 
-## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1101)
+## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1102)
 
 Unlinks (removes) file at `path`.
 
@@ -1154,7 +1154,7 @@ Unlinks (removes) file at `path`.
 | path | string |  | false |  |
 | callback | function |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1126)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1127)
 
 
 
@@ -1169,7 +1169,7 @@ Unlinks (removes) file at `path`.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
 
-## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1171)
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1172)
 
 Watch for changes at `path` calling `callback`
 
@@ -1545,12 +1545,12 @@ Watch for changes at `path` calling `callback`
  import { send } from 'socket:ipc'
  ```
 
-## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L298)
+## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L299)
 
 This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1101)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1104)
 
 Emit event to be dispatched on `window` object.
 
@@ -1561,7 +1561,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1160)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1163)
 
 Sends an async IPC command request with parameters.
 
@@ -1603,7 +1603,7 @@ External docs: https://socketsupply.co/guides/#p2p-guide
  import { arch, platform } from 'socket:os'
  ```
 
-## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L57)
+## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L60)
 
 Returns the operating system CPU architecture for which Socket was compiled.
 
@@ -1611,7 +1611,7 @@ Returns the operating system CPU architecture for which Socket was compiled.
 | :---         | :--- | :---        |
 | Not specified | string | 'arm64', 'ia32', 'x64', or 'unknown' |
 
-## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L75)
+## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L78)
 
 External docs: https://nodejs.org/api/os.html#os_os_cpus
 Returns an array of objects containing information about each CPU/core.
@@ -1629,7 +1629,7 @@ Returns an array of objects containing information about each CPU/core.
 | :---         | :--- | :---        |
 | cpus | Array<object> | An array of objects containing information about each CPU/core. |
 
-## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L99)
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L102)
 
 External docs: https://nodejs.org/api/os.html#os_os_networkinterfaces
 Returns an object containing network interfaces that have been assigned a network address.
@@ -1647,7 +1647,7 @@ Returns an object containing network interfaces that have been assigned a networ
 | :---         | :--- | :---        |
 | Not specified | object | An object containing network interfaces that have been assigned a network address. |
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L187)
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L190)
 
 External docs: https://nodejs.org/api/os.html#os_os_platform
 Returns the operating system platform.
@@ -1657,7 +1657,7 @@ Returns the operating system platform.
 | :---         | :--- | :---        |
 | Not specified | string | 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown' |
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L196)
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L199)
 
 External docs: https://nodejs.org/api/os.html#os_os_type
 Returns the operating system name.
@@ -1666,7 +1666,7 @@ Returns the operating system name.
 | :---         | :--- | :---        |
 | Not specified | string | 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown' |
 
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L235)
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L238)
 
 
 
@@ -1674,7 +1674,7 @@ Returns the operating system name.
 | :---         | :--- | :---        |
 | Not specified | boolean | `true` if the operating system is Windows. |
 
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L247)
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L250)
 
 
 
@@ -1682,15 +1682,15 @@ Returns the operating system name.
 | :---         | :--- | :---        |
 | Not specified | string | The operating system's default directory for temporary files. |
 
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L295)
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L298)
 
  The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
 
-## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L307)
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L310)
 
 Get resource usage.
 
-## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L317)
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L320)
 
 Returns the system uptime in seconds.
 
@@ -1698,7 +1698,7 @@ Returns the system uptime in seconds.
 | :---         | :--- | :---        |
 | Not specified | number | The system uptime in seconds. |
 
-## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L328)
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L331)
 
 Returns the operating system name.
 
@@ -1706,7 +1706,7 @@ Returns the operating system name.
 | :---         | :--- | :---        |
 | Not specified | string | The operating system name. |
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L386)
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L389)
 
 Returns the home directory of the current user.
 
@@ -1954,17 +1954,17 @@ Converts this `Path` instance to a string.
  import process from 'socket:process'
  ```
 
-## [`ProcessEnvironmentEvent` (extends `Event`)](https://github.com/socketsupply/socket/blob/master/api/process.js#L15)
+## [`ProcessEnvironmentEvent` (extends `Event`)](https://github.com/socketsupply/socket/blob/master/api/process.js#L16)
 
 This is a `ClassDeclaration` named ``ProcessEnvironmentEvent` (extends `Event`)` in `api/process.js`, it's exported but undocumented.
 
 
-## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L23)
+## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L24)
 
 This is a `VariableDeclaration` named `env` in `api/process.js`, it's exported but undocumented.
 
 
-## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L133)
+## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L152)
 
 Adds callback to the 'nextTick' queue.
 
@@ -1972,7 +1972,7 @@ Adds callback to the 'nextTick' queue.
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | Function |  | false |  |
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L164)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L183)
 
 Computed high resolution time as a `BigInt`.
 
@@ -1984,7 +1984,7 @@ Computed high resolution time as a `BigInt`.
 | :---         | :--- | :---        |
 | Not specified | bigint |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L190)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L209)
 
 
 
@@ -1992,7 +1992,7 @@ Computed high resolution time as a `BigInt`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | code | number | 0 | true | The exit code. Default: 0. |
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L202)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L221)
 
 Returns an object describing the memory usage of the Node.js process measured in bytes.
 

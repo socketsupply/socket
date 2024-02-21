@@ -2,7 +2,7 @@
 import application from '../application.js'
 import ipc from '../ipc.js'
 
-export const channel = new BroadcastChannel('serviceWorker.state')
+export const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
 
 const descriptors = {
   channel: {

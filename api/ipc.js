@@ -37,6 +37,7 @@
 import {
   AbortError,
   InternalError,
+  ErrnoError,
   TimeoutError
 } from './errors.js'
 
@@ -331,7 +332,9 @@ export function maybeMakeError (error, caller) {
 
   delete error.type
 
-  if (type in errors) {
+  if (code && ErrnoError.errno?.constants && -code in ErrnoError.errno.strings) {
+    err = new ErrnoError(-code)
+  } else if (type in errors) {
     err = new errors[type](error.message || '', error.code)
   } else {
     for (const E of Object.values(errors)) {

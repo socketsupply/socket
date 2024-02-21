@@ -1,12 +1,17 @@
 #include "core.hh"
 
+#if SSC_PLATFORM_DESKTOP
 namespace SSC {
-  // 
-  // TODO(@heapwolf): clean up all threads on process exit
-  //
-  void Core::ChildProcess::kill (const String seq, uint64_t id, int signal, Module::Callback cb) {
+  void Core::ChildProcess::kill (
+    const String seq,
+    uint64_t id,
+    int signal,
+    Module::Callback cb
+  ) {
     this->core->dispatchEventLoop([=, this] {
-      if (!this->processes.contains(id)) {
+      Lock lock(mutex);
+
+      if (!this->handles.contains(id)) {
         auto json = JSON::Object::Entries {
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
@@ -18,23 +23,29 @@ namespace SSC {
         return cb(seq, json, Post{});
       }
 
-      auto p = this->processes.at(id);
+      auto process = this->handles.at(id);
 
       #ifdef _WIN32
-        p->kill();
+        process->kill();
       #else
-        ::kill(p->id, signal);
+        ::kill(process->id, signal);
       #endif
 
       cb(seq, JSON::Object{}, Post{});
     });
   }
 
-  void Core::ChildProcess::spawn (const String seq, uint64_t id, const String cwd, Vector<String> args, Module::Callback cb) {
+  void Core::ChildProcess::spawn (
+    const String seq,
+    uint64_t id,
+    const Vector<String> args,
+    const SpawnOptions options,
+    Module::Callback cb
+  ) {
     this->core->dispatchEventLoop([=, this] {
-      auto command = args.at(0);
+      Lock lock(mutex);
 
-      if (this->processes.contains(id)) {
+      if (this->handles.contains(id)) {
         auto json = JSON::Object::Entries {
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
@@ -45,101 +56,126 @@ namespace SSC {
         return cb(seq, json, Post{});
       }
 
+      Process* process = nullptr;
+
+      const auto command = args.size() > 0 ? args.at(0) : String("");
       const auto argv = join(args.size() > 1 ? Vector<String>{ args.begin() + 1, args.end() } : Vector<String>{}, " ");
 
-      Process* p = new Process(
+      const auto onStdout = [=](const String& output) {
+        if (!options.stdout || output.size() == 0) {
+          return;
+        }
+
+        const auto bytes = new char[output.size()]{0};
+        const auto headers = Headers {{
+          {"content-type" ,"application/octet-stream"},
+          {"content-length", (int) output.size()}
+        }};
+
+        memcpy(bytes, output.c_str(), output.size());
+
+        Post post;
+        post.id = rand64();
+        post.body = bytes;
+        post.length = (int) output.size();
+        post.headers = headers.str();
+
+        const auto json = JSON::Object::Entries {
+          {"source", "child_process.spawn"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"source", "stdout"}
+          }}
+        };
+
+        cb("-1", json, post);
+      };
+
+      const auto onStderr = [=](const String& output) {
+        if (!options.stderr || output.size() == 0) {
+          return;
+        }
+
+        const auto bytes = new char[output.size()]{0};
+        const auto headers = Headers {{
+          {"content-type" ,"application/octet-stream"},
+          {"content-length", (int) output.size()}
+        }};
+
+        memcpy(bytes, output.c_str(), output.size());
+
+        Post post;
+        post.id = rand64();
+        post.body = bytes;
+        post.length = (int) output.size();
+        post.headers = headers.str();
+
+        const auto json = JSON::Object::Entries {
+          {"source", "child_process.spawn"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"source", "stderr"}
+          }}
+        };
+
+        cb("-1", json, post);
+      };
+
+      const auto onExit = [=, this](const String& output) {
+        const auto code = output.size() > 0 ? std::stoi(output) : 0;
+        const auto json = JSON::Object::Entries {
+          {"source", "child_process.spawn"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"status", "exit"},
+            {"code", code}
+          }}
+        };
+
+        cb("-1", json, Post{});
+
+        this->core->dispatchEventLoop([=, this] {
+          Lock lock(mutex);
+          if (this->handles.contains(id)) {
+            auto process = this->handles.at(id);
+            this->handles.erase(id);
+
+            const auto code = process->wait();
+
+            delete process;
+
+            this->core->dispatchEventLoop([=, this] {
+              const auto json = JSON::Object::Entries {
+                {"source", "child_process.spawn"},
+                {"data", JSON::Object::Entries {
+                  {"id", std::to_string(id)},
+                  {"status", "close"},
+                  {"code", code}
+                }}
+              };
+              cb("-1", json, Post{});
+            });
+          }
+        });
+      };
+
+      process = new Process(
         command,
         argv,
-        cwd,
-        [=](SSC::String const &out) {
-          Post post;
-
-          auto bytes = new char[out.size()]{0};
-          memcpy(bytes, out.c_str(), out.size());
-
-          auto headers = Headers {{
-            {"content-type" ,"application/octet-stream"},
-            {"content-length", (int) out.size()}
-          }};
-
-          post.id = rand64();
-          post.body = bytes;
-          post.length = (int) out.size();
-          post.headers = headers.str();
-
-          auto json = JSON::Object::Entries {
-            {"source", "child_process.spawn"},
-            {"data", JSON::Object::Entries {
-              {"id", std::to_string(id)},
-              {"source", "stdout" }
-            }}
-          };
-
-          cb("-1", json, post);
-        },
-        [=](SSC::String const &out) {
-          Post post;
-
-          auto bytes = new char[out.size()]{0};
-          memcpy(bytes, out.c_str(), out.size());
-
-          auto headers = Headers {{
-            {"content-type" ,"application/octet-stream"},
-            {"content-length", (int) out.size()}
-          }};
-
-          post.id = rand64();
-          post.body = bytes;
-          post.length = (int) out.size();
-          post.headers = headers.str();
-
-          auto json = JSON::Object::Entries {
-            {"source", "child_process.spawn"},
-            {"data", JSON::Object::Entries {
-              {"id", std::to_string(id)},
-              {"source", "stderr" }
-            }}
-          };
-
-          cb("-1", json, post);
-        },
-        [=, this](SSC::String const &code) {
-          this->processes.erase(id);
-
-          auto json = JSON::Object::Entries {
-            {"source", "child_process.spawn"},
-            {"data", JSON::Object::Entries {
-              {"id", std::to_string(id)},
-              {"status", "exit"},
-              {"code", std::stoi(code)}
-            }}
-          };
-
-          cb("-1", json, Post{});
-
-          this->core->dispatchEventLoop([=, this] {
-            auto code = p->wait();
-            delete p;
-
-            auto json = JSON::Object::Entries {
-              {"source", "child_process.spawn"},
-              {"data", JSON::Object::Entries {
-                {"id", std::to_string(id)},
-                {"status", "close"},
-                {"code", code}
-              }}
-            };
-
-            cb("-1", json, Post{});
-          });
-        }
+        options.cwd,
+        onStdout,
+        onStderr,
+        onExit,
+        options.stdin
       );
 
-      this->processes.insert_or_assign(id, p);
+      do {
+        Lock lock(mutex);
+        this->handles.insert_or_assign(id, process);
+      } while (0);
 
-      auto pid = p->open();
-      
-      auto json = JSON::Object::Entries {
+      const auto pid = process->open();
+      const auto json = JSON::Object::Entries {
         {"source", "child_process.spawn"},
         {"data", JSON::Object::Entries {
           {"id", std::to_string(id)},
@@ -150,4 +186,77 @@ namespace SSC {
       cb(seq, json, Post{});
     });
   }
+
+  void Core::ChildProcess::write (
+    const String seq,
+    uint64_t id,
+    char* buffer,
+    size_t size,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this] {
+      Lock lock(mutex);
+
+      if (!this->handles.contains(id)) {
+        auto json = JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"type", "NotFoundError"},
+            {"message", "A process with that id does not exist"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      bool didWrite = false;
+
+      auto process = this->handles.at(id);
+
+      if (!process->open_stdin) {
+        auto json = JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"type", "NotSupportedError"},
+            {"message", "Child process stdin is not opened"}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      try {
+        didWrite = process->write(buffer, size);
+      } catch (std::exception& e) {
+        const auto json = JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"type", "InternalError"},
+            {"message", e.what()}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      if (!didWrite) {
+        const auto json = JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"type", process->lastWriteStatus != 0 ? "ErrnoError" : "InternalError"},
+            {"message", process->lastWriteStatus != 0 ? strerror(process->lastWriteStatus) : "Failed to write to child process"}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      cb(seq, JSON::Object{}, Post{});
+      return;
+    });
+  }
 }
+#endif

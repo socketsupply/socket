@@ -204,7 +204,7 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
 }
 
 Process::id_type Process::open(const SSC::String &command, const SSC::String &path) noexcept {
-  return open([&command, &path] {
+  return open([&command, &path, this] {
     auto command_c_str = command.c_str();
     SSC::String cd_path_and_command;
 
@@ -213,7 +213,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       size_t pos = 0;
 
       // Based on https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxsxyb7
-      while((pos = path_escaped.find('\'', pos)) != SSC::String::npos) {
+      while ((pos = path_escaped.find('\'', pos)) != SSC::String::npos) {
         path_escaped.replace(pos, 1, "'\\''");
         pos += 4;
       }
@@ -222,7 +222,11 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       command_c_str = cd_path_and_command.c_str();
     }
 
-    return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
+    if (this->shell.size() > 0) {
+      return execl(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, nullptr);
+    } else {
+      return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
+    }
   });
 }
 
@@ -341,11 +345,18 @@ void Process::close_fds() noexcept {
 bool Process::write(const char *bytes, size_t n) {
   std::lock_guard<std::mutex> lock(stdin_mutex);
 
+  this->lastWriteStatus = 0;
+
   if (stdin_fd) {
     SSC::String b(bytes);
 
     while (true && (b.size() > 0)) {
       int bytesWritten = ::write(*stdin_fd, b.c_str(), b.size());
+
+      if (bytesWritten == -1) {
+        this->lastWriteStatus = errno;
+        return false;
+      }
 
       if (bytesWritten >= b.size()) {
         break;
@@ -355,6 +366,12 @@ bool Process::write(const char *bytes, size_t n) {
     }
 
     int bytesWritten = ::write(*stdin_fd, "\n", 1);
+    if (bytesWritten == -1) {
+      this->lastWriteStatus = errno;
+      return false;
+    }
+
+    return true;
   }
 
   return false;

@@ -1,316 +1,3 @@
-declare module "socket:errors" {
-    export default exports;
-    export const ABORT_ERR: any;
-    export const ENCODING_ERR: any;
-    export const INVALID_ACCESS_ERR: any;
-    export const INDEX_SIZE_ERR: any;
-    export const NETWORK_ERR: any;
-    export const NOT_ALLOWED_ERR: any;
-    export const NOT_FOUND_ERR: any;
-    export const NOT_SUPPORTED_ERR: any;
-    export const OPERATION_ERR: any;
-    export const SECURITY_ERR: any;
-    export const TIMEOUT_ERR: any;
-    /**
-     * An `AbortError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `AbortSignal` instance.
-     */
-    export class AbortError extends Error {
-        /**
-         * The code given to an `ABORT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `AbortError` class constructor.
-         * @param {AbortSignal|string} reasonOrSignal
-         * @param {AbortSignal=} [signal]
-         */
-        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
-        signal: AbortSignal;
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `BadRequestSignal` instance.
-     */
-    export class BadRequestError extends Error {
-        /**
-         * The default code given to a `BadRequestError`
-         */
-        static get code(): number;
-        /**
-         * `BadRequestError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `EncodingError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class EncodingError extends Error {
-        /**
-         * The code given to an `ENCODING_ERR` `DOMException`.
-         */
-        static get code(): any;
-        /**
-         * `EncodingError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class FinalizationRegistryCallbackError extends Error {
-        /**
-         * The default code given to an `FinalizationRegistryCallbackError`
-         */
-        static get code(): number;
-        /**
-         * `FinalizationRegistryCallbackError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IllegalConstructorError` is an error type thrown when a constructor is
-     * called for a class constructor when it shouldn't be.
-     */
-    export class IllegalConstructorError extends TypeError {
-        /**
-         * The default code given to an `IllegalConstructorError`
-         */
-        static get code(): number;
-        /**
-         * `IllegalConstructorError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IndexSizeError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class IndexSizeError extends Error {
-        /**
-         * The code given to an `INDEX_SIZE_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `IndexSizeError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    export const kInternalErrorCode: unique symbol;
-    /**
-     * An `InternalError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InternalError extends Error {
-        /**
-         * The default code given to an `InternalError`
-         */
-        static get code(): number;
-        /**
-         * `InternalError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, code?: number, ...args: any[]);
-        get name(): string;
-        /**
-         * @param {number|string}
-         */
-        set code(code: string | number);
-        /**
-         * @type {number|string}
-         */
-        get code(): string | number;
-        [exports.kInternalErrorCode]: number;
-    }
-    /**
-     * An `InvalidAccessError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InvalidAccessError extends Error {
-        /**
-         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `InvalidAccessError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NetworkError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NetworkError extends Error {
-        /**
-         * The code given to an `NETWORK_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NetworkError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotAllowedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotAllowedError extends Error {
-        /**
-         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotAllowedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotFoundError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotFoundError extends Error {
-        /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotFoundError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotSupportedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotSupportedError extends Error {
-        /**
-         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotSupportedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `ModuleNotFoundError` is an error type thrown when an imported or
-     * required module is not found.
-     */
-    export class ModuleNotFoundError extends exports.NotFoundError {
-        /**
-         * `ModuleNotFoundError` class constructor.
-         * @param {string} message
-         */
-        constructor(message: string, requireStack: any);
-        requireStack: any;
-    }
-    /**
-     * An `OperationError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class OperationError extends Error {
-        /**
-         * The code given to an `OPERATION_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `OperationError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `SecurityError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class SecurityError extends Error {
-        /**
-         * The code given to an `SECURITY_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `SecurityError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `TimeoutError` is an error type thrown when an operation timesout.
-     */
-    export class TimeoutError extends Error {
-        /**
-         * The code given to an `TIMEOUT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `TimeoutError` class constructor.
-         * @param {string} message
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    import * as exports from "socket:errors";
-    
-}
 declare module "socket:buffer" {
     export default Buffer;
     /**
@@ -459,355 +146,6 @@ declare module "socket:buffer" {
     export const kMaxLength: 2147483647;
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
-declare module "socket:url/urlpattern/urlpattern" {
-    export { me as URLPattern };
-    var me: {
-        new (t: {}, r: any, n: any): {
-            "__#2@#i": any;
-            "__#2@#n": {};
-            "__#2@#t": {};
-            "__#2@#e": {};
-            "__#2@#s": {};
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-}
-declare module "socket:url/url/url" {
-    const _default: any;
-    export default _default;
-}
-declare module "socket:querystring" {
-    export function unescapeBuffer(s: any, decodeSpaces: any): any;
-    export function unescape(s: any, decodeSpaces: any): any;
-    export function escape(str: any): any;
-    export function stringify(obj: any, sep: any, eq: any, options: any): string;
-    export function parse(qs: any, sep: any, eq: any, options: any): {};
-    export function decode(qs: any, sep: any, eq: any, options: any): {};
-    export function encode(obj: any, sep: any, eq: any, options: any): string;
-    namespace _default {
-        export { decode };
-        export { encode };
-        export { parse };
-        export { stringify };
-        export { escape };
-        export { unescape };
-    }
-    export default _default;
-}
-declare module "socket:url/index" {
-    export function parse(input: any): any;
-    export function resolve(from: any, to: any): any;
-    export function format(input: any): any;
-    export default URL;
-    export const URL: any;
-    import { URLPattern } from "socket:url/urlpattern/urlpattern";
-    export const URLSearchParams: any;
-    export const parseURL: any;
-    export { URLPattern };
-}
-declare module "socket:url" {
-    export * from "socket:url/index";
-    export default URL;
-    import URL from "socket:url/index";
-}
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    export class MIMEParams extends Map<any, any> {
-        constructor();
-        constructor(entries?: readonly (readonly [any, any])[]);
-        constructor();
-        constructor(iterable?: Iterable<readonly [any, any]>);
-    }
-    export class MIMEType {
-        constructor(input: any);
-        set type(value: any);
-        get type(): any;
-        set subtype(value: any);
-        get subtype(): any;
-        get essence(): string;
-        toString(): string;
-        toJSON(): string;
-        #private;
-    }
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { MIMEParams };
-        export { MIMEType };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
-}
-declare module "socket:util" {
-    export function debug(section: any): {
-        (...args: any[]): void;
-        enabled: boolean;
-    };
-    export function hasOwnProperty(object: any, property: any): any;
-    export function isDate(object: any): boolean;
-    export function isTypedArray(object: any): boolean;
-    export function isArrayLike(object: any): boolean;
-    export function isError(object: any): boolean;
-    export function isSymbol(value: any): boolean;
-    export function isNumber(value: any): boolean;
-    export function isBoolean(value: any): boolean;
-    export function isArrayBufferView(buf: any): boolean;
-    export function isAsyncFunction(object: any): boolean;
-    export function isArgumentsObject(object: any): boolean;
-    export function isEmptyObject(object: any): boolean;
-    export function isObject(object: any): boolean;
-    export function isUndefined(value: any): boolean;
-    export function isNull(value: any): boolean;
-    export function isNullOrUndefined(value: any): boolean;
-    export function isPrimitive(value: any): boolean;
-    export function isRegExp(value: any): boolean;
-    export function isPlainObject(object: any): boolean;
-    export function isArrayBuffer(object: any): boolean;
-    export function isBufferLike(object: any): boolean;
-    export function isFunction(value: any): boolean;
-    export function isErrorLike(error: any): boolean;
-    export function isClass(value: any): boolean;
-    export function isBuffer(value: any): boolean;
-    export function isPromiseLike(object: any): boolean;
-    export function toString(object: any): string;
-    export function toBuffer(object: any, encoding?: any): any;
-    export function toProperCase(string: any): any;
-    export function splitBuffer(buffer: any, highWaterMark: any): any[];
-    export function InvertedPromise(): Promise<any>;
-    export function clamp(value: any, min: any, max: any): number;
-    export function promisify(original: any): any;
-    export function inspect(value: any, options: any): any;
-    export namespace inspect {
-        let custom: symbol;
-        let ignore: symbol;
-    }
-    export function format(format: any, ...args: any[]): string;
-    export function parseJSON(string: any): any;
-    export function parseHeaders(headers: any): string[][];
-    export function noop(): void;
-    export function isValidPercentageValue(input: any): boolean;
-    export function compareBuffers(a: any, b: any): any;
-    export function inherits(Constructor: any, Super: any): void;
-    export function deprecate(...args: any[]): void;
-    export const TextDecoder: {
-        new (label?: string, options?: TextDecoderOptions): TextDecoder;
-        prototype: TextDecoder;
-    };
-    export const TextEncoder: {
-        new (): TextEncoder;
-        prototype: TextEncoder;
-    };
-    export const isArray: any;
-    export class IllegalConstructor {
-    }
-    export const MIMEType: typeof mime.MIMEType;
-    export const MIMEParams: typeof mime.MIMEParams;
-    export default exports;
-    import mime from "socket:mime";
-    import * as exports from "socket:util";
-    
-}
-declare module "socket:window/constants" {
-    export const WINDOW_ERROR: -1;
-    export const WINDOW_NONE: 0;
-    export const WINDOW_CREATING: 10;
-    export const WINDOW_CREATED: 11;
-    export const WINDOW_HIDING: 20;
-    export const WINDOW_HIDDEN: 21;
-    export const WINDOW_SHOWING: 30;
-    export const WINDOW_SHOWN: 31;
-    export const WINDOW_CLOSING: 40;
-    export const WINDOW_CLOSED: 41;
-    export const WINDOW_EXITING: 50;
-    export const WINDOW_EXITED: 51;
-    export const WINDOW_KILLING: 60;
-    export const WINDOW_KILLED: 61;
-    export default exports;
-    import * as exports from "socket:window/constants";
-    
-}
-declare module "socket:location" {
-    export function toString(): string;
-    export const globalLocation: Location | {
-        origin: string;
-        host: string;
-        hostname: string;
-        pathname: string;
-        href: string;
-    };
-    export const href: string;
-    export const protocol: "socket:";
-    export const hostname: string;
-    export const host: string;
-    export const search: string;
-    export const hash: string;
-    export const pathname: string;
-    export const origin: string;
-    namespace _default {
-        export { origin };
-        export { href };
-        export { protocol };
-        export { hostname };
-        export { host };
-        export { search };
-        export { pathname };
-        export { toString };
-    }
-    export default _default;
-}
 declare module "socket:console" {
     export function patchGlobalConsole(globalConsole: any, options?: {}): any;
     export const globalConsole: globalThis.Console;
@@ -872,7 +210,7 @@ declare module "socket:events" {
         prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#4@#detail": any;
+            "__#1@#detail": any;
             readonly detail: any;
         };
     };
@@ -881,8 +219,8 @@ declare module "socket:events" {
         prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#5@#detail": any;
-            "__#5@#data": any;
+            "__#2@#detail": any;
+            "__#2@#data": any;
             readonly detail: any;
             readonly data: any;
         };
@@ -892,8 +230,8 @@ declare module "socket:events" {
         prototype: ErrorEvent;
     } | {
         new (type: any, options: any): {
-            "__#6@#detail": any;
-            "__#6@#error": any;
+            "__#3@#detail": any;
+            "__#3@#error": any;
             readonly detail: any;
             readonly error: any;
         };
@@ -930,6 +268,293 @@ declare module "socket:events" {
     export function once(emitter: any, name: any): Promise<any>;
     import * as exports from "socket:events";
     
+}
+declare module "socket:application/menu" {
+    /**
+     * Internal IPC for setting an application menu
+     * @ignore
+     */
+    export function setMenu(options: any, type: any): Promise<ipc.Result>;
+    /**
+     * Internal IPC for setting an application context menu
+     * @ignore
+     */
+    export function setContextMenu(options: any): Promise<any>;
+    /**
+     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
+     */
+    export class Menu extends EventTarget {
+        /**
+         * `Menu` class constructor.
+         * @ignore
+         * @param {string} type
+         */
+        constructor(type: string);
+        /**
+         * The `Menu` instance type.
+         * @type {('context'|'system'|'tray')?}
+         */
+        get type(): "tray" | "system" | "context";
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * Set the menu layout for this `Menu` instance.
+         * @param {string|object} layoutOrOptions
+         * @param {object=} [options]
+         */
+        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
+        #private;
+    }
+    /**
+     * A container for various `Menu` instances.
+     */
+    export class MenuContainer extends EventTarget {
+        /**
+         * `MenuContainer` class constructor.
+         * @param {EventTarget} [sourceEventTarget]
+         * @param {object=} [options]
+         */
+        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * The `TrayMenu` instance for the application.
+         * @type {TrayMenu}
+         */
+        get tray(): TrayMenu;
+        /**
+         * The `SystemMenu` instance for the application.
+         * @type {SystemMenu}
+         */
+        get system(): SystemMenu;
+        /**
+         * The `ContextMenu` instance for the application.
+         * @type {ContextMenu}
+         */
+        get context(): ContextMenu;
+        #private;
+    }
+    /**
+     * A `Menu` instance that represents a context menu.
+     */
+    export class ContextMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the system menu.
+     */
+    export class SystemMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the tray menu.
+     */
+    export class TrayMenu extends Menu {
+        constructor();
+    }
+    /**
+     * The application tray menu.
+     * @type {TrayMenu}
+     */
+    export const tray: TrayMenu;
+    /**
+     * The application system menu.
+     * @type {SystemMenu}
+     */
+    export const system: SystemMenu;
+    /**
+     * The application context menu.
+     * @type {ContextMenu}
+     */
+    export const context: ContextMenu;
+    /**
+     * The application menus container.
+     * @type {MenuContainer}
+     */
+    export const container: MenuContainer;
+    export default container;
+    import ipc from "socket:ipc";
+}
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An event dispacted for a registered global hotkey expression.
+     */
+    export class HotKeyEvent extends MessageEvent<any> {
+        /**
+         * `HotKeyEvent` class constructor.
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         */
+        constructor(type?: string | undefined, data?: object | undefined);
+        /**
+         * The global unique ID for this hotkey binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this hotkey binding.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized hotkey expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the hotkey binding.
+         * @type {string?}
+         */
+        get expression(): string;
+    }
+    /**
+     * An event dispacted when a menu item is selected.
+     */
+    export class MenuItemEvent extends MessageEvent<any> {
+        /**
+         * `MenuItemEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         * @param {import('../application/menu.js').Menu} menu
+         */
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
+        /**
+         * The `Menu` this event has been dispatched for.
+         * @type {import('../application/menu.js').Menu?}
+         */
+        get menu(): import("socket:application/menu").Menu;
+        /**
+         * The title of the menu item.
+         * @type {string?}
+         */
+        get title(): string;
+        /**
+         * An optional tag value for the menu item that may also be the
+         * parent menu item title.
+         * @type {string?}
+         */
+        get tag(): string;
+        /**
+         * The parent title of the menu item.
+         * @type {string?}
+         */
+        get parent(): string;
+        #private;
+    }
+    /**
+     * An event dispacted when the application receives an OS signal
+     */
+    export class SignalEvent extends MessageEvent<any> {
+        /**
+         * `SignalEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * The code of the signal.
+         * @type {import('../signal.js').signal}
+         */
+        get code(): number;
+        /**
+         * The name of the signal.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * An optional message describing the signal
+         * @type {string}
+         */
+        get message(): string;
+        #private;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+        export { MenuItemEvent };
+        export { SignalEvent };
+        export { HotKeyEvent };
+    }
+    export default _default;
 }
 declare module "socket:path/well-known" {
     /**
@@ -1086,14 +711,90 @@ declare module "socket:os" {
      * @return {string}
      */
     export function homedir(): string;
+    export { constants };
     /**
      * @type {string}
      * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
      */
     export const EOL: string;
     export default exports;
+    import constants from "socket:os/constants";
     import * as exports from "socket:os";
     
+}
+declare module "socket:signal" {
+    /**
+     * Converts an `signal` code to its corresponding string message.
+     * @param {import('./os/constants.js').signal} {code}
+     * @return {string}
+     */
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'signal' name.
+     * @param {string|number} name
+     * @return {signal}
+     */
+    export function getCode(name: string | number): signal;
+    /**
+     * Gets the name for a given 'signal' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'signal' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    export { constants };
+    export const channel: BroadcastChannel;
+    export const SIGHUP: number;
+    export const SIGINT: number;
+    export const SIGQUIT: number;
+    export const SIGILL: number;
+    export const SIGTRAP: number;
+    export const SIGABRT: number;
+    export const SIGIOT: number;
+    export const SIGBUS: number;
+    export const SIGFPE: number;
+    export const SIGKILL: number;
+    export const SIGUSR1: number;
+    export const SIGSEGV: number;
+    export const SIGUSR2: number;
+    export const SIGPIPE: number;
+    export const SIGALRM: number;
+    export const SIGTERM: number;
+    export const SIGCHLD: number;
+    export const SIGCONT: number;
+    export const SIGSTOP: number;
+    export const SIGTSTP: number;
+    export const SIGTTIN: number;
+    export const SIGTTOU: number;
+    export const SIGURG: number;
+    export const SIGXCPU: number;
+    export const SIGXFSZ: number;
+    export const SIGVTALRM: number;
+    export const SIGPROF: number;
+    export const SIGWINCH: number;
+    export const SIGIO: number;
+    export const SIGINFO: number;
+    export const SIGSYS: number;
+    export const strings: {
+        [x: number]: string;
+    };
+    namespace _default {
+        export { constants };
+        export { channel };
+        export { strings };
+        export { toString };
+        export { getName };
+        export { getCode };
+        export { getMessage };
+    }
+    export default _default;
+    export type signal = import("socket:os/constants").signal;
+    import { signal as constants } from "socket:os/constants";
 }
 declare module "socket:process" {
     /**
@@ -1130,6 +831,98 @@ declare module "socket:process" {
     export const env: any;
     export default process;
     const process: any;
+}
+declare module "socket:location" {
+    export function toString(): string;
+    export const globalLocation: Location | {
+        origin: string;
+        host: string;
+        hostname: string;
+        pathname: string;
+        href: string;
+    };
+    export const href: string;
+    export const protocol: "socket:";
+    export const hostname: string;
+    export const host: string;
+    export const search: string;
+    export const hash: string;
+    export const pathname: string;
+    export const origin: string;
+    namespace _default {
+        export { origin };
+        export { href };
+        export { protocol };
+        export { hostname };
+        export { host };
+        export { search };
+        export { pathname };
+        export { toString };
+    }
+    export default _default;
+}
+declare module "socket:url/urlpattern/urlpattern" {
+    export { me as URLPattern };
+    var me: {
+        new (t: {}, r: any, n: any): {
+            "__#10@#i": any;
+            "__#10@#n": {};
+            "__#10@#t": {};
+            "__#10@#e": {};
+            "__#10@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+}
+declare module "socket:url/url/url" {
+    const _default: any;
+    export default _default;
+}
+declare module "socket:querystring" {
+    export function unescapeBuffer(s: any, decodeSpaces: any): any;
+    export function unescape(s: any, decodeSpaces: any): any;
+    export function escape(str: any): any;
+    export function stringify(obj: any, sep: any, eq: any, options: any): string;
+    export function parse(qs: any, sep: any, eq: any, options: any): {};
+    export function decode(qs: any, sep: any, eq: any, options: any): {};
+    export function encode(obj: any, sep: any, eq: any, options: any): string;
+    namespace _default {
+        export { decode };
+        export { encode };
+        export { parse };
+        export { stringify };
+        export { escape };
+        export { unescape };
+    }
+    export default _default;
+}
+declare module "socket:url/index" {
+    export function parse(input: any): any;
+    export function resolve(from: any, to: any): any;
+    export function format(input: any): any;
+    export default URL;
+    export const URL: any;
+    import { URLPattern } from "socket:url/urlpattern/urlpattern";
+    export const URLSearchParams: any;
+    export const parseURL: any;
+    export { URLPattern };
+}
+declare module "socket:url" {
+    export * from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
 }
 declare module "socket:path/path" {
     /**
@@ -1228,11 +1021,11 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#2@#i": any;
-            "__#2@#n": {};
-            "__#2@#t": {};
-            "__#2@#e": {};
-            "__#2@#s": {};
+            "__#10@#i": any;
+            "__#10@#n": {};
+            "__#10@#t": {};
+            "__#10@#e": {};
+            "__#10@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -4170,263 +3963,835 @@ declare module "socket:ipc" {
     import * as exports from "socket:ipc";
     
 }
-declare module "socket:application/menu" {
-    /**
-     * Internal IPC for setting an application menu
-     * @ignore
-     */
-    export function setMenu(options: any, type: any): Promise<ipc.Result>;
-    /**
-     * Internal IPC for setting an application context menu
-     * @ignore
-     */
-    export function setContextMenu(options: any): Promise<any>;
-    /**
-     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
-     */
-    export class Menu extends EventTarget {
-        /**
-         * `Menu` class constructor.
-         * @ignore
-         * @param {string} type
-         */
-        constructor(type: string);
-        /**
-         * The `Menu` instance type.
-         * @type {('context'|'system'|'tray')?}
-         */
-        get type(): "tray" | "system" | "context";
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * Set the menu layout for this `Menu` instance.
-         * @param {string|object} layoutOrOptions
-         * @param {object=} [options]
-         */
-        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
-        #private;
+declare module "socket:os/constants" {
+    export type errno = number;
+    export namespace errno {
+        let E2BIG: errno;
+        let EACCES: errno;
+        let EADDRINUSE: errno;
+        let EADDRNOTAVAIL: errno;
+        let EAFNOSUPPORT: errno;
+        let EAGAIN: errno;
+        let EALREADY: errno;
+        let EBADF: errno;
+        let EBADMSG: errno;
+        let EBUSY: errno;
+        let ECANCELED: errno;
+        let ECHILD: errno;
+        let ECONNABORTED: errno;
+        let ECONNREFUSED: errno;
+        let ECONNRESET: errno;
+        let EDEADLK: errno;
+        let EDESTADDRREQ: errno;
+        let EDOM: errno;
+        let EDQUOT: errno;
+        let EEXIST: errno;
+        let EFAULT: errno;
+        let EFBIG: errno;
+        let EHOSTUNREACH: errno;
+        let EIDRM: errno;
+        let EILSEQ: errno;
+        let EINPROGRESS: errno;
+        let EINTR: errno;
+        let EINVAL: errno;
+        let EIO: errno;
+        let EISCONN: errno;
+        let EISDIR: errno;
+        let ELOOP: errno;
+        let EMFILE: errno;
+        let EMLINK: errno;
+        let EMSGSIZE: errno;
+        let EMULTIHOP: errno;
+        let ENAMETOOLONG: errno;
+        let ENETDOWN: errno;
+        let ENETRESET: errno;
+        let ENETUNREACH: errno;
+        let ENFILE: errno;
+        let ENOBUFS: errno;
+        let ENODATA: errno;
+        let ENODEV: errno;
+        let ENOENT: errno;
+        let ENOEXEC: errno;
+        let ENOLCK: errno;
+        let ENOLINK: errno;
+        let ENOMEM: errno;
+        let ENOMSG: errno;
+        let ENOPROTOOPT: errno;
+        let ENOSPC: errno;
+        let ENOSR: errno;
+        let ENOSTR: errno;
+        let ENOSYS: errno;
+        let ENOTCONN: errno;
+        let ENOTDIR: errno;
+        let ENOTEMPTY: errno;
+        let ENOTSOCK: errno;
+        let ENOTSUP: errno;
+        let ENOTTY: errno;
+        let ENXIO: errno;
+        let EOPNOTSUPP: errno;
+        let EOVERFLOW: errno;
+        let EPERM: errno;
+        let EPIPE: errno;
+        let EPROTO: errno;
+        let EPROTONOSUPPORT: errno;
+        let EPROTOTYPE: errno;
+        let ERANGE: errno;
+        let EROFS: errno;
+        let ESPIPE: errno;
+        let ESRCH: errno;
+        let ESTALE: errno;
+        let ETIME: errno;
+        let ETIMEDOUT: errno;
+        let ETXTBSY: errno;
+        let EWOULDBLOCK: errno;
+        let EXDEV: errno;
     }
-    /**
-     * A container for various `Menu` instances.
-     */
-    export class MenuContainer extends EventTarget {
-        /**
-         * `MenuContainer` class constructor.
-         * @param {EventTarget} [sourceEventTarget]
-         * @param {object=} [options]
-         */
-        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * The `TrayMenu` instance for the application.
-         * @type {TrayMenu}
-         */
-        get tray(): TrayMenu;
-        /**
-         * The `SystemMenu` instance for the application.
-         * @type {SystemMenu}
-         */
-        get system(): SystemMenu;
-        /**
-         * The `ContextMenu` instance for the application.
-         * @type {ContextMenu}
-         */
-        get context(): ContextMenu;
-        #private;
+    export type signal = number;
+    export namespace signal {
+        let SIGHUP: signal;
+        let SIGINT: signal;
+        let SIGQUIT: signal;
+        let SIGILL: signal;
+        let SIGTRAP: signal;
+        let SIGABRT: signal;
+        let SIGIOT: signal;
+        let SIGBUS: signal;
+        let SIGFPE: signal;
+        let SIGKILL: signal;
+        let SIGUSR1: signal;
+        let SIGSEGV: signal;
+        let SIGUSR2: signal;
+        let SIGPIPE: signal;
+        let SIGALRM: signal;
+        let SIGTERM: signal;
+        let SIGCHLD: signal;
+        let SIGCONT: signal;
+        let SIGSTOP: signal;
+        let SIGTSTP: signal;
+        let SIGTTIN: signal;
+        let SIGTTOU: signal;
+        let SIGURG: signal;
+        let SIGXCPU: signal;
+        let SIGXFSZ: signal;
+        let SIGVTALRM: signal;
+        let SIGPROF: signal;
+        let SIGWINCH: signal;
+        let SIGIO: signal;
+        let SIGINFO: signal;
+        let SIGSYS: signal;
     }
-    /**
-     * A `Menu` instance that represents a context menu.
-     */
-    export class ContextMenu extends Menu {
-        constructor();
+    namespace _default {
+        export { errno };
+        export { signal };
     }
-    /**
-     * A `Menu` instance that represents the system menu.
-     */
-    export class SystemMenu extends Menu {
-        constructor();
-    }
-    /**
-     * A `Menu` instance that represents the tray menu.
-     */
-    export class TrayMenu extends Menu {
-        constructor();
-    }
-    /**
-     * The application tray menu.
-     * @type {TrayMenu}
-     */
-    export const tray: TrayMenu;
-    /**
-     * The application system menu.
-     * @type {SystemMenu}
-     */
-    export const system: SystemMenu;
-    /**
-     * The application context menu.
-     * @type {ContextMenu}
-     */
-    export const context: ContextMenu;
-    /**
-     * The application menus container.
-     * @type {MenuContainer}
-     */
-    export const container: MenuContainer;
-    export default container;
-    import ipc from "socket:ipc";
+    export default _default;
 }
-declare module "socket:internal/events" {
+declare module "socket:errno" {
     /**
-     * An event dispatched when an application URL is opening the application.
+     * Converts an `errno` code to its corresponding string message.
+     * @param {import('./os/constants.js').errno} {code}
+     * @return {string}
      */
-    export class ApplicationURLEvent extends Event {
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'errno' name.
+     * @param {string|number} name
+     * @return {errno}
+     */
+    export function getCode(name: string | number): errno;
+    /**
+     * Gets the name for a given 'errno' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'errno' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    /**
+     * @typedef {import('./os/constants.js').errno} errno
+     */
+    export const E2BIG: number;
+    export const EACCES: number;
+    export const EADDRINUSE: number;
+    export const EADDRNOTAVAIL: number;
+    export const EAFNOSUPPORT: number;
+    export const EAGAIN: number;
+    export const EALREADY: number;
+    export const EBADF: number;
+    export const EBADMSG: number;
+    export const EBUSY: number;
+    export const ECANCELED: number;
+    export const ECHILD: number;
+    export const ECONNABORTED: number;
+    export const ECONNREFUSED: number;
+    export const ECONNRESET: number;
+    export const EDEADLK: number;
+    export const EDESTADDRREQ: number;
+    export const EDOM: number;
+    export const EDQUOT: number;
+    export const EEXIST: number;
+    export const EFAULT: number;
+    export const EFBIG: number;
+    export const EHOSTUNREACH: number;
+    export const EIDRM: number;
+    export const EILSEQ: number;
+    export const EINPROGRESS: number;
+    export const EINTR: number;
+    export const EINVAL: number;
+    export const EIO: number;
+    export const EISCONN: number;
+    export const EISDIR: number;
+    export const ELOOP: number;
+    export const EMFILE: number;
+    export const EMLINK: number;
+    export const EMSGSIZE: number;
+    export const EMULTIHOP: number;
+    export const ENAMETOOLONG: number;
+    export const ENETDOWN: number;
+    export const ENETRESET: number;
+    export const ENETUNREACH: number;
+    export const ENFILE: number;
+    export const ENOBUFS: number;
+    export const ENODATA: number;
+    export const ENODEV: number;
+    export const ENOENT: number;
+    export const ENOEXEC: number;
+    export const ENOLCK: number;
+    export const ENOLINK: number;
+    export const ENOMEM: number;
+    export const ENOMSG: number;
+    export const ENOPROTOOPT: number;
+    export const ENOSPC: number;
+    export const ENOSR: number;
+    export const ENOSTR: number;
+    export const ENOSYS: number;
+    export const ENOTCONN: number;
+    export const ENOTDIR: number;
+    export const ENOTEMPTY: number;
+    export const ENOTSOCK: number;
+    export const ENOTSUP: number;
+    export const ENOTTY: number;
+    export const ENXIO: number;
+    export const EOPNOTSUPP: number;
+    export const EOVERFLOW: number;
+    export const EPERM: number;
+    export const EPIPE: number;
+    export const EPROTO: number;
+    export const EPROTONOSUPPORT: number;
+    export const EPROTOTYPE: number;
+    export const ERANGE: number;
+    export const EROFS: number;
+    export const ESPIPE: number;
+    export const ESRCH: number;
+    export const ESTALE: number;
+    export const ETIME: number;
+    export const ETIMEDOUT: number;
+    export const ETXTBSY: number;
+    export const EWOULDBLOCK: number;
+    export const EXDEV: number;
+    export const strings: {
+        [x: number]: string;
+    };
+    export { constants };
+    namespace _default {
+        export { constants };
+        export { strings };
+        export { toString };
+        export { getCode };
+        export { getMessage };
+    }
+    export default _default;
+    export type errno = import("socket:os/constants").errno;
+    import { errno as constants } from "socket:os/constants";
+}
+declare module "socket:errors" {
+    export default exports;
+    export const ABORT_ERR: any;
+    export const ENCODING_ERR: any;
+    export const INVALID_ACCESS_ERR: any;
+    export const INDEX_SIZE_ERR: any;
+    export const NETWORK_ERR: any;
+    export const NOT_ALLOWED_ERR: any;
+    export const NOT_FOUND_ERR: any;
+    export const NOT_SUPPORTED_ERR: any;
+    export const OPERATION_ERR: any;
+    export const SECURITY_ERR: any;
+    export const TIMEOUT_ERR: any;
+    /**
+     * An `AbortError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `AbortSignal` instance.
+     */
+    export class AbortError extends Error {
         /**
-         * `ApplicationURLEvent` class constructor.
-         * @param {string=} [type]
-         * @param {object=} [options]
+         * The code given to an `ABORT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
          */
-        constructor(type?: string | undefined, options?: object | undefined);
+        static get code(): any;
         /**
-         * `true` if the application URL is valid (parses correctly).
-         * @type {boolean}
+         * `AbortError` class constructor.
+         * @param {AbortSignal|string} reasonOrSignal
+         * @param {AbortSignal=} [signal]
          */
-        get isValid(): boolean;
+        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
+        signal: AbortSignal;
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `BadRequestSignal` instance.
+     */
+    export class BadRequestError extends Error {
         /**
-         * Data associated with the `ApplicationURLEvent`.
-         * @type {?any}
+         * The default code given to a `BadRequestError`
          */
-        get data(): any;
+        static get code(): number;
         /**
-         * The original source URI
-         * @type {?string}
+         * `BadRequestError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
          */
-        get source(): string;
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `EncodingError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class EncodingError extends Error {
         /**
-         * The `URL` for the `ApplicationURLEvent`.
-         * @type {?URL}
+         * The code given to an `ENCODING_ERR` `DOMException`.
          */
-        get url(): URL;
+        static get code(): any;
         /**
-         * String tag name for an `ApplicationURLEvent` instance.
+         * `EncodingError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An error type derived from an `errno` code.
+     */
+    export class ErrnoError extends Error {
+        static get code(): string;
+        static errno: any;
+        /**
+         * `ErrnoError` class constructor.
+         * @param {import('./errno').errno|string} code
+         */
+        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
+        get name(): string;
+        get code(): number;
+        #private;
+    }
+    /**
+     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class FinalizationRegistryCallbackError extends Error {
+        /**
+         * The default code given to an `FinalizationRegistryCallbackError`
+         */
+        static get code(): number;
+        /**
+         * `FinalizationRegistryCallbackError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IllegalConstructorError` is an error type thrown when a constructor is
+     * called for a class constructor when it shouldn't be.
+     */
+    export class IllegalConstructorError extends TypeError {
+        /**
+         * The default code given to an `IllegalConstructorError`
+         */
+        static get code(): number;
+        /**
+         * `IllegalConstructorError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IndexSizeError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class IndexSizeError extends Error {
+        /**
+         * The code given to an `INDEX_SIZE_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `IndexSizeError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    export const kInternalErrorCode: unique symbol;
+    /**
+     * An `InternalError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InternalError extends Error {
+        /**
+         * The default code given to an `InternalError`
+         */
+        static get code(): number;
+        /**
+         * `InternalError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, code?: number, ...args: any[]);
+        get name(): string;
+        /**
+         * @param {number|string}
+         */
+        set code(code: string | number);
+        /**
+         * @type {number|string}
+         */
+        get code(): string | number;
+        [exports.kInternalErrorCode]: number;
+    }
+    /**
+     * An `InvalidAccessError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InvalidAccessError extends Error {
+        /**
+         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `InvalidAccessError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NetworkError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NetworkError extends Error {
+        /**
+         * The code given to an `NETWORK_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NetworkError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotAllowedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotAllowedError extends Error {
+        /**
+         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotAllowedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotFoundError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotFoundError extends Error {
+        /**
+         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotFoundError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotSupportedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotSupportedError extends Error {
+        /**
+         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotSupportedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `ModuleNotFoundError` is an error type thrown when an imported or
+     * required module is not found.
+     */
+    export class ModuleNotFoundError extends exports.NotFoundError {
+        /**
+         * `ModuleNotFoundError` class constructor.
+         * @param {string} message
+         */
+        constructor(message: string, requireStack: any);
+        requireStack: any;
+    }
+    /**
+     * An `OperationError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class OperationError extends Error {
+        /**
+         * The code given to an `OPERATION_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `OperationError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `SecurityError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class SecurityError extends Error {
+        /**
+         * The code given to an `SECURITY_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `SecurityError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `TimeoutError` is an error type thrown when an operation timesout.
+     */
+    export class TimeoutError extends Error {
+        /**
+         * The code given to an `TIMEOUT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `TimeoutError` class constructor.
+         * @param {string} message
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    import * as exports from "socket:errors";
+    
+}
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
          * @type {string}
          */
-        get [Symbol.toStringTag](): string;
-        #private;
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
     }
     /**
-     * An event dispacted for a registered global hotkey expression.
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
      */
-    export class HotKeyEvent extends MessageEvent<any> {
+    export class Database {
         /**
-         * `HotKeyEvent` class constructor.
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
+         * `Database` class constructor.
+         * @param {string} name
          */
-        constructor(type?: string | undefined, data?: object | undefined);
+        constructor(name: string);
         /**
-         * The global unique ID for this hotkey binding.
-         * @type {number?}
+         * The name of the MIME database.
+         * @type {string}
          */
-        get id(): number;
+        name: string;
         /**
-         * The computed hash for this hotkey binding.
-         * @type {number?}
+         * The URL of the MIME database.
+         * @type {URL}
          */
-        get hash(): number;
+        url: URL;
         /**
-         * The normalized hotkey expression as a sequence of tokens.
-         * @type {string[]}
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
          */
-        get sequence(): string[];
+        map: Map<any, any>;
         /**
-         * The original expression of the hotkey binding.
-         * @type {string?}
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
          */
-        get expression(): string;
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
     }
     /**
-     * An event dispacted when a menu item is selected.
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
      */
-    export class MenuItemEvent extends MessageEvent<any> {
-        /**
-         * `MenuItemEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
-         * @param {import('../application/menu.js').Menu} menu
-         */
-        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
-        /**
-         * The `Menu` this event has been dispatched for.
-         * @type {import('../application/menu.js').Menu?}
-         */
-        get menu(): import("socket:application/menu").Menu;
-        /**
-         * The title of the menu item.
-         * @type {string?}
-         */
-        get title(): string;
-        /**
-         * An optional tag value for the menu item that may also be the
-         * parent menu item title.
-         * @type {string?}
-         */
-        get tag(): string;
-        /**
-         * The parent title of the menu item.
-         * @type {string?}
-         */
-        get parent(): string;
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    export class MIMEParams extends Map<any, any> {
+        constructor();
+        constructor(entries?: readonly (readonly [any, any])[]);
+        constructor();
+        constructor(iterable?: Iterable<readonly [any, any]>);
+    }
+    export class MIMEType {
+        constructor(input: any);
+        set type(value: any);
+        get type(): any;
+        set subtype(value: any);
+        get subtype(): any;
+        get essence(): string;
+        toString(): string;
+        toJSON(): string;
         #private;
     }
     namespace _default {
-        export { ApplicationURLEvent };
-        export { MenuItemEvent };
-        export { HotKeyEvent };
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { MIMEParams };
+        export { MIMEType };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
     }
     export default _default;
+}
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
+declare module "socket:util" {
+    export function debug(section: any): {
+        (...args: any[]): void;
+        enabled: boolean;
+    };
+    export function hasOwnProperty(object: any, property: any): any;
+    export function isDate(object: any): boolean;
+    export function isTypedArray(object: any): boolean;
+    export function isArrayLike(object: any): boolean;
+    export function isError(object: any): boolean;
+    export function isSymbol(value: any): boolean;
+    export function isNumber(value: any): boolean;
+    export function isBoolean(value: any): boolean;
+    export function isArrayBufferView(buf: any): boolean;
+    export function isAsyncFunction(object: any): boolean;
+    export function isArgumentsObject(object: any): boolean;
+    export function isEmptyObject(object: any): boolean;
+    export function isObject(object: any): boolean;
+    export function isUndefined(value: any): boolean;
+    export function isNull(value: any): boolean;
+    export function isNullOrUndefined(value: any): boolean;
+    export function isPrimitive(value: any): boolean;
+    export function isRegExp(value: any): boolean;
+    export function isPlainObject(object: any): boolean;
+    export function isArrayBuffer(object: any): boolean;
+    export function isBufferLike(object: any): boolean;
+    export function isFunction(value: any): boolean;
+    export function isErrorLike(error: any): boolean;
+    export function isClass(value: any): boolean;
+    export function isBuffer(value: any): boolean;
+    export function isPromiseLike(object: any): boolean;
+    export function toString(object: any): string;
+    export function toBuffer(object: any, encoding?: any): any;
+    export function toProperCase(string: any): any;
+    export function splitBuffer(buffer: any, highWaterMark: any): any[];
+    export function InvertedPromise(): Promise<any>;
+    export function clamp(value: any, min: any, max: any): number;
+    export function promisify(original: any): any;
+    export function inspect(value: any, options: any): any;
+    export namespace inspect {
+        let custom: symbol;
+        let ignore: symbol;
+    }
+    export function format(format: any, ...args: any[]): string;
+    export function parseJSON(string: any): any;
+    export function parseHeaders(headers: any): string[][];
+    export function noop(): void;
+    export function isValidPercentageValue(input: any): boolean;
+    export function compareBuffers(a: any, b: any): any;
+    export function inherits(Constructor: any, Super: any): void;
+    export function deprecate(...args: any[]): void;
+    export const TextDecoder: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoder;
+        prototype: TextDecoder;
+    };
+    export const TextEncoder: {
+        new (): TextEncoder;
+        prototype: TextEncoder;
+    };
+    export const isArray: any;
+    export class IllegalConstructor {
+    }
+    export const MIMEType: typeof mime.MIMEType;
+    export const MIMEParams: typeof mime.MIMEParams;
+    export default exports;
+    import mime from "socket:mime";
+    import * as exports from "socket:util";
+    
+}
+declare module "socket:window/constants" {
+    export const WINDOW_ERROR: -1;
+    export const WINDOW_NONE: 0;
+    export const WINDOW_CREATING: 10;
+    export const WINDOW_CREATED: 11;
+    export const WINDOW_HIDING: 20;
+    export const WINDOW_HIDDEN: 21;
+    export const WINDOW_SHOWING: 30;
+    export const WINDOW_SHOWN: 31;
+    export const WINDOW_CLOSING: 40;
+    export const WINDOW_CLOSED: 41;
+    export const WINDOW_EXITING: 50;
+    export const WINDOW_EXITED: 51;
+    export const WINDOW_KILLING: 60;
+    export const WINDOW_KILLED: 61;
+    export default exports;
+    import * as exports from "socket:window/constants";
+    
 }
 declare module "socket:window/hotkey" {
     /**
@@ -5301,10 +5666,969 @@ declare module "socket:bootstrap" {
     }
     import { EventEmitter } from "socket:events";
 }
+declare module "socket:internal/globals" {
+    /**
+     * Gets a runtime global value by name.
+     * @ignore
+     * @param {string} name
+     * @return {any|null}
+     */
+    export function get(name: string): any | null;
+    /**
+     * Symbolic global registry
+     * @ignore
+     */
+    export class GlobalsRegistry {
+        get global(): any;
+        symbol(name: any): symbol;
+        register(name: any, value: any): any;
+        get(name: any): any;
+    }
+    export default registry;
+    const registry: any;
+}
+declare module "socket:internal/shared-worker" {
+    export function getSharedWorkerImplementationForPlatform(): {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export class SharedHybridWorkerProxy extends EventTarget {
+        constructor(url: any, options: any);
+        onChannelMessage(event: any): void;
+        get id(): any;
+        get port(): any;
+        #private;
+    }
+    export class SharedHybridWorker extends EventTarget {
+        constructor(url: any, nameOrOptions: any);
+        get port(): any;
+        #private;
+    }
+    export const SharedWorker: {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export default SharedWorker;
+}
+declare module "socket:vm" {
+    /**
+     * @ignore
+     * @param {object[]} transfer
+     * @param {object} object
+     * @param {object=} [options]
+     * @return {object[]}
+     */
+    export function findMessageTransfers(transfers: any, object: object, options?: object | undefined): object[];
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyInputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyOutputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function filterNonTransferableValues(context: object): void;
+    /**
+     * @ignore
+     * @param {object=} [currentContext]
+     * @param {object=} [updatedContext]
+     * @param {object=} [contextReference]
+     * @return {{ deletions: string[], merges: string[] }}
+     */
+    export function applyContextDifferences(currentContext?: object | undefined, updatedContext?: object | undefined, contextReference?: object | undefined, preserveScriptArgs?: boolean): {
+        deletions: string[];
+        merges: string[];
+    };
+    /**
+     * Wrap a JavaScript function source.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     */
+    export function wrapFunctionSource(source: string, options?: object | undefined): string;
+    /**
+     * Gets the VM context window.
+     * This function will create it if it does not already exist.
+     * The current window will be used on Android or iOS platforms as there can
+     * only be one window.
+     * @return {Promise<import('./window.js').ApplicationWindow}
+     */
+    export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
+    /**
+     * Gets the `SharedWorker` that for the VM context.
+     * @return {Promise<SharedWorker>}
+     */
+    export function getContextWorker(): Promise<SharedWorker>;
+    /**
+     * Terminates the VM script context window.
+     * @ignore
+     */
+    export function terminateContextWindow(): Promise<void>;
+    /**
+     * Terminates the VM script context worker.
+     * @ignore
+     */
+    export function terminateContextWorker(): Promise<void>;
+    /**
+     * Creates a prototype object of known global reserved intrinsics.
+     * @ignore
+     */
+    export function createIntrinsics(options: any): any;
+    /**
+     * Returns `true` if value is an intrinsic, otherwise `false`.
+     * @param {any} value
+     * @return {boolean}
+     */
+    export function isIntrinsic(value: any): boolean;
+    /**
+     * Get the intrinsic type of a given `value`.
+     * @param {any}
+     * @return {function|object|null|undefined}
+     */
+    export function getIntrinsicType(value: any): Function | object | null | undefined;
+    /**
+     * Get the intrinsic type string of a given `value`.
+     * @param {any}
+     * @return {string|null}
+     */
+    export function getIntrinsicTypeString(value: any): string | null;
+    /**
+     * Creates a global proxy object for context execution.
+     * @ignore
+     * @param {object} context
+     * @return {Proxy}
+     */
+    export function createGlobalObject(context: object, options: any): ProxyConstructor;
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function detectFunctionSourceType(source: string): boolean;
+    /**
+     * Compiles `source`  with `options` into a function.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     * @return {function}
+     */
+    export function compileFunction(source: string, options?: object | undefined): Function;
+    /**
+     * Run `source` JavaScript in given context. The script context execution
+     * context is preserved until the `context` object that points to it is
+     * garbage collected or there are no longer any references to it and its
+     * associated `Script` instance.
+     * @param {string|object|function} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInContext(source: string | object | Function, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in new context. The script context is destroyed after
+     * execution. This is typically a "one off" isolated run.
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in this current context (`globalThis`).
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @return {Promise<any>}
+     */
+    export function runInThisContext(source: string, options?: ScriptOptions | undefined): Promise<any>;
+    /**
+     * @ignore
+     * @param {Reference} reference
+     */
+    export function putReference(reference: Reference): void;
+    /**
+     * Create a `Reference` for a `value` in a script `context`.
+     * @param {any} value
+     * @param {object} context
+     * @param {object=} [options]
+     * @return {Reference}
+     */
+    export function createReference(value: any, context: object, options?: object | undefined): Reference;
+    /**
+     * Get a script context by ID or values
+     * @param {string|object|function} id
+     * @return {Reference?}
+     */
+    export function getReference(id: string | object | Function): Reference | null;
+    /**
+     * Remove a script context reference by ID.
+     * @param {string} id
+     */
+    export function removeReference(id: string): void;
+    /**
+     * Get all transferable values in the `object` hierarchy.
+     * @param {object} object
+     * @return {object[]}
+     */
+    export function getTransferables(object: object): object[];
+    /**
+     * @ignore
+     * @param {object} object
+     * @return {object}
+     */
+    export function createContext(object: object): object;
+    /**
+     * Returns `true` if `object` is a "context" object.
+     * @param {object}
+     * @return {boolean}
+     */
+    export function isContext(object: any): boolean;
+    /**
+     * A container for a context worker message channel that looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterface extends EventTarget {
+        get channel(): any;
+        get port(): any;
+        destroy(): void;
+        #private;
+    }
+    /**
+     * A container proxy for a context worker message channel that
+     * looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterfaceProxy extends EventTarget {
+        constructor(globals: any);
+        get port(): any;
+        #private;
+    }
+    /**
+     * Global reserved values that a script context may not modify.
+     * @type {string[]}
+     */
+    export const RESERVED_GLOBAL_INTRINSICS: string[];
+    /**
+     * A unique reference to a value owner by a "context object" and a
+     * `Script` instance.
+     */
+    export class Reference {
+        /**
+         * Predicate function to determine if a `value` is an internal or external
+         * script reference value.
+         * @param {amy} value
+         * @return {boolean}
+         */
+        static isReference(value: amy): boolean;
+        /**
+         * `Reference` class constructor.
+         * @param {string} id
+         * @param {any} value
+         * @param {object=} [context]
+         * @param {object=} [options]
+         */
+        constructor(id: string, value: any, context?: object | undefined, options?: object | undefined);
+        /**
+         * The unique id of the reference
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The underling primitive type of the reference value.
+         * @ignore
+         * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
+         */
+        get type(): "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+        /**
+         * The underlying value of the reference.
+         * @type {any?}
+         */
+        get value(): any;
+        /**
+         * The name of the type.
+         * @type {string?}
+         */
+        get name(): string;
+        /**
+         * The `Script` this value belongs to, if available.
+         * @type {Script?}
+         */
+        get script(): Script;
+        /**
+         * The "context object" this reference value belongs to.
+         * @type {object?}
+         */
+        get context(): any;
+        /**
+         * A boolean value to indicate if the underlying reference value is an
+         * intrinsic value.
+         * @type {boolean}
+         */
+        get isIntrinsic(): boolean;
+        /**
+         * A boolean value to indicate if the underlying reference value is an
+         * external reference value.
+         * @type {boolean}
+         */
+        get isExternal(): boolean;
+        /**
+         * The intrinsic type this reference may be an instance of or directly refer to.
+         * @type {function|object}
+         */
+        get intrinsicType(): any;
+        /**
+         * Releases strongly held value and weak references
+         * to the "context object".
+         */
+        release(): void;
+        /**
+         * Converts this `Reference` to a JSON object.
+         * @param {boolean=} [includeValue = false]
+         */
+        toJSON(includeValue?: boolean | undefined): {
+            __vmScriptReference__: boolean;
+            id: string;
+            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+            name: string;
+            isIntrinsic: boolean;
+            intrinsicType: string;
+        };
+        #private;
+    }
+    /**
+     * @typedef {{
+     *  filename?: string,
+     *  context?: object
+     * }} ScriptOptions
+     */
+    /**
+     * A `Script` is a container for raw JavaScript to be executed in
+     * a completely isolated virtual machine context, optionally with
+     * user supplied context. Context objects references are not actually
+     * shared, but instead provided to the script execution context using the
+     * structured cloning algorithm used by the Message Channel API. Context
+     * differences are computed and applied after execution so the user supplied
+     * context object realizes context changes after script execution. All script
+     * sources run in an "async" context so a "top level await" should work.
+     */
+    export class Script extends EventTarget {
+        /**
+         * `Script` class constructor
+         * @param {string} source
+         * @param {ScriptOptions} [options]
+         */
+        constructor(source: string, options?: ScriptOptions);
+        /**
+         * The script identifier.
+         */
+        get id(): any;
+        /**
+         * The source for this script.
+         * @type {string}
+         */
+        get source(): string;
+        /**
+         * The filename for this script.
+         * @type {string}
+         */
+        get filename(): string;
+        /**
+         * A promise that resolves when the script is ready.
+         * @type {Promise<Boolean>}
+         */
+        get ready(): Promise<boolean>;
+        /**
+         * Destroy the script execution context.
+         * @return {Promise}
+         */
+        destroy(): Promise<any>;
+        /**
+         * Run `source` JavaScript in given context. The script context execution
+         * context is preserved until the `context` object that points to it is
+         * garbage collected or there are no longer any references to it and its
+         * associated `Script` instance.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in new context. The script context is destroyed after
+         * execution. This is typically a "one off" isolated run.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInNewContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in this current context (`globalThis`).
+         * @param {ScriptOptions=} [options]
+         * @return {Promise<any>}
+         */
+        runInThisContext(options?: ScriptOptions | undefined): Promise<any>;
+        #private;
+    }
+    namespace _default {
+        export { createGlobalObject };
+        export { compileFunction };
+        export { createReference };
+        export { getContextWindow };
+        export { getContextWorker };
+        export { getReference };
+        export { getTransferables };
+        export { putReference };
+        export { Reference };
+        export { removeReference };
+        export { runInContext };
+        export { runInNewContext };
+        export { runInThisContext };
+        export { Script };
+        export { createContext };
+        export { isContext };
+    }
+    export default _default;
+    export type ScriptOptions = {
+        filename?: string;
+        context?: object;
+    };
+    import { SharedWorker } from "socket:internal/shared-worker";
+}
+declare module "socket:worker_threads/init" {
+    export const SHARE_ENV: unique symbol;
+    export const isMainThread: boolean;
+    export namespace state {
+        export { isMainThread };
+        export let parentPort: any;
+        export let mainPort: any;
+        export let workerData: any;
+        export let url: any;
+        export let env: {};
+        export let id: number;
+    }
+    namespace _default {
+        export { state };
+    }
+    export default _default;
+}
+declare module "socket:worker_threads" {
+    /**
+     * Set shared worker environment data.
+     * @param {string} key
+     * @param {any} value
+     */
+    export function setEnvironmentData(key: string, value: any): void;
+    /**
+     * Get shared worker environment data.
+     * @param {string} key
+     * @return {any}
+     */
+    export function getEnvironmentData(key: string): any;
+    /**
+     * A pool of known worker threads.
+     * @type {<Map<string, Worker>}
+     */
+    export const workers: <Map_1>() => <string, Worker_1>() => any;
+    /**
+     * `true` if this is the "main" thread, otherwise `false`
+     * The "main" thread is the top level webview window.
+     * @type {boolean}
+     */
+    export const isMainThread: boolean;
+    /**
+     * The main thread `MessagePort` which is `null` when the
+     * current context is not the "main thread".
+     * @type {MessagePort?}
+     */
+    export const mainPort: MessagePort | null;
+    /**
+     * A worker thread `BroadcastChannel` class.
+     */
+    export class BroadcastChannel extends globalThis.BroadcastChannel {
+    }
+    /**
+     * A worker thread `MessageChannel` class.
+     */
+    export class MessageChannel extends globalThis.MessageChannel {
+    }
+    /**
+     * A worker thread `MessagePort` class.
+     */
+    export class MessagePort extends globalThis.MessagePort {
+    }
+    /**
+     * The current unique thread ID.
+     * @type {number}
+     */
+    export const threadId: number;
+    /**
+     * The parent `MessagePort` instance
+     * @type {MessagePort?}
+     */
+    export const parentPort: MessagePort | null;
+    /**
+     * Transferred "worker data" when creating a new `Worker` instance.
+     * @type {any?}
+     */
+    export const workerData: any | null;
+    /**
+     * @typedef {{
+     *   env?: object,
+     *   stdin?: boolean = false,
+     *   stdout?: boolean = false,
+     *   stderr?: boolean = false,
+     *   workerData?: any,
+     *   transferList?: any[],
+     *   eval?: boolean = false
+     * }} WorkerOptions
+    
+    /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export class Worker extends EventEmitter {
+        /**
+         * `Worker` class constructor.
+         * @param {string} filename
+         * @param {WorkerOptions=} [options]
+         */
+        constructor(filename: string, options?: WorkerOptions | undefined);
+        /**
+         * Handles incoming worker messages.
+         * @ignore
+         * @param {MessageEvent} event
+         */
+        onWorkerMessage(event: MessageEvent): boolean;
+        /**
+         * Handles process environment change events
+         * @ignore
+         * @param {import('./process.js').ProcessEnvironmentEvent} event
+         */
+        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
+        /**
+         * The unique ID for this `Worker` thread instace.
+         * @type {number}
+         */
+        get id(): number;
+        get threadId(): number;
+        /**
+         * A `Writable` standard input stream if `{ stdin: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Writable?}
+         */
+        get stdin(): Writable;
+        /**
+         * A `Readable` standard output stream if `{ stdout: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stdout(): Readable;
+        /**
+         * A `Readable` standard error stream if `{ stderr: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stderr(): Readable;
+        /**
+         * Terminates the `Worker` instance
+         */
+        terminate(): void;
+        postMessage(...args: any[]): void;
+        #private;
+    }
+    namespace _default {
+        export { Worker };
+        export { isMainThread };
+        export { parentPort };
+        export { setEnvironmentData };
+        export { getEnvironmentData };
+        export { workerData };
+        export { threadId };
+        export { SHARE_ENV };
+    }
+    export default _default;
+    /**
+     * /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export type WorkerOptions = {
+        env?: object;
+        stdin?: boolean;
+        stdout?: boolean;
+        stderr?: boolean;
+        workerData?: any;
+        transferList?: any[];
+        eval?: boolean;
+    };
+    import { EventEmitter } from "socket:events";
+    import { Writable } from "socket:stream";
+    import { Readable } from "socket:stream";
+    import { SHARE_ENV } from "socket:worker_threads/init";
+    import init from "socket:worker_threads/init";
+    import { env } from "socket:process";
+    export { SHARE_ENV, init };
+}
+declare module "socket:child_process" {
+    /**
+     * Spawns a child process exeucting `command` with `args`
+     * @param {string} command
+     * @param {string[]|object=} [args]
+     * @param {object=} [options
+     * @return {ChildProcess}
+     */
+    export function spawn(command: string, args?: (string[] | object) | undefined, options?: object | undefined): ChildProcess;
+    export function exec(command: any, options: any, callback: any): ChildProcess;
+    export function execFile(command: any, options: any, callback: any): ChildProcess;
+    namespace _default {
+        export { ChildProcess };
+        export { spawn };
+        export { execFile };
+        export { exec };
+    }
+    export default _default;
+    class ChildProcess extends EventEmitter {
+        constructor(options: any);
+        /**
+         * `true` if the child process was killed with kill()`,
+         * otherwise `false`.
+         * @type {boolean}
+         */
+        get killed(): boolean;
+        /**
+         * The process identifier for the child process. This value is
+         * `> 0` if the process was spawned successfully, otherwise `0`.
+         * @type {number}
+         */
+        get pid(): number;
+        /**
+         * The executable file name of the child process that is launched. This
+         * value is `null` until the child process has successfully been spawned.
+         * @type {string?}
+         */
+        get spawnfile(): string;
+        /**
+         * The full list of command-line arguments the child process was spawned with.
+         * This value is an empty array until the child process has successfully been
+         * spawned.
+         * @type {string[]}
+         */
+        get spawnargs(): string[];
+        /**
+         * Always `false` as the IPC messaging is not supported.
+         * @type {boolean}
+         */
+        get connected(): boolean;
+        /**
+         * The child process exit code. This value is `null` if the child process
+         * is still running, otherwise it is a positive integer.
+         * @type {number?}
+         */
+        get exitCode(): number;
+        /**
+         * If available, the underlying `stdin` writable stream for
+         * the child process.
+         * @type {import('./stream').Writable?}
+         */
+        get stdin(): import("socket:stream").Writable;
+        /**
+         * If available, the underlying `stdout` readable stream for
+         * the child process.
+         * @type {import('./stream').Readable?}
+         */
+        get stdout(): import("socket:stream").Readable;
+        /**
+         * If available, the underlying `stderr` readable stream for
+         * the child process.
+         * @type {import('./stream').Readable?}
+         */
+        get stderr(): import("socket:stream").Readable;
+        /**
+         * The underlying worker thread.
+         * @ignore
+         * @type {import('./worker_threads').Worker}
+         */
+        get worker(): Worker;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        disconnect(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         * @return {boolean}
+         */
+        send(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        ref(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        unref(): boolean;
+        /**
+         * Kills the child process. This function throws an error if the child
+         * process has not been spawned or is already killed.
+         * @param {number|string} signal
+         */
+        kill(...args: any[]): this;
+        /**
+         * Spawns the child process. This function will thrown an error if the process
+         * is already spawned.
+         * @param {string} command
+         * @param {string[]=} [args]
+         * @return {ChildProcess}
+         */
+        spawn(...args?: string[] | undefined): ChildProcess;
+        /**
+         * `EventTarget` based `addEventListener` method.
+         * @param {string} event
+         * @param {function(Event)} callback
+         * @param {{ once?: false }} [options]
+         */
+        addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+            once?: false;
+        }): void;
+        /**
+         * `EventTarget` based `removeEventListener` method.
+         * @param {string} event
+         * @param {function(Event)} callback
+         * @param {{ once?: false }} [options]
+         */
+        removeEventListener(event: string, callback: (arg0: Event) => any): void;
+        #private;
+    }
+    import { EventEmitter } from "socket:events";
+    import { Worker } from "socket:worker_threads";
+}
 declare module "socket:constants" {
     export * from "socket:fs/constants";
     export * from "socket:window/constants";
+    export const E2BIG: number;
+    export const EACCES: number;
+    export const EADDRINUSE: number;
+    export const EADDRNOTAVAIL: number;
+    export const EAFNOSUPPORT: number;
+    export const EAGAIN: number;
+    export const EALREADY: number;
+    export const EBADF: number;
+    export const EBADMSG: number;
+    export const EBUSY: number;
+    export const ECANCELED: number;
+    export const ECHILD: number;
+    export const ECONNABORTED: number;
+    export const ECONNREFUSED: number;
+    export const ECONNRESET: number;
+    export const EDEADLK: number;
+    export const EDESTADDRREQ: number;
+    export const EDOM: number;
+    export const EDQUOT: number;
+    export const EEXIST: number;
+    export const EFAULT: number;
+    export const EFBIG: number;
+    export const EHOSTUNREACH: number;
+    export const EIDRM: number;
+    export const EILSEQ: number;
+    export const EINPROGRESS: number;
+    export const EINTR: number;
+    export const EINVAL: number;
+    export const EIO: number;
+    export const EISCONN: number;
+    export const EISDIR: number;
+    export const ELOOP: number;
+    export const EMFILE: number;
+    export const EMLINK: number;
+    export const EMSGSIZE: number;
+    export const EMULTIHOP: number;
+    export const ENAMETOOLONG: number;
+    export const ENETDOWN: number;
+    export const ENETRESET: number;
+    export const ENETUNREACH: number;
+    export const ENFILE: number;
+    export const ENOBUFS: number;
+    export const ENODATA: number;
+    export const ENODEV: number;
+    export const ENOENT: number;
+    export const ENOEXEC: number;
+    export const ENOLCK: number;
+    export const ENOLINK: number;
+    export const ENOMEM: number;
+    export const ENOMSG: number;
+    export const ENOPROTOOPT: number;
+    export const ENOSPC: number;
+    export const ENOSR: number;
+    export const ENOSTR: number;
+    export const ENOSYS: number;
+    export const ENOTCONN: number;
+    export const ENOTDIR: number;
+    export const ENOTEMPTY: number;
+    export const ENOTSOCK: number;
+    export const ENOTSUP: number;
+    export const ENOTTY: number;
+    export const ENXIO: number;
+    export const EOPNOTSUPP: number;
+    export const EOVERFLOW: number;
+    export const EPERM: number;
+    export const EPIPE: number;
+    export const EPROTO: number;
+    export const EPROTONOSUPPORT: number;
+    export const EPROTOTYPE: number;
+    export const ERANGE: number;
+    export const EROFS: number;
+    export const ESPIPE: number;
+    export const ESRCH: number;
+    export const ESTALE: number;
+    export const ETIME: number;
+    export const ETIMEDOUT: number;
+    export const ETXTBSY: number;
+    export const EWOULDBLOCK: number;
+    export const EXDEV: number;
+    export const SIGHUP: number;
+    export const SIGINT: number;
+    export const SIGQUIT: number;
+    export const SIGILL: number;
+    export const SIGTRAP: number;
+    export const SIGABRT: number;
+    export const SIGIOT: number;
+    export const SIGBUS: number;
+    export const SIGFPE: number;
+    export const SIGKILL: number;
+    export const SIGUSR1: number;
+    export const SIGSEGV: number;
+    export const SIGUSR2: number;
+    export const SIGPIPE: number;
+    export const SIGALRM: number;
+    export const SIGTERM: number;
+    export const SIGCHLD: number;
+    export const SIGCONT: number;
+    export const SIGSTOP: number;
+    export const SIGTSTP: number;
+    export const SIGTTIN: number;
+    export const SIGTTOU: number;
+    export const SIGURG: number;
+    export const SIGXCPU: number;
+    export const SIGXFSZ: number;
+    export const SIGVTALRM: number;
+    export const SIGPROF: number;
+    export const SIGWINCH: number;
+    export const SIGIO: number;
+    export const SIGINFO: number;
+    export const SIGSYS: number;
     const _default: {
+        SIGHUP: number;
+        SIGINT: number;
+        SIGQUIT: number;
+        SIGILL: number;
+        SIGTRAP: number;
+        SIGABRT: number;
+        SIGIOT: number;
+        SIGBUS: number;
+        SIGFPE: number;
+        SIGKILL: number;
+        SIGUSR1: number;
+        SIGSEGV: number;
+        SIGUSR2: number;
+        SIGPIPE: number;
+        SIGALRM: number;
+        SIGTERM: number;
+        SIGCHLD: number;
+        SIGCONT: number;
+        SIGSTOP: number;
+        SIGTSTP: number;
+        SIGTTIN: number;
+        SIGTTOU: number;
+        SIGURG: number;
+        SIGXCPU: number;
+        SIGXFSZ: number;
+        SIGVTALRM: number;
+        SIGPROF: number;
+        SIGWINCH: number;
+        SIGIO: number;
+        SIGINFO: number;
+        SIGSYS: number;
+        E2BIG: number;
+        EACCES: number;
+        EADDRINUSE: number;
+        EADDRNOTAVAIL: number;
+        EAFNOSUPPORT: number;
+        EAGAIN: number;
+        EALREADY: number;
+        EBADF: number;
+        EBADMSG: number;
+        EBUSY: number;
+        ECANCELED: number;
+        ECHILD: number;
+        ECONNABORTED: number;
+        ECONNREFUSED: number;
+        ECONNRESET: number;
+        EDEADLK: number;
+        EDESTADDRREQ: number;
+        EDOM: number;
+        EDQUOT: number;
+        EEXIST: number;
+        EFAULT: number;
+        EFBIG: number;
+        EHOSTUNREACH: number;
+        EIDRM: number;
+        EILSEQ: number;
+        EINPROGRESS: number;
+        EINTR: number;
+        EINVAL: number;
+        EIO: number;
+        EISCONN: number;
+        EISDIR: number;
+        ELOOP: number;
+        EMFILE: number;
+        EMLINK: number;
+        EMSGSIZE: number;
+        EMULTIHOP: number;
+        ENAMETOOLONG: number;
+        ENETDOWN: number;
+        ENETRESET: number;
+        ENETUNREACH: number;
+        ENFILE: number;
+        ENOBUFS: number;
+        ENODATA: number;
+        ENODEV: number;
+        ENOENT: number;
+        ENOEXEC: number;
+        ENOLCK: number;
+        ENOLINK: number;
+        ENOMEM: number;
+        ENOMSG: number;
+        ENOPROTOOPT: number;
+        ENOSPC: number;
+        ENOSR: number;
+        ENOSTR: number;
+        ENOSYS: number;
+        ENOTCONN: number;
+        ENOTDIR: number;
+        ENOTEMPTY: number;
+        ENOTSOCK: number;
+        ENOTSUP: number;
+        ENOTTY: number;
+        ENXIO: number;
+        EOPNOTSUPP: number;
+        EOVERFLOW: number;
+        EPERM: number;
+        EPIPE: number;
+        EPROTO: number;
+        EPROTONOSUPPORT: number;
+        EPROTOTYPE: number;
+        ERANGE: number;
+        EROFS: number;
+        ESPIPE: number;
+        ESRCH: number;
+        ESTALE: number;
+        ETIME: number;
+        ETIMEDOUT: number;
+        ETXTBSY: number;
+        EWOULDBLOCK: number;
+        EXDEV: number;
         WINDOW_ERROR: -1;
         WINDOW_NONE: 0;
         WINDOW_CREATING: 10;
@@ -8465,633 +9789,6 @@ declare module "socket:timers" {
     export default exports;
     import * as exports from "socket:timers/index";
 }
-declare module "socket:internal/globals" {
-    /**
-     * Gets a runtime global value by name.
-     * @ignore
-     * @param {string} name
-     * @return {any|null}
-     */
-    export function get(name: string): any | null;
-    /**
-     * Symbolic global registry
-     * @ignore
-     */
-    export class GlobalsRegistry {
-        get global(): any;
-        symbol(name: any): symbol;
-        register(name: any, value: any): any;
-        get(name: any): any;
-    }
-    export default registry;
-    const registry: any;
-}
-declare module "socket:internal/shared-worker" {
-    export function getSharedWorkerImplementationForPlatform(): {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export class SharedHybridWorkerProxy extends EventTarget {
-        constructor(url: any, options: any);
-        onChannelMessage(event: any): void;
-        get id(): any;
-        get port(): any;
-        #private;
-    }
-    export class SharedHybridWorker extends EventTarget {
-        constructor(url: any, nameOrOptions: any);
-        get port(): any;
-        #private;
-    }
-    export const SharedWorker: {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export default SharedWorker;
-}
-declare module "socket:service-worker/state" {
-    export const channel: BroadcastChannel;
-    export const state: any;
-    export default state;
-}
-declare module "socket:service-worker/instance" {
-    export function createServiceWorker(currentState?: any, options?: any): any;
-    export const SHARED_WORKER_URL: URL;
-    export const ServiceWorker: {
-        new (): ServiceWorker;
-        prototype: ServiceWorker;
-    };
-    const _default: any;
-    export default _default;
-}
-declare module "socket:worker_threads/init" {
-    export const SHARE_ENV: unique symbol;
-    export const isMainThread: boolean;
-    export namespace state {
-        export { isMainThread };
-        export let parentPort: any;
-        export let mainPort: any;
-        export let workerData: any;
-        export let url: any;
-        export let env: {};
-        export let id: number;
-    }
-    namespace _default {
-        export { state };
-    }
-    export default _default;
-}
-declare module "socket:worker_threads" {
-    /**
-     * Set shared worker environment data.
-     * @param {string} key
-     * @param {any} value
-     */
-    export function setEnvironmentData(key: string, value: any): void;
-    /**
-     * Get shared worker environment data.
-     * @param {string} key
-     * @return {any}
-     */
-    export function getEnvironmentData(key: string): any;
-    /**
-     * A pool of known worker threads.
-     * @type {<Map<string, Worker>}
-     */
-    export const workers: <Map_1>() => <string, Worker_1>() => any;
-    /**
-     * `true` if this is the "main" thread, otherwise `false`
-     * The "main" thread is the top level webview window.
-     * @type {boolean}
-     */
-    export const isMainThread: boolean;
-    /**
-     * The main thread `MessagePort` which is `null` when the
-     * current context is not the "main thread".
-     * @type {MessagePort?}
-     */
-    export const mainPort: MessagePort | null;
-    /**
-     * A worker thread `BroadcastChannel` class.
-     */
-    export class BroadcastChannel extends globalThis.BroadcastChannel {
-    }
-    /**
-     * A worker thread `MessageChannel` class.
-     */
-    export class MessageChannel extends globalThis.MessageChannel {
-    }
-    /**
-     * A worker thread `MessagePort` class.
-     */
-    export class MessagePort extends globalThis.MessagePort {
-    }
-    /**
-     * The current unique thread ID.
-     * @type {number}
-     */
-    export const threadId: number;
-    /**
-     * The parent `MessagePort` instance
-     * @type {MessagePort?}
-     */
-    export const parentPort: MessagePort | null;
-    /**
-     * Transferred "worker data" when creating a new `Worker` instance.
-     * @type {any?}
-     */
-    export const workerData: any | null;
-    /**
-     * @typedef {{
-     *   env?: object,
-     *   stdin?: boolean = false,
-     *   stdout?: boolean = false,
-     *   stderr?: boolean = false,
-     *   workerData?: any,
-     *   transferList?: any[],
-     *   eval?: boolean = false
-     * }} WorkerOptions
-    
-    /**
-     * A worker thread that can communicate directly with a parent thread,
-     * share environment data, and process streamed data.
-     */
-    export class Worker extends EventEmitter {
-        /**
-         * `Worker` class constructor.
-         * @param {string} filename
-         * @param {WorkerOptions=} [options]
-         */
-        constructor(filename: string, options?: WorkerOptions | undefined);
-        /**
-         * Handles incoming worker messages.
-         * @ignore
-         * @param {MessageEvent} event
-         */
-        onWorkerMessage(event: MessageEvent): boolean;
-        /**
-         * Handles process environment change events
-         * @ignore
-         * @param {import('./process.js').ProcessEnvironmentEvent} event
-         */
-        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
-        /**
-         * The unique ID for this `Worker` thread instace.
-         * @type {number}
-         */
-        get id(): number;
-        /**
-         * A `Writable` standard input stream if `{ stdin: true }` was set when
-         * creating this `Worker` instance.
-         * @type {import('./stream.js').Writable?}
-         */
-        get stdin(): Writable;
-        /**
-         * A `Readable` standard output stream if `{ stdout: true }` was set when
-         * creating this `Worker` instance.
-         * @type {import('./stream.js').Readable?}
-         */
-        get stdout(): Readable;
-        /**
-         * A `Readable` standard error stream if `{ stderr: true }` was set when
-         * creating this `Worker` instance.
-         * @type {import('./stream.js').Readable?}
-         */
-        get stderr(): Readable;
-        /**
-         * Terminates the `Worker` instance
-         */
-        terminate(): void;
-        #private;
-    }
-    namespace _default {
-        export { Worker };
-        export { isMainThread };
-        export { parentPort };
-        export { setEnvironmentData };
-        export { getEnvironmentData };
-        export { workerData };
-        export { threadId };
-        export { SHARE_ENV };
-    }
-    export default _default;
-    /**
-     * /**
-     * A worker thread that can communicate directly with a parent thread,
-     * share environment data, and process streamed data.
-     */
-    export type WorkerOptions = {
-        env?: object;
-        stdin?: boolean;
-        stdout?: boolean;
-        stderr?: boolean;
-        workerData?: any;
-        transferList?: any[];
-        eval?: boolean;
-    };
-    import { EventEmitter } from "socket:events";
-    import { Writable } from "socket:stream";
-    import { Readable } from "socket:stream";
-    import { SHARE_ENV } from "socket:worker_threads/init";
-    import init from "socket:worker_threads/init";
-    import { env } from "socket:process";
-    export { SHARE_ENV, init };
-}
-declare module "socket:worker" {
-    export default Worker;
-    import { SharedWorker } from "socket:internal/shared-worker";
-    import { ServiceWorker } from "socket:service-worker/instance";
-    import { Worker } from "socket:worker_threads";
-    export { SharedWorker, ServiceWorker, Worker };
-}
-declare module "socket:vm" {
-    /**
-     * @ignore
-     * @param {object[]} transfer
-     * @param {object} object
-     * @param {object=} [options]
-     * @return {object[]}
-     */
-    export function findMessageTransfers(transfers: any, object: object, options?: object | undefined): object[];
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function applyInputContextReferences(context: object): void;
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function applyOutputContextReferences(context: object): void;
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function filterNonTransferableValues(context: object): void;
-    /**
-     * @ignore
-     * @param {object=} [currentContext]
-     * @param {object=} [updatedContext]
-     * @param {object=} [contextReference]
-     * @return {{ deletions: string[], merges: string[] }}
-     */
-    export function applyContextDifferences(currentContext?: object | undefined, updatedContext?: object | undefined, contextReference?: object | undefined, preserveScriptArgs?: boolean): {
-        deletions: string[];
-        merges: string[];
-    };
-    /**
-     * Wrap a JavaScript function source.
-     * @ignore
-     * @param {string} source
-     * @param {object=} [options]
-     */
-    export function wrapFunctionSource(source: string, options?: object | undefined): string;
-    /**
-     * Gets the VM context window.
-     * This function will create it if it does not already exist.
-     * The current window will be used on Android or iOS platforms as there can
-     * only be one window.
-     * @return {Promise<import('./window.js').ApplicationWindow}
-     */
-    export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
-    /**
-     * Gets the `SharedWorker` that for the VM context.
-     * @return {Promise<SharedWorker>}
-     */
-    export function getContextWorker(): Promise<SharedWorker>;
-    /**
-     * Terminates the VM script context window.
-     * @ignore
-     */
-    export function terminateContextWindow(): Promise<void>;
-    /**
-     * Terminates the VM script context worker.
-     * @ignore
-     */
-    export function terminateContextWorker(): Promise<void>;
-    /**
-     * Creates a prototype object of known global reserved intrinsics.
-     * @ignore
-     */
-    export function createIntrinsics(options: any): any;
-    /**
-     * Returns `true` if value is an intrinsic, otherwise `false`.
-     * @param {any} value
-     * @return {boolean}
-     */
-    export function isIntrinsic(value: any): boolean;
-    /**
-     * Get the intrinsic type of a given `value`.
-     * @param {any}
-     * @return {function|object|null|undefined}
-     */
-    export function getIntrinsicType(value: any): Function | object | null | undefined;
-    /**
-     * Get the intrinsic type string of a given `value`.
-     * @param {any}
-     * @return {string|null}
-     */
-    export function getIntrinsicTypeString(value: any): string | null;
-    /**
-     * Creates a global proxy object for context execution.
-     * @ignore
-     * @param {object} context
-     * @return {Proxy}
-     */
-    export function createGlobalObject(context: object, options: any): ProxyConstructor;
-    /**
-     * @ignore
-     * @param {string} source
-     * @return {boolean}
-     */
-    export function detectFunctionSourceType(source: string): boolean;
-    /**
-     * Compiles `source`  with `options` into a function.
-     * @ignore
-     * @param {string} source
-     * @param {object=} [options]
-     * @return {function}
-     */
-    export function compileFunction(source: string, options?: object | undefined): Function;
-    /**
-     * Run `source` JavaScript in given context. The script context execution
-     * context is preserved until the `context` object that points to it is
-     * garbage collected or there are no longer any references to it and its
-     * associated `Script` instance.
-     * @param {string|object|function} source
-     * @param {ScriptOptions=} [options]
-     * @param {object=} [context]
-     * @return {Promise<any>}
-     */
-    export function runInContext(source: string | object | Function, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
-    /**
-     * Run `source` JavaScript in new context. The script context is destroyed after
-     * execution. This is typically a "one off" isolated run.
-     * @param {string} source
-     * @param {ScriptOptions=} [options]
-     * @param {object=} [context]
-     * @return {Promise<any>}
-     */
-    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
-    /**
-     * Run `source` JavaScript in this current context (`globalThis`).
-     * @param {string} source
-     * @param {ScriptOptions=} [options]
-     * @return {Promise<any>}
-     */
-    export function runInThisContext(source: string, options?: ScriptOptions | undefined): Promise<any>;
-    /**
-     * @ignore
-     * @param {Reference} reference
-     */
-    export function putReference(reference: Reference): void;
-    /**
-     * Create a `Reference` for a `value` in a script `context`.
-     * @param {any} value
-     * @param {object} context
-     * @param {object=} [options]
-     * @return {Reference}
-     */
-    export function createReference(value: any, context: object, options?: object | undefined): Reference;
-    /**
-     * Get a script context by ID or values
-     * @param {string|object|function} id
-     * @return {Reference?}
-     */
-    export function getReference(id: string | object | Function): Reference | null;
-    /**
-     * Remove a script context reference by ID.
-     * @param {string} id
-     */
-    export function removeReference(id: string): void;
-    /**
-     * Get all transferable values in the `object` hierarchy.
-     * @param {object} object
-     * @return {object[]}
-     */
-    export function getTransferables(object: object): object[];
-    /**
-     * @ignore
-     * @param {object} object
-     * @return {object}
-     */
-    export function createContext(object: object): object;
-    /**
-     * Returns `true` if `object` is a "context" object.
-     * @param {object}
-     * @return {boolean}
-     */
-    export function isContext(object: any): boolean;
-    /**
-     * A container for a context worker message channel that looks like a "worker".
-     * @ignore
-     */
-    export class ContextWorkerInterface extends EventTarget {
-        get channel(): any;
-        get port(): any;
-        destroy(): void;
-        #private;
-    }
-    /**
-     * A container proxy for a context worker message channel that
-     * looks like a "worker".
-     * @ignore
-     */
-    export class ContextWorkerInterfaceProxy extends EventTarget {
-        constructor(globals: any);
-        get port(): any;
-        #private;
-    }
-    /**
-     * Global reserved values that a script context may not modify.
-     * @type {string[]}
-     */
-    export const RESERVED_GLOBAL_INTRINSICS: string[];
-    /**
-     * A unique reference to a value owner by a "context object" and a
-     * `Script` instance.
-     */
-    export class Reference {
-        /**
-         * Predicate function to determine if a `value` is an internal or external
-         * script reference value.
-         * @param {amy} value
-         * @return {boolean}
-         */
-        static isReference(value: amy): boolean;
-        /**
-         * `Reference` class constructor.
-         * @param {string} id
-         * @param {any} value
-         * @param {object=} [context]
-         * @param {object=} [options]
-         */
-        constructor(id: string, value: any, context?: object | undefined, options?: object | undefined);
-        /**
-         * The unique id of the reference
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The underling primitive type of the reference value.
-         * @ignore
-         * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
-         */
-        get type(): "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
-        /**
-         * The underlying value of the reference.
-         * @type {any?}
-         */
-        get value(): any;
-        /**
-         * The name of the type.
-         * @type {string?}
-         */
-        get name(): string;
-        /**
-         * The `Script` this value belongs to, if available.
-         * @type {Script?}
-         */
-        get script(): Script;
-        /**
-         * The "context object" this reference value belongs to.
-         * @type {object?}
-         */
-        get context(): any;
-        /**
-         * A boolean value to indicate if the underlying reference value is an
-         * intrinsic value.
-         * @type {boolean}
-         */
-        get isIntrinsic(): boolean;
-        /**
-         * A boolean value to indicate if the underlying reference value is an
-         * external reference value.
-         * @type {boolean}
-         */
-        get isExternal(): boolean;
-        /**
-         * The intrinsic type this reference may be an instance of or directly refer to.
-         * @type {function|object}
-         */
-        get intrinsicType(): any;
-        /**
-         * Releases strongly held value and weak references
-         * to the "context object".
-         */
-        release(): void;
-        /**
-         * Converts this `Reference` to a JSON object.
-         * @param {boolean=} [includeValue = false]
-         */
-        toJSON(includeValue?: boolean | undefined): {
-            __vmScriptReference__: boolean;
-            id: string;
-            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
-            name: string;
-            isIntrinsic: boolean;
-            intrinsicType: string;
-        };
-        #private;
-    }
-    /**
-     * @typedef {{
-     *  filename?: string,
-     *  context?: object
-     * }} ScriptOptions
-     */
-    /**
-     * A `Script` is a container for raw JavaScript to be executed in
-     * a completely isolated virtual machine context, optionally with
-     * user supplied context. Context objects references are not actually
-     * shared, but instead provided to the script execution context using the
-     * structured cloning algorithm used by the Message Channel API. Context
-     * differences are computed and applied after execution so the user supplied
-     * context object realizes context changes after script execution. All script
-     * sources run in an "async" context so a "top level await" should work.
-     */
-    export class Script extends EventTarget {
-        /**
-         * `Script` class constructor
-         * @param {string} source
-         * @param {ScriptOptions} [options]
-         */
-        constructor(source: string, options?: ScriptOptions);
-        /**
-         * The script identifier.
-         */
-        get id(): any;
-        /**
-         * The source for this script.
-         * @type {string}
-         */
-        get source(): string;
-        /**
-         * The filename for this script.
-         * @type {string}
-         */
-        get filename(): string;
-        /**
-         * A promise that resolves when the script is ready.
-         * @type {Promise<Boolean>}
-         */
-        get ready(): Promise<boolean>;
-        /**
-         * Destroy the script execution context.
-         * @return {Promise}
-         */
-        destroy(): Promise<any>;
-        /**
-         * Run `source` JavaScript in given context. The script context execution
-         * context is preserved until the `context` object that points to it is
-         * garbage collected or there are no longer any references to it and its
-         * associated `Script` instance.
-         * @param {ScriptOptions=} [options]
-         * @param {object=} [context]
-         * @return {Promise<any>}
-         */
-        runInContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
-        /**
-         * Run `source` JavaScript in new context. The script context is destroyed after
-         * execution. This is typically a "one off" isolated run.
-         * @param {ScriptOptions=} [options]
-         * @param {object=} [context]
-         * @return {Promise<any>}
-         */
-        runInNewContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
-        /**
-         * Run `source` JavaScript in this current context (`globalThis`).
-         * @param {ScriptOptions=} [options]
-         * @return {Promise<any>}
-         */
-        runInThisContext(options?: ScriptOptions | undefined): Promise<any>;
-        #private;
-    }
-    namespace _default {
-        export { createGlobalObject };
-        export { compileFunction };
-        export { createReference };
-        export { getContextWindow };
-        export { getContextWorker };
-        export { getReference };
-        export { getTransferables };
-        export { putReference };
-        export { Reference };
-        export { removeReference };
-        export { runInContext };
-        export { runInNewContext };
-        export { runInThisContext };
-        export { Script };
-        export { createContext };
-        export { isContext };
-    }
-    export default _default;
-    export type ScriptOptions = {
-        filename?: string;
-        context?: object;
-    };
-    import { SharedWorker } from "socket:worker";
-}
 declare module "socket:module" {
     export function isBuiltin(name: any): boolean;
     /**
@@ -9124,6 +9821,120 @@ declare module "socket:module" {
         buffer: typeof buffer;
         console: import("socket:console").Console;
         constants: {
+            SIGHUP: number;
+            SIGINT: number;
+            SIGQUIT: number;
+            SIGILL: number;
+            SIGTRAP: number;
+            SIGABRT: number;
+            SIGIOT: number;
+            SIGBUS: number;
+            SIGFPE: number;
+            SIGKILL: number;
+            SIGUSR1: number;
+            SIGSEGV: number;
+            SIGUSR2: number;
+            SIGPIPE: number;
+            SIGALRM: number;
+            SIGTERM: number;
+            SIGCHLD: number;
+            SIGCONT: number;
+            SIGSTOP: number;
+            SIGTSTP: number;
+            SIGTTIN: number;
+            SIGTTOU: number;
+            SIGURG: number;
+            SIGXCPU: number;
+            SIGXFSZ: number;
+            SIGVTALRM: number;
+            SIGPROF: number;
+            SIGWINCH: number;
+            SIGIO: number;
+            SIGINFO: number;
+            SIGSYS: number;
+            E2BIG: number;
+            EACCES: number;
+            EADDRINUSE: number;
+            EADDRNOTAVAIL: number;
+            EAFNOSUPPORT: number;
+            EAGAIN: number;
+            EALREADY: number;
+            EBADF: number;
+            EBADMSG: number;
+            EBUSY: number;
+            ECANCELED: number;
+            ECHILD: number;
+            ECONNABORTED: number;
+            ECONNREFUSED: number;
+            ECONNRESET: number;
+            EDEADLK: number;
+            EDESTADDRREQ: number;
+            EDOM: number;
+            EDQUOT: number;
+            EEXIST: number;
+            EFAULT: number;
+            EFBIG: number;
+            EHOSTUNREACH: number;
+            EIDRM: number;
+            EILSEQ: number;
+            EINPROGRESS: number;
+            EINTR: number;
+            EINVAL: number;
+            EIO: number;
+            EISCONN: number;
+            EISDIR: number;
+            ELOOP: number;
+            EMFILE: number;
+            EMLINK: number;
+            EMSGSIZE: number;
+            EMULTIHOP: number;
+            ENAMETOOLONG: number;
+            ENETDOWN: number;
+            ENETRESET: number;
+            ENETUNREACH: number;
+            ENFILE: number;
+            ENOBUFS: number;
+            ENODATA: number;
+            ENODEV: number;
+            ENOENT: number;
+            ENOEXEC: number;
+            ENOLCK: number;
+            /**
+             * The parent module, if given.
+             * @type {Module?}
+             */
+            ENOLINK: number;
+            ENOMEM: number;
+            ENOMSG: number;
+            ENOPROTOOPT: number;
+            ENOSPC: number;
+            ENOSR: number;
+            ENOSTR: number;
+            ENOSYS: number;
+            ENOTCONN: number;
+            ENOTDIR: number;
+            ENOTEMPTY: number;
+            ENOTSOCK: number;
+            ENOTSUP: number;
+            ENOTTY: number;
+            ENXIO: number;
+            EOPNOTSUPP: number;
+            EOVERFLOW: number;
+            EPERM: number;
+            EPIPE: number;
+            EPROTO: number;
+            EPROTONOSUPPORT: number;
+            EPROTOTYPE: number;
+            ERANGE: number;
+            EROFS: number;
+            ESPIPE: number;
+            ESRCH: number;
+            ESTALE: number;
+            ETIME: number;
+            ETIMEDOUT: number;
+            ETXTBSY: number;
+            EWOULDBLOCK: number;
+            EXDEV: number;
             WINDOW_ERROR: -1;
             WINDOW_NONE: 0;
             WINDOW_CREATING: 10;
@@ -9452,6 +10263,120 @@ declare module "socket:module" {
         buffer: typeof buffer;
         console: import("socket:console").Console;
         constants: {
+            SIGHUP: number;
+            SIGINT: number;
+            SIGQUIT: number;
+            SIGILL: number;
+            SIGTRAP: number;
+            SIGABRT: number;
+            SIGIOT: number;
+            SIGBUS: number;
+            SIGFPE: number;
+            SIGKILL: number;
+            SIGUSR1: number;
+            SIGSEGV: number;
+            SIGUSR2: number;
+            SIGPIPE: number;
+            SIGALRM: number;
+            SIGTERM: number;
+            SIGCHLD: number;
+            SIGCONT: number;
+            SIGSTOP: number;
+            SIGTSTP: number;
+            SIGTTIN: number;
+            SIGTTOU: number;
+            SIGURG: number;
+            SIGXCPU: number;
+            SIGXFSZ: number;
+            SIGVTALRM: number;
+            SIGPROF: number;
+            SIGWINCH: number;
+            SIGIO: number;
+            SIGINFO: number;
+            SIGSYS: number;
+            E2BIG: number;
+            EACCES: number;
+            EADDRINUSE: number;
+            EADDRNOTAVAIL: number;
+            EAFNOSUPPORT: number;
+            EAGAIN: number;
+            EALREADY: number;
+            EBADF: number;
+            EBADMSG: number;
+            EBUSY: number;
+            ECANCELED: number;
+            ECHILD: number;
+            ECONNABORTED: number;
+            ECONNREFUSED: number;
+            ECONNRESET: number;
+            EDEADLK: number;
+            EDESTADDRREQ: number;
+            EDOM: number;
+            EDQUOT: number;
+            EEXIST: number;
+            EFAULT: number;
+            EFBIG: number;
+            EHOSTUNREACH: number;
+            EIDRM: number;
+            EILSEQ: number;
+            EINPROGRESS: number;
+            EINTR: number;
+            EINVAL: number;
+            EIO: number;
+            EISCONN: number;
+            EISDIR: number;
+            ELOOP: number;
+            EMFILE: number;
+            EMLINK: number;
+            EMSGSIZE: number;
+            EMULTIHOP: number;
+            ENAMETOOLONG: number;
+            ENETDOWN: number;
+            ENETRESET: number;
+            ENETUNREACH: number;
+            ENFILE: number;
+            ENOBUFS: number;
+            ENODATA: number;
+            ENODEV: number;
+            ENOENT: number;
+            ENOEXEC: number;
+            ENOLCK: number;
+            /**
+             * The parent module, if given.
+             * @type {Module?}
+             */
+            ENOLINK: number;
+            ENOMEM: number;
+            ENOMSG: number;
+            ENOPROTOOPT: number;
+            ENOSPC: number;
+            ENOSR: number;
+            ENOSTR: number;
+            ENOSYS: number;
+            ENOTCONN: number;
+            ENOTDIR: number;
+            ENOTEMPTY: number;
+            ENOTSOCK: number;
+            ENOTSUP: number;
+            ENOTTY: number;
+            ENXIO: number;
+            EOPNOTSUPP: number;
+            EOVERFLOW: number;
+            EPERM: number;
+            EPIPE: number;
+            EPROTO: number;
+            EPROTONOSUPPORT: number;
+            EPROTOTYPE: number;
+            ERANGE: number;
+            EROFS: number;
+            ESPIPE: number;
+            ESRCH: number;
+            ESTALE: number;
+            ETIME: number;
+            ETIMEDOUT: number;
+            ETXTBSY: number;
+            EWOULDBLOCK: number;
+            EXDEV: number;
             WINDOW_ERROR: -1;
             WINDOW_NONE: 0;
             WINDOW_CREATING: 10;
@@ -10412,6 +11337,31 @@ declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
+}
+declare module "socket:service-worker/state" {
+    export const channel: BroadcastChannel;
+    export const state: any;
+    export default state;
+}
+declare module "socket:service-worker/instance" {
+    export function createServiceWorker(currentState?: any, options?: any): any;
+    export const SHARED_WORKER_URL: URL;
+    export const ServiceWorker: {
+        new (): ServiceWorker;
+        prototype: ServiceWorker;
+    };
+    const _default: any;
+    export default _default;
+}
+declare module "socket:worker" {
+    export default Worker;
+    import { SharedWorker } from "socket:internal/shared-worker";
+    import { ServiceWorker } from "socket:service-worker/instance";
+    import { Worker } from "socket:worker_threads";
+    export { SharedWorker, ServiceWorker, Worker };
+}
+declare module "socket:child_process/worker" {
+    export {};
 }
 declare module "socket:internal/geolocation" {
     /**

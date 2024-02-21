@@ -177,9 +177,19 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   process_command += "\"";
 #endif
 
+  auto comspec = Env::get("COMSPEC");
+  auto shell = this->shell;
+
+  if (shell == "cmd.exe" && comspec.size() > 0) {
+    shell = comspec;
+  }
+
   BOOL bSuccess = CreateProcess(
-    nullptr,
-    process_command.empty() ? nullptr : &process_command[0],
+    shell.size() > 0 ? shell : nullptr,
+    (
+     (this->shell == "cmd.exe" ? String("/d /s /c ") : "") +
+     (process_command.empty() ? "": &process_command[0])
+    ).c_str(),
     nullptr,
     nullptr,
     stdin_fd || stdout_fd || stderr_fd || config.inherit_file_descriptors, // Cannot be false when stdout, stderr or stdin is used

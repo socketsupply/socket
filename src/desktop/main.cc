@@ -45,10 +45,46 @@ using namespace SSC;
 
 static App *app_ptr = nullptr;
 
-std::function<void(int)> shutdownHandler;
+static std::function<void(int)> shutdownHandler;
+
+// propagate signals to the default window which will use the
+// 'socket.runtime.signal' broadcast channel to propagate to all
+// other windows who may be subscribers
+static void defaultWindowSignalHandler (int signal) {
+  auto app = App::instance();
+  if (app != nullptr && app->windowManager != nullptr) {
+    auto defaultWindow = app->windowManager->getWindow(0);
+    if (defaultWindow != nullptr) {
+      if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
+        const auto json = JSON::Object {
+          JSON::Object::Entries {
+            {"signal", signal}
+          }
+        };
+        defaultWindow->eval(getEmitToRenderProcessJavaScript("signal", json.str()));
+      }
+    }
+  }
+}
+
 void signalHandler (int signal) {
+  static auto app = App::instance();
+  static auto userConfig = SSC::getUserConfig();
+  static const auto signalsDisabled = userConfig["application_signals"] == "false";
+  static const auto signals = parseStringList(userConfig["application_signals"]);
+  const auto name = String(sys_signame[signal]);
+
+  if (
+    !signalsDisabled ||
+    std::find(signals.begin(), signals.end(), name) != signals.end()
+   ) {
+    defaultWindowSignalHandler(signal);
+  }
+
   if (shutdownHandler != nullptr) {
-    shutdownHandler(signal);
+    app->dispatch([signal] () {
+      shutdownHandler(signal);
+    });
   }
 }
 
@@ -1498,6 +1534,101 @@ MAIN {
     std::cin >> value;
     t.detach();
   }
+
+  const auto signalsDisabled = userConfig["application_signals"] == "false";
+  const auto signals = parseStringList(userConfig["application_signals"]);
+
+#define SET_DEFAULT_WINDOW_SIGNAL_HANDLER(sig) {                               \
+  const auto name = String(CONVERT_TO_STRING(sig));                            \
+  if (                                                                         \
+    !signalsDisabled ||                                                        \
+    std::find(signals.begin(), signals.end(), name) != signals.end()           \
+  ) {                                                                          \
+    signal(sig, defaultWindowSignalHandler);                                   \
+  }                                                                            \
+}
+
+#if defined(SIGQUIT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGQUIT)
+#endif
+#if defined(SIGILL)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGILL)
+#endif
+#if defined(SIGTRAP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTRAP)
+#endif
+#if defined(SIGABRT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGABRT)
+#endif
+#if defined(SIGIOT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGIOT)
+#endif
+#if defined(SIGBUS)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGBUS)
+#endif
+#if defined(SIGFPE)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGFPE)
+#endif
+#if defined(SIGKILL)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGKILL)
+#endif
+#if defined(SIGUSR1)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGUSR1)
+#endif
+#if defined(SIGUSR2)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGUSR2)
+#endif
+#if defined(SIGPIPE)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGPIPE)
+#endif
+#if defined(SIGALRM)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGALRM)
+#endif
+#if defined(SIGCHLD)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGCHLD)
+#endif
+#if defined(SIGCONT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGCONT)
+#endif
+#if defined(SIGSTOP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSTOP)
+#endif
+#if defined(SIGTSTP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTSTP)
+#endif
+#if defined(SIGTTIN)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTTIN)
+#endif
+#if defined(SIGTTOU)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTTOU)
+#endif
+#if defined(SIGURG)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGURG)
+#endif
+#if defined(SIGXCPU)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGXCPU)
+#endif
+#if defined(SIGXFSZ)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGXFSZ)
+#endif
+#if defined(SIGVTALRM)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGVTALRM)
+#endif
+#if defined(SIGPROF)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGPROF)
+#endif
+#if defined(SIGWINCH)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGWINCH)
+#endif
+#if defined(SIGIO)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGIO)
+#endif
+#if defined(SIGINFO)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGINFO)
+#endif
+#if defined(SIGSYS)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
+#endif
 
   //
   // # Event Loop
