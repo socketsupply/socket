@@ -277,7 +277,7 @@ static void initRouterTable (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     int signal;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "signal", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(signal, "signal", std::stoi);
 
     router->core->childProcess.kill(
       message.seq,

@@ -242,7 +242,7 @@ class ChildProcess extends EventEmitter {
    * @param {number|string} signal
    */
   kill (...args) {
-    if (/spawn/.test(this.#state.lifecycle)) {
+    if (!/spawn/.test(this.#state.lifecycle)) {
       throw new Error('Cannot kill a child process that has not been spawned')
     }
 
