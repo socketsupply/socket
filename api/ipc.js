@@ -895,7 +895,7 @@ export class Result {
     const id = result?.id || null
     const err = maybeMakeError(result?.err || maybeError || null, Result.from)
     const data = !err && result?.data !== null && result?.data !== undefined
-      ? result.data?.data ?? result.data
+      ? result.data
       : (!err && !id && !result?.source ? result?.err ?? result : null)
 
     const source = result?.source || maybeSource || null
