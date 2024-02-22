@@ -63,6 +63,9 @@ const contexts = new WeakMap()
 // a shared context when one is not given
 const sharedContext = createContext({})
 
+// blob URL caches key by content hash
+const blobURLCache = new Map()
+
 // A weak mapping of values to reference objects
 const references = Object.assign(new WeakMap(), {
   // A mapping of reference IDs to weakly held `Reference` instances
@@ -206,9 +209,15 @@ export function applyOutputContextReferences (context) {
       Object.getPrototypeOf(object) !== Object.prototype &&
       Object.getPrototypeOf(object) !== Array.prototype
     ) {
-      for (const key of Object.keys(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(object)))) {
-        if (key !== 'constructor') {
-          keys.add(key)
+      const prototype = Object.getPrototypeOf(object)
+      if (prototype) {
+        const descriptors = Object.getOwnPropertyDescriptors(prototype)
+        if (descriptors) {
+          for (const key of Object.keys(descriptors)) {
+            if (key !== 'constructor') {
+              keys.add(key)
+            }
+          }
         }
       }
     }
@@ -219,8 +228,18 @@ export function applyOutputContextReferences (context) {
         continue
       }
 
-      const value = object[key]
+      let value = object[key]
       if (value && typeof value === 'object') {
+        if (Symbol.toStringTag in value) {
+          const tag = typeof value[Symbol.toStringTag] === 'function'
+            ? value[Symbol.toStringTag]()
+            : value[Symbol.toStringTag]
+
+          if (tag === 'Module') {
+            value = object[key] = { ...value }
+          }
+        }
+
         if (!(value.__vmScriptReference__ === true && value.id)) {
           visitObject(value)
         }
@@ -737,7 +756,7 @@ export class Reference {
     if (this.value && this.type === 'object') {
       const prototype = Reflect.getPrototypeOf(this.value)
 
-      if (prototype.constructor.name) {
+      if (prototype?.constructor?.name) {
         return prototype.constructor.name
       }
     }
@@ -801,8 +820,9 @@ export class Reference {
    * @param {boolean=} [includeValue = false]
    */
   toJSON (includeValue = false) {
-    const { isIntrinsic, value, name, type, id } = this
+    const { isIntrinsic, name, type, id } = this
     const intrinsicType = getIntrinsicTypeString(this.intrinsicType)
+    let { value } = this
     const json = {
       __vmScriptReference__: true,
       id,
@@ -813,6 +833,20 @@ export class Reference {
     }
 
     if (includeValue) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        Symbol.toStringTag in value
+      ) {
+        const tag = typeof value[Symbol.toStringTag] === 'function'
+          ? value[Symbol.toStringTag]()
+          : value[Symbol.toStringTag]
+
+        if (tag === 'Module') {
+          value = { ...value }
+        }
+      }
+
       json.value = value
     }
 
@@ -1188,8 +1222,8 @@ export async function getContextWindow () {
     existingContextWindow ??
     application.createWindow({
       canExit: true,
-      headless: true,
-      debug: true,
+      headless: !process.env.SOCKET_RUNTIME_VM_DEBUG,
+      debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
       index: VM_WINDOW_INDEX,
       title: VM_WINDOW_TITLE,
       path: VM_WINDOW_PATH
@@ -1651,8 +1685,17 @@ export function compileFunction (source, options = null) {
   }
 
   if (options?.type === 'module') {
-    const blob = new Blob([source], { type: 'text/javascript' })
-    const url = URL.createObjectURL(blob)
+    const hash = crypto.murmur3(source)
+    let url = null
+
+    if (blobURLCache.has(hash)) {
+      url = blobURLCache.get(hash)
+    } else {
+      const blob = new Blob([source], { type: 'text/javascript' })
+      url = URL.createObjectURL(blob)
+      blobURLCache.set(hash, url)
+    }
+
     const moduleSource = `
       const module = await import("${url}")
       const exports = {}
