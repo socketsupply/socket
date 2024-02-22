@@ -18,8 +18,16 @@ const windowsDriveRegex = /^[a-z]:/i
 const windowsDriveAndSlashesRegex = /^([a-z]:(\\|\/\/))/i
 const windowsDriveInPathRegex = /^\/[a-z]:/i
 
-function maybeURL (uri, baseURL) {
+function maybeURL (uri, baseURL = '') {
   let url = null
+
+  if (baseURL.startsWith('blob:')) {
+    baseURL = new URL(baseURL).pathname
+  }
+
+  if (uri.startsWith('blob:')) {
+    uri = new URL(uri).pathname
+  }
 
   try {
     baseURL = new URL(baseURL)
@@ -46,6 +54,10 @@ export function resolve (options, ...components) {
 
     if (component.length > 1) {
       component = component.replace(/\/$/g, '')
+    }
+
+    if (component.startsWith('blob:')) {
+      component = maybeURL(component)
     }
 
     resolved = resolveURL(resolved + '/', component)
@@ -397,14 +409,14 @@ export class Path {
 
     if (cwd) {
       cwd = cwd.replace(/\\/g, '/')
-      cwd = new URL(`file://${cwd.replace('file://', '')}`)
+      cwd = maybeURL(`file://${cwd.replace('file://', '')}`)
     } else if (pathname.startsWith('..')) {
       pathname = pathname.slice(2)
       cwd = 'file:///..'
     } else if (isRelative) {
-      cwd = new URL('file:///.')
+      cwd = maybeURL('file:///.')
     } else {
-      cwd = new URL(`file://${Path.cwd()}`)
+      cwd = maybeURL(`file://${Path.cwd()}`)
     }
 
     if (cwd === 'socket:/') {
@@ -420,7 +432,7 @@ export class Path {
       this.#hasProtocol = Boolean(this.pattern.protocol)
     } catch {}
 
-    this.url = new URL(pathname, cwd)
+    this.url = maybeURL(pathname, cwd)
 
     const [drive] = (
       pathname.match(windowsDriveRegex) ||
@@ -632,7 +644,7 @@ export class Path {
    * @return {URL}
    */
   toURL () {
-    return new URL(this.href.replace(/\\/g, '/'))
+    return maybeURL(this.href.replace(/\\/g, '/'))
   }
 
   /**
