@@ -49,10 +49,11 @@ namespace SSC {
       WindowManager *windowManager = nullptr;
       ExitCallback onExit = nullptr;
       AtomicBool shouldExit = false;
+      AtomicBool killed = false;
       bool fromSSC = false;
       bool w32ShowConsole = false;
       Map appData;
-      Core *core;
+      Core *core = nullptr;
 
     #ifdef _WIN32
       App (void *);
