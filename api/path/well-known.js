@@ -45,6 +45,24 @@ export const MUSIC = paths.music || null
 export const RESOURCES = paths.resources || null
 
 /**
+ * Well known path to the application's "config" folder.
+ * @type {?string}
+ */
+export const CONFIG = paths.config || null
+
+/**
+ * Well known path to the application's "data" folder.
+ * @type {?string}
+ */
+export const DATA = paths.data || null
+
+/**
+ * Well known path to the application's "log" folder.
+ * @type {?string}
+ */
+export const LOG = paths.log || null
+
+/**
  * Well known path to the application's "home" folder.
  * This may be the user's HOME directory or the application container sandbox.
  * @type {?string}
@@ -58,6 +76,9 @@ export default {
   PICTURES,
   DESKTOP,
   VIDEOS,
+  CONFIG,
   MUSIC,
-  HOME
+  HOME,
+  DATA,
+  LOG
 }

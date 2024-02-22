@@ -18,14 +18,14 @@ const windowsDriveRegex = /^[a-z]:/i
 const windowsDriveAndSlashesRegex = /^([a-z]:(\\|\/\/))/i
 const windowsDriveInPathRegex = /^\/[a-z]:/i
 
-function maybeURL (uri, baseURL = '') {
+function maybeURL (uri, baseURL = undefined) {
   let url = null
 
-  if (baseURL.startsWith('blob:')) {
+  if (typeof baseURL === 'string' && baseURL.startsWith('blob:')) {
     baseURL = new URL(baseURL).pathname
   }
 
-  if (uri.startsWith('blob:')) {
+  if (typeof uri === 'string' && uri.startsWith('blob:')) {
     uri = new URL(uri).pathname
   }
 
@@ -176,7 +176,7 @@ export function join (options, ...components) {
 
   while (components.length) {
     let component = String(components.shift() || '')
-    const url = parseURL(component) || component
+    const url = parseURL(component, { strict: true }) || component
 
     if (url.protocol) {
       if (!protocol) {
