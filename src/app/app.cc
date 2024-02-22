@@ -1,3 +1,4 @@
+#include "../core/platform.hh"
 #include "../window/window.hh"
 #include "../ipc/ipc.hh"
 #include "app.hh"
@@ -213,6 +214,8 @@ namespace SSC {
   }
 
   void App::kill () {
+    delete this->core;
+    this->core = nullptr;
     // Distinguish window closing with app exiting
     shouldExit = true;
   #if defined(__linux__) && !defined(__ANDROID__)
