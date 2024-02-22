@@ -6343,7 +6343,7 @@ declare module "socket:child_process" {
     }
     export default _default;
     class ChildProcess extends EventEmitter {
-        constructor(options: any);
+        constructor(options?: {});
         /**
          * `true` if the child process was killed with kill()`,
          * otherwise `false`.
@@ -8326,7 +8326,16 @@ declare module "socket:stream-relay/encryption" {
          */
         has(to: Uint8Array | string): boolean;
         /**
-         * Decrypts a sealed message for a specific receiver.
+         * Opens a sealed message using the specified key.
+         * @param {Buffer} message - The sealed message.
+         * @param {Object|string} v - Key object or public key.
+         * @returns {Buffer} - Decrypted message.
+         * @throws {Error} - Throws ENOKEY if the key is not found.
+         */
+        openUnsigned(message: Buffer, v: any | string): Buffer;
+        sealUnsigned(message: any, v: any): any;
+        /**
+         * Decrypts a sealed and signed message for a specific receiver.
          * @param {Buffer} message - The sealed message.
          * @param {Object|string} v - Key object or public key.
          * @returns {Buffer} - Decrypted message.
@@ -8334,15 +8343,7 @@ declare module "socket:stream-relay/encryption" {
          */
         open(message: Buffer, v: any | string): Buffer;
         /**
-         * Opens a sealed message using the specified key.
-         * @param {Buffer} message - The sealed message.
-         * @param {Object|string} v - Key object or public key.
-         * @returns {Buffer} - Decrypted message.
-         * @throws {Error} - Throws ENOKEY if the key is not found.
-         */
-        openMessage(message: Buffer, v: any | string): Buffer;
-        /**
-         * Seals a message for a specific receiver using their public key.
+         * Seals and signs a message for a specific receiver using their public key.
          *
          * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
          * a plaintext `message` for a `receiver` identity. This prevents repudiation
@@ -8740,320 +8741,351 @@ declare module "socket:stream-relay/index" {
         localPeer: any;
         write(sharedKey: any, args: any): Promise<any>;
     }
-    export function wrap(dgram: any): {
-        new (persistedState?: object | null): {
+    /**
+     * `Peer` class factory.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class Peer {
+        /**
+         * `Peer` class constructor. Avoid calling this directly (use the create method).
+         * @private
+         * @param {object?} [persistedState]
+         */
+        private constructor();
+        port: any;
+        address: any;
+        natType: number;
+        nextNatType: number;
+        clusters: {};
+        reflectionId: any;
+        reflectionTimeout: any;
+        reflectionStage: number;
+        reflectionRetry: number;
+        reflectionFirstResponder: any;
+        peerId: string;
+        isListening: boolean;
+        ctime: number;
+        lastUpdate: number;
+        lastSync: number;
+        closing: boolean;
+        clock: number;
+        unpublished: {};
+        cache: any;
+        uptime: number;
+        maxHops: number;
+        bdpCache: number[];
+        dgram: () => never;
+        onListening: any;
+        onDelete: any;
+        sendQueue: any[];
+        firewall: any;
+        rates: Map<any, any>;
+        streamBuffer: Map<any, any>;
+        gate: Map<any, any>;
+        returnRoutes: Map<any, any>;
+        metrics: {
+            i: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+                8: number;
+                REJECTED: number;
+            };
+            o: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+                8: number;
+            };
+        };
+        peers: any;
+        encryption: Encryption;
+        config: any;
+        _onError: (err: any) => any;
+        socket: any;
+        probeSocket: any;
+        /**
+         * An implementation for clearning an interval that can be overridden by the test suite
+         * @param Number the number that identifies the timer
+         * @return {undefined}
+         * @ignore
+         */
+        _clearInterval(tid: any): undefined;
+        /**
+         * An implementation for clearning a timeout that can be overridden by the test suite
+         * @param Number the number that identifies the timer
+         * @return {undefined}
+         * @ignore
+         */
+        _clearTimeout(tid: any): undefined;
+        /**
+         * An implementation of an internal timer that can be overridden by the test suite
+         * @return {Number}
+         * @ignore
+         */
+        _setInterval(fn: any, t: any): number;
+        /**
+         * An implementation of an timeout timer that can be overridden by the test suite
+         * @return {Number}
+         * @ignore
+         */
+        _setTimeout(fn: any, t: any): number;
+        /**
+         * A method that encapsulates the listing procedure
+         * @return {undefined}
+         * @ignore
+         */
+        _listen(): undefined;
+        init(cb: any): Promise<any>;
+        onReady: any;
+        mainLoopTimer: number;
+        /**
+         * Continuously evaluate the state of the peer and its network
+         * @return {undefined}
+         * @ignore
+         */
+        _mainLoop(ts: any): undefined;
+        /**
+         * Enqueue packets to be sent to the network
+         * @param {Buffer} data - An encoded packet
+         * @param {number} port - The desination port of the remote host
+         * @param {string} address - The destination address of the remote host
+         * @param {Socket=this.socket} socket - The socket to send on
+         * @return {undefined}
+         * @ignore
+         */
+        send(data: Buffer, port: number, address: string, socket?: any): undefined;
+        /**
+         * @private
+         */
+        private _scheduleSend;
+        sendTimeout: number;
+        /**
+         * @private
+         */
+        private _dequeue;
+        /**
+         * Send any unpublished packets
+         * @return {undefined}
+         * @ignore
+         */
+        sendUnpublished(): undefined;
+        /**
+         * Get the serializable state of the peer (can be passed to the constructor or create method)
+         * @return {undefined}
+         */
+        getState(): undefined;
+        getInfo(): Promise<{
+            address: any;
+            port: any;
+            clock: number;
+            uptime: number;
+            natType: number;
+            peerId: string;
+        }>;
+        cacheInsert(packet: any): Promise<void>;
+        addIndexedPeer(info: any): Promise<void>;
+        reconnect(): Promise<void>;
+        disconnect(): Promise<void>;
+        probeReflectionTimeout: any;
+        sealUnsigned(...args: any[]): Promise<any>;
+        openUnsigned(...args: any[]): Promise<Buffer>;
+        seal(...args: any[]): Promise<Buffer>;
+        open(...args: any[]): Promise<Buffer>;
+        addEncryptionKey(...args: any[]): Promise<void>;
+        /**
+         * Get a selection of known peers
+         * @return {Array<RemotePeer>}
+         * @ignore
+         */
+        getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
+        /**
+         * Send an eventually consistent packet to a selection of peers (fanout)
+         * @return {undefined}
+         * @ignore
+         */
+        mcast(packet: any, ignorelist?: any[]): undefined;
+        /**
+         * The process of determining this peer's NAT behavior (firewall and dependentness)
+         * @return {undefined}
+         * @ignore
+         */
+        requestReflection(): undefined;
+        /**
+         * Ping another peer
+         * @return {PacketPing}
+         * @ignore
+         */
+        ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
+        /**
+         * Get a peer
+         * @return {RemotePeer}
+         * @ignore
+         */
+        getPeer(id: any): RemotePeer;
+        /**
+         * This should be called at least once when an app starts to multicast
+         * this peer, and starts querying the network to discover peers.
+         * @param {object} keys - Created by `Encryption.createKeyPair()`.
+         * @param {object=} args - Options
+         * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
+         * @return {RemotePeer}
+         */
+        join(sharedKey: any, args?: object | undefined): RemotePeer;
+        /**
+         * @param {Packet} T - The constructor to be used to create packets.
+         * @param {Any} message - The message to be split and packaged.
+         * @return {Array<Packet<T>>}
+         * @ignore
+         */
+        _message2packets(T: Packet, message: Any, args: any): Array<Packet<Packet>>;
+        /**
+         * Sends a packet into the network that will be replicated and buffered.
+         * Each peer that receives it will buffer it until TTL and then replicate
+         * it provided it has has not exceeded their maximum number of allowed hops.
+         *
+         * @param {object} keys - the public and private key pair created by `Encryption.createKeyPair()`.
+         * @param {object} args - The arguments to be applied.
+         * @param {Buffer} args.message - The message to be encrypted by keys and sent.
+         * @param {Packet<T>=} args.packet - The previous packet in the packet chain.
+         * @param {Buffer} args.usr1 - 32 bytes of arbitrary clusterId in the protocol framing.
+         * @param {Buffer} args.usr2 - 32 bytes of arbitrary clusterId in the protocol framing.
+         * @return {Array<PacketPublish>}
+         */
+        publish(sharedKey: any, args: {
+            message: Buffer;
+            packet?: Packet<T> | undefined;
+            usr1: Buffer;
+            usr2: Buffer;
+        }): Array<PacketPublish>;
+        /**
+         * @return {undefined}
+         */
+        sync(peer: any): undefined;
+        close(): void;
+        /**
+         * Deploy a query into the network
+         * @return {undefined}
+         *
+         */
+        query(query: any): undefined;
+        /**
+         *
+         * This is a default implementation for deciding what to summarize
+         * from the cache when receiving a request to sync. that can be overridden
+         *
+         */
+        cachePredicate(packet: any): boolean;
+        /**
+         * A connection was made, add the peer to the local list of known
+         * peers and call the onConnection if it is defined by the user.
+         *
+         * @return {undefined}
+         * @ignore
+         */
+        _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
+        connections: Map<any, any>;
+        /**
+         * Received a Sync Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onSync(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Query Packet
+         *
+         * a -> b -> c -> (d) -> c -> b -> a
+         *
+         * @return {undefined}
+         * @example
+         *
+         * ```js
+         * peer.onQuery = (packet) => {
+         *   //
+         *   // read a database or something
+         *   //
+         *   return {
+         *     message: Buffer.from('hello'),
+         *     publicKey: '',
+         *     privateKey: ''
+         *   }
+         * }
+         * ```
+         */
+        _onQuery(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Ping Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPing(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Pong Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPong(packet: any, port: any, address: any): undefined;
+        /**
+         * Received an Intro Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onIntro(packet: any, port: any, address: any, _: any, opts?: {
+            attempts: number;
+        }): undefined;
+        socketPool: any[];
+        /**
+         * Received an Join Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onJoin(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received an Publish Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPublish(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received an Stream Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onStream(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received any packet on the probe port to determine the firewall:
+         * are you port restricted, host restricted, or unrestricted.
+         * @return {undefined}
+         * @ignore
+         */
+        _onProbeMessage(data: any, { port, address }: {
             port: any;
             address: any;
-            natType: number;
-            nextNatType: number;
-            clusters: {};
-            reflectionId: any;
-            reflectionTimeout: any;
-            reflectionStage: number;
-            reflectionRetry: number;
-            reflectionFirstResponder: any;
-            peerId: string;
-            isListening: boolean;
-            ctime: number;
-            lastUpdate: number;
-            lastSync: number;
-            closing: boolean;
-            clock: number;
-            unpublished: {};
-            cache: any;
-            uptime: number;
-            maxHops: number;
-            bdpCache: number[];
-            onListening: any;
-            onDelete: any;
-            sendQueue: any[];
-            firewall: any;
-            rates: Map<any, any>;
-            streamBuffer: Map<any, any>;
-            gate: Map<any, any>;
-            returnRoutes: Map<any, any>;
-            metrics: {
-                i: {
-                    0: number;
-                    1: number;
-                    2: number;
-                    3: number;
-                    4: number;
-                    5: number;
-                    6: number;
-                    7: number;
-                    8: number;
-                    REJECTED: number;
-                };
-                o: {
-                    0: number;
-                    1: number;
-                    2: number;
-                    3: number;
-                    4: number;
-                    5: number;
-                    6: number;
-                    7: number;
-                    8: number;
-                };
-            };
-            peers: any;
-            encryption: Encryption;
-            config: any;
-            _onError: (err: any) => any;
-            socket: any;
-            probeSocket: any;
-            /**
-             * An implementation for clearning an interval that can be overridden by the test suite
-             * @param Number the number that identifies the timer
-             * @return {undefined}
-             * @ignore
-             */
-            _clearInterval(tid: any): undefined;
-            /**
-             * An implementation for clearning a timeout that can be overridden by the test suite
-             * @param Number the number that identifies the timer
-             * @return {undefined}
-             * @ignore
-             */
-            _clearTimeout(tid: any): undefined;
-            /**
-             * An implementation of an internal timer that can be overridden by the test suite
-             * @return {Number}
-             * @ignore
-             */
-            _setInterval(fn: any, t: any): number;
-            /**
-             * An implementation of an timeout timer that can be overridden by the test suite
-             * @return {Number}
-             * @ignore
-             */
-            _setTimeout(fn: any, t: any): number;
-            /**
-             * A method that encapsulates the listing procedure
-             * @return {undefined}
-             * @ignore
-             */
-            _listen(): undefined;
-            init(cb: any): Promise<any>;
-            onReady: any;
-            mainLoopTimer: number;
-            /**
-             * Continuously evaluate the state of the peer and its network
-             * @return {undefined}
-             * @ignore
-             */
-            _mainLoop(ts: any): undefined;
-            /**
-             * Enqueue packets to be sent to the network
-             * @param {Buffer} data - An encoded packet
-             * @param {number} port - The desination port of the remote host
-             * @param {string} address - The destination address of the remote host
-             * @param {Socket=this.socket} socket - The socket to send on
-             * @return {undefined}
-             * @ignore
-             */
-            send(data: Buffer, port: number, address: string, socket?: any): undefined;
-            /**
-             * @private
-             */
-            _scheduleSend(): void;
-            sendTimeout: number;
-            /**
-             * @private
-             */
-            _dequeue(): void;
-            /**
-             * Send any unpublished packets
-             * @return {undefined}
-             * @ignore
-             */
-            sendUnpublished(): undefined;
-            /**
-             * Get the serializable state of the peer (can be passed to the constructor or create method)
-             * @return {undefined}
-             */
-            getState(): undefined;
-            /**
-             * Get a selection of known peers
-             * @return {Array<RemotePeer>}
-             * @ignore
-             */
-            getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
-            /**
-             * Send an eventually consistent packet to a selection of peers (fanout)
-             * @return {undefined}
-             * @ignore
-             */
-            mcast(packet: any, ignorelist?: any[]): undefined;
-            /**
-             * The process of determining this peer's NAT behavior (firewall and dependentness)
-             * @return {undefined}
-             * @ignore
-             */
-            requestReflection(): undefined;
-            probeReflectionTimeout: any;
-            /**
-             * Ping another peer
-             * @return {PacketPing}
-             * @ignore
-             */
-            ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
-            getPeer(id: any): any;
-            /**
-             * This should be called at least once when an app starts to multicast
-             * this peer, and starts querying the network to discover peers.
-             * @param {object} keys - Created by `Encryption.createKeyPair()`.
-             * @param {object=} args - Options
-             * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
-             * @return {RemotePeer}
-             */
-            join(sharedKey: any, args?: object | undefined): RemotePeer;
-            /**
-             * @param {Packet} T - The constructor to be used to create packets.
-             * @param {Any} message - The message to be split and packaged.
-             * @return {Array<Packet<T>>}
-             * @ignore
-             */
-            _message2packets(T: Packet, message: Any, args: any): Array<Packet<Packet>>;
-            /**
-             * Sends a packet into the network that will be replicated and buffered.
-             * Each peer that receives it will buffer it until TTL and then replicate
-             * it provided it has has not exceeded their maximum number of allowed hops.
-             *
-             * @param {object} keys - the public and private key pair created by `Encryption.createKeyPair()`.
-             * @param {object} args - The arguments to be applied.
-             * @param {Buffer} args.message - The message to be encrypted by keys and sent.
-             * @param {Packet<T>=} args.packet - The previous packet in the packet chain.
-             * @param {Buffer} args.usr1 - 32 bytes of arbitrary clusterId in the protocol framing.
-             * @param {Buffer} args.usr2 - 32 bytes of arbitrary clusterId in the protocol framing.
-             * @return {Array<PacketPublish>}
-             */
-            publish(sharedKey: any, args: {
-                message: Buffer;
-                packet?: Packet<T> | undefined;
-                usr1: Buffer;
-                usr2: Buffer;
-            }): Array<PacketPublish>;
-            /**
-             * @return {undefined}
-             */
-            sync(peer: any): undefined;
-            close(): void;
-            /**
-             * Deploy a query into the network
-             * @return {undefined}
-             *
-             */
-            query(query: any): undefined;
-            /**
-             *
-             * This is a default implementation for deciding what to summarize
-             * from the cache when receiving a request to sync. that can be overridden
-             *
-             */
-            cachePredicate(packet: any): boolean;
-            /**
-             * A connection was made, add the peer to the local list of known
-             * peers and call the onConnection if it is defined by the user.
-             *
-             * @return {undefined}
-             * @ignore
-             */
-            _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
-            connections: Map<any, any>;
-            /**
-             * Received a Sync Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onSync(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Query Packet
-             *
-             * a -> b -> c -> (d) -> c -> b -> a
-             *
-             * @return {undefined}
-             * @example
-             *
-             * ```js
-             * peer.onQuery = (packet) => {
-             *   //
-             *   // read a database or something
-             *   //
-             *   return {
-             *     message: Buffer.from('hello'),
-             *     publicKey: '',
-             *     privateKey: ''
-             *   }
-             * }
-             * ```
-             */
-            _onQuery(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Ping Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPing(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Pong Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPong(packet: any, port: any, address: any): undefined;
-            /**
-             * Received an Intro Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onIntro(packet: any, port: any, address: any, _: any, opts?: {
-                attempts: number;
-            }): undefined;
-            socketPool: any[];
-            /**
-             * Received an Join Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onJoin(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received an Publish Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPublish(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received an Stream Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onStream(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received any packet on the probe port to determine the firewall:
-             * are you port restricted, host restricted, or unrestricted.
-             * @return {undefined}
-             * @ignore
-             */
-            _onProbeMessage(data: any, { port, address }: {
-                port: any;
-                address: any;
-            }): undefined;
-            /**
-             * When a packet is received it is decoded, the packet contains the type
-             * of the message. Based on the message type it is routed to a function.
-             * like WebSockets, don't answer queries unless we know its another SRP peer.
-             *
-             * @param {Buffer|Uint8Array} data
-             * @param {{ port: number, address: string }} info
-             */
-            _onMessage(data: Buffer | Uint8Array, { port, address }: {
-                port: number;
-                address: string;
-            }): Promise<undefined>;
-        };
-    };
-    export default wrap;
+        }): undefined;
+        /**
+         * When a packet is received it is decoded, the packet contains the type
+         * of the message. Based on the message type it is routed to a function.
+         * like WebSockets, don't answer queries unless we know its another SRP peer.
+         *
+         * @param {Buffer|Uint8Array} data
+         * @param {{ port: number, address: string }} info
+         */
+        _onMessage(data: Buffer | Uint8Array, { port, address }: {
+            port: number;
+            address: string;
+        }): Promise<undefined>;
+    }
+    export default Peer;
     import { Packet } from "socket:stream-relay/packets";
     import { sha256 } from "socket:stream-relay/packets";
     import { Cache } from "socket:stream-relay/cache";
@@ -9064,13 +9096,9 @@ declare module "socket:stream-relay/index" {
     import { PacketPublish } from "socket:stream-relay/packets";
     export { Packet, sha256, Cache, Encryption, NAT };
 }
-declare module "socket:stream-relay/sugar" {
-    function _default(dgram: object, events: object): Promise<events.EventEmitter>;
-    export default _default;
-}
 declare module "socket:node/index" {
     export default network;
-    export const network: Promise<events.EventEmitter>;
+    export const network: any;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
@@ -10915,9 +10943,66 @@ declare module "socket:module" {
     import timers from "socket:timers";
     import window from "socket:window";
 }
+declare module "socket:stream-relay/worker" {
+    /**
+     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class PeerWorkerProxy {
+        constructor(options: any, port: any, fn: any);
+        init(): Promise<Deferred>;
+        reconnect(): Promise<Deferred>;
+        getInfo(): Promise<Deferred>;
+        getState(): Promise<Deferred>;
+        open(...args: any[]): Promise<Deferred>;
+        seal(...args: any[]): Promise<Deferred>;
+        sealUnsigned(...args: any[]): Promise<Deferred>;
+        openUnsigned(...args: any[]): Promise<Deferred>;
+        addEncryptionKey(...args: any[]): Promise<Deferred>;
+        send(...args: any[]): Promise<Deferred>;
+        sendUnpublished(...args: any[]): Promise<Deferred>;
+        cacheInsert(...args: any[]): Promise<Deferred>;
+        mcast(...args: any[]): Promise<Deferred>;
+        requestReflection(...args: any[]): Promise<Deferred>;
+        join(...args: any[]): Promise<Deferred>;
+        publish(...args: any[]): Promise<Deferred>;
+        sync(...args: any[]): Promise<Deferred>;
+        close(...args: any[]): Promise<Deferred>;
+        query(...args: any[]): Promise<Deferred>;
+        compileCachePredicate(src: any): Promise<Deferred>;
+        callWorkerThread(prop: any, data: any): Deferred;
+        callMainThread(prop: any, args: any): void;
+        resolveMainThread(seq: any, data: any): void;
+        #private;
+    }
+    class Deferred {
+        _promise: Promise<any>;
+        resolve: (value: any) => void;
+        reject: (reason?: any) => void;
+        then: any;
+        catch: any;
+        finally: any;
+        [Symbol.toStringTag]: string;
+    }
+    export {};
+}
+declare module "socket:stream-relay/api" {
+    export default api;
+    /**
+     * Initializes and returns the network bus.
+     *
+     * @async
+     * @function
+     * @param {object} options - Configuration options for the network bus.
+     * @param {object} events - A nodejs compatibe implementation of the events module.
+     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
+     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
+     */
+    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
+}
 declare module "socket:network" {
     export default network;
-    export const network: Promise<events.EventEmitter>;
+    export function network(options: any): Promise<events.EventEmitter>;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
