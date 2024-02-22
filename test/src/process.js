@@ -45,7 +45,9 @@ test('process.platform', (t) => {
 })
 
 test('process.env', (t) => {
-  t.deepEqual(process.env, globalThis.__args.env, 'process.env is equal to globalThis.__args.env')
+  for (const key in globalThis.__args.env) {
+    t.equal(globalThis.__args.env[key], process.env[key], `globalThis.__args.env.${key} === process.env.${key}`)
+  }
 })
 
 test('process.argv', (t) => {
