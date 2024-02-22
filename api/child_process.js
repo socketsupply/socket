@@ -45,7 +45,7 @@ class ChildProcess extends EventEmitter {
     }
 
     this.#worker = new Worker(workerLocation.toString(), {
-      env: options.env,
+      env: options?.env ?? {},
       stdin: options?.stdin !== false,
       stdout: options?.stdout !== false,
       stderr: options?.stderr !== false,
@@ -367,6 +367,11 @@ export function spawn (command, args = [], options = null) {
 }
 
 export function exec (command, options, callback) {
+  if (typeof options === 'function') {
+    callback = options
+    options = {}
+  }
+
   const child = spawn(command, options)
   const stdout = []
   const stderr = []
@@ -378,7 +383,7 @@ export function exec (command, options, callback) {
         return
       }
 
-      stdout.push(data)
+      stdout.push(Buffer.from(data))
     })
   }
 
@@ -388,37 +393,77 @@ export function exec (command, options, callback) {
         return
       }
 
-      stderr.push(data)
+      stderr.push(Buffer.from(data))
     })
   }
 
   child.once('error', (err) => {
     hasError = true
-    callback(err, null, null)
-  })
-
-  child.on('close', () => {
-    if (hasError) {
-      return
-    }
-
-    if (options?.encoding === 'buffer') {
-      callback(
-        null,
-        Buffer.concat(stdout),
-        Buffer.concat(stderr)
-      )
-    } else {
-      const encoding = options?.encoding ?? 'utf8'
-      callback(
-        null,
-        Buffer.concat(stdout).toString(encoding),
-        Buffer.concat(stderr).toString(encoding)
-      )
+    if (typeof callback === 'function') {
+      callback(err, null, null)
     }
   })
 
-  return child
+  if (typeof callback === 'function') {
+    child.on('close', () => {
+      if (hasError) {
+        return
+      }
+
+      if (options?.encoding === 'buffer') {
+        callback(
+          null,
+          Buffer.concat(stdout),
+          Buffer.concat(stderr)
+        )
+      } else {
+        const encoding = options?.encoding ?? 'utf8'
+        callback(
+          null,
+          Buffer.concat(stdout).toString(encoding),
+          Buffer.concat(stderr).toString(encoding)
+        )
+      }
+    })
+  }
+
+  return Object.assign(child, {
+    then (resolve, reject) {
+      const promise = new Promise((resolve, reject) => {
+        child.once('error', reject)
+        child.once('close', () => {
+          if (options?.encoding === 'buffer') {
+            resolve({
+              stdout: Buffer.concat(stdout),
+              stderr: Buffer.concat(stderr)
+            })
+          } else {
+            const encoding = options?.encoding ?? 'utf8'
+            resolve({
+              stdout: Buffer.concat(stdout).toString(encoding),
+              stderr: Buffer.concat(stderr).toString(encoding)
+            })
+          }
+        })
+      })
+
+      if (resolve && reject) {
+        return promise.then(resolve, reject)
+      } else if (resolve) {
+        return promise.then(resolve)
+      }
+
+      return promise
+    },
+
+    catch (reject) {
+      return this.then().catch(reject)
+    },
+
+    finally (next) {
+      return this.then().finally(next)
+    }
+  })
 }
 
 export const execFile = exec
