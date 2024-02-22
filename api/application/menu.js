@@ -51,22 +51,18 @@ export class Menu extends EventTarget {
     super()
     this.#type = type
     this.#channel = new BroadcastChannel(`socket.runtime.application.menu.${type}`)
-
     this.#channel.addEventListener('message', (event) => {
       this.dispatchEvent(new MenuItemEvent('menuitem', event.data, this))
     })
+  }
 
-    // forward selection to other windows
-    this.addEventListener('menuitem', (event) => {
-      this.#channel.postMessage({
-        ...event.data,
-        source: {
-          window: {
-            index: getCurrentWindowIndex()
-          }
-        }
-      })
-    })
+  /**
+   * The broadcast channel for this menu.
+   * @ignore
+   * @type {BroadcastChannel}
+   */
+  get channel () {
+    return this.#channel
   }
 
   /**
@@ -270,6 +266,14 @@ export class MenuContainer extends EventTarget {
         const menu = this[detail.type ?? '']
         if (menu) {
           menu.dispatchEvent(new MenuItemEvent('menuitem', detail, menu))
+          menu.channel.postMessage({
+            ...detail,
+            source: {
+              window: {
+                index: getCurrentWindowIndex()
+              }
+            }
+          })
         }
       })
     }
