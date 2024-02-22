@@ -1827,7 +1827,10 @@ static void initRouterTable (Router *router) {
   });
 
   router->map("os.paths", [](auto message, auto router, auto reply) {
-    JSON::Object data;
+    static auto userConfig = SSC::getUserConfig();
+    static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+    JSON::Object json;
 
     // paths
     String resources = getcwd();
@@ -1836,8 +1839,11 @@ static void initRouterTable (Router *router) {
     String pictures;
     String desktop;
     String videos;
+    String config;
     String music;
     String home;
+    String data;
+    String log;
 
   #if defined(__APPLE__)
     static const auto uid = getuid();
@@ -1866,7 +1872,10 @@ static void initRouterTable (Router *router) {
     desktop = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory);
     videos = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory);
     music = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory);
+    config = HOME + "/Library/Application Support/" + bundleIdentifier;
     home = String(NSHomeDirectory().UTF8String);
+    data = HOME + "/Library/Application Support/" + bundleIdentifier;
+    log = HOME + "/Library/Logs/" + bundleIdentifier;
 
   #undef DIRECTORY_PATH_FROM_FILE_MANAGER
 
@@ -1883,6 +1892,9 @@ static void initRouterTable (Router *router) {
     static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
     static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
     static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+
+    static const auto XDG_CONFIG_HOME = Env::get("XDG_CONFIG_HOME", HOME + "/.config");
+    static const auto XDG_DATA_HOME = Env::get("XDG_DATA_HOME", HOME + "/.local/share");
 
     if (XDG_DOCUMENTS_DIR.size() > 0) {
       documents = XDG_DOCUMENTS_DIR;
@@ -1924,7 +1936,10 @@ static void initRouterTable (Router *router) {
       music = (Path(HOME) / "Music").string();
     }
 
+    config = XDG_CONFIG_HOME + "/" + bundle_identifier;
     home = Path(HOME).string();
+    data = XDG_DATA_HOME + "/" + bundle_identifier;
+    log = config;
   #elif defined(_WIN32)
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
@@ -1934,19 +1949,25 @@ static void initRouterTable (Router *router) {
     pictures = (Path(USERPROFILE) / "Pictures").string();
     videos = (Path(USERPROFILE) / "Videos").string();
     music = (Path(USERPROFILE) / "Music").string();
+    config = Path(Env::get("APPDATA")) / bundleIdentifier).string();
     home = Path(USERPROFILE).string();
+    data = Path(Env::get("APPDATA")) / bundleIdentifier).string();
+    log = config;
   #endif
 
-    data["resources"] = resources;
-    data["downloads"] = downloads;
-    data["documents"] = documents;
-    data["pictures"] = pictures;
-    data["desktop"] = desktop;
-    data["videos"] = videos;
-    data["music"] = music;
-    data["home"] = home;
+    json["resources"] = resources;
+    json["downloads"] = downloads;
+    json["documents"] = documents;
+    json["pictures"] = pictures;
+    json["desktop"] = desktop;
+    json["videos"] = videos;
+    json["music"] = music;
+    json["config"] = config;
+    json["home"] = home;
+    json["data"] = data;
+    json["log"] = log;
 
-    return reply(Result::Data { message, data });
+    return reply(Result::Data { message, json });
   });
 
   router->map("permissions.query", [](auto message, auto router, auto reply) {
@@ -3176,7 +3197,16 @@ static void registerSchemeHandler (Router *router) {
 
       if (mount.path.size() > 0) {
         if (mount.resolution.redirect) {
-          auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+          auto redirectURL = mount.resolution.path;
+
+          if (parsedPath.queryString.size() > 0) {
+            redirectURL += "?" + parsedPath.queryString;
+          }
+
+          if (parsedPath.fragment.size() > 0) {
+            redirectURL += "#" + parsedPath.fragment;
+          }
+
           auto redirectSource = String(
             "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
           );
@@ -3338,7 +3368,16 @@ static void registerSchemeHandler (Router *router) {
           return;
         }
       } else if (resolved.redirect) {
-        auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+        auto redirectURL = path;
+
+        if (parsedPath.queryString.size() > 0) {
+          redirectURL += "?" + parsedPath.queryString;
+        }
+
+        if (parsedPath.fragment.size() > 0) {
+          redirectURL += "#" + parsedPath.fragment;
+        }
+
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
