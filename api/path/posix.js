@@ -2,13 +2,41 @@ import * as win32 from './win32.js'
 import location from '../location.js'
 import { Path } from './path.js'
 import url from '../url.js'
+import {
+  DOWNLOADS,
+  DOCUMENTS,
+  RESOURCES,
+  PICTURES,
+  DESKTOP,
+  VIDEOS,
+  CONFIG,
+  MUSIC,
+  HOME,
+  DATA,
+  LOG
+} from './well-known.js'
 
 import * as exports from './posix.js'
 
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
-export * from './well-known.js'
-export { win32, Path }
+export {
+  win32,
+  Path,
+
+  // well known paths
+  DOWNLOADS,
+  DOCUMENTS,
+  RESOURCES,
+  PICTURES,
+  DESKTOP,
+  VIDEOS,
+  CONFIG,
+  MUSIC,
+  HOME,
+  DATA,
+  LOG
+}
 
 export default exports
 
