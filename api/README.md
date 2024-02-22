@@ -11,7 +11,12 @@
  import { createWindow } from 'socket:application'
  ```
 
-## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L27)
+## [MAX_WINDOWS](https://github.com/socketsupply/socket/blob/master/api/application.js#L24)
+
+This is a `VariableDeclaration` named `MAX_WINDOWS` in `api/application.js`, it's exported but undocumented.
+
+
+## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L30)
 
 Returns the current window index
 
@@ -19,7 +24,7 @@ Returns the current window index
 | :---         | :--- | :---        |
 | Not specified | number |  |
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L50)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L53)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -45,7 +50,7 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L115)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L118)
 
 Returns the current screen size.
 
@@ -53,7 +58,7 @@ Returns the current screen size.
 | :---         | :--- | :---        |
 | Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L141)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L144)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -65,7 +70,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<Object.<number?, ApplicationWindow>> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L190)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L196)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -77,7 +82,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L200)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L206)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -85,7 +90,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L209)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L215)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -97,7 +102,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L306)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L312)
 
 Set the native menu for the app.
 
@@ -192,11 +197,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L313)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L319)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L322)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L328)
 
 Set the enabled state of the system menu.
 
@@ -208,23 +213,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L330)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L336)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L336)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L342)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L342)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L348)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L347)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L353)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L353)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L359)
 
 
 
@@ -237,7 +242,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L361)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L367)
 
 
 
@@ -1726,7 +1731,7 @@ Returns the home directory of the current user.
  import { Path } from 'socket:path'
  ```
 
-## [`resolve()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L41)
+## [`resolve()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L49)
 
 External docs: https://nodejs.org/api/path.html#path_path_resolve_paths
 The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
@@ -1739,7 +1744,7 @@ The path.resolve() method resolves a sequence of paths or path segments into an 
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L75)
+## [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L87)
 
 Computes current working directory for a path
 
@@ -1752,7 +1757,7 @@ Computes current working directory for a path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L99)
+## [`origin()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L111)
 
 Computed location origin. Defaults to `socket:///` if not available.
 
@@ -1760,7 +1765,7 @@ Computed location origin. Defaults to `socket:///` if not available.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L110)
+## [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L122)
 
 Computes the relative path from `from` to `to`.
 
@@ -1774,7 +1779,7 @@ Computes the relative path from `from` to `to`.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L157)
+## [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L169)
 
 Joins path components. This function may not return an absolute path.
 
@@ -1787,7 +1792,7 @@ Joins path components. This function may not return an absolute path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L210)
+## [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L222)
 
 Computes directory name of path.
 
@@ -1800,7 +1805,7 @@ Computes directory name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L246)
+## [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L258)
 
 Computes base name of path.
 
@@ -1813,7 +1818,7 @@ Computes base name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L260)
+## [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L272)
 
 Computes extension name of path.
 
@@ -1826,7 +1831,7 @@ Computes extension name of path.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L271)
+## [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L283)
 
 Computes normalized path
 
@@ -1839,7 +1844,7 @@ Computes normalized path
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L321)
+## [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L333)
 
 Formats `Path` object into a string.
 
@@ -1852,7 +1857,7 @@ Formats `Path` object into a string.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L337)
+## [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L349)
 
 Parses input `path` into a `Path` instance.
 
@@ -1864,11 +1869,11 @@ Parses input `path` into a `Path` instance.
 | :---         | :--- | :---        |
 | Not specified | object |  |
 
-## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L365)
+## [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L377)
 
 A container for a parsed Path.
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L371)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L383)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1877,7 +1882,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | input | PathComponent |  | false |  |
 | cwd | string |  | true |  |
 
-### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L394)
+### [`constructor(pathname, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L406)
 
 `Path` class constructor.
 
@@ -1886,47 +1891,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | pathname | string |  | false |  |
 | cwd | string | Path.cwd() | true |  |
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L463)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L475)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L470)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L482)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L504)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L516)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L512)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L524)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L531)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L543)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L552)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L564)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L587)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L599)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L599)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L611)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L607)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L619)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L627)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L639)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L634)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L646)
 
 
 
@@ -1934,7 +1939,7 @@ The computed drive, if given in the path.
 | :---         | :--- | :---        |
 | Not specified | URL |  |
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L642)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L654)
 
 Converts this `Path` instance to a string.
 
