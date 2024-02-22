@@ -699,8 +699,8 @@ namespace SSC {
           Mutex mutex;
 
           ChildProcess (auto core) : Module(core) {}
-          ~ChildProcess ();
 
+          void shutdown ();
           void spawn (
             const String seq,
             uint64_t id,
@@ -788,16 +788,16 @@ namespace SSC {
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Peer*> peers;
 
-      std::recursive_mutex loopMutex;
-      std::recursive_mutex peersMutex;
-      std::recursive_mutex postsMutex;
-      std::recursive_mutex timersMutex;
+      Mutex loopMutex;
+      Mutex peersMutex;
+      Mutex postsMutex;
+      Mutex timersMutex;
 
-      std::atomic<bool> didLoopInit = false;
-      std::atomic<bool> didTimersInit = false;
-      std::atomic<bool> didTimersStart = false;
-
-      std::atomic<bool> isLoopRunning = false;
+      Atomic<bool> didLoopInit = false;
+      Atomic<bool> didTimersInit = false;
+      Atomic<bool> didTimersStart = false;
+      Atomic<bool> isLoopRunning = false;
+      Atomic<bool> shuttingDown = false;
 
       uv_loop_t eventLoop;
       uv_async_t eventLoopAsync;
@@ -831,6 +831,8 @@ namespace SSC {
         this->posts = std::shared_ptr<Posts>(new Posts());
         initEventLoop();
       }
+
+      void shutdown ();
 
       void resumeAllPeers ();
       void pauseAllPeers ();

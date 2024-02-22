@@ -210,12 +210,17 @@ namespace SSC {
     }
   #endif
 
+    if (shouldExit) {
+      this->core->shuttingDown = true;
+    }
+
     return shouldExit ? 1 : 0;
   }
 
   void App::kill () {
-    delete this->core;
-    this->core = nullptr;
+    this->killed = true;
+    this->core->shuttingDown = true;
+    this->core->shutdown();
     // Distinguish window closing with app exiting
     shouldExit = true;
   #if defined(__linux__) && !defined(__ANDROID__)

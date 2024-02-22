@@ -4630,6 +4630,10 @@ namespace SSC::IPC {
     size_t size,
     ResultCallback callback
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     auto message = Message(uri, true);
     return this->invoke(message, bytes, size, callback);
   }
@@ -4640,6 +4644,10 @@ namespace SSC::IPC {
     size_t size,
     ResultCallback callback
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     auto name = message.name;
     MessageCallbackContext ctx;
 
@@ -4731,6 +4739,10 @@ namespace SSC::IPC {
     const String data,
     const Post post
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
@@ -4750,12 +4762,20 @@ namespace SSC::IPC {
     const String& name,
     const String data
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     auto value = encodeURIComponent(data);
     auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);
   }
 
   bool Router::evaluateJavaScript (const String js) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     if (this->evaluateJavaScriptFunction != nullptr) {
       this->evaluateJavaScriptFunction(js);
       return true;
@@ -4765,6 +4785,10 @@ namespace SSC::IPC {
   }
 
   bool Router::dispatch (DispatchCallback callback) {
+    if (!this->core || this->core->shuttingDown) {
+      return false;
+    }
+
     if (this->dispatchFunction != nullptr) {
       this->dispatchFunction(callback);
       return true;
