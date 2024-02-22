@@ -64,7 +64,7 @@ class State {
       this.worker.port.addEventListener('mesageerror', this.onWorkerMessageError)
       this.worker.port.postMessage({ type: 'realm' })
 
-      const windows = await application.getWindows()
+      const windows = await application.getWindows([], { max: false })
       const currentWindow = await application.getCurrentWindow()
 
       for (const index in windows) {

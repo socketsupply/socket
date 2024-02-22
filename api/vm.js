@@ -1217,7 +1217,7 @@ export async function getContextWindow () {
     return contextWindow
   }
 
-  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
   const pendingContextWindow = (
     existingContextWindow ??
     application.createWindow({
@@ -1336,7 +1336,7 @@ export async function terminateContextWindow () {
   const currentContextWindow = await pendingContextWindow
   await currentContextWindow.close()
 
-  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
 
   if (existingContextWindow) {
     await existingContextWindow.close()
