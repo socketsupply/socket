@@ -291,6 +291,12 @@ declare module "socket:application/menu" {
          */
         constructor(type: string);
         /**
+         * The broadcast channel for this menu.
+         * @ignore
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
+        /**
          * The `Menu` instance type.
          * @type {('context'|'system'|'tray')?}
          */
@@ -593,6 +599,21 @@ declare module "socket:path/well-known" {
      */
     export const RESOURCES: string | null;
     /**
+     * Well known path to the application's "config" folder.
+     * @type {?string}
+     */
+    export const CONFIG: string | null;
+    /**
+     * Well known path to the application's "data" folder.
+     * @type {?string}
+     */
+    export const DATA: string | null;
+    /**
+     * Well known path to the application's "log" folder.
+     * @type {?string}
+     */
+    export const LOG: string | null;
+    /**
      * Well known path to the application's "home" folder.
      * This may be the user's HOME directory or the application container sandbox.
      * @type {?string}
@@ -605,8 +626,11 @@ declare module "socket:path/well-known" {
         export { PICTURES };
         export { DESKTOP };
         export { VIDEOS };
+        export { CONFIG };
         export { MUSIC };
         export { HOME };
+        export { DATA };
+        export { LOG };
     }
     export default _default;
 }
@@ -909,7 +933,7 @@ declare module "socket:querystring" {
     export default _default;
 }
 declare module "socket:url/index" {
-    export function parse(input: any): any;
+    export function parse(input: any, options?: any): any;
     export function resolve(from: any, to: any): any;
     export function format(input: any): any;
     export default URL;
@@ -1021,7 +1045,10 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#10@#i": any;
+            "__#10@#i": any; /**
+             * Computed directory name in path.
+             * @type {string}
+             */
             "__#10@#n": {};
             "__#10@#t": {};
             "__#10@#e": {};
@@ -1201,16 +1228,20 @@ declare module "socket:path/win32" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import { Path } from "socket:path/path";
     import * as posix from "socket:path/posix";
-    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { posix, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 declare module "socket:path/posix" {
     /**
@@ -1289,32 +1320,40 @@ declare module "socket:path/posix" {
     export type PathComponent = import("socket:path/path").PathComponent;
     import { Path } from "socket:path/path";
     import * as win32 from "socket:path/win32";
-    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export { win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 declare module "socket:path/index" {
-    export * as _default from "socket:path/index";
-    
+    export default exports;
     import * as posix from "socket:path/posix";
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
-    import { RESOURCES } from "socket:path/well-known";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
     import { PICTURES } from "socket:path/well-known";
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
     import { HOME } from "socket:path/well-known";
-    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
+    import * as exports from "socket:path/index";
+    
+    export { posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
@@ -1335,15 +1374,18 @@ declare module "socket:path" {
     import { posix } from "socket:path/index";
     import { Path } from "socket:path/index";
     import { win32 } from "socket:path/index";
-    import { RESOURCES } from "socket:path/index";
     import { DOWNLOADS } from "socket:path/index";
     import { DOCUMENTS } from "socket:path/index";
+    import { RESOURCES } from "socket:path/index";
     import { PICTURES } from "socket:path/index";
     import { DESKTOP } from "socket:path/index";
     import { VIDEOS } from "socket:path/index";
+    import { CONFIG } from "socket:path/index";
     import { MUSIC } from "socket:path/index";
     import { HOME } from "socket:path/index";
-    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
+    import { DATA } from "socket:path/index";
+    import { LOG } from "socket:path/index";
+    export { Path, posix, win32, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 declare module "socket:diagnostics/channels" {
     /**
@@ -5370,14 +5412,14 @@ declare module "socket:application" {
      * @throws {Error} - if indices is not an array of integer numbers
      * @return {Promise<Object.<number?, ApplicationWindow>>}
      */
-    export function getWindows(indices?: number[]): Promise<any>;
+    export function getWindows(indices?: number[], options?: any): Promise<any>;
     /**
      * Returns the ApplicationWindow instance for the given index
      * @param {number} index - the index of the window
      * @throws {Error} - if index is not a valid integer number
      * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
      */
-    export function getWindow(index: number): Promise<ApplicationWindow>;
+    export function getWindow(index: number, options: any): Promise<ApplicationWindow>;
     /**
      * Returns the ApplicationWindow instance for the current window.
      * @return {Promise<ApplicationWindow>}
@@ -5490,6 +5532,7 @@ declare module "socket:application" {
      */
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
     export { menu };
+    export const MAX_WINDOWS: 32;
     /**
      * Socket Runtime version.
      * @type {object} - an object containing the version information
@@ -6282,8 +6325,16 @@ declare module "socket:child_process" {
      * @return {ChildProcess}
      */
     export function spawn(command: string, args?: (string[] | object) | undefined, options?: object | undefined): ChildProcess;
-    export function exec(command: any, options: any, callback: any): ChildProcess;
-    export function execFile(command: any, options: any, callback: any): ChildProcess;
+    export function exec(command: any, options: any, callback: any): ChildProcess & {
+        then(resolve: any, reject: any): Promise<any>;
+        catch(reject: any): Promise<any>;
+        finally(next: any): Promise<any>;
+    };
+    export function execFile(command: any, options: any, callback: any): ChildProcess & {
+        then(resolve: any, reject: any): Promise<any>;
+        catch(reject: any): Promise<any>;
+        finally(next: any): Promise<any>;
+    };
     namespace _default {
         export { ChildProcess };
         export { spawn };
