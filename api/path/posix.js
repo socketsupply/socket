@@ -3,32 +3,12 @@ import location from '../location.js'
 import { Path } from './path.js'
 import url from '../url.js'
 
-import {
-  RESOURCES,
-  DOWNLOADS,
-  DOCUMENTS,
-  PICTURES,
-  DESKTOP,
-  VIDEOS,
-  MUSIC
-} from './well-known.js'
-
 import * as exports from './posix.js'
 
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
-export {
-  win32,
-  Path,
-
-  RESOURCES,
-  DOWNLOADS,
-  DOCUMENTS,
-  PICTURES,
-  DESKTOP,
-  VIDEOS,
-  MUSIC
-}
+export * from './well-known.js'
+export { win32, Path }
 
 export default exports
 
