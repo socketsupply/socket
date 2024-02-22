@@ -121,6 +121,7 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
     return pid;
   }
 
+  setpgid(pid, 0);
   closed = false;
   id = pid;
 
@@ -222,6 +223,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       command_c_str = cd_path_and_command.c_str();
     }
 
+    setpgid(0, 0);
     if (this->shell.size() > 0) {
       return execl(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, nullptr);
     } else {
