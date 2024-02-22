@@ -699,6 +699,8 @@ namespace SSC {
           Mutex mutex;
 
           ChildProcess (auto core) : Module(core) {}
+          ~ChildProcess ();
+
           void spawn (
             const String seq,
             uint64_t id,
