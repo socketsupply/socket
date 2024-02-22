@@ -20,6 +20,9 @@ import * as exports from './application.js'
 
 export { menu }
 
+// get this from constant value in runtime
+export const MAX_WINDOWS = 32
+
 /**
  * Returns the current window index
  * @return {number}
@@ -138,7 +141,7 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  * @return {Promise<Object.<number?, ApplicationWindow>>}
  */
-export async function getWindows (indices) {
+export async function getWindows (indices, options = null) {
   if (os.platform() === 'ios' || os.platform() === 'android') {
     return {
       0: new ApplicationWindow({
@@ -175,7 +178,10 @@ export async function getWindows (indices) {
   }
 
   for (const data of result.data) {
-    windows[data.index] = new ApplicationWindow(data)
+    const max = Number.isFinite(options?.max) ? options.max : MAX_WINDOWS
+    if (options?.max === false || data.index < max) {
+      windows[data.index] = new ApplicationWindow(data)
+    }
   }
 
   return windows
@@ -187,9 +193,9 @@ export async function getWindows (indices) {
  * @throws {Error} - if index is not a valid integer number
  * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
  */
-export async function getWindow (index) {
+export async function getWindow (index, options) {
   throwOnInvalidIndex(index)
-  const windows = await getWindows([index])
+  const windows = await getWindows([index], options)
   return windows[index]
 }
 
@@ -198,7 +204,7 @@ export async function getWindow (index) {
  * @return {Promise<ApplicationWindow>}
  */
 export async function getCurrentWindow () {
-  return getWindow(globalThis.__args.index)
+  return await getWindow(globalThis.__args.index, { max: false })
 }
 
 /**
