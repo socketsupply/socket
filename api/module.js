@@ -863,3 +863,4 @@ export class Module extends EventTarget {
 export default Module
 
 builtins.module = Module
+builtins.module.Module = Module
