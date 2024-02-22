@@ -4616,35 +4616,35 @@ int main (const int argc, const char* argv[]) {
         settings["ios_info_plist_data"] = "";
       }
 
-      settings["ios_info_plist_data"] += (
-        "  <key>UIBackgroundModes</key>\n"
-        "  <array>\n"
-        "    <string>fetch</string>\n"
-        "    <string>processing</string>\n"
-      );
+      // settings["ios_info_plist_data"] += (
+      //  "  <key>UIBackgroundModes</key>\n"
+      //  "  <array>\n"
+      //  "    <string>fetch</string>\n"
+      //  "    <string>processing</string>\n"
+      // );
 
-      if (settings["permissions_allow_bluetooth"] != "false") {
-        settings["ios_info_plist_data"] += (
-          "    <string>bluetooth-central</string>\n"
-          "    <string>bluetooth-peripheral</string>\n"
-        );
-      }
+      // if (settings["permissions_allow_bluetooth"] != "false") {
+      //   settings["ios_info_plist_data"] += (
+      //     "    <string>bluetooth-central</string>\n"
+      //     "    <string>bluetooth-peripheral</string>\n"
+      //   );
+      // }
 
-      if (settings["permissions_allow_geolocation"] != "false") {
-        settings["ios_info_plist_data"] += (
-          "    <string>location</string>\n"
-        );
-      }
+      // if (settings["permissions_allow_geolocation"] != "false") {
+      //   settings["ios_info_plist_data"] += (
+      //     "    <string>location</string>\n"
+      //   );
+      // }
 
-      if (settings["permissions_allow_push_notifications"] == "true") {
-        settings["ios_info_plist_data"] += (
-          "    <string>remote-notification</string>\n"
-        );
-      }
+      // if (settings["permissions_allow_push_notifications"] == "true") {
+      //   settings["ios_info_plist_data"] += (
+      //     "    <string>remote-notification</string>\n"
+      //   );
+      // }
 
-      settings["ios_info_plist_data"] += (
-        "  </array>\n"
-      );
+      // settings["ios_info_plist_data"] += (
+      //   "  </array>\n"
+      // );
 
       settings["ios_info_plist_data"] += (
         "  <key>UIRequiredDeviceCapabilities</key>\n"

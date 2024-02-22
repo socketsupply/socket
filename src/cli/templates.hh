@@ -658,227 +658,229 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXBuildFile section */
     {{__ios_native_extensions_build_context_sections}}
-		171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 171C1C2A2AC38A70005F587F /* CoreLocation.framework */; };
-		179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */; };
-		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
-		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
-		17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
-		17A7F8F729358D4D0051D146 /* main.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F129358D180051D146 /* main.o */; };
-		17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
-		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
-		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
-		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
-		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
-		294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
-		2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
-		2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */; };
-		2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A4 /* UserNotifications.framework */; };
+    171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 171C1C2A2AC38A70005F587F /* CoreLocation.framework */; };
+    179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */; };
+    17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
+    17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
+    17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
+    17A7F8F729358D4D0051D146 /* main.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F129358D180051D146 /* main.o */; };
+    17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
+    290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
+    290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
+    29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
+    294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
+    294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
+    2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
+    2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */; };
+    2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A4 /* UserNotifications.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
     {{__ios_native_extensions_build_context_refs}}
-		171C1C2A2AC38A70005F587F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
-		1790CE4D2AD78CCF00AA7E5B /* ini.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ini.hh; sourceTree = "<group>"; };
-		1790CE4E2AD78CCF00AA7E5B /* string.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = string.hh; sourceTree = "<group>"; };
-		1790CE4F2AD78CCF00AA7E5B /* config.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = config.hh; sourceTree = "<group>"; };
-		1790CE502AD78CCF00AA7E5B /* types.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = types.hh; sourceTree = "<group>"; };
-		179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
-		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
-		17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
-		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
-		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
-		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
-		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
-		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
-		294A3C9027677424007B5B9A /* socket.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = socket.entitlements; sourceTree = "<group>"; };
-		2996EDB12770BC1F00C672A2 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
-		2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
-		2996EDB12770BC1F00C672A4 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+    171C1C2A2AC38A70005F587F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+    1790CE4D2AD78CCF00AA7E5B /* ini.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ini.hh; sourceTree = "<group>"; };
+    1790CE4E2AD78CCF00AA7E5B /* string.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = string.hh; sourceTree = "<group>"; };
+    1790CE4F2AD78CCF00AA7E5B /* config.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = config.hh; sourceTree = "<group>"; };
+    1790CE502AD78CCF00AA7E5B /* types.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = types.hh; sourceTree = "<group>"; };
+    179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
+    17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
+    17A7F8F129358D180051D146 /* main.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = main.o; sourceTree = "<group>"; };
+    17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
+    17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
+    17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+    17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
+    290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
+    29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+    29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+    29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+    294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+    294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+    294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
+    294A3C9027677424007B5B9A /* socket.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = socket.entitlements; sourceTree = "<group>"; };
+    2996EDB12770BC1F00C672A2 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+    2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
+    2996EDB12770BC1F00C672A4 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+    BA5363CB2B87FC7700234A7F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		29124C4727613369001832A0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+    29124C4727613369001832A0 /* Frameworks */ = {
+      isa = PBXFrameworksBuildPhase;
+      buildActionMask = 2147483647;
+      files = (
         {{__ios_native_extensions_build_ids}}
-				171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */,
-				179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */,
-				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
-				17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
-				17A7F8F729358D4D0051D146 /* main.o in Frameworks */,
-				17C230BA28E9398700301440 /* Foundation.framework in Frameworks */,
-				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
-				2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
-				2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */,
-				294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
-				290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+        171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */,
+        179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */,
+        17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
+        17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
+        17A7F8F729358D4D0051D146 /* main.o in Frameworks */,
+        17C230BA28E9398700301440 /* Foundation.framework in Frameworks */,
+        2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
+        2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
+        2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */,
+        294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
+        290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
+      );
+      runOnlyForDeploymentPostprocessing = 0;
+    };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1790CE4C2AD78CCF00AA7E5B /* core */ = {
-			isa = PBXGroup;
-			children = (
-				1790CE4D2AD78CCF00AA7E5B /* ini.hh */,
-				1790CE4E2AD78CCF00AA7E5B /* string.hh */,
-				1790CE4F2AD78CCF00AA7E5B /* config.hh */,
-				1790CE502AD78CCF00AA7E5B /* types.hh */,
-			);
-			path = core;
-			sourceTree = "<group>";
-		};
-		17A7F8EF29358D180051D146 /* objects */ = {
-			isa = PBXGroup;
-			children = (
-				17A7F8F029358D180051D146 /* ios */,
-			);
-			path = objects;
-			sourceTree = "<group>";
-		};
-		17A7F8F029358D180051D146 /* ios */ = {
-			isa = PBXGroup;
-			children = (
-				17A7F8F129358D180051D146 /* main.o */,
-			);
-			path = ios;
-			sourceTree = "<group>";
-		};
-		29124C4127613369001832A0 = {
-			isa = PBXGroup;
-			children = (
-				1790CE512AD792B600AA7E5B /* core */,
-				17A7F8EE29358D180051D146 /* init.cc */,
-				17A7F8EF29358D180051D146 /* objects */,
-				290F7F86276BC2B000486988 /* lib */,
-				294A3C9027677424007B5B9A /* socket.entitlements */,
-				294A3C842764EAB7007B5B9A /* ui */,
-				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
-				29124C5E2761336B001832A0 /* Info.plist */,
-				29124C4B27613369001832A0 /* Products */,
-				294A3C782763E9C6007B5B9A /* Frameworks */,
-			);
-			sourceTree = "<group>";
-		};
-		29124C4B27613369001832A0 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				29124C4A27613369001832A0 /* {{build_name}}.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		294A3C782763E9C6007B5B9A /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
+    1790CE4C2AD78CCF00AA7E5B /* core */ = {
+      isa = PBXGroup;
+      children = (
+        1790CE4D2AD78CCF00AA7E5B /* ini.hh */,
+        1790CE4E2AD78CCF00AA7E5B /* string.hh */,
+        1790CE4F2AD78CCF00AA7E5B /* config.hh */,
+        1790CE502AD78CCF00AA7E5B /* types.hh */,
+      );
+      path = core;
+      sourceTree = "<group>";
+    };
+    17A7F8EF29358D180051D146 /* objects */ = {
+      isa = PBXGroup;
+      children = (
+        17A7F8F029358D180051D146 /* ios */,
+      );
+      path = objects;
+      sourceTree = "<group>";
+    };
+    17A7F8F029358D180051D146 /* ios */ = {
+      isa = PBXGroup;
+      children = (
+        17A7F8F129358D180051D146 /* main.o */,
+      );
+      path = ios;
+      sourceTree = "<group>";
+    };
+    29124C4127613369001832A0 = {
+      isa = PBXGroup;
+      children = (
+        BA5363CB2B87FC7700234A7F /* Assets.xcassets */,
+        1790CE512AD792B600AA7E5B /* core */,
+        17A7F8EE29358D180051D146 /* init.cc */,
+        17A7F8EF29358D180051D146 /* objects */,
+        290F7F86276BC2B000486988 /* lib */,
+        294A3C9027677424007B5B9A /* socket.entitlements */,
+        294A3C842764EAB7007B5B9A /* ui */,
+        29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
+        29124C5E2761336B001832A0 /* Info.plist */,
+        29124C4B27613369001832A0 /* Products */,
+        294A3C782763E9C6007B5B9A /* Frameworks */,
+      );
+      sourceTree = "<group>";
+    };
+    29124C4B27613369001832A0 /* Products */ = {
+      isa = PBXGroup;
+      children = (
+        29124C4A27613369001832A0 /* {{build_name}}.app */,
+      );
+      name = Products;
+      sourceTree = "<group>";
+    };
+    294A3C782763E9C6007B5B9A /* Frameworks */ = {
+      isa = PBXGroup;
+      children = (
         {{__ios_native_extensions_build_refs}}
-				171C1C2A2AC38A70005F587F /* CoreLocation.framework */,
-				179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */,
-				17A7F8F329358D430051D146 /* libsocket-runtime.a */,
-				17A7F8F429358D430051D146 /* libuv.a */,
-				17E73FEE28FCD3360087604F /* libuv-ios.a */,
-				17C230B928E9398700301440 /* Foundation.framework */,
-				2996EDB12770BC1F00C672A2 /* Network.framework */,
-				2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */,
-				2996EDB12770BC1F00C672A4 /* UserNotifications.framework */,
-				294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
-				294A3C792763E9C6007B5B9A /* UIKit.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
+        171C1C2A2AC38A70005F587F /* CoreLocation.framework */,
+        179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */,
+        17A7F8F329358D430051D146 /* libsocket-runtime.a */,
+        17A7F8F429358D430051D146 /* libuv.a */,
+        17E73FEE28FCD3360087604F /* libuv-ios.a */,
+        17C230B928E9398700301440 /* Foundation.framework */,
+        2996EDB12770BC1F00C672A2 /* Network.framework */,
+        2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */,
+        2996EDB12770BC1F00C672A4 /* UserNotifications.framework */,
+        294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
+        294A3C792763E9C6007B5B9A /* UIKit.framework */,
+      );
+      name = Frameworks;
+      sourceTree = "<group>";
+    };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* {{build_name}} */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget {{build_name}} */;
-			buildPhases = (
-				29124C4627613369001832A0 /* Sources */,
-				29124C4727613369001832A0 /* Frameworks */,
-				29124C4827613369001832A0 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "{{build_name}}";
-			productName = "{{build_name}}";
-			productReference = 29124C4A27613369001832A0 /* {{build_name}}.app */;
-			productType = "com.apple.product-type.application";
-		};
+    29124C4927613369001832A0 /* {{build_name}} */ = {
+      isa = PBXNativeTarget;
+      buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget {{build_name}} */;
+      buildPhases = (
+        29124C4627613369001832A0 /* Sources */,
+        29124C4727613369001832A0 /* Frameworks */,
+        29124C4827613369001832A0 /* Resources */,
+      );
+      buildRules = (
+      );
+      dependencies = (
+      );
+      name = "{{build_name}}";
+      productName = "{{build_name}}";
+      productReference = 29124C4A27613369001832A0 /* {{build_name}}.app */;
+      productType = "com.apple.product-type.application";
+    };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		29124C4227613369001832A0 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1340;
-				TargetAttributes = {
-					29124C4927613369001832A0 = {
-						CreatedOnToolsVersion = 13.1;
-					};
-				};
-			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{build_name}}" */;
-			compatibilityVersion = "Xcode 13.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-			);
-			mainGroup = 29124C4127613369001832A0;
-			productRefGroup = 29124C4B27613369001832A0 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				29124C4927613369001832A0 /* {{build_name}} */,
-			);
-		};
+    29124C4227613369001832A0 /* Project object */ = {
+      isa = PBXProject;
+      attributes = {
+        BuildIndependentTargetsInParallel = 1;
+        LastUpgradeCheck = 1340;
+        TargetAttributes = {
+          29124C4927613369001832A0 = {
+            CreatedOnToolsVersion = 13.1;
+          };
+        };
+      };
+      buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{build_name}}" */;
+      compatibilityVersion = "Xcode 13.0";
+      developmentRegion = en;
+      hasScannedForEncodings = 0;
+      knownRegions = (
+        en,
+        Base,
+      );
+      mainGroup = 29124C4127613369001832A0;
+      productRefGroup = 29124C4B27613369001832A0 /* Products */;
+      projectDirPath = "";
+      projectRoot = "";
+      targets = (
+        29124C4927613369001832A0 /* {{build_name}} */,
+      );
+    };
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		29124C4827613369001832A0 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
-				294A3C852764EAB7007B5B9A /* ui in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+    29124C4827613369001832A0 /* Resources */ = {
+      isa = PBXResourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (
+        29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
+        294A3C852764EAB7007B5B9A /* ui in Resources */,
+      );
+      runOnlyForDeploymentPostprocessing = 0;
+    };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		29124C4627613369001832A0 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				17A7F8F229358D220051D146 /* init.cc in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+    29124C4627613369001832A0 /* Sources */ = {
+      isa = PBXSourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (
+        17A7F8F229358D220051D146 /* init.cc in Sources */,
+      );
+      runOnlyForDeploymentPostprocessing = 0;
+    };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		29124C5B2761336B001832A0 /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				29124C5C2761336B001832A0 /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
+    29124C5B2761336B001832A0 /* LaunchScreen.storyboard */ = {
+      isa = PBXVariantGroup;
+      children = (
+        29124C5C2761336B001832A0 /* Base */,
+      );
+      name = LaunchScreen.storyboard;
+      sourceTree = "<group>";
+    };
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -1141,9 +1143,9 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
   <key>teamID</key>
   <string>{{apple_team_identifier}}</string>
   <key>uploadBitcode</key>
-  <true/>
+  <false/>
   <key>compileBitcode</key>
-  <true/>
+  <false/>
   <key>uploadSymbols</key>
   <true/>
   <key>signingStyle</key>
@@ -1171,6 +1173,10 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 
   <key>CFBundleIconFile</key>
   <string>ui/icon.png</string>
+  <key>CFBundleIconName</key>
+  <string>AppIcon</string>
+  <key>XSAppIconAssets</key>
+  <string>Assets.xcassets/AppIcon.appiconset</string>
 
   <key>CFBundleURLTypes</key>
   <array>
