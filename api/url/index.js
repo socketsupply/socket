@@ -20,12 +20,12 @@ URL.resolve = resolve
 URL.parse = parse
 URL.format = format
 
-export function parse (input) {
+export function parse (input, options = null) {
   if (URL.canParse(input)) {
     return new URL(input)
   }
 
-  if (URL.canParse(input, 'socket://')) {
+  if (options?.strict !== true && URL.canParse(input, 'socket://')) {
     return new URL(input, 'socket://')
   }
 
