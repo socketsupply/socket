@@ -2,13 +2,12 @@
 
 #if SSC_PLATFORM_DESKTOP
 namespace SSC {
-  Core::ChildProcess::~ChildProcess () {
+  void Core::ChildProcess::shutdown () {
     Lock lock(this->mutex);
     for (const auto& entry : this->handles) {
       auto process = entry.second;
       process->kill();
       process->wait();
-      delete process;
     }
 
     this->handles.clear();

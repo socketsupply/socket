@@ -31,6 +31,13 @@ namespace SSC {
     return posts->at(id);
   }
 
+
+  void Core::shutdown () {
+  #if SSC_PLATFORM_DESKTOP
+    this->childProcess.shutdown();
+  #endif
+  }
+
   bool Core::hasPost (uint64_t id) {
     Lock lock(postsMutex);
     return posts->find(id) != posts->end();
