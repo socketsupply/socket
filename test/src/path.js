@@ -27,6 +27,7 @@ test('path.posix.resolve', (t) => {
   t.equal(abd, cwd + ['a', 'b', 'd'].join('/'), 'path.posix.resolve() resolves path 4 components')
   t.equal(a___, cwd + 'a', 'path.posix.resolve() resolves path with 5 component')
 })
+
 test('path.posix.join', (t) => {
   t.equal(path.posix.join('a', 'b', 'c'), 'a/b/c', 'join(a, b, c)')
   t.equal(path.posix.join('a', 'b', 'c', '../d'), 'a/b/d', 'join(a, b, c, ../d)')
@@ -260,4 +261,18 @@ test('path.relative', (t) => {
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\e'), '..\\e', ' ..\\e')
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d'), 'd', 'd')
   t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d\\e'), 'd\\e', 'd\\e')
+})
+
+test('path - well known', (t) => {
+  t.ok(path.DOWNLOADS && typeof path.DOWNLOADS === 'string', 'path.DOWNLOADS')
+  t.ok(path.DOCUMENTS && typeof path.DOCUMENTS === 'string', 'path.DOCUMENTS')
+  t.ok(path.RESOURCES && typeof path.RESOURCES === 'string', 'path.RESOURCES')
+  t.ok(path.PICTURES && typeof path.PICTURES === 'string', 'path.PICTURES')
+  t.ok(path.DESKTOP && typeof path.DESKTOP === 'string', 'path.DESKTOP')
+  t.ok(path.VIDEOS && typeof path.VIDEOS === 'string', 'path.VIDEOS')
+  t.ok(path.CONFIG && typeof path.CONFIG === 'string', 'path.CONFIG')
+  t.ok(path.MUSIC && typeof path.MUSIC === 'string', 'path.MUSIC')
+  t.ok(path.HOME && typeof path.HOME === 'string', 'path.HOME')
+  t.ok(path.DATA && typeof path.DATA === 'string', 'path.DATA')
+  t.ok(path.LOG && typeof path.LOG === 'string', 'path.LOG')
 })
