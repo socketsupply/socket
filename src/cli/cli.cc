@@ -2827,6 +2827,10 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
+    if (settings.count("meta_compile_bitcode") == 0) settings["meta_compile_bitcode"] = "false";
+    if (settings.count("meta_upload_bitcode") == 0) settings["meta_upload_bitcode"] = "false";
+    if (settings.count("meta_upload_symbols") == 0) settings["meta_upload_symbols"] = "true";
+
     if (settings.count("meta_file_limit") == 0) {
       settings["meta_file_limit"] = "4096";
     }
@@ -2921,6 +2925,39 @@ int main (const int argc, const char* argv[]) {
     if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+    }
+
+    if (platform.mac || platform.ios) {
+      std::vector<std::tuple<uint, uint>> iconTypes = {{16, 1}, {20, 1}, {32, 1}, {40, 2}, {60, 3}, {128, 1}};
+
+      auto iconPath = fs::path { paths.platformSpecificOutputPath / "Assets.xcassets" / "AppIcon.appiconset" };
+      fs::create_directories(iconPath);
+
+      writeFile(iconPath / "Contents.json", gXCAssets);
+
+      for (auto& iconType : iconTypes) {
+        StringStream sipsCommand;
+
+        auto size = std::to_string(std::get<0>(iconType));
+        auto scale = std::to_string(std::get<1>(iconType));
+        auto filename = "Icon-" + size + "@" + scale + "x.png";
+
+        auto dest = fs::path { iconPath / filename };
+
+        sipsCommand
+          << "sips"
+          << " -z " << size << " " << size
+          << " " << settings["icon"]
+          << " --out " << dest;
+
+        auto rSip = exec(sipsCommand.str().c_str());
+
+        if (rSip.exitCode != 0) {
+          log("ERROR: failed to create project icons");
+          log(rSip.output);
+          exit(1);
+        }
+      }
     }
 
     //
@@ -3073,7 +3110,6 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
-
 
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
