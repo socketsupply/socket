@@ -2,6 +2,7 @@
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
 import { setImmediate, clearImmediate } from './timers.js'
+import { ServiceWorker } from '../service-worker/instance.js'
 import serviceWorker from './service-worker.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
@@ -199,6 +200,7 @@ export function init () {
 
     // workers
     SharedWorker,
+    ServiceWorker,
 
     // timers
     setImmediate,
