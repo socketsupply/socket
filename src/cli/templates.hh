@@ -237,8 +237,8 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleName</key>
   <string>{{build_name}}</string>
 
-  <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
+  <key>XSAppIconAssets</key>
+  <string>Assets.xcassets/AppIcon.appiconset</string>
 
   <key>CFBundlePackageType</key>
   <string>APPL</string>
@@ -674,6 +674,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
 		2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */; };
 		2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A4 /* UserNotifications.framework */; };
+		2996EDB22770BC1F00C672A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5E2761336B001832A1 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -694,6 +695,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		29124C5E2761336B001832A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
@@ -764,6 +766,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				294A3C842764EAB7007B5B9A /* ui */,
 				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
 				29124C5E2761336B001832A0 /* Info.plist */,
+				29124C5E2761336B001832A1 /* Assets.xcassets */,
 				29124C4B27613369001832A0 /* Products */,
 				294A3C782763E9C6007B5B9A /* Frameworks */,
 			);
@@ -855,6 +858,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			files = (
 				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
 				294A3C852764EAB7007B5B9A /* ui in Resources */,
+				2996EDB22770BC1F00C672A5 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1170,8 +1174,17 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
 
-  <key>CFBundleIconFile</key>
-  <string>ui/icon.png</string>
+  <key>XSAppIconAssets</key>
+  <string>Assets.xcassets/AppIcon.appiconset</string>
+
+  <key>compileBitcode</key>
+  <${{meta_compile_bitcode}}/>
+
+  <key>uploadBitcode</key>
+  <${{meta_upload_bitcode}}/>
+
+  <key>uploadSymbols</key>
+  <${{meta_upload_symbols}}/>
 
   <key>CFBundleURLTypes</key>
   <array>
@@ -1284,6 +1297,57 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 {{configured_entitlements}}
 </dict>
 </plist>)XML";
+
+constexpr auto gXCAssets = R"JSON({
+  "images": [
+    {
+      "idiom": "iphone",
+      "size": "20x20",
+      "scale": "2x",
+      "filename": "Icon-40@2x.png"
+    },
+    {
+      "idiom": "iphone",
+      "size": "20x20",
+      "scale": "3x",
+      "filename": "Icon-60@3x.png"
+    },
+    {
+      "idiom": "ipad",
+      "size": "20x20",
+      "scale": "1x",
+      "filename": "Icon-20@1x.png"
+    },
+    {
+      "idiom": "ipad",
+      "size": "20x20",
+      "scale": "2x",
+      "filename": "Icon-40@2x.png"
+    },
+    {
+      "idiom": "mac",
+      "size": "16x16",
+      "scale": "1x",
+      "filename": "Icon-16@1x.png"
+    },
+    {
+      "idiom": "mac",
+      "size": "32x32",
+      "scale": "1x",
+      "filename": "Icon-32@1x.png"
+    },
+    {
+      "idiom": "mac",
+      "size": "128x128",
+      "scale": "1x",
+      "filename": "Icon-128@1x.png"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  }
+})JSON";
 
 //
 // Android top level `build.gradle` in Groovy Syntax
@@ -1652,14 +1716,6 @@ constexpr auto gDefaultConfig = R"INI(
 ;
 ; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
-
-; The value of the "script" property in the build section will be interpreted as
-; a shell command when  you run "ssc build". This is the most important command
-; in this file. It will do all the heavy lifting and should handle 99.9% of your
-; use cases for moving files into place or tweaking platform-specific build
-; artifacts. If you don't specify it, ssc will just copy everything in your
-; project to the build target.
-;
 ; Note that "~" alias won't expand to the home directory in any of the config
 ; files. Use the full path instead.
 
@@ -1698,18 +1754,21 @@ output = "build"
 
 
 [build.script]
+
 ; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 ; default value: false
 forward_arguments = false
 
 
 [build.watch]
+
 ; Configure your project to watch for sources that could change when running `ssc`.
 ; Could be a string or an array of strings
 sources[] = "src"
 
 
 [webview]
+
 ; Make root open index.html
 ; default value: "/"
 root = "/"
@@ -1724,6 +1783,7 @@ watch = true
 
 ; Custom headers injected on all webview routes
 [webview]
+
 ; default value: ""
 ; headers[] = "X-Custom-Header: Some-Value"
 
@@ -1735,12 +1795,14 @@ reload = true
 
 ; Mount file system paths in webview navigator
 [webview.navigator.mounts]
+
 ; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
 ; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
 ; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
 
 [permissions]
+
 ; Allow/Disallow fullscreen in application
 ; default value: true
 ; allow_fullscreen = true
@@ -1790,6 +1852,7 @@ reload = true
 ; allow_hotkeys = true
 
 [debug]
+
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 flags = "-g"
 
@@ -1832,6 +1895,7 @@ version = 1.0.0
 
 
 [android]
+
 ; The icon to use for identifying your app on Android.
 icon = "src/icon.png"
 
@@ -1875,8 +1939,12 @@ simulator_device = "iPhone 14"
 ; default value: false
 ; nonexempt_encryption = false
 
+; The icon to use for identifying your app on iOS.
+icon = "src/icon.png"
+
 
 [linux]
+
 ; Helps to make your app searchable in Linux desktop environments.
 categories = "Developer Tools"
 
@@ -1974,24 +2042,28 @@ width = 50%
 
 
 [window.alert]
+
 ; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS.
 ; defalut value = ""
 ; title = ""
 
 
 [application]
+
 ; If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app.
 ; default value: false
 ; agent = true
 
 
 [tray]
+
 ; The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format.
 ; defalut value = ""
 ; icon = "icon.png"
 
 
 [headless]
+
 ; The headless runner command. It is used when no OS specific runner is set.
 runner = ""
 ; The headless runner command flags. It is used when no OS specific runner is set.
