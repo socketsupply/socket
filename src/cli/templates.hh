@@ -237,8 +237,11 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleName</key>
   <string>{{build_name}}</string>
 
-  <key>XSAppIconAssets</key>
-  <string>Assets.xcassets/AppIcon.appiconset</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 
   <key>CFBundlePackageType</key>
   <string>APPL</string>
@@ -1174,8 +1177,11 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
 
-  <key>XSAppIconAssets</key>
-  <string>Assets.xcassets/AppIcon.appiconset</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 
   <key>compileBitcode</key>
   <${{meta_compile_bitcode}}/>
