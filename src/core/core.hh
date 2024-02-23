@@ -783,7 +783,9 @@ namespace SSC {
       OS os;
       Platform platform;
       UDP udp;
+    #if SSC_PLATFORM_DESKTOP
       ChildProcess childProcess;
+    #endif
 
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Peer*> peers;
@@ -825,7 +827,9 @@ namespace SSC {
         os(this),
         platform(this),
         udp(this),
+      #if SSC_PLATFORM_DESKTOP
         childProcess(this),
+      #endif
         serviceWorker(this)
       {
         this->posts = std::shared_ptr<Posts>(new Posts());

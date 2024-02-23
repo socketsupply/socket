@@ -261,7 +261,7 @@ static void initRouterTable (Router *router) {
   router->map("child_process.kill", [](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_MOBILE
     auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"}
+      {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
     };
 
@@ -297,7 +297,7 @@ static void initRouterTable (Router *router) {
   router->map("child_process.spawn", [](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_MOBILE
     auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"}
+      {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
     };
 
@@ -352,7 +352,7 @@ static void initRouterTable (Router *router) {
   router->map("child_process.write", [](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_MOBILE
     auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"}
+      {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
     };
 
