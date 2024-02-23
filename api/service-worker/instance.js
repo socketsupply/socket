@@ -3,7 +3,17 @@ import state from './state.js'
 
 export const SHARED_WORKER_URL = new URL('./shared-worker.js', import.meta.url)
 
-export const ServiceWorker = globalThis.ServiceWorker
+export const ServiceWorker = globalThis.ServiceWorker ?? class ServiceWorker extends EventTarget {
+  get onmessage () { return null }
+  set onmessage (_) {}
+  get onerror () { return null }
+  set onerror (_) {}
+  get onstatechange () { return null }
+  set onstatechange (_) {}
+  get state () { return null }
+  get scriptURL () { return null }
+  postMessage () {}
+}
 
 export function createServiceWorker (
   currentState = state.serviceWorker.state,
