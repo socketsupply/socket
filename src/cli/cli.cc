@@ -3125,7 +3125,6 @@ int main (const int argc, const char* argv[]) {
           << "--output-partial-info-plist /tmp/partial-dev.plist"
       ;
 
-      log(compileAssetsCommand.str());
       auto r = exec(compileAssetsCommand.str().c_str());
 
       if (r.exitCode != 0) {
