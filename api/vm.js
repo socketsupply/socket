@@ -1175,7 +1175,7 @@ export async function getContextWindow () {
 
     if (!contextWindow.frame) {
       const frameId = `__${os.platform()}-vm-frame__`
-      const existingFrame = globalThis.document.querySelector(
+      const existingFrame = globalThis.top.document.querySelector(
         `iframe[id="${frameId}"]`
       )
 
@@ -1183,7 +1183,7 @@ export async function getContextWindow () {
         existingFrame.parentElement.removeChild(existingFrame)
       }
 
-      const frame = globalThis.document.createElement('iframe')
+      const frame = globalThis.top.document.createElement('iframe')
 
       frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
       frame.src = VM_WINDOW_PATH
@@ -1196,9 +1196,9 @@ export async function getContextWindow () {
       })
 
       const target = (
-        globalThis.document.head ??
-        globalThis.document.body ??
-        globalThis.document
+        globalThis.top.document.head ??
+        globalThis.top.document.body ??
+        globalThis.top.document
       )
 
       target.appendChild(frame)

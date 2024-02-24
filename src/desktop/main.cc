@@ -1469,11 +1469,14 @@ MAIN {
 
   defaultWindow->show(EMPTY_SEQ);
 
-  if (app.appData["permissions_allow_service_worker"] != "false") {
+  if (
+    app.appData["webview_service_worker_mode"] != "hybrid" &&
+    app.appData["permissions_allow_service_worker"] != "false"
+  ) {
     auto serviceWorkerWindow = windowManager.createWindow({
       .canExit = false,
       .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
-      // .headless = true,
+      .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
     });
 
     app.core->serviceWorker.init(serviceWorkerWindow->bridge);
@@ -1482,6 +1485,8 @@ MAIN {
       EMPTY_SEQ,
       "socket://" + app.appData["meta_bundle_identifier"] + "/socket/service-worker/index.html"
     );
+  } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
+    app.core->serviceWorker.init(defaultWindow->bridge);
   }
 
   if (_port > 0) {

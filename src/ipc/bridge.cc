@@ -2300,6 +2300,7 @@ static void initRouterTable (Router *router) {
 
   /**
    * Prints incoming message value to stdout.
+   * @param value
    */
   router->map("stdout", [](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
@@ -2311,6 +2312,7 @@ static void initRouterTable (Router *router) {
 
   /**
    * Prints incoming message value to stderr.
+   * @param value
    */
   router->map("stderr", [](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
@@ -2322,12 +2324,8 @@ static void initRouterTable (Router *router) {
 
   /**
    * TODO
-   */
-  router->map("serviceWorker.clients.openWindow", [](auto message, auto router, auto reply) {
-  });
-
-  /**
-   * TODO
+   * @param scriptURL
+   * @param scope
    */
   router->map("serviceWorker.register", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scriptURL", "scope"});
@@ -2355,6 +2353,15 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
+  router->map("serviceWorker.reset", [](auto message, auto router, auto reply) {
+    router->core->serviceWorker.reset();
+    reply(Result::Data { message, JSON::Object {}});
+  });
+
+  /**
+   * TODO
+   * @param scope
+   */
   router->map("serviceWorker.unregister", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scope"});
 
@@ -2370,6 +2377,7 @@ static void initRouterTable (Router *router) {
 
   /**
    * TODO
+   * @param scope
    */
   router->map("serviceWorker.getRegistration", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scope"});
@@ -2413,6 +2421,7 @@ static void initRouterTable (Router *router) {
 
   /**
    * TODO
+   * @param id
    */
   router->map("serviceWorker.skipWaiting", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
@@ -2431,12 +2440,8 @@ static void initRouterTable (Router *router) {
 
   /**
    * TODO
-   */
-  router->map("serviceWorker.startMessages", [](auto message, auto router, auto reply) {
-  });
-
-  /**
-   * TODO
+   * @param id
+   * @param state
    */
   router->map("serviceWorker.updateState", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "state"});
@@ -3326,7 +3331,34 @@ static void registerSchemeHandler (Router *router) {
                 headers[key] = value;
               }
 
+              const NSString* contentType = headers[@"content-type"];
+              const auto absoluteURL = String(request.URL.absoluteString.UTF8String);
+              const auto absoluteURLPathExtension = request.URL.pathExtension != nullptr
+                ? String(request.URL.pathExtension.UTF8String)
+                : String("");
+
               auto data = [NSData dataWithBytes: res.buffer.bytes length: res.buffer.size];
+
+              if (
+                  absoluteURLPathExtension.ends_with("html") ||
+                  (contentType != nullptr && String(contentType.UTF8String) == "text/html")
+               ) {
+                const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
+                auto html = String(string.UTF8String);
+                const auto script = self.router->bridge->preload;
+
+                if (html.find("<head>") != String::npos) {
+                  html = replace(html, "<head>", String("<head>" + script));
+                } else if (html.find("<body>") != String::npos) {
+                  html = replace(html, "<body>", String("<body>" + script));
+                } else if (html.find("<html>") != String::npos) {
+                  html = replace(html, "<html>", String("<html>" + script));
+                } else {
+                  html = script + html;
+                }
+
+                data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+              }
               auto response = [[NSHTTPURLResponse alloc]
                 initWithURL: request.URL
                 statusCode: res.statusCode

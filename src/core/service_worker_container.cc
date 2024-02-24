@@ -43,11 +43,22 @@ namespace SSC {
     this->core = nullptr;
     this->bridge = nullptr;
     this->registrations.clear();
+    this->fetchRequests.clear();
+    this->fetchCallbacks.clear();
+  }
+
+  void ServiceWorkerContainer::reset () {
+    Lock lock(this->mutex);
+
+    this->registrations.clear();
+    this->fetchRequests.clear();
+    this->fetchCallbacks.clear();
   }
 
   void ServiceWorkerContainer::init (IPC::Bridge* bridge) {
     Lock lock(this->mutex);
 
+    this->reset();
     this->bridge = bridge;
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
       uint64_t id = 0;
@@ -156,7 +167,7 @@ namespace SSC {
     }
 
     this->registrations.insert_or_assign(options.scope, Registration {
-      rand64(),
+      options.id > 0 ? options.id : rand64(),
       options.scriptURL,
       Registration::State::Registered,
       options
@@ -165,6 +176,7 @@ namespace SSC {
     const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
+      debug("register: %s", registration.json().str().c_str());
       this->bridge->router.emit("serviceWorker.register", registration.json().str());
     }
 
