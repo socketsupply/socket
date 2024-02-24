@@ -19,6 +19,7 @@ namespace SSC {
       opts(opts),
       hotkey(this)
   {
+    static auto userConfig = SSC::getUserConfig();
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
     this->popupId = 0;

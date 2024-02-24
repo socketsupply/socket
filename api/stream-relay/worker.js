@@ -167,7 +167,7 @@ export class PeerWorkerProxy {
     return await this.callWorkerThread('reconnect')
   }
 
-  async reconnect () {
+  async disconnect () {
     return await this.callWorkerThread('disconnect')
   }
 
@@ -335,6 +335,7 @@ if (isWorkerThread) {
         }
 
         case 'compileCachePredicate': {
+          // eslint-disable-next-line
           let predicate = new Function(`return ${data.toString()}`)()
           predicate = predicate.bind(peer)
           peer.cachePredicate = packet => predicate(packet)

@@ -23,12 +23,15 @@ class ServiceWorkerInfo {
   }
 }
 
-globalThis.addEventListener('serviceWorker.register', onRegister)
-globalThis.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
-globalThis.addEventListener('serviceWorker.activate', onActivate)
-globalThis.addEventListener('serviceWorker.fetch', onFetch)
+console.log(globalThis.top === globalThis)
+globalThis.top.addEventListener('serviceWorker.register', onRegister)
+globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
+globalThis.top.addEventListener('serviceWorker.activate', onActivate)
+globalThis.top.addEventListener('serviceWorker.fetch', onFetch)
+console.log('init service worker frame')
 
 async function onRegister (event) {
+  console.log('onRegister', event)
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!info.id || workers.has(info.hash)) {
@@ -51,10 +54,12 @@ async function onRegister (event) {
 }
 
 async function onSkipWaiting (event) {
+  console.log('onSkipWaiting', event)
   onActivate(event)
 }
 
 async function onActivate (event) {
+  console.log('onActivate', event)
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {
@@ -67,6 +72,7 @@ async function onActivate (event) {
 }
 
 async function onFetch (event) {
+  console.log('onFetch', event)
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {
@@ -78,7 +84,7 @@ async function onFetch (event) {
     id: event.detail.fetch.id,
     url: new URL(
       event.detail.fetch.pathname + '?' + event.detail.fetch.query,
-      globalThis.origin
+      globalThis.top.origin
     ).toString(),
 
     headers: event.detail.fetch.headers

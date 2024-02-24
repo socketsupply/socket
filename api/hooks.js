@@ -80,8 +80,11 @@ function addEventListenerOnce (target, type, callback) {
   target.addEventListener(type, callback, { once: true })
 }
 
-async function waitForEvent (target, type) {
+async function waitForEvent (target, type, timeout = -1) {
   return await new Promise((resolve) => {
+    if (timeout > -1) {
+      setTimeout(resolve, timeout)
+    }
     addEventListenerOnce(target, type, resolve)
   })
 }
@@ -345,7 +348,13 @@ export class Hooks extends EventTarget {
     })
 
     if (!isWorkerContext && readyState !== 'complete') {
-      await waitForEvent(global, 'load')
+      const pending = []
+      pending.push(waitForEvent(global, 'load', 500))
+      if (document) {
+        pending.push(waitForEvent(document, 'DOMContentLoaded'))
+      }
+
+      await Promise.race(pending)
     }
 
     isGlobalLoaded = true

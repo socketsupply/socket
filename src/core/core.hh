@@ -726,6 +726,36 @@ namespace SSC {
       };
     #endif
 
+      class Timers : public Module {
+        public:
+          using ID = uint64_t;
+          using Callback = std::function<void()>;
+
+          struct Timeout {
+            ID id = 0;
+            Callback callback;
+            bool repeat = false;
+            bool cancelled = false;
+            uv_timer_t timer;
+          };
+
+          struct Interval : public Timeout {
+            bool repeat = true;
+          };
+
+          using Handles = std::map<ID, Timeout>;
+
+          Handles handles;
+          Mutex mutex;
+
+          Timers (auto core): Module (core) {}
+
+          const ID setTimeout (uint64_t timeout, const Callback callback);
+          bool clearTimeout (const ID id);
+          const ID setInterval (uint64_t interval, const Callback callback);
+          bool clearInterval (const ID id);
+      };
+
       class UDP : public Module {
         public:
           UDP (auto core) : Module(core) {}
@@ -776,16 +806,17 @@ namespace SSC {
           );
       };
 
-      ServiceWorkerContainer serviceWorker;
+    #if SSC_PLATFORM_DESKTOP
+      ChildProcess childProcess;
+    #endif
       Diagnostics diagnostics;
       DNS dns;
       FS fs;
       OS os;
       Platform platform;
+      ServiceWorkerContainer serviceWorker;
+      Timers timers;
       UDP udp;
-    #if SSC_PLATFORM_DESKTOP
-      ChildProcess childProcess;
-    #endif
 
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Peer*> peers;
@@ -821,15 +852,16 @@ namespace SSC {
     #endif
 
       Core () :
+      #if SSC_PLATFORM_DESKTOP
+        childProcess(this),
+      #endif
         diagnostics(this),
         dns(this),
         fs(this),
         os(this),
         platform(this),
+        timers(this),
         udp(this),
-      #if SSC_PLATFORM_DESKTOP
-        childProcess(this),
-      #endif
         serviceWorker(this)
       {
         this->posts = std::shared_ptr<Posts>(new Posts());
