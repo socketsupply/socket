@@ -24,6 +24,7 @@ namespace SSC {
           [](uv_timer_t* timer) {
             auto handle = reinterpret_cast<Timeout*>(uv_handle_get_data((uv_handle_t*) timer));
             if (handle != nullptr) {
+              handle->callback();
             }
           },
           timeout,
