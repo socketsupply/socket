@@ -2927,6 +2927,69 @@ int main (const int argc, const char* argv[]) {
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
     }
 
+    auto compileIconAssets = [&]() {
+      auto src = paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"));
+      std::vector<std::tuple<uint, uint>> iconTypes = {{16, 1}, {20, 1}, {32, 1}, {40, 2}, {60, 3}, {128, 1}};
+
+      auto assetsPath = fs::path { src / "Assets.xcassets" };
+      auto iconsPath = fs::path { assetsPath / "AppIcon.appiconset" };
+
+      fs::create_directories(iconsPath);
+
+      writeFile(iconsPath / "Contents.json", gXCAssets);
+
+      for (auto& iconType : iconTypes) {
+        StringStream sipsCommand;
+
+        auto size = std::to_string(std::get<0>(iconType));
+        auto scale = std::to_string(std::get<1>(iconType));
+        auto destFileName = "Icon-" + size + "@" + scale + "x.png";
+        auto destFilePath = fs::path { iconsPath / destFileName };
+
+        auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
+
+        sipsCommand
+          << "sips"
+          << " -z " << size << " " << size
+          << " " << src
+          << " --out " << destFilePath;
+
+        auto rSip = exec(sipsCommand.str().c_str());
+
+        if (rSip.exitCode != 0) {
+          log("ERROR: failed to create project icons");
+          log(rSip.output);
+          exit(1);
+        }
+      }
+
+      auto dest = paths.pathResourcesRelativeToUserBuild;
+      if (!isForDesktop) dest = src;
+
+      StringStream compileAssetsCommand;
+      compileAssetsCommand
+        << "xcrun "
+          << "actool " << assetsPath.c_str() << " "
+          << "--compile " << dest.c_str() << " "
+          << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
+          << "--minimum-deployment-target 10.15 "
+          << "--app-icon AppIcon "
+          << "--output-partial-info-plist /tmp/partial-dev.plist"
+      ;
+
+      log(compileAssetsCommand.str());
+      auto r = exec(compileAssetsCommand.str().c_str());
+
+      if (r.exitCode != 0) {
+        log("ERROR: failed to compile car file from xcode assets");
+        log(r.output);
+        exit(1);
+      }
+
+      fs::remove_all(assetsPath);
+      log("generated icons");
+    };
+
     //
     // Darwin Package Prep
     // ---
@@ -3078,63 +3141,8 @@ int main (const int argc, const char* argv[]) {
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
 
-    if (platform.mac || platform.ios) {
-      std::vector<std::tuple<uint, uint>> iconTypes = {{16, 1}, {20, 1}, {32, 1}, {40, 2}, {60, 3}, {128, 1}};
-
-      auto pathToProject = paths.platformSpecificOutputPath / fs::path(settings["build_name"] + ".app");
-      auto assetsPath = fs::path { pathToProject / "Assets.xcassets" };
-      auto iconPath = fs::path { assetsPath / "AppIcon.appiconset" };
-
-      fs::create_directories(iconPath);
-
-      writeFile(iconPath / "Contents.json", gXCAssets);
-
-      for (auto& iconType : iconTypes) {
-        StringStream sipsCommand;
-
-        auto size = std::to_string(std::get<0>(iconType));
-        auto scale = std::to_string(std::get<1>(iconType));
-        auto filename = "Icon-" + size + "@" + scale + "x.png";
-        auto dest = fs::path { iconPath / filename };
-
-        auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
-
-        sipsCommand
-          << "sips"
-          << " -z " << size << " " << size
-          << " " << src
-          << " --out " << dest;
-
-        auto rSip = exec(sipsCommand.str().c_str());
-
-        if (rSip.exitCode != 0) {
-          log("ERROR: failed to create project icons");
-          log(rSip.output);
-          exit(1);
-        }
-      }
-
-      StringStream compileAssetsCommand;
-      compileAssetsCommand
-        << "xcrun "
-          << "actool " << assetsPath.c_str() << " "
-          << "--compile " << paths.pathResourcesRelativeToUserBuild.c_str() << " "
-          << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
-          << "--minimum-deployment-target 10.15 "
-          << "--app-icon AppIcon "
-          << "--output-partial-info-plist /tmp/partial-dev.plist"
-      ;
-
-      auto r = exec(compileAssetsCommand.str().c_str());
-
-      if (r.exitCode != 0) {
-        log("ERROR: failed to compile car file from xcode assets");
-        log(r.output);
-        exit(1);
-      }
-
-      fs::remove_all(assetsPath);
-      log("generated icons");
+    if (platform.mac && isForDesktop) {
+      compileIconAssets();
     }
 
     // used in multiple if blocks, need to declare here
@@ -4096,6 +4104,8 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
 
+      compileIconAssets();
+
       if (!flagBuildForSimulator) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
@@ -4562,7 +4572,6 @@ int main (const int argc, const char* argv[]) {
             // TODO
             continue;
           }
-
 
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] + " " +
