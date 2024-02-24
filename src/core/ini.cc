@@ -48,6 +48,12 @@ namespace SSC::INI {
             quoted_value = true;
             value = trim(value.substr(1, closing_quote_index - 1));
           }
+        } else if (value[0] == '\'') {
+          closing_quote_index = value.find_first_of('\'', 1);
+          if (closing_quote_index != std::string::npos) {
+            quoted_value = true;
+            value = trim(value.substr(1, closing_quote_index - 1));
+          }
         }
 
         if (!quoted_value) {

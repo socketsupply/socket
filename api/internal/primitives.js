@@ -230,7 +230,10 @@ export function init () {
 
     // manually initialize `ServiceWorkerContainer` instance with the
     // runtime implementations
-    serviceWorker.init.call(globalThis.navigator.serviceWorker)
+    if (typeof serviceWorker.init === 'function') {
+      serviceWorker.init.call(globalThis.navigator.serviceWorker)
+      delete serviceWorker.init
+    }
 
     // TODO(@jwerle): handle 'popstate' for service workers
     // globalThis.addEventListener('popstate', (event) => { })

@@ -4,8 +4,12 @@ import { ServiceWorkerRegistration } from './registration.js'
 import { InvertedPromise } from '../util.js'
 import { SharedWorker } from '../internal/shared-worker.js'
 import application from '../application.js'
+import hooks from '../hooks.js'
 import state from './state.js'
 import ipc from '../ipc.js'
+import os from '../os.js'
+
+const SERVICE_WINDOW_PATH = `${globalThis.origin}/socket/service-worker/index.html`
 
 class ServiceWorkerContainerInternalStateMap extends Map {
   define (container, property, descriptor) {
@@ -23,12 +27,89 @@ class ServiceWorkerContainerInternalState {
   controller = null
   channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new InvertedPromise()
+  init = new InvertedPromise()
+
+  isRegistering = false
+  isRegistered = false
 
   // level 1 events
   oncontrollerchange = null
   onmessageerror = null
   onmessage = null
   onerror = null
+}
+
+class ServiceWorkerContainerRealm {
+  static instance = null
+
+  frame = null
+  static async init (container) {
+    const realm = new ServiceWorkerContainerRealm()
+    return await realm.init(container)
+  }
+
+  async init (container) {
+    if (ServiceWorkerContainerRealm.instance) {
+      return
+    }
+
+    ServiceWorkerContainerRealm.instance = this
+
+    const frameId = `__${os.platform()}-service-worker-frame__`
+    const existingFrame = globalThis.top.document.querySelector(
+      `iframe[id="${frameId}"]`
+    )
+
+    if (existingFrame) {
+      this.frame = existingFrame
+      return
+    }
+
+    this.frame = globalThis.top.document.createElement('iframe')
+    this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
+    this.frame.src = SERVICE_WINDOW_PATH
+    this.frame.id = frameId
+
+    Object.assign(this.frame.style, {
+      display: 'none',
+      height: 0,
+      width: 0
+    })
+
+    const target = (
+      globalThis.top.document.head ??
+      globalThis.top.document.body ??
+      globalThis.top.document
+    )
+
+    target.appendChild(this.frame)
+
+    await new Promise((resolve, reject) => {
+      setTimeout(resolve, 500)
+      this.frame.addEventListener('load', resolve)
+      this.frame.onerror = (event) => {
+        reject(new Error('Failed to load ServiceWorker context window frame', {
+          cause: event.error ?? event
+        }))
+      }
+    })
+
+    if (
+      globalThis.window &&
+      globalThis.top &&
+      globalThis.window === globalThis.top &&
+      application.getCurrentWindowIndex() === 0
+    ) {
+      console.log('RESET')
+      // reset serviceWorker state on bridge if we are in a
+      // realm (hybrid) context setup so register already service worker
+      // registrations that need to be reinitialized when the page is reloaded
+      await ipc.request('serviceWorker.reset')
+    await new Promise((resolve, reject) => {
+      setTimeout(resolve, 500)
+    })
+    }
+  }
 }
 
 const internal = new ServiceWorkerContainerInternalStateMap()
@@ -71,7 +152,32 @@ async function activateRegistrationFromClaim (container, claim) {
   await preloadExistingRegistration(container)
 }
 
+/**
+ * Predicate to determine if service workers are allowed
+ * @return {boolean}
+ */
+export function isServiceWorkerAllowed () {
+  const { config } = application
+
+  if (globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__) {
+    return false
+  }
+
+  return String(config.permissions_allow_service_worker) !== 'false'
+}
+
+/**
+ * TODO
+ */
 export class ServiceWorkerContainer extends EventTarget {
+  get ready () {
+    return internal.get(this).ready
+  }
+
+  get controller () {
+    return internal.get(this).controller
+  }
+
   /**
    * A special initialization function for augmenting the global
    * `globalThis.navigator.serviceWorker` platform `ServiceWorkerContainer`
@@ -85,7 +191,13 @@ export class ServiceWorkerContainer extends EventTarget {
    * @private
    */
   async init () {
+    if (internal.get(this)) {
+      internal.get(this).init.resolve()
+      return
+    }
+
     internal.set(this, new ServiceWorkerContainerInternalState())
+    internal.get(this).currentWindow = await application.getCurrentWindow()
 
     this.register = this.register.bind(this)
     this.getRegistration = this.getRegistration.bind(this)
@@ -173,35 +285,46 @@ export class ServiceWorkerContainer extends EventTarget {
       }
     })
 
-    preloadExistingRegistration(this)
-
     internal.get(this).ready.then(async (registration) => {
       if (registration) {
         internal.get(this).controller = registration.active
         internal.get(this).sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-        internal.get(this).currentWindow = await application.getCurrentWindow()
       }
     })
 
-    state.channel.addEventListener('message', (event) => {
-      if (event.data?.clients?.claim?.scope) {
-        const { scope } = event.data.clients.claim
-        if (globalThis.location.pathname.startsWith(scope)) {
-          activateRegistrationFromClaim(this, event.data.clients.claim)
+    if (isServiceWorkerAllowed()) {
+      state.channel.addEventListener('message', (event) => {
+        if (event.data?.clients?.claim?.scope) {
+          const { scope } = event.data.clients.claim
+          if (globalThis.location.pathname.startsWith(scope)) {
+            activateRegistrationFromClaim(this, event.data.clients.claim)
+          }
         }
+      })
+
+      if (
+        application.config.webview_service_worker_mode === 'hybrid' ||
+        /android|ios/i.test(os.platform())
+      ) {
+        console.log('before realm init')
+        await ServiceWorkerContainerRealm.init(this)
+        console.log('after realm init')
       }
-    })
-  }
 
-  get ready () {
-    return internal.get(this).ready
-  }
+      console.log('preloading')
+      await preloadExistingRegistration(this)
+      console.log('after preloadExistingRegistration')
+    }
 
-  get controller () {
-    return internal.get(this).controller
+    console.log('resolve init', globalThis.location.href)
+    internal.get(this).init.resolve()
   }
 
   async getRegistration (clientURL) {
+    if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
+      return await globalThis.top.navigator.serviceWorker.getRegistration(clientURL)
+    }
+
     let scope = clientURL
     let currentScope = null
 
@@ -248,6 +371,10 @@ export class ServiceWorkerContainer extends EventTarget {
   }
 
   async getRegistrations () {
+    if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
+      return await globalThis.top.navigator.serviceWorker.getRegistrations()
+    }
+
     const result = await ipc.request('serviceWorker.getRegistrations')
 
     if (result.err) {
@@ -271,6 +398,14 @@ export class ServiceWorkerContainer extends EventTarget {
   }
 
   async register (scriptURL, options = null) {
+    if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
+      return await globalThis.top.navigator.serviceWorker.register(scriptURL, options)
+    }
+
+    console.log('before init', globalThis.location.href, internal.get(this))
+    await internal.get(this).init
+    console.log('after init')
+
     scriptURL = new URL(scriptURL, globalThis.location.href).toString()
 
     if (!options || typeof options !== 'object') {
@@ -281,18 +416,26 @@ export class ServiceWorkerContainer extends EventTarget {
       options.scope = new URL('./', scriptURL).pathname
     }
 
+    internal.get(this).isRegistered = false
+    internal.get(this).isRegistering = true
+
     const result = await ipc.request('serviceWorker.register', {
       ...options,
       scriptURL
     })
 
+    internal.get(this).isRegistering = false
+
     if (result.err) {
       throw result.err
     }
 
+    internal.get(this).isRegistered = true
+
     const info = result.data
     const url = new URL(scriptURL)
 
+    console.log({ result })
     if (url.pathname.startsWith(options.scope)) {
       state.serviceWorker.state = info.registration.state.replace('registered', 'installing')
       state.serviceWorker.scriptURL = info.registration.scriptURL
@@ -308,6 +451,10 @@ export class ServiceWorkerContainer extends EventTarget {
   }
 
   startMessages () {
+    if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
+      return globalThis.top.navigator.serviceWorker.startMessages()
+    }
+
     internal.get(this).ready.then(() => {
       internal.get(this).sharedWorker.port.start()
       internal.get(this).sharedWorker.port.addEventListener('message', (event) => {

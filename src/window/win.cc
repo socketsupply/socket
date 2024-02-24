@@ -664,6 +664,7 @@ namespace SSC {
 
     this->bridge = new IPC::Bridge(app.core);
     this->hotkey.init(this->bridge);
+
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };

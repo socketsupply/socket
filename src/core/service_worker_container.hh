@@ -18,6 +18,7 @@ namespace SSC {
         Type type = Type::Module;
         String scope;
         String scriptURL;
+        uint64_t id = 0;
       };
 
       struct Client {
@@ -80,6 +81,7 @@ namespace SSC {
       ~ServiceWorkerContainer ();
 
       void init (IPC::Bridge* bridge);
+      void reset ();
       const Registration& registerServiceWorker (const RegistrationOptions& options);
       bool unregisterServiceWorker (uint64_t id);
       bool unregisterServiceWorker (String scopeOrScriptURL);

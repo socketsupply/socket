@@ -578,6 +578,9 @@ export function inspect (value, options) {
       for (let i = 0; i < size; ++i) {
         const key = String(i)
         if (value instanceof Set || hasOwnProperty(value, key)) {
+          if (key === 'length' && Array.isArray(value)) {
+            continue
+          }
           output.push(formatProperty(
             ctx,
             value,

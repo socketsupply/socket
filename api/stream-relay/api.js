@@ -1,4 +1,4 @@
-import { Peer, Encryption, sha256, NAT, RemotePeer } from './index.js'
+import { Peer, Encryption, sha256 } from './index.js'
 import { PeerWorkerProxy } from './worker.js'
 import { sodium } from '../crypto.js'
 import { Buffer } from '../buffer.js'
@@ -16,7 +16,6 @@ import { Packet, CACHE_TTL } from './packets.js'
  * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
  */
 async function api (options = {}, events, dgram) {
-  let _peer
   await sodium.ready
   const bus = new events.EventEmitter()
   bus._on = bus.on
@@ -38,7 +37,7 @@ async function api (options = {}, events, dgram) {
   if (clusterId) clusterId = Buffer.from(clusterId) // some peers don't have clusters
 
   const Ctor = globalThis.isSocketRuntime ? PeerWorkerProxy : Peer
-  _peer = new Ctor(options, dgram)
+  const _peer = new Ctor(options, dgram)
 
   _peer.onJoin = (packet, ...args) => {
     if (!packet.clusterId.equals(clusterId)) return
@@ -198,7 +197,6 @@ async function api (options = {}, events, dgram) {
     const args = await pack(eventName, value, opts)
     if (!options.sharedKey) {
       throw new Error('Can\'t emit to the top level cluster, a shared key was not provided in the constructor or the arguments options')
-      return
     }
     return await _peer.publish(options.sharedKey || opts.sharedKey, args)
   }

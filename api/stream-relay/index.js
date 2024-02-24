@@ -4,7 +4,6 @@
  *
  * This module provides primitives for creating a p2p network.
  */
-// 
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
 import { sodium, randomBytes } from '../crypto.js'
@@ -579,7 +578,7 @@ export class Peer {
     })
 
     return {
-      peers, 
+      peers,
       config: this.config,
       data: [...this.cache.data.entries()],
       unpublished: this.unpublished
@@ -1043,7 +1042,7 @@ export class Peer {
     for (const packet of packets) {
       this.cacheInsert(packet)
 
-      if (this.onPacket) this.onPacket(p, this.port, this.address, true)
+      if (this.onPacket) this.onPacket(packet, this.port, this.address, true)
 
       this.unpublished[packet.packetId.toString('hex')] = Date.now()
       if (globalThis.navigator && !globalThis.navigator.onLine) continue

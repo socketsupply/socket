@@ -3,6 +3,7 @@ import { isIPv4 } from 'socket:ip'
 import { network, Encryption } from 'socket:network'
 
 test('basic network constructor', async t => {
+  // eslint-disable-next-line
   const sharedKey = await Encryption.createSharedKey('TEST')
   const clusterId = await Encryption.createClusterId('TEST')
   const peerId = await Encryption.createId()

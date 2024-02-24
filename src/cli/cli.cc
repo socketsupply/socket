@@ -2286,12 +2286,12 @@ int main (const int argc, const char* argv[]) {
         fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
         log("icon.png created in " + targetPath.string() + "/src");
 
-	if (platform.win) {
+        if (platform.win) {
           // copy icon.ico
           fs::copy(trim(prefixFile("assets/icon.ico")), targetPath / "src" / "icon.ico", fs::copy_options::overwrite_existing);
           log("icon.ico created in " + targetPath.string() + "/src");
 
-	}
+        }
       } else {
         log("Current directory was not empty. Assuming index.html and icon are already in place.");
       }
