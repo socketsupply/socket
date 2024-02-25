@@ -1,3 +1,4 @@
+
 declare module "socket:buffer" {
     export default Buffer;
     /**
@@ -146,6 +147,7 @@ declare module "socket:buffer" {
     export const kMaxLength: 2147483647;
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
+
 declare module "socket:console" {
     export function patchGlobalConsole(globalConsole: any, options?: {}): any;
     export const globalConsole: globalThis.Console;
@@ -191,6 +193,7 @@ declare module "socket:console" {
     const _default: Console;
     export default _default;
 }
+
 declare module "socket:events" {
     export const Event: {
         new (type: string, eventInitDict?: EventInit): Event;
@@ -269,6 +272,7 @@ declare module "socket:events" {
     import * as exports from "socket:events";
     
 }
+
 declare module "socket:async" {
     /**
      * A utility class for creating deferred promises.
@@ -321,6 +325,7 @@ declare module "socket:async" {
     }
     export default _default;
 }
+
 declare module "socket:application/menu" {
     /**
      * Internal IPC for setting an application menu
@@ -476,6 +481,7 @@ declare module "socket:application/menu" {
     import ipc from "socket:ipc";
     import { Deferred } from "socket:async";
 }
+
 declare module "socket:internal/events" {
     /**
      * An event dispatched when an application URL is opening the application.
@@ -617,6 +623,7 @@ declare module "socket:internal/events" {
     }
     export default _default;
 }
+
 declare module "socket:path/well-known" {
     /**
      * Well known path to the user's "Downloads" folder.
@@ -689,6 +696,7 @@ declare module "socket:path/well-known" {
     }
     export default _default;
 }
+
 declare module "socket:os" {
     /**
      * Returns the operating system CPU architecture for which Socket was compiled.
@@ -801,6 +809,7 @@ declare module "socket:os" {
     import * as exports from "socket:os";
     
 }
+
 declare module "socket:signal" {
     /**
      * Converts an `signal` code to its corresponding string message.
@@ -875,6 +884,7 @@ declare module "socket:signal" {
     export type signal = import("socket:os/constants").signal;
     import { signal as constants } from "socket:os/constants";
 }
+
 declare module "socket:process" {
     /**
      * Adds callback to the 'nextTick' queue.
@@ -911,6 +921,7 @@ declare module "socket:process" {
     export default process;
     const process: any;
 }
+
 declare module "socket:location" {
     export function toString(): string;
     export const globalLocation: Location | {
@@ -940,6 +951,7 @@ declare module "socket:location" {
     }
     export default _default;
 }
+
 declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
@@ -965,10 +977,12 @@ declare module "socket:url/urlpattern/urlpattern" {
         compareComponent(t: any, r: any, n: any): number;
     };
 }
+
 declare module "socket:url/url/url" {
     const _default: any;
     export default _default;
 }
+
 declare module "socket:querystring" {
     export function unescapeBuffer(s: any, decodeSpaces: any): any;
     export function unescape(s: any, decodeSpaces: any): any;
@@ -987,6 +1001,7 @@ declare module "socket:querystring" {
     }
     export default _default;
 }
+
 declare module "socket:url/index" {
     export function parse(input: any, options?: any): any;
     export function resolve(from: any, to: any): any;
@@ -998,11 +1013,13 @@ declare module "socket:url/index" {
     export const parseURL: any;
     export { URLPattern };
 }
+
 declare module "socket:url" {
     export * from "socket:url/index";
     export default URL;
     import URL from "socket:url/index";
 }
+
 declare module "socket:path/path" {
     /**
      * The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
@@ -1207,6 +1224,7 @@ declare module "socket:path/path" {
     });
     import { URL } from "socket:url/index";
 }
+
 declare module "socket:path/win32" {
     /**
      * Computes current working directory for a path
@@ -1298,6 +1316,7 @@ declare module "socket:path/win32" {
     
     export { posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
+
 declare module "socket:path/posix" {
     /**
      * Computes current working directory for a path
@@ -1390,6 +1409,7 @@ declare module "socket:path/posix" {
     
     export { win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
+
 declare module "socket:path/index" {
     export default exports;
     import * as posix from "socket:path/posix";
@@ -1410,6 +1430,7 @@ declare module "socket:path/index" {
     
     export { posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
+
 declare module "socket:path" {
     export const sep: "/" | "\\";
     export const delimiter: ":" | ";";
@@ -1442,6 +1463,7 @@ declare module "socket:path" {
     import { LOG } from "socket:path/index";
     export { Path, posix, win32, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
+
 declare module "socket:diagnostics/channels" {
     /**
      * Normalizes a channel name to lower case replacing white space,
@@ -1654,6 +1676,7 @@ declare module "socket:diagnostics/channels" {
     };
     export default registry;
 }
+
 declare module "socket:diagnostics/metric" {
     export class Metric {
         init(): void;
@@ -1666,6 +1689,7 @@ declare module "socket:diagnostics/metric" {
     }
     export default Metric;
 }
+
 declare module "socket:diagnostics/window" {
     export class RequestAnimationFrameMetric extends Metric {
         constructor(options: any);
@@ -1745,6 +1769,7 @@ declare module "socket:diagnostics/window" {
     export default _default;
     import { Metric } from "socket:diagnostics/metric";
 }
+
 declare module "socket:diagnostics/index" {
     /**
      * @param {string} name
@@ -1758,11 +1783,13 @@ declare module "socket:diagnostics/index" {
     
     export { channels, window };
 }
+
 declare module "socket:diagnostics" {
     export * from "socket:diagnostics/index";
     export default exports;
     import * as exports from "socket:diagnostics/index";
 }
+
 declare module "socket:internal/symbols" {
     export const dispose: any;
     namespace _default {
@@ -1770,6 +1797,7 @@ declare module "socket:internal/symbols" {
     }
     export default _default;
 }
+
 declare module "socket:gc" {
     /**
      * Track `object` ref to call `Symbol.for('gc.finalize')` method when
@@ -1842,6 +1870,7 @@ declare module "socket:gc" {
         handle: any;
     }
 }
+
 declare module "socket:stream/web" {
     export const ReadableStream: {
         new (underlyingSource: UnderlyingByteSource, strategy?: {
@@ -1903,6 +1932,7 @@ declare module "socket:stream/web" {
     import * as exports from "socket:stream/web";
     
 }
+
 declare module "socket:stream" {
     export function pipelinePromise(...streams: any[]): Promise<any>;
     export function pipeline(stream: any, ...streams: any[]): any;
@@ -2062,6 +2092,7 @@ declare module "socket:stream" {
     import { EventEmitter } from "socket:events";
     
 }
+
 declare module "socket:fs/stream" {
     export const DEFAULT_STREAM_HIGH_WATER_MARK: number;
     /**
@@ -2144,6 +2175,7 @@ declare module "socket:fs/stream" {
     import * as exports from "socket:fs/stream";
     
 }
+
 declare module "socket:fs/constants" {
     /**
      * This flag can be used with uv_fs_copyfile() to return an error if the
@@ -2219,12 +2251,14 @@ declare module "socket:fs/constants" {
     import * as exports from "socket:fs/constants";
     
 }
+
 declare module "socket:fs/flags" {
     export function normalizeFlags(flags: any): any;
     export default exports;
     import * as exports from "socket:fs/flags";
     
 }
+
 declare module "socket:fs/stats" {
     /**
      * A container for various stats about a file or directory.
@@ -2300,6 +2334,7 @@ declare module "socket:fs/stats" {
     import * as exports from "socket:fs/stats";
     
 }
+
 declare module "socket:fs/fds" {
     const _default: {
         types: Map<any, any>;
@@ -2321,6 +2356,7 @@ declare module "socket:fs/fds" {
     };
     export default _default;
 }
+
 declare module "socket:fs/handle" {
     export const kOpening: unique symbol;
     export const kClosing: unique symbol;
@@ -2594,6 +2630,7 @@ declare module "socket:fs/handle" {
     import * as exports from "socket:fs/handle";
     
 }
+
 declare module "socket:fs/dir" {
     /**
      * Sorts directory entries
@@ -2721,6 +2758,7 @@ declare module "socket:fs/dir" {
     import * as exports from "socket:fs/dir";
     
 }
+
 declare module "socket:hooks" {
     /**
      * Wait for a hook event to occur.
@@ -3022,6 +3060,7 @@ declare module "socket:hooks" {
      */
     const hooks: Hooks;
 }
+
 declare module "socket:fs/watcher" {
     /**
      * A container for a file system path watcher.
@@ -3097,6 +3136,7 @@ declare module "socket:fs/watcher" {
     export default Watcher;
     import { EventEmitter } from "socket:events";
 }
+
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
@@ -3289,6 +3329,7 @@ declare module "socket:fs/promises" {
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, Watcher, WriteStream };
 }
+
 declare module "socket:fs/index" {
     /**
      * Asynchronously check access a file for a given mode calling `callback`
@@ -3602,18 +3643,22 @@ declare module "socket:fs/index" {
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
 }
+
 declare module "socket:fs" {
     export * from "socket:fs/index";
     export default exports;
     import * as exports from "socket:fs/index";
 }
+
 declare module "socket:external/libsodium/index" {
     const _default: any;
     export default _default;
 }
+
 declare module "socket:crypto/sodium" {
     export {};
 }
+
 declare module "socket:crypto" {
     /**
      * Generate cryptographically strong random values into the `buffer`
@@ -3681,6 +3726,7 @@ declare module "socket:crypto" {
     import * as exports from "socket:crypto";
     
 }
+
 declare module "socket:ipc" {
     export function maybeMakeError(error: any, caller: any): any;
     /**
@@ -4060,6 +4106,7 @@ declare module "socket:ipc" {
     import * as exports from "socket:ipc";
     
 }
+
 declare module "socket:os/constants" {
     export type errno = number;
     export namespace errno {
@@ -4183,6 +4230,7 @@ declare module "socket:os/constants" {
     }
     export default _default;
 }
+
 declare module "socket:errno" {
     /**
      * Converts an `errno` code to its corresponding string message.
@@ -4305,6 +4353,7 @@ declare module "socket:errno" {
     export type errno = import("socket:os/constants").errno;
     import { errno as constants } from "socket:os/constants";
 }
+
 declare module "socket:errors" {
     export default exports;
     export const ABORT_ERR: any;
@@ -4633,6 +4682,7 @@ declare module "socket:errors" {
     import * as exports from "socket:errors";
     
 }
+
 declare module "socket:mime/index" {
     /**
      * Look up a MIME type in various MIME databases.
@@ -4797,11 +4847,13 @@ declare module "socket:mime/index" {
     }
     export default _default;
 }
+
 declare module "socket:mime" {
     export * from "socket:mime/index";
     export default exports;
     import * as exports from "socket:mime/index";
 }
+
 declare module "socket:util" {
     export function debug(section: any): {
         (...args: any[]): void;
@@ -4871,6 +4923,7 @@ declare module "socket:util" {
     import * as exports from "socket:util";
     
 }
+
 declare module "socket:window/constants" {
     export const WINDOW_ERROR: -1;
     export const WINDOW_NONE: 0;
@@ -4890,6 +4943,7 @@ declare module "socket:window/constants" {
     import * as exports from "socket:window/constants";
     
 }
+
 declare module "socket:window/hotkey" {
     /**
      * Normalizes an expression string.
@@ -5174,6 +5228,7 @@ declare module "socket:window/hotkey" {
     export const bindings: Bindings;
     export default bindings;
 }
+
 declare module "socket:window" {
     /**
      * @param {string} url
@@ -5412,6 +5467,7 @@ declare module "socket:window" {
     import * as statuses from "socket:window/constants";
     import hotkey from "socket:window/hotkey";
 }
+
 declare module "socket:application" {
     /**
      * Returns the current window index
@@ -5624,9 +5680,11 @@ declare module "socket:application" {
     import * as exports from "socket:application";
     
 }
+
 declare module "socket:test/fast-deep-equal" {
     export default function equal(a: any, b: any): boolean;
 }
+
 declare module "socket:assert" {
     export function assert(value: any, message?: any): void;
     export function ok(value: any, message?: any): void;
@@ -5654,6 +5712,7 @@ declare module "socket:assert" {
     };
     export default _default;
 }
+
 declare module "socket:async_context" {
     export class AsyncLocalStorage {
         static bind(fn: any): void;
@@ -5671,11 +5730,13 @@ declare module "socket:async_context" {
     }
     export default _default;
 }
+
 declare module "socket:async_hooks" {
     export * from "socket:async_context";
     export default context;
     import context from "socket:async_context";
 }
+
 declare module "socket:bluetooth" {
     export default exports;
     /**
@@ -5726,6 +5787,7 @@ declare module "socket:bluetooth" {
     import ipc from "socket:ipc";
     
 }
+
 declare module "socket:bootstrap" {
     /**
      * @param {string} dest - file path
@@ -5764,6 +5826,7 @@ declare module "socket:bootstrap" {
     }
     import { EventEmitter } from "socket:events";
 }
+
 declare module "socket:internal/globals" {
     /**
      * Gets a runtime global value by name.
@@ -5785,6 +5848,7 @@ declare module "socket:internal/globals" {
     export default registry;
     const registry: any;
 }
+
 declare module "socket:internal/shared-worker" {
     export function getSharedWorkerImplementationForPlatform(): {
         new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
@@ -5808,6 +5872,7 @@ declare module "socket:internal/shared-worker" {
     } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
     export default SharedWorker;
 }
+
 declare module "socket:vm" {
     /**
      * @ignore
@@ -6196,6 +6261,7 @@ declare module "socket:vm" {
     };
     import { SharedWorker } from "socket:internal/shared-worker";
 }
+
 declare module "socket:worker_threads/init" {
     export const SHARE_ENV: unique symbol;
     export const isMainThread: boolean;
@@ -6213,6 +6279,7 @@ declare module "socket:worker_threads/init" {
     }
     export default _default;
 }
+
 declare module "socket:worker_threads" {
     /**
      * Set shared worker environment data.
@@ -6371,6 +6438,7 @@ declare module "socket:worker_threads" {
     import { env } from "socket:process";
     export { SHARE_ENV, init };
 }
+
 declare module "socket:child_process" {
     /**
      * Spawns a child process exeucting `command` with `args`
@@ -6511,6 +6579,7 @@ declare module "socket:child_process" {
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
 }
+
 declare module "socket:constants" {
     export * from "socket:fs/constants";
     export * from "socket:window/constants";
@@ -6812,6 +6881,7 @@ declare module "socket:constants" {
     export default _default;
     import window from "socket:window/constants";
 }
+
 declare module "socket:ip" {
     /**
      * Normalizes input as an IPv4 address string
@@ -6831,6 +6901,7 @@ declare module "socket:ip" {
     }
     export default _default;
 }
+
 declare module "socket:dns/promises" {
     /**
      * @async
@@ -6845,6 +6916,7 @@ declare module "socket:dns/promises" {
     import * as exports from "socket:dns/promises";
     
 }
+
 declare module "socket:dns/index" {
     /**
      * Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
@@ -6882,11 +6954,13 @@ declare module "socket:dns/index" {
     import * as exports from "socket:dns/index";
     
 }
+
 declare module "socket:dns" {
     export * from "socket:dns/index";
     export default exports;
     import * as exports from "socket:dns/index";
 }
+
 declare module "socket:dgram" {
     export function createSocket(options: string | any, callback?: Function | undefined): Socket;
     /**
@@ -7135,6 +7209,7 @@ declare module "socket:dgram" {
     import * as exports from "socket:dgram";
     
 }
+
 declare module "socket:enumeration" {
     /**
      * @module enumeration
@@ -7190,6 +7265,7 @@ declare module "socket:enumeration" {
     }
     export default Enumeration;
 }
+
 declare module "socket:fs/web" {
     /**
      * Creates a new `File` instance from `filename`.
@@ -7293,6 +7369,7 @@ declare module "socket:fs/web" {
     export default _default;
     import fs from "socket:fs/promises";
 }
+
 declare module "socket:extension" {
     /**
      * Load an extension by name.
@@ -7497,6 +7574,7 @@ declare module "socket:extension" {
     const $loaded: unique symbol;
     import path from "socket:path";
 }
+
 declare module "socket:fetch/fetch" {
     export class DOMException {
         private constructor();
@@ -7562,16 +7640,19 @@ declare module "socket:fetch/fetch" {
         let polyfill: boolean;
     }
 }
+
 declare module "socket:fetch/index" {
     export * from "socket:fetch/fetch";
     export default fetch;
     import { fetch } from "socket:fetch/fetch";
 }
+
 declare module "socket:fetch" {
     export * from "socket:fetch/index";
     export default fetch;
     import fetch from "socket:fetch/index";
 }
+
 declare module "socket:http" {
     export function get(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
     export const METHODS: string[];
@@ -7699,6 +7780,7 @@ declare module "socket:http" {
     import { Duplex } from "socket:stream";
     function request(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
 }
+
 declare module "socket:https" {
     export function request(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
     export function get(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
@@ -7798,6 +7880,7 @@ declare module "socket:https" {
     }
     export default _default;
 }
+
 declare module "socket:language" {
     /**
      * Look up a language name or code by query.
@@ -7942,6 +8025,7 @@ declare module "socket:language" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:i18n" {
     /**
      * Get messages for `locale` pattern. This function could return many results
@@ -8007,6 +8091,7 @@ declare module "socket:i18n" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:stream-relay/packets" {
     /**
      * The magic bytes prefixing every packet. They are the
@@ -8305,6 +8390,7 @@ declare module "socket:stream-relay/packets" {
     export default Packet;
     import { Buffer } from "socket:buffer";
 }
+
 declare module "socket:stream-relay/encryption" {
     /**
      * Class for handling encryption and key management.
@@ -8431,6 +8517,7 @@ declare module "socket:stream-relay/encryption" {
     }
     import Buffer from "socket:buffer";
 }
+
 declare module "socket:stream-relay/cache" {
     /**
      * @typedef {Packet} CacheEntry
@@ -8609,6 +8696,7 @@ declare module "socket:stream-relay/cache" {
     import { Buffer } from "socket:buffer";
     import { Packet } from "socket:stream-relay/packets";
 }
+
 declare module "socket:stream-relay/nat" {
     /**
      * The NAT type is encoded using 5 bits:
@@ -8707,6 +8795,7 @@ declare module "socket:stream-relay/nat" {
     export const STRATEGY_PROXY: 4;
     export function connectionStrategy(a: any, b: any): 0 | 1 | 2 | 3 | 4;
 }
+
 declare module "socket:stream-relay/index" {
     /**
      * Computes rate limit predicate value for a port and address pair for a given
@@ -9151,6 +9240,7 @@ declare module "socket:stream-relay/index" {
     import { PacketPublish } from "socket:stream-relay/packets";
     export { Packet, sha256, Cache, Encryption, NAT };
 }
+
 declare module "socket:node/index" {
     export default network;
     export const network: any;
@@ -9161,6 +9251,7 @@ declare module "socket:node/index" {
     import { NAT } from "socket:stream-relay/index";
     export { Cache, sha256, Encryption, Packet, NAT };
 }
+
 declare module "socket:index" {
     import { network } from "socket:node/index";
     import { Cache } from "socket:node/index";
@@ -9170,6 +9261,7 @@ declare module "socket:index" {
     import { NAT } from "socket:node/index";
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
+
 declare module "socket:string_decoder" {
     export function StringDecoder(encoding: any): void;
     export class StringDecoder {
@@ -9202,9 +9294,11 @@ declare module "socket:string_decoder" {
     function utf8FillLast(buf: any): any;
     function simpleWrite(buf: any): any;
 }
+
 declare module "socket:test/context" {
     export default function _default(GLOBAL_TEST_RUNNER: any): void;
 }
+
 declare module "socket:test/dom-helpers" {
     /**
      * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
@@ -9290,6 +9384,7 @@ declare module "socket:test/dom-helpers" {
      */
     export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
 }
+
 declare module "socket:test/index" {
     /**
      * @returns {number} - The default timeout for tests in milliseconds.
@@ -9848,11 +9943,13 @@ declare module "socket:test/index" {
     };
     export type TestFn = (t: Test) => (void | Promise<void>);
 }
+
 declare module "socket:test" {
     export * from "socket:test/index";
     export default test;
     import test from "socket:test/index";
 }
+
 declare module "socket:timers/timer" {
     export class Timer {
         static from(...args: any[]): void;
@@ -9879,6 +9976,7 @@ declare module "socket:timers/timer" {
     }
     export default _default;
 }
+
 declare module "socket:timers/promises" {
     export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
     export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
@@ -9890,6 +9988,7 @@ declare module "socket:timers/promises" {
     }
     export default _default;
 }
+
 declare module "socket:timers/scheduler" {
     export function wait(delay: any, options?: any): Promise<any>;
     export function postTask(callback: any, options?: any): Promise<any>;
@@ -9901,6 +10000,7 @@ declare module "socket:timers/scheduler" {
     export default _default;
     import { setImmediate } from "socket:timers/promises";
 }
+
 declare module "socket:timers/index" {
     export function setTimeout(callback: any, delay: any, ...args: any[]): void;
     export function clearTimeout(timeout: any): void;
@@ -9922,11 +10022,13 @@ declare module "socket:timers/index" {
     import promises from "socket:timers/promises";
     import scheduler from "socket:timers/scheduler";
 }
+
 declare module "socket:timers" {
     export * from "socket:timers/index";
     export default exports;
     import * as exports from "socket:timers/index";
 }
+
 declare module "socket:module" {
     export function isBuiltin(name: any): boolean;
     /**
@@ -11002,6 +11104,7 @@ declare module "socket:module" {
     import timers from "socket:timers";
     import window from "socket:window";
 }
+
 declare module "socket:stream-relay/worker" {
     /**
      * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
@@ -11046,6 +11149,7 @@ declare module "socket:stream-relay/worker" {
     }
     export {};
 }
+
 declare module "socket:stream-relay/api" {
     export default api;
     /**
@@ -11060,6 +11164,7 @@ declare module "socket:stream-relay/api" {
      */
     export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
 }
+
 declare module "socket:network" {
     export default network;
     export function network(options: any): Promise<events.EventEmitter>;
@@ -11070,10 +11175,12 @@ declare module "socket:network" {
     import { NAT } from "socket:stream-relay/index";
     export { Cache, sha256, Encryption, Packet, NAT };
 }
+
 declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
     export default resolve;
 }
+
 declare module "socket:internal/permissions" {
     /**
      * Query for a permission status.
@@ -11152,6 +11259,7 @@ declare module "socket:internal/permissions" {
     }
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:notification" {
     /**
      * Show a notification. Creates a `Notification` instance and displays
@@ -11529,16 +11637,19 @@ declare module "socket:notification" {
     import { Enumeration } from "socket:enumeration";
     import URL from "socket:url";
 }
+
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
 }
+
 declare module "socket:service-worker/state" {
     export const channel: BroadcastChannel;
     export const state: any;
     export default state;
 }
+
 declare module "socket:service-worker/instance" {
     export function createServiceWorker(currentState?: any, options?: any): any;
     export const SHARED_WORKER_URL: URL;
@@ -11561,6 +11672,7 @@ declare module "socket:service-worker/instance" {
     const _default: any;
     export default _default;
 }
+
 declare module "socket:worker" {
     export default Worker;
     import { SharedWorker } from "socket:internal/shared-worker";
@@ -11568,9 +11680,11 @@ declare module "socket:worker" {
     import { Worker } from "socket:worker_threads";
     export { SharedWorker, ServiceWorker, Worker };
 }
+
 declare module "socket:child_process/worker" {
     export {};
 }
+
 declare module "socket:internal/geolocation" {
     /**
      * Get the current position of the device.
@@ -11610,6 +11724,7 @@ declare module "socket:internal/geolocation" {
     }
     export default _default;
 }
+
 declare module "socket:internal/timers" {
     export function setImmediate(callback: any, ...args: any[]): number;
     export function clearImmediate(immediate: any): void;
@@ -11619,6 +11734,7 @@ declare module "socket:internal/timers" {
     }
     export default _default;
 }
+
 declare module "socket:service-worker/registration" {
     export class ServiceWorkerRegistration {
         constructor(info: any, serviceWorker: any);
@@ -11638,6 +11754,7 @@ declare module "socket:service-worker/registration" {
     }
     export default ServiceWorkerRegistration;
 }
+
 declare module "socket:service-worker/container" {
     /**
      * Predicate to determine if service workers are allowed
@@ -11672,11 +11789,13 @@ declare module "socket:service-worker/container" {
     export default ServiceWorkerContainer;
     import { ServiceWorkerRegistration } from "socket:service-worker/registration";
 }
+
 declare module "socket:internal/service-worker" {
     export const serviceWorker: ServiceWorkerContainer;
     export default serviceWorker;
     import { ServiceWorkerContainer } from "socket:service-worker/container";
 }
+
 declare module "socket:internal/webassembly" {
     /**
      * The `instantiateStreaming()` function compiles and instantiates a WebAssembly
@@ -11700,11 +11819,13 @@ declare module "socket:internal/webassembly" {
     }
     export default _default;
 }
+
 declare module "socket:internal/scheduler" {
     export * from "socket:timers/scheduler";
     export default scheduler;
     import scheduler from "socket:timers/scheduler";
 }
+
 declare module "socket:internal/pickers" {
     /**
      * @typedef {{
@@ -11799,6 +11920,7 @@ declare module "socket:internal/pickers" {
     };
     import { FileSystemHandle } from "socket:fs/web";
 }
+
 declare module "socket:internal/primitives" {
     export function init(): {
         natives: {};
@@ -11812,6 +11934,7 @@ declare module "socket:internal/primitives" {
     const natives: {};
     const patches: {};
 }
+
 declare module "socket:internal/init" {
     namespace _default {
         export { location };
@@ -11819,6 +11942,7 @@ declare module "socket:internal/init" {
     export default _default;
     import location from "socket:location";
 }
+
 declare module "socket:internal/worker" {
     export function onWorkerMessage(event: any): Promise<any>;
     export function addEventListener(eventName: any, callback: any, ...args: any[]): any;
@@ -11868,6 +11992,7 @@ declare module "socket:internal/worker" {
     }
     export default _default;
 }
+
 declare module "socket:service-worker/clients" {
     export class Client {
         constructor(options: any);
@@ -11895,6 +12020,7 @@ declare module "socket:service-worker/clients" {
     const _default: Clients;
     export default _default;
 }
+
 declare module "socket:service-worker/events" {
     export class ExtendableEvent extends Event {
         waitUntil(promise: any): void;
@@ -11920,6 +12046,7 @@ declare module "socket:service-worker/events" {
     }
     export default _default;
 }
+
 declare module "socket:service-worker/global" {
     export class ServiceWorkerGlobalScope {
         get ExtendableEvent(): typeof ExtendableEvent;
@@ -11943,6 +12070,7 @@ declare module "socket:service-worker/global" {
     import { ExtendableEvent } from "socket:service-worker/events";
     import { FetchEvent } from "socket:service-worker/events";
 }
+
 declare module "socket:service-worker/init" {
     export function onRegister(event: any): Promise<void>;
     export function onSkipWaiting(event: any): Promise<void>;
@@ -11970,9 +12098,11 @@ declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;
 declare const TypedArray: any;
 declare const ports: any[];
+
 declare module "socket:service-worker/worker" {
     export {};
 }
+
 declare module "socket:test/harness" {
     /**
      * @typedef {import('./index').Test} Test
@@ -12089,6 +12219,7 @@ declare module "socket:test/harness" {
     import * as exports from "socket:test/harness";
     
 }
+
 declare module "socket:vm/init" {
     export {};
 }
@@ -12149,6 +12280,7 @@ declare class State {
     init(): void;
     onPortMessage(port: any, event: any): void;
 }
+
 declare module "socket:vm/world" {
     export {};
 }

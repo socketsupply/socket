@@ -1184,13 +1184,13 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 	<string>AppIcon</string>
 
   <key>compileBitcode</key>
-  <${{meta_compile_bitcode}}/>
+  <{{meta_compile_bitcode}}/>
 
   <key>uploadBitcode</key>
-  <${{meta_upload_bitcode}}/>
+  <{{meta_upload_bitcode}}/>
 
   <key>uploadSymbols</key>
-  <${{meta_upload_symbols}}/>
+  <{{meta_upload_symbols}}/>
 
   <key>CFBundleURLTypes</key>
   <array>
