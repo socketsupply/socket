@@ -2937,7 +2937,7 @@ int main (const int argc, const char* argv[]) {
 
       std::vector<std::tuple<uint, uint>> iconTypes = {};
 
-      const std::string prefix = platform.mac ? "mac" : "ios";
+      const std::string prefix = isForDesktop ? "mac" : "ios";
       const std::string key = std::string(prefix + "_icon_sizes");
       const auto sizeTypes = split(settings[key], " ");
 
@@ -2950,10 +2950,11 @@ int main (const int argc, const char* argv[]) {
 
         const std::string size = pair[0];
         const std::string scale = pair[1];
+        const std::string scaled = std::to_string(std::stoi(scale) * std::stoi(size));
 
         images.push(JSON::Object::Entries {
-          { "idiom", platform.mac ? "mac" : "iphone" },
-          { "size", size + "x" + size },
+          { "idiom", isForDesktop ? "mac" : "iphone" },
+          { "size", scaled + "x" + scaled },
           { "scale", scale },
           { "filename", "Icon-" + size + "@" + scale + ".png" }
         });
@@ -2975,13 +2976,15 @@ int main (const int argc, const char* argv[]) {
       };
 
       writeFile(iconsPath / "Contents.json", json.str());
+      if (Env::get("DEBUG") == "1") log(json.str());
 
       for (auto& iconType : iconTypes) {
         StringStream sipsCommand;
 
-        auto size = std::to_string(std::get<0>(iconType));
-        auto scale = std::to_string(std::get<1>(iconType));
-        auto destFileName = "Icon-" + size + "@" + scale + "x.png";
+        auto size = std::get<0>(iconType);
+        auto scale = std::get<1>(iconType);
+        auto scaled = std::to_string(size * scale);
+        auto destFileName = "Icon-" + scaled + "@" + std::to_string(scale) + "x.png";
         auto destFilePath = fs::path { iconsPath / destFileName };
 
         auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];

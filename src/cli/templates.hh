@@ -1899,8 +1899,7 @@ simulator_device = "iPhone 14"
 icon = "src/icon.png"
 
 ; The various sizes and scales of the icons to create, required minimum are listed by default.
-icon_sizes = "20@1x 20@2x 20@3x"
-
+icon_sizes = "29@1x 29@2x 29@3x 40@2x 40@3x 57@1x 57@2x 60@2x 60@3x"
 
 [linux]
 
