@@ -2928,7 +2928,10 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto compileIconAssets = [&]() {
-      auto src = paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"));
+      auto src = isForDesktop
+        ? paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"))
+        : paths.platformSpecificOutputPath;
+
       std::vector<std::tuple<uint, uint>> iconTypes = {{16, 1}, {20, 1}, {32, 1}, {40, 2}, {60, 3}, {128, 1}};
 
       auto assetsPath = fs::path { src / "Assets.xcassets" };
@@ -2977,7 +2980,6 @@ int main (const int argc, const char* argv[]) {
           << "--output-partial-info-plist /tmp/partial-dev.plist"
       ;
 
-      log(compileAssetsCommand.str());
       auto r = exec(compileAssetsCommand.str().c_str());
 
       if (r.exitCode != 0) {
