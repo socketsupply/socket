@@ -152,6 +152,7 @@ distribution_method |  |  Describes how Xcode should export the archive. Availab
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
 simulator_device |  |  which device to target when building for the simulator.
 nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.
+icon |  |  The icon to use for identifying your app on iOS.
 
 # `linux`
 
