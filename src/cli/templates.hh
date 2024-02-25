@@ -1304,57 +1304,6 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 </dict>
 </plist>)XML";
 
-constexpr auto gXCAssets = R"JSON({
-  "images": [
-    {
-      "idiom": "iphone",
-      "size": "20x20",
-      "scale": "2x",
-      "filename": "Icon-40@2x.png"
-    },
-    {
-      "idiom": "iphone",
-      "size": "20x20",
-      "scale": "3x",
-      "filename": "Icon-60@3x.png"
-    },
-    {
-      "idiom": "ipad",
-      "size": "20x20",
-      "scale": "1x",
-      "filename": "Icon-20@1x.png"
-    },
-    {
-      "idiom": "ipad",
-      "size": "20x20",
-      "scale": "2x",
-      "filename": "Icon-40@2x.png"
-    },
-    {
-      "idiom": "mac",
-      "size": "16x16",
-      "scale": "1x",
-      "filename": "Icon-16@1x.png"
-    },
-    {
-      "idiom": "mac",
-      "size": "32x32",
-      "scale": "1x",
-      "filename": "Icon-32@1x.png"
-    },
-    {
-      "idiom": "mac",
-      "size": "128x128",
-      "scale": "1x",
-      "filename": "Icon-128@1x.png"
-    }
-  ],
-  "info": {
-    "version": 1,
-    "author": "xcode"
-  }
-})JSON";
-
 //
 // Android top level `build.gradle` in Groovy Syntax
 //
@@ -1788,8 +1737,6 @@ root = "/"
 watch = true
 
 ; Custom headers injected on all webview routes
-[webview]
-
 ; default value: ""
 ; headers[] = "X-Custom-Header: Some-Value"
 
@@ -1902,9 +1849,6 @@ version = 1.0.0
 
 [android]
 
-; The icon to use for identifying your app on Android.
-icon = "src/icon.png"
-
 ; Extensions of files that will not be stored compressed in the APK.
 aapt_no_compress = ""
 
@@ -1925,6 +1869,12 @@ native_cflags = ""
 native_sources = ""
 native_makefile = ""
 sources = ""
+
+; The icon to use for identifying your app on Android.
+icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
 
 
 [ios]
@@ -1948,6 +1898,9 @@ simulator_device = "iPhone 14"
 ; The icon to use for identifying your app on iOS.
 icon = "src/icon.png"
 
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "20@1x 20@2x 20@3x"
+
 
 [linux]
 
@@ -1960,6 +1913,9 @@ categories = "Developer Tools"
 ; The icon to use for identifying your app in Linux desktop environments.
 icon = "src/icon.png"
 
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
+
 
 [mac]
 
@@ -1968,9 +1924,6 @@ category = ""
 
 ; The command to execute to spawn the "back-end" process.
 ; cmd = "node backend/index.js"
-
-; The icon to use for identifying your app on MacOS.
-icon = "src/icon.png"
 
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_identity = ""
@@ -1981,6 +1934,12 @@ codesign_paths = ""
 ; Minimum supported MacOS version
 ; default value: "13.0.0"
 ; minimum_supported_version = "13.0.0"
+
+; The icon to use for identifying your app on MacOS.
+icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "16@1x 32@1x 128@1x"
 
 
 [native]
@@ -1997,9 +1956,6 @@ headers = native-module1.hh
 ; The command to execute to spawn the “back-end” process.
 ; cmd = "node backend/index.js"
 
-; The icon to use for identifying your app on Windows.
-icon = "src/icon.ico"
-
 ; The icon to use for identifying your app on Windows, relative to copied path resources
 logo = "icon.ico"
 
@@ -2008,6 +1964,12 @@ logo = "icon.ico"
 
 ; The signing information needed by the appx api.
 ; publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+
+; The icon to use for identifying your app on Windows.
+icon = "src/icon.ico"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
 
 
 [window]
@@ -2065,7 +2027,7 @@ width = 50%
 
 ; The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format.
 ; defalut value = ""
-; icon = "icon.png"
+; icon = "src/icon.png"
 
 
 [headless]

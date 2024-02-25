@@ -2927,19 +2927,54 @@ int main (const int argc, const char* argv[]) {
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
     }
 
+    //
+    // Apple requires you to compile XCAssets/AppIcon.appiconset with a catalog for iOS and MacOS.
+    //
     auto compileIconAssets = [&]() {
       auto src = isForDesktop
         ? paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"))
         : paths.platformSpecificOutputPath;
 
-      std::vector<std::tuple<uint, uint>> iconTypes = {{16, 1}, {20, 1}, {32, 1}, {40, 2}, {60, 3}, {128, 1}};
+      std::vector<std::tuple<uint, uint>> iconTypes = {};
+
+      const std::string prefix = platform.mac ? "mac" : "ios";
+      const std::string key = std::string(prefix + "_icon_sizes");
+      const auto sizeTypes = split(settings[key], " ");
+
+      JSON::Array images;
+
+      for (const auto& type : sizeTypes) {
+        auto pair = split(type, '@');
+
+        if (pair.size() != 2 || pair.size() == 0) return log("icon size requires <size>@<scale>");
+
+        const std::string size = pair[0];
+        const std::string scale = pair[1];
+
+        images.push(JSON::Object::Entries {
+          { "idiom", platform.mac ? "mac" : "iphone" },
+          { "size", size + "x" + size },
+          { "scale", scale },
+          { "filename", "Icon-" + size + "@" + scale + ".png" }
+        });
+
+        iconTypes.push_back(std::make_tuple(stoi(pair[0]), stoi(pair[1])));
+      }
 
       auto assetsPath = fs::path { src / "Assets.xcassets" };
       auto iconsPath = fs::path { assetsPath / "AppIcon.appiconset" };
 
       fs::create_directories(iconsPath);
 
-      writeFile(iconsPath / "Contents.json", gXCAssets);
+      JSON::Object json = JSON::Object::Entries {
+        { "images", images },
+        { "info", JSON::Object::Entries {
+          { "version", 1 },
+          { "author", "xcode" }
+        }}
+      };
+
+      writeFile(iconsPath / "Contents.json", json.str());
 
       for (auto& iconType : iconTypes) {
         StringStream sipsCommand;
@@ -2957,6 +2992,7 @@ int main (const int argc, const char* argv[]) {
           << " " << src
           << " --out " << destFilePath;
 
+        if (Env::get("DEBUG") == "1") log(sipsCommand.str());
         auto rSip = exec(sipsCommand.str().c_str());
 
         if (rSip.exitCode != 0) {
@@ -2970,6 +3006,7 @@ int main (const int argc, const char* argv[]) {
       if (!isForDesktop) dest = src;
 
       StringStream compileAssetsCommand;
+
       compileAssetsCommand
         << "xcrun "
           << "actool " << assetsPath.c_str() << " "
@@ -2980,6 +3017,7 @@ int main (const int argc, const char* argv[]) {
           << "--output-partial-info-plist /tmp/partial-dev.plist"
       ;
 
+      if (Env::get("DEBUG") == "1") log(compileAssetsCommand.str());
       auto r = exec(compileAssetsCommand.str().c_str());
 
       if (r.exitCode != 0) {
@@ -2988,7 +3026,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      fs::remove_all(assetsPath);
+      if (Env::get("DEBUG") != "1") fs::remove_all(assetsPath);
       log("generated icons");
     };
 
