@@ -2,7 +2,6 @@ import { SHARED_WORKER_URL } from './instance.js'
 import { SharedWorker } from '../internal/shared-worker.js'
 import application from '../application.js'
 import state from './state.js'
-// import ipc from '../ipc.js'
 
 const MAX_WINDOWS = 32
 const CLIENT_GET_TIMEOUT = 100

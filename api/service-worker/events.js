@@ -106,6 +106,12 @@ export class FetchEvent extends ExtendableEvent {
         const statusCode = response.status ?? 200
         const headers = Array.from(response.headers.entries())
           .map((entry) => entry.join(':'))
+          .concat('Runtime-Response-Source:serviceworker')
+          .concat('Access-Control-Allow-Credentials:true')
+          .concat('Access-Control-Allow-Origin:*')
+          .concat('Access-Control-Allow-Methods:*')
+          .concat('Access-Control-Allow-Headers:*')
+          .concat(`Content-Length:${arrayBuffer.byteLength}`)
           .join('\n')
 
         const options = { statusCode, clientId, headers, id }
