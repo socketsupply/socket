@@ -3029,7 +3029,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (Env::get("DEBUG") != "1") fs::remove_all(assetsPath);
+      // if (Env::get("DEBUG") != "1") fs::remove_all(assetsPath);
       log("generated icons");
     };
 
