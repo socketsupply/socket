@@ -116,10 +116,10 @@ export async function createWindow (opts) {
  * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
-  if (os.platform() === 'ios') {
+  if (os.platform() === 'ios' || os.platform() === 'android') {
     return {
-      width: globalThis.screen.availWidth,
-      height: globalThis.screen.availHeight
+      width: globalThis.screen?.availWidth ?? 0,
+      height: globalThis.screen?.availHeight ?? 0
     }
   }
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
@@ -146,8 +146,8 @@ export async function getWindows (indices, options = null) {
     return {
       0: new ApplicationWindow({
         index: 0,
-        width: globalThis.screen.availWidth,
-        height: globalThis.screen.availHeight,
+        width: globalThis.screen?.availWidth ?? 0,
+        height: globalThis.screen?.availHeight ?? 0,
         title: document.title,
         status: 31
       })
