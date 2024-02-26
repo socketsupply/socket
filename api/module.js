@@ -518,17 +518,15 @@ export class Module extends EventTarget {
     }
 
     this.addEventListener('error', (event) => {
-      // @ts-ignore
-      const { error } = event
       if (this.isMain) {
         // bubble error to globalThis, if possible
         if (typeof globalThis.dispatchEvent === 'function') {
           // @ts-ignore
-          globalThis.dispatchEvent(new ErrorEvent('error', { error }))
+          globalThis.dispatchEvent(new ErrorEvent('error', event))
         }
       } else {
         // bubble errors to main module
-        Module.main.dispatchEvent(new ErrorEvent('error', { error }))
+        Module.main.dispatchEvent(new ErrorEvent('error', event))
       }
     })
   }
