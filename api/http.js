@@ -220,7 +220,6 @@ export class Agent extends EventEmitter {
     const stream = new Duplex({
       signal: abortController.signal,
       write (data, cb) {
-        console.log('write')
         controller.enqueue(data)
         cb(null)
       },
