@@ -21,6 +21,7 @@ namespace SSC {
       "                                                                      \n"
       "  " + trim(source) + ";                                               \n"
       "})();                                                                 \n"
+      "undefined;                                                            \n"
       "//# sourceURL=" + name + "                                            \n"
     );
   }
@@ -86,7 +87,7 @@ namespace SSC {
       "}                                                                     \n"
       "                                                                      \n"
       "if (name === 'dropin' || name === 'drop') {                           \n"
-      "  return globalThis.dispatchEvent(new CustomEvent('platformdrop', {          \n"
+      "  return globalThis.dispatchEvent(new CustomEvent('platformdrop', {   \n"
       "    detail: {                                                         \n"
       "      ...detail,                                                      \n"
       "      files: Array.from(detail?.src || detail?.files || [])           \n"
@@ -94,7 +95,6 @@ namespace SSC {
       "    }                                                                 \n"
       "  }));                                                                \n"
       "}                                                                     \n"
-      "                                                                      \n"
       "const event = new CustomEvent(name, { detail, ...options });          \n"
       "target.dispatchEvent(event);                                          \n"
     );
