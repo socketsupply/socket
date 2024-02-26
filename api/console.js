@@ -135,8 +135,21 @@ export class Console {
   }
 
   async write (destination, ...args) {
-    const value = encodeURIComponent(format(...args))
-    const uri = `ipc://${destination}?value=${value}`
+    let extra = ''
+    let value = ''
+
+    value = format(...args)
+
+    if (destination === 'debug') {
+      destination = 'stderr'
+      extra = 'debug=true'
+      value = `(${globalThis.location.pathname}): ${value}`
+    }
+
+    value = encodeURIComponent(value)
+
+    const uri = `ipc://${destination}?value=${value}&${extra}`
+
     try {
       return await this.postMessage?.(uri)
     } catch (err) {
@@ -175,7 +188,7 @@ export class Console {
   debug (...args) {
     this.console?.debug?.(...args)
     if (!isPatched(this.console)) {
-      this.write('stderr', ...args)
+      this.write('debug', ...args)
     }
   }
 
