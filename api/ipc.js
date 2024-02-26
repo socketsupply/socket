@@ -1041,6 +1041,27 @@ class IPCSearchParams extends URLSearchParams {
     if (globalThis.RUNTIME_WORKER_ID) {
       this.set('runtime-worker-id', globalThis.RUNTIME_WORKER_ID)
     }
+
+    const runtimeFrameSource = globalThis.document
+      ? globalThis.document.querySelector('meta[name=runtime-frame-source]')?.content
+      : ''
+
+    if (globalThis.top && globalThis.top !== globalThis) {
+      this.set('runtime-frame-type', 'nested')
+    } else if (!globalThis.window && globalThis.self === globalThis) {
+      this.set('runtime-frame-type', 'worker')
+      if (globalThis.clients && globalThis.FetchEvent) {
+        this.set('runtime-worker-type', 'serviceworker')
+      } else {
+        this.set('runtime-worker-type', 'worker')
+      }
+    } else {
+      this.set('runtime-frame-type', 'top-level')
+    }
+
+    if (runtimeFrameSource) {
+      this.set('runtime-frame-source', runtimeFrameSource)
+    }
   }
 
   toString () {
