@@ -40,6 +40,9 @@ namespace SSC {
         State state = State::Registered;
         RegistrationOptions options;
         const SSC::JSON::Object json () const;
+        bool isActive () const;
+        bool isWaiting () const;
+        bool isInstalling () const;
       };
 
       struct FetchBuffer {
@@ -73,6 +76,7 @@ namespace SSC {
       Core* core = nullptr;
       IPC::Bridge* bridge = nullptr;
       Registrations registrations;
+      AtomicBool isReady = false;
 
       FetchRequests fetchRequests;
       FetchCallbacks fetchCallbacks;
