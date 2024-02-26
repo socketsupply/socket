@@ -893,7 +893,6 @@ export function readlink (path, callback) {
   }
 
   ipc.request('fs.readlink', { path }).then((result) => {
-    console.log({ path, readLink: result })
     result?.err ? callback(result.err) : callback(null, result.data.path)
   }).catch(callback)
 }
