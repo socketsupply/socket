@@ -4,7 +4,6 @@ import { ServiceWorkerRegistration } from './registration.js'
 import { InvertedPromise } from '../util.js'
 import { SharedWorker } from '../internal/shared-worker.js'
 import application from '../application.js'
-import hooks from '../hooks.js'
 import state from './state.js'
 import ipc from '../ipc.js'
 import os from '../os.js'
@@ -55,6 +54,10 @@ class ServiceWorkerContainerRealm {
 
     ServiceWorkerContainerRealm.instance = this
 
+    if (!globalThis.top || !globalThis.top.document) {
+      return
+    }
+
     const frameId = `__${os.platform()}-service-worker-frame__`
     const existingFrame = globalThis.top.document.querySelector(
       `iframe[id="${frameId}"]`
@@ -65,7 +68,19 @@ class ServiceWorkerContainerRealm {
       return
     }
 
+    const pending = []
+
     this.frame = globalThis.top.document.createElement('iframe')
+
+    pending.push(new Promise((resolve) => {
+      globalThis.top.addEventListener('message', function onMessage (event) {
+        if (event.data.__service_worker_frame_init === true) {
+          globalThis.top.removeEventListener('message', onMessage)
+          resolve()
+        }
+      })
+    }))
+
     this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
     this.frame.src = SERVICE_WINDOW_PATH
     this.frame.id = frameId
@@ -84,31 +99,7 @@ class ServiceWorkerContainerRealm {
 
     target.appendChild(this.frame)
 
-    await new Promise((resolve, reject) => {
-      setTimeout(resolve, 500)
-      this.frame.addEventListener('load', resolve)
-      this.frame.onerror = (event) => {
-        reject(new Error('Failed to load ServiceWorker context window frame', {
-          cause: event.error ?? event
-        }))
-      }
-    })
-
-    if (
-      globalThis.window &&
-      globalThis.top &&
-      globalThis.window === globalThis.top &&
-      application.getCurrentWindowIndex() === 0
-    ) {
-      console.log('RESET')
-      // reset serviceWorker state on bridge if we are in a
-      // realm (hybrid) context setup so register already service worker
-      // registrations that need to be reinitialized when the page is reloaded
-      await ipc.request('serviceWorker.reset')
-    await new Promise((resolve, reject) => {
-      setTimeout(resolve, 500)
-    })
-    }
+    await Promise.all(pending)
   }
 }
 
@@ -118,13 +109,25 @@ async function preloadExistingRegistration (container) {
   const registration = await container.getRegistration()
   if (registration) {
     if (registration.active) {
-      queueMicrotask(() => {
-        container.dispatchEvent(new Event('controllerchange'))
-      })
+      if (
+        application.config.webview_service_worker_mode === 'hybrid' ||
+        /android|ios/i.test(os.platform())
+      ) {
+        if (
+          !internal.get(container).isRegistered &&
+          !internal.get(container).isRegistering
+        ) {
+          container.register(registration.active.scriptURL, { scope: registration.scope })
+        }
+      } else {
+        queueMicrotask(() => {
+          container.dispatchEvent(new Event('controllerchange'))
+        })
 
-      queueMicrotask(() => {
-        internal.get(container).ready.resolve(registration)
-      })
+        queueMicrotask(() => {
+          internal.get(container).ready.resolve(registration)
+        })
+      }
     } else {
       const serviceWorker = registration.installing || registration.waiting
       serviceWorker.addEventListener('statechange', function onStateChange (event) {
@@ -159,7 +162,10 @@ async function activateRegistrationFromClaim (container, claim) {
 export function isServiceWorkerAllowed () {
   const { config } = application
 
-  if (globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__) {
+  if (
+    globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ ||
+    globalThis.location.pathname === '/socket/service-worker/index.html'
+  ) {
     return false
   }
 
@@ -167,7 +173,8 @@ export function isServiceWorkerAllowed () {
 }
 
 /**
- * TODO
+ * A `ServiceWorkerContainer` implementation that is attached to the global
+ * `globalThis.navigator.serviceWorker` object.
  */
 export class ServiceWorkerContainer extends EventTarget {
   get ready () {
@@ -192,12 +199,10 @@ export class ServiceWorkerContainer extends EventTarget {
    */
   async init () {
     if (internal.get(this)) {
-      internal.get(this).init.resolve()
-      return
+      return internal.get(this).init
     }
 
     internal.set(this, new ServiceWorkerContainerInternalState())
-    internal.get(this).currentWindow = await application.getCurrentWindow()
 
     this.register = this.register.bind(this)
     this.getRegistration = this.getRegistration.bind(this)
@@ -289,6 +294,7 @@ export class ServiceWorkerContainer extends EventTarget {
       if (registration) {
         internal.get(this).controller = registration.active
         internal.get(this).sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+        internal.get(this).currentWindow = await application.getCurrentWindow()
       }
     })
 
@@ -306,17 +312,12 @@ export class ServiceWorkerContainer extends EventTarget {
         application.config.webview_service_worker_mode === 'hybrid' ||
         /android|ios/i.test(os.platform())
       ) {
-        console.log('before realm init')
         await ServiceWorkerContainerRealm.init(this)
-        console.log('after realm init')
       }
 
-      console.log('preloading')
       await preloadExistingRegistration(this)
-      console.log('after preloadExistingRegistration')
     }
 
-    console.log('resolve init', globalThis.location.href)
     internal.get(this).init.resolve()
   }
 
@@ -398,13 +399,11 @@ export class ServiceWorkerContainer extends EventTarget {
   }
 
   async register (scriptURL, options = null) {
+    await internal.get(this).init
+
     if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
       return await globalThis.top.navigator.serviceWorker.register(scriptURL, options)
     }
-
-    console.log('before init', globalThis.location.href, internal.get(this))
-    await internal.get(this).init
-    console.log('after init')
 
     scriptURL = new URL(scriptURL, globalThis.location.href).toString()
 
@@ -434,8 +433,8 @@ export class ServiceWorkerContainer extends EventTarget {
 
     const info = result.data
     const url = new URL(scriptURL)
+    const container = this
 
-    console.log({ result })
     if (url.pathname.startsWith(options.scope)) {
       state.serviceWorker.state = info.registration.state.replace('registered', 'installing')
       state.serviceWorker.scriptURL = info.registration.scriptURL
@@ -445,6 +444,22 @@ export class ServiceWorkerContainer extends EventTarget {
       })
 
       const registration = new ServiceWorkerRegistration(info, serviceWorker)
+      serviceWorker.addEventListener('statechange', function onStateChange (event) {
+        if (
+          serviceWorker.state === 'activating' ||
+          serviceWorker.state === 'activated'
+        ) {
+          serviceWorker.removeEventListener('statechange', onStateChange)
+
+          queueMicrotask(() => {
+            container.dispatchEvent(new Event('controllerchange'))
+          })
+
+          queueMicrotask(() => {
+            internal.get(container).ready.resolve(registration)
+          })
+        }
+      })
 
       return registration
     }

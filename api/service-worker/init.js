@@ -1,9 +1,11 @@
 /* global Worker */
 import crypto from '../crypto.js'
+import hooks from '../hooks.js'
+import ipc from '../ipc.js'
 
-const workers = new Map()
+export const workers = new Map()
 
-class ServiceWorkerInfo {
+export class ServiceWorkerInfo {
   id = null
   url = null
   hash = null
@@ -23,15 +25,7 @@ class ServiceWorkerInfo {
   }
 }
 
-console.log(globalThis.top === globalThis)
-globalThis.top.addEventListener('serviceWorker.register', onRegister)
-globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
-globalThis.top.addEventListener('serviceWorker.activate', onActivate)
-globalThis.top.addEventListener('serviceWorker.fetch', onFetch)
-console.log('init service worker frame')
-
-async function onRegister (event) {
-  console.log('onRegister', event)
+export async function onRegister (event) {
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!info.id || workers.has(info.hash)) {
@@ -53,13 +47,11 @@ async function onRegister (event) {
   }
 }
 
-async function onSkipWaiting (event) {
-  console.log('onSkipWaiting', event)
+export async function onSkipWaiting (event) {
   onActivate(event)
 }
 
-async function onActivate (event) {
-  console.log('onActivate', event)
+export async function onActivate (event) {
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {
@@ -71,11 +63,18 @@ async function onActivate (event) {
   worker.postMessage({ activate: info })
 }
 
-async function onFetch (event) {
-  console.log('onFetch', event)
+export async function onFetch (event) {
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {
+    const options = {
+      statusCode: 404,
+      clientId: event.detail.fetch.client.id,
+      headers: '',
+      id: event.detail.fetch.id
+    }
+
+    await ipc.write('serviceWorker.fetch.response', options)
     return
   }
 
@@ -98,3 +97,15 @@ async function onFetch (event) {
 }
 
 export default null
+
+globalThis.top.addEventListener('serviceWorker.register', onRegister)
+globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
+globalThis.top.addEventListener('serviceWorker.activate', onActivate)
+globalThis.top.addEventListener('serviceWorker.fetch', onFetch)
+
+hooks.onReady(() => {
+  // notify top frame that the service worker init module is ready
+  globalThis.top.postMessage({
+    __service_worker_frame_init: true
+  })
+})

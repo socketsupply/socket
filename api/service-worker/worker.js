@@ -217,7 +217,7 @@ async function onMessage (event) {
       clientId: data.fetch.client.id,
       fetchId: data.fetch.request.id,
       request: new Request(data.fetch.request.url, {
-        method: data.fetch.request.method ?? 'GET',
+        method: (data.fetch.request.method ?? 'GET').toUpperCase(),
         body: data.fetch.request.body
       })
     })
