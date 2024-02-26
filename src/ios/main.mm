@@ -263,10 +263,16 @@ static dispatch_queue_t queue = dispatch_queue_create(
     dispatch_async(queue, ^{ callback(); });
   };
 
-  bridge->router.evaluateJavaScriptFunction = [=](auto js) {
+  bridge->router.evaluateJavaScriptFunction = [=](const auto source) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      auto script = [NSString stringWithUTF8String: js.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler: nil];
+      [self.webview
+        evaluateJavaScript: @(source.c_str())
+         completionHandler: ^(id result, NSError *error)
+      {
+        if (error) {
+          debug("JavaScriptError: %@", error);
+        }
+      }];
     });
   };
 
@@ -275,11 +281,15 @@ static dispatch_queue_t queue = dispatch_queue_create(
   auto userConfig = SSC::getUserConfig();
   const auto resourcePath = NSBundle.mainBundle.resourcePath;
   const auto cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
-  const auto argv = userConfig["ssc_argv"];
   const auto appFrame = UIScreen.mainScreen.bounds;
   const auto viewController = [UIViewController new];
   const auto config = [WKWebViewConfiguration new];
   const auto processInfo = NSProcessInfo.processInfo;
+
+  Vector<String> argv;
+  for (const auto& arg : split(userConfig["ssc_argv"], ',')) {
+    argv.push_back("'" + trim(arg) + "'");
+  }
 
   viewController.view.frame = appFrame;
 
@@ -307,8 +317,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   WindowOptions opts {
     .debug = isDebugEnabled(),
-    .isTest = argv.find("--test") != -1,
-    .argv = argv,
+    .isTest = userConfig["ssc_argv"].find("--test") != -1,
+    .argv = join(argv, ","),
     .env = env.str(),
     .appData = userConfig
   };
