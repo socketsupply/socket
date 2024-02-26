@@ -5,7 +5,7 @@ namespace SSC {
     Lock lock(this->mutex);
 
     auto id = rand64();
-    auto handle = Timeout { rand64(), callback };
+    auto handle = Timeout { id, callback };
     auto loop = this->core->getEventLoop();
 
     this->handles.insert_or_assign(handle.id, Timeout {
@@ -55,7 +55,7 @@ namespace SSC {
     Lock lock(this->mutex);
 
     auto id = rand64();
-    auto handle = Timeout { rand64(), callback };
+    auto handle = Interval { id, callback };
     auto loop = this->core->getEventLoop();
 
     this->handles.insert_or_assign(handle.id, Timeout {
