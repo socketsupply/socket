@@ -716,8 +716,10 @@ namespace SSC {
       this->app.dispatch(callback);
     };
 
-    this->bridge->router.evaluateJavaScriptFunction = [this](auto js) {
-      dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
+    this->bridge->router.evaluateJavaScriptFunction = [this](auto source) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        this->eval(source);
+      });
     };
 
     this->bridge->router.map("window.eval", [=, this](auto message, auto router, auto reply) {
@@ -1173,10 +1175,16 @@ namespace SSC {
     }
   }
 
-  void Window::eval (const SSC::String& js) {
+  void Window::eval (const String& source) {
     if (this->webview != nullptr) {
-      auto string = [NSString stringWithUTF8String:js.c_str()];
-      [this->webview evaluateJavaScript: string completionHandler: nil];
+      [this->webview
+        evaluateJavaScript: @(source.c_str())
+         completionHandler: ^(id result, NSError *error)
+      {
+        if (error) {
+          debug("JavaScriptError: %@", error);
+        }
+      }];
     }
   }
 
