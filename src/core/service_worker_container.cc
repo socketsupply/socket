@@ -31,6 +31,21 @@ namespace SSC {
     };
   }
 
+  bool ServiceWorkerContainer::Registration::isActive () const {
+    return (
+      this->state == Registration::State::Activating ||
+      this->state == Registration::State::Activated
+    );
+  }
+
+  bool ServiceWorkerContainer::Registration::isWaiting () const {
+    return this->state == Registration::State::Installed;
+  }
+
+  bool ServiceWorkerContainer::Registration::isInstalling () const {
+    return this->state == Registration::State::Installing;
+  }
+
   ServiceWorkerContainer::ServiceWorkerContainer (Core* core) {
     this->core = core;
   }
@@ -60,6 +75,7 @@ namespace SSC {
 
     this->reset();
     this->bridge = bridge;
+    this->isReady = true;
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
       uint64_t id = 0;
 
@@ -92,6 +108,8 @@ namespace SSC {
     });
 
     this->bridge->router.map("serviceWorker.fetch.response", [this](auto message, auto router, auto reply) mutable {
+      Lock lock(this->mutex);
+
       uint64_t clientId = 0;
       uint64_t id = 0;
       int statusCode = 200;
@@ -112,15 +130,12 @@ namespace SSC {
         }});
       }
 
-      do {
-        Lock lock(this->mutex);
-        if (!this->fetchCallbacks.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
-            {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
-          }});
-        }
-      } while (0);
+      if (!this->fetchCallbacks.contains(id)) {
+        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+          {"type", "NotFoundError"},
+          {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+        }});
+      }
 
       const auto callback = this->fetchCallbacks.at(id);
 
@@ -133,7 +148,8 @@ namespace SSC {
       }
 
       const auto headers = split(message.get("headers"), '\n');
-      const auto response = FetchResponse {
+      const auto request = this->fetchRequests.at(id);
+      auto response = FetchResponse {
         id,
         statusCode,
         headers,
@@ -141,17 +157,60 @@ namespace SSC {
         { clientId }
       };
 
+      String contentType = "";
+
+      for (const auto& entry : headers) {
+        auto pair = split(trim(entry), ':');
+        auto key = trim(pair[0]);
+        auto value = trim(pair[1]);
+
+        if (key == "content-type") {
+          contentType = value;
+        }
+      }
+
+      const auto extname = Path(request.pathname).extension().string();
+      bool freeResponseBody = false;
+      if (
+        (message.buffer.bytes != nullptr && message.buffer.size > 0) &&
+        (extname.ends_with("html") || contentType == "text/html")
+      ) {
+        const auto preload = (
+          String("<meta name=\"runtime-frame-source\" content=\"serviceworker\" />\n") +
+          this->bridge->preload
+        );
+
+        auto html = String(response.buffer.bytes, response.buffer.size);
+
+         if (html.find("<head>") != String::npos) {
+           html = replace(html, "<head>", String("<head>" + preload));
+         } else if (html.find("<body>") != String::npos) {
+           html = replace(html, "<body>", String("<body>" + preload));
+         } else if (html.find("<html>") != String::npos) {
+           html = replace(html, "<html>", String("<html>" + preload));
+         } else {
+           html = preload + html;
+         }
+
+         response.buffer.bytes = new char[html.size()]{0};
+         response.buffer.size = html.size();
+         freeResponseBody = true;
+
+         memcpy(response.buffer.bytes, html.c_str(), html.size());
+      }
+
       // no `app` pointer or on mobile, just call callback
       callback(response);
       reply(IPC::Result { message.seq, message });
 
-      do {
-        Lock lock(this->mutex);
-        this->fetchCallbacks.erase(id);
-        if (this->fetchRequests.contains(id)) {
-          this->fetchRequests.erase(id);
-        }
-      } while(0);
+      this->fetchCallbacks.erase(id);
+      if (this->fetchRequests.contains(id)) {
+        this->fetchRequests.erase(id);
+      }
+
+      if (freeResponseBody) {
+        this->core->timers.setTimeout(250, [response]() { delete response.buffer.bytes; });
+      }
     });
   }
 
@@ -161,7 +220,11 @@ namespace SSC {
     Lock lock(this->mutex);
 
     if (this->registrations.contains(options.scope)) {
-      auto& registration = this->registrations.at(options.scope);
+      const auto& registration = this->registrations.at(options.scope);
+
+      if (this->bridge != nullptr) {
+        this->bridge->router.emit("serviceWorker.register", registration.json().str());
+      }
 
       return registration;
     }
@@ -176,7 +239,6 @@ namespace SSC {
     const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
-      debug("register: %s", registration.json().str().c_str());
       this->bridge->router.emit("serviceWorker.register", registration.json().str());
     }
 
@@ -277,7 +339,7 @@ namespace SSC {
   bool ServiceWorkerContainer::fetch (const FetchRequest& request, FetchCallback callback) {
     Lock lock(this->mutex);
 
-    if (this->bridge == nullptr) {
+    if (this->bridge == nullptr || !this->isReady) {
       return false;
     }
 
@@ -294,7 +356,10 @@ namespace SSC {
 
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
-      if (request.pathname.starts_with(registration.options.scope)) {
+      if (
+        registration.isActive() &&
+        request.pathname.starts_with(registration.options.scope)
+      ) {
         auto headers = JSON::Array {};
 
         for (const auto& header : request.headers) {
@@ -325,7 +390,6 @@ namespace SSC {
       }
     }
 
-    debug("no registration found for fetch");
     return false;
   }
 }
