@@ -12,6 +12,9 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
+import ipc from '../ipc.js'
+ipc.send('platform.event', 'beforeruntimeinit').catch(reportError)
+
 import './primitives.js'
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
@@ -21,7 +24,6 @@ import location from '../location.js'
 import { URL } from '../url.js'
 import mime from '../mime.js'
 import path from '../path.js'
-import ipc from '../ipc.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
