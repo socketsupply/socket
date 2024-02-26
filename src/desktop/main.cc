@@ -1460,9 +1460,9 @@ MAIN {
   });
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
-    .resizable = app.appData["window_resizable"] == "false" ? false : true,
-    .frameless = app.appData["window_frameless"] == "true" ? true : false,
-    .utility = app.appData["window_utility"] == "true" ? true : false,
+    .resizable = userConfig["window_resizable"] == "false" ? false : true,
+    .frameless = userConfig["window_frameless"] == "true" ? true : false,
+    .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
     .onExit = shutdownHandler
   });
@@ -1470,8 +1470,8 @@ MAIN {
   defaultWindow->show(EMPTY_SEQ);
 
   if (
-    app.appData["webview_service_worker_mode"] != "hybrid" &&
-    app.appData["permissions_allow_service_worker"] != "false"
+    userConfig["webview_service_worker_mode"] != "hybrid" &&
+    userConfig["permissions_allow_service_worker"] != "false"
   ) {
     auto serviceWorkerWindow = windowManager.createWindow({
       .canExit = false,
@@ -1483,7 +1483,7 @@ MAIN {
     serviceWorkerWindow->show(EMPTY_SEQ);
     serviceWorkerWindow->navigate(
       EMPTY_SEQ,
-      "socket://" + app.appData["meta_bundle_identifier"] + "/socket/service-worker/index.html"
+      "socket://" + userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
     );
   } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
     app.core->serviceWorker.init(defaultWindow->bridge);
