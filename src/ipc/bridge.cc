@@ -2156,9 +2156,24 @@ static void initRouterTable (Router *router) {
    */
   router->map("platform.event", [](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
+    const auto frameType = message.get("runtime-frame-type");
+    const auto frameSource = message.get("runtime-frame-source");
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
+    }
+
+    if (frameType == "top-level" && frameSource != "serviceworker") {
+      if (router->bridge == router->core->serviceWorker.bridge) {
+        if (userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
+          if (message.value == "beforeruntimeinit") {
+            router->core->serviceWorker.reset();
+            router->core->serviceWorker.isReady = false;
+          } else if ( message.value == "runtimeinit") {
+            router->core->serviceWorker.isReady = true;
+          }
+        }
+      }
     }
 
     router->core->platform.event(
@@ -2315,10 +2330,17 @@ static void initRouterTable (Router *router) {
    * @param value
    */
   router->map("stderr", [](auto message, auto router, auto reply) {
-  #if defined(__APPLE__)
-    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
-  #endif
-    IO::write(message.value, true);
+    if (message.get("debug") == "true") {
+      if (message.value.size() > 0) {
+        debug("%s", message.value.c_str());
+      }
+    } else {
+    #if defined(__APPLE__)
+      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+    #endif
+      IO::write(message.value, true);
+    }
+
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -3119,9 +3141,9 @@ static void registerSchemeHandler (Router *router) {
   auto headers = [NSMutableDictionary dictionary];
 
   for (const auto& line : webviewHeaders) {
-    auto pair = split(trim(line), ':');
-    auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-    auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+    const auto pair = split(trim(line), ':');
+    const auto key = @(trim(pair[0]).c_str());
+    const auto value = @(trim(pair[1]).c_str());
     headers[key] = value;
   }
 
@@ -3301,28 +3323,20 @@ static void registerSchemeHandler (Router *router) {
               }
             }
 
-            [self enqueueTask: task withMessage: message];
-
             const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) {
               if (![self waitingForTask: task]) {
                 return;
               }
 
+              const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
               auto headers = [NSMutableDictionary dictionary];
-              auto webviewHeaders = split(userConfig["webview_headers"], '\n');
 
               for (const auto& line : webviewHeaders) {
-                auto pair = split(trim(line), ':');
-                auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-                auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+                const auto pair = split(trim(line), ':');
+                const auto key = @(trim(pair[0]).c_str());
+                const auto value = @(trim(pair[1]).c_str());
                 headers[key] = value;
               }
-
-              headers[@"access-control-allow-credentials"] = @"true";
-              headers[@"access-control-allow-origin"] = @"*";
-              headers[@"access-control-allow-methods"] = @"*";
-              headers[@"access-control-allow-headers"] = @"*";
-              headers[@"cache-control"] = @"no-cache";
 
               for (const auto& entry : res.headers) {
                 auto pair = split(trim(entry), ':');
@@ -3331,44 +3345,21 @@ static void registerSchemeHandler (Router *router) {
                 headers[key] = value;
               }
 
-              const NSString* contentType = headers[@"content-type"];
-              const auto absoluteURL = String(request.URL.absoluteString.UTF8String);
-              const auto absoluteURLPathExtension = request.URL.pathExtension != nullptr
-                ? String(request.URL.pathExtension.UTF8String)
-                : String("");
-
-              auto data = [NSData dataWithBytes: res.buffer.bytes length: res.buffer.size];
-
-              if (
-                  absoluteURLPathExtension.ends_with("html") ||
-                  (contentType != nullptr && String(contentType.UTF8String) == "text/html")
-               ) {
-                const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
-                auto html = String(string.UTF8String);
-                const auto script = self.router->bridge->preload;
-
-                if (html.find("<head>") != String::npos) {
-                  html = replace(html, "<head>", String("<head>" + script));
-                } else if (html.find("<body>") != String::npos) {
-                  html = replace(html, "<body>", String("<body>" + script));
-                } else if (html.find("<html>") != String::npos) {
-                  html = replace(html, "<html>", String("<html>" + script));
-                } else {
-                  html = script + html;
-                }
-
-                data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
-              }
-              auto response = [[NSHTTPURLResponse alloc]
-                initWithURL: request.URL
-                statusCode: res.statusCode
-                HTTPVersion: @"HTTP/1.1"
+              const auto response = [[NSHTTPURLResponse alloc]
+                 initWithURL: request.URL
+                  statusCode: res.statusCode
+                 HTTPVersion: @"HTTP/1.1"
                 headerFields: headers
               ];
 
               [task didReceiveResponse: response];
 
-              if (res.buffer.size  && data.length > 0) {
+              const auto data = [NSData
+                dataWithBytes: res.buffer.bytes
+                       length: res.buffer.size
+              ];
+
+              if (res.buffer.size && data.length > 0) {
                 [task didReceiveData: data];
               }
 
@@ -3380,6 +3371,7 @@ static void registerSchemeHandler (Router *router) {
             });
 
             if (fetched) {
+              [self enqueueTask: task withMessage: message];
               return;
             }
           }
@@ -3553,26 +3545,25 @@ static void registerSchemeHandler (Router *router) {
       data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
     }
 
-      const auto statusCode = exists ? 200 : 404;
-      const auto response = [NSHTTPURLResponse.alloc
-         initWithURL: components.URL
-          statusCode: statusCode
-         HTTPVersion: @"HTTP/1.1"
-        headerFields: headers
-      ];
+    const auto statusCode = exists ? 200 : 404;
+    const auto response = [NSHTTPURLResponse.alloc
+       initWithURL: components.URL
+        statusCode: statusCode
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: headers
+    ];
 
-      [task didReceiveResponse: response];
+    [task didReceiveResponse: response];
 
-      if (data && data.length > 0) {
-        [task didReceiveData: data];
-      }
+    if (data && data.length > 0) {
+      [task didReceiveData: data];
+    }
 
-      [task didFinish];
+    [task didFinish];
 
-    #if !__has_feature(objc_arc)
-      [response release];
-    #endif
-
+  #if !__has_feature(objc_arc)
+    [response release];
+  #endif
     return;
   }
 
@@ -3583,12 +3574,12 @@ static void registerSchemeHandler (Router *router) {
     headers[@"content-length"] = [@(post.length) stringValue];
 
     if (post.headers.size() > 0) {
-      auto lines = SSC::split(SSC::trim(post.headers), '\n');
+      const auto lines = SSC::split(SSC::trim(post.headers), '\n');
 
-      for (auto& line : lines) {
-        auto pair = split(trim(line), ':');
-        auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-        auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+      for (const auto& line : lines) {
+        const auto pair = split(trim(line), ':');
+        const auto key = @(trim(pair[0]).c_str());
+        const auto value = @(trim(pair[1]).c_str());
         headers[key] = value;
       }
     }
@@ -3603,11 +3594,11 @@ static void registerSchemeHandler (Router *router) {
     [task didReceiveResponse: response];
 
     if (post.body) {
-      auto data = [NSData dataWithBytes: post.body length: post.length];
+      const auto data = [NSData dataWithBytes: post.body length: post.length];
       [task didReceiveData: data];
     } else {
-      auto string = [NSString stringWithUTF8String: ""];
-      auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
+      const auto string = @("");
+      const auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
       [task didReceiveData: data];
     }
 
@@ -3650,8 +3641,8 @@ static void registerSchemeHandler (Router *router) {
     headers[@"access-control-allow-credentials"] = @"true";
 
     for (const auto& header : result.headers.entries) {
-      auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
-      auto value = [NSString stringWithUTF8String: trim(header.value.str()).c_str()];
+      const auto key = @(trim(header.key).c_str());
+      const auto value = @(trim(header.value.str()).c_str());
       headers[key] = value;
     }
 
@@ -3666,8 +3657,8 @@ static void registerSchemeHandler (Router *router) {
           return false;
         }
 
-        auto eventName = [NSString stringWithUTF8String: name];
-        auto eventData = [NSString stringWithUTF8String: data];
+        const auto eventName = @(name);
+        const auto eventData = @(data);
 
         if (eventName.length > 0 || eventData.length > 0) {
           auto event = eventName.length > 0 && eventData.length > 0
@@ -3688,6 +3679,7 @@ static void registerSchemeHandler (Router *router) {
 
         return true;
       };
+
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
     } else if (result.post.chunkStream != nullptr) {
@@ -3756,7 +3748,7 @@ static void registerSchemeHandler (Router *router) {
     };
 
     auto msg = JSON::Object(json).str();
-    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto str = @(msg.c_str());
     auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
     headers[@"access-control-allow-credentials"] = @"true";
@@ -4798,8 +4790,8 @@ namespace SSC::IPC {
       return false;
     }
 
-    auto value = encodeURIComponent(data);
-    auto script = getEmitToRenderProcessJavaScript(name, value);
+    const auto value = encodeURIComponent(data);
+    const auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);
   }
 
