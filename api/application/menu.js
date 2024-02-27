@@ -1,6 +1,9 @@
 /* global ErrorEvent */
 import { MenuItemEvent } from '../internal/events.js'
+import { Deferred } from '../async.js'
 import ipc from '../ipc.js'
+
+let contextMenuDeferred = null
 
 /**
  * Helper for getting the current window index.
@@ -260,23 +263,24 @@ export class MenuContainer extends EventTarget {
     this.#system = options?.system ?? null
     this.#context = options?.context ?? null
 
-    if (sourceEventTarget) {
-      sourceEventTarget.addEventListener('menuItemSelected', (event) => {
-        const detail = event.detail ?? {}
-        const menu = this[detail.type ?? '']
-        if (menu) {
-          menu.dispatchEvent(new MenuItemEvent('menuitem', detail, menu))
-          menu.channel.postMessage({
-            ...detail,
-            source: {
-              window: {
-                index: getCurrentWindowIndex()
-              }
+    sourceEventTarget.addEventListener('menuItemSelected', (event) => {
+      if (contextMenuDeferred) contextMenuDeferred.resolve(event.detail)
+
+      const detail = event.detail ?? {}
+      const menu = this[detail.type ?? '']
+
+      if (menu) {
+        menu.dispatchEvent(new MenuItemEvent('menuitem', detail, menu))
+        menu.channel.postMessage({
+          ...detail,
+          source: {
+            window: {
+              index: getCurrentWindowIndex()
             }
-          })
-        }
-      })
-    }
+          }
+        })
+      }
+    })
 
     if (this.#tray) {
       this.#tray.addEventListener('menuitem', (event) => {
@@ -544,11 +548,13 @@ export async function setContextMenu (options) {
     .flatMap(a => a.join(':'))
     .join('_')
 
-  const { data, err } = await ipc.send('window.setContextMenu', o)
+  contextMenuDeferred = new Deferred()
 
-  if (err) {
-    throw err
+  const result = await ipc.send('window.setContextMenu', o)
+
+  if (result && result.err) {
+    return { err: result.err }
   }
 
-  return data
+  return { data: await contextMenuDeferred }
 }
