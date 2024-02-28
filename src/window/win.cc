@@ -1724,10 +1724,9 @@ namespace SSC {
     setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+  void Window::setMenu (const SSC::String& seq, const SSC::String& menuSource, const bool& isTrayMenu) {
     static auto userConfig = SSC::getUserConfig();
-    if (source.empty()) return void(0);
-    auto menuSource = replace(SSC::String(source), "%%", "\n");
+    if (menuSource.empty()) return void(0);
 
     NOTIFYICONDATA nid;
 
@@ -1894,10 +1893,12 @@ namespace SSC {
     // @TODO(jwerle)
   }
 
-  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
+    if (menuSource.empty()) return void(0);
+
     HMENU hPopupMenu = CreatePopupMenu();
 
-    auto menuItems = split(value, '_');
+    auto menuItems = split(menuSource, '\n');
     int index = 1;
     std::vector<SSC::String> lookup;
     lookup.push_back("");

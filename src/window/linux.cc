@@ -1148,12 +1148,10 @@ namespace SSC {
     this->setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const String& seq, const String& source, const bool& isTrayMenu) {
-    if (source.empty()) {
+  void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
+    if (menuSource.empty()) {
       return;
     }
-
-    auto menuSource = replace(SSC::String(source), "%%", "\n"); // copy and deserialize
 
     auto clear = [this](GtkWidget* menu) {
       GList *iter;
@@ -1403,9 +1401,10 @@ namespace SSC {
 
   void Window::setContextMenu (
     const String &seq,
-    const String &value
+    const String &menuSource
   ) {
     closeContextMenu();
+    if (menuSource.empty()) return void(0);
 
     // members
     popup = gtk_menu_new();
@@ -1416,8 +1415,7 @@ namespace SSC {
       popupId = 0;
     }
 
-    auto menuData = replace(value, "_", "\n");
-    auto menuItems = split(menuData, '\n');
+    auto menuItems = split(menuSource, '\n');
 
     for (auto itemData : menuItems) {
       if (trim(itemData).size() == 0) {
