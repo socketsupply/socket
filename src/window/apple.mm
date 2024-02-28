@@ -1309,11 +1309,11 @@ namespace SSC {
     }
   }
 
-  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
     const auto mouseLocation = NSEvent.mouseLocation;
     const auto contextMenu = [[NSMenu.alloc initWithTitle: @"contextMenu"] autorelease];
     const auto location = NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y));
-    const auto menuItems = split(value, '_');
+    const auto menuItems = split(menuSource, '\n');
     // remove the 'R' prefix as we'll use this value in the menu item "tag" property
     const auto id = std::stoi(seq.substr(1));
 
@@ -1375,9 +1375,8 @@ namespace SSC {
     this->setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
-    if (source.empty()) return void(0);
-    SSC::String menuSource = replace(SSC::String(source), "%%", "\n");
+  void Window::setMenu (const SSC::String& seq, const SSC::String& menuSource, const bool& isTrayMenu) {
+    if (menuSource.empty()) return void(0);
 
     NSStatusItem *statusItem;
     NSString *title;
