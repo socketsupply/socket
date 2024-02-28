@@ -264,7 +264,9 @@ export class MenuContainer extends EventTarget {
     this.#context = options?.context ?? null
 
     sourceEventTarget.addEventListener('menuItemSelected', (event) => {
-      if (contextMenuDeferred) contextMenuDeferred.resolve(event.detail)
+      if (contextMenuDeferred) {
+        contextMenuDeferred.resolve({ data: event.detail.parent })
+      }
 
       const detail = event.detail ?? {}
       const menu = this[detail.type ?? '']
@@ -543,18 +545,45 @@ export async function setMenu (options, type) {
  * @ignore
  */
 export async function setContextMenu (options) {
-  const o = Object
-    .entries(options)
-    .flatMap(a => a.join(':'))
-    .join('_')
+  const lines = options.value.split('\n')
+  const e = new Error()
+  const frame = e.stack.split('\n')[2]
+  const callerLineNo = frame.split(':').reverse()[1]
+
+  let err
+  let lineText
+
+  for (let i = 0; i < lines.length; i++) {
+    lineText = lines[i].trim()
+
+    if (!lineText.length) continue
+    if (lineText.includes('---')) continue
+    if (!lineText.includes(':')) {
+      err = 'Expected separator (:)'
+    }
+
+    const parts = lineText.split(':')
+    if (!parts[0].trim()) {
+      err = 'Expected label'
+    }
+
+    if (!parts[0].trim()) {
+      err = 'Expected accelerator'
+    }
+
+    if (err) {
+      const lineNo = Number(callerLineNo) + i
+      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
+    }
+  }
 
   contextMenuDeferred = new Deferred()
 
-  const result = await ipc.send('window.setContextMenu', o)
+  const result = await ipc.send('window.setContextMenu', options)
 
   if (result && result.err) {
     return { err: result.err }
   }
 
-  return { data: await contextMenuDeferred }
+  return await contextMenuDeferred
 }
