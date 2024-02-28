@@ -74,7 +74,10 @@ sources[] |  |  Configure your project to watch for sources that could change wh
 
 Key | Default Value | Description
 :--- | :--- | :---
-headers[] | "" | 
+root | "/" |  Make root open index.html
+default_index | "" |  Set default 'index.html' path to open for implicit routes
+watch | false |  Tell the webview to watch for changes in its resources
+headers[] | "" |  Custom headers injected on all webview routes
 
 # `webview.watch`
 
@@ -132,7 +135,6 @@ version |  |  A string that indicates the version of the application. It should 
 
 Key | Default Value | Description
 :--- | :--- | :---
-icon |  |  The icon to use for identifying your app on Android.
 aapt_no_compress |  |  Extensions of files that will not be stored compressed in the APK.
 enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
 main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
@@ -142,6 +144,8 @@ native_cflags |  |  Used for adding custom source files and related compiler att
 native_sources |  | 
 native_makefile |  | 
 sources |  | 
+icon |  |  The icon to use for identifying your app on Android.
+icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
 # `ios`
 
@@ -153,6 +157,7 @@ provisioning_profile |  |  A path to the provisioning profile used for signing i
 simulator_device |  |  which device to target when building for the simulator.
 nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.
 icon |  |  The icon to use for identifying your app on iOS.
+icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
 # `linux`
 
@@ -161,6 +166,7 @@ Key | Default Value | Description
 categories |  |  Helps to make your app searchable in Linux desktop environments.
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app in Linux desktop environments.
+icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
 # `mac`
 
@@ -168,10 +174,11 @@ Key | Default Value | Description
 :--- | :--- | :---
 category |  |  A category in the App Store
 cmd |  |  The command to execute to spawn the "back-end" process.
-icon |  |  The icon to use for identifying your app on MacOS.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
 minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
+icon |  |  The icon to use for identifying your app on MacOS.
+icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
 # `native`
 
@@ -185,9 +192,10 @@ headers |  |  Extra Headers
 Key | Default Value | Description
 :--- | :--- | :---
 cmd |  |  The command to execute to spawn the “back-end” process.
-icon |  |  The icon to use for identifying your app on Windows.
 logo |  |  The icon to use for identifying your app on Windows, relative to copied path resources
 pfx |  |  A relative path to the pfx file used for signing.
+icon |  |  The signing information needed by the appx api. The icon to use for identifying your app on Windows.
+icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
 # `window`
 
