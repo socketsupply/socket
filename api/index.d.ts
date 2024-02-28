@@ -269,6 +269,58 @@ declare module "socket:events" {
     import * as exports from "socket:events";
     
 }
+declare module "socket:async" {
+    /**
+     * A utility class for creating deferred promises.
+     */
+    export class Deferred {
+        /**
+         * The promise associated with this Deferred instance.
+         * @type {Promise<any>}
+         * @private
+         */
+        private _promise;
+        /**
+         * Function to resolve the associated promise.
+         * @type {function}
+         */
+        resolve: Function;
+        /**
+         * Function to reject the associated promise.
+         * @type {function}
+         */
+        reject: Function;
+        /**
+         * Attaches a fulfillment callback and a rejection callback to the promise,
+         * and returns a new promise resolving to the return value of the called
+         * callback.
+         * @type {function}
+         */
+        then: Function;
+        /**
+         * Attaches a rejection callback to the promise, and returns a new promise
+         * resolving to the return value of the callback if it is called, or to its
+         * original fulfillment value if the promise is instead fulfilled.
+         * @type {function}
+         */
+        catch: Function;
+        /**
+         * Attaches a callback for when the promise is settled (fulfilled or rejected).
+         * @type {function}
+         */
+        finally: Function;
+        /**
+         * A string representation of this Deferred instance.
+         * @type {string}
+         * @ignore
+         */
+        [Symbol.toStringTag]: string;
+    }
+    namespace _default {
+        export { Deferred };
+    }
+    export default _default;
+}
 declare module "socket:application/menu" {
     /**
      * Internal IPC for setting an application menu
@@ -279,7 +331,9 @@ declare module "socket:application/menu" {
      * Internal IPC for setting an application context menu
      * @ignore
      */
-    export function setContextMenu(options: any): Promise<any>;
+    export function setContextMenu(options: any): Promise<ipc.Result | Deferred | {
+        err: Error;
+    }>;
     /**
      * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
      */
@@ -420,6 +474,7 @@ declare module "socket:application/menu" {
     export const container: MenuContainer;
     export default container;
     import ipc from "socket:ipc";
+    import { Deferred } from "socket:async";
 }
 declare module "socket:internal/events" {
     /**
@@ -1357,7 +1412,7 @@ declare module "socket:path/index" {
 }
 declare module "socket:path" {
     export const sep: "/" | "\\";
-    export const delimiter: ";" | ":";
+    export const delimiter: ":" | ";";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
     export const dirname: typeof posix.win32.dirname;
@@ -10956,6 +11011,7 @@ declare module "socket:stream-relay/worker" {
         constructor(options: any, port: any, fn: any);
         init(): Promise<Deferred>;
         reconnect(): Promise<Deferred>;
+        disconnect(): Promise<Deferred>;
         getInfo(): Promise<Deferred>;
         getState(): Promise<Deferred>;
         open(...args: any[]): Promise<Deferred>;
@@ -11489,6 +11545,18 @@ declare module "socket:service-worker/instance" {
     export const ServiceWorker: {
         new (): ServiceWorker;
         prototype: ServiceWorker;
+    } | {
+        new (): {
+            onmessage: any;
+            onerror: any;
+            onstatechange: any;
+            readonly state: any;
+            readonly scriptURL: any;
+            postMessage(): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+            dispatchEvent(event: Event): boolean;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+        };
     };
     const _default: any;
     export default _default;
@@ -11571,7 +11639,18 @@ declare module "socket:service-worker/registration" {
     export default ServiceWorkerRegistration;
 }
 declare module "socket:service-worker/container" {
+    /**
+     * Predicate to determine if service workers are allowed
+     * @return {boolean}
+     */
+    export function isServiceWorkerAllowed(): boolean;
+    /**
+     * A `ServiceWorkerContainer` implementation that is attached to the global
+     * `globalThis.navigator.serviceWorker` object.
+     */
     export class ServiceWorkerContainer extends EventTarget {
+        get ready(): any;
+        get controller(): any;
         /**
          * A special initialization function for augmenting the global
          * `globalThis.navigator.serviceWorker` platform `ServiceWorkerContainer`
@@ -11585,11 +11664,9 @@ declare module "socket:service-worker/container" {
          * @private
          */
         private init;
-        register(scriptURL: any, options?: any): Promise<ServiceWorkerRegistration>;
-        getRegistration(clientURL: any): Promise<ServiceWorkerRegistration>;
-        getRegistrations(): Promise<ServiceWorkerRegistration[]>;
-        get ready(): any;
-        get controller(): any;
+        register(scriptURL: any, options?: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
+        getRegistration(clientURL: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
+        getRegistrations(): Promise<readonly globalThis.ServiceWorkerRegistration[] | ServiceWorkerRegistration[]>;
         startMessages(): void;
     }
     export default ServiceWorkerContainer;
@@ -11867,6 +11944,19 @@ declare module "socket:service-worker/global" {
     import { FetchEvent } from "socket:service-worker/events";
 }
 declare module "socket:service-worker/init" {
+    export function onRegister(event: any): Promise<void>;
+    export function onSkipWaiting(event: any): Promise<void>;
+    export function onActivate(event: any): Promise<void>;
+    export function onFetch(event: any): Promise<void>;
+    export const workers: Map<any, any>;
+    export class ServiceWorkerInfo {
+        constructor(data: any);
+        id: any;
+        url: any;
+        hash: any;
+        scope: any;
+        scriptURL: any;
+    }
     const _default: any;
     export default _default;
 }
