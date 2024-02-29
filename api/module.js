@@ -575,7 +575,7 @@ export class Module extends EventTarget {
    */
   load () {
     const { isNamed, sourcePath } = this
-    const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
+    const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || 'node_modules').split(':')
     const urls = []
 
     if (this.loaded) {
@@ -669,13 +669,39 @@ export class Module extends EventTarget {
         try {
           // @ts-ignore
           const packageJSON = JSON.parse(response.data)
-          const filename = !packageJSON.exports
-            ? path.resolve('/', url, packageJSON.main || packageJSON.browser)
-            : path.resolve(url, (
-              packageJSON.exports?.['.'] ||
-              packageJSON.exports?.['./index.js'] ||
-              packageJSON.exports?.['index.js']
-            ))
+          let filename = null
+          if (packageJSON.main || packageJSON.browser) {
+            filename = path.resolve('/', url, packageJSON.main || packageJSON.browser)
+          } else if (packageJSON.exports) {
+            if (typeof packageJSON.exports === 'object') {
+              for (const key in packageJSON.exports) {
+                const value = packageJSON.exports[key]
+                // try to find main entry
+                if (key === '.' || key === './index.js' || key === 'index.js') {
+                  if (!filename) {
+                    if (typeof value === 'string') {
+                      filename = path.resolve(url, value)
+                    } else if (Array.isArray(value)) {
+                      for (const entry of value) {
+                        if (request(path.join(url, entry)).data) {
+                          filename = path.resosolve(url, entry)
+                          break
+                        }
+                      }
+                    } else if (value && typeof value === 'object') {
+                      if (typeof value.require === 'string') {
+                        filename = path.resolve(url, value.require)
+                      }
+                    }
+                  }
+                } else {
+                  // TODO
+                }
+              }
+            } else if (typeof packageJSON.exports === 'string') {
+              filename = path.resolve(url, packageJSON.exports)
+            }
+          }
 
           loadPackage(module, filename)
         } catch (error) {
