@@ -3217,6 +3217,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(jni / "core");
       fs::create_directories(jni / "include");
       fs::create_directories(jni / "ipc");
+      fs::create_directories(jni / "process");
       fs::create_directories(jni / "src");
       fs::create_directories(jni / "window");
 
@@ -3312,6 +3313,7 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/debug.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/env.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/file_system_watcher.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/ini.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/io.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
@@ -3321,6 +3323,7 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/string.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/types.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/version.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/process/process.hh")), jni / "process", fs::copy_options::overwrite_existing);
       // ipc
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
       // window
