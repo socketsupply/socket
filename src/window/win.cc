@@ -1959,12 +1959,6 @@ namespace SSC {
     this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
   }
 
-  int Window::openExternal (const SSC::String& url) {
-    ShellExecute(nullptr, "Open", url .c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    // TODO how to detect success here. do we care?
-    return 0;
-  }
-
   void Window::setBackgroundColor(int r, int g, int b, float a) {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
