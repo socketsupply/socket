@@ -1,4 +1,4 @@
-/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
+/* global Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -12,9 +12,6 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
-import ipc from '../ipc.js'
-ipc.send('platform.event', 'beforeruntimeinit').catch(reportError)
-
 import './primitives.js'
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
@@ -24,6 +21,7 @@ import location from '../location.js'
 import { URL } from '../url.js'
 import mime from '../mime.js'
 import path from '../path.js'
+import ipc from '../ipc.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -212,9 +210,9 @@ if ((globalThis.window) === globalThis) {
 
 class RuntimeWorker extends GlobalWorker {
   #onglobaldata = null
-  #id = rand64()
+  #id = null
 
-  static pool = new Map()
+  static pool = globalThis.top?.Worker?.pool ?? new Map()
 
   static get [Symbol.species] () {
     return GlobalWorker
@@ -226,7 +224,7 @@ class RuntimeWorker extends GlobalWorker {
    */
   constructor (filename, options, ...args) {
     const url = encodeURIComponent(new URL(filename, globalThis.location.href || '/').toString())
-    const id = rand64()
+    const id = String(rand64())
 
     const preload = `
     Object.defineProperty(globalThis, '__args', {
@@ -368,25 +366,12 @@ class RuntimeWorker extends GlobalWorker {
             queueMicrotask(async () => {
               try {
                 // eslint-disable-next-line no-use-before-define
+                const transfer = []
                 const message = ipc.Message.from(request.message, request.bytes)
                 const options = { bytes: message.bytes }
-                // eslint-disable-next-line no-use-before-define
-                let result = message.name.startsWith('application.')
-                  ? await ipc.send(message.name, message.rawParams, options)
-                  : await ipc.request(message.name, message.rawParams, options)
+                const result = await ipc.send(message.name, message.rawParams, options)
 
-                if (result.err?.type === 'NotFoundError') {
-                  const otherResult = await ipc.send(message.name, message.rawParams, options)
-                  if (!otherResult.err) {
-                    result = otherResult
-                  }
-                }
-
-                const transfer = []
-
-                if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
-                  transfer.push(result.data)
-                }
+                ipc.findMessageTransfers(transfer, result)
 
                 this.postMessage({
                   __runtime_worker_ipc_result: {
@@ -445,7 +430,9 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
     const value = open.call(this, method, url, isAsyncRequest !== false, ...args)
 
-    this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
+    if (globalThis.__args?.client) {
+      this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
+    }
 
     if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
       this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
@@ -500,6 +487,8 @@ import hooks, { RuntimeInitEvent } from '../hooks.js'
 import { config } from '../application.js'
 import globals from './globals.js'
 import '../console.js'
+
+ipc.send('platform.event', 'beforeruntimeinit').catch(reportError)
 
 class ConcurrentQueue extends EventTarget {
   concurrency = Infinity
