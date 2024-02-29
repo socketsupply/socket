@@ -1052,11 +1052,6 @@ namespace SSC {
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
   }
 
-  int Window::openExternal (const String& url) {
-    gtk_widget_realize(window);
-    return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, nullptr);
-  }
-
   void Window::about () {
     GtkWidget *dialog = gtk_dialog_new();
     gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 200);

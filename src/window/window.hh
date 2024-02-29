@@ -239,7 +239,6 @@ namespace SSC {
       void setMenu (const String& seq, const String& dsl, const bool& isTrayMenu);
       void setTrayMenu (const String& seq, const String& dsl);
       void showInspector ();
-      int openExternal (const String& s);
 
       void resolvePromise (
         const String& seq,

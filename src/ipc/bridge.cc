@@ -2204,6 +2204,21 @@ static void initRouterTable (Router *router) {
     );
   });
 
+
+  router->map("platform.revealFile", [](auto message, auto router, auto reply) mutable {
+    auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    router->core->platform.revealFile(
+      message.seq,
+      message.value,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
   /**
    * Requests a URL to be opened externally.
    * @param value

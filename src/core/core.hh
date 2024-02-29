@@ -682,6 +682,12 @@ namespace SSC {
             const String value,
             Module::Callback cb
           );
+          void revealFile (
+            const String seq,
+            const String value,
+            Module::Callback cb
+          );
+
       };
 
     #if SSC_PLATFORM_DESKTOP
