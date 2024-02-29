@@ -119,7 +119,7 @@ function proxyGlobalEvents (global, target) {
           url: event.url.toString()
         }))
       } else if (type === 'error' || error) {
-        const { message, filename = import.meta.url || globalThis.location.href } = error
+        const { message, filename = import.meta.url || globalThis.location.href } = error || {}
         dispatchEvent(target, new ErrorEvent(type, {
           ...event,
           message,
@@ -128,7 +128,7 @@ function proxyGlobalEvents (global, target) {
           detail,
           origin
         }))
-      } else if ((type && data) || type === 'message') {
+      } else if (data || type === 'message') {
         dispatchEvent(target, new MessageEvent(type, { ...event, origin }))
       } else if (detail) {
         dispatchEvent(target, new CustomEvent(type, { ...event, origin }))
