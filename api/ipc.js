@@ -61,6 +61,13 @@ const cache = {}
 
 function initializeXHRIntercept () {
   if (typeof globalThis.XMLHttpRequest !== 'function') return
+  const patched = Symbol.for('socket.runtime.ipc.XMLHttpRequest.patched')
+  if (globalThis.XMLHttpRequest.prototype[patched]) {
+    return
+  }
+
+  globalThis.XMLHttpRequest.prototype[patched] = true
+
   const { send, open } = globalThis.XMLHttpRequest.prototype
 
   const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
@@ -71,7 +78,7 @@ function initializeXHRIntercept () {
         this.readyState = globalThis.XMLHttpRequest.OPENED
       } catch (_) {}
       this.method = method
-      this.url = new URL(url)
+      this.url = new URL(url, globalThis.location.origin)
       this.seq = this.url.searchParams.get('seq')
 
       return open.call(this, method, url, ...args)
@@ -93,6 +100,9 @@ function initializeXHRIntercept () {
 
           if (/android/i.test(primordials.platform)) {
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
+            if (!globalThis.window && globalThis.self) {
+              await new Promise((resolve) => setTimeout(resolve, 200))
+            }
             body = null
           }
 
@@ -479,6 +489,35 @@ export class Headers extends globalThis.Headers {
 }
 
 /**
+ * Find transfers for an in worker global `postMessage`
+ * that is proxied to the main thread.
+ * @ignore
+ */
+export function findMessageTransfers (transfers, object) {
+  if (ArrayBuffer.isView(object)) {
+    add(object.buffer)
+  } else if (object instanceof ArrayBuffer) {
+    add(object)
+  } else if (Array.isArray(object)) {
+    for (const value of object) {
+      findMessageTransfers(transfers, value)
+    }
+  } else if (object && typeof object === 'object') {
+    for (const key in object) {
+      findMessageTransfers(transfers, object[key])
+    }
+  }
+
+  return transfers
+
+  function add (value) {
+    if (!transfers.includes(value)) {
+      transfers.push(value)
+    }
+  }
+}
+
+/**
  * @ignore
  */
 export async function postMessage (message, ...args) {
@@ -489,6 +528,8 @@ export async function postMessage (message, ...args) {
   } else if (globalThis?.external?.postMessage) {
     return external.postMessage(message, ...args)
   } else if (globalThis.postMessage) {
+    const transfer = []
+    findMessageTransfers(transfer, args)
     // worker
     if (globalThis.self && !globalThis.window) {
       return await globalThis?.postMessage({
@@ -496,9 +537,9 @@ export async function postMessage (message, ...args) {
           message,
           bytes: args[0] ?? null
         }
-      })
+      }, { transfer })
     } else {
-      return globalThis?.postMessage(message, args)
+      return globalThis.top.postMessage(message, ...args)
     }
   }
 
@@ -1027,7 +1068,7 @@ class IPCSearchParams extends URLSearchParams {
     super({
       ...params,
       index: globalThis.__args?.index ?? 0,
-      seq: 'R' + nextSeq++
+      seq: params?.seq ?? ('R' + nextSeq++)
     })
 
     if (value !== undefined) {
