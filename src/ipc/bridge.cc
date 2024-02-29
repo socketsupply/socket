@@ -259,7 +259,7 @@ static void initRouterTable (Router *router) {
    * @param signal
    */
   router->map("child_process.kill", [](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_MOBILE
+  #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -295,7 +295,7 @@ static void initRouterTable (Router *router) {
    * @param args (command, ...args)
    */
   router->map("child_process.spawn", [](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_MOBILE
+  #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -350,7 +350,7 @@ static void initRouterTable (Router *router) {
    * @param id
    */
   router->map("child_process.write", [](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_MOBILE
+  #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -1936,9 +1936,9 @@ static void initRouterTable (Router *router) {
       music = (Path(HOME) / "Music").string();
     }
 
-    config = XDG_CONFIG_HOME + "/" + bundle_identifier;
+    config = XDG_CONFIG_HOME + "/" + bundleIdentifier;
     home = Path(HOME).string();
-    data = XDG_DATA_HOME + "/" + bundle_identifier;
+    data = XDG_DATA_HOME + "/" + bundleIdentifier;
     log = config;
   #elif defined(_WIN32)
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
@@ -4182,7 +4182,7 @@ namespace SSC::IPC {
       this->router.emit(seq, value.str());
     };
 
-  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
+  #if !SSC_PLATFORM_IOS
     if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
       this->fileSystemWatcher = new FileSystemWatcher(getcwd());
       this->fileSystemWatcher->core = this->core;
@@ -4203,7 +4203,7 @@ namespace SSC::IPC {
   }
 
   Bridge::~Bridge () {
-  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
+  #if !SSC_PLATFORM_IOS
     if (this->fileSystemWatcher) {
       this->fileSystemWatcher->stop();
       delete this->fileSystemWatcher;
