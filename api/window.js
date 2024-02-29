@@ -406,6 +406,15 @@ export class ApplicationWindow {
     return await ipc.send('platform.openExternal', options)
   }
 
+  /**
+   * Opens a file in the default file explorer.
+   * @param {object} options
+   * @returns {Promise<ipc.Result>}
+   */
+  async revealFile (options) {
+    return await ipc.send('platform.revealFile', options)
+  }
+
   // public EventEmitter methods
   /**
    * Adds a listener to the window.

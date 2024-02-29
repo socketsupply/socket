@@ -1292,11 +1292,6 @@ namespace SSC {
     }
   }
 
-  int Window::openExternal (const SSC::String& s) {
-    NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
-    return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
-  }
-
   void Window::closeContextMenu () {
     // @TODO(jwerle)
   }
