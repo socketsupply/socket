@@ -22,7 +22,6 @@ export class GlobalsRegistry {
 }
 
 const registry = (
-  globalThis.__globals ??
   globalThis.top?.__globals ??
   new GlobalsRegistry()
 )
