@@ -2,9 +2,11 @@ import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
 import { InvertedPromise } from '../util.js'
 import { createRequire } from '../module.js'
+import { Environment } from './env.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
+import path from '../path.js'
 import ipc from '../ipc.js'
 
 const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
@@ -15,7 +17,6 @@ Object.defineProperties(
 )
 
 const events = new Set()
-const env = {}
 
 hooks.onReady(onReady)
 globalThis.addEventListener('message', onMessage)
@@ -26,16 +27,46 @@ function onReady () {
 
 async function onMessage (event) {
   const { data } = event
+  let env = null
 
   if (data?.register) {
     const { id, scope, scriptURL } = data.register
+    const url = new URL(scriptURL)
     let module = null
 
     state.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
 
-    globalThis.require = createRequire(scriptURL)
+    Object.defineProperties(globalThis, {
+      require: {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: createRequire(scriptURL)
+      },
+
+      origin: {
+        configurable: false,
+        enumerable: true,
+        writable: false,
+        value: url.origin
+      },
+
+      __dirname: {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: path.dirname(url.pathname)
+      },
+
+      __filename: {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: url.pathname
+      }
+    })
 
     try {
       module = await import(scriptURL)
@@ -44,6 +75,8 @@ async function onMessage (event) {
       await state.notify('serviceWorker')
       return state.reportError(err)
     }
+
+    env = await Environment.open({ id, scope })
 
     if (module.default && typeof module.default === 'object') {
       if (typeof module.default.fetch === 'function') {
@@ -89,7 +122,7 @@ async function onMessage (event) {
         }
 
         try {
-          await state.activate(env, context)
+          await state.activate(env.context, context)
         } catch (err) {
           state.reportError(err)
         }
@@ -97,16 +130,9 @@ async function onMessage (event) {
     }
 
     if (typeof state.install === 'function') {
-      globalThis.addEventListener('install', async () => {
-        const context = {
-          passThroughOnException () {},
-          async waitUntil (...args) {
-            return await event.waitUntil(...args)
-          }
-        }
-
+      globalThis.addEventListener('install', async (event) => {
         try {
-          await state.install(env, context)
+          await state.install(event.context.env, event.context)
         } catch (err) {
           state.reportError(err)
         }
@@ -127,33 +153,17 @@ async function onMessage (event) {
       }
 
       globalThis.addEventListener('fetch', async (event) => {
-        const { request } = event
-        const context = {
-          passThroughOnException () {},
-          async waitUntil (...args) {
-            return await event.waitUntil(...args)
-          },
-
-          async handled () {
-            return await event.handled
-          },
-
-          async client () {
-            if (event.clientId) {
-              return await clients.get(event.clientId)
-            }
-
-            return null
-          }
-        }
-
         const promise = new InvertedPromise()
         let response = null
 
         event.respondWith(promise)
 
         try {
-          response = await state.fetch(request, env, context)
+          response = await state.fetch(
+            event.request,
+            event.context.env,
+            event.context
+          )
         } catch (err) {
           state.reportError(err)
           response = new Response(err.message, {
