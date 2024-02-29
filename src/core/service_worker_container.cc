@@ -1,4 +1,5 @@
 #include "service_worker_container.hh"
+#include "debug.hh"
 
 #include "../ipc/ipc.hh"
 
@@ -169,8 +170,11 @@ namespace SSC {
         }
       }
 
-      const auto extname = Path(request.pathname).extension().string();
       bool freeResponseBody = false;
+
+      // XXX(@jwerle): we handle this in the android runtime
+    #if !SSC_PLATFORM_ANDROID
+      const auto extname = Path(request.pathname).extension().string();
       if (
         (message.buffer.bytes != nullptr && message.buffer.size > 0) &&
         (extname.ends_with("html") || contentType == "text/html")
@@ -198,18 +202,20 @@ namespace SSC {
 
          memcpy(response.buffer.bytes, html.c_str(), html.size());
       }
+    #endif
 
       // no `app` pointer or on mobile, just call callback
       callback(response);
+
       reply(IPC::Result { message.seq, message });
+
+      if (freeResponseBody) {
+        delete response.buffer.bytes;
+      }
 
       this->fetchCallbacks.erase(id);
       if (this->fetchRequests.contains(id)) {
         this->fetchRequests.erase(id);
-      }
-
-      if (freeResponseBody) {
-        this->core->timers.setTimeout(250, [response]() { delete response.buffer.bytes; });
       }
     });
   }
