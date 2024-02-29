@@ -5,20 +5,19 @@
 #include "config.hh"
 #include "debug.hh"
 #include "env.hh"
+#include "file_system_watcher.hh"
 #include "ini.hh"
 #include "io.hh"
 #include "json.hh"
 #include "platform.hh"
-#include "../process/process.hh"
 #include "preload.hh"
 #include "service_worker_container.hh"
 #include "string.hh"
 #include "types.hh"
 #include "version.hh"
 
-#if !defined(__ANDROID__)
-#include "file_system_watcher.hh"
-#endif
+#include "../process/process.hh"
+
 
 #if defined(__APPLE__)
 @interface SSCBluetoothController : NSObject<
@@ -684,7 +683,7 @@ namespace SSC {
           );
       };
 
-    #if SSC_PLATFORM_DESKTOP
+    #if !SSC_PLATFORM_IOS
       class ChildProcess : public Module {
         public:
           using Handles = std::map<uint64_t, Process*>;
@@ -806,7 +805,7 @@ namespace SSC {
           );
       };
 
-    #if SSC_PLATFORM_DESKTOP
+    #if !SSC_PLATFORM_IOS
       ChildProcess childProcess;
     #endif
       Diagnostics diagnostics;
@@ -852,7 +851,7 @@ namespace SSC {
     #endif
 
       Core () :
-      #if SSC_PLATFORM_DESKTOP
+      #if !SSC_PLATFORM_IOS
         childProcess(this),
       #endif
         diagnostics(this),
