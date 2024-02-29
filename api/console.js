@@ -132,6 +132,24 @@ export class Console {
         configurable: false
       }
     })
+
+    this.write = this.write.bind(this)
+    this.assert = this.assert.bind(this)
+    this.clear = this.clear.bind(this)
+    this.count = this.count.bind(this)
+    this.countReset = this.countReset.bind(this)
+    this.debug = this.debug.bind(this)
+    this.dir = this.dir.bind(this)
+    this.dirxml = this.dirxml.bind(this)
+    this.error = this.error.bind(this)
+    this.info = this.info.bind(this)
+    this.log = this.log.bind(this)
+    this.table = this.table.bind(this)
+    this.time = this.time.bind(this)
+    this.timeEnd = this.timeEnd.bind(this)
+    this.timeLog = this.timeLog.bind(this)
+    this.trace = this.trace.bind(this)
+    this.warn = this.warn.bind(this)
   }
 
   async write (destination, ...args) {
