@@ -128,7 +128,8 @@ namespace SSC {
       "  id,                                                                 \n"
       "  seq,                                                                \n"
       "  params,                                                             \n"
-      "  { workerId }                                                         \n"
+      "  headers,                                                            \n"
+      "  { workerId }                                                        \n"
       ");                                                                    \n"
     );
 
