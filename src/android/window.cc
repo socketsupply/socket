@@ -42,15 +42,18 @@ namespace SSC::android {
       "()Ljava/lang/String;"
     ));
 
-    const auto argv = this->config["ssc_argv"];
+    Vector<String> argv;
+    for (const auto& arg : split(this->config["ssc_argv"], ',')) {
+      argv.push_back("'" + trim(arg) + "'");
+    }
 
     options.headless = this->config["build_headless"] == "true";
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();
     options.appData = this->config;
-    options.argv = argv;
-    options.isTest = argv.find("--test") != -1;
+    options.argv = join(argv, ",");
+    options.isTest = this->config["ssc_argv"].find("--test") != -1;
     options.clientId = this->bridge->id;
 
     preloadSource = createPreload(options, PreloadOptions {
