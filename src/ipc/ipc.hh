@@ -3,11 +3,6 @@
 
 #include "../core/core.hh"
 
-// only available on desktop
-#if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-#include "../core/file_system_watcher.hh"
-#endif
-
 namespace SSC::IPC {
   class Router;
   class Bridge;
@@ -332,11 +327,11 @@ namespace SSC::IPC {
       Core *core = nullptr;
       String preload = "";
       uint64_t id = 0;
-    #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
+    #if !SSC_PLATFORM_IOS
       FileSystemWatcher* fileSystemWatcher = nullptr;
     #endif
 
-    #if defined(__ANDROID__)
+    #if SSC_PLATFORM_ANDROID
       bool isAndroidEmulator = false;
     #endif
 
