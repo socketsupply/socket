@@ -20,6 +20,11 @@ URL.resolve = resolve
 URL.parse = parse
 URL.format = format
 
+export const protocols = new Set([
+  'socket:',
+  'ipc:'
+])
+
 export function parse (input, options = null) {
   if (URL.canParse(input)) {
     return new URL(input)
@@ -129,11 +134,11 @@ url.serializeURLOrigin = function (input) {
     }
   }
 
-  if (protocol === 'socket:' || protocol === 'ipc:') {
+  if (protocols.has(protocol)) {
     return `${protocol}//${serializeHost(host)}`
   }
 
-  if (scheme === 'socket' || scheme === 'ipc') {
+  if (protocols.has(`${scheme}:`)) {
     return `${scheme}://${serializeHost(host)}`
   }
 
