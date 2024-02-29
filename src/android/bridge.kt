@@ -34,15 +34,15 @@ class Message (message: String? = null) {
       android.net.Uri.parse("ipc://")
     }
 
-  var command: String
+  var name: String
     get () = uri?.host ?: ""
-    set (command) {
-      uri = uri?.buildUpon()?.authority(command)?.build()
+    set (name) {
+      uri = uri?.buildUpon()?.authority(name)?.build()
     }
 
   var domain: String
     get () {
-      val parts = command.split(".")
+      val parts = name.split(".")
       return parts.slice(0..(parts.size - 2)).joinToString(".")
     }
     set (_) {}
@@ -259,9 +259,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   val requests = mutableMapOf<Long, RouteRequest>()
   val configuration = configuration
   val buffers = mutableMapOf<String, ByteArray>()
-  val semaphore = java.util.concurrent.Semaphore(
-    java.lang.Runtime.getRuntime().availableProcessors()
-  )
+  val semaphore = runtime.semaphore
 
   val openedAssetDirectories = mutableMapOf<String, String>()
   val openedAssetDirectoriesEntryCache: MutableMap<String, Array<String>> = mutableMapOf()
@@ -338,7 +336,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       }
     }
 
-    when (message.command) {
+    when (message.name) {
       "application.getScreenSize",
       "application.getWindows" -> {
         val windowManager = activity.applicationContext.getSystemService(
@@ -355,8 +353,8 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         val width = insets.right + insets.left
         val height = insets.top + insets.bottom
 
-        if (message.command == "application.getScreenSize") {
-          callback(Result(0, message.seq, message.command, """{
+        if (message.name == "application.getScreenSize") {
+          callback(Result(0, message.seq, message.name, """{
             "data": {
               "width": $width,
               "height": $height
@@ -366,7 +364,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           activity.runOnUiThread {
             val status = 31 // WINDOW_SHOWN"
             val title = activity.webview?.title ?: ""
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": [{
                 "index": 0,
                 "title": "$title",
@@ -389,7 +387,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             val stream = assetManager.open(path, 0)
             val abi = 1 // TODO(@jwerle): read this over JNI
             stream.close()
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "abi": $abi,
                 "name": "$name",
@@ -414,7 +412,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             val path = "socket/extensions/$name/$name.wasm"
             val stream = assetManager.open(path, 0)
             stream.close()
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "name": "$name",
                 "type": "wasm32"
@@ -446,7 +444,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             paths += "\"$path\""
           }
 
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "data": {
               "paths": ${paths.joinToString(prefix = "[", postfix = "]")}
             }
@@ -467,7 +465,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         var music = "$storage/Music"
         var home = desktop
 
-        callback(Result(0, message.seq, message.command, """{
+        callback(Result(0, message.seq, message.name, """{
           "data": {
             "resources": "$resources",
             "downloads": "$downloads",
@@ -484,7 +482,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
       "permissions.request" -> {
         if (!message.has("name")) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "Expecting 'name' in parameters" }
           }"""))
           return true
@@ -499,7 +497,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
               activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
               activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
             ) {
-              callback(Result(0, message.seq, message.command, "{}"))
+              callback(Result(0, message.seq, message.name, "{}"))
               return true
             }
 
@@ -509,7 +507,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
           "push", "notifications" -> {
             if (activity.checkPermission("android.permission.POST_NOTIFICATIONS")) {
-              callback(Result(0, message.seq, message.command, "{}"))
+              callback(Result(0, message.seq, message.name, "{}"))
               return true
             }
 
@@ -517,7 +515,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           }
 
           else -> {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "Unknown permission requested: '$name'"
               }
@@ -528,9 +526,9 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
         activity.requestPermissions(permissions.toTypedArray(), fun (granted: Boolean) {
           if (granted) {
-            callback(Result(0, message.seq, message.command, "{}"))
+            callback(Result(0, message.seq, message.name, "{}"))
           } else {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "User denied permission request for '$name'"
               }
@@ -543,7 +541,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
       "permissions.query" -> {
         if (!message.has("name")) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "Expecting 'name' in parameters" }
           }"""))
           return true
@@ -553,7 +551,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
         if (name == "geolocation") {
           if (!runtime.isPermissionAllowed("geolocation")) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "User denied permissions to access the device's location"
               }
@@ -562,13 +560,13 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") &&
             activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
           ) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "state": "granted"
               }
             }"""))
           } else {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "state": "prompt"
               }
@@ -578,7 +576,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
         if (name == "notifications" || name == "push") {
           if (!runtime.isPermissionAllowed("notifications")) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "User denied permissions to show notifications"
               }
@@ -587,13 +585,13 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             activity.checkPermission("android.permission.POST_NOTIFICATIONS") &&
             androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
           ) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "state": "granted"
               }
             }"""))
           } else {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "state": "prompt"
               }
@@ -603,7 +601,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
         if (name == "persistent-storage" || name == "storage-access") {
           if (!runtime.isPermissionAllowed("data_access")) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "User denied permissions for ${name.replace('-', ' ')}"
               }
@@ -619,21 +617,21 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
           !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
         ) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "User denied permissions for 'notifications'" }
           }"""))
           return true
         }
 
         if (!message.has("id")) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "Expecting 'id' in parameters" }
           }"""))
           return true
         }
 
         if (!message.has("title")) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "Expecting 'title' in parameters" }
           }"""))
           return true
@@ -751,7 +749,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           )
         }
 
-        callback(Result(0, message.seq, message.command, """{
+        callback(Result(0, message.seq, message.name, """{
           "data": {
             "id": "$id"
           }
@@ -771,14 +769,14 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
           !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
         ) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "User denied permissions for 'notifications'" }
           }"""))
           return true
         }
 
         if (!message.has("id")) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "Expecting 'id' in parameters" }
           }"""))
           return true
@@ -792,7 +790,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           )
         }
 
-        callback(Result(0, message.seq, message.command, """{
+        callback(Result(0, message.seq, message.name, """{
           "data": {
             "id": "$id"
           }
@@ -813,7 +811,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
           !androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
         ) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": { "message": "User denied permissions for 'notifications'" }
           }"""))
           return true
@@ -826,32 +824,32 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         if (bytes != null) {
           buffers[message.seq] = bytes
         }
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
       "log", "stdout" -> {
         console.log(message.value)
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
       "stderr" -> {
         console.error(message.value)
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
       "application.exit", "process.exit", "exit" -> {
         val code = message.get("value", "0").toInt()
         this.runtime.get()?.exit(code)
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
       "openExternal" -> {
         this.runtime.get()?.openExternal(message.value)
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
@@ -868,7 +866,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             )
 
             if (stream == null) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "message": "Failed to open input stream for access check"
                 }
@@ -878,20 +876,20 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
             mode = 4 // R_OK
             stream.close()
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "mode": $mode
               }
             }"""))
           } catch (e: java.io.FileNotFoundException) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "type": "NotFoundError",
                 "message": "${e.message}"
               }
             }"""))
           } catch (e: Exception) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "${e.message}"
               }
@@ -925,7 +923,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             )
 
             if (fd == null) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "message": "Failed to open asset file descriptor"
                 }
@@ -936,21 +934,21 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             this.fileDescriptors[id] = fd
             this.uris[id] = uri
 
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "id": "$id",
                 "fd": ${fd.getParcelFileDescriptor().getFd()}
               }
             }"""))
           } catch (e: java.io.FileNotFoundException) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "type": "NotFoundError",
                 "message": "${e.message}"
               }
             }"""))
           } catch (e: Exception) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "${e.message}"
               }
@@ -969,7 +967,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         if (isAssetBundleUri(uri)) {
           var path = uri.path
           if (path == null) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "Missing pathspec in 'path'"
               }
@@ -991,7 +989,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
             val entries = assetManager.list(path)
             if (entries == null || entries.size == 0) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "type": "NotFoundError",
                   "message": "Directory not found in asset manager"
@@ -1000,7 +998,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             } else {
               this.openedAssetDirectoriesEntryCache[id] = entries
               this.openedAssetDirectories[id] = path
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "data": {
                   "id": "$id"
                 }
@@ -1024,13 +1022,13 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
               fd.close()
             }
 
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "data": {
                 "id": "$id"
               }
             }"""))
           } catch (e: Exception) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "${e.message}"
               }
@@ -1046,7 +1044,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         if (this.openedAssetDirectories.contains(id)) {
           this.openedAssetDirectories.remove(id)
           this.openedAssetDirectoriesEntryCache.remove(id)
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "data": {
               "id": "$id"
             }
@@ -1064,7 +1062,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             val uri = this.uris[id]
 
             if (uri == null) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "message": "Could not determine URI for open asset file descriptor"
                 }
@@ -1079,7 +1077,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             )
 
             if (stream == null) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "message": "Failed to open input stream for file read"
                 }
@@ -1096,12 +1094,12 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             val bytesRead = stream.read(bytes, 0, size)
             stream.close()
             if (bytesRead > 0) {
-              callback(Result(0, message.seq, message.command, "{}", bytes.slice(0..(bytesRead - 1)).toByteArray()))
+              callback(Result(0, message.seq, message.name, "{}", bytes.slice(0..(bytesRead - 1)).toByteArray()))
             } else {
-              callback(Result(0, message.seq, message.command, "{}", ByteArray(0)))
+              callback(Result(0, message.seq, message.name, "{}", ByteArray(0)))
             }
           } catch (e: Exception) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "${e.message}"
               }
@@ -1142,13 +1140,13 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
               entries = entries.slice(count..(entries.size - 1)).toTypedArray()
               this.openedAssetDirectoriesEntryCache[id] = entries
 
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "data": ${data.joinToString(prefix = "[", postfix = "]")}
               }"""))
               return true;
             }
           }
-          callback(Result(0, message.seq, message.command, """{ "data": [] }"""))
+          callback(Result(0, message.seq, message.name, """{ "data": [] }"""))
           return true;
         }
       }
@@ -1165,7 +1163,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             )
 
             if (stream == null) {
-              callback(Result(0, message.seq, message.command, """{
+              callback(Result(0, message.seq, message.name, """{
                 "err": {
                   "message": "Failed to open input stream for file read"
                 }
@@ -1175,16 +1173,16 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
             val bytes = stream.readAllBytes()
             stream.close()
-            callback(Result(0, message.seq, message.command, "{}", bytes))
+            callback(Result(0, message.seq, message.name, "{}", bytes))
           } catch (e: java.io.FileNotFoundException) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "type": "NotFoundError",
                 "message": "${e.message}"
               }
             }"""))
           } catch (e: Exception) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "${e.message}"
               }
@@ -1209,7 +1207,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           )
 
           if (fd == null) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "Failed to open asset file descriptor for stats"
               }
@@ -1217,7 +1215,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             return true
           }
 
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "data": {
               "st_mode": 4,
               "st_size": ${fd.getParcelFileDescriptor().getStatSize()}
@@ -1236,7 +1234,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           val fd = this.fileDescriptors[id]
 
           if (fd == null) {
-            callback(Result(0, message.seq, message.command, """{
+            callback(Result(0, message.seq, message.name, """{
               "err": {
                 "message": "Failed to acquire open asset file descriptor for stats"
               }
@@ -1244,7 +1242,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
             return true
           }
 
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "data": {
               "st_mode": 4,
               "st_size": ${fd.getParcelFileDescriptor().getStatSize()}
@@ -1261,10 +1259,10 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         val uri = android.net.Uri.parse(path)
         val id = message.get("id")
         if (isAssetBundleUri(uri) || isContentUri(uri) || isDocumentUri(activity, uri) || this.fileDescriptors.contains(id)) {
-          callback(Result(0, message.seq, message.command, """{
+          callback(Result(0, message.seq, message.name, """{
             "err": {
               "type": "NotFoundError",
-              "message": "'${message.command}' is not supported for Android content URIs"
+              "message": "'${message.name}' is not supported for Android content URIs"
             }
           }"""))
           return true
@@ -1296,7 +1294,13 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     val request = RouteRequest(this.nextRequestId++, callback)
     this.requests[request.id] = request
 
-    return this.route(message.toString(), message.bytes, request.id)
+    val routed = this.route(message.toString(), message.bytes, request.id)
+
+    if (!routed && this.requests.contains(request.id)) {
+      this.requests.remove(request.id)
+    }
+
+    return routed
   }
 
   fun onInternalRouteResponse (
@@ -1310,7 +1314,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     val headers = try {
       headersString
         ?.split("\n")
-        ?.map { it.split(":", limit=3) }
+        ?.map { it.split(":", limit=2) }
         ?.map { it.elementAt(0) to it.elementAt(1) }
         ?.toMap()
       } catch (err: Exception) {

@@ -3,7 +3,14 @@
 using namespace SSC::android;
 
 static auto onInternalRouteResponseSignature =
-  "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)V";
+  "("
+  "J" // requestId
+  "Ljava/lang/String;" // seq
+  "Ljava/lang/String;" // source
+  "Ljava/lang/String;" // value
+  "Ljava/lang/String;" // headers
+  "[B" // bytes
+  ")V";
 
 namespace SSC::android {
   Bridge::Bridge (JNIEnv* env, jobject self, Runtime* runtime)
