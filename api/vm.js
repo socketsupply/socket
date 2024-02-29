@@ -336,17 +336,44 @@ export function applyContextDifferences (
               })
 
               if (!isConstructorCall) {
-                return promise
+                return promise.then((result) => {
+                  if (result?.__vmScriptReference__ === true) {
+                    return result.value
+                  }
+
+                  return result
+                })
               }
 
               return new Proxy(function () {}, {
                 get (target, property, receiver) {
                   return new Proxy(function () {}, {
                     apply (target, __, argumentList) {
-                      return promise.then((result) => {
-                        applyContextDifferences(result, result, contextReference)
-                        return result.value[property](...argumentList)
-                      })
+                      return apply(promise)
+                      function apply (result) {
+                        if (!result?.then) {
+                          return result
+                        }
+
+                        return result
+                          .then((result) => {
+                            if (result?.value) {
+                              applyContextDifferences(result, result, contextReference)
+                              if (typeof result.value === 'object' && property in result.value) {
+                                if (typeof result.value[property] === 'function') {
+                                  return result.value[property](...argumentList)
+                                }
+
+                                return result.value[property]
+                              }
+
+                              return result.value
+                            } else {
+                              return trsult
+                            }
+                          })
+                          .then(apply)
+                      }
                     }
                   })
                 },
