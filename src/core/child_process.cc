@@ -1,6 +1,6 @@
 #include "core.hh"
 
-#if SSC_PLATFORM_DESKTOP
+#if !SSC_PLATFORM_IOS
 namespace SSC {
   void Core::ChildProcess::shutdown () {
     Lock lock(this->mutex);
