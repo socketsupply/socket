@@ -5413,6 +5413,12 @@ declare module "socket:window" {
          */
         openExternal(options: object): Promise<ipc.Result>;
         /**
+         * Opens a file in the default file explorer.
+         * @param {object} options
+         * @returns {Promise<ipc.Result>}
+         */
+        revealFile(options: object): Promise<ipc.Result>;
+        /**
          * Adds a listener to the window.
          * @param {string} event - the event to listen to
          * @param {function(*): void} cb - the callback to call
