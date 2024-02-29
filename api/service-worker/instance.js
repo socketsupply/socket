@@ -1,7 +1,7 @@
 import { SharedWorker } from '../internal/shared-worker.js'
 import state from './state.js'
 
-export const SHARED_WORKER_URL = new URL('./shared-worker.js', import.meta.url)
+export const SHARED_WORKER_URL = `${globalThis.origin}/socket/service-worker/shared-worker.js`
 
 export const ServiceWorker = globalThis.ServiceWorker ?? class ServiceWorker extends EventTarget {
   get onmessage () { return null }
