@@ -2816,7 +2816,19 @@ Opens an URL in the default browser.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L416)
+### [`revealFile(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L414)
+
+Opens a file in the default file explorer.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L425)
 
 Adds a listener to the window.
 
@@ -2825,7 +2837,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L434)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L443)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2834,7 +2846,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L451)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L460)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2843,7 +2855,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L467)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L476)
 
 Removes a listener from the window.
 
@@ -2852,7 +2864,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L480)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L489)
 
 Removes all listeners from the window.
 
@@ -2860,7 +2872,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L496)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L505)
 
 Removes a listener from the window. An alias for `removeListener`.
 
