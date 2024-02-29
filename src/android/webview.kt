@@ -225,6 +225,8 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   open protected val TAG = "WebViewClient"
   open protected var rootDirectory = ""
 
+  val pendingResponseMap = mutableMapOf<String, android.webkit.WebResourceResponse>()
+
   fun putRootDirectory(rootDirectory: String) {
     this.rootDirectory = rootDirectory
   }
@@ -243,26 +245,77 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
   ): Boolean {
+    val activity = this.activity.get() ?: return false
+    val assetManager = activity.getAssetManager()
+    val runtime = activity.runtime
     val url = request.url
 
-    if (url.scheme == "http" || url.scheme == "https") {
+    if (this.pendingResponseMap.contains(url.toString())) {
       return false
     }
 
-    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAndroidAssetsUri(url)) {
+    if (url.scheme == "http" || url.scheme == "https") {
+      if (url.host == "__BUNDLE_IDENTIFIER__") {
+        var path = resolveURLPathForWebView(url.path ?: "/index.html")?.path
+          ?: url.path
+          ?: ""
+
+        if (path.startsWith("/assets/")) {
+          path = path.replace("/assets/", "")
+        }
+
+        if (path.startsWith("/")) {
+          path = path.substring(1, path.length)
+        } else if (path.startsWith("./")) {
+          path = path.substring(2, path.length)
+        }
+
+        var isAssetRequest = false
+        if (path.length > 0) {
+          try {
+            val stream = assetManager.open(path, 2)
+            isAssetRequest = true
+            stream.close()
+          } catch (_: Exception) {}
+        }
+
+        if (isAssetRequest) {
+          return false
+        }
+
+        if (request.isForMainFrame() && path.endsWith(".html")) {
+          val response = runtime.serviceWorker.fetch(request)
+          if (response != null) {
+            this.pendingResponseMap[url.toString()] = response
+
+            kotlin.concurrent.thread {
+              val bytes = response.data.readAllBytes()
+              response.data = java.io.ByteArrayInputStream(bytes)
+              activity.runOnUiThread {
+                view.loadUrl(url.toString(), request.requestHeaders)
+              }
+            }
+            return true
+          }
+        }
+      }
+
+      return false
+    }
+
+    if (isAndroidAssetsUri(url)) {
+      return false
+    }
+
+    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket") {
       return true
     }
 
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
-    val activity = this.activity.get()
-
-    if (activity == null) {
-      return false
-    }
 
     try {
       activity.startActivity(intent)
-    } catch (err: Error) {
+    } catch (err: Exception) {
       // @TODO(jwelre): handle this error gracefully
       console.error(err.toString())
       return false
@@ -341,6 +394,12 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
     // should be set in window loader
     assert(rootDirectory.length > 0)
+
+    if (this.pendingResponseMap.contains(url.toString())) {
+      val response = this.pendingResponseMap[url.toString()]
+      this.pendingResponseMap.remove(url.toString())
+      return response
+    }
 
     if (
       (url.scheme == "socket" && url.host == "__BUNDLE_IDENTIFIER__") ||
@@ -502,72 +561,81 @@ export default module
     val assetManager = activity.getAssetManager()
     var path = url.path
     if (path != null && path.endsWith(".html") == true) {
-      path = path.replace("/assets/", "")
-      val preload = activity.window.getJavaScriptPreloadSource()
+      val assetPath = path.replace("/assets/", "")
       val assetStream = try {
-        assetManager.open(path, 2)
-      } catch (err: Error) {
-        return null
+        assetManager.open(assetPath, 2)
+      } catch (_: Exception) {
+        null
       }
 
-      var html = String(assetStream.readAllBytes())
-      val script = """$preload"""
-      val stream = java.io.PipedOutputStream()
-      val response = android.webkit.WebResourceResponse(
-        "text/html",
-        "utf-8",
-        java.io.PipedInputStream(stream)
-      )
+      if (assetStream != null) {
+        var html = String(assetStream.readAllBytes())
+        val preload = activity.window.getJavaScriptPreloadSource()
+        val stream = java.io.PipedOutputStream()
+        val response = android.webkit.WebResourceResponse(
+          "text/html",
+          "utf-8",
+          java.io.PipedInputStream(stream)
+        )
 
-      val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
-      val headers = mutableMapOf(
-        "Access-Control-Allow-Origin" to "*",
-        "Access-Control-Allow-Headers" to "*",
-        "Access-Control-Allow-Methods" to "*"
-      )
+        val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+        val headers = mutableMapOf(
+          "Access-Control-Allow-Origin" to "*",
+          "Access-Control-Allow-Headers" to "*",
+          "Access-Control-Allow-Methods" to "*"
+        )
 
-      for (line in webviewHeaders) {
-        val parts = line.split(":", limit = 2)
-        if (parts.size == 2) {
-          val key = parts[0].trim()
-          val value = parts[1].trim()
-          headers[key] = value
+        for (line in webviewHeaders) {
+          val parts = line.split(":", limit = 2)
+          if (parts.size == 2) {
+            val key = parts[0].trim()
+            val value = parts[1].trim()
+            headers[key] = value
+          }
         }
+
+        response.responseHeaders = headers.toMap()
+
+        if (html.contains("<head>")) {
+          html = html.replace("<head>", """
+          <head>
+          $preload
+          """)
+        } else if (html.contains("<body>")) {
+          html = html.replace("<body>", """
+          $preload
+          <body>
+          """)
+        } else if (html.contains("<html>")){
+          html = html.replace("<html>", """
+          <html>
+          $preload
+          """)
+        } else {
+          html = preload + html
+        }
+
+        kotlin.concurrent.thread {
+          stream.write(html.toByteArray(), 0, html.length)
+          stream.close()
+        }
+
+        return response
       }
-
-      response.responseHeaders = headers.toMap()
-
-      if (html.contains("<head>")) {
-        html = html.replace("<head>", """
-        <head>
-        $script
-        """)
-      } else if (html.contains("<body>")) {
-        html = html.replace("<body>", """
-        $script
-        <body>
-        """)
-      } else if (html.contains("<html>")){
-        html = html.replace("<html>", """
-        <html>
-        $script
-        """)
-      } else {
-        html = script + html
-      }
-
-      kotlin.concurrent.thread {
-        stream.write(html.toByteArray(), 0, html.length)
-        stream.close()
-      }
-
-      return response
     }
 
-    val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
+    var assetLoaderResponse: android.webkit.WebResourceResponse? = null
+    if (path != null) {
+      try {
+        val assetManager = activity.getAssetManager()
+        val assetPath = path.replace("/assets/", "")
+        val stream = assetManager.open(assetPath, 2)
+        stream.close()
+        assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
+      } catch (_: Exception) {}
+    }
 
     if (assetLoaderResponse != null) {
-
       val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
       val headers = mutableMapOf(
         "Origin" to "${url.scheme}://${url.host}",
@@ -590,80 +658,96 @@ export default module
       return assetLoaderResponse
     }
 
-    if (url.scheme != "ipc") {
-      return null
-    }
-
-    when (url.host) {
-      "ping" -> {
-        val stream = java.io.ByteArrayInputStream("pong".toByteArray())
-        val response = android.webkit.WebResourceResponse(
-          "text/plain",
-          "utf-8",
-          stream
-        )
-
-        response.responseHeaders = mapOf(
-          "Access-Control-Allow-Origin" to "*"
-        )
-
-        return response
-      }
-
-      else -> {
-        if (request.method == "OPTIONS") {
-          val stream = java.io.PipedOutputStream()
+    if (url.scheme == "ipc") {
+      when (url.host) {
+        "ping" -> {
+          val stream = java.io.ByteArrayInputStream("pong".toByteArray())
           val response = android.webkit.WebResourceResponse(
             "text/plain",
+            "utf-8",
+            stream
+          )
+
+          response.responseHeaders = mapOf(
+            "Access-Control-Allow-Origin" to "*"
+          )
+
+          return response
+        }
+
+        else -> {
+          if (request.method == "OPTIONS") {
+            val stream = java.io.PipedOutputStream()
+            val response = android.webkit.WebResourceResponse(
+              "text/plain",
+              "utf-8",
+              java.io.PipedInputStream(stream)
+            )
+
+            val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+            val headers = mutableMapOf(
+              "Access-Control-Allow-Origin" to "*",
+              "Access-Control-Allow-Headers" to "*",
+              "Access-Control-Allow-Methods" to "*"
+            )
+
+            for (line in webviewHeaders) {
+              val parts = line.split(":", limit = 2)
+              if (parts.size == 2) {
+                val key = parts[0].trim()
+                val value = parts[1].trim()
+                headers[key] = value
+              }
+            }
+
+            response.responseHeaders = headers.toMap()
+
+            stream.close()
+            return response
+          }
+
+          val stream = java.io.PipedOutputStream()
+          val response = android.webkit.WebResourceResponse(
+            "application/octet-stream",
             "utf-8",
             java.io.PipedInputStream(stream)
           )
 
-          val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
-          val headers = mutableMapOf(
+          response.responseHeaders = mapOf(
             "Access-Control-Allow-Origin" to "*",
             "Access-Control-Allow-Headers" to "*",
             "Access-Control-Allow-Methods" to "*"
           )
 
-          for (line in webviewHeaders) {
-            val parts = line.split(":", limit = 2)
-            if (parts.size == 2) {
-              val key = parts[0].trim()
-              val value = parts[1].trim()
-              headers[key] = value
-            }
+          if (activity.onSchemeRequest(request, response, stream)) {
+            return response
           }
-
-          response.responseHeaders = headers.toMap()
-
-          stream.close()
-          return response
         }
-
-        val stream = java.io.PipedOutputStream()
-        val response = android.webkit.WebResourceResponse(
-          "application/octet-stream",
-          "utf-8",
-          java.io.PipedInputStream(stream)
-        )
-
-        response.responseHeaders = mapOf(
-          "Access-Control-Allow-Origin" to "*",
-          "Access-Control-Allow-Headers" to "*",
-          "Access-Control-Allow-Methods" to "*"
-        )
-
-        if (activity.onSchemeRequest(request, response, stream) == true) {
-          return response
-        }
-
-        response.setStatusCodeAndReasonPhrase(404, "Not found")
-        stream.close()
-
-        return response
       }
     }
+
+    val fetchResponse = runtime.serviceWorker.fetch(request)
+
+    if (fetchResponse != null) {
+      return fetchResponse
+    }
+
+    val stream = java.io.PipedOutputStream()
+    val response = android.webkit.WebResourceResponse(
+      "text/plain",
+      "utf-8",
+      java.io.PipedInputStream(stream)
+    )
+
+    response.responseHeaders = mapOf(
+      "Access-Control-Allow-Origin" to "*",
+      "Access-Control-Allow-Headers" to "*",
+      "Access-Control-Allow-Methods" to "*"
+    )
+    response.setStatusCodeAndReasonPhrase(404, "Not found")
+    stream.close()
+
+    return response
   }
 
   override fun onPageStarted (
@@ -700,8 +784,10 @@ abstract class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     source: String,
     callback: android.webkit.ValueCallback<String?>? = null
   ) {
-    runOnUiThread {
-      webview?.evaluateJavascript(source, callback)
+    kotlin.concurrent.thread {
+      runOnUiThread {
+        webview?.evaluateJavascript(source, callback)
+      }
     }
   }
 
@@ -732,14 +818,14 @@ abstract class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    console.log("WebViewActivity is loading: $url")
+    console.debug("WebViewActivity is loading: $url")
   }
 
   open fun onPageFinished (
     view: android.webkit.WebView,
     url: String
   ) {
-    console.log("WebViewActivity finished loading: $url")
+    console.debug("WebViewActivity finished loading: $url")
   }
 
   open fun onSchemeRequest (
