@@ -160,7 +160,6 @@ namespace SSC {
       "  detail = { data: detail };                                          \n"
       "}                                                                     \n"
       "                                                                      \n"
-      "                                                                      \n"
       "const event = new CustomEvent(eventName, { detail });                 \n"
       "globalThis.dispatchEvent(event);                                      \n"
     );
