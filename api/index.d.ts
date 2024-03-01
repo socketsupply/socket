@@ -5487,6 +5487,7 @@ declare module "socket:application" {
      * @param {number} opts.index - the index of the window
      * @param {string} opts.path - the path to the HTML file to load into the window
      * @param {string=} opts.title - the title of the window
+     * @param {string=} opts.aspectRatio - a string (split on :) provides two float values which set the window's aspect ratio.
      * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
      * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
      * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -5505,6 +5506,7 @@ declare module "socket:application" {
         index: number;
         path: string;
         title?: string | undefined;
+        aspectRatio?: string | undefined;
         width?: (number | string) | undefined;
         height?: (number | string) | undefined;
         minWidth?: (number | string) | undefined;

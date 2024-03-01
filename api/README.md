@@ -34,6 +34,7 @@ Creates a new window and returns an instance of ApplicationWindow.
 | opts.index | number |  | false | the index of the window |
 | opts.path | string |  | false | the path to the HTML file to load into the window |
 | opts.title | string |  | true | the title of the window |
+| opts.aspectRatio | string |  | true | a string (split on :) provides two float values which set the window's aspect ratio. |
 | opts.width | number \| string |  | true | the width of the window. If undefined, the window will have the main window width. |
 | opts.height | number \| string |  | true | the height of the window. If undefined, the window will have the main window height. |
 | opts.minWidth | number \| string | 0 | true | the minimum width of the window |
