@@ -776,7 +776,7 @@ namespace SSC {
                   Settings->put_IsStatusBarEnabled(FALSE);
 
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
-                  if (isDebugEnabled()) {
+                  if (opts.debug || isDebugEnabled()) {
                     Settings->put_AreDevToolsEnabled(TRUE);
                   } else {
                     Settings->put_AreDevToolsEnabled(FALSE);
@@ -1299,11 +1299,14 @@ namespace SSC {
                     &tokenNewWindow
                   );
 
+                  // TODO(@jwerle): inject this into webview
                   WindowOptions options = opts;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
                   options.appData["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
                   options.clientId = this->bridge->id;
-                  auto preload = createPreload(options);
+                  auto preload = createPreload(options, {
+                    .userScript = opts.userScript
+                  });
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires
                     // Consider using w->preloadJavascript, but apps work without this
