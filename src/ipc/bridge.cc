@@ -3277,9 +3277,28 @@ static void registerSchemeHandler (Router *router) {
           }
 
           [url startAccessingSecurityScopedResource];
-          const auto data = [NSData dataWithContentsOfURL: url];
+          auto data = [NSData dataWithContentsOfURL: url];
           headers[@"content-length"] = [@(data.length) stringValue];
           [url stopAccessingSecurityScopedResource];
+
+
+          if (mount.path.ends_with("html")) {
+            const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
+            const auto script = self.router->bridge->preload;
+            auto html = String(string.UTF8String);
+
+            if (html.find("<head>") != String::npos) {
+              html = replace(html, "<head>", String("<head>" + script));
+            } else if (html.find("<body>") != String::npos) {
+              html = replace(html, "<body>", String("<body>" + script));
+            } else if (html.find("<html>") != String::npos) {
+              html = replace(html, "<html>", String("<html>" + script));
+            } else {
+              html = script + html;
+            }
+
+            data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+          }
 
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: request.URL
@@ -3529,8 +3548,26 @@ static void registerSchemeHandler (Router *router) {
 
     if (absoluteURLPathExtension.ends_with("html")) {
       const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
-      auto html = String(string.UTF8String);
       const auto script = self.router->bridge->preload;
+      /*
+      const auto importmapFilename = userConfig["webview_importmap"];
+
+      const auto importmapURL = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+        stringByAppendingPathComponent: [NSString
+      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+        stringWithFormat: @"/ui/%s", "importmap.json"
+      #else
+        stringWithFormat: @"/%s", "importmap.json"
+      #endif
+        ]
+      ]];
+
+      const auto importmapURL = userConfig.contains("webview_importmap")
+
+        url = [NSURL fileURLWithPath: url.path];
+        */
+
+      auto html = String(string.UTF8String);
 
       if (html.find("<head>") != String::npos) {
         html = replace(html, "<head>", String("<head>" + script));
