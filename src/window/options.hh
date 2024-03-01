@@ -30,6 +30,7 @@ namespace SSC {
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
     uint64_t clientId = 0;
+    String userScript = "";
   };
 }
 #endif
