@@ -19,6 +19,42 @@ extern bool SSC::isDebugEnabled ();
 using namespace SSC;
 using namespace SSC::IPC;
 
+static const Vector<String> allowedNodeCoreModules = {
+  "async_hooks",
+  "assert",
+  "buffer",
+  "console",
+  "constants",
+  "child_process",
+  "crypto",
+  "dgram",
+  "dns",
+  "dns/promises",
+  "events",
+  "fs",
+  "fs/promises",
+  "http",
+  "https",
+  "net",
+  "os",
+  "path",
+  "perf_hooks",
+  "process",
+  "querystring",
+  "stream",
+  "stream/web",
+  "string_decoder",
+  "sys",
+  "test",
+  "timers",
+  "timers/promsies",
+  "tty",
+  "util",
+  "url",
+  "vm",
+  "worker_threads"
+};
+
 #if defined(__APPLE__)
 static std::map<String, Router*> notificationRouterMap;
 static Mutex notificationRouterMapMutex;
@@ -3284,7 +3320,39 @@ static void registerSchemeHandler (Router *router) {
 
           if (mount.path.ends_with("html")) {
             const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
-            const auto script = self.router->bridge->preload;
+            auto script = self.router->bridge->preload;
+
+            if (userConfig["webview_importmap"].size() > 0) {
+              const auto filename = Path(userConfig["webview_importmap"]).filename();
+              const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+                stringByAppendingPathComponent: [NSString
+              #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+                stringWithFormat: @"/ui/%s", filename.c_str()
+              #else
+                stringWithFormat: @"/%s", filename.c_str()
+              #endif
+                ]
+              ]];
+
+              const auto data = [NSData
+                dataWithContentsOfURL: [NSURL fileURLWithPath: url.path]
+              ];
+
+              if (data && data.length > 0) {
+                const auto string = [NSString.alloc
+                  initWithData: data
+                      encoding: NSUTF8StringEncoding
+                ];
+
+                script = (
+                  String("<script type=\"importmap\">\n") +
+                  String(string.UTF8String) +
+                  String("\n</script>\n") +
+                  script
+                );
+              }
+            }
+
             auto html = String(string.UTF8String);
 
             if (html.find("<head>") != String::npos) {
@@ -3467,9 +3535,6 @@ static void registerSchemeHandler (Router *router) {
       components.host = request.URL.host;
     } else {
       isModule = true;
-      if (ext.size() == 0 && !path.ends_with(".js")) {
-        path += ".js";
-      }
 
       auto prefix = String(
         path.starts_with(bundleIdentifier)
@@ -3478,6 +3543,15 @@ static void registerSchemeHandler (Router *router) {
       );
 
       path = replace(path, bundleIdentifier + "/", "");
+
+      if (scheme == "node") {
+        const auto specifier = replace(path, ".js", "");
+        // TODO
+      }
+
+      if (ext.size() == 0 && !path.ends_with(".js")) {
+        path += ".js";
+      }
 
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
       components.path = [[[NSBundle mainBundle] resourcePath]
@@ -3548,24 +3622,38 @@ static void registerSchemeHandler (Router *router) {
 
     if (absoluteURLPathExtension.ends_with("html")) {
       const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
-      const auto script = self.router->bridge->preload;
-      /*
-      const auto importmapFilename = userConfig["webview_importmap"];
+      auto script = self.router->bridge->preload;
 
-      const auto importmapURL = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
-        stringByAppendingPathComponent: [NSString
-      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-        stringWithFormat: @"/ui/%s", "importmap.json"
-      #else
-        stringWithFormat: @"/%s", "importmap.json"
-      #endif
-        ]
-      ]];
+      if (userConfig["webview_importmap"].size() > 0) {
+        const auto filename = Path(userConfig["webview_importmap"]).filename();
+        const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+          stringByAppendingPathComponent: [NSString
+        #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+          stringWithFormat: @"/ui/%s", filename.c_str()
+        #else
+          stringWithFormat: @"/%s", filename.c_str()
+        #endif
+          ]
+        ]];
 
-      const auto importmapURL = userConfig.contains("webview_importmap")
+        const auto data = [NSData
+          dataWithContentsOfURL: [NSURL fileURLWithPath: url.path]
+        ];
 
-        url = [NSURL fileURLWithPath: url.path];
-        */
+        if (data && data.length > 0) {
+          const auto string = [NSString.alloc
+            initWithData: data
+                encoding: NSUTF8StringEncoding
+          ];
+
+          script = (
+            String("<script type=\"importmap\">\n") +
+            String(string.UTF8String) +
+            String("\n</script>\n") +
+            script
+          );
+        }
+      }
 
       auto html = String(string.UTF8String);
 
