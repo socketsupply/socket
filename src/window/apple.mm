@@ -270,16 +270,19 @@ int lastY = 0;
   const auto x = std::to_string(location.x);
   const auto y = std::to_string(location.y);
 
+  self.initialWindowPos = location;
+
   lastX = (int) location.x;
   lastY = (int) location.y;
 
   SSC::String js(
-    "(() => {"
-    "  const el = document.elementFromPoint(" + x + "," + y + ");"
-    "  if (!el) return;"
-    "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
-    "  return found && found.dataset.src"
-    "})()");
+    "(() => {                                                                              "
+    "  const el = document.elementFromPoint(" + x + "," + y + ");                          "
+    "  if (!el) return;                                                                    "
+    "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
+    "  return isDraggable ? 'draggable' : '';                                              "
+    "})()                                                                                  "
+  );
 
   [self
     evaluateJavaScript: @(js.c_str())
@@ -296,27 +299,42 @@ int lastY = 0;
       return;
     }
 
-    const auto string = SSC::String([result UTF8String]);
-    const auto files = SSC::split(string, ';');
+    const auto match = SSC::String([result UTF8String]);
 
-    if (files.size() == 0) {
+    if (match.compare("draggable") != 0) {
       [super mouseDown: event];
       return;
     }
 
-    draggablePayload = files;
+    self.shouldDrag = true;
     [self updateEvent: event];
   }];
 }
 
 - (void) mouseDragged: (NSEvent*) event {
-  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
+  NSPoint currentLocation = [self convertPoint:event.locationInWindow fromView:nil];
+
+  if (self.shouldDrag) {
+    CGFloat deltaX = currentLocation.x - self.initialWindowPos.x;
+    CGFloat deltaY = currentLocation.y - self.initialWindowPos.y;
+
+    NSRect frame = self.window.frame;
+    frame.origin.x += deltaX;
+    frame.origin.y -= deltaY;
+
+    [self.window setFrame:frame display:YES];
+  }
+
   [super mouseDragged:event];
 
-  if (!NSPointInRect(location, self.frame)) {
+  if (!NSPointInRect(currentLocation, self.frame)) {
     auto payload = SSC::getEmitToRenderProcessJavaScript("dragexit", "{}");
     [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
   }
+
+  /*
+
+  // TODO(@heapwolf): refactor the legacy native multi-file drag-drop stuff
 
   if (draggablePayload.size() == 0) {
     return;
@@ -397,6 +415,7 @@ int lastY = 0;
 
   session.draggingFormation = NSDraggingFormationPile;
   draggablePayload.clear();
+  */
 }
 
 -       (NSDragOperation) draggingSession: (NSDraggingSession*) session
