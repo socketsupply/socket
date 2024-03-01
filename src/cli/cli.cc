@@ -499,7 +499,7 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
 }
 #endif
 
-void handleBuildPhaseForUserScript (
+void handleBuildPhaseForUser (
   const Map settings,
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
@@ -555,6 +555,21 @@ void handleBuildPhaseForUserScript (
     }
 
     log("ran user build command");
+  }
+
+  if (settings.contains("webview_importmap")) {
+    const auto src = cwd / settings.at("webview_importmap");
+    const auto dst = pathResourcesRelativeToUserBuild / "importmap.json";
+
+    if (!fs::exists(fs::status(src))) {
+      log("WARNING: '[webview] importmap' entry '" + src.string() +  "' does not exist");
+    } else {
+      fs::copy(
+      src,
+      dst,
+      fs::copy_options::update_existing | fs::copy_options::recursive
+    );
+    }
   }
 
   // runs async, does not block
@@ -5026,7 +5041,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    handleBuildPhaseForUserScript(
+    handleBuildPhaseForUser(
       settings,
       targetPlatform,
       pathResourcesRelativeToUserBuild,
@@ -7059,7 +7074,7 @@ int main (const int argc, const char* argv[]) {
           INI::parse(readFile(targetPath / "socket.ini"))
         );
 
-        handleBuildPhaseForUserScript(
+        handleBuildPhaseForUser(
           settingsForSourcesWatcher,
           targetPlatform,
           pathResourcesRelativeToUserBuild,
