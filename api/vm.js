@@ -369,7 +369,7 @@ export function applyContextDifferences (
 
                               return result.value
                             } else {
-                              return trsult
+                              return result
                             }
                           })
                           .then(apply)
