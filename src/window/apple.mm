@@ -799,7 +799,7 @@ namespace SSC {
       debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
     }
 
-    if (SSC::isDebugEnabled()) {
+    if (opts.debug || SSC::isDebugEnabled()) {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
       if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
         [webview setInspectable: YES];
@@ -934,10 +934,10 @@ namespace SSC {
 
     opts.clientId = this->bridge->id;
 
-    // Add preload script, normalizing the interface to be cross-platform.
     this->bridge->preload = createPreload(opts, {
       .module = true,
-      .wrap = true
+      .wrap = true,
+      .userScript = opts.userScript
     });
 
     webview = [SSCBridgedWebView.alloc
