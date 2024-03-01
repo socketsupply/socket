@@ -231,17 +231,29 @@ namespace SSC {
         "import 'socket:internal/init'                                       \n"
       );
 
+      if (preloadOptions.userScript.size() > 0) {
+        preload += preloadOptions.userScript;
+      }
+
       if (preloadOptions.wrap) {
         preload += "</script>\n";
       }
     } else {
       preload += (
         "if (document.readyState === 'complete') {                           \n"
-        "  import('socket:internal/init').catch(console.error);              \n"
+        "  import('socket:internal/init')                                    \n"
+        "    .then(async () => {                                             \n"
+        "      " + preloadOptions.userScript + "                             \n"
+        "    })                                                              \n"
+        "    .catch(console.error);                                          \n"
         "} else {                                                            \n"
         "  document.addEventListener('readystatechange', () => {             \n"
         "    if (/interactive|complete/.test(document.readyState)) {         \n"
-        "      import('socket:internal/init').catch(console.error);          \n"
+        "      import('socket:internal/init')                                \n"
+        "        .then(async () => {                                         \n"
+        "          " + preloadOptions.userScript + "                         \n"
+        "        })                                                          \n"
+        "        .catch(console.error);                                      \n"
         "    }                                                               \n"
         "  }, { once: true });                                               \n"
         "}                                                                   \n"

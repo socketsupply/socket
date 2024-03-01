@@ -7,6 +7,7 @@ namespace SSC {
   struct PreloadOptions {
     bool module = false;
     bool wrap = false;
+    String userScript = "";
   };
 
   String createPreload (
