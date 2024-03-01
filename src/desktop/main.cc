@@ -1005,6 +1005,7 @@ MAIN {
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
+      options.userScript = message.get("userScript");
       options.index = targetWindowIndex;
 
       targetWindow = windowManager.createWindow(options);
