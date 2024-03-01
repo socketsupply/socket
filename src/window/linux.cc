@@ -802,7 +802,11 @@ namespace SSC {
     );
 
     opts.clientId = this->bridge->id;
-    String preload = createPreload(opts);
+    this->bridge->preload = createPreload(opts, {
+      .module = true,
+      .wrap = true,
+      .userScript = opts.userScript
+    });
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
