@@ -48,6 +48,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
  * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
+ * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -71,7 +72,8 @@ export async function createWindow (opts) {
     maxHeight: opts.maxHeight ?? '100%',
     headless: opts.headless === true,
     // @ts-ignore
-    debug: opts.debug === true // internal
+    debug: opts.debug === true, // internal
+    userScript: opts.userScript ?? ''
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
