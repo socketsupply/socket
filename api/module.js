@@ -18,6 +18,8 @@ import async_hooks from './async_hooks.js'
 import application from './application.js'
 import assert from './assert.js'
 import buffer from './buffer.js'
+// eslint-disable-next-line
+import child_process from './child_process.js'
 import console from './console.js'
 import constants from './constants.js'
 import crypto from './crypto.js'
@@ -53,6 +55,14 @@ import worker_threads from './worker_threads.js'
  */
 
 const cache = new Map()
+
+function maybeParseJSON (string) {
+  try {
+    return JSON.parse(string)
+  } catch {
+    return null
+  }
+}
 
 class ModuleRequest {
   id = null
@@ -237,7 +247,8 @@ export const builtins = {
   buffer,
   console,
   constants,
-  child_process: {},
+  // eslint-disable-next-line
+  child_process,
   crypto,
   dgram,
   dns,
@@ -247,8 +258,8 @@ export const builtins = {
   fs,
   'fs/promises': fs.promises,
   http,
-  gc,
   https,
+  gc,
   ipc,
   language,
   mime,
@@ -811,6 +822,30 @@ export class Module extends EventTarget {
     function require (filename) {
       if (filename.startsWith('/') || filename.startsWith('\\')) {
         filename = filename.replace(process.cwd(), '')
+      }
+
+      const imports = globalThis.document
+        ? maybeParseJSON(globalThis.document.querySelector('script[type=importmap')?.textContent)
+        : null
+
+      if (
+        (imports && typeof imports === 'object') &&
+        (!filename.startsWith('.') && filename.startsWith('/'))
+      ) {
+        for (const key in imports) {
+          const value = imports[key]
+          if (!value || typeof value !== 'string') {
+            continue
+          }
+
+          if (filename.startsWith(key) && key.endsWith('/') && filename.includes('/')) {
+            filename = filename.replace(filename, value)
+            break
+          } else if (filename === key) {
+            filename = value
+            break
+          }
+        }
       }
 
       const resolvers = Array.from(Module.resolvers)
