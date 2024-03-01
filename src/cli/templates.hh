@@ -193,16 +193,18 @@ constexpr auto gHelloWorld = R"HTML(
 <!doctype html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src https: file: ipc: socket: ws://localhost:*;
-        script-src https: socket: http://localhost:* 'unsafe-eval';
-        worker-src blob: socket: 'unsafe-eval' 'unsafe-inline';
-        img-src https: data: file: http://localhost:*;
-        child-src 'none';
-        object-src 'none';
+        connect-src socket: ipc: https: http: wss: ws: ws://localhost:*;
+         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
+         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
+          frame-src socket: https: http: blob: http://localhost:*;
+            img-src socket: https: http: blob: http://localhost:*;
+          child-src 'none';
+         object-src 'none';
       "
     >
     <style type="text/css">
