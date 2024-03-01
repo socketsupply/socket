@@ -703,6 +703,24 @@ namespace SSC {
       [window setTitlebarAppearsTransparent: true];
     }
 
+    if (opts.aspectRatio.size() > 2) {
+      auto parts = split(opts.aspectRatio, ':');
+      if (parts.size() != 2) return;
+      CGFloat aspectRatio;
+
+      @try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } @catch (NSException *error) {
+        debug("Invalid aspect ratio: %@", error);
+      }
+
+      if (!std::isnan(aspectRatio)) {
+        NSRect frame = [window frame];
+        frame.size.height = frame.size.width / aspectRatio;
+        [window setContentAspectRatio: frame.size];
+      }
+    }
+
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
 

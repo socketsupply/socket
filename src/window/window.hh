@@ -275,6 +275,7 @@ namespace SSC {
   };
 
   struct WindowManagerOptions {
+    String aspectRatio = "";
     String defaultHeight = "0";
     String defaultWidth = "0";
     String defaultMinWidth = "0";
@@ -456,6 +457,7 @@ namespace SSC {
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
+        this->options.aspectRatio = configuration.aspectRatio;
         this->options.headless = configuration.headless;
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
@@ -618,6 +620,7 @@ namespace SSC {
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
+          .aspectRatio = opts.aspectRatio,
           .width = width,
           .height = height,
           .minWidth = minWidth,
