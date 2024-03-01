@@ -526,8 +526,8 @@ namespace SSC {
           "  try { el = document.elementFromPoint(" + sx + "," + sy + "); }                      "
           "  catch (err) { console.error(err.stack || err.message || err); }                     "
           "  if (!el) return;                                                                    "
-          "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
-          "  return isDraggable ? 'draggable' : '';                                              "
+          "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
+          "  return isDraggable ? 'moavable' : '';                                               "
           "})()                                                                                  "
         );
 
@@ -557,7 +557,7 @@ namespace SSC {
 
             w->dragLastX = 0;
             w->dragLastY = 0;
-            w->shouldDrag = std::string(match).compare("draggable") != 0;
+            w->shouldDrag = std::string(match).compare("movable") != 0;
 
             exception = jsc_context_get_exception(jsc_value_get_context(value));
             g_free(match);
@@ -582,7 +582,7 @@ namespace SSC {
       this
     );
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-data-get",
       G_CALLBACK(+[](
@@ -621,7 +621,7 @@ namespace SSC {
         gtk_selection_data_set_uris(data, uris);
       }),
       this
-    );
+    ); */
 
     g_signal_connect(
       G_OBJECT(webview),
@@ -683,8 +683,8 @@ namespace SSC {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
 
-        w->isDragInvokedInsideWindow = false;
-        w->draggablePayload.clear();
+        // w->isDragInvokedInsideWindow = false;
+        // w->draggablePayload.clear();
         w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
       }),
       this
@@ -715,7 +715,7 @@ namespace SSC {
       this
     );
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-data-received",
       G_CALLBACK(+[](
@@ -750,9 +750,9 @@ namespace SSC {
         }
       }),
       this
-    );
+    ); */
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-drop",
       G_CALLBACK(+[](
@@ -792,7 +792,7 @@ namespace SSC {
         return TRUE;
       }),
       this
-    );
+    ); */
 
     g_signal_connect(
       G_OBJECT(window),
