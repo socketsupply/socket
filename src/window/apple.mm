@@ -279,8 +279,8 @@ int lastY = 0;
     "(() => {                                                                              "
     "  const el = document.elementFromPoint(" + x + "," + y + ");                          "
     "  if (!el) return;                                                                    "
-    "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
-    "  return isDraggable ? 'draggable' : '';                                              "
+    "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
+    "  return isDraggable ? 'movable' : '';                                                "
     "})()                                                                                  "
   );
 
@@ -301,7 +301,7 @@ int lastY = 0;
 
     const auto match = SSC::String([result UTF8String]);
 
-    if (match.compare("draggable") != 0) {
+    if (match.compare("movable") != 0) {
       [super mouseDown: event];
       return;
     }
