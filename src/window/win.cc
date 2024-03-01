@@ -1994,11 +1994,76 @@ namespace SSC {
         break;
       }
 
+      case WM_LBUTTONDOWN: {
+        w->shouldDrag = false;
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
+        String sx = std::to_string(x);
+        String sy = std::to_string(y);
+
+        String js(
+          "(() => {                                                                              "
+          "  const el = document.elementFromPoint(" + sx + "," + sy + ");                        "
+          "  if (!el) return;                                                                    "
+          "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
+          "  return isDraggable ? 'draggable' : '';                                              "
+          "})()                                                                                  "
+        );
+
+        auto wjs = SSC::convertStringToWString(js);
+
+        w->webview->ExecuteScript(wjs.c_str(), Callback<IWebView2ExecuteScriptCompletedHandler>(
+          [&w, x, y](HRESULT result, WLPCWSTR wmatch) -> HRESULT {
+            if (SUCCEEDED(result)) {
+              String match = SSC::convertWStringToString(wmatch).c_str();
+              String resultValue(resultString);
+              w->shouldDrag = (match == "draggable");
+
+              if (w->shouldDrag) {
+                w->initialCursorPos.x = x;
+                w->initialCursorPos.y = y;
+                GetWindowRect(hwnd, &w->initialWindowPos);
+              }
+            }
+
+            return S_OK;
+          }
+        ).Get());
+
+        break;
+      }
+
+      case WM_MOUSEMOVE: {
+        if (w->shouldDrag) {
+          POINT currentCursorPos;
+          currentCursorPos.x = GET_X_LPARAM(lParam);
+          currentCursorPos.y = GET_Y_LPARAM(lParam);
+
+          int deltaX = currentCursorPos.x - initialCursorPos.x;
+          int deltaY = currentCursorPos.y - initialCursorPos.y;
+
+          RECT newWindowPos;
+          newWindowPos.left = initialWindowPos.left + deltaX;
+          newWindowPos.top = initialWindowPos.top + deltaY;
+          newWindowPos.right = initialWindowPos.right + deltaX;
+          newWindowPos.bottom = initialWindowPos.bottom + deltaY;
+
+          MoveWindow(hwnd, newWindowPos.left, newWindowPos.top,
+          newWindowPos.right - newWindowPos.left,
+          newWindowPos.bottom - newWindowPos.top, TRUE);
+        }
+      }
+
+      case WM_LBUTTONUP: {
+        w->shouldDrag = false;
+        break;
+      }
+
       case WM_SOCKET_TRAY: {
         static auto userConfig = SSC::getUserConfig();
         auto isAgent = userConfig.count("tray_icon") != 0;
 
-	if (lParam == WM_LBUTTONDOWN) {
+        if (lParam == WM_LBUTTONDOWN) {
           SetForegroundWindow(hWnd);
           if (isAgent) {
             POINT pt;
@@ -2013,18 +2078,17 @@ namespace SSC {
             for (auto window : app->windowManager->windows) {
               if (window != nullptr) {
                 window->bridge->router.emit("tray", "true");
-	      }
+              }
             }
           }
-	}
-
+        }
         // fall through to WM_COMMAND!!
       }
 
       case WM_COMMAND: {
         if (w == nullptr) break;
 
-	if (w->menuMap.contains(wParam)) {
+        if (w->menuMap.contains(wParam)) {
           String meta(w->menuMap[wParam]);
           auto parts = split(meta, '\t');
 
@@ -2044,15 +2108,16 @@ namespace SSC {
 
             w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
           }
-	} else if (w->menuTrayMap.contains(wParam)) {
+        } else if (w->menuTrayMap.contains(wParam)) {
           String meta(w->menuTrayMap[wParam]);
           auto parts = split(meta, ':');
-	  if (parts.size() > 0) {
+
+          if (parts.size() > 0) {
             auto title = trim(parts[0]);
             auto tag = parts.size() > 1 ? trim(parts[1]) : "";
             w->eval(getResolveMenuSelectionJavaScript("0", title, tag, "tray"));
-	  }
-	}
+          }
+        }
 
         break;
       }
