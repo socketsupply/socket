@@ -1003,6 +1003,7 @@ MAIN {
       options.headless = message.get("headless") == "true" ? true : false;
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
+      options.aspectRatio = message.get("aspectRatio");
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
       options.userScript = message.get("userScript");

@@ -64,6 +64,7 @@ export async function createWindow (opts) {
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
     frameless: opts.frameless ?? false,
+    aspectRatio: opts.aspectRatio ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
     minWidth: opts.minWidth ?? 0,

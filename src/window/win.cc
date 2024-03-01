@@ -665,6 +665,23 @@ namespace SSC {
     this->bridge = new IPC::Bridge(app.core);
     this->hotkey.init(this->bridge);
 
+    if (this->opts.aspectRatio.size() > 0) {
+      String parts = split(this->opts.aspectRatio, ':');
+      double aspectRatio = 0;
+
+      try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } catch (...) {
+        debug("invalid aspect ratio");
+      }
+
+      if (aspectRatio > 0) {
+        RECT rect;
+        GetClientRect(window, &rect);
+        SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), NULL);
+      }
+    }
+
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };

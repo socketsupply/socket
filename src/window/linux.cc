@@ -28,6 +28,21 @@ namespace SSC {
 
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
+    if (this->opts.aspectRatio.size() > 0) {
+      String parts = split(this->opts.aspectRatio, ':');
+      double aspectRatio = 0;
+
+      try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } catch (...) {
+        debug("invalid aspect ratio");
+      }
+
+      if (aspectRatio != 0) {
+        gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
+      }
+    }
+
     this->index = this->opts.index;
     this->bridge = new IPC::Bridge(app.core);
 

@@ -20,6 +20,7 @@ namespace SSC {
     int port = 0;
     bool isTest = false;
     bool headless = false;
+    String aspectRatio = "";
     String cwd = "";
     String title = "";
     String url = "data:text/html,<html>";
