@@ -5498,6 +5498,7 @@ declare module "socket:application" {
      * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
      * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
      * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
+     * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
      * @return {Promise<ApplicationWindow>}
      */
     export function createWindow(opts: {
@@ -5515,6 +5516,7 @@ declare module "socket:application" {
         utility?: boolean | undefined;
         canExit?: boolean | undefined;
         headless?: boolean | undefined;
+        userScript?: string | undefined;
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
