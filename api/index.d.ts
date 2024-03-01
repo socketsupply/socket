@@ -1006,6 +1006,7 @@ declare module "socket:url/index" {
     export function parse(input: any, options?: any): any;
     export function resolve(from: any, to: any): any;
     export function format(input: any): any;
+    export const protocols: Set<string>;
     export default URL;
     export const URL: any;
     import { URLPattern } from "socket:url/urlpattern/urlpattern";
@@ -3748,6 +3749,12 @@ declare module "socket:ipc" {
         let enabled: any;
         function log(...args: any[]): any;
     }
+    /**
+     * Find transfers for an in worker global `postMessage`
+     * that is proxied to the main thread.
+     * @ignore
+     */
+    export function findMessageTransfers(transfers: any, object: any): any;
     /**
      * @ignore
      */
@@ -11648,7 +11655,7 @@ declare module "socket:service-worker/state" {
 
 declare module "socket:service-worker/instance" {
     export function createServiceWorker(currentState?: any, options?: any): any;
-    export const SHARED_WORKER_URL: URL;
+    export const SHARED_WORKER_URL: string;
     export const ServiceWorker: {
         new (): ServiceWorker;
         prototype: ServiceWorker;
@@ -12017,28 +12024,636 @@ declare module "socket:service-worker/clients" {
     export default _default;
 }
 
-declare module "socket:service-worker/events" {
-    export class ExtendableEvent extends Event {
-        waitUntil(promise: any): void;
-        waitsFor(): Promise<any>;
-        get awaiting(): Promise<any>;
-        get pendingPromises(): number;
-        get isActive(): boolean;
+declare module "socket:service-worker/database" {
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   version?: string | undefined
+     * }} DatabaseOptions
+     */
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined,
+     *   count?: number | undefined
+     * }} DatabaseGetOptions
+     */
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabasePutOptions
+     */
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseDeleteOptions
+     */
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   offset?: number | undefined,
+     *   backlog?: number | undefined
+     * }} DatabaseRequestQueueWaitOptions
+     */
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseEntriesOptions
+     */
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
+     */
+    /**
+     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
+     * @param {EventTarget} target
+     * @param {string} eventType
+     * @return {Promise<Event>}
+     */
+    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
+    /**
+     * Creates an opens a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     * @return {Promise<Database>}
+     */
+    export function open(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<Database>;
+    /**
+     * Complete deletes a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     */
+    export function drop(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<void>;
+    /**
+     * A mapping of named `Database` instances that are currently opened
+     * @type {Map<string, WeakRef<Database>>}
+     */
+    export const opened: Map<string, WeakRef<Database>>;
+    /**
+     * A container for conflict resolution for a `DatabaseRequestQueue` instance
+     * `IDBRequest` instance.
+     */
+    export class DatabaseRequestQueueRequestConflict {
+        /**
+         * `DatabaseRequestQueueRequestConflict` class constructor
+         * @param {function(any): void)} resolve
+         * @param {function(Error): void)} reject
+         * @param {function(): void)} cleanup
+         */
+        constructor(resolve: any, reject: any, cleanup: any);
+        /**
+         * Called when a conflict is resolved.
+         * @param {any} argument
+         */
+        resolve(argument?: any): void;
+        /**
+         * Called when a conflict is rejected
+         * @param {Error} error
+         */
+        reject(error: Error): void;
         #private;
     }
+    /**
+     * An event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueEvent extends Event {
+        /**
+         * `DatabaseRequestQueueEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction);
+        /**
+         * A reference to the underlying request for this event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * An event dispatched on a `Database`
+     */
+    export class DatabaseEvent extends Event {
+        /**
+         * `DatabaseEvent` class constructor.
+         * @param {string} type
+         * @param {Database} database
+         */
+        constructor(type: string, database: Database);
+        /**
+         * A reference to the underlying database for this event.
+         * @type {Database}
+         */
+        get database(): Database;
+        #private;
+    }
+    /**
+     * An error event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
+        /**
+         * `DatabaseRequestQueueErrorEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         * @param {{ error: Error, cause?: Error }} options
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
+            error: Error;
+            cause?: Error;
+        });
+        /**
+         * A reference to the underlying request for this error event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * A container for various `IDBRequest` and `IDBTransaction` instances
+     * occurring during the life cycles of a `Database` instance.
+     */
+    export class DatabaseRequestQueue extends EventTarget {
+        /**
+         * Computed queue length
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
+         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
+         * upon an error' event.
+         * @param {IDBRequest|IDBTransaction}
+         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
+         * @return {Promise}
+         */
+        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
+        /**
+         * Waits for all pending requests to complete. This function will throw when
+         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
+         * Callers of this function can optionally specify a maximum backlog to wait
+         * for instead of waiting for all requests to finish.
+         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
+         */
+        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
+        #private;
+    }
+    /**
+     * An interface for reading from named databases backed by IndexedDB.
+     */
+    export class Database extends EventTarget {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         * @param {?DatabaseOptions | undefiend} [options]
+         */
+        constructor(name: string, options?: (DatabaseOptions | undefiend) | null);
+        /**
+         * `true` if the `Database` is currently opening, otherwise `false`.
+         * A `Database` instance should not attempt to be opened if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
+         * `true` if the `Database` instance was successfully opened such that the
+         * internal `IDBDatabase` storage instance was created and can be referenced
+         * on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * `true` if the `Database` instance was closed or has not been opened such
+         * that the internal `IDBDatabase` storage instance was not created or cannot
+         * be referenced on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if the `Database` is currently closing, otherwise `false`.
+         * A `Database` instance should not attempt to be closed if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
+         * The name of the `IDBDatabase` database. This value cannot be `null`.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The version of the `IDBDatabase` database. This value may be `null`.
+         * @type {?string}
+         */
+        get version(): string;
+        /**
+         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
+         * This value may ba `null`.
+         * @type {?IDBDatabase}
+         */
+        get storage(): IDBDatabase;
+        /**
+         * Opens the `IDBDatabase` database optionally at a specific "version" if
+         * one was given upon construction of the `Database` instance. This function
+         * is not idempotent and will throw if the underlying `IDBDatabase` instance
+         * was created successfully or is in the process of opening.
+         * @return {Promise}
+         */
+        open(): Promise<any>;
+        /**
+         * Closes the `IDBDatabase` database storage, if opened. This function is not
+         * idempotent and will throw if the underlying `IDBDatabase` instance is
+         * already closed (not opened) or currently closing.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Deletes entire `Database` instance and closes after successfully
+         * delete storage.
+         */
+        drop(): Promise<void>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseGetOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        get(key: string, options?: (DatabaseGetOptions | undefiend) | null): Promise<object | object[] | null>;
+        /**
+         * Put a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        put(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Inserts a new `value` at `key`. This function throws if a value at `key`
+         * already exists.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        insert(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Update a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        update(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Delete a value at `key`.
+         * @param {string} key
+         * @param {?DatabaseDeleteOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        delete(key: string, options?: (DatabaseDeleteOptions | undefiend) | null): Promise<any>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseEntriesOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        entries(options?: (DatabaseEntriesOptions | undefiend) | null): Promise<object | object[] | null>;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { open };
+    }
+    export default _default;
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseOptions = {
+        version?: string | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseGetOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+        count?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     */
+    export type DatabasePutOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseDeleteOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseRequestQueueWaitOptions = {
+        offset?: number | undefined;
+        backlog?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseEntriesOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     */
+    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
+}
+
+declare module "socket:service-worker/env" {
+    /**
+     * Opens an environment for a particular scope.
+     * @param {EnvironmentOptions} options
+     * @return {Promise<Environment>}
+     */
+    export function open(options: EnvironmentOptions): Promise<Environment>;
+    /**
+     * Closes an active `Environment` instance, dropping the global
+     * instance reference.
+     * @return {Promise<boolean>}
+     */
+    export function close(): Promise<boolean>;
+    /**
+     * Resets an active `Environment` instance
+     * @return {Promise<boolean>}
+     */
+    export function reset(): Promise<boolean>;
+    /**
+     * An environment context object with persistence and durability
+     * for service worker environments.
+     */
+    export class Environment extends EventTarget {
+        /**
+         * Opens an environment for a particular scope.
+         * @param {EnvironmentOptions} options
+         * @return {Environment}
+         */
+        static open(options: EnvironmentOptions): Environment;
+        /**
+         * The current `Environment` instance
+         * @type {Environment?}
+         */
+        static instance: Environment | null;
+        /**
+         * `Environment` class constructor
+         * @ignore
+         * @param {EnvironmentOptions} options
+         */
+        constructor(options: EnvironmentOptions);
+        /**
+         * A reference to the currently opened environment database.
+         * @type {import('./database.js').Database}
+         */
+        get database(): import("socket:service-worker/database").Database;
+        /**
+         * A proxied object for reading and writing environment state.
+         * Values written to this object must be cloneable with respect to the
+         * structured clone algorithm.
+         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
+         * @type {Proxy<object>}
+         */
+        get context(): ProxyConstructor;
+        /**
+         * The current environment name. This value is also used as the
+         * internal database name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Resets the current environment to an empty state.
+         */
+        reset(): Promise<void>;
+        /**
+         * Opens the environment.
+         * @ignore
+         */
+        open(): Promise<void>;
+        /**
+         * Closes the environment database, purging existing state.
+         * @ignore
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    namespace _default {
+        export { Environment };
+        export { close };
+        export { reset };
+        export { open };
+    }
+    export default _default;
+    export type EnvironmentOptions = {
+        scope: string;
+    };
+}
+
+declare module "socket:service-worker/events" {
+    export const FETCH_EVENT_TIMEOUT: number;
+    /**
+     * The `ExtendableEvent` interface extends the lifetime of the "install" and
+     * "activate" events dispatched on the global scope as part of the service
+     * worker lifecycle.
+     */
+    export class ExtendableEvent extends Event {
+        /**
+         * `ExtendableEvent` class constructor.
+         * @ignore
+         */
+        constructor(...args: any[]);
+        /**
+         * A context for this `ExtendableEvent` instance.
+         * @type {import('./context.js').Context}
+         */
+        get context(): Context;
+        /**
+         * A promise that can be awaited which waits for this `ExtendableEvent`
+         * instance no longer has pending promises.
+         * @type {Promise}
+         */
+        get awaiting(): Promise<any>;
+        /**
+         * The number of pending promises
+         * @type {number}
+         */
+        get pendingPromises(): number;
+        /**
+         * `true` if the `ExtendableEvent` instance is considered "active",
+         * otherwise `false`.
+         * @type {boolean}
+         */
+        get isActive(): boolean;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): void;
+        /**
+         * Returns a promise that this `ExtendableEvent` instance is waiting for.
+         * @return {Promise}
+         */
+        waitsFor(): Promise<any>;
+        #private;
+    }
+    /**
+     * This is the event type for "fetch" events dispatched on the service worker
+     * global scope. It contains information about the fetch, including the
+     * request and how the receiver will treat the response.
+     */
     export class FetchEvent extends ExtendableEvent {
-        constructor(type?: string, options?: any);
-        get handled(): any;
-        get request(): any;
-        get clientId(): any;
+        /**
+         * `FetchEvent` class constructor.
+         * @ignore
+         * @param {stirng=} [type = 'fetch']
+         * @param {object=} [options]
+         */
+        constructor(type?: stirng, options?: object | undefined);
+        /**
+         * The handled property of the `FetchEvent` interface returns a promise
+         * indicating if the event has been handled by the fetch algorithm or not.
+         * This property allows executing code after the browser has consumed a
+         * response, and is usually used together with the `waitUntil()` method.
+         * @type {Promise}
+         */
+        get handled(): Promise<any>;
+        /**
+         * The request read-only property of the `FetchEvent` interface returns the
+         * `Request` that triggered the event handler.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The `clientId` read-only property of the `FetchEvent` interface returns
+         * the id of the Client that the current service worker is controlling.
+         * @type {string}
+         */
+        get clientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get resultingClientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get replacesClientId(): string;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
         get isReload(): boolean;
+        /**
+         * @ignore
+         * @type {Promise}
+         */
         get preloadResponse(): Promise<any>;
-        respondWith(response: any): void;
+        /**
+         * The `respondWith()` method of `FetchEvent` prevents the webview's
+         * default fetch handling, and allows you to provide a promise for a
+         * `Response` yourself.
+         * @param {Response|Promise<Response>} response
+         */
+        respondWith(response: Response | Promise<Response>): void;
         #private;
     }
     namespace _default {
         export { ExtendableEvent };
         export { FetchEvent };
+    }
+    export default _default;
+    import { Context } from "socket:service-worker/context";
+}
+
+declare module "socket:service-worker/context" {
+    /**
+     * A context given to `ExtendableEvent` interfaces and provided to
+     * simplified service worker modules
+     */
+    export class Context {
+        /**
+         * `Context` class constructor.
+         * @param {import('./events.js').ExtendableEvent} event
+         */
+        constructor(event: import('./events.js').ExtendableEvent);
+        /**
+         * The `ExtendableEvent` for this `Context` instance.
+         * @type {ExtendableEvent}
+         */
+        get event(): ExtendableEvent;
+        /**
+         * An environment context object.
+         * @type {object?}
+         */
+        get env(): any;
+        /**
+         * Resets the current environment context.
+         * @return {Promise<boolean>}
+         */
+        resetEnvironment(): Promise<boolean>;
+        /**
+         * Unused, but exists for cloudflare compat.
+         * @ignore
+         */
+        passThroughOnException(): void;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): Promise<any>;
+        /**
+         * TODO
+         */
+        handled(): Promise<any>;
+        /**
+         * Gets the client for this event context.
+         * @return {Promise<import('./clients.js').Client>}
+         */
+        client(): Promise<import('./clients.js').Client>;
+        #private;
+    }
+    namespace _default {
+        export { Context };
     }
     export default _default;
 }
