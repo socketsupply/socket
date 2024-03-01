@@ -78,6 +78,10 @@ namespace SSC {
   NSFilePromiseProviderDelegate,
   NSDraggingSource
 >
+
+@property (nonatomic) NSPoint initialWindowPos;
+@property (nonatomic) BOOL shouldDrag;
+
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
 sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 
@@ -183,11 +187,12 @@ namespace SSC {
       GtkWidget *menutray = nullptr;
       GtkWidget *vbox = nullptr;
       GtkWidget *popup = nullptr;
-      std::vector<String> draggablePayload;
+      int popupId;
       double dragLastX = 0;
       double dragLastY = 0;
+      bool shouldDrag;
+      std::vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
-      int popupId;
     #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       bool usingCustomEdgeRuntimeDirectory = false;
@@ -196,9 +201,14 @@ namespace SSC {
       HMENU menubar;
       HMENU menutray;
       DWORD mainThread = GetCurrentThreadId();
+      double dragLastX = 0;
+      double dragLastY = 0;
+      bool shouldDrag;
+      DragDrop* drop;
       POINT m_minsz = POINT {0, 0};
       POINT m_maxsz = POINT {0, 0};
-      DragDrop* drop;
+      POINT initialCursorPos = POINT {0, 0};
+      POINT initialWindowPos = POINT {0, 0};
       HWND window;
       std::map<int, std::string> menuMap;
       std::map<int, std::string> menuTrayMap;

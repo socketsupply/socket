@@ -26,6 +26,9 @@ namespace SSC {
     this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     this->popup = nullptr;
 
+    this->shouldDrag = false;
+    this->initialLocation = {0,0};
+
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
     if (this->opts.aspectRatio.size() > 0) {
@@ -510,20 +513,22 @@ namespace SSC {
         gint wy;
         gint x;
         gint y;
+        String sx = std::to_string(x);
+        String sy = std::to_string(y);
 
         device = gdk_drag_context_get_device(context);
         gdk_device_get_window_at_position(device, &x, &y);
         gdk_device_get_position(device, 0, &wx, &wy);
 
         String js(
-          "(() => {"
-          "  let el = null;"
-          "  try { el = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + "); }"
-          "  catch (err) { console.error(err.stack || err.message || err); }"
-          "  if (!el) return;"
-          "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
-          "  return found && found.dataset.src"
-          "})()"
+          "(() => {                                                                              "
+          "  let el = null;                                                                      "
+          "  try { el = document.elementFromPoint(" + sx + "," + sy + "); }                      "
+          "  catch (err) { console.error(err.stack || err.message || err); }                     "
+          "  if (!el) return;                                                                    "
+          "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
+          "  return isDraggable ? 'draggable' : '';                                              "
+          "})()                                                                                  "
         );
 
         webkit_web_view_evaluate_javascript(
@@ -545,17 +550,17 @@ namespace SSC {
             );
 
             if (!value || error) return;
-
             if (!jsc_value_is_string(value)) return;
 
             JSCException *exception;
-            gchar *str_value = jsc_value_to_string(value);
+            gchar *match = jsc_value_to_string(value);
 
+            w->dragLastX = 0;
+            w->dragLastY = 0;
+            w->shouldDrag = std::string(match).compare("draggable") != 0;
 
-            w->draggablePayload = split(str_value, ';');
             exception = jsc_context_get_exception(jsc_value_get_context(value));
-
-            g_free(str_value);
+            g_free(match);
           },
           w
         );
@@ -620,24 +625,34 @@ namespace SSC {
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag-motion",
+      "motion-notify-event",
       G_CALLBACK(+[](
         GtkWidget *wv,
-        GdkDragContext *context,
-        gint x,
-        gint y,
-        guint32 time,
+        GdkEventMotion *event,
         gpointer arg)
       {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
 
-        w->dragLastX = x;
-        w->dragLastY = y;
+        if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
+          gint newX, newY;
+          gdk_window_get_position(gtk_widget_get_window(widget), &newX, &newY);
+          newX += event->x - w->dragLastX;
+          newY += event->y - w->dragLastY;
+          gdk_window_move(gtk_widget_get_window(widget), newX, newY);
 
+          w->dragLastX = event->x;
+          w->dragLastY = event->y;
+
+          return TRUE;
+        }
+
+        //
+        // TODO(@heapwolf): refactor legacy drag and drop stuff
+        //
         // char* target_uri = g_file_get_uri(drag_info->target_location);
 
-        int count = w->draggablePayload.size();
+        /* int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
         // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
@@ -653,7 +668,7 @@ namespace SSC {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(getEmitToRenderProcessJavaScript("drag", json));
+        w->eval(getEmitToRenderProcessJavaScript("drag", json)); */
       }),
       this
     );
