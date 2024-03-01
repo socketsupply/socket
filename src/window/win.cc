@@ -2005,8 +2005,8 @@ namespace SSC {
           "(() => {                                                                              "
           "  const el = document.elementFromPoint(" + sx + "," + sy + ");                        "
           "  if (!el) return;                                                                    "
-          "  const isDraggable = el.matches('[window-drag]') ? el : el.closest('[window-drag]'); "
-          "  return isDraggable ? 'draggable' : '';                                              "
+          "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
+          "  return isDraggable ? 'movable' : '';                                                "
           "})()                                                                                  "
         );
 
@@ -2017,7 +2017,7 @@ namespace SSC {
             if (SUCCEEDED(result)) {
               String match = SSC::convertWStringToString(wmatch).c_str();
               String resultValue(resultString);
-              w->shouldDrag = (match == "draggable");
+              w->shouldDrag = (match == "movable");
 
               if (w->shouldDrag) {
                 w->initialCursorPos.x = x;
