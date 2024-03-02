@@ -485,6 +485,12 @@ export class Module extends EventTarget {
   loaded = false
 
   /**
+   * `true` if the module is currently being loaded.
+   * @type {boolean}
+   */
+  loading = false
+
+  /**
    * The module's exports.
    * @type {any}
    */
@@ -589,10 +595,11 @@ export class Module extends EventTarget {
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || 'node_modules').split(':')
     const urls = []
 
-    if (this.loaded) {
+    if (this.loaded || this.loading) {
       return true
     }
 
+    this.loading = true
     Module.previous = Module.current
     Module.current = this
 
@@ -628,6 +635,7 @@ export class Module extends EventTarget {
       Module.current = null
     }
 
+    this.loading = false
     return this.loaded
 
     function loadPackage (module, url) {
