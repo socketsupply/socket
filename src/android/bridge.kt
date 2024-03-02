@@ -1303,6 +1303,10 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     return routed
   }
 
+  fun getAllowedNodeCoreModules (): List<String> {
+    return this.getAllowedNodeCoreModulesList().split(",")
+  }
+
   fun onInternalRouteResponse (
     id: Long,
     seq: String,
@@ -1364,4 +1368,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
   @Throws(java.lang.Exception::class)
   external fun emit (event: String, data: String = ""): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun getAllowedNodeCoreModulesList (): String;
 }
