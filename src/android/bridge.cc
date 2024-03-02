@@ -226,4 +226,19 @@ extern "C" {
 
     return bridge->router.emit(event.str(), data.str());
   }
+
+  jstring external(Bridge, getAllowedNodeCoreModulesList)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto bridge = Bridge::from(env, self);
+
+    if (bridge == nullptr) {
+      Throw(env, BridgeNotInitializedException);
+      return nullptr;
+    }
+
+    static const auto list = SSC::join(bridge->getAllowedNodeCoreModules(), ",");
+    return env->NewStringUTF(list.c_str());
+  }
 }

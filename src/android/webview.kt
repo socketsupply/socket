@@ -307,7 +307,12 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       return false
     }
 
-    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket") {
+    if (
+      url.scheme == "ipc" ||
+      url.scheme == "node" ||
+      url.scheme == "file" ||
+      url.scheme == "socket"
+    ) {
       return true
     }
 
@@ -504,8 +509,40 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       }
     }
 
-    if (url.scheme == "socket") {
-      var path = url.toString().replace("socket:", "")
+    if (url.scheme == "socket" || url.scheme == "node") {
+      if (url.scheme == "node") {
+        val allowedNodeCoreModules = activity.window.bridge.getAllowedNodeCoreModules()
+        val path = url
+          .toString()
+          .replace("node:", "")
+          .replace(".js", "")
+
+        if (!allowedNodeCoreModules.contains(path)) {
+          val stream = java.io.PipedOutputStream()
+          val response = android.webkit.WebResourceResponse(
+            "text/javascript",
+            "utf-8",
+            java.io.PipedInputStream(stream)
+          )
+
+          response.responseHeaders = mapOf(
+            "Access-Control-Allow-Origin" to "*",
+            "Access-Control-Allow-Headers" to "*",
+            "Access-Control-Allow-Methods" to "*"
+          )
+          response.setStatusCodeAndReasonPhrase(404, "Not found")
+          stream.close()
+          return response
+        }
+      }
+
+      var path = url
+        .toString()
+        .replace("socket:", "")
+        .replace("node:", "")
+
+      val parts = path.split("?")
+      path = parts[0].trim()
 
       if (!path.endsWith(".js")) {
         path += ".js"
@@ -515,6 +552,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         .scheme("socket")
         .authority("__BUNDLE_IDENTIFIER__")
         .path("/socket/${path}")
+        .query(if (parts.size > 1) { parts[1] } else { "" })
         .build()
 
       val moduleTemplate = """
@@ -570,7 +608,7 @@ export default module
 
       if (assetStream != null) {
         var html = String(assetStream.readAllBytes())
-        val preload = activity.window.getJavaScriptPreloadSource()
+        var preload = activity.window.getJavaScriptPreloadSource()
         val stream = java.io.PipedOutputStream()
         val response = android.webkit.WebResourceResponse(
           "text/html",
@@ -579,6 +617,8 @@ export default module
         )
 
         val webviewHeaders = runtime.getConfigValue("webview_headers").split("\n")
+        var webviewImportMapFilename = runtime.getConfigValue("webview_importmap")
+
         val headers = mutableMapOf(
           "Access-Control-Allow-Origin" to "*",
           "Access-Control-Allow-Headers" to "*",
@@ -595,6 +635,32 @@ export default module
         }
 
         response.responseHeaders = headers.toMap()
+
+        if (webviewImportMapFilename.length > 0) {
+          webviewImportMapFilename = webviewImportMapFilename
+            .split("/")
+            .last()
+
+          val webviewImportMapFile = try {
+            assetManager.open(webviewImportMapFilename, 2)
+          } catch (_: Exception) {
+            null
+          }
+
+          if (webviewImportMapFile != null) {
+            var importmap = String(webviewImportMapFile.readAllBytes())
+            if (importmap.length > 0) {
+              preload = (
+                """
+                <script type="importmap">
+                $importmap
+                </script>
+                $preload
+                """
+              ).trim()
+            }
+          }
+        }
 
         if (html.contains("<head>")) {
           html = html.replace("<head>", """
