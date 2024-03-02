@@ -1118,10 +1118,7 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#10@#i": any; /**
-             * Computed directory name in path.
-             * @type {string}
-             */
+            "__#10@#i": any;
             "__#10@#n": {};
             "__#10@#t": {};
             "__#10@#e": {};
@@ -1226,6 +1223,11 @@ declare module "socket:path/path" {
     import { URL } from "socket:url/index";
 }
 
+declare module "socket:path/mounts" {
+    const _default: {};
+    export default _default;
+}
+
 declare module "socket:path/win32" {
     /**
      * Computes current working directory for a path
@@ -1301,6 +1303,7 @@ declare module "socket:path/win32" {
     }
     export type PathComponent = import("socket:path/path").PathComponent;
     import { Path } from "socket:path/path";
+    import * as mounts from "socket:path/mounts";
     import * as posix from "socket:path/posix";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
@@ -1315,7 +1318,7 @@ declare module "socket:path/win32" {
     import { LOG } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 
 declare module "socket:path/posix" {
@@ -1394,6 +1397,7 @@ declare module "socket:path/posix" {
     }
     export type PathComponent = import("socket:path/path").PathComponent;
     import { Path } from "socket:path/path";
+    import * as mounts from "socket:path/mounts";
     import * as win32 from "socket:path/win32";
     import { DOWNLOADS } from "socket:path/well-known";
     import { DOCUMENTS } from "socket:path/well-known";
@@ -1408,11 +1412,12 @@ declare module "socket:path/posix" {
     import { LOG } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 
 declare module "socket:path/index" {
     export default exports;
+    import * as mounts from "socket:path/mounts";
     import * as posix from "socket:path/posix";
     import * as win32 from "socket:path/win32";
     import { Path } from "socket:path/path";
@@ -1429,7 +1434,7 @@ declare module "socket:path/index" {
     import { LOG } from "socket:path/well-known";
     import * as exports from "socket:path/index";
     
-    export { posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 
 declare module "socket:path" {
@@ -1451,6 +1456,7 @@ declare module "socket:path" {
     import { posix } from "socket:path/index";
     import { Path } from "socket:path/index";
     import { win32 } from "socket:path/index";
+    import { mounts } from "socket:path/index";
     import { DOWNLOADS } from "socket:path/index";
     import { DOCUMENTS } from "socket:path/index";
     import { RESOURCES } from "socket:path/index";
@@ -1462,7 +1468,7 @@ declare module "socket:path" {
     import { HOME } from "socket:path/index";
     import { DATA } from "socket:path/index";
     import { LOG } from "socket:path/index";
-    export { Path, posix, win32, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
 }
 
 declare module "socket:diagnostics/channels" {
@@ -10150,10 +10156,6 @@ declare module "socket:module" {
             ENOENT: number;
             ENOEXEC: number;
             ENOLCK: number;
-            /**
-             * The parent module, if given.
-             * @type {Module?}
-             */
             ENOLINK: number;
             ENOMEM: number;
             ENOMSG: number;
@@ -10260,7 +10262,72 @@ declare module "socket:module" {
             W_OK: any;
             X_OK: any;
         };
-        child_process: {};
+        child_process: {
+            ChildProcess: {
+                new (options?: {}): {
+                    "__#26@#id": BigInt;
+                    "__#26@#worker": any;
+                    "__#26@#signal": any;
+                    "__#26@#timeout": any;
+                    "__#26@#env": any;
+                    "__#26@#state": {
+                        killed: boolean;
+                        signalCode: any;
+                        exitCode: any;
+                        spawnfile: any;
+                        spawnargs: any[];
+                        lifecycle: string;
+                        pid: number;
+                    };
+                    readonly killed: boolean;
+                    readonly pid: number;
+                    readonly spawnfile: string;
+                    readonly spawnargs: string[];
+                    readonly connected: boolean;
+                    readonly exitCode: number;
+                    readonly stdin: stream.Writable;
+                    readonly stdout: stream.Readable;
+                    readonly stderr: stream.Readable;
+                    readonly worker: import("socket:worker_threads").Worker;
+                    disconnect(): boolean;
+                    send(): boolean;
+                    ref(): boolean;
+                    unref(): boolean;
+                    kill(...args: any[]): any;
+                    spawn(...args?: string[]): any;
+                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+                        once?: false;
+                    }): void;
+                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
+                    _events: any;
+                    _eventsCount: number;
+                    _maxListeners: number;
+                    setMaxListeners(n: any): any;
+                    getMaxListeners(): any;
+                    emit(type: any, ...args: any[]): boolean;
+                    addListener(type: any, listener: any): any;
+                    on(arg0: any, arg1: any): any;
+                    prependListener(type: any, listener: any): any;
+                    once(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any;
+                    removeListener(type: any, listener: any): any;
+                    off(type: any, listener: any): any;
+                    removeAllListeners(type: any, ...args: any[]): any;
+                    listeners(type: any): any[];
+                    rawListeners(type: any): any[];
+                    listenerCount(type: any): any;
+                    eventNames(): any;
+                };
+                EventEmitter: typeof events.EventEmitter;
+                defaultMaxListeners: number;
+                init(): void;
+                listenerCount(emitter: any, type: any): any;
+                once: typeof events.once;
+            };
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
         crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
@@ -10348,7 +10415,6 @@ declare module "socket:module" {
             ServerResponse: typeof import("socket:http").ServerResponse;
             get: typeof import("socket:http").get;
         };
-        gc: any;
         https: {
             METHODS: string[];
             STATUS_CODES: {
@@ -10425,6 +10491,7 @@ declare module "socket:module" {
             ServerResponse: typeof import("socket:https").ServerResponse;
             get: typeof import("socket:https").get;
         };
+        gc: any;
         ipc: typeof ipc;
         language: {
             codes: string[];
@@ -10592,10 +10659,6 @@ declare module "socket:module" {
             ENOENT: number;
             ENOEXEC: number;
             ENOLCK: number;
-            /**
-             * The parent module, if given.
-             * @type {Module?}
-             */
             ENOLINK: number;
             ENOMEM: number;
             ENOMSG: number;
@@ -10702,7 +10765,72 @@ declare module "socket:module" {
             W_OK: any;
             X_OK: any;
         };
-        child_process: {};
+        child_process: {
+            ChildProcess: {
+                new (options?: {}): {
+                    "__#26@#id": BigInt;
+                    "__#26@#worker": any;
+                    "__#26@#signal": any;
+                    "__#26@#timeout": any;
+                    "__#26@#env": any;
+                    "__#26@#state": {
+                        killed: boolean;
+                        signalCode: any;
+                        exitCode: any;
+                        spawnfile: any;
+                        spawnargs: any[];
+                        lifecycle: string;
+                        pid: number;
+                    };
+                    readonly killed: boolean;
+                    readonly pid: number;
+                    readonly spawnfile: string;
+                    readonly spawnargs: string[];
+                    readonly connected: boolean;
+                    readonly exitCode: number;
+                    readonly stdin: stream.Writable;
+                    readonly stdout: stream.Readable;
+                    readonly stderr: stream.Readable;
+                    readonly worker: import("socket:worker_threads").Worker;
+                    disconnect(): boolean;
+                    send(): boolean;
+                    ref(): boolean;
+                    unref(): boolean;
+                    kill(...args: any[]): any;
+                    spawn(...args?: string[]): any;
+                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+                        once?: false;
+                    }): void;
+                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
+                    _events: any;
+                    _eventsCount: number;
+                    _maxListeners: number;
+                    setMaxListeners(n: any): any;
+                    getMaxListeners(): any;
+                    emit(type: any, ...args: any[]): boolean;
+                    addListener(type: any, listener: any): any;
+                    on(arg0: any, arg1: any): any;
+                    prependListener(type: any, listener: any): any;
+                    once(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any;
+                    removeListener(type: any, listener: any): any;
+                    off(type: any, listener: any): any;
+                    removeAllListeners(type: any, ...args: any[]): any;
+                    listeners(type: any): any[];
+                    rawListeners(type: any): any[];
+                    listenerCount(type: any): any;
+                    eventNames(): any;
+                };
+                EventEmitter: typeof events.EventEmitter;
+                defaultMaxListeners: number;
+                init(): void;
+                listenerCount(emitter: any, type: any): any;
+                once: typeof events.once;
+            };
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
         crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
@@ -10790,7 +10918,6 @@ declare module "socket:module" {
             ServerResponse: typeof import("socket:http").ServerResponse;
             get: typeof import("socket:http").get;
         };
-        gc: any;
         https: {
             METHODS: string[];
             STATUS_CODES: {
@@ -10867,6 +10994,7 @@ declare module "socket:module" {
             ServerResponse: typeof import("socket:https").ServerResponse;
             get: typeof import("socket:https").get;
         };
+        gc: any;
         ipc: typeof ipc;
         language: {
             codes: string[];
@@ -11028,6 +11156,11 @@ declare module "socket:module" {
          */
         loaded: boolean;
         /**
+         * `true` if the module is currently being loaded.
+         * @type {boolean}
+         */
+        loading: boolean;
+        /**
          * The module's exports.
          * @type {any}
          */
@@ -11099,16 +11232,16 @@ declare module "socket:module" {
     import { URL } from "socket:url/index";
     import application from "socket:application";
     import buffer from "socket:buffer";
+    import stream from "socket:stream";
+    import events from "socket:events";
     import crypto from "socket:crypto";
     import dgram from "socket:dgram";
     import dns from "socket:dns";
-    import events from "socket:events";
     import fs from "socket:fs";
     import ipc from "socket:ipc";
     import mime from "socket:mime";
     import os from "socket:os";
     import { posix as path } from "socket:path";
-    import stream from "socket:stream";
     import string_decoder from "socket:string_decoder";
     import util from "socket:util";
     import test from "socket:test";
