@@ -3323,7 +3323,7 @@ static void registerSchemeHandler (Router *router) {
             auto script = self.router->bridge->preload;
 
             if (userConfig["webview_importmap"].size() > 0) {
-              const auto filename = Path(userConfig["webview_importmap"]).filename();
+              const auto filename = userConfig["webview_importmap"];
               const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
                 stringByAppendingPathComponent: [NSString
               #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
