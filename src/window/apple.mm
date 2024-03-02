@@ -100,9 +100,37 @@
 @implementation SSCBridgedWebView
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 SSC::Vector<SSC::String> draggablePayload;
-
+CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
+
+- (void)updateTitleBarForCurrentAppearance {
+  NSButton *closeButton = [self.window standardWindowButton:NSWindowCloseButton];
+  NSButton *minimizeButton = [self.window standardWindowButton:NSWindowMiniaturizeButton];
+  NSButton *zoomButton = [self.window standardWindowButton:NSWindowZoomButton];
+
+  if (closeButton && minimizeButton && zoomButton) {
+    [self.titleBarView addSubview:closeButton];
+    [self.titleBarView addSubview:minimizeButton];
+    [self.titleBarView addSubview:zoomButton];
+  }
+}
+
+- (void)viewDidChangeEffectiveAppearance {
+  [super viewDidChangeEffectiveAppearance];
+  [self updateTitleBarForCurrentAppearance];
+}
+
+- (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
+  [super resizeSubviewsWithOldSize:oldSize];
+
+  CGFloat viewWidth = self.titleBarView.frame.size.width;
+  CGFloat viewHeight = self.titleBarView.frame.size.height;
+  CGFloat newX = self.trafficLightPosition.x;
+  CGFloat newY = 0.f;
+
+  self.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+}
 
 - (BOOL) wantsPeriodicDraggingUpdates {
   return YES;
@@ -264,6 +292,7 @@ int lastY = 0;
 }
 
 - (void) mouseDown: (NSEvent*) event {
+  self.shouldDrag = false;
   draggablePayload.clear();
 
   const auto location = [self convertPoint: event.locationInWindow fromView: nil];
@@ -276,12 +305,12 @@ int lastY = 0;
   lastY = (int) location.y;
 
   SSC::String js(
-    "(() => {                                                                              "
-    "  const el = document.elementFromPoint(" + x + "," + y + ");                          "
-    "  if (!el) return;                                                                    "
-    "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
-    "  return isDraggable ? 'movable' : '';                                                "
-    "})()                                                                                  "
+    "(() => {                                                                    "
+    "  const el = document.elementFromPoint(" + x + "," + y + ");                "
+    "  if (!el) return;                                                          "
+    "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
+    "  return isMovable ? 'movable' : '';                                        "
+    "})()                                                                        "
   );
 
   [self
@@ -684,15 +713,8 @@ namespace SSC {
       style |= NSWindowStyleMaskResizable;
     }
 
-    if (opts.frameless) {
-      style |= NSWindowStyleMaskFullSizeContentView;
-      style |= NSWindowStyleMaskBorderless;
-    } else if (opts.utility) {
-      style |= NSWindowStyleMaskUtilityWindow;
-    } else {
-      style |= NSWindowStyleMaskClosable;
-      style |= NSWindowStyleMaskMiniaturizable;
-    }
+    style |= NSWindowStyleMaskClosable;
+    style |= NSWindowStyleMaskMiniaturizable;
 
     window = [[NSWindow alloc]
         initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
@@ -708,37 +730,6 @@ namespace SSC {
       NSPasteboardTypeHTML,
       nil
 		];
-
-    // Position window in center of screen
-    [window center];
-    [window setOpaque: YES];
-    // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    [window setBackgroundColor: [NSColor controlBackgroundColor]];
-    [window registerForDraggedTypes: draggableTypes];
-    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-
-    if (opts.frameless) {
-      [window setTitlebarAppearsTransparent: true];
-    }
-
-    if (opts.aspectRatio.size() > 2) {
-      auto parts = split(opts.aspectRatio, ':');
-      if (parts.size() != 2) return;
-      CGFloat aspectRatio;
-
-      @try {
-        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
-      } @catch (NSException *error) {
-        debug("Invalid aspect ratio: %@", error);
-      }
-
-      if (!std::isnan(aspectRatio)) {
-        NSRect frame = [window frame];
-        frame.size.height = frame.size.width / aspectRatio;
-        [window setContentAspectRatio: frame.size];
-      }
-    }
 
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
@@ -1038,6 +1029,18 @@ namespace SSC {
 
       class_replaceMethod(
         [SSCWindowDelegate class],
+        @selector(windowDidExitFullScreen:),
+        imp_implementationWithBlock(
+          [&](id self, SEL cmd, id notification) {
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
+            [window->webview updateTitleBarForCurrentAppearance];
+            return false;
+          }),
+        "v@:@"
+      );
+
+      class_replaceMethod(
+        [SSCWindowDelegate class],
         @selector(userContentController:didReceiveScriptMessage:),
         imp_implementationWithBlock(
           [=, this](id self, SEL cmd, WKScriptMessage* scriptMessage) {
@@ -1137,6 +1140,115 @@ namespace SSC {
 
     // Add webview to window
     [window setContentView: webview];
+
+    //
+    // results in a hidden title bar and a full-size content window.
+    //
+    if (opts.titleBarStyle == "hidden") {
+      style |= NSWindowStyleMaskFullSizeContentView;
+    }
+
+    //
+    // Results in a utility window (looks like a panel)
+    //
+    if (opts.titleBarStyle == "utilty") {
+      style |= NSWindowStyleMaskBorderless;
+      style |= NSWindowStyleMaskUtilityWindow;
+    }
+
+    //
+    // We don't support hiddenInset because the same thing can be accomplished by specifying trafficLightPosition
+    //
+    if (opts.titleBarStyle == "hiddenInset") {
+      style |= NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskTitled;
+      style |= NSWindowStyleMaskResizable;
+
+      [window setStyleMask: style];
+
+      CGFloat x = 16.f;
+      CGFloat y = 42.f;
+
+      if (opts.trafficLightPosition.size() > 0) {
+        auto parts = split(opts.trafficLightPosition, 'x');
+        try {
+          x = std::stof(parts[0]);
+          y = std::stof(parts[1]);
+        } catch (...) {
+          debug("invalid arguments for trafficLightPosition");
+        }
+      }
+
+      NSView *titleBarView = [[NSView alloc] initWithFrame:NSZeroRect];
+      [titleBarView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+      [titleBarView setWantsLayer:YES];
+      [titleBarView.layer setBackgroundColor:[NSColor clearColor].CGColor]; // Set background color to clear
+
+      NSButton *closeButton = [window standardWindowButton:NSWindowCloseButton];
+      NSButton *minimizeButton = [window standardWindowButton:NSWindowMiniaturizeButton];
+      NSButton *zoomButton = [window standardWindowButton:NSWindowZoomButton];
+
+      CGFloat buttonWidth = MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+      CGFloat buttonHeight = MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+
+      if (closeButton && minimizeButton && zoomButton) {
+        closeButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth * 3, 5, buttonWidth, buttonHeight);
+        minimizeButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth * 2, 5, buttonWidth, buttonHeight);
+        zoomButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth, 5, buttonWidth, buttonHeight);
+
+        [titleBarView addSubview:closeButton];
+        [titleBarView addSubview:minimizeButton];
+        [titleBarView addSubview:zoomButton];
+
+        [window.contentView addSubview:titleBarView];
+      } else {
+        NSLog(@"Failed to retrieve standard window buttons.");
+      }
+
+      CGFloat viewWidth = window.frame.size.width;
+      CGFloat viewHeight = y + buttonHeight;
+      CGFloat newX = x;
+      CGFloat newY = 0.f;
+
+      titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+
+      this->webview.trafficLightPosition = NSMakePoint(x, y);
+      this->webview.titleBarView = titleBarView;
+    }
+
+    if (opts.aspectRatio.size() > 2) {
+      auto parts = split(opts.aspectRatio, ':');
+      if (parts.size() != 2) return;
+      CGFloat aspectRatio;
+
+      @try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } @catch (NSException *error) {
+        debug("Invalid aspect ratio: %@", error);
+      }
+
+      if (!std::isnan(aspectRatio)) {
+        NSRect frame = [window frame];
+        frame.size.height = frame.size.width / aspectRatio;
+        [window setContentAspectRatio: frame.size];
+      }
+    }
+
+    // Position window in center of screen
+    [window center];
+    [window setOpaque: YES];
+
+    // Minimum window size
+    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
+    [window setBackgroundColor: [NSColor controlBackgroundColor]];
+    [window registerForDraggedTypes: draggableTypes];
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+
+    if (opts.frameless) {
+      [window setTitlebarAppearsTransparent: true];
+      [window setMovableByWindowBackground:YES];
+      [window setStyleMask:NSWindowStyleMaskBorderless];
+    }
 
     navigate("0", opts.url);
   }

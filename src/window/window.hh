@@ -80,6 +80,8 @@ namespace SSC {
 >
 
 @property (nonatomic) NSPoint initialWindowPos;
+@property (nonatomic) NSPoint trafficLightPosition;
+@property (nonatomic) NSView *titleBarView;
 @property (nonatomic) BOOL shouldDrag;
 
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
@@ -629,6 +631,9 @@ namespace SSC {
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
+          .aspectRatio = opts.aspectRatio,
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
           .width = width,
           .height = height,
           .minWidth = minWidth,
@@ -672,6 +677,8 @@ namespace SSC {
         return createWindow(WindowOptions {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
           .utility = opts.utility,
           .canExit = true,
           .width = opts.width,
