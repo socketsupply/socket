@@ -1,7 +1,7 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
+import { Module, createRequire } from '../module.js'
 import { InvertedPromise } from '../util.js'
-import { createRequire } from '../module.js'
 import { Environment } from './env.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
@@ -32,11 +32,15 @@ async function onMessage (event) {
   if (data?.register) {
     const { id, scope, scriptURL } = data.register
     const url = new URL(scriptURL)
-    let module = null
+    const module = { exports: {} }
 
     state.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
+
+    Module.main.addEventListener('error', (event) => {
+      console.error('error', event.error)
+    })
 
     Object.defineProperties(globalThis, {
       require: {
@@ -65,11 +69,31 @@ async function onMessage (event) {
         enumerable: false,
         writable: false,
         value: url.pathname
+      },
+
+      module: {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: module
+      },
+
+      exports: {
+        configurable: false,
+        enumerable: false,
+        get: () => module.exports
       }
     })
 
     try {
-      module = await import(scriptURL)
+      const result = await import(scriptURL)
+      if (typeof module.exports === 'function') {
+        module.exports = {
+          default: module.exports
+        }
+      } else {
+        Object.assign(module.exports, result)
+      }
     } catch (err) {
       state.serviceWorker.state = 'error'
       await state.notify('serviceWorker')
@@ -78,37 +102,37 @@ async function onMessage (event) {
 
     env = await Environment.open({ id, scope })
 
-    if (module.default && typeof module.default === 'object') {
-      if (typeof module.default.fetch === 'function') {
-        state.fetch = module.default.fetch
+    if (module.exports.default && typeof module.exports.default === 'object') {
+      if (typeof module.exports.default.fetch === 'function') {
+        state.fetch = module.exports.default.fetch
       }
-    } else if (typeof module.default === 'function') {
-      state.fetch = module.default
-    } else if (typeof module.fetch === 'function') {
-      state.fetch = module.fetch
+    } else if (typeof module.exports.default === 'function') {
+      state.fetch = module.exports.default
+    } else if (typeof module.exports.fetch === 'function') {
+      state.fetch = module.exports.fetch
     }
 
-    if (module.default && typeof module.default === 'object') {
-      if (typeof module.default.install === 'function') {
-        state.install = module.default.install
+    if (module.exports.default && typeof module.exports.default === 'object') {
+      if (typeof module.exports.default.install === 'function') {
+        state.install = module.exports.default.install
       }
-    } else if (typeof module.install === 'function') {
-      state.install = module.install
+    } else if (typeof module.exports.install === 'function') {
+      state.install = module.exports.install
     }
 
-    if (module.default && typeof module.default === 'object') {
-      if (typeof module.default.activate === 'function') {
-        state.activate = module.default.activate
+    if (module.exports.default && typeof module.exports.default === 'object') {
+      if (typeof module.exports.default.activate === 'function') {
+        state.activate = module.exports.default.activate
       }
-    } else if (typeof module.activate === 'function') {
-      state.activate = module.activate
+    } else if (typeof module.exports.activate === 'function') {
+      state.activate = module.exports.activate
     }
 
-    if (module.default && typeof module.default === 'object') {
-      if (typeof module.default.reportError === 'function') {
-        state.reportError = module.default.reportError
+    if (module.exports.default && typeof module.exports.default === 'object') {
+      if (typeof module.exports.default.reportError === 'function') {
+        state.reportError = module.exports.default.reportError
       }
-    } else if (typeof module.reportError === 'function') {
+    } else if (typeof module.exports.reportError === 'function') {
       state.reportError = module.reportError
     }
 
