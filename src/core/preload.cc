@@ -264,6 +264,62 @@ namespace SSC {
       }
     }
 
+    if (preloadOptions.wrap) {
+      preload += "<script>\n";
+    }
+
+    preload += (
+      ";(async function preloadCommonJSScope () {                            \n"
+      "  const href = encodeURIComponent(globalThis.location.href);          \n"
+      "  const source = `socket:module?ref=${href}`;                         \n"
+      "                                                                      \n"
+      "  const { Module } = await import(source);                            \n"
+      "  const path = await import('socket:path');                           \n"
+      "                                                                      \n"
+      "  const require = Module.createRequire(globalThis.location.href);     \n"
+      "  const __filename = Module.main.filename;                            \n"
+      "  const __dirname = path.dirname(__filename);                         \n"
+      "                                                                      \n"
+      "  Object.defineProperties(globalThis, {                               \n"
+      "    require: {                                                        \n"
+      "      configurable: true,                                             \n"
+      "      enumerable: false,                                              \n"
+      "      writable: false,                                                \n"
+      "      value: require,                                                 \n"
+      "    },                                                                \n"
+      "    module: {                                                         \n"
+      "      configurable: true,                                             \n"
+      "      enumerable: false,                                              \n"
+      "      writable: false,                                                \n"
+      "      value: Module.main,                                             \n"
+      "    },                                                                \n"
+      "    exports: {                                                        \n"
+      "      configurable: true,                                             \n"
+      "      enumerable: false,                                              \n"
+      "      get: () => Module.main.exports,                                 \n"
+      "    },                                                                \n"
+      "    __dirname: {                                                      \n"
+      "      configurable: true,                                             \n"
+      "      enumerable: false,                                              \n"
+      "      writable: false,                                                \n"
+      "      value: __dirname,                                               \n"
+      "    },                                                                \n"
+      "    __filename: {                                                     \n"
+      "      configurable: true,                                             \n"
+      "      enumerable: false,                                              \n"
+      "      writable: false,                                                \n"
+      "      value: require,                                                 \n"
+      "    },                                                                \n"
+      "  });                                                                 \n"
+      "                                                                      \n"
+      "  globalThis.addEventListener('popstate', preloadCommonJSScope);      \n"
+      "})();                                                                 \n"
+    );
+
+    if (preloadOptions.wrap) {
+      preload += "</script>\n";
+    }
+
     return preload;
   }
 }
