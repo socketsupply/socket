@@ -557,21 +557,6 @@ void handleBuildPhaseForUser (
     log("ran user build command");
   }
 
-  if (settings.contains("webview_importmap")) {
-    const auto src = cwd / settings.at("webview_importmap");
-    const auto dst = pathResourcesRelativeToUserBuild / "importmap.json";
-
-    if (!fs::exists(fs::status(src))) {
-      log("WARNING: '[webview] importmap' entry '" + src.string() +  "' does not exist");
-    } else {
-      fs::copy(
-      src,
-      dst,
-      fs::copy_options::update_existing | fs::copy_options::recursive
-    );
-    }
-  }
-
   // runs async, does not block
   if (performAfterLifeCycle && settings.contains("build_script_after") && settings.at("build_script_after").size() > 0) {
     auto buildScript = settings.at("build_script_after");
