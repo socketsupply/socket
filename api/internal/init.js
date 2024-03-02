@@ -586,8 +586,14 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 hooks.onLoad(async () => {
   const serviceWorkerScripts = config['webview_service-workers']
   const pending = []
-  if (serviceWorkerScripts) {
-    for (const serviceWorkerScript of serviceWorkerScripts.split(' ')) {
+  const registered = new Set()
+  if (
+    globalThis.window &&
+    serviceWorkerScripts &&
+    !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
+    globalThis.location.pathname !== '/socket/service-worker/index.html'
+  ) {
+    for (const serviceWorkerScript of serviceWorkerScripts.trim().split(' ')) {
       let scriptURL = serviceWorkerScript.trim()
 
       if (!scriptURL.startsWith('/') && scriptURL.startsWith('.')) {
@@ -596,7 +602,12 @@ hooks.onLoad(async () => {
         }
       }
 
+      if (registered.has(scriptURL)) {
+        continue
+      }
+
       const promise = globalThis.navigator.serviceWorker.register(scriptURL)
+      registered.add(scriptURL)
 
       pending.push(promise)
 
