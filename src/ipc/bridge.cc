@@ -3546,9 +3546,28 @@ static void registerSchemeHandler (Router *router) {
 
       if (scheme == "node") {
         const auto specifier = replace(path, ".js", "");
-        // TODO
-      }
+        if (
+          std::find(
+           allowedNodeCoreModules.begin(),
+           allowedNodeCoreModules.end(),
+           specifier
+          ) == allowedNodeCoreModules.end()
+        ) {
+          const auto response = [NSHTTPURLResponse.alloc
+            initWithURL: request.URL
+             statusCode: 404
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
 
+          [task didReceiveResponse: response];
+          [task didFinish];
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+      }
       if (ext.size() == 0 && !path.ends_with(".js")) {
         path += ".js";
       }
@@ -4387,8 +4406,11 @@ namespace SSC::IPC {
     }
   }
 
-  /*
+  const Vector<String>& Bridge::getAllowedNodeCoreModules () const {
+    return allowedNodeCoreModules;
+  }
 
+  /*
     .
     ├── a-conflict-index
     │             └── index.html
