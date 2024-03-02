@@ -344,6 +344,8 @@ namespace SSC::IPC {
         size_t size,
         Router::ResultCallback
       );
+
+      const Vector<String>& getAllowedNodeCoreModules () const;
   };
 
   inline String getResolveToMainProcessMessage (
