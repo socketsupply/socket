@@ -198,12 +198,12 @@ constexpr auto gHelloWorld = R"HTML(
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src socket: ipc: https: http: wss: ws: ws://localhost:*;
+        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:*;
          script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
          worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
           frame-src socket: https: http: blob: http://localhost:*;
             img-src socket: https: http: blob: http://localhost:*;
-          child-src 'none';
+          child-src socket: https: http: blob:;
          object-src 'none';
       "
     >
