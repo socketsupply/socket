@@ -21,6 +21,8 @@ namespace SSC {
     bool isTest = false;
     bool headless = false;
     String aspectRatio = "";
+    String titleBarStyle = "";
+    String trafficLightPosition = "";
     String cwd = "";
     String title = "";
     String url = "data:text/html,<html>";

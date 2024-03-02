@@ -37,7 +37,9 @@ export function getCurrentWindowIndex () {
  * @param {number} opts.index - the index of the window
  * @param {string} opts.path - the path to the HTML file to load into the window
  * @param {string=} opts.title - the title of the window
- * @param {string=} opts.aspectRatio - a string (split on :) provides two float values which set the window's aspect ratio.
+ * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
+ * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
+ * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -66,6 +68,8 @@ export async function createWindow (opts) {
     resizable: opts.resizable ?? true,
     frameless: opts.frameless ?? false,
     aspectRatio: opts.aspectRatio ?? '',
+    titleBarStyle: opts.titleBarStyle ?? '',
+    trafficLightPosition: opts.trafficLightPosition ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
     minWidth: opts.minWidth ?? 0,
