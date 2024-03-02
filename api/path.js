@@ -1,5 +1,6 @@
 import { primordials } from './ipc.js'
 import {
+  mounts,
   Path,
   posix,
   win32,
@@ -39,6 +40,7 @@ export {
   Path,
   posix,
   win32,
+  mounts,
 
   DOWNLOADS,
   DOCUMENTS,
