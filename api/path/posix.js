@@ -1,3 +1,4 @@
+import * as mounts from './mounts.js'
 import * as win32 from './win32.js'
 import location from '../location.js'
 import { Path } from './path.js'
@@ -21,6 +22,7 @@ import * as exports from './posix.js'
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
 export {
+  mounts,
   win32,
   Path,
 
