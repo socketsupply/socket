@@ -637,10 +637,6 @@ export default module
         response.responseHeaders = headers.toMap()
 
         if (webviewImportMapFilename.length > 0) {
-          webviewImportMapFilename = webviewImportMapFilename
-            .split("/")
-            .last()
-
           val webviewImportMapFile = try {
             assetManager.open(webviewImportMapFilename, 2)
           } catch (_: Exception) {
