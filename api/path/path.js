@@ -447,6 +447,10 @@ export class Path {
   }
 
   get pathname () {
+    if (!this.url) {
+      return null
+    }
+
     let { pathname } = this.url
 
     if (this.#leadingDot || this.isRelative) {
@@ -461,11 +465,11 @@ export class Path {
   }
 
   get protocol () {
-    return this.url.protocol
+    return this.url?.protocol
   }
 
   get href () {
-    return this.url.href
+    return this.url?.href
   }
 
   /**
