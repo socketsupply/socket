@@ -1359,7 +1359,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | options.encoding | string? | utf8 | true |  |
 | options.withFileTypes | boolean? | false | true |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L309)
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L313)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1376,7 +1376,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L326)
+## [`readlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L330)
 
 Reads link at `path`
 
@@ -1388,7 +1388,7 @@ Reads link at `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L345)
+## [`realpath(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L349)
 
 Computes real path for `path`
 
@@ -1400,7 +1400,7 @@ Computes real path for `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L365)
+## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L369)
 
 Renames file or directory at `src` to `dest`.
 
@@ -1413,7 +1413,7 @@ Renames file or directory at `src` to `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L386)
+## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L390)
 
 Removes directory at `path`.
 
@@ -1425,7 +1425,7 @@ Removes directory at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L406)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L410)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 Get the stats of a file
@@ -1440,7 +1440,7 @@ Get the stats of a file
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`lstat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L420)
+## [`lstat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L424)
 
 External docs: https://nodejs.org/api/fs.html#fspromiseslstatpath-options
 Get the stats of a symbolic link.
@@ -1455,7 +1455,7 @@ Get the stats of a symbolic link.
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L432)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L436)
 
 Creates a symlink of `src` at `dest`.
 
@@ -1468,7 +1468,7 @@ Creates a symlink of `src` at `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L467)
+## [`unlink(path)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L471)
 
 Unlinks (removes) file at `path`.
 
@@ -1480,7 +1480,7 @@ Unlinks (removes) file at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L490)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L494)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1499,7 +1499,7 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L510)
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L514)
 
 Watch for changes at `path` calling `callback`
 
@@ -1893,47 +1893,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | pathname | string |  | false |  |
 | cwd | string | Path.cwd() | true |  |
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L475)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L479)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L482)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L486)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L516)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L520)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L524)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L528)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L543)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L547)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L564)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L568)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L599)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L603)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L611)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L615)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L619)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L623)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L639)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L643)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L646)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L650)
 
 
 
@@ -1941,7 +1941,7 @@ The computed drive, if given in the path.
 | :---         | :--- | :---        |
 | Not specified | URL |  |
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L654)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L658)
 
 Converts this `Path` instance to a string.
 
