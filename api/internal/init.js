@@ -586,15 +586,39 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 hooks.onLoad(async () => {
   const serviceWorkerScripts = config['webview_service-workers']
   const pending = []
-  const registered = new Set()
+  const registeredServiceWorkers = new Set()
+
   if (
     globalThis.window &&
     serviceWorkerScripts &&
     !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
     globalThis.location.pathname !== '/socket/service-worker/index.html'
   ) {
-    for (const serviceWorkerScript of serviceWorkerScripts.trim().split(' ')) {
-      let scriptURL = serviceWorkerScript.trim()
+    const pendingServiceRegistrations = []
+
+    if (typeof config['webview_service-workers'] === 'string') {
+      for (const scriptURL of serviceWorkerScripts.trim().split(' ')) {
+        pendingServiceRegistrations.push({
+          scriptURL: scriptURL.trim(),
+          options: {}
+        })
+      }
+    }
+
+    for (const key in config) {
+      if (key.startsWith('webview_service-workers_')) {
+        const scope = key.replace('webview_service-workers_', '')
+        const scriptURL = config[key].trim()
+        pendingServiceRegistrations.push({
+          scriptURL,
+          options: { scope }
+        })
+      }
+    }
+
+    for (const registration of pendingServiceRegistrations) {
+      const { options } = registration
+      let { scriptURL } = registration
 
       if (!scriptURL.startsWith('/') && scriptURL.startsWith('.')) {
         if (!URL.canParse(scriptURL, globalThis.location.href)) {
@@ -602,12 +626,12 @@ hooks.onLoad(async () => {
         }
       }
 
-      if (registered.has(scriptURL)) {
+      if (registeredServiceWorkers.has(scriptURL)) {
         continue
       }
 
-      const promise = globalThis.navigator.serviceWorker.register(scriptURL)
-      registered.add(scriptURL)
+      const promise = globalThis.navigator.serviceWorker.register(scriptURL, options)
+      registeredServiceWorkers.add(scriptURL)
 
       pending.push(promise)
 
