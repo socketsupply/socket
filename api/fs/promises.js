@@ -274,7 +274,11 @@ export async function opendir (path, options) {
  * @param {boolean?} [options.withFileTypes = false]
  */
 export async function readdir (path, options) {
-  options = { entries: DirectoryHandle.MAX_ENTRIES, ...options }
+  options = {
+    entries: DirectoryHandle.MAX_ENTRIES,
+    withFileTypes: false,
+    ...options
+  }
 
   const entries = []
   const handle = await DirectoryHandle.open(path, options)
