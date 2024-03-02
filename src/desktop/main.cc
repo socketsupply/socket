@@ -1004,6 +1004,8 @@ MAIN {
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.aspectRatio = message.get("aspectRatio");
+      options.titleBarStyle = message.get("titleBarStyle");
+      options.trafficLightPosition = message.get("trafficLightPosition");
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
       options.userScript = message.get("userScript");
@@ -1465,6 +1467,8 @@ MAIN {
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = userConfig["window_resizable"] == "false" ? false : true,
     .frameless = userConfig["window_frameless"] == "true" ? true : false,
+//    .titleBarStyle = userConfig["window_titleBarStyle"],
+//    .trafficLightPosition = userConfig["window_trafficLightPosition"],
     .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
     .onExit = shutdownHandler
