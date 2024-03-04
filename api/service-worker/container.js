@@ -1,8 +1,8 @@
 /* global EventTarget */
 import { createServiceWorker, SHARED_WORKER_URL } from './instance.js'
 import { ServiceWorkerRegistration } from './registration.js'
-import { InvertedPromise } from '../util.js'
 import { SharedWorker } from '../internal/shared-worker.js'
+import { Deferred } from '../async.js'
 import application from '../application.js'
 import state from './state.js'
 import ipc from '../ipc.js'
@@ -25,8 +25,8 @@ class ServiceWorkerContainerInternalState {
   sharedWorker = null
   controller = null
   channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
-  ready = new InvertedPromise()
-  init = new InvertedPromise()
+  ready = new Deferred()
+  init = new Deferred()
 
   isRegistering = false
   isRegistered = false

@@ -1,4 +1,4 @@
-import { InvertedPromise } from '../util.js'
+import { Deferred } from '../async.js'
 import { Context } from './context.js'
 import application from '../application.js'
 import state from './state.js'
@@ -16,7 +16,7 @@ export const FETCH_EVENT_TIMEOUT = (
  * worker lifecycle.
  */
 export class ExtendableEvent extends Event {
-  #promise = new InvertedPromise()
+  #promise = new Deferred()
   #promises = []
   #pendingPromiseCount = 0
   #context = null
@@ -117,7 +117,7 @@ export class ExtendableEvent extends Event {
  * request and how the receiver will treat the response.
  */
 export class FetchEvent extends ExtendableEvent {
-  #handled = new InvertedPromise()
+  #handled = new Deferred()
   #request = null
   #clientId = null
   #isReload = false
@@ -228,6 +228,37 @@ export class FetchEvent extends ExtendableEvent {
     queueMicrotask(async () => {
       try {
         response = await response
+
+        if (!response || !(response instanceof Response)) {
+          // TODO(@jwerle): handle this
+          return
+        }
+
+        if (response.type === 'error') {
+          const statusCode = 0
+          const headers = Array.from(response.headers.entries())
+            .map((entry) => entry.join(':'))
+            .concat('Runtime-Response-Source:serviceworker')
+            .concat('Access-Control-Allow-Credentials:true')
+            .concat('Access-Control-Allow-Origin:*')
+            .concat('Access-Control-Allow-Methods:*')
+            .concat('Access-Control-Allow-Headers:*')
+            .join('\n')
+
+          const result = await ipc.request('serviceWorker.fetch.response', {
+            statusCode,
+            clientId,
+            headers,
+            id
+          })
+
+          if (result.err) {
+            state.reportError(result.err)
+          }
+
+          handled.resolve()
+          return
+        }
 
         const arrayBuffer = await response.arrayBuffer()
         const statusCode = response.status ?? 200
