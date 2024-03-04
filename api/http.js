@@ -481,26 +481,7 @@ export class IncomingMessage extends Readable {
     }
 
     if (options?.url) {
-      let url = options.url
-      if (typeof url === 'string') {
-        if (URL.canParse(url)) {
-          url = new URL(url)
-        }
-      }
-
-      if (url instanceof URL) {
-        const { hostname, pathname, search } = url
-        this.#url = `${pathname}${search}`
-        this.#headers.set('host', hostname)
-      } else if (typeof url === 'string') {
-        if (!url.startsWith('/')) {
-          url = `/${url}`
-        }
-
-        this.#url = url
-      } else {
-        throw new TypeError('Invalid URL given')
-      }
+      this.url = options.url
     }
   }
 
@@ -527,8 +508,27 @@ export class IncomingMessage extends Readable {
    * query component parameters.
    * @type {string}
    */
-  get url () {
-    return this.#url
+  get url () { return this.#url }
+  set url (url) {
+    if (typeof url === 'string') {
+      if (URL.canParse(url)) {
+        url = new URL(url)
+      }
+    }
+
+    if (url instanceof URL) {
+      const { hostname, pathname, search } = url
+      this.#url = `${pathname}${search}`
+      this.#headers.set('host', hostname)
+    } else if (typeof url === 'string') {
+      if (!url.startsWith('/')) {
+        url = `/${url}`
+      }
+
+      this.#url = url
+    } else {
+      throw new TypeError('Invalid URL given')
+    }
   }
 
   /**
@@ -766,6 +766,16 @@ export class ClientRequest extends OutgoingMessage {
    */
   get host () {
     return this.#url?.hostname ?? null
+  }
+
+  /**
+   * The URL for this outgoing message. This value is not absolute with
+   * respect to the protocol and hostname. It includes the path and search
+   * query component parameters.
+   * @type {string}
+   */
+  get url () {
+    return this.#url
   }
 
   /**
