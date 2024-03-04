@@ -585,13 +585,12 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 }
 
 hooks.onLoad(async () => {
+  const registeredServiceWorkers = new Set()
   const serviceWorkerScripts = config['webview_service-workers']
   const pending = []
-  const registeredServiceWorkers = new Set()
 
   if (
     globalThis.window &&
-    serviceWorkerScripts &&
     !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
     globalThis.location.pathname !== '/socket/service-worker/index.html'
   ) {
