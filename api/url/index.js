@@ -22,6 +22,9 @@ URL.format = format
 
 export const protocols = new Set([
   'socket:',
+  'https:',
+  'http:',
+  'file:',
   'ipc:'
 ])
 
