@@ -121,6 +121,11 @@ int lastY = 0;
   [self updateTitleBarForCurrentAppearance];
 }
 
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+  [super windowDidBecomeKey:notification];
+  [self updateTitleBarForCurrentAppearance];
+}
+
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
   [super resizeSubviewsWithOldSize:oldSize];
 
@@ -129,6 +134,7 @@ int lastY = 0;
   CGFloat newX = self.trafficLightPosition.x;
   CGFloat newY = 0.f;
 
+  [self updateTitleBarForCurrentAppearance];
   self.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
 }
 
@@ -713,7 +719,10 @@ namespace SSC {
       style |= NSWindowStyleMaskResizable;
     }
 
-    style |= NSWindowStyleMaskClosable;
+    if (opts.closable) {
+      style |= NSWindowStyleMaskClosable;
+    }
+
     style |= NSWindowStyleMaskMiniaturizable;
 
     window = [[NSWindow alloc]
@@ -1141,6 +1150,8 @@ namespace SSC {
     // Add webview to window
     [window setContentView: webview];
 
+    navigate("0", opts.url);
+
     //
     // results in a hidden title bar and a full-size content window.
     //
@@ -1165,6 +1176,7 @@ namespace SSC {
       style |= NSWindowStyleMaskResizable;
 
       [window setStyleMask: style];
+      [window setTitleVisibility: NSWindowTitleHidden];
 
       CGFloat x = 16.f;
       CGFloat y = 42.f;
@@ -1214,6 +1226,10 @@ namespace SSC {
 
       this->webview.trafficLightPosition = NSMakePoint(x, y);
       this->webview.titleBarView = titleBarView;
+
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [this->webview updateTitleBarForCurrentAppearance];
+      });
     }
 
     if (opts.aspectRatio.size() > 2) {
@@ -1245,12 +1261,10 @@ namespace SSC {
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
 
     if (opts.frameless) {
-      [window setTitlebarAppearsTransparent: true];
-      [window setMovableByWindowBackground:YES];
+      [window setTitlebarAppearsTransparent: YES];
+      [window setMovableByWindowBackground: YES];
       [window setStyleMask:NSWindowStyleMaskBorderless];
     }
-
-    navigate("0", opts.url);
   }
 
   Window::~Window () {
