@@ -317,6 +317,14 @@ namespace SSC {
       "})();                                                                 \n"
     );
 
+    if (opts.runtimePrimordialOverrides.size() > 0) {
+      preload += (
+        "globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ = (                     \n"
+        "  " + opts.runtimePrimordialOverrides + "                           \n"
+        ")                                                                   \n"
+      );
+    }
+
     if (preloadOptions.wrap) {
       preload += "</script>\n";
     }
