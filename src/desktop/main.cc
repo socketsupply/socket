@@ -989,6 +989,14 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
+      if (message.get("radius").size() > 0) {
+        options.radius = std::stof(message.get("radius"));
+      }
+
+      if (message.get("margin").size() > 0) {
+        options.margin = std::stof(message.get("margin"));
+      }
+
       auto screen = currentWindow->getScreenSize();
 
       options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
@@ -1004,6 +1012,8 @@ MAIN {
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.closable = message.get("closable") == "true" ? true : false;
+      options.maximizable = message.get("maximizable") == "true" ? true : false;
+      options.minimizable = message.get("minimizable") == "true" ? true : false;
       options.aspectRatio = message.get("aspectRatio");
       options.titleBarStyle = message.get("titleBarStyle");
       options.trafficLightPosition = message.get("trafficLightPosition");
@@ -1449,16 +1459,21 @@ MAIN {
     }
   }
 
-  bool definesResizable = userConfig.count("window_resizable") > 0;
-  bool definesFrameless = userConfig.count("window_frameless") > 0;
+  auto getProperty = [&](String property) {
+    if (userConfig.count(property) > 0) {
+      return userConfig[property];
+    }
+
+    return String("");
+  };
 
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight = app.appData["window_height"],
-    .defaultWidth = app.appData["window_width"],
-    .defaultMinWidth = app.appData["window_min_width"],
-    .defaultMinHeight = app.appData["window_min_height"],
-    .defaultMaxWidth = app.appData["window_max_width"],
-    .defaultMaxHeight = app.appData["window_max_height"],
+    .defaultHeight = getProperty("window_height"),
+    .defaultWidth = getProperty("window_width"),
+    .defaultMinWidth = getProperty("window_min_width"),
+    .defaultMinHeight = getProperty("window_min_height"),
+    .defaultMaxWidth = getProperty("window_max_width"),
+    .defaultMaxHeight = getProperty("window_max_height"),
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
@@ -1471,11 +1486,13 @@ MAIN {
   std::cout << userConfig["window_trafficLightPosition"] << std::endl;
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
-    .resizable = definesResizable && userConfig["window_resizable"] == "false" ? false : true,
-    .frameless = definesFrameless && userConfig["window_frameless"] == "true" ? true : false,
-    .closable = userConfig["window_closable"] == "true" ? true : false,
-    .titleBarStyle = userConfig["window_titleBarStyle"],
-    .trafficLightPosition = userConfig["window_trafficLightPosition"],
+    .resizable = getProperty("window_resizable") == "false" ? false : true,
+    .frameless = getProperty("window_frameless") == "true" ? true : false,
+    .closable = getProperty("window_closable") == "true" ? true : false,
+    .minimizable = getProperty("window_minimizable") == "true" ? true : false,
+    .maximizable = getProperty("window_maximizable") == "true" ? true : false,
+    .titleBarStyle = getProperty("window_titleBarStyle"),
+    .trafficLightPosition = getProperty("window_trafficLightPosition"),
     .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
     .onExit = shutdownHandler

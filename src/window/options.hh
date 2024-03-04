@@ -6,6 +6,8 @@
 namespace SSC {
   struct WindowOptions {
     bool resizable = true;
+    bool minimizable = true;
+    bool maximizable = true;
     bool closable = true;
     bool frameless = false;
     bool utility = false;
@@ -16,6 +18,8 @@ namespace SSC {
     float minHeight = 0;
     float maxWidth = 0;
     float maxHeight = 0;
+    float radius = 0.0;
+    float margin = 0;
     int index = 0;
     int debug = 0;
     int port = 0;
