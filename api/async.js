@@ -1,59 +1,140 @@
+/* global Event, ErrorEvent */
+
 /**
- * A utility class for creating deferred promises.
+ * Dispatched when a `Deferred` internal promise is resolved.
  */
-export class Deferred {
+export class DeferredResolveEvent extends Event {
   /**
-   * Creates a new Deferred instance.
+   * The `Deferred` promise result value.
+   * @type {any?}
    */
-  constructor () {
-    /**
-     * The promise associated with this Deferred instance.
-     * @type {Promise<any>}
-     * @private
-     */
-    this._promise = new Promise((resolve, reject) => {
-      /**
-       * Function to resolve the associated promise.
-       * @type {function}
-       */
-      this.resolve = resolve
-      /**
-       * Function to reject the associated promise.
-       * @type {function}
-       */
-      this.reject = reject
-    })
-    /**
-     * Attaches a fulfillment callback and a rejection callback to the promise,
-     * and returns a new promise resolving to the return value of the called
-     * callback.
-     * @type {function}
-     */
-    this.then = this._promise.then.bind(this._promise)
-    /**
-     * Attaches a rejection callback to the promise, and returns a new promise
-     * resolving to the return value of the callback if it is called, or to its
-     * original fulfillment value if the promise is instead fulfilled.
-     * @type {function}
-     */
-    this.catch = this._promise.catch.bind(this._promise)
-    /**
-     * Attaches a callback for when the promise is settled (fulfilled or rejected).
-     * @type {function}
-     */
-    this.finally = this._promise.finally.bind(this._promise)
-    /**
-     * A string representation of this Deferred instance.
-     * @type {string}
-     * @ignore
-     */
-    this[Symbol.toStringTag] = 'Promise'
+  result = null
+
+  /**
+   * `DeferredResolveEvent` class constructor
+   * @ignore
+   * @param {string=} [type]
+   * @param {any=} [result]
+   */
+  constructor (type = 'resolve', result = null) {
+    super(type)
+    this.result = result
   }
 }
 
 /**
- * Exports the Deferred class.
+ * Dispatched when a `Deferred` internal promise is rejected.
  */
+export class DeferredRejectEvent extends ErrorEvent {
+  /**
+   * `DeferredRejectEvent` class constructor
+   * @ignore
+   * @param {string=} [type]
+   * @param {Error=} [error]
+   */
+  constructor (type = 'reject', error = null) {
+    super(type, { error })
+  }
+}
+
+/**
+ * A utility class for creating deferred promises.
+ */
+export class Deferred extends EventTarget {
+  #promise = null
+
+  /**
+   * Function to resolve the associated promise.
+   * @type {function}
+   */
+  resolve = null
+
+  /**
+   * Function to reject the associated promise.
+   * @type {function}
+   */
+  reject = null
+
+  /**
+   * `Deferred` class constructor.
+   * Creates a new Deferred instance.
+   */
+  constructor () {
+    super()
+
+    this.#promise = new Promise((resolve, reject) => {
+      this.resolve = (value) => {
+        try {
+          return resolve(value)
+        } finally {
+          this.dispatchEvent(new DeferredResolveEvent('resolve', value))
+        }
+      }
+
+      this.reject = (error) => {
+        try {
+          return reject(error)
+        } finally {
+          this.dispatchEvent(new DeferredRejectEvent('reject', error))
+        }
+      }
+    })
+  }
+
+  /**
+   * A string representation of this Deferred instance.
+   * @type {string}
+   * @ignore
+   */
+  get [Symbol.toStringTag] () {
+    return 'Promise'
+  }
+
+  /**
+   * The promise associated with this Deferred instance.
+   * @type {Promise<any>}
+   * @private
+   */
+  get promise () {
+    return this.#promise
+  }
+
+  /**
+   * Attaches a fulfillment callback and a rejection callback to the promise,
+   * and returns a new promise resolving to the return value of the called
+   * callback.
+   * @param {function(any)=} [resolve]
+   * @param {function(Error)=} [reject]
+   */
+  then (resolve, reject) {
+    if (resolve && reject) {
+      return this.promise.then(resolve, reject)
+    } else if (resolve) {
+      return this.promise.then(resolve)
+    } else {
+      return this.promise.then()
+    }
+  }
+
+  /**
+   * Attaches a rejection callback to the promise, and returns a new promise
+   * resolving to the return value of the callback if it is called, or to its
+   * original fulfillment value if the promise is instead fulfilled.
+   * @param {function(Error)=} [callback]
+   */
+  catch (callback) {
+    return this.promise.catch(callback)
+  }
+
+  /**
+   * Attaches a callback for when the promise is settled (fulfilled or rejected).
+   * @type {function(any?)} [callback]
+   */
+  finally (callback) {
+    return this.promise.finally(callback)
+  }
+}
+
 export default {
   Deferred
 }
