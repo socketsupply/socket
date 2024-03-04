@@ -318,12 +318,6 @@ declare module "socket:async" {
          */
         reject: Function;
         /**
-         * The promise associated with this Deferred instance.
-         * @type {Promise<any>}
-         * @private
-         */
-        private get promise();
-        /**
          * Attaches a fulfillment callback and a rejection callback to the promise,
          * and returns a new promise resolving to the return value of the called
          * callback.
@@ -339,6 +333,12 @@ declare module "socket:async" {
          */
         catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
         finally(arg0: any | null): any;
+        /**
+         * The promise associated with this Deferred instance.
+         * @type {Promise<any>}
+         * @private
+         */
+        private get promise();
         /**
          * A string representation of this Deferred instance.
          * @type {string}
