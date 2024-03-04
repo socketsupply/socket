@@ -233,6 +233,10 @@ export class MIMEParams extends Map {
       .map((entry) => entry.join('='))
       .join(';')
   }
+
+  get size () {
+    return this.keys().length
+  }
 }
 
 export class MIMEType {
