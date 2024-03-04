@@ -34,10 +34,10 @@ export function getCurrentWindowIndex () {
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
+ * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
  * @param {number} opts.index - the index of the window
  * @param {string} opts.path - the path to the HTML file to load into the window
  * @param {string=} opts.title - the title of the window
- * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
  * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
  * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
@@ -66,6 +66,7 @@ export async function createWindow (opts) {
     index: globalThis.__args.index,
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
+    closable: opts.closable === true,
     frameless: opts.frameless ?? false,
     aspectRatio: opts.aspectRatio ?? '',
     titleBarStyle: opts.titleBarStyle ?? '',
