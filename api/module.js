@@ -17,7 +17,7 @@ import async_context from './async_context.js'
 import async_hooks from './async_hooks.js'
 import application from './application.js'
 import assert from './assert.js'
-import buffer from './buffer.js'
+import * as buffer from './buffer.js'
 // eslint-disable-next-line
 import child_process from './child_process.js'
 import console from './console.js'
