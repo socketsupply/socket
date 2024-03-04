@@ -1003,6 +1003,7 @@ MAIN {
       options.headless = message.get("headless") == "true" ? true : false;
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
+      options.closable = message.get("closable") == "true" ? true : false;
       options.aspectRatio = message.get("aspectRatio");
       options.titleBarStyle = message.get("titleBarStyle");
       options.trafficLightPosition = message.get("trafficLightPosition");
@@ -1448,6 +1449,9 @@ MAIN {
     }
   }
 
+  bool definesResizable = userConfig.count("window_resizable") > 0;
+  bool definesFrameless = userConfig.count("window_frameless") > 0;
+
   windowManager.configure(WindowManagerOptions {
     .defaultHeight = app.appData["window_height"],
     .defaultWidth = app.appData["window_width"],
@@ -1464,11 +1468,14 @@ MAIN {
     .onExit = shutdownHandler
   });
 
+  std::cout << userConfig["window_trafficLightPosition"] << std::endl;
+
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
-    .resizable = userConfig["window_resizable"] == "false" ? false : true,
-    .frameless = userConfig["window_frameless"] == "true" ? true : false,
-//    .titleBarStyle = userConfig["window_titleBarStyle"],
-//    .trafficLightPosition = userConfig["window_trafficLightPosition"],
+    .resizable = definesResizable && userConfig["window_resizable"] == "false" ? false : true,
+    .frameless = definesFrameless && userConfig["window_frameless"] == "true" ? true : false,
+    .closable = userConfig["window_closable"] == "true" ? true : false,
+    .titleBarStyle = userConfig["window_titleBarStyle"],
+    .trafficLightPosition = userConfig["window_trafficLightPosition"],
     .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
     .onExit = shutdownHandler

@@ -6,6 +6,7 @@
 namespace SSC {
   struct WindowOptions {
     bool resizable = true;
+    bool closable = true;
     bool frameless = false;
     bool utility = false;
     bool canExit = false;
