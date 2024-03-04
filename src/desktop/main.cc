@@ -1008,6 +1008,7 @@ MAIN {
       options.debug = message.get("debug") == "true" ? true : false;
       options.userScript = message.get("userScript");
       options.index = targetWindowIndex;
+      options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
 
       targetWindow = windowManager.createWindow(options);
 
