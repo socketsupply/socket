@@ -1,7 +1,13 @@
 import { Writable, Readable, Duplex } from './stream.js'
 import { EventEmitter } from './events.js'
 import { toProperCase } from './util.js'
+import { Buffer } from './buffer.js'
+import location from './location.js'
 import adapters from './http/adapters.js'
+import gc from './gc.js'
+
+// re-export
+import * as exports from './http.js'
 
 /**
  * All known possible HTTP methods.
@@ -124,6 +130,7 @@ export class OutgoingMessage extends Writable {
   #headers = new Headers()
   #timeout = null
   #finished = false
+  #buffers = []
 
   /**
    * `true` if the headers were sent
@@ -136,13 +143,29 @@ export class OutgoingMessage extends Writable {
    * @ignore
    */
   constructor () {
-    super()
+    super({
+      write: (data, callback) => {
+        this.emit('writebuffer')
+        this.buffers.push(Buffer.from(data))
+        callback(null)
+      }
+    })
+
     this.once('finish', () => {
       this.#finished = true
       if (this.#timeout) {
         clearTimeout(this.#timeout)
       }
     })
+  }
+
+  /**
+   * Internal buffers
+   * @ignore
+   * @type {Buffer[]}
+   */
+  get buffers () {
+    return this.#buffers
   }
 
   /**
@@ -268,8 +291,12 @@ export class OutgoingMessage extends Writable {
       this.once('finish', callback)
     }
 
+    if (chunk !== null) {
+      this.write(chunk)
+    }
+
     this.emit('prefinish')
-    super.end(chunk)
+    super.end(null)
     return this
   }
 
@@ -495,6 +522,16 @@ export class IncomingMessage extends Readable {
   }
 
   /**
+   * The URL for this incoming message. This value is not absolute with
+   * respect to the protocol and hostname. It includes the path and search
+   * query component parameters.
+   * @type {string}
+   */
+  get url () {
+    return this.#url
+  }
+
+  /**
    * Similar to `message.headers`, but there is no join logic and the values
    * are always arrays of strings, even for headers received just once.
    * @type {object}
@@ -643,6 +680,7 @@ export class IncomingMessage extends Readable {
 
 /**
  * An object that is created internally and returned from `request()`.
+ * @see {@link https://nodejs.org/api/http.html#class-httpclientrequest}
  */
 export class ClientRequest extends OutgoingMessage {
   #method = null
@@ -677,8 +715,8 @@ export class ClientRequest extends OutgoingMessage {
       if (typeof url === 'string') {
         if (URL.canParse(url)) {
           url = new URL(url)
-        } else if (URL.canParse(url, globalThis.location.origin)) {
-          url = new URL(url, globalThis.location.origin)
+        } else if (URL.canParse(url, location.origin)) {
+          url = new URL(url, location.origin)
         } else {
           url = null
         }
@@ -692,6 +730,14 @@ export class ClientRequest extends OutgoingMessage {
         throw new TypeError('Invalid URL given')
       }
     }
+  }
+
+  /**
+   * The HTTP request method.
+   * @type {string}
+   */
+  get method () {
+    return this.#method
   }
 
   /**
@@ -763,6 +809,7 @@ export class ClientRequest extends OutgoingMessage {
 /**
  * An object that is created internally by a `Server` instance, not by the user.
  * It is passed as the second parameter to the 'request' event.
+ * @see {@link https://nodejs.org/api/http.html#class-httpserverresponse}
  */
 export class ServerResponse extends OutgoingMessage {
   #statusMessage = STATUS_CODES[200]
@@ -800,8 +847,9 @@ export class ServerResponse extends OutgoingMessage {
    * Only valid for response obtained from `ClientRequest`.
    * @type {number}
    */
-  get statusCode () {
-    return this.#statusCode
+  get statusCode () { return this.#statusCode }
+  set statusCode (statusCode) {
+    this.#statusCode = statusCode
   }
 
   /**
@@ -810,24 +858,27 @@ export class ServerResponse extends OutgoingMessage {
    * Only valid for response obtained from `ClientRequest`.
    * @type {string?}
    */
-  get statusMessage () {
-    return this.#statusMessage
+  get statusMessage () { return this.#statusMessage }
+  set statusMessage (statusMessage) {
+    this.#statusMessage = statusMessage
   }
 
   /**
    * An alias for `statusCode`
    * @type {number}
    */
-  get status () {
-    return this.#statusCode
+  get status () { return this.#statusCode }
+  set status (status) {
+    this.#statusCode = status
   }
 
   /**
    * An alias for `statusMessage`
    * @type {string?}
    */
-  get statusText () {
-    return this.#statusMessage
+  get statusText () { return this.#statusMessage }
+  set statusText (statusText) {
+    this.#statusMessage = statusText
   }
 
   /**
@@ -933,6 +984,7 @@ export class AgentOptions {
 /**
  * An Agent is responsible for managing connection persistence
  * and reuse for HTTP clients.
+ * @see {@link https://nodejs.org/api/http.html#class-httpagent}
  */
 export class Agent extends EventEmitter {
   defaultProtocol = 'http:'
@@ -1134,17 +1186,154 @@ export class Agent extends EventEmitter {
 export const globalAgent = new Agent()
 
 /**
+ * A duplex stream between a HTTP request `IncomingMessage` and the
+ * response `ServerResponse`
+ */
+export class Connection extends Duplex {
+  server = null
+  active = false
+  request = null
+  response = null
+
+  /**
+   * `Connection` class constructor.
+   * @ignore
+   * @param {Server} server
+   * @param {IncomingMessage} incomingMessage
+   * @param {ServerResponse} serverResponse
+   */
+  constructor (server, incomingMessage, serverResponse) {
+    super()
+    // bind duplex
+    incomingMessage.pipe(this).pipe(serverResponse)
+    this.server = server
+    this.request = incomingMessage
+    this.response = serverResponse
+
+    if (this.server.requestTimeout > 0) {
+      const timeout = setTimeout(
+        () => {
+          this.response.statusCode = 408
+          this.response.statusMessage = STATUS_CODES[408]
+          this.response.buffers.splice(0, this.response.buffers.length)
+          this.response.end()
+          this.emit('timeout')
+        },
+        this.server.requestTimeout
+      )
+
+      this.request.once('end', () => {
+        clearTimeout(timeout)
+      })
+    }
+
+    if (this.server.timeout > 0) {
+      const waitForNoActivity = () => {
+        const timeout = setTimeout(
+          () => {
+            this.response.statusCode = 408
+            this.response.statusMessage = STATUS_CODES[408]
+            this.response.buffers.splice(0, this.response.buffers.length)
+            this.response.end()
+            this.emit('timeout')
+          },
+          this.server.timeout
+        )
+
+        this.response.on('writebuffer', () => {
+          clearTimeout(timeout)
+          waitForNoActivity()
+        })
+      }
+
+      waitForNoActivity()
+    }
+  }
+
+  /**
+   * Closes the connection, destroying the underlying duplex, request, and
+   * response streams.
+   * @return {Connection}
+   */
+  close () {
+    this.destroy()
+    this.request.destroy()
+    this.response.destroy()
+  }
+}
+
+/**
  * A nodejs compat HTTP server typically intended for running in a "worker"
  * environment.
+ * @see {@link https://nodejs.org/api/http.html#class-httpserver}
  */
 export class Server extends EventEmitter {
   #maxConnections = Infinity
+  #connections = []
   #listening = false
   #adapter = null
   #closed = false
+  #port = 0
+  #host = null
+
+  requestTimeout = 30000
+  timeout = 0
 
   // unused
+  maxRequestsPerSocket = 0
+  keepAliveTimeout = 0
   headersTimeout = 60000
+
+  /**
+   * The adapter interface for this `Server` instance.
+   * @ignore
+   */
+  get adapterInterace () {
+    return {
+      Connection,
+      globalAgent,
+      IncomingMessage,
+      METHODS,
+      ServerResponse,
+      STATUS_CODES
+    }
+  }
+
+  /**
+   * `true` if the server is closed, otherwise `false`.
+   * @type {boolean}
+   */
+  get closed () {
+    return this.#closed
+  }
+
+  /**
+   * The host to listen to. This value can be `null`.
+   * Defaults to `location.hostname`. This value
+   * is used to filter requests by hostname.
+   * @type {string?}
+   */
+  get host () {
+    return this.#host ?? null
+  }
+
+  /**
+   * The `port` to listen on. This value can be `0`, which is the default.
+   * This value is used to filter requests by port, if given. A port value
+   * of `0` does not filter on any port.
+   * @type {number}
+   */
+  get port () {
+    return this.#port ?? 0
+  }
+
+  /**
+   * A readonly array of all active or inactive (idle) connections.
+   * @type {Connection[]}
+   */
+  get connections () {
+    return Array.from(this.#connections)
+  }
 
   /**
    * `true` if the server is listening for requests.
@@ -1167,7 +1356,7 @@ export class Server extends EventEmitter {
   }
 
   /**
-   * TODO
+   * Closes the server.
    * @param {function=} [close]
    */
   close (callback = null) {
@@ -1175,28 +1364,66 @@ export class Server extends EventEmitter {
       this.once('close', callback)
     }
 
+    this.closeAllConnections()
+    this.#adapter.destroy()
     this.#closed = true
-    // TODO(@jwerle): close server
+    queueMicrotask(() => this.emit('close'))
   }
 
   /**
-   * TODO
+   * Closes all connections.
    */
   closeAllConnections () {
-    // TODO(@jwerle): close all connections
+    for (const connection of this.#connections) {
+      connection.destroy()
+    }
+    this.#connections = []
   }
 
   /**
-   * TODO
+   * Closes all idle connections.
    */
   closeIdleConnections () {
-    // TODO(@jwerle): close "idle" connections
+    for (const connection of this.#connections) {
+      if (!connection.active) {
+        connection.destroy()
+      }
+    }
+
+    this.#connections = this.#connections.filter((connection) =>
+      connection.active === true
+    )
   }
 
   /**
-   * TODO
+   * @ignore
    */
-  listen (port, host, unused, callback) {
+  setTimeout (timeout = 0, callback = null) {
+    // not supported
+    return this
+  }
+
+  /**
+   * @param {number|object=} [port]
+   * @param {string=} [host]
+   * @param {function|null} [unused]
+   * @param {function=} [callback
+   * @return Server
+   */
+  listen (port = 0, host = null, unused = null, callback) {
+    if (typeof port === 'function') {
+      callback = port
+      port = 0
+      host = null
+      unused = null
+    }
+
+    if (typeof host === 'function') {
+      callback = host
+      host = null
+      unused = null
+    }
+
     if (typeof unused === 'function') {
       callback = unused
     }
@@ -1209,19 +1436,30 @@ export class Server extends EventEmitter {
       }
 
       port = options.port ?? 0
-      host = options.host ?? globalThis.location.hostname
+      host = options.host ?? location?.hostname ?? null
     }
 
     if (typeof callback === 'function') {
       this.once('listening', callback)
     }
 
+    if (typeof port === 'number' && Number.isFinite(port) && port > 0) {
+      this.#port = port
+    } else {
+      this.#port = 0
+    }
+
+    if (host && typeof host === 'string') {
+      this.#host = host
+    } else {
+      this.#host = location?.hostname ?? null
+    }
+
     if (globalThis.isServiceWorkerScope === true) {
-      this.#adapter = new adapters.ServiceWorkerServerAdapter(this, {
-        globalAgent,
-        IncomingMessage,
-        ServerResponse
-      })
+      this.#adapter = new adapters.ServiceWorkerServerAdapter(
+        this,
+        this.adapterInterace
+      )
 
       this.#adapter.addEventListener('activate', () => {
         this.#listening = true
@@ -1229,7 +1467,38 @@ export class Server extends EventEmitter {
       })
     }
 
+    this.on('connection', (connection) => {
+      if (this.#connections.length < this.maxConnections) {
+        this.#connections.push(connection)
+        connection.response.once('finish', () => {
+          const index = this.#connections.indexOf(connection)
+          if (index >= 0) {
+            this.#connections.splice(index, 1)
+          }
+        })
+      } else {
+        connection.close()
+      }
+    })
+
+    gc.ref(this)
     return this
+  }
+
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @return {gc.Finalizer}
+   * @ignore
+   */
+  [gc.finalizer] () {
+    return {
+      args: [this.#adapter],
+      handle (adapter) {
+        if (adapter) {
+          adapter.destroy()
+        }
+      }
+    }
   }
 }
 
@@ -1250,9 +1519,9 @@ async function request (optionsOrURL, options, callback) {
     options = optionsOrURL
     callback = options
   } else if (typeof optionsOrURL === 'string') {
-    const url = globalThis.location.origin.startsWith('blob')
-      ? new URL(optionsOrURL, new URL(globalThis.location.origin).pathname)
-      : new URL(optionsOrURL, globalThis.location.origin)
+    const url = location.origin.startsWith('blob')
+      ? new URL(optionsOrURL, new URL(location.origin).pathname)
+      : new URL(optionsOrURL, location.origin)
 
     options = {
       host: url.host,
@@ -1360,17 +1629,4 @@ export function createServer (options = null, callback = null) {
   return server
 }
 
-export default {
-  Agent,
-  AgentOptions,
-  ClientRequest,
-  createServer,
-  get,
-  globalAgent,
-  METHODS,
-  OutgoingMessage,
-  request,
-  Server,
-  ServerResponse,
-  STATUS_CODES
-}
+export default exports
