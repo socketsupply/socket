@@ -14,8 +14,9 @@ console.assert(
 
 import './primitives.js'
 
-import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { CustomEvent, ErrorEvent } from '../events.js'
+import { IllegalConstructor } from '../util.js'
+import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import { URL } from '../url.js'
@@ -560,7 +561,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
       }
     }
 
-    const promise = new InvertedPromise()
+    const promise = new Deferred()
     await this.push(promise, 8)
 
     if (typeof params !== 'object') {
