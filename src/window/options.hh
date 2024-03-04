@@ -32,6 +32,8 @@ namespace SSC {
     ExitCallback onExit = nullptr;
     uint64_t clientId = 0;
     String userScript = "";
+    String runtimePrimordialOverrides = "";
+
   };
 }
 #endif
