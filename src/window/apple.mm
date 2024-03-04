@@ -90,13 +90,34 @@
 @end
 
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@implementation SSCWindowDelegate
-@end
+  @implementation SSCWindowDelegate
+  @end
+  @implementation SSCWindow
+  @end
 #else
-@implementation SSCWindowDelegate
-- (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {}
-@end
+  @implementation SSCWindow
+    - (void)layoutIfNeeded {
+      [super layoutIfNeeded];
+
+      if (self.titleBarView == nullptr || self.titleBarView.subviews.count > 0) return;
+
+      NSButton *closeButton = [self standardWindowButton:NSWindowCloseButton];
+      NSButton *minimizeButton = [self standardWindowButton:NSWindowMiniaturizeButton];
+      NSButton *zoomButton = [self standardWindowButton:NSWindowZoomButton];
+
+      if (closeButton && minimizeButton && zoomButton) {
+        [self.titleBarView addSubview: closeButton];
+        [self.titleBarView addSubview: minimizeButton];
+        [self.titleBarView addSubview: zoomButton];
+      }
+    }
+  @end
+  @implementation SSCWindowDelegate
+    - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
+    }
+  @end
 #endif
+
 @implementation SSCBridgedWebView
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 SSC::Vector<SSC::String> draggablePayload;
@@ -104,38 +125,60 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
 
-- (void)updateTitleBarForCurrentAppearance {
-  NSButton *closeButton = [self.window standardWindowButton:NSWindowCloseButton];
-  NSButton *minimizeButton = [self.window standardWindowButton:NSWindowMiniaturizeButton];
-  NSButton *zoomButton = [self.window standardWindowButton:NSWindowZoomButton];
-
-  if (closeButton && minimizeButton && zoomButton) {
-    [self.titleBarView addSubview:closeButton];
-    [self.titleBarView addSubview:minimizeButton];
-    [self.titleBarView addSubview:zoomButton];
-  }
-}
-
-- (void)viewDidChangeEffectiveAppearance {
-  [super viewDidChangeEffectiveAppearance];
-  [self updateTitleBarForCurrentAppearance];
-}
-
-- (void)windowDidBecomeKey:(NSNotification *)notification {
-  [super windowDidBecomeKey:notification];
-  [self updateTitleBarForCurrentAppearance];
-}
-
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
   [super resizeSubviewsWithOldSize:oldSize];
 
-  CGFloat viewWidth = self.titleBarView.frame.size.width;
-  CGFloat viewHeight = self.titleBarView.frame.size.height;
-  CGFloat newX = self.trafficLightPosition.x;
+  SSCWindow *w = (SSCWindow*) self.window;
+  // if (w.titleBarView.subviews.count > 0) return;
+
+  CGFloat viewWidth = w.titleBarView.frame.size.width;
+  CGFloat viewHeight = w.titleBarView.frame.size.height;
+  CGFloat newX = w.trafficLightPosition.x;
   CGFloat newY = 0.f;
 
-  [self updateTitleBarForCurrentAppearance];
-  self.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+  NSButton *closeButton = [w standardWindowButton:NSWindowCloseButton];
+  NSButton *minimizeButton = [w standardWindowButton:NSWindowMiniaturizeButton];
+  NSButton *zoomButton = [w standardWindowButton:NSWindowZoomButton];
+
+  if (closeButton && minimizeButton && zoomButton) {
+    [w.titleBarView addSubview: closeButton];
+    [w.titleBarView addSubview: minimizeButton];
+    [w.titleBarView addSubview: zoomButton];
+  }
+
+  w.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect configuration:(WKWebViewConfiguration *)configuration radius:(CGFloat)radius margin:(CGFloat)margin {
+  self = [super initWithFrame:frameRect configuration: configuration];
+
+  if (self && radius > 0.0) {
+    self.radius = radius;
+    self.margin = margin;
+    self.layer.cornerRadius = radius;
+    self.layer.masksToBounds = YES;
+  }
+
+  return self;
+}
+
+- (void)layout {
+  [super layout];
+  
+  NSRect bounds = self.superview.bounds;
+
+  if (self.radius > 0.0) {
+    if (self.contentHeight == 0.0) {
+      self.contentHeight = self.superview.bounds.size.height - self.bounds.size.height;
+    }
+
+    bounds.size.height = bounds.size.height - self.contentHeight;
+  }
+
+  if (self.margin > 0.0) {
+    CGFloat borderWidth = self.margin;
+    self.frame = NSInsetRect(bounds, borderWidth, borderWidth);
+  }
 }
 
 - (BOOL) wantsPeriodicDraggingUpdates {
@@ -723,13 +766,19 @@ namespace SSC {
       style |= NSWindowStyleMaskClosable;
     }
 
-    style |= NSWindowStyleMaskMiniaturizable;
+    if (opts.minimizable) {
+      style |= NSWindowStyleMaskMiniaturizable;
+    }
 
-    window = [[NSWindow alloc]
+    window = [[SSCWindow alloc]
         initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
+
+    if (opts.maximizable == false) {
+      [window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenAuxiliary];
+    }
 
     NSArray* draggableTypes = [NSArray arrayWithObjects:
       NSPasteboardTypeURL,
@@ -980,6 +1029,8 @@ namespace SSC {
     webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect
       configuration: config
+      radius: (CGFloat) opts.radius
+      margin: (CGFloat) opts.margin
     ];
 
     const auto processInfo = NSProcessInfo.processInfo;
@@ -1031,18 +1082,6 @@ namespace SSC {
 
             window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
             window->hide();
-            return false;
-          }),
-        "v@:@"
-      );
-
-      class_replaceMethod(
-        [SSCWindowDelegate class],
-        @selector(windowDidExitFullScreen:),
-        imp_implementationWithBlock(
-          [&](id self, SEL cmd, id notification) {
-            auto window = (Window*) objc_getAssociatedObject(self, "window");
-            [window->webview updateTitleBarForCurrentAppearance];
             return false;
           }),
         "v@:@"
@@ -1152,17 +1191,38 @@ namespace SSC {
 
     navigate("0", opts.url);
 
+    // Position window in center of screen
+    [window center];
+    [window setOpaque: YES];
+    [window setTitleVisibility: NSWindowTitleVisible];
+
+    if (opts.title.size() > 0) {
+      this->setTitle(opts.title);
+    }
+
+    // Minimum window size
+    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
+    [window setBackgroundColor: [NSColor controlBackgroundColor]];
+    [window registerForDraggedTypes: draggableTypes];
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+
+    if (opts.frameless) {
+      [window setTitlebarAppearsTransparent: YES];
+      [window setMovableByWindowBackground: YES];
+      [window setStyleMask:NSWindowStyleMaskBorderless];
+    }
+
     //
     // results in a hidden title bar and a full-size content window.
     //
-    if (opts.titleBarStyle == "hidden") {
+    else if (opts.titleBarStyle == "hidden") {
       style |= NSWindowStyleMaskFullSizeContentView;
     }
 
     //
     // Results in a utility window (looks like a panel)
     //
-    if (opts.titleBarStyle == "utilty") {
+    else if (opts.titleBarStyle == "utilty") {
       style |= NSWindowStyleMaskBorderless;
       style |= NSWindowStyleMaskUtilityWindow;
     }
@@ -1192,44 +1252,34 @@ namespace SSC {
       }
 
       NSView *titleBarView = [[NSView alloc] initWithFrame:NSZeroRect];
+
       [titleBarView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
       [titleBarView setWantsLayer:YES];
       [titleBarView.layer setBackgroundColor:[NSColor clearColor].CGColor]; // Set background color to clear
 
-      NSButton *closeButton = [window standardWindowButton:NSWindowCloseButton];
-      NSButton *minimizeButton = [window standardWindowButton:NSWindowMiniaturizeButton];
-      NSButton *zoomButton = [window standardWindowButton:NSWindowZoomButton];
-
-      CGFloat buttonWidth = MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
-      CGFloat buttonHeight = MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+      NSButton *closeButton = [window standardWindowButton: NSWindowCloseButton];
+      NSButton *minimizeButton = [window standardWindowButton: NSWindowMiniaturizeButton];
+      NSButton *zoomButton = [window standardWindowButton: NSWindowZoomButton];
 
       if (closeButton && minimizeButton && zoomButton) {
-        closeButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth * 3, 5, buttonWidth, buttonHeight);
-        minimizeButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth * 2, 5, buttonWidth, buttonHeight);
-        zoomButton.frame = NSMakeRect(NSWidth(titleBarView.bounds) - buttonWidth, 5, buttonWidth, buttonHeight);
-
         [titleBarView addSubview:closeButton];
         [titleBarView addSubview:minimizeButton];
         [titleBarView addSubview:zoomButton];
+
+        CGFloat viewWidth = window.frame.size.width;
+        CGFloat viewHeight = y + MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+        CGFloat newX = x;
+        CGFloat newY = 0.f;
+
+        titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+
+        window.trafficLightPosition = NSMakePoint(x, y);
+        window.titleBarView = titleBarView;
 
         [window.contentView addSubview:titleBarView];
       } else {
         NSLog(@"Failed to retrieve standard window buttons.");
       }
-
-      CGFloat viewWidth = window.frame.size.width;
-      CGFloat viewHeight = y + buttonHeight;
-      CGFloat newX = x;
-      CGFloat newY = 0.f;
-
-      titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
-
-      this->webview.trafficLightPosition = NSMakePoint(x, y);
-      this->webview.titleBarView = titleBarView;
-
-      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [this->webview updateTitleBarForCurrentAppearance];
-      });
     }
 
     if (opts.aspectRatio.size() > 2) {
@@ -1248,22 +1298,6 @@ namespace SSC {
         frame.size.height = frame.size.width / aspectRatio;
         [window setContentAspectRatio: frame.size];
       }
-    }
-
-    // Position window in center of screen
-    [window center];
-    [window setOpaque: YES];
-
-    // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    [window setBackgroundColor: [NSColor controlBackgroundColor]];
-    [window registerForDraggedTypes: draggableTypes];
-    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-
-    if (opts.frameless) {
-      [window setTitlebarAppearsTransparent: YES];
-      [window setMovableByWindowBackground: YES];
-      [window setStyleMask:NSWindowStyleMaskBorderless];
     }
   }
 
