@@ -1969,6 +1969,7 @@ declare module "socket:stream" {
     export function pipeline(stream: any, ...streams: any[]): any;
     export function isStream(stream: any): boolean;
     export function isStreamx(stream: any): boolean;
+    export function getStreamError(stream: any): any;
     export function isReadStreamx(stream: any): any;
     export { web };
     export default exports;
@@ -1979,17 +1980,22 @@ declare module "socket:stream" {
         top: number;
         btm: number;
         next: any;
+        clear(): void;
         push(data: any): boolean;
         shift(): any;
+        peek(): any;
         isEmpty(): boolean;
     }
-    export class FastFIFO {
+    export class FIFO {
         constructor(hwm: any);
         hwm: any;
         head: exports.FixedFIFO;
         tail: exports.FixedFIFO;
+        length: number;
+        clear(): void;
         push(val: any): void;
         shift(): any;
+        peek(): any;
         isEmpty(): boolean;
     }
     export class WritableState {
@@ -2001,11 +2007,12 @@ declare module "socket:stream" {
             byteLengthWritable: any;
         });
         stream: any;
-        queue: exports.FastFIFO;
+        queue: exports.FIFO;
         highWaterMark: number;
         buffered: number;
         error: any;
         pipeline: any;
+        drains: any;
         byteLength: any;
         map: any;
         afterWrite: any;
@@ -2017,6 +2024,8 @@ declare module "socket:stream" {
         autoBatch(data: any, cb: any): any;
         update(): void;
         updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
         updateNextTick(): void;
     }
     export class ReadableState {
@@ -2028,9 +2037,10 @@ declare module "socket:stream" {
             byteLengthReadable: any;
         });
         stream: any;
-        queue: exports.FastFIFO;
+        queue: exports.FIFO;
         highWaterMark: number;
         buffered: number;
+        readAhead: boolean;
         error: any;
         pipeline: exports.Pipeline;
         byteLength: any;
@@ -2047,6 +2057,8 @@ declare module "socket:stream" {
         drain(): void;
         update(): void;
         updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
         updateNextTick(): void;
     }
     export class TransformState {
@@ -2078,7 +2090,6 @@ declare module "socket:stream" {
         get destroyed(): boolean;
         get destroying(): boolean;
         destroy(err: any): void;
-        on(name: any, fn: any): any;
     }
     export class Readable extends exports.Stream {
         static _fromAsyncIterator(ite: any, opts: any): exports.Readable;
@@ -2096,6 +2107,7 @@ declare module "socket:stream" {
     }
     export class Writable extends exports.Stream {
         static isBackpressured(ws: any): boolean;
+        static drained(ws: any): Promise<any>;
         _writableState: exports.WritableState;
         _writev(batch: any, cb: any): void;
         _write(data: any, cb: any): void;
@@ -4855,6 +4867,7 @@ declare module "socket:mime/index" {
         constructor(entries?: readonly (readonly [any, any])[]);
         constructor();
         constructor(iterable?: Iterable<readonly [any, any]>);
+        get size(): any;
     }
     export class MIMEType {
         constructor(input: any);
@@ -8394,7 +8407,16 @@ declare module "socket:service-worker/events" {
 declare module "socket:http/adapters" {
     /**
      * @typedef {{
+     *   Connection: typeof import('../http.js').Connection,
+     *   globalAgent: import('../http.js').Agent,
+     *   IncomingMessage: typeof import('../http.js').IncomingMessage,
+     *   ServerResponse: typeof import('../http.js').ServerResponse,
+     *   STATUS_CODES: object,
+     *   METHODS: string[]
      * }} HTTPModuleInterface
+     */
+    /**
+     * An abstract base clase for a HTTP server adapter.
      */
     export class ServerAdapter extends EventTarget {
         /**
@@ -8416,17 +8438,18 @@ declare module "socket:http/adapters" {
          * @type {HTTPModuleInterface}
          */
         get httpInterface(): HTTPModuleInterface;
+        /**
+         * Called when the adapter should destroy itself.
+         * @abstract
+         */
+        destroy(): Promise<void>;
         #private;
     }
     /**
+     * A HTTP adapter for running a HTTP server in a service worker that uses the
+     * "fetch" event for the request and response lifecycle.
      */
     export class ServiceWorkerServerAdapter extends ServerAdapter {
-        /**
-         * `ServiceWorkerServerAdapter` class constructor.
-         * @ignore
-         * @param {import('../http.js').Server} server
-         */
-        constructor(server: import('../http.js').Server);
         /**
          * @ignore
          * @param {import('../service-worker/events.js').ExtendableEvent}
@@ -8448,7 +8471,14 @@ declare module "socket:http/adapters" {
         export { ServiceWorkerServerAdapter };
     }
     export default _default;
-    export type HTTPModuleInterface = {};
+    export type HTTPModuleInterface = {
+        Connection: typeof import("socket:http").Connection;
+        globalAgent: import("socket:http").Agent;
+        IncomingMessage: typeof import("socket:http").IncomingMessage;
+        ServerResponse: typeof import("socket:http").ServerResponse;
+        STATUS_CODES: object;
+        METHODS: string[];
+    };
 }
 
 declare module "socket:http" {
@@ -8497,6 +8527,12 @@ declare module "socket:http" {
          * @type {boolean}
          */
         headersSent: boolean;
+        /**
+         * Internal buffers
+         * @ignore
+         * @type {Buffer[]}
+         */
+        get buffers(): Buffer[];
         /**
          * An object of the outgoing message headers.
          * This is equivalent to `getHeaders()`
@@ -8654,6 +8690,13 @@ declare module "socket:http" {
          */
         get headers(): any;
         /**
+         * The URL for this incoming message. This value is not absolute with
+         * respect to the protocol and hostname. It includes the path and search
+         * query component parameters.
+         * @type {string}
+         */
+        get url(): string;
+        /**
          * Similar to `message.headers`, but there is no join logic and the values
          * are always arrays of strings, even for headers received just once.
          * @type {object}
@@ -8735,14 +8778,20 @@ declare module "socket:http" {
     }
     /**
      * An object that is created internally and returned from `request()`.
+     * @see {@link https://nodejs.org/api/http.html#class-httpclientrequest}
      */
-    export class ClientRequest extends OutgoingMessage {
+    export class ClientRequest extends exports.OutgoingMessage {
         /**
          * `ClientRequest` class constructor.
          * @ignore
          * @param {object} options
          */
         constructor(options: object);
+        /**
+         * The HTTP request method.
+         * @type {string}
+         */
+        get method(): string;
         /**
          * The request protocol
          * @type {string?}
@@ -8786,8 +8835,9 @@ declare module "socket:http" {
     /**
      * An object that is created internally by a `Server` instance, not by the user.
      * It is passed as the second parameter to the 'request' event.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserverresponse}
      */
-    export class ServerResponse extends OutgoingMessage {
+    export class ServerResponse extends exports.OutgoingMessage {
         /**
          * `ServerResponse` class constructor.
          * @param {object} options
@@ -8797,18 +8847,20 @@ declare module "socket:http" {
          * A reference to the original HTTP request object.
          * @type {IncomingMessage}
          */
-        get request(): IncomingMessage;
+        get request(): exports.IncomingMessage;
         /**
          * A reference to the original HTTP request object.
          * @type {IncomingMessage}
          */
-        get req(): IncomingMessage;
+        get req(): exports.IncomingMessage;
+        set statusCode(statusCode: number);
         /**
          * The HTTP request status code.
          * Only valid for response obtained from `ClientRequest`.
          * @type {number}
          */
         get statusCode(): number;
+        set statusMessage(statusMessage: string);
         /**
          * The HTTP response status message (reason phrase).
          * Such as "OK" or "Internal Server Error."
@@ -8816,11 +8868,13 @@ declare module "socket:http" {
          * @type {string?}
          */
         get statusMessage(): string;
+        set status(status: number);
         /**
          * An alias for `statusCode`
          * @type {number}
          */
         get status(): number;
+        set statusText(statusText: string);
         /**
          * An alias for `statusMessage`
          * @type {string?}
@@ -8882,6 +8936,7 @@ declare module "socket:http" {
     /**
      * An Agent is responsible for managing connection persistence
      * and reuse for HTTP clients.
+     * @see {@link https://nodejs.org/api/http.html#class-httpagent}
      */
     export class Agent extends EventEmitter {
         /**
@@ -8928,11 +8983,76 @@ declare module "socket:http" {
      */
     export const globalAgent: Agent;
     /**
+     * A duplex stream between a HTTP request `IncomingMessage` and the
+     * response `ServerResponse`
+     */
+    export class Connection extends Duplex {
+        /**
+         * `Connection` class constructor.
+         * @ignore
+         * @param {Server} server
+         * @param {IncomingMessage} incomingMessage
+         * @param {ServerResponse} serverResponse
+         */
+        constructor(server: Server, incomingMessage: IncomingMessage, serverResponse: ServerResponse);
+        server: any;
+        active: boolean;
+        request: any;
+        response: any;
+        /**
+         * Closes the connection, destroying the underlying duplex, request, and
+         * response streams.
+         * @return {Connection}
+         */
+        close(): Connection;
+    }
+    /**
      * A nodejs compat HTTP server typically intended for running in a "worker"
      * environment.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserver}
      */
     export class Server extends EventEmitter {
+        requestTimeout: number;
+        timeout: number;
+        maxRequestsPerSocket: number;
+        keepAliveTimeout: number;
         headersTimeout: number;
+        /**
+         * The adapter interface for this `Server` instance.
+         * @ignore
+         */
+        get adapterInterace(): {
+            Connection: typeof exports.Connection;
+            globalAgent: exports.Agent;
+            IncomingMessage: typeof exports.IncomingMessage;
+            METHODS: string[];
+            ServerResponse: typeof exports.ServerResponse;
+            STATUS_CODES: any;
+        };
+        /**
+         * `true` if the server is closed, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * The host to listen to. This value can be `null`.
+         * Defaults to `location.hostname`. This value
+         * is used to filter requests by hostname.
+         * @type {string?}
+         */
+        get host(): string;
+        /**
+         * The `port` to listen on. This value can be `0`, which is the default.
+         * This value is used to filter requests by port, if given. A port value
+         * of `0` does not filter on any port.
+         * @type {number}
+         */
+        get port(): number;
+        /**
+         * A readonly array of all active or inactive (idle) connections.
+         * @type {Connection[]}
+         */
+        get connections(): exports.Connection[];
         /**
          * `true` if the server is listening for requests.
          * @type {boolean}
@@ -8946,88 +9066,143 @@ declare module "socket:http" {
          */
         get maxConnections(): number;
         /**
-         * TODO
+         * Closes the server.
          * @param {function=} [close]
          */
         close(callback?: any): void;
         /**
-         * TODO
+         * Closes all connections.
          */
         closeAllConnections(): void;
         /**
-         * TODO
+         * Closes all idle connections.
          */
         closeIdleConnections(): void;
         /**
-         * TODO
+         * @ignore
          */
-        listen(port: any, host: any, unused: any, callback: any): this;
+        setTimeout(timeout?: number, callback?: any): this;
+        /**
+         * @param {number|object=} [port]
+         * @param {string=} [host]
+         * @param {function|null} [unused]
+         * @param {function=} [callback
+         * @return Server
+         */
+        listen(port?: (number | object) | undefined, host?: string | undefined, unused?: Function | null, callback?: Function | undefined): this;
         #private;
     }
-    namespace _default {
-        export { Agent };
-        export { AgentOptions };
-        export { ClientRequest };
-        export { createServer };
-        export { get };
-        export { globalAgent };
-        export { METHODS };
-        export { OutgoingMessage };
-        export { request };
-        export { Server };
-        export { ServerResponse };
-        export { STATUS_CODES };
-    }
-    export default _default;
+    export default exports;
     import { Writable } from "socket:stream";
+    import { Buffer } from "socket:buffer";
     import { Readable } from "socket:stream";
     import { EventEmitter } from "socket:events";
     import { Duplex } from "socket:stream";
+    import * as exports from "socket:http";
+    
+}
+
+declare module "socket:https" {
     /**
-     * Makes a HTTP request, optionally a `socket://` for relative paths when
+     * Makes a HTTPS request, optionally a `socket://` for relative paths when
      * `socket:` is the origin protocol.
      * @param {string|object} optionsOrURL
      * @param {(object|function)=} [options]
      * @param {function=} [callback]
      * @return {ClientRequest}
      */
-    function request(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
-}
-
-declare module "socket:https" {
-    export function request(optionsOrURL: any, options: any, callback: any): import("socket:http").ClientRequest;
-    export function get(optionsOrURL: any, options: any, callback: any): import("socket:http").ClientRequest;
+    export function request(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Makes a HTTPS or `socket:` GET request. A simplified alias to `request()`.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    export function get(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Creates a HTTPS server that can listen for incoming requests.
+     * Requests that are dispatched to this server depend on the context
+     * in which it is created, such as a service worker which will use a
+     * "fetch event" adapter.
+     * @param {object|function=} [options]
+     * @param {function=} [callback]
+     * @return {Server}
+     */
+    export function createServer(...args: any[]): Server;
+    /**
+     * All known possible HTTP methods.
+     * @type {string[]}
+     */
     export const METHODS: string[];
-    export const STATUS_CODES: any;
-    const AgentOptions_base: typeof import("socket:http").AgentOptions;
-    export class AgentOptions extends AgentOptions_base {
+    /**
+     * A mapping of status codes to status texts
+     * @type {object}
+     */
+    export const STATUS_CODES: object;
+    /**
+     * An options object container for an `Agent` instance.
+     */
+    export class AgentOptions extends http.AgentOptions {
     }
-    const Agent_base: typeof import("socket:http").Agent;
-    export class Agent extends Agent_base {
+    /**
+     * An Agent is responsible for managing connection persistence
+     * and reuse for HTTPS clients.
+     * @see {@link https://nodejs.org/api/https.html#class-httpsagent}
+     */
+    export class Agent extends http.Agent {
     }
-    const OutgoingMessage_base: typeof import("socket:http").OutgoingMessage;
-    export class OutgoingMessage extends OutgoingMessage_base {
+    /**
+     * An object that is created internally and returned from `request()`.
+     * @see {@link https://nodejs.org/api/http.html#class-httpclientrequest}
+     */
+    export class ClientRequest extends http.ClientRequest {
     }
-    const ClientRequest_base: typeof import("socket:http").ClientRequest;
-    export class ClientRequest extends ClientRequest_base {
+    /**
+     * The parent class of `ClientRequest` and `ServerResponse`.
+     * It is an abstract outgoing message from the perspective of the
+     * participants of an HTTP transaction.
+     * @see {@link https://nodejs.org/api/http.html#class-httpoutgoingmessage}
+     */
+    export class OutgoingMessage extends http.OutgoingMessage {
     }
-    const ServerResponse_base: typeof import("socket:http").ServerResponse;
-    export class ServerResponse extends ServerResponse_base {
+    /**
+     * An `IncomingMessage` object is created by `Server` or `ClientRequest` and
+     * passed as the first argument to the 'request' and 'response' event
+     * respectively.
+     * It may be used to access response status, headers, and data.
+     * @see {@link https://nodejs.org/api/http.html#class-httpincomingmessage}
+     */
+    export class IncomingMessage extends http.IncomingMessage {
     }
+    /**
+     * An object that is created internally by a `Server` instance, not by the user.
+     * It is passed as the second parameter to the 'request' event.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserverresponse}
+     */
+    export class ServerResponse extends http.ServerResponse {
+    }
+    /**
+     * A duplex stream between a HTTP request `IncomingMessage` and the
+     * response `ServerResponse`
+     */
+    export class Connection extends http.Connection {
+    }
+    /**
+     * A nodejs compat HTTP server typically intended for running in a "worker"
+     * environment.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserver}
+     */
+    export class Server extends http.Server {
+    }
+    /**
+     * The global and default HTTPS agent.
+     * @type {Agent}
+     */
     export const globalAgent: Agent;
-    namespace _default {
-        export { METHODS };
-        export { STATUS_CODES };
-        export { AgentOptions };
-        export { Agent };
-        export { globalAgent };
-        export { request };
-        export { OutgoingMessage };
-        export { ClientRequest };
-        export { ServerResponse };
-        export { get };
-    }
-    export default _default;
+    export default exports;
+    import http from "socket:http";
+    import * as exports from "socket:http";
 }
 
 declare module "socket:language" {
@@ -10411,6 +10586,77 @@ declare module "socket:index" {
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
 
+declare module "socket:stream-relay/worker" {
+    /**
+     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class PeerWorkerProxy {
+        constructor(options: any, port: any, fn: any);
+        init(): Promise<Deferred>;
+        reconnect(): Promise<Deferred>;
+        disconnect(): Promise<Deferred>;
+        getInfo(): Promise<Deferred>;
+        getState(): Promise<Deferred>;
+        open(...args: any[]): Promise<Deferred>;
+        seal(...args: any[]): Promise<Deferred>;
+        sealUnsigned(...args: any[]): Promise<Deferred>;
+        openUnsigned(...args: any[]): Promise<Deferred>;
+        addEncryptionKey(...args: any[]): Promise<Deferred>;
+        send(...args: any[]): Promise<Deferred>;
+        sendUnpublished(...args: any[]): Promise<Deferred>;
+        cacheInsert(...args: any[]): Promise<Deferred>;
+        mcast(...args: any[]): Promise<Deferred>;
+        requestReflection(...args: any[]): Promise<Deferred>;
+        join(...args: any[]): Promise<Deferred>;
+        publish(...args: any[]): Promise<Deferred>;
+        sync(...args: any[]): Promise<Deferred>;
+        close(...args: any[]): Promise<Deferred>;
+        query(...args: any[]): Promise<Deferred>;
+        compileCachePredicate(src: any): Promise<Deferred>;
+        callWorkerThread(prop: any, data: any): Deferred;
+        callMainThread(prop: any, args: any): void;
+        resolveMainThread(seq: any, data: any): void;
+        #private;
+    }
+    class Deferred {
+        _promise: Promise<any>;
+        resolve: (value: any) => void;
+        reject: (reason?: any) => void;
+        then: any;
+        catch: any;
+        finally: any;
+        [Symbol.toStringTag]: string;
+    }
+    export {};
+}
+
+declare module "socket:stream-relay/api" {
+    export default api;
+    /**
+     * Initializes and returns the network bus.
+     *
+     * @async
+     * @function
+     * @param {object} options - Configuration options for the network bus.
+     * @param {object} events - A nodejs compatibe implementation of the events module.
+     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
+     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
+     */
+    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
+}
+
+declare module "socket:network" {
+    export default network;
+    export function network(options: any): Promise<events.EventEmitter>;
+    import { Cache } from "socket:stream-relay/index";
+    import { sha256 } from "socket:stream-relay/index";
+    import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
+    import { NAT } from "socket:stream-relay/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
+}
+
 declare module "socket:string_decoder" {
     export function StringDecoder(encoding: any): void;
     export class StringDecoder {
@@ -10442,6 +10688,1486 @@ declare module "socket:string_decoder" {
     function simpleEnd(buf: any): any;
     function utf8FillLast(buf: any): any;
     function simpleWrite(buf: any): any;
+}
+
+declare module "socket:timers/timer" {
+    export class Timer {
+        static from(...args: any[]): void;
+        constructor(create: any, destroy: any);
+        get id(): number;
+        init(...args: any[]): void;
+        close(): boolean;
+        [Symbol.toPrimitive](): number;
+        #private;
+    }
+    export class Timeout extends Timer {
+        constructor();
+    }
+    export class Interval extends Timer {
+        constructor();
+    }
+    export class Immediate extends Timeout {
+    }
+    namespace _default {
+        export { Timer };
+        export { Immediate };
+        export { Timeout };
+        export { Interval };
+    }
+    export default _default;
+}
+
+declare module "socket:timers/promises" {
+    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
+    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
+    export function setImmediate(value?: any, options?: any): Promise<any>;
+    namespace _default {
+        export { setImmediate };
+        export { setInterval };
+        export { setTimeout };
+    }
+    export default _default;
+}
+
+declare module "socket:timers/scheduler" {
+    export function wait(delay: any, options?: any): Promise<any>;
+    export function postTask(callback: any, options?: any): Promise<any>;
+    namespace _default {
+        export { postTask };
+        export { setImmediate as yield };
+        export { wait };
+    }
+    export default _default;
+    import { setImmediate } from "socket:timers/promises";
+}
+
+declare module "socket:timers/index" {
+    export function setTimeout(callback: any, delay: any, ...args: any[]): void;
+    export function clearTimeout(timeout: any): void;
+    export function setInterval(callback: any, delay: any, ...args: any[]): void;
+    export function clearInterval(interval: any): void;
+    export function setImmediate(callback: any, ...args: any[]): void;
+    export function clearImmediate(immediate: any): void;
+    namespace _default {
+        export { promises };
+        export { scheduler };
+        export { setTimeout };
+        export { clearTimeout };
+        export { setInterval };
+        export { clearInterval };
+        export { setImmediate };
+        export { clearImmediate };
+    }
+    export default _default;
+    import promises from "socket:timers/promises";
+    import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:timers" {
+    export * from "socket:timers/index";
+    export default exports;
+    import * as exports from "socket:timers/index";
+}
+
+declare module "socket:module" {
+    export function isBuiltin(name: any): boolean;
+    /**
+     * Creates a `require` function from a source URL.
+     * @param {URL|string} sourcePath
+     * @return {function}
+     */
+    export function createRequire(sourcePath: URL | string): Function;
+    /**
+     * A limited set of builtins exposed to CommonJS modules.
+     */
+    export const builtins: {
+        async_context: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
+        buffer: typeof buffer;
+        console: import("socket:console").Console;
+        constants: {
+            SIGHUP: number;
+            SIGINT: number;
+            SIGQUIT: number;
+            SIGILL: number;
+            SIGTRAP: number;
+            SIGABRT: number;
+            SIGIOT: number;
+            SIGBUS: number;
+            SIGFPE: number;
+            SIGKILL: number;
+            SIGUSR1: number;
+            SIGSEGV: number;
+            SIGUSR2: number;
+            SIGPIPE: number;
+            SIGALRM: number;
+            SIGTERM: number;
+            SIGCHLD: number;
+            SIGCONT: number;
+            SIGSTOP: number;
+            SIGTSTP: number;
+            SIGTTIN: number;
+            SIGTTOU: number;
+            SIGURG: number;
+            SIGXCPU: number;
+            SIGXFSZ: number;
+            SIGVTALRM: number;
+            SIGPROF: number;
+            SIGWINCH: number;
+            SIGIO: number;
+            SIGINFO: number;
+            SIGSYS: number;
+            E2BIG: number;
+            EACCES: number;
+            EADDRINUSE: number;
+            EADDRNOTAVAIL: number;
+            EAFNOSUPPORT: number;
+            EAGAIN: number;
+            EALREADY: number;
+            EBADF: number;
+            EBADMSG: number;
+            EBUSY: number;
+            ECANCELED: number;
+            ECHILD: number;
+            ECONNABORTED: number;
+            ECONNREFUSED: number;
+            ECONNRESET: number;
+            EDEADLK: number;
+            EDESTADDRREQ: number;
+            EDOM: number;
+            EDQUOT: number;
+            EEXIST: number;
+            EFAULT: number;
+            EFBIG: number;
+            EHOSTUNREACH: number;
+            EIDRM: number;
+            EILSEQ: number;
+            EINPROGRESS: number;
+            EINTR: number;
+            EINVAL: number;
+            EIO: number;
+            EISCONN: number;
+            EISDIR: number;
+            ELOOP: number;
+            EMFILE: number;
+            EMLINK: number;
+            EMSGSIZE: number;
+            EMULTIHOP: number;
+            ENAMETOOLONG: number;
+            ENETDOWN: number;
+            ENETRESET: number;
+            ENETUNREACH: number;
+            ENFILE: number;
+            ENOBUFS: number;
+            ENODATA: number;
+            ENODEV: number;
+            ENOENT: number;
+            ENOEXEC: number;
+            ENOLCK: number;
+            ENOLINK: number;
+            ENOMEM: number;
+            ENOMSG: number;
+            ENOPROTOOPT: number;
+            ENOSPC: number;
+            ENOSR: number;
+            ENOSTR: number;
+            ENOSYS: number;
+            ENOTCONN: number;
+            ENOTDIR: number;
+            ENOTEMPTY: number;
+            /**
+             * Loads the module, synchronously returning `true` upon success,
+             * otherwise `false`.
+             * @return {boolean}
+             */
+            ENOTSOCK: number;
+            ENOTSUP: number;
+            ENOTTY: number;
+            ENXIO: number;
+            EOPNOTSUPP: number;
+            EOVERFLOW: number;
+            EPERM: number;
+            EPIPE: number;
+            EPROTO: number;
+            EPROTONOSUPPORT: number;
+            EPROTOTYPE: number;
+            ERANGE: number;
+            EROFS: number;
+            ESPIPE: number;
+            ESRCH: number;
+            ESTALE: number;
+            ETIME: number;
+            ETIMEDOUT: number;
+            ETXTBSY: number;
+            EWOULDBLOCK: number;
+            EXDEV: number;
+            WINDOW_ERROR: -1;
+            WINDOW_NONE: 0;
+            WINDOW_CREATING: 10;
+            WINDOW_CREATED: 11;
+            WINDOW_HIDING: 20;
+            WINDOW_HIDDEN: 21;
+            WINDOW_SHOWING: 30;
+            WINDOW_SHOWN: 31;
+            WINDOW_CLOSING: 40;
+            WINDOW_CLOSED: 41;
+            WINDOW_EXITING: 50;
+            WINDOW_EXITED: 51;
+            WINDOW_KILLING: 60;
+            WINDOW_KILLED: 61;
+            default: typeof import("socket:window/constants");
+            COPYFILE_EXCL: 1;
+            COPYFILE_FICLONE: 2;
+            COPYFILE_FICLONE_FORCE: 4;
+            UV_DIRENT_UNKNOWN: any;
+            UV_DIRENT_FILE: any;
+            UV_DIRENT_DIR: any;
+            UV_DIRENT_LINK: any;
+            UV_DIRENT_FIFO: any;
+            UV_DIRENT_SOCKET: any;
+            UV_DIRENT_CHAR: any;
+            UV_DIRENT_BLOCK: any;
+            UV_FS_SYMLINK_DIR: any;
+            UV_FS_SYMLINK_JUNCTION: any;
+            O_RDONLY: any;
+            O_WRONLY: any;
+            O_RDWR: any;
+            O_APPEND: any;
+            O_ASYNC: any;
+            O_CLOEXEC: any;
+            O_CREAT: any;
+            O_DIRECT: any;
+            O_DIRECTORY: any;
+            O_DSYNC: any;
+            O_EXCL: any;
+            O_LARGEFILE: any;
+            O_NOATIME: any;
+            O_NOCTTY: any;
+            O_NOFOLLOW: any;
+            O_NONBLOCK: any;
+            O_NDELAY: any;
+            O_PATH: any;
+            O_SYNC: any;
+            O_TMPFILE: any;
+            O_TRUNC: any;
+            S_IFMT: any;
+            S_IFREG: any;
+            S_IFDIR: any;
+            S_IFCHR: any;
+            S_IFBLK: any;
+            S_IFIFO: any;
+            S_IFLNK: any;
+            S_IFSOCK: any;
+            S_IRWXU: any;
+            S_IRUSR: any;
+            S_IWUSR: any;
+            S_IXUSR: any;
+            S_IRWXG: any;
+            S_IRGRP: any;
+            S_IWGRP: any;
+            S_IXGRP: any;
+            S_IRWXO: any;
+            S_IROTH: any;
+            S_IWOTH: any;
+            S_IXOTH: any;
+            F_OK: any;
+            R_OK: any;
+            W_OK: any;
+            X_OK: any;
+        };
+        child_process: {
+            ChildProcess: {
+                new (options?: {}): {
+                    "__#27@#id": BigInt;
+                    "__#27@#worker": any;
+                    "__#27@#signal": any;
+                    "__#27@#timeout": any;
+                    "__#27@#env": any;
+                    "__#27@#state": {
+                        killed: boolean;
+                        signalCode: any;
+                        exitCode: any;
+                        spawnfile: any;
+                        spawnargs: any[];
+                        lifecycle: string;
+                        pid: number;
+                    };
+                    readonly killed: boolean;
+                    readonly pid: number;
+                    readonly spawnfile: string;
+                    readonly spawnargs: string[];
+                    readonly connected: boolean;
+                    readonly exitCode: number;
+                    readonly stdin: stream.Writable;
+                    readonly stdout: stream.Readable;
+                    readonly stderr: stream.Readable;
+                    readonly worker: import("socket:worker_threads").Worker;
+                    disconnect(): boolean;
+                    send(): boolean;
+                    ref(): boolean;
+                    unref(): boolean;
+                    kill(...args: any[]): any;
+                    spawn(...args?: string[]): any;
+                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+                        once?: false;
+                    }): void;
+                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
+                    _events: any;
+                    _eventsCount: number;
+                    _maxListeners: number;
+                    setMaxListeners(n: any): any;
+                    getMaxListeners(): any;
+                    emit(type: any, ...args: any[]): boolean;
+                    addListener(type: any, listener: any): any;
+                    on(arg0: any, arg1: any): any;
+                    prependListener(type: any, listener: any): any;
+                    once(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any;
+                    removeListener(type: any, listener: any): any;
+                    off(type: any, listener: any): any;
+                    removeAllListeners(type: any, ...args: any[]): any;
+                    listeners(type: any): any[];
+                    rawListeners(type: any): any[];
+                    listenerCount(type: any): any;
+                    eventNames(): any;
+                };
+                EventEmitter: typeof events.EventEmitter;
+                defaultMaxListeners: number;
+                init(): void;
+                listenerCount(emitter: any, type: any): any;
+                once: typeof events.once;
+            };
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
+        crypto: typeof crypto;
+        dgram: typeof dgram;
+        dns: typeof dns;
+        'dns/promises': typeof dns.promises;
+        events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
+        fs: typeof fs;
+        'fs/promises': typeof fs.promises;
+        http: typeof http;
+        https: typeof http;
+        gc: any;
+        ipc: typeof ipc;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        location: {
+            origin: string;
+            href: string;
+            protocol: string;
+            hostname: string;
+            host: string;
+            search: string;
+            pathname: string;
+            toString: typeof import("socket:location").toString;
+        };
+        mime: typeof mime;
+        net: {};
+        network: (options: any) => Promise<events.EventEmitter>;
+        os: typeof os;
+        path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
+        process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
+        stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
+        util: typeof util;
+        url: any;
+        vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
+            compileFunction: typeof import("socket:vm").compileFunction;
+            createReference: typeof import("socket:vm").createReference;
+            getContextWindow: typeof import("socket:vm").getContextWindow;
+            getContextWorker: typeof import("socket:vm").getContextWorker;
+            getReference: typeof import("socket:vm").getReference;
+            getTransferables: typeof import("socket:vm").getTransferables;
+            putReference: typeof import("socket:vm").putReference;
+            Reference: typeof import("socket:vm").Reference;
+            removeReference: typeof import("socket:vm").removeReference;
+            runInContext: typeof import("socket:vm").runInContext;
+            runInNewContext: typeof import("socket:vm").runInNewContext;
+            runInThisContext: typeof import("socket:vm").runInThisContext;
+            Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+            isContext: typeof import("socket:vm").isContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
+        };
+    };
+    export const builtinModules: {
+        async_context: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
+        buffer: typeof buffer;
+        console: import("socket:console").Console;
+        constants: {
+            SIGHUP: number;
+            SIGINT: number;
+            SIGQUIT: number;
+            SIGILL: number;
+            SIGTRAP: number;
+            SIGABRT: number;
+            SIGIOT: number;
+            SIGBUS: number;
+            SIGFPE: number;
+            SIGKILL: number;
+            SIGUSR1: number;
+            SIGSEGV: number;
+            SIGUSR2: number;
+            SIGPIPE: number;
+            SIGALRM: number;
+            SIGTERM: number;
+            SIGCHLD: number;
+            SIGCONT: number;
+            SIGSTOP: number;
+            SIGTSTP: number;
+            SIGTTIN: number;
+            SIGTTOU: number;
+            SIGURG: number;
+            SIGXCPU: number;
+            SIGXFSZ: number;
+            SIGVTALRM: number;
+            SIGPROF: number;
+            SIGWINCH: number;
+            SIGIO: number;
+            SIGINFO: number;
+            SIGSYS: number;
+            E2BIG: number;
+            EACCES: number;
+            EADDRINUSE: number;
+            EADDRNOTAVAIL: number;
+            EAFNOSUPPORT: number;
+            EAGAIN: number;
+            EALREADY: number;
+            EBADF: number;
+            EBADMSG: number;
+            EBUSY: number;
+            ECANCELED: number;
+            ECHILD: number;
+            ECONNABORTED: number;
+            ECONNREFUSED: number;
+            ECONNRESET: number;
+            EDEADLK: number;
+            EDESTADDRREQ: number;
+            EDOM: number;
+            EDQUOT: number;
+            EEXIST: number;
+            EFAULT: number;
+            EFBIG: number;
+            EHOSTUNREACH: number;
+            EIDRM: number;
+            EILSEQ: number;
+            EINPROGRESS: number;
+            EINTR: number;
+            EINVAL: number;
+            EIO: number;
+            EISCONN: number;
+            EISDIR: number;
+            ELOOP: number;
+            EMFILE: number;
+            EMLINK: number;
+            EMSGSIZE: number;
+            EMULTIHOP: number;
+            ENAMETOOLONG: number;
+            ENETDOWN: number;
+            ENETRESET: number;
+            ENETUNREACH: number;
+            ENFILE: number;
+            ENOBUFS: number;
+            ENODATA: number;
+            ENODEV: number;
+            ENOENT: number;
+            ENOEXEC: number;
+            ENOLCK: number;
+            ENOLINK: number;
+            ENOMEM: number;
+            ENOMSG: number;
+            ENOPROTOOPT: number;
+            ENOSPC: number;
+            ENOSR: number;
+            ENOSTR: number;
+            ENOSYS: number;
+            ENOTCONN: number;
+            ENOTDIR: number;
+            ENOTEMPTY: number;
+            /**
+             * Loads the module, synchronously returning `true` upon success,
+             * otherwise `false`.
+             * @return {boolean}
+             */
+            ENOTSOCK: number;
+            ENOTSUP: number;
+            ENOTTY: number;
+            ENXIO: number;
+            EOPNOTSUPP: number;
+            EOVERFLOW: number;
+            EPERM: number;
+            EPIPE: number;
+            EPROTO: number;
+            EPROTONOSUPPORT: number;
+            EPROTOTYPE: number;
+            ERANGE: number;
+            EROFS: number;
+            ESPIPE: number;
+            ESRCH: number;
+            ESTALE: number;
+            ETIME: number;
+            ETIMEDOUT: number;
+            ETXTBSY: number;
+            EWOULDBLOCK: number;
+            EXDEV: number;
+            WINDOW_ERROR: -1;
+            WINDOW_NONE: 0;
+            WINDOW_CREATING: 10;
+            WINDOW_CREATED: 11;
+            WINDOW_HIDING: 20;
+            WINDOW_HIDDEN: 21;
+            WINDOW_SHOWING: 30;
+            WINDOW_SHOWN: 31;
+            WINDOW_CLOSING: 40;
+            WINDOW_CLOSED: 41;
+            WINDOW_EXITING: 50;
+            WINDOW_EXITED: 51;
+            WINDOW_KILLING: 60;
+            WINDOW_KILLED: 61;
+            default: typeof import("socket:window/constants");
+            COPYFILE_EXCL: 1;
+            COPYFILE_FICLONE: 2;
+            COPYFILE_FICLONE_FORCE: 4;
+            UV_DIRENT_UNKNOWN: any;
+            UV_DIRENT_FILE: any;
+            UV_DIRENT_DIR: any;
+            UV_DIRENT_LINK: any;
+            UV_DIRENT_FIFO: any;
+            UV_DIRENT_SOCKET: any;
+            UV_DIRENT_CHAR: any;
+            UV_DIRENT_BLOCK: any;
+            UV_FS_SYMLINK_DIR: any;
+            UV_FS_SYMLINK_JUNCTION: any;
+            O_RDONLY: any;
+            O_WRONLY: any;
+            O_RDWR: any;
+            O_APPEND: any;
+            O_ASYNC: any;
+            O_CLOEXEC: any;
+            O_CREAT: any;
+            O_DIRECT: any;
+            O_DIRECTORY: any;
+            O_DSYNC: any;
+            O_EXCL: any;
+            O_LARGEFILE: any;
+            O_NOATIME: any;
+            O_NOCTTY: any;
+            O_NOFOLLOW: any;
+            O_NONBLOCK: any;
+            O_NDELAY: any;
+            O_PATH: any;
+            O_SYNC: any;
+            O_TMPFILE: any;
+            O_TRUNC: any;
+            S_IFMT: any;
+            S_IFREG: any;
+            S_IFDIR: any;
+            S_IFCHR: any;
+            S_IFBLK: any;
+            S_IFIFO: any;
+            S_IFLNK: any;
+            S_IFSOCK: any;
+            S_IRWXU: any;
+            S_IRUSR: any;
+            S_IWUSR: any;
+            S_IXUSR: any;
+            S_IRWXG: any;
+            S_IRGRP: any;
+            S_IWGRP: any;
+            S_IXGRP: any;
+            S_IRWXO: any;
+            S_IROTH: any;
+            S_IWOTH: any;
+            S_IXOTH: any;
+            F_OK: any;
+            R_OK: any;
+            W_OK: any;
+            X_OK: any;
+        };
+        child_process: {
+            ChildProcess: {
+                new (options?: {}): {
+                    "__#27@#id": BigInt;
+                    "__#27@#worker": any;
+                    "__#27@#signal": any;
+                    "__#27@#timeout": any;
+                    "__#27@#env": any;
+                    "__#27@#state": {
+                        killed: boolean;
+                        signalCode: any;
+                        exitCode: any;
+                        spawnfile: any;
+                        spawnargs: any[];
+                        lifecycle: string;
+                        pid: number;
+                    };
+                    readonly killed: boolean;
+                    readonly pid: number;
+                    readonly spawnfile: string;
+                    readonly spawnargs: string[];
+                    readonly connected: boolean;
+                    readonly exitCode: number;
+                    readonly stdin: stream.Writable;
+                    readonly stdout: stream.Readable;
+                    readonly stderr: stream.Readable;
+                    readonly worker: import("socket:worker_threads").Worker;
+                    disconnect(): boolean;
+                    send(): boolean;
+                    ref(): boolean;
+                    unref(): boolean;
+                    kill(...args: any[]): any;
+                    spawn(...args?: string[]): any;
+                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+                        once?: false;
+                    }): void;
+                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
+                    _events: any;
+                    _eventsCount: number;
+                    _maxListeners: number;
+                    setMaxListeners(n: any): any;
+                    getMaxListeners(): any;
+                    emit(type: any, ...args: any[]): boolean;
+                    addListener(type: any, listener: any): any;
+                    on(arg0: any, arg1: any): any;
+                    prependListener(type: any, listener: any): any;
+                    once(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any;
+                    removeListener(type: any, listener: any): any;
+                    off(type: any, listener: any): any;
+                    removeAllListeners(type: any, ...args: any[]): any;
+                    listeners(type: any): any[];
+                    rawListeners(type: any): any[];
+                    listenerCount(type: any): any;
+                    eventNames(): any;
+                };
+                EventEmitter: typeof events.EventEmitter;
+                defaultMaxListeners: number;
+                init(): void;
+                listenerCount(emitter: any, type: any): any;
+                once: typeof events.once;
+            };
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
+        crypto: typeof crypto;
+        dgram: typeof dgram;
+        dns: typeof dns;
+        'dns/promises': typeof dns.promises;
+        events: typeof events;
+        extension: {
+            load: typeof import("socket:extension").load;
+            stats: typeof import("socket:extension").stats;
+        };
+        fs: typeof fs;
+        'fs/promises': typeof fs.promises;
+        http: typeof http;
+        https: typeof http;
+        gc: any;
+        ipc: typeof ipc;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        location: {
+            origin: string;
+            href: string;
+            protocol: string;
+            hostname: string;
+            host: string;
+            search: string;
+            pathname: string;
+            toString: typeof import("socket:location").toString;
+        };
+        mime: typeof mime;
+        net: {};
+        network: (options: any) => Promise<events.EventEmitter>;
+        os: typeof os;
+        path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
+        process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
+        stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
+        util: typeof util;
+        url: any;
+        vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
+            compileFunction: typeof import("socket:vm").compileFunction;
+            createReference: typeof import("socket:vm").createReference;
+            getContextWindow: typeof import("socket:vm").getContextWindow;
+            getContextWorker: typeof import("socket:vm").getContextWorker;
+            getReference: typeof import("socket:vm").getReference;
+            getTransferables: typeof import("socket:vm").getTransferables;
+            putReference: typeof import("socket:vm").putReference;
+            Reference: typeof import("socket:vm").Reference;
+            removeReference: typeof import("socket:vm").removeReference;
+            runInContext: typeof import("socket:vm").runInContext;
+            runInNewContext: typeof import("socket:vm").runInNewContext;
+            runInThisContext: typeof import("socket:vm").runInThisContext;
+            Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+            isContext: typeof import("socket:vm").isContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
+        };
+    };
+    /**
+     * CommonJS module scope source wrapper.
+     * @type {string}
+     */
+    export const COMMONJS_WRAPPER: string;
+    /**
+     * The main entry source origin.
+     * @type {string}
+     */
+    export const MAIN_SOURCE_ORIGIN: string;
+    export namespace scope {
+        let current: any;
+        let previous: any;
+    }
+    /**
+     * A container for a loaded CommonJS module. All errors bubble
+     * to the "main" module and global object (if possible).
+     */
+    export class Module extends EventTarget {
+        static set current(module: Module);
+        /**
+         * A reference to the currently scoped module.
+         * @type {Module?}
+         */
+        static get current(): Module;
+        static set previous(module: Module);
+        /**
+         * A reference to the previously scoped module.
+         * @type {Module?}
+         */
+        static get previous(): Module;
+        /**
+         * Module cache.
+         * @ignore
+         */
+        static cache: any;
+        /**
+         * Custom module resolvers.
+         * @type {Array<ModuleResolver>}
+         */
+        static resolvers: Array<ModuleResolver>;
+        /**
+         * CommonJS module scope source wrapper.
+         * @ignore
+         */
+        static wrapper: string;
+        /**
+         * A limited set of builtins exposed to CommonJS modules.
+         * @type {object}
+         */
+        static builtins: object;
+        /**
+         * Creates a `require` function from a source URL.
+         * @param {URL|string} sourcePath
+         * @return {function}
+         */
+        static createRequire(sourcePath: URL | string): Function;
+        /**
+         * The main entry module, lazily created.
+         * @type {Module}
+         */
+        static get main(): Module;
+        /**
+         * Wraps source in a CommonJS module scope.
+         */
+        static wrap(source: any): string;
+        /**
+         * Creates a `Module` from source URL and optionally a parent module.
+         * @param {string|URL|Module} [sourcePath]
+         * @param {string|URL|Module} [parent]
+         */
+        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
+        /**
+         * `Module` class constructor.
+         * @ignore
+         */
+        constructor(id: any, parent?: any, sourcePath?: any);
+        /**
+         * The module id, most likely a file name.
+         * @type {string}
+         */
+        id: string;
+        /**
+         * The parent module, if given.
+         * @type {Module?}
+         */
+        parent: Module | null;
+        /**
+         * `true` if the module did load successfully.
+         * @type {boolean}
+         */
+        loaded: boolean;
+        /**
+         * `true` if the module is currently being loaded.
+         * @type {boolean}
+         */
+        loading: boolean;
+        /**
+         * The module's exports.
+         * @type {any}
+         */
+        exports: any;
+        /**
+         * The filename of the module.
+         * @type {string}
+         */
+        filename: string;
+        /**
+         * Modules children to this one, as in they were required in this
+         * module scope context.
+         * @type {Array<Module>}
+         */
+        children: Array<Module>;
+        /**
+         * The original source URL to load this module.
+         * @type {string}
+         */
+        sourcePath: string;
+        /**
+         * `true` if the module is the main module.
+         * @type {boolean}
+         */
+        get isMain(): boolean;
+        /**
+         * `true` if the module was loaded by name, not file path.
+         * @type {boolean}
+         */
+        get isNamed(): boolean;
+        /**
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * @type {string}
+         */
+        get pathname(): string;
+        /**
+         * @type {string}
+         */
+        get path(): string;
+        /**
+         * Loads the module, synchronously returning `true` upon success,
+         * otherwise `false`.
+         * @return {boolean}
+         */
+        load(): boolean;
+        /**
+         * Creates a require function for loaded CommonJS modules
+         * child to this module.
+         * @return {function(string): any}
+         */
+        createRequire(): (arg0: string) => any;
+        /**
+         * Requires a module at `filename` that will be loaded as a child
+         * to this module.
+         * @param {string} filename
+         * @return {any}
+         */
+        require(filename: string): any;
+        /**
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+    }
+    export default Module;
+    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
+    import { URL } from "socket:url/index";
+    import application from "socket:application";
+    import buffer from "socket:buffer";
+    import stream from "socket:stream";
+    import events from "socket:events";
+    import crypto from "socket:crypto";
+    import dgram from "socket:dgram";
+    import dns from "socket:dns";
+    import fs from "socket:fs";
+    import http from "socket:http";
+    import ipc from "socket:ipc";
+    import mime from "socket:mime";
+    import os from "socket:os";
+    import { posix as path } from "socket:path";
+    import string_decoder from "socket:string_decoder";
+    import util from "socket:util";
+    import timers from "socket:timers";
+    import window from "socket:window";
+}
+
+declare module "socket:node-esm-loader" {
+    export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
+    export default resolve;
+}
+
+declare module "socket:internal/permissions" {
+    /**
+     * Query for a permission status.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function query(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * Request a permission to be granted.
+     * @param {PermissionDescriptor} descriptor
+     * @param {object=} [options]
+     * @param {?AbortSignal} [options.signal = null]
+     * @return {Promise<PermissionStatus>}
+     */
+    export function request(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
+    /**
+     * An enumeration of the permission types.
+     * - 'geolocation'
+     * - 'notifications'
+     * - 'push'
+     * - 'persistent-storage'
+     * - 'midi'
+     * - 'storage-access'
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const types: Enumeration;
+    const _default: any;
+    export default _default;
+    export type PermissionDescriptor = {
+        name: string;
+    };
+    /**
+     * A container that provides the state of an object and an event handler
+     * for monitoring changes permission changes.
+     * @ignore
+     */
+    class PermissionStatus extends EventTarget {
+        /**
+         * `PermissionStatus` class constructor.
+         * @param {string} name
+         * @param {string} initialState
+         * @param {object=} [options]
+         * @param {?AbortSignal} [options.signal = null]
+         */
+        constructor(name: string, initialState: string, options?: object | undefined);
+        /**
+         * The name of this permission this status is for.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The current state of the permission status.
+         * @type {string}
+         */
+        get state(): string;
+        set onchange(onchange: (arg0: Event) => any);
+        /**
+         * Level 0 event target 'change' event listener accessor
+         * @type {function(Event)}
+         */
+        get onchange(): (arg0: Event) => any;
+        /**
+         * Non-standard method for unsubscribing to status state updates.
+         * @ignore
+         */
+        unsubscribe(): void;
+        /**
+         * String tag for `PermissionStatus`.
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    import Enumeration from "socket:enumeration";
+}
+
+declare module "socket:notification" {
+    /**
+     * Show a notification. Creates a `Notification` instance and displays
+     * it to the user.
+     * @param {string} title
+     * @param {NotificationOptions=} [options]
+     * @param {function(Event)=} [onclick]
+     * @param {function(Event)=} [onclose]
+     * @return {Promise}
+     */
+    export function showNotification(title: string, options?: NotificationOptions | undefined, onclick?: ((arg0: Event) => any) | undefined, onshow?: any): Promise<any>;
+    /**
+     * The global event dispatched when a `Notification` is presented to
+     * the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_PRESENTED_EVENT: string;
+    /**
+     * The global event dispatched when a `Notification` has a response
+     * from the user.
+     * @ignore
+     * @type {string}
+     */
+    export const NOTIFICATION_RESPONSE_EVENT: string;
+    /**
+     * An enumeratino of notification test directions:
+     * - 'auto'  Automatically determined by the operating system
+     * - 'ltr'   Left-to-right text direction
+     * - 'rtl'   Right-to-left text direction
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationDirection: Enumeration;
+    /**
+     * An enumeration of permission types granted by the user for the current
+     * origin to display notifications to the end user.
+     * - 'granted'  The user has explicitly granted permission for the current
+     *              origin to display system notifications.
+     * - 'denied'   The user has explicitly denied permission for the current
+     *              origin to display system notifications.
+     * - 'default'  The user decision is unknown; in this case the application
+     *              will act as if permission was denied.
+     * @type {Enumeration}
+     * @ignore
+     */
+    export const NotificationPermission: Enumeration;
+    /**
+     * A validated notification action object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationAction {
+        /**
+         * `NotificationAction` class constructor.
+         * @ignore
+         * @param {object} options
+         * @param {string} options.action
+         * @param {string} options.title
+         * @param {string|URL=} [options.icon = '']
+         */
+        constructor(options: {
+            action: string;
+            title: string;
+            icon?: (string | URL) | undefined;
+        });
+        /**
+         * A string identifying a user action to be displayed on the notification.
+         * @type {string}
+         */
+        get action(): string;
+        /**
+         * A string containing action text to be shown to the user.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * A string containing the URL of an icon to display with the action.
+         * @type {string}
+         */
+        get icon(): string;
+        #private;
+    }
+    /**
+     * A validated notification options object container.
+     * You should never need to construct this.
+     * @ignore
+     */
+    export class NotificationOptions {
+        /**
+         * `NotificationOptions` class constructor.
+         * @ignore
+         * @param {object} [options = {}]
+         * @param {string=} [options.dir = 'auto']
+         * @param {NotificationAction[]=} [options.actions = []]
+         * @param {string|URL=} [options.badge = '']
+         * @param {string=} [options.body = '']
+         * @param {?any=} [options.data = null]
+         * @param {string|URL=} [options.icon = '']
+         * @param {string|URL=} [options.image = '']
+         * @param {string=} [options.lang = '']
+         * @param {string=} [options.tag = '']
+         * @param {boolean=} [options.boolean = '']
+         * @param {boolean=} [options.requireInteraction = false]
+         * @param {boolean=} [options.silent = false]
+         * @param {number[]=} [options.vibrate = []]
+         */
+        constructor(options?: {
+            dir?: string | undefined;
+            actions?: NotificationAction[] | undefined;
+            badge?: (string | URL) | undefined;
+            body?: string | undefined;
+            data?: (any | null) | undefined;
+            icon?: (string | URL) | undefined;
+            image?: (string | URL) | undefined;
+            lang?: string | undefined;
+            tag?: string | undefined;
+            boolean?: boolean | undefined;
+            requireInteraction?: boolean | undefined;
+            silent?: boolean | undefined;
+            vibrate?: number[] | undefined;
+        });
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        #private;
+    }
+    /**
+     * The Notification interface is used to configure and display
+     * desktop and mobile notifications to the user.
+     */
+    export class Notification extends EventTarget {
+        /**
+         * A read-only property that indicates the current permission granted
+         * by the user to display notifications.
+         * @type {'prompt'|'granted'|'denied'}
+         */
+        static get permission(): "denied" | "granted" | "prompt";
+        /**
+         * The maximum number of actions supported by the device.
+         * @type {number}
+         */
+        static get maxActions(): number;
+        /**
+         * Requests permission from the user to display notifications.
+         * @param {object=} [options]
+         * @param {boolean=} [options.alert = true] - (macOS/iOS only)
+         * @param {boolean=} [options.sound = false] - (macOS/iOS only)
+         * @param {boolean=} [options.badge = false] - (macOS/iOS only)
+         * @param {boolean=} [options.force = false]
+         * @return {Promise<'granted'|'default'|'denied'>}
+         */
+        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
+        /**
+         * `Notification` class constructor.
+         * @param {string} title
+         * @param {NotificationOptions=} [options]
+         */
+        constructor(title: string, options?: NotificationOptions | undefined, ...args: any[]);
+        /**
+         * A unique identifier for this notification.
+         * @type {string}
+         */
+        get id(): string;
+        set onclick(onclick: Function);
+        /**
+         * The click event is dispatched when the user clicks on
+         * displayed notification.
+         * @type {?function}
+         */
+        get onclick(): Function;
+        set onclose(onclose: Function);
+        /**
+         * The close event is dispatched when the notification closes.
+         * @type {?function}
+         */
+        get onclose(): Function;
+        set onerror(onerror: Function);
+        /**
+         * The eror event is dispatched when the notification fails to display
+         * or encounters an error.
+         * @type {?function}
+         */
+        get onerror(): Function;
+        set onshow(onshow: Function);
+        /**
+         * The click event is dispatched when the notification is displayed.
+         * @type {?function}
+         */
+        get onshow(): Function;
+        /**
+         * An array of actions to display in the notification.
+         * @type {NotificationAction[]}
+         */
+        get actions(): NotificationAction[];
+        /**
+         * A string containing the URL of the image used to represent
+         * the notification when there isn't enough space to display the
+         * notification itself.
+         * @type {string}
+         */
+        get badge(): string;
+        /**
+         * A string representing the body text of the notification,
+         * which is displayed below the title.
+         * @type {string}
+         */
+        get body(): string;
+        /**
+         * Arbitrary data that you want associated with the notification.
+         * This can be of any data type.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The direction in which to display the notification.
+         * It defaults to 'auto', which just adopts the environments
+         * language setting behavior, but you can override that behavior
+         * by setting values of 'ltr' and 'rtl'.
+         * @type {'auto'|'ltr'|'rtl'}
+         */
+        get dir(): "auto" | "ltr" | "rtl";
+        /**
+         * A string containing the URL of an icon to be displayed in the notification.
+         * @type {string}
+         */
+        get icon(): string;
+        /**
+         * The URL of an image to be displayed as part of the notification, as
+         * specified in the constructor's options parameter.
+         * @type {string}
+         */
+        get image(): string;
+        /**
+         * The notification's language, as specified using a string representing a
+         * language tag according to RFC 5646.
+         * @type {string}
+         */
+        get lang(): string;
+        /**
+         * A boolean value specifying whether the user should be notified after a
+         * new notification replaces an old one. The default is `false`, which means
+         * they won't be notified. If `true`, then tag also must be set.
+         * @type {boolean}
+         */
+        get renotify(): boolean;
+        /**
+         * Indicates that a notification should remain active until the user clicks
+         * or dismisses it, rather than closing automatically.
+         * The default value is `false`.
+         * @type {boolean}
+         */
+        get requireInteraction(): boolean;
+        /**
+         * A boolean value specifying whether the notification is silent (no sounds
+         * or vibrations issued), regardless of the device settings.
+         * The default is `false`, which means it won't be silent. If `true`, then
+         * vibrate must not be present.
+         * @type {boolean}
+         */
+        get silent(): boolean;
+        /**
+         * A string representing an identifying tag for the notification.
+         * The default is the empty string.
+         * @type {string}
+         */
+        get tag(): string;
+        /**
+         * A vibration pattern for the device's vibration hardware to emit with
+         * the notification. If specified, silent must not be `true`.
+         * @type {number[]}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
+         */
+        get vibrate(): number[];
+        /**
+         * The timestamp of the notification.
+         * @type {number}
+         */
+        get timestamp(): number;
+        /**
+         * The title read-only property of the `Notification` instace indicates
+         * the title of the notification, as specified in the `title` parameter
+         * of the `Notification` constructor.
+         * @type {string}
+         */
+        get title(): string;
+        /**
+         * Closes the notification programmatically.
+         */
+        close(): Promise<any>;
+        #private;
+    }
+    export default Notification;
+    import { Enumeration } from "socket:enumeration";
+    import URL from "socket:url";
+}
+
+declare module "socket:stream-relay" {
+    export * from "socket:stream-relay/index";
+    export default def;
+    import def from "socket:stream-relay/index";
 }
 
 declare module "socket:test/context" {
@@ -11097,1575 +12823,6 @@ declare module "socket:test" {
     export * from "socket:test/index";
     export default test;
     import test from "socket:test/index";
-}
-
-declare module "socket:timers/timer" {
-    export class Timer {
-        static from(...args: any[]): void;
-        constructor(create: any, destroy: any);
-        get id(): number;
-        init(...args: any[]): void;
-        close(): boolean;
-        [Symbol.toPrimitive](): number;
-        #private;
-    }
-    export class Timeout extends Timer {
-        constructor();
-    }
-    export class Interval extends Timer {
-        constructor();
-    }
-    export class Immediate extends Timeout {
-    }
-    namespace _default {
-        export { Timer };
-        export { Immediate };
-        export { Timeout };
-        export { Interval };
-    }
-    export default _default;
-}
-
-declare module "socket:timers/promises" {
-    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
-    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
-    export function setImmediate(value?: any, options?: any): Promise<any>;
-    namespace _default {
-        export { setImmediate };
-        export { setInterval };
-        export { setTimeout };
-    }
-    export default _default;
-}
-
-declare module "socket:timers/scheduler" {
-    export function wait(delay: any, options?: any): Promise<any>;
-    export function postTask(callback: any, options?: any): Promise<any>;
-    namespace _default {
-        export { postTask };
-        export { setImmediate as yield };
-        export { wait };
-    }
-    export default _default;
-    import { setImmediate } from "socket:timers/promises";
-}
-
-declare module "socket:timers/index" {
-    export function setTimeout(callback: any, delay: any, ...args: any[]): void;
-    export function clearTimeout(timeout: any): void;
-    export function setInterval(callback: any, delay: any, ...args: any[]): void;
-    export function clearInterval(interval: any): void;
-    export function setImmediate(callback: any, ...args: any[]): void;
-    export function clearImmediate(immediate: any): void;
-    namespace _default {
-        export { promises };
-        export { scheduler };
-        export { setTimeout };
-        export { clearTimeout };
-        export { setInterval };
-        export { clearInterval };
-        export { setImmediate };
-        export { clearImmediate };
-    }
-    export default _default;
-    import promises from "socket:timers/promises";
-    import scheduler from "socket:timers/scheduler";
-}
-
-declare module "socket:timers" {
-    export * from "socket:timers/index";
-    export default exports;
-    import * as exports from "socket:timers/index";
-}
-
-declare module "socket:module" {
-    export function isBuiltin(name: any): boolean;
-    /**
-     * Creates a `require` function from a source URL.
-     * @param {URL|string} sourcePath
-     * @return {function}
-     */
-    export function createRequire(sourcePath: URL | string): Function;
-    /**
-     * A limited set of builtins exposed to CommonJS modules.
-     */
-    export const builtins: {
-        async_context: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
-        async_hooks: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
-        application: typeof application;
-        assert: typeof import("socket:assert").assert & {
-            AssertionError: typeof import("socket:assert").AssertionError;
-            ok: typeof import("socket:assert").ok;
-            equal: typeof import("socket:assert").equal;
-            notEqual: typeof import("socket:assert").notEqual;
-            strictEqual: typeof import("socket:assert").strictEqual;
-            notStrictEqual: typeof import("socket:assert").notStrictEqual;
-            deepEqual: typeof import("socket:assert").deepEqual;
-            notDeepEqual: typeof import("socket:assert").notDeepEqual;
-        };
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        constants: {
-            SIGHUP: number;
-            SIGINT: number;
-            SIGQUIT: number;
-            SIGILL: number;
-            SIGTRAP: number;
-            SIGABRT: number;
-            SIGIOT: number;
-            SIGBUS: number;
-            SIGFPE: number;
-            SIGKILL: number;
-            SIGUSR1: number;
-            SIGSEGV: number;
-            SIGUSR2: number;
-            SIGPIPE: number;
-            SIGALRM: number;
-            SIGTERM: number;
-            SIGCHLD: number;
-            SIGCONT: number;
-            SIGSTOP: number;
-            SIGTSTP: number;
-            SIGTTIN: number;
-            SIGTTOU: number;
-            SIGURG: number;
-            SIGXCPU: number;
-            SIGXFSZ: number;
-            SIGVTALRM: number;
-            SIGPROF: number;
-            SIGWINCH: number;
-            SIGIO: number;
-            SIGINFO: number;
-            SIGSYS: number;
-            E2BIG: number;
-            EACCES: number;
-            EADDRINUSE: number;
-            EADDRNOTAVAIL: number;
-            EAFNOSUPPORT: number;
-            EAGAIN: number;
-            EALREADY: number;
-            EBADF: number;
-            EBADMSG: number;
-            EBUSY: number;
-            ECANCELED: number;
-            ECHILD: number;
-            ECONNABORTED: number;
-            ECONNREFUSED: number;
-            ECONNRESET: number;
-            EDEADLK: number;
-            EDESTADDRREQ: number;
-            EDOM: number;
-            EDQUOT: number;
-            EEXIST: number;
-            EFAULT: number;
-            EFBIG: number;
-            EHOSTUNREACH: number;
-            EIDRM: number;
-            EILSEQ: number;
-            EINPROGRESS: number;
-            EINTR: number;
-            EINVAL: number;
-            EIO: number;
-            EISCONN: number;
-            EISDIR: number;
-            ELOOP: number;
-            EMFILE: number;
-            EMLINK: number;
-            EMSGSIZE: number;
-            EMULTIHOP: number;
-            ENAMETOOLONG: number;
-            ENETDOWN: number;
-            ENETRESET: number;
-            ENETUNREACH: number;
-            ENFILE: number;
-            ENOBUFS: number;
-            ENODATA: number;
-            ENODEV: number;
-            ENOENT: number;
-            ENOEXEC: number;
-            ENOLCK: number;
-            ENOLINK: number;
-            ENOMEM: number;
-            ENOMSG: number;
-            ENOPROTOOPT: number;
-            ENOSPC: number;
-            ENOSR: number;
-            ENOSTR: number;
-            ENOSYS: number;
-            ENOTCONN: number;
-            ENOTDIR: number;
-            ENOTEMPTY: number;
-            ENOTSOCK: number;
-            ENOTSUP: number;
-            ENOTTY: number;
-            ENXIO: number;
-            EOPNOTSUPP: number;
-            EOVERFLOW: number;
-            EPERM: number;
-            EPIPE: number;
-            EPROTO: number;
-            EPROTONOSUPPORT: number;
-            EPROTOTYPE: number;
-            ERANGE: number;
-            EROFS: number;
-            ESPIPE: number;
-            ESRCH: number;
-            ESTALE: number;
-            ETIME: number;
-            ETIMEDOUT: number;
-            ETXTBSY: number;
-            EWOULDBLOCK: number;
-            EXDEV: number;
-            WINDOW_ERROR: -1;
-            WINDOW_NONE: 0;
-            WINDOW_CREATING: 10;
-            WINDOW_CREATED: 11;
-            WINDOW_HIDING: 20;
-            WINDOW_HIDDEN: 21;
-            WINDOW_SHOWING: 30;
-            WINDOW_SHOWN: 31;
-            WINDOW_CLOSING: 40;
-            WINDOW_CLOSED: 41;
-            WINDOW_EXITING: 50;
-            WINDOW_EXITED: 51;
-            WINDOW_KILLING: 60;
-            WINDOW_KILLED: 61;
-            default: typeof import("socket:window/constants");
-            COPYFILE_EXCL: 1;
-            COPYFILE_FICLONE: 2;
-            COPYFILE_FICLONE_FORCE: 4;
-            UV_DIRENT_UNKNOWN: any;
-            UV_DIRENT_FILE: any;
-            UV_DIRENT_DIR: any;
-            UV_DIRENT_LINK: any;
-            UV_DIRENT_FIFO: any;
-            UV_DIRENT_SOCKET: any;
-            UV_DIRENT_CHAR: any;
-            UV_DIRENT_BLOCK: any;
-            UV_FS_SYMLINK_DIR: any;
-            UV_FS_SYMLINK_JUNCTION: any;
-            O_RDONLY: any;
-            O_WRONLY: any;
-            O_RDWR: any;
-            O_APPEND: any;
-            O_ASYNC: any;
-            O_CLOEXEC: any;
-            O_CREAT: any;
-            O_DIRECT: any;
-            O_DIRECTORY: any;
-            O_DSYNC: any;
-            O_EXCL: any;
-            O_LARGEFILE: any;
-            O_NOATIME: any;
-            O_NOCTTY: any;
-            O_NOFOLLOW: any;
-            O_NONBLOCK: any;
-            O_NDELAY: any;
-            O_PATH: any;
-            O_SYNC: any;
-            O_TMPFILE: any;
-            O_TRUNC: any;
-            S_IFMT: any;
-            S_IFREG: any;
-            S_IFDIR: any;
-            S_IFCHR: any;
-            S_IFBLK: any;
-            S_IFIFO: any;
-            S_IFLNK: any;
-            S_IFSOCK: any;
-            S_IRWXU: any;
-            S_IRUSR: any;
-            S_IWUSR: any;
-            S_IXUSR: any;
-            S_IRWXG: any;
-            S_IRGRP: any;
-            S_IWGRP: any;
-            S_IXGRP: any;
-            S_IRWXO: any;
-            S_IROTH: any;
-            S_IWOTH: any;
-            S_IXOTH: any;
-            F_OK: any;
-            R_OK: any;
-            W_OK: any;
-            X_OK: any;
-        };
-        child_process: {
-            ChildProcess: {
-                new (options?: {}): {
-                    "__#27@#id": BigInt;
-                    "__#27@#worker": any;
-                    "__#27@#signal": any;
-                    "__#27@#timeout": any;
-                    "__#27@#env": any;
-                    "__#27@#state": {
-                        killed: boolean;
-                        signalCode: any;
-                        exitCode: any;
-                        spawnfile: any;
-                        spawnargs: any[];
-                        lifecycle: string;
-                        pid: number;
-                    };
-                    readonly killed: boolean;
-                    readonly pid: number;
-                    readonly spawnfile: string;
-                    readonly spawnargs: string[];
-                    readonly connected: boolean;
-                    readonly exitCode: number;
-                    readonly stdin: stream.Writable;
-                    readonly stdout: stream.Readable;
-                    readonly stderr: stream.Readable;
-                    readonly worker: import("socket:worker_threads").Worker;
-                    disconnect(): boolean;
-                    send(): boolean;
-                    ref(): boolean;
-                    unref(): boolean;
-                    kill(...args: any[]): any;
-                    spawn(...args?: string[]): any;
-                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
-                        once?: false;
-                    }): void;
-                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
-                    _events: any;
-                    _eventsCount: number;
-                    _maxListeners: number;
-                    setMaxListeners(n: any): any;
-                    getMaxListeners(): any;
-                    emit(type: any, ...args: any[]): boolean;
-                    addListener(type: any, listener: any): any;
-                    on(arg0: any, arg1: any): any;
-                    prependListener(type: any, listener: any): any;
-                    once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
-                    removeListener(type: any, listener: any): any;
-                    off(type: any, listener: any): any;
-                    removeAllListeners(type: any, ...args: any[]): any;
-                    listeners(type: any): any[];
-                    rawListeners(type: any): any[];
-                    listenerCount(type: any): any;
-                    eventNames(): any;
-                };
-                EventEmitter: typeof events.EventEmitter;
-                defaultMaxListeners: number;
-                init(): void;
-                listenerCount(emitter: any, type: any): any;
-                once: typeof events.once;
-            };
-            spawn: typeof import("socket:child_process").spawn;
-            execFile: typeof import("socket:child_process").exec;
-            exec: typeof import("socket:child_process").exec;
-        };
-        crypto: typeof crypto;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        http: {
-            Agent: typeof import("socket:http").Agent;
-            AgentOptions: typeof import("socket:http").AgentOptions;
-            ClientRequest: typeof import("socket:http").ClientRequest;
-            createServer: typeof import("socket:http").createServer;
-            get: typeof import("socket:http").get;
-            globalAgent: import("socket:http").Agent;
-            METHODS: string[];
-            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
-            request: (optionsOrURL: any, options?: any, callback?: Function) => import("socket:http").ClientRequest;
-            Server: typeof import("socket:http").Server;
-            ServerResponse: typeof import("socket:http").ServerResponse;
-            STATUS_CODES: any;
-        };
-        https: {
-            METHODS: string[];
-            STATUS_CODES: any;
-            AgentOptions: typeof import("socket:https").AgentOptions;
-            Agent: typeof import("socket:https").Agent;
-            globalAgent: import("socket:https").Agent;
-            request: typeof import("socket:https").request;
-            OutgoingMessage: typeof import("socket:https").OutgoingMessage;
-            ClientRequest: typeof import("socket:https").ClientRequest;
-            ServerResponse: typeof import("socket:https").ServerResponse;
-            get: typeof import("socket:https").get;
-        };
-        gc: any;
-        ipc: typeof ipc;
-        language: {
-            codes: string[];
-            describe: typeof import("socket:language").describe;
-            lookup: typeof import("socket:language").lookup;
-            names: string[];
-            tags: import("socket:enumeration").Enumeration;
-        };
-        mime: typeof mime;
-        net: {};
-        os: typeof os;
-        path: typeof path;
-        perf_hooks: {
-            performance: Performance;
-        };
-        process: any;
-        querystring: {
-            decode: typeof import("socket:querystring").parse;
-            encode: typeof import("socket:querystring").stringify;
-            parse: typeof import("socket:querystring").parse;
-            stringify: typeof import("socket:querystring").stringify;
-            escape: typeof import("socket:querystring").escape;
-            unescape: typeof import("socket:querystring").unescape;
-        };
-        stream: typeof stream;
-        'stream/web': typeof stream.web;
-        string_decoder: typeof string_decoder;
-        sys: typeof util;
-        test: typeof test;
-        timers: typeof timers;
-        'timers/promises': any;
-        tty: {
-            isatty: () => boolean;
-            WriteStream: typeof util.IllegalConstructor;
-            ReadStream: typeof util.IllegalConstructor;
-        };
-        util: typeof util;
-        url: any;
-        vm: {
-            createGlobalObject: typeof import("socket:vm").createGlobalObject;
-            compileFunction: typeof import("socket:vm").compileFunction;
-            createReference: typeof import("socket:vm").createReference;
-            getContextWindow: typeof import("socket:vm").getContextWindow;
-            getContextWorker: typeof import("socket:vm").getContextWorker;
-            getReference: typeof import("socket:vm").getReference;
-            getTransferables: typeof import("socket:vm").getTransferables;
-            putReference: typeof import("socket:vm").putReference;
-            Reference: typeof import("socket:vm").Reference;
-            removeReference: typeof import("socket:vm").removeReference;
-            runInContext: typeof import("socket:vm").runInContext;
-            runInNewContext: typeof import("socket:vm").runInNewContext;
-            runInThisContext: typeof import("socket:vm").runInThisContext;
-            Script: typeof import("socket:vm").Script;
-            createContext: typeof import("socket:vm").createContext;
-            isContext: typeof import("socket:vm").isContext;
-        };
-        window: typeof window;
-        worker_threads: {
-            Worker: typeof import("socket:worker_threads").Worker;
-            isMainThread: boolean;
-            parentPort: import("socket:worker_threads").MessagePort;
-            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
-            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
-            workerData: any;
-            threadId: number;
-            SHARE_ENV: symbol;
-        };
-    };
-    export const builtinModules: {
-        async_context: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
-        async_hooks: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
-        application: typeof application;
-        assert: typeof import("socket:assert").assert & {
-            AssertionError: typeof import("socket:assert").AssertionError;
-            ok: typeof import("socket:assert").ok;
-            equal: typeof import("socket:assert").equal;
-            notEqual: typeof import("socket:assert").notEqual;
-            strictEqual: typeof import("socket:assert").strictEqual;
-            notStrictEqual: typeof import("socket:assert").notStrictEqual;
-            deepEqual: typeof import("socket:assert").deepEqual;
-            notDeepEqual: typeof import("socket:assert").notDeepEqual;
-        };
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        constants: {
-            SIGHUP: number;
-            SIGINT: number;
-            SIGQUIT: number;
-            SIGILL: number;
-            SIGTRAP: number;
-            SIGABRT: number;
-            SIGIOT: number;
-            SIGBUS: number;
-            SIGFPE: number;
-            SIGKILL: number;
-            SIGUSR1: number;
-            SIGSEGV: number;
-            SIGUSR2: number;
-            SIGPIPE: number;
-            SIGALRM: number;
-            SIGTERM: number;
-            SIGCHLD: number;
-            SIGCONT: number;
-            SIGSTOP: number;
-            SIGTSTP: number;
-            SIGTTIN: number;
-            SIGTTOU: number;
-            SIGURG: number;
-            SIGXCPU: number;
-            SIGXFSZ: number;
-            SIGVTALRM: number;
-            SIGPROF: number;
-            SIGWINCH: number;
-            SIGIO: number;
-            SIGINFO: number;
-            SIGSYS: number;
-            E2BIG: number;
-            EACCES: number;
-            EADDRINUSE: number;
-            EADDRNOTAVAIL: number;
-            EAFNOSUPPORT: number;
-            EAGAIN: number;
-            EALREADY: number;
-            EBADF: number;
-            EBADMSG: number;
-            EBUSY: number;
-            ECANCELED: number;
-            ECHILD: number;
-            ECONNABORTED: number;
-            ECONNREFUSED: number;
-            ECONNRESET: number;
-            EDEADLK: number;
-            EDESTADDRREQ: number;
-            EDOM: number;
-            EDQUOT: number;
-            EEXIST: number;
-            EFAULT: number;
-            EFBIG: number;
-            EHOSTUNREACH: number;
-            EIDRM: number;
-            EILSEQ: number;
-            EINPROGRESS: number;
-            EINTR: number;
-            EINVAL: number;
-            EIO: number;
-            EISCONN: number;
-            EISDIR: number;
-            ELOOP: number;
-            EMFILE: number;
-            EMLINK: number;
-            EMSGSIZE: number;
-            EMULTIHOP: number;
-            ENAMETOOLONG: number;
-            ENETDOWN: number;
-            ENETRESET: number;
-            ENETUNREACH: number;
-            ENFILE: number;
-            ENOBUFS: number;
-            ENODATA: number;
-            ENODEV: number;
-            ENOENT: number;
-            ENOEXEC: number;
-            ENOLCK: number;
-            ENOLINK: number;
-            ENOMEM: number;
-            ENOMSG: number;
-            ENOPROTOOPT: number;
-            ENOSPC: number;
-            ENOSR: number;
-            ENOSTR: number;
-            ENOSYS: number;
-            ENOTCONN: number;
-            ENOTDIR: number;
-            ENOTEMPTY: number;
-            ENOTSOCK: number;
-            ENOTSUP: number;
-            ENOTTY: number;
-            ENXIO: number;
-            EOPNOTSUPP: number;
-            EOVERFLOW: number;
-            EPERM: number;
-            EPIPE: number;
-            EPROTO: number;
-            EPROTONOSUPPORT: number;
-            EPROTOTYPE: number;
-            ERANGE: number;
-            EROFS: number;
-            ESPIPE: number;
-            ESRCH: number;
-            ESTALE: number;
-            ETIME: number;
-            ETIMEDOUT: number;
-            ETXTBSY: number;
-            EWOULDBLOCK: number;
-            EXDEV: number;
-            WINDOW_ERROR: -1;
-            WINDOW_NONE: 0;
-            WINDOW_CREATING: 10;
-            WINDOW_CREATED: 11;
-            WINDOW_HIDING: 20;
-            WINDOW_HIDDEN: 21;
-            WINDOW_SHOWING: 30;
-            WINDOW_SHOWN: 31;
-            WINDOW_CLOSING: 40;
-            WINDOW_CLOSED: 41;
-            WINDOW_EXITING: 50;
-            WINDOW_EXITED: 51;
-            WINDOW_KILLING: 60;
-            WINDOW_KILLED: 61;
-            default: typeof import("socket:window/constants");
-            COPYFILE_EXCL: 1;
-            COPYFILE_FICLONE: 2;
-            COPYFILE_FICLONE_FORCE: 4;
-            UV_DIRENT_UNKNOWN: any;
-            UV_DIRENT_FILE: any;
-            UV_DIRENT_DIR: any;
-            UV_DIRENT_LINK: any;
-            UV_DIRENT_FIFO: any;
-            UV_DIRENT_SOCKET: any;
-            UV_DIRENT_CHAR: any;
-            UV_DIRENT_BLOCK: any;
-            UV_FS_SYMLINK_DIR: any;
-            UV_FS_SYMLINK_JUNCTION: any;
-            O_RDONLY: any;
-            O_WRONLY: any;
-            O_RDWR: any;
-            O_APPEND: any;
-            O_ASYNC: any;
-            O_CLOEXEC: any;
-            O_CREAT: any;
-            O_DIRECT: any;
-            O_DIRECTORY: any;
-            O_DSYNC: any;
-            O_EXCL: any;
-            O_LARGEFILE: any;
-            O_NOATIME: any;
-            O_NOCTTY: any;
-            O_NOFOLLOW: any;
-            O_NONBLOCK: any;
-            O_NDELAY: any;
-            O_PATH: any;
-            O_SYNC: any;
-            O_TMPFILE: any;
-            O_TRUNC: any;
-            S_IFMT: any;
-            S_IFREG: any;
-            S_IFDIR: any;
-            S_IFCHR: any;
-            S_IFBLK: any;
-            S_IFIFO: any;
-            S_IFLNK: any;
-            S_IFSOCK: any;
-            S_IRWXU: any;
-            S_IRUSR: any;
-            S_IWUSR: any;
-            S_IXUSR: any;
-            S_IRWXG: any;
-            S_IRGRP: any;
-            S_IWGRP: any;
-            S_IXGRP: any;
-            S_IRWXO: any;
-            S_IROTH: any;
-            S_IWOTH: any;
-            S_IXOTH: any;
-            F_OK: any;
-            R_OK: any;
-            W_OK: any;
-            X_OK: any;
-        };
-        child_process: {
-            ChildProcess: {
-                new (options?: {}): {
-                    "__#27@#id": BigInt;
-                    "__#27@#worker": any;
-                    "__#27@#signal": any;
-                    "__#27@#timeout": any;
-                    "__#27@#env": any;
-                    "__#27@#state": {
-                        killed: boolean;
-                        signalCode: any;
-                        exitCode: any;
-                        spawnfile: any;
-                        spawnargs: any[];
-                        lifecycle: string;
-                        pid: number;
-                    };
-                    readonly killed: boolean;
-                    readonly pid: number;
-                    readonly spawnfile: string;
-                    readonly spawnargs: string[];
-                    readonly connected: boolean;
-                    readonly exitCode: number;
-                    readonly stdin: stream.Writable;
-                    readonly stdout: stream.Readable;
-                    readonly stderr: stream.Readable;
-                    readonly worker: import("socket:worker_threads").Worker;
-                    disconnect(): boolean;
-                    send(): boolean;
-                    ref(): boolean;
-                    unref(): boolean;
-                    kill(...args: any[]): any;
-                    spawn(...args?: string[]): any;
-                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
-                        once?: false;
-                    }): void;
-                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
-                    _events: any;
-                    _eventsCount: number;
-                    _maxListeners: number;
-                    setMaxListeners(n: any): any;
-                    getMaxListeners(): any;
-                    emit(type: any, ...args: any[]): boolean;
-                    addListener(type: any, listener: any): any;
-                    on(arg0: any, arg1: any): any;
-                    prependListener(type: any, listener: any): any;
-                    once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
-                    removeListener(type: any, listener: any): any;
-                    off(type: any, listener: any): any;
-                    removeAllListeners(type: any, ...args: any[]): any;
-                    listeners(type: any): any[];
-                    rawListeners(type: any): any[];
-                    listenerCount(type: any): any;
-                    eventNames(): any;
-                };
-                EventEmitter: typeof events.EventEmitter;
-                defaultMaxListeners: number;
-                init(): void;
-                listenerCount(emitter: any, type: any): any;
-                once: typeof events.once;
-            };
-            spawn: typeof import("socket:child_process").spawn;
-            execFile: typeof import("socket:child_process").exec;
-            exec: typeof import("socket:child_process").exec;
-        };
-        crypto: typeof crypto;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        http: {
-            Agent: typeof import("socket:http").Agent;
-            AgentOptions: typeof import("socket:http").AgentOptions;
-            ClientRequest: typeof import("socket:http").ClientRequest;
-            createServer: typeof import("socket:http").createServer;
-            get: typeof import("socket:http").get;
-            globalAgent: import("socket:http").Agent;
-            METHODS: string[];
-            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
-            request: (optionsOrURL: any, options?: any, callback?: Function) => import("socket:http").ClientRequest;
-            Server: typeof import("socket:http").Server;
-            ServerResponse: typeof import("socket:http").ServerResponse;
-            STATUS_CODES: any;
-        };
-        https: {
-            METHODS: string[];
-            STATUS_CODES: any;
-            AgentOptions: typeof import("socket:https").AgentOptions;
-            Agent: typeof import("socket:https").Agent;
-            globalAgent: import("socket:https").Agent;
-            request: typeof import("socket:https").request;
-            OutgoingMessage: typeof import("socket:https").OutgoingMessage;
-            ClientRequest: typeof import("socket:https").ClientRequest;
-            ServerResponse: typeof import("socket:https").ServerResponse;
-            get: typeof import("socket:https").get;
-        };
-        gc: any;
-        ipc: typeof ipc;
-        language: {
-            codes: string[];
-            describe: typeof import("socket:language").describe;
-            lookup: typeof import("socket:language").lookup;
-            names: string[];
-            tags: import("socket:enumeration").Enumeration;
-        };
-        mime: typeof mime;
-        net: {};
-        os: typeof os;
-        path: typeof path;
-        perf_hooks: {
-            performance: Performance;
-        };
-        process: any;
-        querystring: {
-            decode: typeof import("socket:querystring").parse;
-            encode: typeof import("socket:querystring").stringify;
-            parse: typeof import("socket:querystring").parse;
-            stringify: typeof import("socket:querystring").stringify;
-            escape: typeof import("socket:querystring").escape;
-            unescape: typeof import("socket:querystring").unescape;
-        };
-        stream: typeof stream;
-        'stream/web': typeof stream.web;
-        string_decoder: typeof string_decoder;
-        sys: typeof util;
-        test: typeof test;
-        timers: typeof timers;
-        'timers/promises': any;
-        tty: {
-            isatty: () => boolean;
-            WriteStream: typeof util.IllegalConstructor;
-            ReadStream: typeof util.IllegalConstructor;
-        };
-        util: typeof util;
-        url: any;
-        vm: {
-            createGlobalObject: typeof import("socket:vm").createGlobalObject;
-            compileFunction: typeof import("socket:vm").compileFunction;
-            createReference: typeof import("socket:vm").createReference;
-            getContextWindow: typeof import("socket:vm").getContextWindow;
-            getContextWorker: typeof import("socket:vm").getContextWorker;
-            getReference: typeof import("socket:vm").getReference;
-            getTransferables: typeof import("socket:vm").getTransferables;
-            putReference: typeof import("socket:vm").putReference;
-            Reference: typeof import("socket:vm").Reference;
-            removeReference: typeof import("socket:vm").removeReference;
-            runInContext: typeof import("socket:vm").runInContext;
-            runInNewContext: typeof import("socket:vm").runInNewContext;
-            runInThisContext: typeof import("socket:vm").runInThisContext;
-            Script: typeof import("socket:vm").Script;
-            createContext: typeof import("socket:vm").createContext;
-            isContext: typeof import("socket:vm").isContext;
-        };
-        window: typeof window;
-        worker_threads: {
-            Worker: typeof import("socket:worker_threads").Worker;
-            isMainThread: boolean;
-            parentPort: import("socket:worker_threads").MessagePort;
-            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
-            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
-            workerData: any;
-            threadId: number;
-            SHARE_ENV: symbol;
-        };
-    };
-    /**
-     * CommonJS module scope source wrapper.
-     * @type {string}
-     */
-    export const COMMONJS_WRAPPER: string;
-    /**
-     * The main entry source origin.
-     * @type {string}
-     */
-    export const MAIN_SOURCE_ORIGIN: string;
-    export namespace scope {
-        let current: any;
-        let previous: any;
-    }
-    /**
-     * A container for a loaded CommonJS module. All errors bubble
-     * to the "main" module and global object (if possible).
-     */
-    export class Module extends EventTarget {
-        static set current(module: Module);
-        /**
-         * A reference to the currently scoped module.
-         * @type {Module?}
-         */
-        static get current(): Module;
-        static set previous(module: Module);
-        /**
-         * A reference to the previously scoped module.
-         * @type {Module?}
-         */
-        static get previous(): Module;
-        /**
-         * Module cache.
-         * @ignore
-         */
-        static cache: any;
-        /**
-         * Custom module resolvers.
-         * @type {Array<ModuleResolver>}
-         */
-        static resolvers: Array<ModuleResolver>;
-        /**
-         * CommonJS module scope source wrapper.
-         * @ignore
-         */
-        static wrapper: string;
-        /**
-         * A limited set of builtins exposed to CommonJS modules.
-         * @type {object}
-         */
-        static builtins: object;
-        /**
-         * Creates a `require` function from a source URL.
-         * @param {URL|string} sourcePath
-         * @return {function}
-         */
-        static createRequire(sourcePath: URL | string): Function;
-        /**
-         * The main entry module, lazily created.
-         * @type {Module}
-         */
-        static get main(): Module;
-        /**
-         * Wraps source in a CommonJS module scope.
-         */
-        static wrap(source: any): string;
-        /**
-         * Creates a `Module` from source URL and optionally a parent module.
-         * @param {string|URL|Module} [sourcePath]
-         * @param {string|URL|Module} [parent]
-         */
-        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
-        /**
-         * `Module` class constructor.
-         * @ignore
-         */
-        constructor(id: any, parent?: any, sourcePath?: any);
-        /**
-         * The module id, most likely a file name.
-         * @type {string}
-         */
-        id: string;
-        /**
-         * The parent module, if given.
-         * @type {Module?}
-         */
-        parent: Module | null;
-        /**
-         * `true` if the module did load successfully.
-         * @type {boolean}
-         */
-        loaded: boolean;
-        /**
-         * `true` if the module is currently being loaded.
-         * @type {boolean}
-         */
-        loading: boolean;
-        /**
-         * The module's exports.
-         * @type {any}
-         */
-        exports: any;
-        /**
-         * The filename of the module.
-         * @type {string}
-         */
-        filename: string;
-        /**
-         * Modules children to this one, as in they were required in this
-         * module scope context.
-         * @type {Array<Module>}
-         */
-        children: Array<Module>;
-        /**
-         * The original source URL to load this module.
-         * @type {string}
-         */
-        sourcePath: string;
-        /**
-         * `true` if the module is the main module.
-         * @type {boolean}
-         */
-        get isMain(): boolean;
-        /**
-         * `true` if the module was loaded by name, not file path.
-         * @type {boolean}
-         */
-        get isNamed(): boolean;
-        /**
-         * @type {URL}
-         */
-        get url(): URL;
-        /**
-         * @type {string}
-         */
-        get pathname(): string;
-        /**
-         * @type {string}
-         */
-        get path(): string;
-        /**
-         * Loads the module, synchronously returning `true` upon success,
-         * otherwise `false`.
-         * @return {boolean}
-         */
-        load(): boolean;
-        /**
-         * Creates a require function for loaded CommonJS modules
-         * child to this module.
-         * @return {function(string): any}
-         */
-        createRequire(): (arg0: string) => any;
-        /**
-         * Requires a module at `filename` that will be loaded as a child
-         * to this module.
-         * @param {string} filename
-         * @return {any}
-         */
-        require(filename: string): any;
-        /**
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-    }
-    export default Module;
-    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
-    import { URL } from "socket:url/index";
-    import application from "socket:application";
-    import buffer from "socket:buffer";
-    import stream from "socket:stream";
-    import events from "socket:events";
-    import crypto from "socket:crypto";
-    import dgram from "socket:dgram";
-    import dns from "socket:dns";
-    import fs from "socket:fs";
-    import ipc from "socket:ipc";
-    import mime from "socket:mime";
-    import os from "socket:os";
-    import { posix as path } from "socket:path";
-    import string_decoder from "socket:string_decoder";
-    import util from "socket:util";
-    import test from "socket:test";
-    import timers from "socket:timers";
-    import window from "socket:window";
-}
-
-declare module "socket:stream-relay/worker" {
-    /**
-     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
-     * @param {{ createSocket: function('udp4', null, object?): object }} options
-     */
-    export class PeerWorkerProxy {
-        constructor(options: any, port: any, fn: any);
-        init(): Promise<Deferred>;
-        reconnect(): Promise<Deferred>;
-        disconnect(): Promise<Deferred>;
-        getInfo(): Promise<Deferred>;
-        getState(): Promise<Deferred>;
-        open(...args: any[]): Promise<Deferred>;
-        seal(...args: any[]): Promise<Deferred>;
-        sealUnsigned(...args: any[]): Promise<Deferred>;
-        openUnsigned(...args: any[]): Promise<Deferred>;
-        addEncryptionKey(...args: any[]): Promise<Deferred>;
-        send(...args: any[]): Promise<Deferred>;
-        sendUnpublished(...args: any[]): Promise<Deferred>;
-        cacheInsert(...args: any[]): Promise<Deferred>;
-        mcast(...args: any[]): Promise<Deferred>;
-        requestReflection(...args: any[]): Promise<Deferred>;
-        join(...args: any[]): Promise<Deferred>;
-        publish(...args: any[]): Promise<Deferred>;
-        sync(...args: any[]): Promise<Deferred>;
-        close(...args: any[]): Promise<Deferred>;
-        query(...args: any[]): Promise<Deferred>;
-        compileCachePredicate(src: any): Promise<Deferred>;
-        callWorkerThread(prop: any, data: any): Deferred;
-        callMainThread(prop: any, args: any): void;
-        resolveMainThread(seq: any, data: any): void;
-        #private;
-    }
-    class Deferred {
-        _promise: Promise<any>;
-        resolve: (value: any) => void;
-        reject: (reason?: any) => void;
-        then: any;
-        catch: any;
-        finally: any;
-        [Symbol.toStringTag]: string;
-    }
-    export {};
-}
-
-declare module "socket:stream-relay/api" {
-    export default api;
-    /**
-     * Initializes and returns the network bus.
-     *
-     * @async
-     * @function
-     * @param {object} options - Configuration options for the network bus.
-     * @param {object} events - A nodejs compatibe implementation of the events module.
-     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
-     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
-     */
-    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
-}
-
-declare module "socket:network" {
-    export default network;
-    export function network(options: any): Promise<events.EventEmitter>;
-    import { Cache } from "socket:stream-relay/index";
-    import { sha256 } from "socket:stream-relay/index";
-    import { Encryption } from "socket:stream-relay/index";
-    import { Packet } from "socket:stream-relay/index";
-    import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, Packet, NAT };
-}
-
-declare module "socket:node-esm-loader" {
-    export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
-    export default resolve;
-}
-
-declare module "socket:internal/permissions" {
-    /**
-     * Query for a permission status.
-     * @param {PermissionDescriptor} descriptor
-     * @param {object=} [options]
-     * @param {?AbortSignal} [options.signal = null]
-     * @return {Promise<PermissionStatus>}
-     */
-    export function query(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
-    /**
-     * Request a permission to be granted.
-     * @param {PermissionDescriptor} descriptor
-     * @param {object=} [options]
-     * @param {?AbortSignal} [options.signal = null]
-     * @return {Promise<PermissionStatus>}
-     */
-    export function request(descriptor: PermissionDescriptor, options?: object | undefined, ...args: any[]): Promise<PermissionStatus>;
-    /**
-     * An enumeration of the permission types.
-     * - 'geolocation'
-     * - 'notifications'
-     * - 'push'
-     * - 'persistent-storage'
-     * - 'midi'
-     * - 'storage-access'
-     * @type {Enumeration}
-     * @ignore
-     */
-    export const types: Enumeration;
-    const _default: any;
-    export default _default;
-    export type PermissionDescriptor = {
-        name: string;
-    };
-    /**
-     * A container that provides the state of an object and an event handler
-     * for monitoring changes permission changes.
-     * @ignore
-     */
-    class PermissionStatus extends EventTarget {
-        /**
-         * `PermissionStatus` class constructor.
-         * @param {string} name
-         * @param {string} initialState
-         * @param {object=} [options]
-         * @param {?AbortSignal} [options.signal = null]
-         */
-        constructor(name: string, initialState: string, options?: object | undefined);
-        /**
-         * The name of this permission this status is for.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The current state of the permission status.
-         * @type {string}
-         */
-        get state(): string;
-        set onchange(onchange: (arg0: Event) => any);
-        /**
-         * Level 0 event target 'change' event listener accessor
-         * @type {function(Event)}
-         */
-        get onchange(): (arg0: Event) => any;
-        /**
-         * Non-standard method for unsubscribing to status state updates.
-         * @ignore
-         */
-        unsubscribe(): void;
-        /**
-         * String tag for `PermissionStatus`.
-         * @ignore
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    import Enumeration from "socket:enumeration";
-}
-
-declare module "socket:notification" {
-    /**
-     * Show a notification. Creates a `Notification` instance and displays
-     * it to the user.
-     * @param {string} title
-     * @param {NotificationOptions=} [options]
-     * @param {function(Event)=} [onclick]
-     * @param {function(Event)=} [onclose]
-     * @return {Promise}
-     */
-    export function showNotification(title: string, options?: NotificationOptions | undefined, onclick?: ((arg0: Event) => any) | undefined, onshow?: any): Promise<any>;
-    /**
-     * The global event dispatched when a `Notification` is presented to
-     * the user.
-     * @ignore
-     * @type {string}
-     */
-    export const NOTIFICATION_PRESENTED_EVENT: string;
-    /**
-     * The global event dispatched when a `Notification` has a response
-     * from the user.
-     * @ignore
-     * @type {string}
-     */
-    export const NOTIFICATION_RESPONSE_EVENT: string;
-    /**
-     * An enumeratino of notification test directions:
-     * - 'auto'  Automatically determined by the operating system
-     * - 'ltr'   Left-to-right text direction
-     * - 'rtl'   Right-to-left text direction
-     * @type {Enumeration}
-     * @ignore
-     */
-    export const NotificationDirection: Enumeration;
-    /**
-     * An enumeration of permission types granted by the user for the current
-     * origin to display notifications to the end user.
-     * - 'granted'  The user has explicitly granted permission for the current
-     *              origin to display system notifications.
-     * - 'denied'   The user has explicitly denied permission for the current
-     *              origin to display system notifications.
-     * - 'default'  The user decision is unknown; in this case the application
-     *              will act as if permission was denied.
-     * @type {Enumeration}
-     * @ignore
-     */
-    export const NotificationPermission: Enumeration;
-    /**
-     * A validated notification action object container.
-     * You should never need to construct this.
-     * @ignore
-     */
-    export class NotificationAction {
-        /**
-         * `NotificationAction` class constructor.
-         * @ignore
-         * @param {object} options
-         * @param {string} options.action
-         * @param {string} options.title
-         * @param {string|URL=} [options.icon = '']
-         */
-        constructor(options: {
-            action: string;
-            title: string;
-            icon?: (string | URL) | undefined;
-        });
-        /**
-         * A string identifying a user action to be displayed on the notification.
-         * @type {string}
-         */
-        get action(): string;
-        /**
-         * A string containing action text to be shown to the user.
-         * @type {string}
-         */
-        get title(): string;
-        /**
-         * A string containing the URL of an icon to display with the action.
-         * @type {string}
-         */
-        get icon(): string;
-        #private;
-    }
-    /**
-     * A validated notification options object container.
-     * You should never need to construct this.
-     * @ignore
-     */
-    export class NotificationOptions {
-        /**
-         * `NotificationOptions` class constructor.
-         * @ignore
-         * @param {object} [options = {}]
-         * @param {string=} [options.dir = 'auto']
-         * @param {NotificationAction[]=} [options.actions = []]
-         * @param {string|URL=} [options.badge = '']
-         * @param {string=} [options.body = '']
-         * @param {?any=} [options.data = null]
-         * @param {string|URL=} [options.icon = '']
-         * @param {string|URL=} [options.image = '']
-         * @param {string=} [options.lang = '']
-         * @param {string=} [options.tag = '']
-         * @param {boolean=} [options.boolean = '']
-         * @param {boolean=} [options.requireInteraction = false]
-         * @param {boolean=} [options.silent = false]
-         * @param {number[]=} [options.vibrate = []]
-         */
-        constructor(options?: {
-            dir?: string | undefined;
-            actions?: NotificationAction[] | undefined;
-            badge?: (string | URL) | undefined;
-            body?: string | undefined;
-            data?: (any | null) | undefined;
-            icon?: (string | URL) | undefined;
-            image?: (string | URL) | undefined;
-            lang?: string | undefined;
-            tag?: string | undefined;
-            boolean?: boolean | undefined;
-            requireInteraction?: boolean | undefined;
-            silent?: boolean | undefined;
-            vibrate?: number[] | undefined;
-        });
-        /**
-         * An array of actions to display in the notification.
-         * @type {NotificationAction[]}
-         */
-        get actions(): NotificationAction[];
-        /**
-         * A string containing the URL of the image used to represent
-         * the notification when there isn't enough space to display the
-         * notification itself.
-         * @type {string}
-         */
-        get badge(): string;
-        /**
-         * A string representing the body text of the notification,
-         * which is displayed below the title.
-         * @type {string}
-         */
-        get body(): string;
-        /**
-         * Arbitrary data that you want associated with the notification.
-         * This can be of any data type.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The direction in which to display the notification.
-         * It defaults to 'auto', which just adopts the environments
-         * language setting behavior, but you can override that behavior
-         * by setting values of 'ltr' and 'rtl'.
-         * @type {'auto'|'ltr'|'rtl'}
-         */
-        get dir(): "auto" | "ltr" | "rtl";
-        /**
-         * A string containing the URL of an icon to be displayed in the notification.
-         * @type {string}
-         */
-        get icon(): string;
-        /**
-         * The URL of an image to be displayed as part of the notification, as
-         * specified in the constructor's options parameter.
-         * @type {string}
-         */
-        get image(): string;
-        /**
-         * The notification's language, as specified using a string representing a
-         * language tag according to RFC 5646.
-         * @type {string}
-         */
-        get lang(): string;
-        /**
-         * A boolean value specifying whether the user should be notified after a
-         * new notification replaces an old one. The default is `false`, which means
-         * they won't be notified. If `true`, then tag also must be set.
-         * @type {boolean}
-         */
-        get renotify(): boolean;
-        /**
-         * Indicates that a notification should remain active until the user clicks
-         * or dismisses it, rather than closing automatically.
-         * The default value is `false`.
-         * @type {boolean}
-         */
-        get requireInteraction(): boolean;
-        /**
-         * A boolean value specifying whether the notification is silent (no sounds
-         * or vibrations issued), regardless of the device settings.
-         * The default is `false`, which means it won't be silent. If `true`, then
-         * vibrate must not be present.
-         * @type {boolean}
-         */
-        get silent(): boolean;
-        /**
-         * A string representing an identifying tag for the notification.
-         * The default is the empty string.
-         * @type {string}
-         */
-        get tag(): string;
-        /**
-         * A vibration pattern for the device's vibration hardware to emit with
-         * the notification. If specified, silent must not be `true`.
-         * @type {number[]}
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
-         */
-        get vibrate(): number[];
-        #private;
-    }
-    /**
-     * The Notification interface is used to configure and display
-     * desktop and mobile notifications to the user.
-     */
-    export class Notification extends EventTarget {
-        /**
-         * A read-only property that indicates the current permission granted
-         * by the user to display notifications.
-         * @type {'prompt'|'granted'|'denied'}
-         */
-        static get permission(): "denied" | "granted" | "prompt";
-        /**
-         * The maximum number of actions supported by the device.
-         * @type {number}
-         */
-        static get maxActions(): number;
-        /**
-         * Requests permission from the user to display notifications.
-         * @param {object=} [options]
-         * @param {boolean=} [options.alert = true] - (macOS/iOS only)
-         * @param {boolean=} [options.sound = false] - (macOS/iOS only)
-         * @param {boolean=} [options.badge = false] - (macOS/iOS only)
-         * @param {boolean=} [options.force = false]
-         * @return {Promise<'granted'|'default'|'denied'>}
-         */
-        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
-        /**
-         * `Notification` class constructor.
-         * @param {string} title
-         * @param {NotificationOptions=} [options]
-         */
-        constructor(title: string, options?: NotificationOptions | undefined, ...args: any[]);
-        /**
-         * A unique identifier for this notification.
-         * @type {string}
-         */
-        get id(): string;
-        set onclick(onclick: Function);
-        /**
-         * The click event is dispatched when the user clicks on
-         * displayed notification.
-         * @type {?function}
-         */
-        get onclick(): Function;
-        set onclose(onclose: Function);
-        /**
-         * The close event is dispatched when the notification closes.
-         * @type {?function}
-         */
-        get onclose(): Function;
-        set onerror(onerror: Function);
-        /**
-         * The eror event is dispatched when the notification fails to display
-         * or encounters an error.
-         * @type {?function}
-         */
-        get onerror(): Function;
-        set onshow(onshow: Function);
-        /**
-         * The click event is dispatched when the notification is displayed.
-         * @type {?function}
-         */
-        get onshow(): Function;
-        /**
-         * An array of actions to display in the notification.
-         * @type {NotificationAction[]}
-         */
-        get actions(): NotificationAction[];
-        /**
-         * A string containing the URL of the image used to represent
-         * the notification when there isn't enough space to display the
-         * notification itself.
-         * @type {string}
-         */
-        get badge(): string;
-        /**
-         * A string representing the body text of the notification,
-         * which is displayed below the title.
-         * @type {string}
-         */
-        get body(): string;
-        /**
-         * Arbitrary data that you want associated with the notification.
-         * This can be of any data type.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The direction in which to display the notification.
-         * It defaults to 'auto', which just adopts the environments
-         * language setting behavior, but you can override that behavior
-         * by setting values of 'ltr' and 'rtl'.
-         * @type {'auto'|'ltr'|'rtl'}
-         */
-        get dir(): "auto" | "ltr" | "rtl";
-        /**
-         * A string containing the URL of an icon to be displayed in the notification.
-         * @type {string}
-         */
-        get icon(): string;
-        /**
-         * The URL of an image to be displayed as part of the notification, as
-         * specified in the constructor's options parameter.
-         * @type {string}
-         */
-        get image(): string;
-        /**
-         * The notification's language, as specified using a string representing a
-         * language tag according to RFC 5646.
-         * @type {string}
-         */
-        get lang(): string;
-        /**
-         * A boolean value specifying whether the user should be notified after a
-         * new notification replaces an old one. The default is `false`, which means
-         * they won't be notified. If `true`, then tag also must be set.
-         * @type {boolean}
-         */
-        get renotify(): boolean;
-        /**
-         * Indicates that a notification should remain active until the user clicks
-         * or dismisses it, rather than closing automatically.
-         * The default value is `false`.
-         * @type {boolean}
-         */
-        get requireInteraction(): boolean;
-        /**
-         * A boolean value specifying whether the notification is silent (no sounds
-         * or vibrations issued), regardless of the device settings.
-         * The default is `false`, which means it won't be silent. If `true`, then
-         * vibrate must not be present.
-         * @type {boolean}
-         */
-        get silent(): boolean;
-        /**
-         * A string representing an identifying tag for the notification.
-         * The default is the empty string.
-         * @type {string}
-         */
-        get tag(): string;
-        /**
-         * A vibration pattern for the device's vibration hardware to emit with
-         * the notification. If specified, silent must not be `true`.
-         * @type {number[]}
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
-         */
-        get vibrate(): number[];
-        /**
-         * The timestamp of the notification.
-         * @type {number}
-         */
-        get timestamp(): number;
-        /**
-         * The title read-only property of the `Notification` instace indicates
-         * the title of the notification, as specified in the `title` parameter
-         * of the `Notification` constructor.
-         * @type {string}
-         */
-        get title(): string;
-        /**
-         * Closes the notification programmatically.
-         */
-        close(): Promise<any>;
-        #private;
-    }
-    export default Notification;
-    import { Enumeration } from "socket:enumeration";
-    import URL from "socket:url";
-}
-
-declare module "socket:stream-relay" {
-    export * from "socket:stream-relay/index";
-    export default def;
-    import def from "socket:stream-relay/index";
 }
 
 declare module "socket:worker" {
