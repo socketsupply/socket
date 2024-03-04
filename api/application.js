@@ -76,9 +76,13 @@ export async function createWindow (opts) {
     // @ts-ignore
     debug: opts.debug === true, // internal
     userScript: opts.userScript ?? '',
+    // @ts-ignore
     __runtime_primordial_overrides__: (
+      // @ts-ignore
       opts.__runtime_primordial_overrides__ &&
+      // @ts-ignore
       typeof opts.__runtime_primordial_overrides__ === 'object'
+      // @ts-ignore
         ? JSON.stringify(opts.__runtime_primordial_overrides__)
         : ''
     )
