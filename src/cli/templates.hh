@@ -1936,6 +1936,9 @@ codesign_paths = ""
 ; default value: "13.0.0"
 ; minimum_supported_version = "13.0.0"
 
+; If titleBarStyle is "hiddenInset", this will determine the x and y offsets of the traffic lights.
+; trafficLightPosition = "10x24"
+
 ; The icon to use for identifying your app on MacOS.
 icon = "src/icon.png"
 
@@ -1981,6 +1984,10 @@ height = 50%
 ; The initial width of the first window in pixels or as a percentage of the screen.
 width = 50%
 
+; Determine if the titlebar style (hidden, hiddenInset)
+; default value: ""
+; titleBarStyle = "hiddenInset"
+
 ; Maximum height of the window in pixels or as a percentage of the screen.
 ; default value: 100%
 ; max_height = 100%
@@ -1997,18 +2004,29 @@ width = 50%
 ; default value: 0
 ; min_width = 0
 
-; If the window is resizable or not.
-; default value: true
-; resizable = true
-
-; If the window has a title bar or not.
+; Determines if the window has a title bar and border.
 ; default value: false
 ; frameless = false
 
-; If the window is utility window or not.
+; Determines if the window is resizable.
+; default value: true
+; resizable = true
+
+; Determines if the window is maximizable.
+; default value: true
+; maximizable = true
+
+; Determines if the window is minimizable.
+; default value: true
+; minimizable = true
+
+; Determines if the window is closable.
+; default value: true
+; closable = true
+
+; Determines the window is utility window.
 ; default value: false
 ; utility = false
-
 
 [window.alert]
 
