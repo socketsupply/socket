@@ -35,9 +35,14 @@ export function getCurrentWindowIndex () {
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
  * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
- * @param {number} opts.index - the index of the window
- * @param {string} opts.path - the path to the HTML file to load into the window
- * @param {string=} opts.title - the title of the window
+ * @param {boolean=} opts.closable - deterime if the window can be closed.
+ * @param {boolean=} opts.minimizable - deterime if the window can be minimized.
+ * @param {boolean=} opts.maximizable - deterime if the window can be maximized.
+ * @param {number} [opts.margin] - a margin around the webview. (Private)
+ * @param {number} [opts.radius] - a radius on the webview. (Private)
+ * @param {number} opts.index - the index of the window.
+ * @param {string} opts.path - the path to the HTML file to load into the window.
+ * @param {string=} opts.title - the title of the window.
  * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
  * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
@@ -67,12 +72,24 @@ export async function createWindow (opts) {
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
     closable: opts.closable === true,
+    maximizable: opts.maximizable ?? true,
+    minimizable: opts.minimizable ?? true,
     frameless: opts.frameless ?? false,
     aspectRatio: opts.aspectRatio ?? '',
     titleBarStyle: opts.titleBarStyle ?? '',
     trafficLightPosition: opts.trafficLightPosition ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
+    /**
+     * @private
+     * @type {number}
+     */
+    radius: opts.radius ?? 0,
+    /**
+     * @private
+     * @type {number}
+     */
+    margin: opts.margin ?? 0,
     minWidth: opts.minWidth ?? 0,
     minHeight: opts.minHeight ?? 0,
     maxWidth: opts.maxWidth ?? '100%',
