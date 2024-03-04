@@ -244,6 +244,11 @@ export function splitBuffer (buffer, highWaterMark) {
 }
 
 export function InvertedPromise () {
+  console.warn(
+    '\'InvertedPromise\' is deprecated.' +
+    'Please use \'Deferred\' from \'socket:async\''
+  )
+
   const context = {}
   const promise = new Promise((resolve, reject) => {
     Object.assign(context, {
