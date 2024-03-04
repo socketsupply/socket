@@ -1,5 +1,4 @@
 import {
-  InvertedPromise,
   isBufferLike,
   isTypedArray,
   isEmptyObject,
@@ -7,14 +6,14 @@ import {
   clamp
 } from '../util.js'
 
-import { rand64 } from '../crypto.js'
-
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
+import { Deferred } from '../async.js'
 import diagnostics from '../diagnostics.js'
 import { Buffer } from '../buffer.js'
+import { rand64 } from '../crypto.js'
 import { Stats } from './stats.js'
 import { F_OK } from './constants.js'
 import console from '../console.js'
@@ -273,7 +272,7 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
-    this[kClosing] = new InvertedPromise()
+    this[kClosing] = new Deferred()
 
     const result = await ipc.request('fs.close', { id: this.id }, options)
 
@@ -391,7 +390,7 @@ export class FileHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kOpening] = new InvertedPromise()
+    this[kOpening] = new Deferred()
 
     const result = await ipc.request('fs.open', {
       id,
@@ -956,7 +955,7 @@ export class DirectoryHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kOpening] = new InvertedPromise()
+    this[kOpening] = new Deferred()
 
     const result = await ipc.request('fs.opendir', { id, path }, options)
 
@@ -1001,7 +1000,7 @@ export class DirectoryHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kClosing] = new InvertedPromise()
+    this[kClosing] = new Deferred()
 
     const result = await ipc.request('fs.closedir', { id }, options)
 
