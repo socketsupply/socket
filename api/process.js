@@ -12,6 +12,7 @@ import signal from './signal.js'
 import os from './os.js'
 
 let didEmitExitEvent = false
+let cwd = primordials.cwd
 
 export class ProcessEnvironmentEvent extends Event {
   constructor (type, key, value) {
@@ -95,8 +96,14 @@ class Process extends EventEmitter {
     return []
   }
 
+  get versions () {
+    return {
+      socket: this.version
+    }
+  }
+
   cwd () {
-    return primordials.cwd
+    return cwd
   }
 
   exit (code) {
@@ -113,6 +120,10 @@ class Process extends EventEmitter {
 
   memoryUsage () {
     return memoryUsage
+  }
+
+  chdir (dir) {
+    cwd = dir
   }
 }
 
