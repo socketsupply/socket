@@ -178,7 +178,7 @@ export function isServiceWorkerAllowed () {
  */
 export class ServiceWorkerContainer extends EventTarget {
   get ready () {
-    return internal.get(this).ready
+    return internal.get(this).ready.promise
   }
 
   get controller () {
