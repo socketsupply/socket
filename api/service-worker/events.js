@@ -7,7 +7,7 @@ import ipc from '../ipc.js'
 export const FETCH_EVENT_TIMEOUT = (
   // TODO(@jwerle): document this
   parseInt(application.config.webview_service_worker_fetch_event_timeout) ||
-  2000
+  30000
 )
 
 /**
