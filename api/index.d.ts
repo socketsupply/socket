@@ -8684,11 +8684,7 @@ declare module "socket:http" {
          * @type {boolean}
          */
         get complete(): boolean;
-        /**
-         * An object of the incoming message headers.
-         * @type {object}
-         */
-        get headers(): any;
+        set url(url: string);
         /**
          * The URL for this incoming message. This value is not absolute with
          * respect to the protocol and hostname. It includes the path and search
@@ -8696,6 +8692,11 @@ declare module "socket:http" {
          * @type {string}
          */
         get url(): string;
+        /**
+         * An object of the incoming message headers.
+         * @type {object}
+         */
+        get headers(): any;
         /**
          * Similar to `message.headers`, but there is no join logic and the values
          * are always arrays of strings, even for headers received just once.
@@ -8807,6 +8808,13 @@ declare module "socket:http" {
          * @type {string?}
          */
         get host(): string;
+        /**
+         * The URL for this outgoing message. This value is not absolute with
+         * respect to the protocol and hostname. It includes the path and search
+         * query component parameters.
+         * @type {string}
+         */
+        get url(): string;
         /**
          * @ignore
          * @type {boolean}
@@ -10890,11 +10898,6 @@ declare module "socket:module" {
             ENOTCONN: number;
             ENOTDIR: number;
             ENOTEMPTY: number;
-            /**
-             * Loads the module, synchronously returning `true` upon success,
-             * otherwise `false`.
-             * @return {boolean}
-             */
             ENOTSOCK: number;
             ENOTSUP: number;
             ENOTTY: number;
@@ -11034,10 +11037,17 @@ declare module "socket:module" {
                     getMaxListeners(): any;
                     emit(type: any, ...args: any[]): boolean;
                     addListener(type: any, listener: any): any;
+                    /**
+                     * The main entry source origin.
+                     * @type {string}
+                     */
                     on(arg0: any, arg1: any): any;
                     prependListener(type: any, listener: any): any;
                     once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any; /**
+                     * Module cache.
+                     * @ignore
+                     */
                     removeListener(type: any, listener: any): any;
                     off(type: any, listener: any): any;
                     removeAllListeners(type: any, ...args: any[]): any;
@@ -11049,7 +11059,10 @@ declare module "socket:module" {
                 EventEmitter: typeof events.EventEmitter;
                 defaultMaxListeners: number;
                 init(): void;
-                listenerCount(emitter: any, type: any): any;
+                listenerCount(emitter: any, type: any): any; /**
+                 * `true` if the module is the main module.
+                 * @type {boolean}
+                 */
                 once: typeof events.once;
             };
             spawn: typeof import("socket:child_process").spawn;
@@ -11258,11 +11271,6 @@ declare module "socket:module" {
             ENOTCONN: number;
             ENOTDIR: number;
             ENOTEMPTY: number;
-            /**
-             * Loads the module, synchronously returning `true` upon success,
-             * otherwise `false`.
-             * @return {boolean}
-             */
             ENOTSOCK: number;
             ENOTSUP: number;
             ENOTTY: number;
@@ -11402,10 +11410,17 @@ declare module "socket:module" {
                     getMaxListeners(): any;
                     emit(type: any, ...args: any[]): boolean;
                     addListener(type: any, listener: any): any;
+                    /**
+                     * The main entry source origin.
+                     * @type {string}
+                     */
                     on(arg0: any, arg1: any): any;
                     prependListener(type: any, listener: any): any;
                     once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
+                    prependOnceListener(type: any, listener: any): any; /**
+                     * Module cache.
+                     * @ignore
+                     */
                     removeListener(type: any, listener: any): any;
                     off(type: any, listener: any): any;
                     removeAllListeners(type: any, ...args: any[]): any;
@@ -11417,7 +11432,10 @@ declare module "socket:module" {
                 EventEmitter: typeof events.EventEmitter;
                 defaultMaxListeners: number;
                 init(): void;
-                listenerCount(emitter: any, type: any): any;
+                listenerCount(emitter: any, type: any): any; /**
+                 * `true` if the module is the main module.
+                 * @type {boolean}
+                 */
                 once: typeof events.once;
             };
             spawn: typeof import("socket:child_process").spawn;
@@ -11684,7 +11702,7 @@ declare module "socket:module" {
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
     import application from "socket:application";
-    import buffer from "socket:buffer";
+    import * as buffer from "socket:buffer";
     import stream from "socket:stream";
     import events from "socket:events";
     import crypto from "socket:crypto";
