@@ -275,15 +275,38 @@ declare module "socket:events" {
 
 declare module "socket:async" {
     /**
+     * Dispatched when a `Deferred` internal promise is resolved.
+     */
+    export class DeferredResolveEvent extends Event {
+        /**
+         * `DeferredResolveEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {any=} [result]
+         */
+        constructor(type?: string | undefined, result?: any | undefined);
+        /**
+         * The `Deferred` promise result value.
+         * @type {any?}
+         */
+        result: any | null;
+    }
+    /**
+     * Dispatched when a `Deferred` internal promise is rejected.
+     */
+    export class DeferredRejectEvent extends ErrorEvent {
+        /**
+         * `DeferredRejectEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {Error=} [error]
+         */
+        constructor(type?: string | undefined, error?: Error | undefined);
+    }
+    /**
      * A utility class for creating deferred promises.
      */
-    export class Deferred {
-        /**
-         * The promise associated with this Deferred instance.
-         * @type {Promise<any>}
-         * @private
-         */
-        private _promise;
+    export class Deferred extends EventTarget {
         /**
          * Function to resolve the associated promise.
          * @type {function}
@@ -295,30 +318,34 @@ declare module "socket:async" {
          */
         reject: Function;
         /**
+         * The promise associated with this Deferred instance.
+         * @type {Promise<any>}
+         * @private
+         */
+        private get promise();
+        /**
          * Attaches a fulfillment callback and a rejection callback to the promise,
          * and returns a new promise resolving to the return value of the called
          * callback.
-         * @type {function}
+         * @param {function(any)=} [resolve]
+         * @param {function(Error)=} [reject]
          */
-        then: Function;
+        then(resolve?: ((arg0: any) => any) | undefined, reject?: ((arg0: Error) => any) | undefined): Promise<any>;
         /**
          * Attaches a rejection callback to the promise, and returns a new promise
          * resolving to the return value of the callback if it is called, or to its
          * original fulfillment value if the promise is instead fulfilled.
-         * @type {function}
+         * @param {function(Error)=} [callback]
          */
-        catch: Function;
-        /**
-         * Attaches a callback for when the promise is settled (fulfilled or rejected).
-         * @type {function}
-         */
-        finally: Function;
+        catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
+        finally(arg0: any | null): any;
         /**
          * A string representation of this Deferred instance.
          * @type {string}
          * @ignore
          */
-        [Symbol.toStringTag]: string;
+        get [Symbol.toStringTag](): string;
+        #private;
     }
     namespace _default {
         export { Deferred };
@@ -336,9 +363,7 @@ declare module "socket:application/menu" {
      * Internal IPC for setting an application context menu
      * @ignore
      */
-    export function setContextMenu(options: any): Promise<ipc.Result | Deferred | {
-        err: Error;
-    }>;
+    export function setContextMenu(options: any): Promise<any>;
     /**
      * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
      */
@@ -479,7 +504,6 @@ declare module "socket:application/menu" {
     export const container: MenuContainer;
     export default container;
     import ipc from "socket:ipc";
-    import { Deferred } from "socket:async";
 }
 
 declare module "socket:internal/events" {
@@ -956,11 +980,11 @@ declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
         new (t: {}, r: any, n: any): {
-            "__#10@#i": any;
-            "__#10@#n": {};
-            "__#10@#t": {};
-            "__#10@#e": {};
-            "__#10@#s": {};
+            "__#11@#i": any;
+            "__#11@#n": {};
+            "__#11@#t": {};
+            "__#11@#e": {};
+            "__#11@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -1118,11 +1142,11 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#10@#i": any;
-            "__#10@#n": {};
-            "__#10@#t": {};
-            "__#10@#e": {};
-            "__#10@#s": {};
+            "__#11@#i": any;
+            "__#11@#n": {};
+            "__#11@#t": {};
+            "__#11@#e": {};
+            "__#11@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -7676,203 +7700,1305 @@ declare module "socket:fetch" {
     import fetch from "socket:fetch/index";
 }
 
-declare module "socket:http" {
-    export function get(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
-    export const METHODS: string[];
-    export const STATUS_CODES: {
-        100: string;
-        101: string;
-        102: string;
-        103: string;
-        200: string;
-        201: string;
-        202: string;
-        203: string;
-        204: string;
-        205: string;
-        206: string;
-        207: string;
-        208: string;
-        226: string;
-        300: string;
-        301: string;
-        302: string;
-        303: string;
-        304: string;
-        305: string;
-        307: string;
-        308: string;
-        400: string;
-        401: string;
-        402: string;
-        403: string;
-        404: string;
-        405: string;
-        406: string;
-        407: string;
-        408: string;
-        409: string;
-        410: string;
-        411: string;
-        412: string;
-        413: string;
-        414: string;
-        415: string;
-        416: string;
-        417: string;
-        418: string;
-        421: string;
-        422: string;
-        423: string;
-        424: string;
-        425: string;
-        426: string;
-        428: string;
-        429: string;
-        431: string;
-        451: string;
-        500: string;
-        501: string;
-        502: string;
-        503: string;
-        504: string;
-        505: string;
-        506: string;
-        507: string;
-        508: string;
-        509: string;
-        510: string;
-        511: string;
+declare module "socket:service-worker/database" {
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   version?: string | undefined
+     * }} DatabaseOptions
+     */
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined,
+     *   count?: number | undefined
+     * }} DatabaseGetOptions
+     */
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabasePutOptions
+     */
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseDeleteOptions
+     */
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   offset?: number | undefined,
+     *   backlog?: number | undefined
+     * }} DatabaseRequestQueueWaitOptions
+     */
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseEntriesOptions
+     */
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
+     */
+    /**
+     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
+     * @param {EventTarget} target
+     * @param {string} eventType
+     * @return {Promise<Event>}
+     */
+    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
+    /**
+     * Creates an opens a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     * @return {Promise<Database>}
+     */
+    export function open(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<Database>;
+    /**
+     * Complete deletes a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     */
+    export function drop(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<void>;
+    /**
+     * A mapping of named `Database` instances that are currently opened
+     * @type {Map<string, WeakRef<Database>>}
+     */
+    export const opened: Map<string, WeakRef<Database>>;
+    /**
+     * A container for conflict resolution for a `DatabaseRequestQueue` instance
+     * `IDBRequest` instance.
+     */
+    export class DatabaseRequestQueueRequestConflict {
+        /**
+         * `DatabaseRequestQueueRequestConflict` class constructor
+         * @param {function(any): void)} resolve
+         * @param {function(Error): void)} reject
+         * @param {function(): void)} cleanup
+         */
+        constructor(resolve: any, reject: any, cleanup: any);
+        /**
+         * Called when a conflict is resolved.
+         * @param {any} argument
+         */
+        resolve(argument?: any): void;
+        /**
+         * Called when a conflict is rejected
+         * @param {Error} error
+         */
+        reject(error: Error): void;
+        #private;
+    }
+    /**
+     * An event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueEvent extends Event {
+        /**
+         * `DatabaseRequestQueueEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction);
+        /**
+         * A reference to the underlying request for this event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * An event dispatched on a `Database`
+     */
+    export class DatabaseEvent extends Event {
+        /**
+         * `DatabaseEvent` class constructor.
+         * @param {string} type
+         * @param {Database} database
+         */
+        constructor(type: string, database: Database);
+        /**
+         * A reference to the underlying database for this event.
+         * @type {Database}
+         */
+        get database(): Database;
+        #private;
+    }
+    /**
+     * An error event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
+        /**
+         * `DatabaseRequestQueueErrorEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         * @param {{ error: Error, cause?: Error }} options
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
+            error: Error;
+            cause?: Error;
+        });
+        /**
+         * A reference to the underlying request for this error event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * A container for various `IDBRequest` and `IDBTransaction` instances
+     * occurring during the life cycles of a `Database` instance.
+     */
+    export class DatabaseRequestQueue extends EventTarget {
+        /**
+         * Computed queue length
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
+         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
+         * upon an error' event.
+         * @param {IDBRequest|IDBTransaction}
+         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
+         * @return {Promise}
+         */
+        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
+        /**
+         * Waits for all pending requests to complete. This function will throw when
+         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
+         * Callers of this function can optionally specify a maximum backlog to wait
+         * for instead of waiting for all requests to finish.
+         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
+         */
+        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
+        #private;
+    }
+    /**
+     * An interface for reading from named databases backed by IndexedDB.
+     */
+    export class Database extends EventTarget {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         * @param {?DatabaseOptions | undefiend} [options]
+         */
+        constructor(name: string, options?: (DatabaseOptions | undefiend) | null);
+        /**
+         * `true` if the `Database` is currently opening, otherwise `false`.
+         * A `Database` instance should not attempt to be opened if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
+         * `true` if the `Database` instance was successfully opened such that the
+         * internal `IDBDatabase` storage instance was created and can be referenced
+         * on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * `true` if the `Database` instance was closed or has not been opened such
+         * that the internal `IDBDatabase` storage instance was not created or cannot
+         * be referenced on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if the `Database` is currently closing, otherwise `false`.
+         * A `Database` instance should not attempt to be closed if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
+         * The name of the `IDBDatabase` database. This value cannot be `null`.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The version of the `IDBDatabase` database. This value may be `null`.
+         * @type {?string}
+         */
+        get version(): string;
+        /**
+         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
+         * This value may ba `null`.
+         * @type {?IDBDatabase}
+         */
+        get storage(): IDBDatabase;
+        /**
+         * Opens the `IDBDatabase` database optionally at a specific "version" if
+         * one was given upon construction of the `Database` instance. This function
+         * is not idempotent and will throw if the underlying `IDBDatabase` instance
+         * was created successfully or is in the process of opening.
+         * @return {Promise}
+         */
+        open(): Promise<any>;
+        /**
+         * Closes the `IDBDatabase` database storage, if opened. This function is not
+         * idempotent and will throw if the underlying `IDBDatabase` instance is
+         * already closed (not opened) or currently closing.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Deletes entire `Database` instance and closes after successfully
+         * delete storage.
+         */
+        drop(): Promise<void>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseGetOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        get(key: string, options?: (DatabaseGetOptions | undefiend) | null): Promise<object | object[] | null>;
+        /**
+         * Put a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        put(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Inserts a new `value` at `key`. This function throws if a value at `key`
+         * already exists.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        insert(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Update a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        update(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Delete a value at `key`.
+         * @param {string} key
+         * @param {?DatabaseDeleteOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        delete(key: string, options?: (DatabaseDeleteOptions | undefiend) | null): Promise<any>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseEntriesOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        entries(options?: (DatabaseEntriesOptions | undefiend) | null): Promise<object | object[] | null>;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { open };
+    }
+    export default _default;
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseOptions = {
+        version?: string | undefined;
     };
-    export class OutgoingMessage extends Writable {
-        headers: Headers;
-        get headersSent(): boolean;
-        get socket(): this;
-        get writableEnded(): boolean;
-        appendHeader(name: any, value: any): this;
-        setHeader(name: any, value: any): this;
-        flushHeaders(): void;
-        getHeader(name: any): string;
-        getHeaderNames(): string[];
-        getHeaders(): {
-            [k: string]: string;
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseGetOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+        count?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     */
+    export type DatabasePutOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseDeleteOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseRequestQueueWaitOptions = {
+        offset?: number | undefined;
+        backlog?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseEntriesOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     */
+    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
+}
+
+declare module "socket:service-worker/env" {
+    /**
+     * Opens an environment for a particular scope.
+     * @param {EnvironmentOptions} options
+     * @return {Promise<Environment>}
+     */
+    export function open(options: EnvironmentOptions): Promise<Environment>;
+    /**
+     * Closes an active `Environment` instance, dropping the global
+     * instance reference.
+     * @return {Promise<boolean>}
+     */
+    export function close(): Promise<boolean>;
+    /**
+     * Resets an active `Environment` instance
+     * @return {Promise<boolean>}
+     */
+    export function reset(): Promise<boolean>;
+    /**
+     * An environment context object with persistence and durability
+     * for service worker environments.
+     */
+    export class Environment extends EventTarget {
+        /**
+         * Opens an environment for a particular scope.
+         * @param {EnvironmentOptions} options
+         * @return {Environment}
+         */
+        static open(options: EnvironmentOptions): Environment;
+        /**
+         * The current `Environment` instance
+         * @type {Environment?}
+         */
+        static instance: Environment | null;
+        /**
+         * `Environment` class constructor
+         * @ignore
+         * @param {EnvironmentOptions} options
+         */
+        constructor(options: EnvironmentOptions);
+        /**
+         * A reference to the currently opened environment database.
+         * @type {import('./database.js').Database}
+         */
+        get database(): import("socket:service-worker/database").Database;
+        /**
+         * A proxied object for reading and writing environment state.
+         * Values written to this object must be cloneable with respect to the
+         * structured clone algorithm.
+         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
+         * @type {Proxy<object>}
+         */
+        get context(): ProxyConstructor;
+        /**
+         * The current environment name. This value is also used as the
+         * internal database name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Resets the current environment to an empty state.
+         */
+        reset(): Promise<void>;
+        /**
+         * Opens the environment.
+         * @ignore
+         */
+        open(): Promise<void>;
+        /**
+         * Closes the environment database, purging existing state.
+         * @ignore
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    namespace _default {
+        export { Environment };
+        export { close };
+        export { reset };
+        export { open };
+    }
+    export default _default;
+    export type EnvironmentOptions = {
+        scope: string;
+    };
+}
+
+declare module "socket:service-worker/state" {
+    export const channel: BroadcastChannel;
+    export const state: any;
+    export default state;
+}
+
+declare module "socket:service-worker/instance" {
+    export function createServiceWorker(currentState?: any, options?: any): any;
+    export const SHARED_WORKER_URL: string;
+    export const ServiceWorker: {
+        new (): ServiceWorker;
+        prototype: ServiceWorker;
+    } | {
+        new (): {
+            onmessage: any;
+            onerror: any;
+            onstatechange: any;
+            readonly state: any;
+            readonly scriptURL: any;
+            postMessage(): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+            dispatchEvent(event: Event): boolean;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
         };
-        hasHeader(name: any): boolean;
-        removeHeader(name: any): void;
-    }
-    export class ClientRequest extends OutgoingMessage {
-        url: any;
-        path: any;
-        host: any;
-        agent: any;
-        method: any;
-        protocol: string;
-    }
-    export class ServerResponse extends OutgoingMessage {
-        statusCode: number;
-        statusMessage: string;
-        req: any;
-    }
-    export class AgentOptions {
+    };
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:service-worker/clients" {
+    export class Client {
         constructor(options: any);
+        get id(): any;
+        get url(): any;
+        get type(): any;
+        get frameType(): any;
+        postMessage(message: any, optionsOrTransferables?: any): void;
+        #private;
+    }
+    export class WindowClient extends Client {
+        get focused(): boolean;
+        get ancestorOrigins(): any[];
+        get visibilityState(): string;
+        focus(): Promise<this>;
+        navigate(url: any): Promise<this>;
+        #private;
+    }
+    export class Clients {
+        get(id: any): Promise<Client>;
+        matchAll(options?: any): Promise<any>;
+        openWindow(url: any, options?: any): Promise<WindowClient>;
+        claim(): Promise<void>;
+    }
+    const _default: Clients;
+    export default _default;
+}
+
+declare module "socket:service-worker/context" {
+    /**
+     * A context given to `ExtendableEvent` interfaces and provided to
+     * simplified service worker modules
+     */
+    export class Context {
+        /**
+         * `Context` class constructor.
+         * @param {import('./events.js').ExtendableEvent} event
+         */
+        constructor(event: import('./events.js').ExtendableEvent);
+        /**
+         * The `ExtendableEvent` for this `Context` instance.
+         * @type {ExtendableEvent}
+         */
+        get event(): ExtendableEvent;
+        /**
+         * An environment context object.
+         * @type {object?}
+         */
+        get env(): any;
+        /**
+         * Resets the current environment context.
+         * @return {Promise<boolean>}
+         */
+        resetEnvironment(): Promise<boolean>;
+        /**
+         * Unused, but exists for cloudflare compat.
+         * @ignore
+         */
+        passThroughOnException(): void;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): Promise<any>;
+        /**
+         * TODO
+         */
+        handled(): Promise<any>;
+        /**
+         * Gets the client for this event context.
+         * @return {Promise<import('./clients.js').Client>}
+         */
+        client(): Promise<import('./clients.js').Client>;
+        #private;
+    }
+    namespace _default {
+        export { Context };
+    }
+    export default _default;
+}
+
+declare module "socket:service-worker/events" {
+    export const FETCH_EVENT_TIMEOUT: number;
+    /**
+     * The `ExtendableEvent` interface extends the lifetime of the "install" and
+     * "activate" events dispatched on the global scope as part of the service
+     * worker lifecycle.
+     */
+    export class ExtendableEvent extends Event {
+        /**
+         * `ExtendableEvent` class constructor.
+         * @ignore
+         */
+        constructor(...args: any[]);
+        /**
+         * A context for this `ExtendableEvent` instance.
+         * @type {import('./context.js').Context}
+         */
+        get context(): Context;
+        /**
+         * A promise that can be awaited which waits for this `ExtendableEvent`
+         * instance no longer has pending promises.
+         * @type {Promise}
+         */
+        get awaiting(): Promise<any>;
+        /**
+         * The number of pending promises
+         * @type {number}
+         */
+        get pendingPromises(): number;
+        /**
+         * `true` if the `ExtendableEvent` instance is considered "active",
+         * otherwise `false`.
+         * @type {boolean}
+         */
+        get isActive(): boolean;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): void;
+        /**
+         * Returns a promise that this `ExtendableEvent` instance is waiting for.
+         * @return {Promise}
+         */
+        waitsFor(): Promise<any>;
+        #private;
+    }
+    /**
+     * This is the event type for "fetch" events dispatched on the service worker
+     * global scope. It contains information about the fetch, including the
+     * request and how the receiver will treat the response.
+     */
+    export class FetchEvent extends ExtendableEvent {
+        /**
+         * `FetchEvent` class constructor.
+         * @ignore
+         * @param {stirng=} [type = 'fetch']
+         * @param {object=} [options]
+         */
+        constructor(type?: stirng, options?: object | undefined);
+        /**
+         * The handled property of the `FetchEvent` interface returns a promise
+         * indicating if the event has been handled by the fetch algorithm or not.
+         * This property allows executing code after the browser has consumed a
+         * response, and is usually used together with the `waitUntil()` method.
+         * @type {Promise}
+         */
+        get handled(): Promise<any>;
+        /**
+         * The request read-only property of the `FetchEvent` interface returns the
+         * `Request` that triggered the event handler.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The `clientId` read-only property of the `FetchEvent` interface returns
+         * the id of the Client that the current service worker is controlling.
+         * @type {string}
+         */
+        get clientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get resultingClientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get replacesClientId(): string;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get isReload(): boolean;
+        /**
+         * @ignore
+         * @type {Promise}
+         */
+        get preloadResponse(): Promise<any>;
+        /**
+         * The `respondWith()` method of `FetchEvent` prevents the webview's
+         * default fetch handling, and allows you to provide a promise for a
+         * `Response` yourself.
+         * @param {Response|Promise<Response>} response
+         */
+        respondWith(response: Response | Promise<Response>): void;
+        #private;
+    }
+    namespace _default {
+        export { ExtendableEvent };
+        export { FetchEvent };
+    }
+    export default _default;
+    import { Context } from "socket:service-worker/context";
+}
+
+declare module "socket:http/adapters" {
+    /**
+     * @typedef {{
+     * }} HTTPModuleInterface
+     */
+    export class ServerAdapter extends EventTarget {
+        /**
+         * `ServerAdapter` class constructor.
+         * @ignore
+         * @param {import('../http.js').Server} server
+         * @param {HTTPModuleInterface} httpInterface
+         */
+        constructor(server: import('../http.js').Server, httpInterface: HTTPModuleInterface);
+        /**
+         * A readonly reference to the underlying HTTP(S) server
+         * for this adapter.
+         * @type {import('../http.js').Server}
+         */
+        get server(): import("socket:http").Server;
+        /**
+         * A readonly reference to the underlying HTTP(S) module interface
+         * for creating various HTTP module class objects.
+         * @type {HTTPModuleInterface}
+         */
+        get httpInterface(): HTTPModuleInterface;
+        #private;
+    }
+    /**
+     */
+    export class ServiceWorkerServerAdapter extends ServerAdapter {
+        /**
+         * `ServiceWorkerServerAdapter` class constructor.
+         * @ignore
+         * @param {import('../http.js').Server} server
+         */
+        constructor(server: import('../http.js').Server);
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').ExtendableEvent}
+         */
+        onInstall(event: any): Promise<void>;
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').ExtendableEvent}
+         */
+        onActivate(event: any): Promise<void>;
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').FetchEvent}
+         */
+        onFetch(event: any): Promise<void>;
+    }
+    namespace _default {
+        export { ServerAdapter };
+        export { ServiceWorkerServerAdapter };
+    }
+    export default _default;
+    export type HTTPModuleInterface = {};
+}
+
+declare module "socket:http" {
+    /**
+     * Makes a HTTP or `socket:` GET request. A simplified alias to `request()`.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    export function get(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Creates a HTTP server that can listen for incoming requests.
+     * Requests that are dispatched to this server depend on the context
+     * in which it is created, such as a service worker which will use a
+     * "fetch event" adapter.
+     * @param {object|function=} [options]
+     * @param {function=} [callback]
+     * @return {Server}
+     */
+    export function createServer(options?: (object | Function) | undefined, callback?: Function | undefined): Server;
+    /**
+     * All known possible HTTP methods.
+     * @type {string[]}
+     */
+    export const METHODS: string[];
+    /**
+     * A mapping of status codes to status texts
+     * @type {object}
+     */
+    export const STATUS_CODES: object;
+    /**
+     * The parent class of `ClientRequest` and `ServerResponse`.
+     * It is an abstract outgoing message from the perspective of the
+     * participants of an HTTP transaction.
+     * @see {@link https://nodejs.org/api/http.html#class-httpoutgoingmessage}
+     */
+    export class OutgoingMessage extends Writable {
+        /**
+         * `OutgoingMessage` class constructor.
+         * @ignore
+         */
+        constructor();
+        /**
+         * `true` if the headers were sent
+         * @type {boolean}
+         */
+        headersSent: boolean;
+        /**
+         * An object of the outgoing message headers.
+         * This is equivalent to `getHeaders()`
+         * @type {object}
+         */
+        get headers(): any;
+        /**
+         * @ignore
+         */
+        get socket(): this;
+        /**
+         * `true` if the write state is "ended"
+         * @type {boolean}
+         */
+        get writableEnded(): boolean;
+        /**
+         * `true` if the write state is "finished"
+         * @type {boolean}
+         */
+        get writableFinished(): boolean;
+        /**
+         * The number of buffered bytes.
+         * @type {number}
+         */
+        get writableLength(): number;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get writableObjectMode(): boolean;
+        /**
+         * @ignore
+         */
+        get writableCorked(): number;
+        /**
+         * The `highWaterMark` of the writable stream.
+         * @type {number}
+         */
+        get writableHighWaterMark(): number;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        addTrailers(headers: any): OutgoingMessage;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        cork(): OutgoingMessage;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        uncork(): OutgoingMessage;
+        /**
+         * Destroys the message.
+         * Once a socket is associated with the message and is connected,
+         * that socket will be destroyed as well.
+         * @param {Error?} [err]
+         * @return {OutgoingMessage}
+         */
+        destroy(err?: Error | null): OutgoingMessage;
+        /**
+         * Finishes the outgoing message.
+         * @param {(Buffer|Uint8Array|string|function)=} [chunk]
+         * @param {(string|function)=} [encoding]
+         * @param {function=} [callback]
+         * @return {OutgoingMessage}
+         */
+        end(chunk?: (Buffer | Uint8Array | string | Function) | undefined, encoding?: (string | Function) | undefined, callback?: Function | undefined): OutgoingMessage;
+        /**
+         * Append a single header value for the header object.
+         * @param {string} name
+         * @param {string|string[]} value
+         * @return {OutgoingMessage}
+         */
+        appendHeader(name: string, value: string | string[]): OutgoingMessage;
+        /**
+         * Append a single header value for the header object.
+         * @param {string} name
+         * @param {string} value
+         * @return {OutgoingMessage}
+         */
+        setHeader(name: string, value: string): OutgoingMessage;
+        /**
+         * Flushes the message headers.
+         */
+        flushHeaders(): void;
+        /**
+         * Gets the value of the HTTP header with the given name.
+         * If that header is not set, the returned value will be `undefined`.
+         * @param {string}
+         * @return {string|undefined}
+         */
+        getHeader(name: any): string | undefined;
+        /**
+         * Returns an array containing the unique names of the current outgoing
+         * headers. All names are lowercase.
+         * @return {string[]}
+         */
+        getHeaderNames(): string[];
+        /**
+         * @ignore
+         */
+        getRawHeaderNames(): string[];
+        /**
+         * Returns a copy of the HTTP headers as an object.
+         * @return {object}
+         */
+        getHeaders(): object;
+        /**
+         * Returns true if the header identified by name is currently set in the
+         * outgoing headers. The header name is case-insensitive.
+         * @param {string} name
+         * @return {boolean}
+         */
+        hasHeader(name: string): boolean;
+        /**
+         * Removes a header that is queued for implicit sending.
+         * @param {string} name
+         */
+        removeHeader(name: string): void;
+        /**
+         * Sets the outgoing message timeout with an optional callback.
+         * @param {number} timeout
+         * @param {function=} [callback]
+         * @return {OutgoingMessage}
+         */
+        setTimeout(timeout: number, callback?: Function | undefined): OutgoingMessage;
+        #private;
+    }
+    /**
+     * An `IncomingMessage` object is created by `Server` or `ClientRequest` and
+     * passed as the first argument to the 'request' and 'response' event
+     * respectively.
+     * It may be used to access response status, headers, and data.
+     * @see {@link https://nodejs.org/api/http.html#class-httpincomingmessage}
+     */
+    export class IncomingMessage extends Readable {
+        /**
+         * `IncomingMessage` class constructor.
+         * @ignore
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * This property will be `true` if a complete HTTP message has been received
+         * and successfully parsed.
+         * @type {boolean}
+         */
+        get complete(): boolean;
+        /**
+         * An object of the incoming message headers.
+         * @type {object}
+         */
+        get headers(): any;
+        /**
+         * Similar to `message.headers`, but there is no join logic and the values
+         * are always arrays of strings, even for headers received just once.
+         * @type {object}
+         */
+        get headersDistinct(): any;
+        /**
+         * The HTTP major version of this request.
+         * @type {number}
+         */
+        get httpVersionMajor(): number;
+        /**
+         * The HTTP minor version of this request.
+         * @type {number}
+         */
+        get httpVersionMinor(): number;
+        /**
+         * The HTTP version string.
+         * A concatenation of `httpVersionMajor` and `httpVersionMinor`.
+         * @type {string}
+         */
+        get httpVersion(): string;
+        /**
+         * The HTTP request method.
+         * @type {string}
+         */
+        get method(): string;
+        /**
+         * The raw request/response headers list potentially  as they were received.
+         * @type {string[]}
+         */
+        get rawHeaders(): string[];
+        /**
+         * @ignore
+         */
+        get rawTrailers(): any[];
+        /**
+         * @ignore
+         */
+        get socket(): this;
+        /**
+         * The HTTP request status code.
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {number}
+         */
+        get statusCode(): number;
+        /**
+         * The HTTP response status message (reason phrase).
+         * Such as "OK" or "Internal Server Error."
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {string?}
+         */
+        get statusMessage(): string;
+        /**
+         * An alias for `statusCode`
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * An alias for `statusMessage`
+         * @type {string?}
+         */
+        get statusText(): string;
+        /**
+         * @ignore
+         */
+        get trailers(): {};
+        /**
+         * @ignore
+         */
+        get trailersDistinct(): {};
+        /**
+         * Sets the incoming message timeout with an optional callback.
+         * @param {number} timeout
+         * @param {function=} [callback]
+         * @return {IncomingMessage}
+         */
+        setTimeout(timeout: number, callback?: Function | undefined): IncomingMessage;
+        #private;
+    }
+    /**
+     * An object that is created internally and returned from `request()`.
+     */
+    export class ClientRequest extends OutgoingMessage {
+        /**
+         * `ClientRequest` class constructor.
+         * @ignore
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * The request protocol
+         * @type {string?}
+         */
+        get protocol(): string;
+        /**
+         * The request path.
+         * @type {string}
+         */
+        get path(): string;
+        /**
+         * The request host name (including port).
+         * @type {string?}
+         */
+        get host(): string;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get finished(): boolean;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get reusedSocket(): boolean;
+        /**
+         * @ignore
+         * @param {boolean=} [value]
+         * @return {ClientRequest}
+         */
+        setNoDelay(value?: boolean | undefined): ClientRequest;
+        /**
+         * @ignore
+         * @param {boolean=} [enable]
+         * @param {number=} [initialDelay]
+         * @return {ClientRequest}
+         */
+        setSocketKeepAlive(enable?: boolean | undefined, initialDelay?: number | undefined): ClientRequest;
+        #private;
+    }
+    /**
+     * An object that is created internally by a `Server` instance, not by the user.
+     * It is passed as the second parameter to the 'request' event.
+     */
+    export class ServerResponse extends OutgoingMessage {
+        /**
+         * `ServerResponse` class constructor.
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * A reference to the original HTTP request object.
+         * @type {IncomingMessage}
+         */
+        get request(): IncomingMessage;
+        /**
+         * A reference to the original HTTP request object.
+         * @type {IncomingMessage}
+         */
+        get req(): IncomingMessage;
+        /**
+         * The HTTP request status code.
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {number}
+         */
+        get statusCode(): number;
+        /**
+         * The HTTP response status message (reason phrase).
+         * Such as "OK" or "Internal Server Error."
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {string?}
+         */
+        get statusMessage(): string;
+        /**
+         * An alias for `statusCode`
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * An alias for `statusMessage`
+         * @type {string?}
+         */
+        get statusText(): string;
+        set sendDate(value: boolean);
+        /**
+         * If `true`, the "Date" header will be automatically generated and sent in
+         * the response if it is not already present in the headers.
+         * Defaults to `true`.
+         * @type {boolean}
+         */
+        get sendDate(): boolean;
+        /**
+         * @ignore
+         */
+        writeContinue(): this;
+        /**
+         * @ignore
+         */
+        writeEarlyHints(): this;
+        /**
+         * @ignore
+         */
+        writeProcessing(): this;
+        /**
+         * Writes the response header to the request.
+         * The `statusCode` is a 3-digit HTTP status code, like 200 or 404.
+         * The last argument, `headers`, are the response headers.
+         * Optionally one can give a human-readable `statusMessage`
+         * as the second argument.
+         * @param {number|string} statusCode
+         * @param {string|object|string[]} [statusMessage]
+         * @param {object|string[]} [headers]
+         * @return {ClientRequest}
+         */
+        writeHead(statusCode: number | string, statusMessage?: string | object | string[], headers?: object | string[]): ClientRequest;
+        #private;
+    }
+    /**
+     * An options object container for an `Agent` instance.
+     */
+    export class AgentOptions {
+        /**
+         * `AgentOptions` class constructor.
+         * @ignore
+         * @param {{
+         *   keepAlive?: boolean,
+         *   timeout?: number
+         * }} [options]
+         */
+        constructor(options?: {
+            keepAlive?: boolean;
+            timeout?: number;
+        });
         keepAlive: boolean;
         timeout: number;
     }
+    /**
+     * An Agent is responsible for managing connection persistence
+     * and reuse for HTTP clients.
+     */
     export class Agent extends EventEmitter {
-        constructor(options: any);
+        /**
+         * `Agent` class constructor.
+         * @param {AgentOptions=} [options]
+         */
+        constructor(options?: AgentOptions | undefined);
         defaultProtocol: string;
         options: any;
-        createConnection(options: any, callback?: any): Duplex;
+        requests: Set<any>;
+        sockets: {};
+        maxFreeSockets: number;
+        maxTotalSockets: number;
+        maxSockets: number;
+        /**
+         * @ignore
+         */
+        get freeSockets(): {};
+        /**
+         * @ignore
+         * @param {object} options
+         */
+        getName(options: object): string;
+        /**
+         * Produces a socket/stream to be used for HTTP requests.
+         * @param {object} options
+         * @param {function(Duplex)=} [callback]
+         * @return {Duplex}
+         */
+        createConnection(options: object, callback?: ((arg0: Duplex) => any) | undefined): Duplex;
+        /**
+         * @ignore
+         */
+        keepSocketAlive(): void;
+        /**
+         * @ignore
+         */
+        reuseSocket(): void;
+        destroy(): void;
     }
+    /**
+     * The global and default HTTP agent.
+     * @type {Agent}
+     */
     export const globalAgent: Agent;
+    /**
+     * A nodejs compat HTTP server typically intended for running in a "worker"
+     * environment.
+     */
+    export class Server extends EventEmitter {
+        headersTimeout: number;
+        /**
+         * `true` if the server is listening for requests.
+         * @type {boolean}
+         */
+        get listening(): boolean;
+        set maxConnections(value: number);
+        /**
+         * The number of concurrent max connections this server should handle.
+         * Default: Infinity
+         * @type {number}
+         */
+        get maxConnections(): number;
+        /**
+         * TODO
+         * @param {function=} [close]
+         */
+        close(callback?: any): void;
+        /**
+         * TODO
+         */
+        closeAllConnections(): void;
+        /**
+         * TODO
+         */
+        closeIdleConnections(): void;
+        /**
+         * TODO
+         */
+        listen(port: any, host: any, unused: any, callback: any): this;
+        #private;
+    }
     namespace _default {
-        export { METHODS };
-        export { STATUS_CODES };
-        export { AgentOptions };
         export { Agent };
-        export { globalAgent };
-        export { request };
-        export { OutgoingMessage };
+        export { AgentOptions };
         export { ClientRequest };
-        export { ServerResponse };
+        export { createServer };
         export { get };
+        export { globalAgent };
+        export { METHODS };
+        export { OutgoingMessage };
+        export { request };
+        export { Server };
+        export { ServerResponse };
+        export { STATUS_CODES };
     }
     export default _default;
     import { Writable } from "socket:stream";
+    import { Readable } from "socket:stream";
     import { EventEmitter } from "socket:events";
     import { Duplex } from "socket:stream";
-    function request(optionsOrURL: any, options: any, callback: any): Promise<ClientRequest>;
+    /**
+     * Makes a HTTP request, optionally a `socket://` for relative paths when
+     * `socket:` is the origin protocol.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    function request(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
 }
 
 declare module "socket:https" {
-    export function request(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
-    export function get(optionsOrURL: any, options: any, callback: any): Promise<import("socket:http").ClientRequest>;
+    export function request(optionsOrURL: any, options: any, callback: any): import("socket:http").ClientRequest;
+    export function get(optionsOrURL: any, options: any, callback: any): import("socket:http").ClientRequest;
     export const METHODS: string[];
-    export const STATUS_CODES: {
-        100: string;
-        101: string;
-        102: string;
-        103: string;
-        200: string;
-        201: string;
-        202: string;
-        203: string;
-        204: string;
-        205: string;
-        206: string;
-        207: string;
-        208: string;
-        226: string;
-        300: string;
-        301: string;
-        302: string;
-        303: string;
-        304: string;
-        305: string;
-        307: string;
-        308: string;
-        400: string;
-        401: string;
-        402: string;
-        403: string;
-        404: string;
-        405: string;
-        406: string;
-        407: string;
-        408: string;
-        409: string;
-        410: string;
-        411: string;
-        412: string;
-        413: string;
-        414: string;
-        415: string;
-        416: string;
-        417: string;
-        418: string;
-        421: string;
-        422: string;
-        423: string;
-        424: string;
-        425: string;
-        426: string;
-        428: string;
-        429: string;
-        431: string;
-        451: string;
-        500: string;
-        501: string;
-        502: string;
-        503: string;
-        504: string;
-        505: string;
-        506: string;
-        507: string;
-        508: string;
-        509: string;
-        510: string;
-        511: string;
-    };
+    export const STATUS_CODES: any;
     const AgentOptions_base: typeof import("socket:http").AgentOptions;
     export class AgentOptions extends AgentOptions_base {
     }
@@ -10267,12 +11393,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#26@#id": BigInt;
-                    "__#26@#worker": any;
-                    "__#26@#signal": any;
-                    "__#26@#timeout": any;
-                    "__#26@#env": any;
-                    "__#26@#state": {
+                    "__#27@#id": BigInt;
+                    "__#27@#worker": any;
+                    "__#27@#signal": any;
+                    "__#27@#timeout": any;
+                    "__#27@#env": any;
+                    "__#27@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -10342,148 +11468,22 @@ declare module "socket:module" {
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
         http: {
-            METHODS: string[];
-            STATUS_CODES: {
-                100: string;
-                101: string;
-                102: string;
-                103: string;
-                200: string;
-                201: string;
-                202: string;
-                203: string;
-                204: string;
-                205: string;
-                206: string;
-                207: string;
-                208: string;
-                226: string;
-                300: string;
-                301: string;
-                302: string;
-                303: string;
-                304: string;
-                305: string;
-                307: string;
-                308: string;
-                400: string;
-                401: string;
-                402: string;
-                403: string;
-                404: string;
-                405: string;
-                406: string;
-                407: string;
-                408: string;
-                409: string;
-                410: string;
-                411: string;
-                412: string;
-                413: string;
-                414: string;
-                415: string;
-                416: string;
-                417: string;
-                418: string;
-                421: string;
-                422: string;
-                423: string;
-                424: string;
-                425: string;
-                426: string;
-                428: string;
-                429: string;
-                431: string;
-                451: string;
-                500: string;
-                501: string;
-                502: string;
-                503: string;
-                504: string;
-                505: string;
-                506: string;
-                507: string;
-                508: string;
-                509: string;
-                510: string;
-                511: string;
-            };
-            AgentOptions: typeof import("socket:http").AgentOptions;
             Agent: typeof import("socket:http").Agent;
-            globalAgent: import("socket:http").Agent;
-            request: (optionsOrURL: any, options: any, callback: any) => Promise<import("socket:http").ClientRequest>;
-            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            AgentOptions: typeof import("socket:http").AgentOptions;
             ClientRequest: typeof import("socket:http").ClientRequest;
-            ServerResponse: typeof import("socket:http").ServerResponse;
+            createServer: typeof import("socket:http").createServer;
             get: typeof import("socket:http").get;
+            globalAgent: import("socket:http").Agent;
+            METHODS: string[];
+            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            request: (optionsOrURL: any, options?: any, callback?: Function) => import("socket:http").ClientRequest;
+            Server: typeof import("socket:http").Server;
+            ServerResponse: typeof import("socket:http").ServerResponse;
+            STATUS_CODES: any;
         };
         https: {
             METHODS: string[];
-            STATUS_CODES: {
-                100: string;
-                101: string;
-                102: string;
-                103: string;
-                200: string;
-                201: string;
-                202: string;
-                203: string;
-                204: string;
-                205: string;
-                206: string;
-                207: string;
-                208: string;
-                226: string;
-                300: string;
-                301: string;
-                302: string;
-                303: string;
-                304: string;
-                305: string;
-                307: string;
-                308: string;
-                400: string;
-                401: string;
-                402: string;
-                403: string;
-                404: string;
-                405: string;
-                406: string;
-                407: string;
-                408: string;
-                409: string;
-                410: string;
-                411: string;
-                412: string;
-                413: string;
-                414: string;
-                415: string;
-                416: string;
-                417: string;
-                418: string;
-                421: string;
-                422: string;
-                423: string;
-                424: string;
-                425: string;
-                426: string;
-                428: string;
-                429: string;
-                431: string;
-                451: string;
-                500: string;
-                501: string;
-                502: string;
-                503: string;
-                504: string;
-                505: string;
-                506: string;
-                507: string;
-                508: string;
-                509: string;
-                510: string;
-                511: string;
-            };
+            STATUS_CODES: any;
             AgentOptions: typeof import("socket:https").AgentOptions;
             Agent: typeof import("socket:https").Agent;
             globalAgent: import("socket:https").Agent;
@@ -10770,12 +11770,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#26@#id": BigInt;
-                    "__#26@#worker": any;
-                    "__#26@#signal": any;
-                    "__#26@#timeout": any;
-                    "__#26@#env": any;
-                    "__#26@#state": {
+                    "__#27@#id": BigInt;
+                    "__#27@#worker": any;
+                    "__#27@#signal": any;
+                    "__#27@#timeout": any;
+                    "__#27@#env": any;
+                    "__#27@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -10845,148 +11845,22 @@ declare module "socket:module" {
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
         http: {
-            METHODS: string[];
-            STATUS_CODES: {
-                100: string;
-                101: string;
-                102: string;
-                103: string;
-                200: string;
-                201: string;
-                202: string;
-                203: string;
-                204: string;
-                205: string;
-                206: string;
-                207: string;
-                208: string;
-                226: string;
-                300: string;
-                301: string;
-                302: string;
-                303: string;
-                304: string;
-                305: string;
-                307: string;
-                308: string;
-                400: string;
-                401: string;
-                402: string;
-                403: string;
-                404: string;
-                405: string;
-                406: string;
-                407: string;
-                408: string;
-                409: string;
-                410: string;
-                411: string;
-                412: string;
-                413: string;
-                414: string;
-                415: string;
-                416: string;
-                417: string;
-                418: string;
-                421: string;
-                422: string;
-                423: string;
-                424: string;
-                425: string;
-                426: string;
-                428: string;
-                429: string;
-                431: string;
-                451: string;
-                500: string;
-                501: string;
-                502: string;
-                503: string;
-                504: string;
-                505: string;
-                506: string;
-                507: string;
-                508: string;
-                509: string;
-                510: string;
-                511: string;
-            };
-            AgentOptions: typeof import("socket:http").AgentOptions;
             Agent: typeof import("socket:http").Agent;
-            globalAgent: import("socket:http").Agent;
-            request: (optionsOrURL: any, options: any, callback: any) => Promise<import("socket:http").ClientRequest>;
-            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            AgentOptions: typeof import("socket:http").AgentOptions;
             ClientRequest: typeof import("socket:http").ClientRequest;
-            ServerResponse: typeof import("socket:http").ServerResponse;
+            createServer: typeof import("socket:http").createServer;
             get: typeof import("socket:http").get;
+            globalAgent: import("socket:http").Agent;
+            METHODS: string[];
+            OutgoingMessage: typeof import("socket:http").OutgoingMessage;
+            request: (optionsOrURL: any, options?: any, callback?: Function) => import("socket:http").ClientRequest;
+            Server: typeof import("socket:http").Server;
+            ServerResponse: typeof import("socket:http").ServerResponse;
+            STATUS_CODES: any;
         };
         https: {
             METHODS: string[];
-            STATUS_CODES: {
-                100: string;
-                101: string;
-                102: string;
-                103: string;
-                200: string;
-                201: string;
-                202: string;
-                203: string;
-                204: string;
-                205: string;
-                206: string;
-                207: string;
-                208: string;
-                226: string;
-                300: string;
-                301: string;
-                302: string;
-                303: string;
-                304: string;
-                305: string;
-                307: string;
-                308: string;
-                400: string;
-                401: string;
-                402: string;
-                403: string;
-                404: string;
-                405: string;
-                406: string;
-                407: string;
-                408: string;
-                409: string;
-                410: string;
-                411: string;
-                412: string;
-                413: string;
-                414: string;
-                415: string;
-                416: string;
-                417: string;
-                418: string;
-                421: string;
-                422: string;
-                423: string;
-                424: string;
-                425: string;
-                426: string;
-                428: string;
-                429: string;
-                431: string;
-                451: string;
-                500: string;
-                501: string;
-                502: string;
-                503: string;
-                504: string;
-                505: string;
-                506: string;
-                507: string;
-                508: string;
-                509: string;
-                510: string;
-                511: string;
-            };
+            STATUS_CODES: any;
             AgentOptions: typeof import("socket:https").AgentOptions;
             Agent: typeof import("socket:https").Agent;
             globalAgent: import("socket:https").Agent;
@@ -11790,35 +12664,6 @@ declare module "socket:stream-relay" {
     import def from "socket:stream-relay/index";
 }
 
-declare module "socket:service-worker/state" {
-    export const channel: BroadcastChannel;
-    export const state: any;
-    export default state;
-}
-
-declare module "socket:service-worker/instance" {
-    export function createServiceWorker(currentState?: any, options?: any): any;
-    export const SHARED_WORKER_URL: string;
-    export const ServiceWorker: {
-        new (): ServiceWorker;
-        prototype: ServiceWorker;
-    } | {
-        new (): {
-            onmessage: any;
-            onerror: any;
-            onstatechange: any;
-            readonly state: any;
-            readonly scriptURL: any;
-            postMessage(): void;
-            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-            dispatchEvent(event: Event): boolean;
-            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-        };
-    };
-    const _default: any;
-    export default _default;
-}
-
 declare module "socket:worker" {
     export default Worker;
     import { SharedWorker } from "socket:internal/shared-worker";
@@ -12139,670 +12984,9 @@ declare module "socket:internal/worker" {
     export default _default;
 }
 
-declare module "socket:service-worker/clients" {
-    export class Client {
-        constructor(options: any);
-        get id(): any;
-        get url(): any;
-        get type(): any;
-        get frameType(): any;
-        postMessage(message: any, optionsOrTransferables?: any): void;
-        #private;
-    }
-    export class WindowClient extends Client {
-        get focused(): boolean;
-        get ancestorOrigins(): any[];
-        get visibilityState(): string;
-        focus(): Promise<this>;
-        navigate(url: any): Promise<this>;
-        #private;
-    }
-    export class Clients {
-        get(id: any): Promise<Client>;
-        matchAll(options?: any): Promise<any>;
-        openWindow(url: any, options?: any): Promise<WindowClient>;
-        claim(): Promise<void>;
-    }
-    const _default: Clients;
-    export default _default;
-}
-
-declare module "socket:service-worker/database" {
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     *
-     * @typedef {{
-     *   version?: string | undefined
-     * }} DatabaseOptions
-     */
-    /**
-     * A typed container for various optional options made to a `get()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined,
-     *   count?: number | undefined
-     * }} DatabaseGetOptions
-     */
-    /**
-     * A typed container for various optional options made to a `put()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined
-     * }} DatabasePutOptions
-     */
-    /**
-     * A typed container for various optional options made to a `delete()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined
-     * }} DatabaseDeleteOptions
-     */
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     *
-     * @typedef {{
-     *   offset?: number | undefined,
-     *   backlog?: number | undefined
-     * }} DatabaseRequestQueueWaitOptions
-     */
-    /**
-     * A typed container for various optional options made to a `entries()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined
-     * }} DatabaseEntriesOptions
-     */
-    /**
-     * A `DatabaseRequestQueueRequestConflict` callback function type.
-     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
-     */
-    /**
-     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
-     * @param {EventTarget} target
-     * @param {string} eventType
-     * @return {Promise<Event>}
-     */
-    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
-    /**
-     * Creates an opens a named `Database` instance.
-     * @param {string} name
-     * @param {?DatabaseOptions | undefiend} [options]
-     * @return {Promise<Database>}
-     */
-    export function open(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<Database>;
-    /**
-     * Complete deletes a named `Database` instance.
-     * @param {string} name
-     * @param {?DatabaseOptions | undefiend} [options]
-     */
-    export function drop(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<void>;
-    /**
-     * A mapping of named `Database` instances that are currently opened
-     * @type {Map<string, WeakRef<Database>>}
-     */
-    export const opened: Map<string, WeakRef<Database>>;
-    /**
-     * A container for conflict resolution for a `DatabaseRequestQueue` instance
-     * `IDBRequest` instance.
-     */
-    export class DatabaseRequestQueueRequestConflict {
-        /**
-         * `DatabaseRequestQueueRequestConflict` class constructor
-         * @param {function(any): void)} resolve
-         * @param {function(Error): void)} reject
-         * @param {function(): void)} cleanup
-         */
-        constructor(resolve: any, reject: any, cleanup: any);
-        /**
-         * Called when a conflict is resolved.
-         * @param {any} argument
-         */
-        resolve(argument?: any): void;
-        /**
-         * Called when a conflict is rejected
-         * @param {Error} error
-         */
-        reject(error: Error): void;
-        #private;
-    }
-    /**
-     * An event dispatched on a `DatabaseRequestQueue`
-     */
-    export class DatabaseRequestQueueEvent extends Event {
-        /**
-         * `DatabaseRequestQueueEvent` class constructor.
-         * @param {string} type
-         * @param {IDBRequest|IDBTransaction} request
-         */
-        constructor(type: string, request: IDBRequest | IDBTransaction);
-        /**
-         * A reference to the underlying request for this event.
-         * @type {IDBRequest|IDBTransaction}
-         */
-        get request(): IDBRequest<any> | IDBTransaction;
-        #private;
-    }
-    /**
-     * An event dispatched on a `Database`
-     */
-    export class DatabaseEvent extends Event {
-        /**
-         * `DatabaseEvent` class constructor.
-         * @param {string} type
-         * @param {Database} database
-         */
-        constructor(type: string, database: Database);
-        /**
-         * A reference to the underlying database for this event.
-         * @type {Database}
-         */
-        get database(): Database;
-        #private;
-    }
-    /**
-     * An error event dispatched on a `DatabaseRequestQueue`
-     */
-    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
-        /**
-         * `DatabaseRequestQueueErrorEvent` class constructor.
-         * @param {string} type
-         * @param {IDBRequest|IDBTransaction} request
-         * @param {{ error: Error, cause?: Error }} options
-         */
-        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
-            error: Error;
-            cause?: Error;
-        });
-        /**
-         * A reference to the underlying request for this error event.
-         * @type {IDBRequest|IDBTransaction}
-         */
-        get request(): IDBRequest<any> | IDBTransaction;
-        #private;
-    }
-    /**
-     * A container for various `IDBRequest` and `IDBTransaction` instances
-     * occurring during the life cycles of a `Database` instance.
-     */
-    export class DatabaseRequestQueue extends EventTarget {
-        /**
-         * Computed queue length
-         * @type {number}
-         */
-        get length(): number;
-        /**
-         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
-         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
-         * upon an error' event.
-         * @param {IDBRequest|IDBTransaction}
-         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
-         * @return {Promise}
-         */
-        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
-        /**
-         * Waits for all pending requests to complete. This function will throw when
-         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
-         * Callers of this function can optionally specify a maximum backlog to wait
-         * for instead of waiting for all requests to finish.
-         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
-         */
-        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
-        #private;
-    }
-    /**
-     * An interface for reading from named databases backed by IndexedDB.
-     */
-    export class Database extends EventTarget {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         * @param {?DatabaseOptions | undefiend} [options]
-         */
-        constructor(name: string, options?: (DatabaseOptions | undefiend) | null);
-        /**
-         * `true` if the `Database` is currently opening, otherwise `false`.
-         * A `Database` instance should not attempt to be opened if this property value
-         * is `true`.
-         * @type {boolean}
-         */
-        get opening(): boolean;
-        /**
-         * `true` if the `Database` instance was successfully opened such that the
-         * internal `IDBDatabase` storage instance was created and can be referenced
-         * on the `Database` instance, otherwise `false`.
-         * @type {boolean}
-         */
-        get opened(): boolean;
-        /**
-         * `true` if the `Database` instance was closed or has not been opened such
-         * that the internal `IDBDatabase` storage instance was not created or cannot
-         * be referenced on the `Database` instance, otherwise `false`.
-         * @type {boolean}
-         */
-        get closed(): boolean;
-        /**
-         * `true` if the `Database` is currently closing, otherwise `false`.
-         * A `Database` instance should not attempt to be closed if this property value
-         * is `true`.
-         * @type {boolean}
-         */
-        get closing(): boolean;
-        /**
-         * The name of the `IDBDatabase` database. This value cannot be `null`.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The version of the `IDBDatabase` database. This value may be `null`.
-         * @type {?string}
-         */
-        get version(): string;
-        /**
-         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
-         * This value may ba `null`.
-         * @type {?IDBDatabase}
-         */
-        get storage(): IDBDatabase;
-        /**
-         * Opens the `IDBDatabase` database optionally at a specific "version" if
-         * one was given upon construction of the `Database` instance. This function
-         * is not idempotent and will throw if the underlying `IDBDatabase` instance
-         * was created successfully or is in the process of opening.
-         * @return {Promise}
-         */
-        open(): Promise<any>;
-        /**
-         * Closes the `IDBDatabase` database storage, if opened. This function is not
-         * idempotent and will throw if the underlying `IDBDatabase` instance is
-         * already closed (not opened) or currently closing.
-         * @return {Promise}
-         */
-        close(): Promise<any>;
-        /**
-         * Deletes entire `Database` instance and closes after successfully
-         * delete storage.
-         */
-        drop(): Promise<void>;
-        /**
-         * Gets a "readonly" value by `key` in the `Database` object storage.
-         * @param {string} key
-         * @param {?DatabaseGetOptions|undefiend} [options]
-         * @return {Promise<object|object[]|null>}
-         */
-        get(key: string, options?: (DatabaseGetOptions | undefiend) | null): Promise<object | object[] | null>;
-        /**
-         * Put a `value` at `key`, updating if it already exists, otherwise
-         * "inserting" it into the `Database` instance.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
-         * @return {Promise}
-         */
-        put(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
-        /**
-         * Inserts a new `value` at `key`. This function throws if a value at `key`
-         * already exists.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
-         * @return {Promise}
-         */
-        insert(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
-        /**
-         * Update a `value` at `key`, updating if it already exists, otherwise
-         * "inserting" it into the `Database` instance.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
-         * @return {Promise}
-         */
-        update(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
-        /**
-         * Delete a value at `key`.
-         * @param {string} key
-         * @param {?DatabaseDeleteOptions|undefiend} [options]
-         * @return {Promise}
-         */
-        delete(key: string, options?: (DatabaseDeleteOptions | undefiend) | null): Promise<any>;
-        /**
-         * Gets a "readonly" value by `key` in the `Database` object storage.
-         * @param {string} key
-         * @param {?DatabaseEntriesOptions|undefiend} [options]
-         * @return {Promise<object|object[]|null>}
-         */
-        entries(options?: (DatabaseEntriesOptions | undefiend) | null): Promise<object | object[] | null>;
-        #private;
-    }
-    namespace _default {
-        export { Database };
-        export { open };
-    }
-    export default _default;
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     */
-    export type DatabaseOptions = {
-        version?: string | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `get()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseGetOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-        count?: number | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `put()` function
-     * on a `Database` instance.
-     */
-    export type DatabasePutOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `delete()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseDeleteOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-    };
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     */
-    export type DatabaseRequestQueueWaitOptions = {
-        offset?: number | undefined;
-        backlog?: number | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `entries()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseEntriesOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-    };
-    /**
-     * A `DatabaseRequestQueueRequestConflict` callback function type.
-     */
-    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
-}
-
-declare module "socket:service-worker/env" {
-    /**
-     * Opens an environment for a particular scope.
-     * @param {EnvironmentOptions} options
-     * @return {Promise<Environment>}
-     */
-    export function open(options: EnvironmentOptions): Promise<Environment>;
-    /**
-     * Closes an active `Environment` instance, dropping the global
-     * instance reference.
-     * @return {Promise<boolean>}
-     */
-    export function close(): Promise<boolean>;
-    /**
-     * Resets an active `Environment` instance
-     * @return {Promise<boolean>}
-     */
-    export function reset(): Promise<boolean>;
-    /**
-     * An environment context object with persistence and durability
-     * for service worker environments.
-     */
-    export class Environment extends EventTarget {
-        /**
-         * Opens an environment for a particular scope.
-         * @param {EnvironmentOptions} options
-         * @return {Environment}
-         */
-        static open(options: EnvironmentOptions): Environment;
-        /**
-         * The current `Environment` instance
-         * @type {Environment?}
-         */
-        static instance: Environment | null;
-        /**
-         * `Environment` class constructor
-         * @ignore
-         * @param {EnvironmentOptions} options
-         */
-        constructor(options: EnvironmentOptions);
-        /**
-         * A reference to the currently opened environment database.
-         * @type {import('./database.js').Database}
-         */
-        get database(): import("socket:service-worker/database").Database;
-        /**
-         * A proxied object for reading and writing environment state.
-         * Values written to this object must be cloneable with respect to the
-         * structured clone algorithm.
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
-         * @type {Proxy<object>}
-         */
-        get context(): ProxyConstructor;
-        /**
-         * The current environment name. This value is also used as the
-         * internal database name.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * Resets the current environment to an empty state.
-         */
-        reset(): Promise<void>;
-        /**
-         * Opens the environment.
-         * @ignore
-         */
-        open(): Promise<void>;
-        /**
-         * Closes the environment database, purging existing state.
-         * @ignore
-         */
-        close(): Promise<void>;
-        #private;
-    }
-    namespace _default {
-        export { Environment };
-        export { close };
-        export { reset };
-        export { open };
-    }
-    export default _default;
-    export type EnvironmentOptions = {
-        scope: string;
-    };
-}
-
-declare module "socket:service-worker/events" {
-    export const FETCH_EVENT_TIMEOUT: number;
-    /**
-     * The `ExtendableEvent` interface extends the lifetime of the "install" and
-     * "activate" events dispatched on the global scope as part of the service
-     * worker lifecycle.
-     */
-    export class ExtendableEvent extends Event {
-        /**
-         * `ExtendableEvent` class constructor.
-         * @ignore
-         */
-        constructor(...args: any[]);
-        /**
-         * A context for this `ExtendableEvent` instance.
-         * @type {import('./context.js').Context}
-         */
-        get context(): Context;
-        /**
-         * A promise that can be awaited which waits for this `ExtendableEvent`
-         * instance no longer has pending promises.
-         * @type {Promise}
-         */
-        get awaiting(): Promise<any>;
-        /**
-         * The number of pending promises
-         * @type {number}
-         */
-        get pendingPromises(): number;
-        /**
-         * `true` if the `ExtendableEvent` instance is considered "active",
-         * otherwise `false`.
-         * @type {boolean}
-         */
-        get isActive(): boolean;
-        /**
-         * Tells the event dispatcher that work is ongoing.
-         * It can also be used to detect whether that work was successful.
-         * @param {Promise} promise
-         */
-        waitUntil(promise: Promise<any>): void;
-        /**
-         * Returns a promise that this `ExtendableEvent` instance is waiting for.
-         * @return {Promise}
-         */
-        waitsFor(): Promise<any>;
-        #private;
-    }
-    /**
-     * This is the event type for "fetch" events dispatched on the service worker
-     * global scope. It contains information about the fetch, including the
-     * request and how the receiver will treat the response.
-     */
-    export class FetchEvent extends ExtendableEvent {
-        /**
-         * `FetchEvent` class constructor.
-         * @ignore
-         * @param {stirng=} [type = 'fetch']
-         * @param {object=} [options]
-         */
-        constructor(type?: stirng, options?: object | undefined);
-        /**
-         * The handled property of the `FetchEvent` interface returns a promise
-         * indicating if the event has been handled by the fetch algorithm or not.
-         * This property allows executing code after the browser has consumed a
-         * response, and is usually used together with the `waitUntil()` method.
-         * @type {Promise}
-         */
-        get handled(): Promise<any>;
-        /**
-         * The request read-only property of the `FetchEvent` interface returns the
-         * `Request` that triggered the event handler.
-         * @type {Request}
-         */
-        get request(): Request;
-        /**
-         * The `clientId` read-only property of the `FetchEvent` interface returns
-         * the id of the Client that the current service worker is controlling.
-         * @type {string}
-         */
-        get clientId(): string;
-        /**
-         * @ignore
-         * @type {string}
-         */
-        get resultingClientId(): string;
-        /**
-         * @ignore
-         * @type {string}
-         */
-        get replacesClientId(): string;
-        /**
-         * @ignore
-         * @type {boolean}
-         */
-        get isReload(): boolean;
-        /**
-         * @ignore
-         * @type {Promise}
-         */
-        get preloadResponse(): Promise<any>;
-        /**
-         * The `respondWith()` method of `FetchEvent` prevents the webview's
-         * default fetch handling, and allows you to provide a promise for a
-         * `Response` yourself.
-         * @param {Response|Promise<Response>} response
-         */
-        respondWith(response: Response | Promise<Response>): void;
-        #private;
-    }
-    namespace _default {
-        export { ExtendableEvent };
-        export { FetchEvent };
-    }
-    export default _default;
-    import { Context } from "socket:service-worker/context";
-}
-
-declare module "socket:service-worker/context" {
-    /**
-     * A context given to `ExtendableEvent` interfaces and provided to
-     * simplified service worker modules
-     */
-    export class Context {
-        /**
-         * `Context` class constructor.
-         * @param {import('./events.js').ExtendableEvent} event
-         */
-        constructor(event: import('./events.js').ExtendableEvent);
-        /**
-         * The `ExtendableEvent` for this `Context` instance.
-         * @type {ExtendableEvent}
-         */
-        get event(): ExtendableEvent;
-        /**
-         * An environment context object.
-         * @type {object?}
-         */
-        get env(): any;
-        /**
-         * Resets the current environment context.
-         * @return {Promise<boolean>}
-         */
-        resetEnvironment(): Promise<boolean>;
-        /**
-         * Unused, but exists for cloudflare compat.
-         * @ignore
-         */
-        passThroughOnException(): void;
-        /**
-         * Tells the event dispatcher that work is ongoing.
-         * It can also be used to detect whether that work was successful.
-         * @param {Promise} promise
-         */
-        waitUntil(promise: Promise<any>): Promise<any>;
-        /**
-         * TODO
-         */
-        handled(): Promise<any>;
-        /**
-         * Gets the client for this event context.
-         * @return {Promise<import('./clients.js').Client>}
-         */
-        client(): Promise<import('./clients.js').Client>;
-        #private;
-    }
-    namespace _default {
-        export { Context };
-    }
-    export default _default;
-}
-
 declare module "socket:service-worker/global" {
     export class ServiceWorkerGlobalScope {
+        get isServiceWorkerScope(): boolean;
         get ExtendableEvent(): typeof ExtendableEvent;
         get FetchEvent(): typeof FetchEvent;
         get serviceWorker(): any;

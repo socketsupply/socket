@@ -24,7 +24,7 @@ Returns the current window index
 | :---         | :--- | :---        |
 | Not specified | number |  |
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L54)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L55)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -52,7 +52,7 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L120)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L122)
 
 Returns the current screen size.
 
@@ -60,7 +60,7 @@ Returns the current screen size.
 | :---         | :--- | :---        |
 | Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L146)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L148)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -72,7 +72,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<Object.<number?, ApplicationWindow>> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L198)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L200)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -84,7 +84,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L208)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L210)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -92,7 +92,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L217)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L219)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -104,7 +104,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L314)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L316)
 
 Set the native menu for the app.
 
@@ -199,11 +199,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L321)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L323)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L330)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L332)
 
 Set the enabled state of the system menu.
 
@@ -215,23 +215,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L338)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L340)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L344)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L346)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L350)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L352)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L355)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L357)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L361)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L363)
 
 
 
@@ -244,7 +244,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L369)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L371)
 
 
 
