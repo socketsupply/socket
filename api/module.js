@@ -33,7 +33,9 @@ import http from './http.js'
 import https from './https.js'
 import ipc from './ipc.js'
 import language from './language.js'
+import location from './location.js'
 import mime from './mime.js'
+import network from './network.js'
 import os from './os.js'
 import { posix as path } from './path.js'
 import process from './process.js'
@@ -41,7 +43,6 @@ import querystring from './querystring.js'
 import stream from './stream.js'
 // eslint-disable-next-line
 import string_decoder from './string_decoder.js'
-import test from './test.js'
 import timers from './timers.js'
 import url from './url.js'
 import util from './util.js'
@@ -262,8 +263,10 @@ export const builtins = {
   gc,
   ipc,
   language,
+  location,
   mime,
   net: {},
+  network,
   os,
   path,
   // eslint-disable-next-line
@@ -277,7 +280,6 @@ export const builtins = {
   // eslint-disable-next-line
   string_decoder,
   sys: util,
-  test,
   timers,
   'timers/promises': timers.promises,
   tty: {
@@ -299,7 +301,9 @@ const socketRuntimeModules = [
   'gc',
   'ipc',
   'language',
+  'location',
   'mime',
+  'network',
   'window'
 ]
 
