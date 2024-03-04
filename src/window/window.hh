@@ -57,6 +57,11 @@ namespace SSC {
 - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
 @end
 #else
+@interface SSCWindow : NSWindow
+@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic) NSPoint trafficLightPosition;
+@end
+
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
@@ -80,8 +85,9 @@ namespace SSC {
 >
 
 @property (nonatomic) NSPoint initialWindowPos;
-@property (nonatomic) NSPoint trafficLightPosition;
-@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic) CGFloat contentHeight;
+@property (nonatomic) CGFloat radius;
+@property (nonatomic) CGFloat margin;
 @property (nonatomic) BOOL shouldDrag;
 
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
@@ -175,7 +181,7 @@ namespace SSC {
 
     #if defined(__APPLE__)
     #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-      NSWindow* window;
+      SSCWindow* window;
     #endif
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
@@ -628,6 +634,10 @@ namespace SSC {
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
+          .minimizable = opts.minimizable,
+          .maximizable = opts.maximizable,
+          .radius = opts.radius,
+          .margin = opts.margin,
           .closable = opts.closable,
           .frameless = opts.frameless,
           .utility = opts.utility,
@@ -645,7 +655,6 @@ namespace SSC {
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
-          .aspectRatio = opts.aspectRatio,
 
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
