@@ -1492,7 +1492,7 @@ MAIN {
     .minimizable = getProperty("window_minimizable") == "true" ? true : false,
     .maximizable = getProperty("window_maximizable") == "true" ? true : false,
     .titleBarStyle = getProperty("window_titleBarStyle"),
-    .trafficLightPosition = getProperty("window_trafficLightPosition"),
+    .trafficLightPosition = getProperty("mac_trafficLightPosition"),
     .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
     .onExit = shutdownHandler
