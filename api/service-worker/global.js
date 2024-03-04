@@ -15,6 +15,10 @@ let onfetch = null
 let registration = null
 
 export class ServiceWorkerGlobalScope {
+  get isServiceWorkerScope () {
+    return true
+  }
+
   get ExtendableEvent () {
     return ExtendableEvent
   }

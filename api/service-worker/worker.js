@@ -1,8 +1,9 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
 import { Module, createRequire } from '../module.js'
-import { InvertedPromise } from '../util.js'
+import { STATUS_CODES } from '../http.js'
 import { Environment } from './env.js'
+import { Deferred } from '../async.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
@@ -27,7 +28,6 @@ function onReady () {
 
 async function onMessage (event) {
   const { data } = event
-  let env = null
 
   if (data?.register) {
     const { id, scope, scriptURL } = data.register
@@ -100,7 +100,7 @@ async function onMessage (event) {
       return state.reportError(err)
     }
 
-    env = await Environment.open({ id, scope })
+    await Environment.open({ id, scope })
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.fetch === 'function') {
@@ -137,16 +137,9 @@ async function onMessage (event) {
     }
 
     if (typeof state.activate === 'function') {
-      globalThis.addEventListener('activate', async () => {
-        const context = {
-          passThroughOnException () {},
-          async waitUntil (...args) {
-            return await event.waitUntil(...args)
-          }
-        }
-
+      globalThis.addEventListener('activate', async (event) => {
         try {
-          await state.activate(env.context, context)
+          await state.activate(event.context.env, event.ontext)
         } catch (err) {
           state.reportError(err)
         }
@@ -177,7 +170,7 @@ async function onMessage (event) {
       }
 
       globalThis.addEventListener('fetch', async (event) => {
-        const promise = new InvertedPromise()
+        const promise = new Deferred()
         let response = null
 
         event.respondWith(promise)
@@ -191,16 +184,20 @@ async function onMessage (event) {
         } catch (err) {
           state.reportError(err)
           response = new Response(err.message, {
-            statusText: 'Internal Server Error',
+            statusText: STATUS_CODES[500],
             status: 500
           })
         }
 
         if (response) {
+          if (!response.statusText) {
+            response.statusText = STATUS_CODES[response.status]
+          }
+
           promise.resolve(response)
         } else {
           promise.resolve(new Response('', {
-            statusText: 'Not found',
+            statusText: STATUS_CODES[404],
             status: 404
           }))
         }
