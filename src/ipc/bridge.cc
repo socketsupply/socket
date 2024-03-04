@@ -3430,6 +3430,11 @@ static void registerSchemeHandler (Router *router) {
                 return;
               }
 
+              if (res.statusCode == 0) {
+                [task didFinish];
+                return;
+              }
+
               const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
               auto headers = [NSMutableDictionary dictionary];
 
