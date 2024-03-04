@@ -6,7 +6,11 @@ export const globalLocation = globalThis.location ?? {
   href: ''
 }
 
-export const href = globalLocation.href.replace(/https?:/, 'socket:')
+export const href = globalLocation.href
+  .replace(/https?:/, 'socket:')
+  .replace(/^blob:/, '')
+  .replace(/socket:\/\/?/, 'socket://')
+
 export const protocol = 'socket:'
 export const hostname = (
   // eslint-disable-next-line
