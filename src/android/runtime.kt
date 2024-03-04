@@ -81,6 +81,11 @@ open class RuntimeServiceWorkerContainer (
       var contentType = ""
 
       response.apply {
+        if (res.statusCode == 0) {
+          setStatusCodeAndReasonPhrase(502, "Network Error")
+          return stream.close()
+        }
+
         when (res.statusCode) {
           200 -> { setStatusCodeAndReasonPhrase(res.statusCode, "OK") }
           201 -> { setStatusCodeAndReasonPhrase(res.statusCode, "Created") }
@@ -125,7 +130,7 @@ open class RuntimeServiceWorkerContainer (
           503 -> { setStatusCodeAndReasonPhrase(res.statusCode, "Service Unavailable") }
           504 -> { setStatusCodeAndReasonPhrase(res.statusCode, "Gateway Timeout") }
           else -> {
-            setStatusCodeAndReasonPhrase(res.statusCode, "")
+            setStatusCodeAndReasonPhrase(res.statusCode, "Unknown Status")
           }
         }
 
