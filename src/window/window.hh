@@ -619,7 +619,6 @@ namespace SSC {
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .aspectRatio = opts.aspectRatio,
           .width = width,
           .height = height,
           .minWidth = minWidth,
@@ -630,6 +629,7 @@ namespace SSC {
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
+          .aspectRatio = opts.aspectRatio,
 
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
