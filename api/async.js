@@ -79,6 +79,10 @@ export class Deferred extends EventTarget {
         }
       }
     })
+
+    this.then = this.then.bind(this)
+    this.catch = this.catch.bind(this)
+    this.finally = this.finally.bind(this)
   }
 
   /**
