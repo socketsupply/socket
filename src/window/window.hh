@@ -638,7 +638,8 @@ namespace SSC {
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
           .appData = this->options.appData,
-          .userScript = opts.userScript
+          .userScript = opts.userScript,
+          .runtimePrimordialOverrides = opts.runtimePrimordialOverrides
         };
 
         if (isDebugEnabled()) {
