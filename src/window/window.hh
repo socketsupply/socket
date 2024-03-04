@@ -637,7 +637,8 @@ namespace SSC {
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
-          .appData = this->options.appData
+          .appData = this->options.appData,
+          .userScript = opts.userScript
         };
 
         if (isDebugEnabled()) {
