@@ -1209,28 +1209,25 @@ namespace SSC {
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent: YES];
       [window setMovableByWindowBackground: YES];
-      [window setStyleMask:NSWindowStyleMaskBorderless];
+      style |= NSWindowStyleMaskBorderless;
     }
 
-    //
-    // results in a hidden title bar and a full-size content window.
-    //
-    else if (opts.titleBarStyle == "hidden") {
-      style |= NSWindowStyleMaskFullSizeContentView;
-    }
-
-    //
-    // Results in a utility window (looks like a panel)
-    //
-    else if (opts.titleBarStyle == "utilty") {
+    else if (opts.utility) {
       style |= NSWindowStyleMaskBorderless;
       style |= NSWindowStyleMaskUtilityWindow;
     }
 
     //
+    // results in a hidden title bar and a full-size content window.
+    //
+    if (opts.titleBarStyle == "hidden") {
+      style |= NSWindowStyleMaskFullSizeContentView;
+    }
+
+    //
     // We don't support hiddenInset because the same thing can be accomplished by specifying trafficLightPosition
     //
-    if (opts.titleBarStyle == "hiddenInset") {
+    else if (opts.titleBarStyle == "hiddenInset") {
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskTitled;
       style |= NSWindowStyleMaskResizable;
