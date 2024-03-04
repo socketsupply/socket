@@ -1532,6 +1532,14 @@ export const primordials = sendSync('platform.primordials')?.data || {}
 if (primordials.cwd) {
   primordials.cwd = primordials.cwd.replace(/\\$/, '')
 }
+
+if (
+  globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ &&
+  typeof globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ === 'object'
+) {
+  Object.assign(primordials, globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__)
+}
+
 Object.freeze(primordials)
 initializeXHRIntercept()
 
