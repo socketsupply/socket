@@ -1,6 +1,20 @@
 
 declare module "socket:buffer" {
     export default Buffer;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    };
+    export const Blob: {
+        new (blobParts?: BlobPart[], options?: BlobPropertyBag): Blob;
+        prototype: Blob;
+    };
+    export namespace constants {
+        export { kMaxLength as MAX_LENGTH };
+        export { kMaxLength as MAX_STRING_LENGTH };
+    }
+    export const btoa: any;
+    export const atob: any;
     /**
      * The Buffer constructor returns instances of `Uint8Array` that have their
      * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
@@ -142,9 +156,9 @@ declare module "socket:buffer" {
         export function concat(list: any, length: any): Uint8Array;
         export { byteLength };
     }
+    export const kMaxLength: 2147483647;
     export function SlowBuffer(length: any): Uint8Array;
     export const INSPECT_MAX_BYTES: 50;
-    export const kMaxLength: 2147483647;
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
 
@@ -5773,22 +5787,94 @@ declare module "socket:assert" {
     export default _default;
 }
 
+declare module "socket:internal/async" {
+    export function getNextAsyncResourceId(): number;
+    export function getCurrentExecutionAsyncResource(): ExecutionAsyncResource;
+    export function wrap(callback: any): any;
+    export class ExecutionAsyncResource {
+        id: number;
+    }
+    export const topLevelExecutionAsyncResource: ExecutionAsyncResource;
+    export const asyncResourceStack: ExecutionAsyncResource[];
+    const _default: any;
+    export default _default;
+}
+
 declare module "socket:async_context" {
+    /**
+     * @typedef {{
+     *   triggerAsyncId?: number,
+     *   requireManualDestroy?: boolean
+     * }} AsyncResourceOptions
+     */
+    /**
+     * The current execution async resource ID
+     * @return {number}
+     */
+    export function executionAsyncId(): number;
+    /**
+     * TODO
+     */
+    export class AsyncResource {
+        /**
+         * `AsyncResource` class constructor.
+         * @param {string} type
+         * @param {AsyncResourceOptions|number=} [options]
+         */
+        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
+        /**
+         * @type {string}
+         */
+        get type(): string;
+        /**
+         * @return {number}
+         */
+        asyncId(): number;
+        /**
+         * @return {number}
+         */
+        triggerAsyncId(): number;
+        runInAsyncScope(callback: any, thisArg: any, ...args: any[]): any;
+        #private;
+    }
+    /**
+     * TODO
+     */
     export class AsyncLocalStorage {
-        static bind(fn: any): void;
-        static snapshot(): void;
+        /**
+         * TODO
+         */
+        static bind(fn: any): any;
+        /**
+         * TODO
+         */
+        static snapshot(): any;
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * TODO
+         */
         disable(): void;
-        getStore(): void;
+        /**
+         * TODO
+         */
+        enable(): void;
         enterWith(store: any): void;
         run(store: any, callback: any, ...args: any[]): void;
         exit(callback: any, ...args: any[]): void;
-    }
-    export class AsyncResource {
+        getStore(): void;
+        #private;
     }
     namespace _default {
         export { AsyncLocalStorage };
     }
     export default _default;
+    export type AsyncResourceOptions = {
+        triggerAsyncId?: number;
+        requireManualDestroy?: boolean;
+    };
 }
 
 declare module "socket:async_hooks" {
@@ -10698,6 +10784,19 @@ declare module "socket:string_decoder" {
     function simpleWrite(buf: any): any;
 }
 
+declare module "socket:timers/platform" {
+    export namespace platform {
+        let setTimeout: any;
+        let setInterval: any;
+        let setImmediate: any;
+        let clearTimeout: any;
+        let clearInterval: any;
+        let clearImmediate: any;
+        let postTask: any;
+    }
+    export default platform;
+}
+
 declare module "socket:timers/timer" {
     export class Timer {
         static from(...args: any[]): void;
@@ -10756,7 +10855,9 @@ declare module "socket:timers/index" {
     export function clearInterval(interval: any): void;
     export function setImmediate(callback: any, ...args: any[]): void;
     export function clearImmediate(immediate: any): void;
+    export { platform };
     namespace _default {
+        export { platform };
         export { promises };
         export { scheduler };
         export { setTimeout };
@@ -10767,6 +10868,7 @@ declare module "socket:timers/index" {
         export { clearImmediate };
     }
     export default _default;
+    import platform from "socket:timers/platform";
     import promises from "socket:timers/promises";
     import scheduler from "socket:timers/scheduler";
 }
@@ -10790,11 +10892,9 @@ declare module "socket:module" {
      */
     export const builtins: {
         async_context: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+            AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
         };
-        async_hooks: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
+        async_hooks: typeof async_hooks;
         application: typeof application;
         assert: typeof import("socket:assert").assert & {
             AssertionError: typeof import("socket:assert").AssertionError;
@@ -10889,7 +10989,11 @@ declare module "socket:module" {
             ENOLCK: number;
             ENOLINK: number;
             ENOMEM: number;
-            ENOMSG: number;
+            ENOMSG: number; /**
+             * Modules children to this one, as in they were required in this
+             * module scope context.
+             * @type {Array<Module>}
+             */
             ENOPROTOOPT: number;
             ENOSPC: number;
             ENOSR: number;
@@ -10996,12 +11100,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#27@#id": BigInt;
-                    "__#27@#worker": any;
-                    "__#27@#signal": any;
-                    "__#27@#timeout": any;
-                    "__#27@#env": any;
-                    "__#27@#state": {
+                    "__#29@#id": BigInt;
+                    "__#29@#worker": any;
+                    "__#29@#signal": any;
+                    "__#29@#timeout": any;
+                    "__#29@#env": any;
+                    "__#29@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -11037,17 +11141,10 @@ declare module "socket:module" {
                     getMaxListeners(): any;
                     emit(type: any, ...args: any[]): boolean;
                     addListener(type: any, listener: any): any;
-                    /**
-                     * The main entry source origin.
-                     * @type {string}
-                     */
                     on(arg0: any, arg1: any): any;
                     prependListener(type: any, listener: any): any;
                     once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any; /**
-                     * Module cache.
-                     * @ignore
-                     */
+                    prependOnceListener(type: any, listener: any): any;
                     removeListener(type: any, listener: any): any;
                     off(type: any, listener: any): any;
                     removeAllListeners(type: any, ...args: any[]): any;
@@ -11059,10 +11156,7 @@ declare module "socket:module" {
                 EventEmitter: typeof events.EventEmitter;
                 defaultMaxListeners: number;
                 init(): void;
-                listenerCount(emitter: any, type: any): any; /**
-                 * `true` if the module is the main module.
-                 * @type {boolean}
-                 */
+                listenerCount(emitter: any, type: any): any;
                 once: typeof events.once;
             };
             spawn: typeof import("socket:child_process").spawn;
@@ -11163,11 +11257,9 @@ declare module "socket:module" {
     };
     export const builtinModules: {
         async_context: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
+            AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
         };
-        async_hooks: {
-            AsyncLocalStorage: typeof import("socket:async_context").AsyncLocalStorage;
-        };
+        async_hooks: typeof async_hooks;
         application: typeof application;
         assert: typeof import("socket:assert").assert & {
             AssertionError: typeof import("socket:assert").AssertionError;
@@ -11262,7 +11354,11 @@ declare module "socket:module" {
             ENOLCK: number;
             ENOLINK: number;
             ENOMEM: number;
-            ENOMSG: number;
+            ENOMSG: number; /**
+             * Modules children to this one, as in they were required in this
+             * module scope context.
+             * @type {Array<Module>}
+             */
             ENOPROTOOPT: number;
             ENOSPC: number;
             ENOSR: number;
@@ -11369,12 +11465,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#27@#id": BigInt;
-                    "__#27@#worker": any;
-                    "__#27@#signal": any;
-                    "__#27@#timeout": any;
-                    "__#27@#env": any;
-                    "__#27@#state": {
+                    "__#29@#id": BigInt;
+                    "__#29@#worker": any;
+                    "__#29@#signal": any;
+                    "__#29@#timeout": any;
+                    "__#29@#env": any;
+                    "__#29@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -11410,17 +11506,10 @@ declare module "socket:module" {
                     getMaxListeners(): any;
                     emit(type: any, ...args: any[]): boolean;
                     addListener(type: any, listener: any): any;
-                    /**
-                     * The main entry source origin.
-                     * @type {string}
-                     */
                     on(arg0: any, arg1: any): any;
                     prependListener(type: any, listener: any): any;
                     once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any; /**
-                     * Module cache.
-                     * @ignore
-                     */
+                    prependOnceListener(type: any, listener: any): any;
                     removeListener(type: any, listener: any): any;
                     off(type: any, listener: any): any;
                     removeAllListeners(type: any, ...args: any[]): any;
@@ -11432,10 +11521,7 @@ declare module "socket:module" {
                 EventEmitter: typeof events.EventEmitter;
                 defaultMaxListeners: number;
                 init(): void;
-                listenerCount(emitter: any, type: any): any; /**
-                 * `true` if the module is the main module.
-                 * @type {boolean}
-                 */
+                listenerCount(emitter: any, type: any): any;
                 once: typeof events.once;
             };
             spawn: typeof import("socket:child_process").spawn;
@@ -11701,6 +11787,7 @@ declare module "socket:module" {
     export default Module;
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
+    import * as async_hooks from "socket:async_hooks";
     import application from "socket:application";
     import * as buffer from "socket:buffer";
     import stream from "socket:stream";
@@ -12891,12 +12978,12 @@ declare module "socket:internal/geolocation" {
     export default _default;
 }
 
-declare module "socket:internal/timers" {
-    export function setImmediate(callback: any, ...args: any[]): number;
-    export function clearImmediate(immediate: any): void;
+declare module "socket:internal/streams" {
+    export class ReadableStream extends globalThis.ReadableStream<Uint8Array> {
+        constructor(options: any);
+    }
     namespace _default {
-        export { setImmediate };
-        export let clearTimeout: typeof globalThis.clearTimeout;
+        export { ReadableStream };
     }
     export default _default;
 }
@@ -12990,6 +13077,24 @@ declare module "socket:internal/scheduler" {
     export * from "socket:timers/scheduler";
     export default scheduler;
     import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:internal/timers" {
+    export function setTimeout(callback: any, ...args: any[]): any;
+    export function clearTimeout(timeout: any): any;
+    export function setInterval(callback: any, ...args: any[]): any;
+    export function clearInterval(interval: any): any;
+    export function setImmediate(callback: any, ...args: any[]): any;
+    export function clearImmediate(immediate: any): any;
+    namespace _default {
+        export { setTimeout };
+        export { setInterval };
+        export { setImmediate };
+        export { clearTimeout };
+        export { clearInterval };
+        export { clearImmediate };
+    }
+    export default _default;
 }
 
 declare module "socket:internal/pickers" {
