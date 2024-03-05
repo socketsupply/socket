@@ -23,6 +23,7 @@ namespace SSC {
 
       struct Client {
         uint64_t id = 0;
+        String preload;
       };
 
       struct Registration {
