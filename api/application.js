@@ -178,7 +178,7 @@ function throwOnInvalidIndex (index) {
  * @return {Promise<Object.<number?, ApplicationWindow>>}
  */
 export async function getWindows (indices, options = null) {
-  if (os.platform() === 'ios' || os.platform() === 'android') {
+  if (!globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS && (os.platform() === 'ios' || os.platform() === 'android')) {
     return {
       0: new ApplicationWindow({
         index: 0,
