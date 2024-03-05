@@ -3410,6 +3410,7 @@ static void registerSchemeHandler (Router *router) {
             };
 
             fetchRequest.client.id = clientId;
+            fetchRequest.client.preload = self.router->bridge->preload;
 
             if (request.URL.query != nullptr) {
               fetchRequest.query = String(request.URL.query.UTF8String);
