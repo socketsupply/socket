@@ -75,7 +75,7 @@ export async function createWindow (opts) {
     headless: opts.headless === true,
     // @ts-ignore
     debug: opts.debug === true, // internal
-    userScript: opts.userScript ?? '',
+    userScript: encodeURIComponent(opts.userScript ?? ''),
     // @ts-ignore
     __runtime_primordial_overrides__: (
       // @ts-ignore
