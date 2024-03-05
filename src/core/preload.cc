@@ -233,7 +233,7 @@ namespace SSC {
       );
 
       if (preloadOptions.userScript.size() > 0) {
-        preload += preloadOptions.userScript;
+        preload += decodeURIComponent(preloadOptions.userScript);
       }
 
       if (preloadOptions.wrap) {
