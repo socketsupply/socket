@@ -14,7 +14,7 @@ import { URL } from './url.js'
 // eslint-disable-next-line
 import async_context from './async_context.js'
 // eslint-disable-next-line
-import async_hooks from './async_hooks.js'
+import * as async_hooks from './async_hooks.js'
 import application from './application.js'
 import assert from './assert.js'
 import * as buffer from './buffer.js'
