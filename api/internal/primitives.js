@@ -1,7 +1,7 @@
 /* global MutationObserver */
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
-import { setImmediate, clearImmediate } from './timers.js'
+import { ReadableStream } from './streams.js'
 import { ServiceWorker } from '../service-worker/instance.js'
 import serviceWorker from './service-worker.js'
 import SharedWorker from './shared-worker.js'
@@ -12,6 +12,15 @@ import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
 import scheduler from './scheduler.js'
 import symbols from './symbols.js'
+
+import {
+  setTimeout,
+  setInterval,
+  setImmediate,
+  clearTimeout,
+  clearInterval,
+  clearImmediate
+} from './timers.js'
 
 import {
   ApplicationURLEvent,
@@ -35,6 +44,8 @@ import {
 } from './pickers.js'
 
 import ipc from '../ipc.js'
+
+import './async.js'
 
 let applied = false
 const natives = {}
@@ -203,8 +214,15 @@ export function init () {
     ServiceWorker,
 
     // timers
+    setTimeout,
+    setInterval,
     setImmediate,
+    clearTimeout,
+    clearInterval,
     clearImmediate,
+
+    // streams
+    ReadableStream,
 
     // platform detection
     isSocketRuntime: true
