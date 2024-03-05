@@ -1,7 +1,7 @@
 import {
   getCurrentExecutionAsyncResource,
   getNextAsyncResourceId
-} from '../internal/async.js'
+} from './internal/async.js'
 
 // import gc from './gc.js'
 
