@@ -181,7 +181,7 @@ namespace SSC {
       ) {
         const auto preload = (
           String("<meta name=\"runtime-frame-source\" content=\"serviceworker\" />\n") +
-          this->bridge->preload
+          request.client.preload
         );
 
         auto html = String(response.buffer.bytes, response.buffer.size);
