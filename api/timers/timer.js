@@ -1,13 +1,5 @@
+import platform from './platform.js'
 import gc from '../gc.js'
-
-const platform = {
-  setTimeout: globalThis.setTimeout.bind(globalThis),
-  clearTimeout: globalThis.clearTimeout.bind(globalThis),
-  setInterval: globalThis.setInterval.bind(globalThis),
-  clearInterval: globalThis.clearInterval.bind(globalThis),
-  setImmediate: globalThis.setTimeout.bind(globalThis),
-  clearImmediate: globalThis.clearTimeout.bind(globalThis)
-}
 
 export class Timer {
   #id = 0

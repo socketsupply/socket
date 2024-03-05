@@ -1,12 +1,9 @@
 import { Timeout, Immediate, Interval } from './timer.js'
 import scheduler from './scheduler.js'
+import platform from './platform.js'
 import promises from './promises.js'
 
-const platform = {
-  setTimeout: globalThis.setTimeout.bind(globalThis),
-  setInterval: globalThis.setInterval.bind(globalThis),
-  setImmediate: globalThis.setTimeout.bind(globalThis)
-}
+export { platform }
 
 export function setTimeout (callback, delay, ...args) {
   return Timeout.from(callback, delay, ...args)
@@ -54,6 +51,7 @@ setImmediate[Symbol.for('nodejs.util.promisify.custom')] = promises.setImmediate
 setImmediate[Symbol.for('socket.util.promisify.custom')] = promises.setImmediate
 
 export default {
+  platform,
   promises,
   scheduler,
   setTimeout,
