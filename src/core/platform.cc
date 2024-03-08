@@ -213,6 +213,7 @@ namespace SSC {
   void Core::Platform::revealFile (const String seq, const String value, Module::Callback cb) {
     auto json = JSON::Object {};
     bool success;
+    String message = "Failed to open external file";
 
     #if TARGET_OS_MAC && !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
       NSString *directoryPath = @(value.c_str());
@@ -220,17 +221,21 @@ namespace SSC {
       success = [workspace selectFile:nil inFileViewerRootedAtPath:directoryPath];
     #elif defined(__linux__) && !defined(__ANDROID__)
       std::string command = "xdg-open " + value;
-      success = exec(command.c_str()) == 0;
+      auto result = exec(command.c_str());
+      success = result.exitCode == 0;
+      message = result.output;
     #elif defined(_WIN32)
       std::string command = "explorer.exe " + value;
-      success = exec(command.c_str()) == 0;
+      auto result = exec(command.c_str());
+      success = result.exitCode == 0;
+      message = result.output;
     #endif
 
     if (!success) {
       json = JSON::Object::Entries {
         {"source", "platform.revealFile"},
         {"err", JSON::Object::Entries {
-          {"message", "Failed to open external file"}
+          {"message", message}
         }}
       };
     } else {
