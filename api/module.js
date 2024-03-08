@@ -28,6 +28,7 @@ import os from './os.js'
 import { posix as path } from './path.js'
 import process from './process.js'
 import stream from './stream.js'
+import test from './test.js'
 import url from './url.js'
 import util from './util.js'
 import vm from './vm.js'
@@ -173,6 +174,7 @@ export const builtins = {
   path,
   process,
   stream,
+  test,
   util,
   url,
   vm
