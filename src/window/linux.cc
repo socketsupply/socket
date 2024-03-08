@@ -32,18 +32,33 @@ namespace SSC {
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
     if (this->opts.aspectRatio.size() > 0) {
-      String parts = split(this->opts.aspectRatio, ':');
-      double aspectRatio = 0;
+    g_signal_connect(
+      window,
+      "size-allocate",
+      G_CALLBACK(+[](GtkWidget *widget, GtkAllocation *allocation, gpointer ptr) {
+            auto w = static_cast<Window*>(ptr);
+        // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
+            auto parts = split(w->opts.aspectRatio, ':');
+            float aspectWidth = 0;
+            float aspectHeight = 0;
 
-      try {
-        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
-      } catch (...) {
-        debug("invalid aspect ratio");
-      }
+            try {
+              aspectWidth = std::stof(trim(parts[0]));
+          aspectHeight = std::stof(trim(parts[1]));
+            } catch (...) {
+              debug("invalid aspect ratio");
+            }
 
-      if (aspectRatio != 0) {
-        gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
-      }
+            if (aspectWidth != 0 && aspectHeight != 0) {
+          auto width = allocation->width;
+          auto height = (width * aspectHeight) / aspectWidth;
+          gtk_window_resize(GTK_WINDOW(w->window), width, height);
+        }
+          }),
+      this
+    );
+
+        // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
     }
 
     this->index = this->opts.index;
@@ -217,7 +232,6 @@ namespace SSC {
       this
     );
 
-    static auto userConfig = SSC::getUserConfig();
     auto webContext = this->bridge->router.webkitWebContext;
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
@@ -635,16 +649,15 @@ namespace SSC {
         if (!w) return;
 
         if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
-          gint newX, newY;
-          gdk_window_get_position(gtk_widget_get_window(widget), &newX, &newY);
+          gint newX;
+          gint newY;
+          gdk_window_get_position(gtk_widget_get_window(w->window), &newX, &newY);
           newX += event->x - w->dragLastX;
           newY += event->y - w->dragLastY;
-          gdk_window_move(gtk_widget_get_window(widget), newX, newY);
+          gdk_window_move(gtk_widget_get_window(w->window), newX, newY);
 
           w->dragLastX = event->x;
           w->dragLastY = event->y;
-
-          return TRUE;
         }
 
         //
@@ -844,7 +857,7 @@ namespace SSC {
     webkit_user_content_manager_add_script(
       manager,
       webkit_user_script_new(
-        preload.c_str(),
+        this->bridge->preload.c_str(),
         WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
         WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
         nullptr,
