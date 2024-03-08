@@ -1908,7 +1908,7 @@ Returns an object describing the memory usage of the Node.js process measured in
 
 
 
-### [`constructor(name, fn, runner)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L76)
+### [`constructor(name, fn, runner)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L127)
 
 
 
@@ -1918,7 +1918,7 @@ Returns an object describing the memory usage of the Node.js process measured in
 | fn | TestFn |  | false |  |
 | runner | TestRunner |  | false |  |
 
-### [`comment(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L127)
+### [`comment(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L138)
 
 
 
@@ -1926,7 +1926,7 @@ Returns an object describing the memory usage of the Node.js process measured in
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | false |  |
 
-### [`plan(n)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L137)
+### [`plan(n)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L148)
 
 Plan the number of assertions.
 
@@ -1935,7 +1935,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | n | number |  | false |  |
 
-### [`deepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L148)
+### [`deepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L159)
 
 
 
@@ -1945,7 +1945,7 @@ Plan the number of assertions.
 | expected | T |  | false |  |
 | msg | string |  | true |  |
 
-### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L163)
+### [`notDeepEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L174)
 
 
 
@@ -1955,7 +1955,7 @@ Plan the number of assertions.
 | expected | T |  | false |  |
 | msg | string |  | true |  |
 
-### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L178)
+### [`equal(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L189)
 
 
 
@@ -1965,7 +1965,7 @@ Plan the number of assertions.
 | expected | T |  | false |  |
 | msg | string |  | true |  |
 
-### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L193)
+### [`notEqual(actual, expected, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L204)
 
 
 
@@ -1975,7 +1975,7 @@ Plan the number of assertions.
 | expected | unknown |  | false |  |
 | msg | string |  | true |  |
 
-### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L206)
+### [`fail(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L217)
 
 
 
@@ -1983,7 +1983,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | true |  |
 
-### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L219)
+### [`ok(actual, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L230)
 
 
 
@@ -1992,7 +1992,7 @@ Plan the number of assertions.
 | actual | unknown |  | false |  |
 | msg | string |  | true |  |
 
-### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L231)
+### [`pass(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L242)
 
 
 
@@ -2000,7 +2000,7 @@ Plan the number of assertions.
 | :---     | :--- | :---:   | :---:    | :---        |
 | msg | string |  | true |  |
 
-### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L240)
+### [`ifError(err, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L251)
 
 
 
@@ -2009,7 +2009,7 @@ Plan the number of assertions.
 | err | Error \| null \| undefined |  | false |  |
 | msg | string |  | true |  |
 
-### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L253)
+### [`throws(fn, expected, message)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L264)
 
 
 
@@ -2019,7 +2019,7 @@ Plan the number of assertions.
 | expected | RegExp \| any |  | true |  |
 | message | string |  | true |  |
 
-### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L302)
+### [`sleep(ms, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L313)
 
 Sleep for ms with an optional msg
 
@@ -2037,7 +2037,7 @@ Sleep for ms with an optional msg
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`requestAnimationFrame(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L320)
+### [`requestAnimationFrame(msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L331)
 
 Request animation frame with an optional msg. Falls back to a 0ms setTimeout when
  tests are run headlessly.
@@ -2055,7 +2055,7 @@ Request animation frame with an optional msg. Falls back to a 0ms setTimeout whe
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`click(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L342)
+### [`click(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L354)
 
 Dispatch the `click`` method on an element specified by selector.
 
@@ -2073,7 +2073,7 @@ Dispatch the `click`` method on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L364)
+### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L376)
 
 Dispatch the click window.MouseEvent on an element specified by selector.
 
@@ -2091,7 +2091,7 @@ Dispatch the click window.MouseEvent on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L392)
+### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L404)
 
 Dispatch an event on the target.
 
@@ -2110,7 +2110,7 @@ Dispatch an event on the target.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L412)
+### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L424)
 
 Call the focus method on element specified by selector.
 
@@ -2128,7 +2128,7 @@ Call the focus method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L433)
+### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L445)
 
 Call the blur method on element specified by selector.
 
@@ -2146,7 +2146,7 @@ Call the blur method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L455)
+### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L467)
 
 Consecutively set the str value of the element specified by selector to simulate typing.
 
@@ -2165,7 +2165,7 @@ Consecutively set the str value of the element specified by selector to simulate
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L487)
+### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L499)
 
 appendChild an element el to a parent selector element.
 
@@ -2185,7 +2185,7 @@ appendChild an element el to a parent selector element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L507)
+### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L519)
 
 Remove an element from the DOM.
 
@@ -2203,7 +2203,7 @@ Remove an element from the DOM.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L526)
+### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L538)
 
 Test if an element is visible
 
@@ -2221,7 +2221,7 @@ Test if an element is visible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L547)
+### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L559)
 
 Test if an element is invisible
 
@@ -2239,7 +2239,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L571)
+### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L583)
 
 Test if an element is invisible
 
@@ -2260,7 +2260,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L633)
+### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L645)
 
 Test if an element is invisible
 
@@ -2290,7 +2290,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L670)
+### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L682)
 
 Run a querySelector as an assert and also get the results
 
@@ -2308,7 +2308,7 @@ Run a querySelector as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | HTMLElement \| Element |  |
 
-### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L689)
+### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L701)
 
 Run a querySelectorAll as an assert and also get the results
 
@@ -2326,7 +2326,7 @@ Run a querySelectorAll as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | Array<HTMLElement \| Element> |  |
 
-### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L718)
+### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L730)
 
 Retrieves the computed styles for a given element.
 
@@ -2351,17 +2351,17 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | CSSStyleDeclaration | The computed styles of the element. |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L815)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L827)
 
    pass: number,
    fail: number
  }>}
 
-## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L896)
+## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L908)
 
 
 
-### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L901)
+### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L959)
 
 
 
@@ -2369,7 +2369,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | report | (lines: string) => void |  | true |  |
 
-### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L953)
+### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L968)
 
 
 
@@ -2377,7 +2377,11 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L963)
+### [`length()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L975)
+
+
+
+### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L985)
 
 
 
@@ -2387,7 +2391,7 @@ Retrieves the computed styles for a given element.
 | fn | TestFn |  | false |  |
 | only | boolean |  | false |  |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L985)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1007)
 
 
 
@@ -2395,7 +2399,7 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`onFinish())`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1032)
+### [`onFinish())`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1054)
 
 
 
@@ -2403,7 +2407,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | ) | (result: { total: number, success: number, fail: number  | > void} callback | false |  |
 
-## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1060)
+## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1082)
 
 
 
@@ -2412,7 +2416,7 @@ Retrieves the computed styles for a given element.
 | name | string |  | false |  |
 | fn | TestFn |  | true |  |
 
-## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1070)
+## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1092)
 
 
 
@@ -2421,7 +2425,7 @@ Retrieves the computed styles for a given element.
 | _name | string |  | false |  |
 | _fn | TestFn |  | true |  |
 
-## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1076)
+## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1098)
 
 
 
