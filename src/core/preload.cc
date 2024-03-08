@@ -63,10 +63,11 @@ namespace SSC {
         const auto file = argv.substr(start + 7, end - start - 7);
         if (file.size() > 0) {
           preload += (
+            "  globalThis.RUNTIME_TEST_FILENAME = `" + file + "`;              \n"
             "  document.addEventListener('DOMContentLoaded', () => {           \n"
             "    const script = document.createElement('script')               \n"
             "    script.setAttribute('type', 'module')                         \n"
-            "    script.setAttribute('src', '" + file + "')                    \n"
+            "    script.setAttribute('src', `" + file + "`)                    \n"
             "    document.head.appendChild(script)                             \n"
             "  });                                                             \n"
           );
