@@ -68,55 +68,66 @@ export function getDefaultTestRunnerTimeout () {
  */
 export class Test {
   /**
+   * @type {string}
+   * @ignore
+   */
+  name = null
+
+  /**
+   * @type {null|number}
+   * @ignore
+   */
+  _planned = null
+
+  /**
+   * @type {null|number}
+   * @ignore
+   */
+  _actual = null
+
+  /**
+   * @type {TestFn}
+   * @ignore
+   */
+  fn = null
+
+  /**
+   * @type {TestRunner}
+   * @ignore
+   */
+  runner = null
+
+  /**
+   * @type{{ pass: number, fail: number }}
+   * @ignore
+   */
+  _result = {
+    pass: 0,
+    fail: 0
+  }
+
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  done = false
+
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  strict = false
+
+  /**
    * @constructor
    * @param {string} name
    * @param {TestFn} fn
    * @param {TestRunner} runner
    */
   constructor (name, fn, runner) {
-    /**
-     * @type {string}
-     * @ignore
-     */
     this.name = name
-    /**
-     * @type {null|number}
-     * @ignore
-     */
-    this._planned = null
-    /**
-     * @type {null|number}
-     * @ignore
-     */
-    this._actual = null
-    /**
-     * @type {TestFn}
-     * @ignore
-     */
     this.fn = fn
-    /**
-     * @type {TestRunner}
-     * @ignore
-     */
     this.runner = runner
-    /**
-     * @type{{ pass: number, fail: number }}
-     * @ignore
-     */
-    this._result = {
-      pass: 0,
-      fail: 0
-    }
-    /**
-     * @type {boolean}
-     * @ignore
-     */
-    this.done = false
-
-    /**
-     * @type {boolean}
-     * @ignore
-     */
     this.strict = runner.strict
   }
 
@@ -317,13 +328,14 @@ export class Test {
    * await t.requestAnimationFrame()
    * ```
    */
-  async requestAnimationFrame (msg) {
+  async requestAnimationFrame (msg = null) {
     if (document.hasFocus()) {
       // RAF only works when the window is focused
-      await (new Promise(resolve => window.requestAnimationFrame(() => resolve())))
+      await new Promise(resolve => window.requestAnimationFrame(resolve))
     } else {
-      await (new Promise((resolve) => setTimeout(resolve, 0)))
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
+
     if (msg) this.pass(msg)
   }
 
@@ -895,56 +907,59 @@ function findAtLineFromError (e) {
  */
 export class TestRunner {
   /**
+   * @type {(lines: string) => void}
+   * @ignore
+   */
+  report = printLine
+
+  /**
+   * @type {Test[]}
+   * @ignore
+   */
+  tests = []
+  /**
+   * @type {Test[]}
+   * @ignore
+   */
+  onlyTests = []
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  scheduled = false
+  /**
+   * @type {number}
+   * @ignore
+   */
+  _id = 0
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  completed = false
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  rethrowExceptions = true
+  /**
+   * @type {boolean}
+   * @ignore
+   */
+  strict = false
+  /**
+   * @type {function | void}
+   * @ignore
+   */
+  _onFinishCallback = undefined
+  /**
    * @constructor
    * @param {(lines: string) => void} [report]
    */
-  constructor (report) {
-    /**
-     * @type {(lines: string) => void}
-     * @ignore
-     */
-    this.report = report || printLine
-
-    /**
-     * @type {Test[]}
-     * @ignore
-     */
-    this.tests = []
-    /**
-     * @type {Test[]}
-     * @ignore
-     */
-    this.onlyTests = []
-    /**
-     * @type {boolean}
-     * @ignore
-     */
-    this.scheduled = false
-    /**
-     * @type {number}
-     * @ignore
-     */
-    this._id = 0
-    /**
-     * @type {boolean}
-     * @ignore
-     */
-    this.completed = false
-    /**
-     * @type {boolean}
-     * @ignore
-     */
-    this.rethrowExceptions = true
-    /**
-     * @type {boolean}
-     * @ignore
-     */
-    this.strict = false
-    /**
-    * @type {function | void}
-    * @ignore
-    */
-    this._onFinishCallback = undefined
+  constructor (report = null) {
+    if (report) {
+      this.report = report
+    }
   }
 
   /**
@@ -952,6 +967,13 @@ export class TestRunner {
    */
   nextId () {
     return String(++this._id)
+  }
+
+  /**
+   * @type {number}
+   */
+  get length () {
+    return this.tests.length + this.onlyTests.length
   }
 
   /**
@@ -1096,6 +1118,7 @@ export function test (name, fn) {
   if (!fn) return
   GLOBAL_TEST_RUNNER.add(name, fn, false)
 }
+
 test.only = only
 test.skip = skip
 
@@ -1130,7 +1153,7 @@ function toJSON (thing) {
    * @ignore
    */
   const replacer = (_k, v) => (v === undefined) ? '_tz_undefined_tz_' : v
-
   const json = JSON.stringify(thing, replacer, '  ') || 'undefined'
+
   return json.replace(/"_tz_undefined_tz_"/g, 'undefined')
 }
