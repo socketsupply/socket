@@ -201,6 +201,7 @@ namespace SSC {
       bool shouldDrag;
       std::vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
+      GdkPoint initialLocation;
     #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       bool usingCustomEdgeRuntimeDirectory = false;
@@ -636,26 +637,25 @@ namespace SSC {
           .resizable = opts.resizable,
           .minimizable = opts.minimizable,
           .maximizable = opts.maximizable,
-          .radius = opts.radius,
-          .margin = opts.margin,
           .closable = opts.closable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .aspectRatio = opts.aspectRatio,
-          .titleBarStyle = opts.titleBarStyle,
-          .trafficLightPosition = opts.trafficLightPosition,
           .width = width,
           .height = height,
           .minWidth = minWidth,
           .minHeight = minHeight,
           .maxWidth = maxWidth,
           .maxHeight = maxHeight,
+          .radius = opts.radius,
+          .margin = opts.margin,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
-
+          .aspectRatio = opts.aspectRatio,
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
@@ -687,8 +687,6 @@ namespace SSC {
         return createWindow(WindowOptions {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
-          .titleBarStyle = opts.titleBarStyle,
-          .trafficLightPosition = opts.trafficLightPosition,
           .utility = opts.utility,
           .canExit = true,
           .width = opts.width,
@@ -697,7 +695,9 @@ namespace SSC {
         #ifdef PORT
           .port = PORT,
         #endif
-          .appData = opts.appData
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
+          .appData = opts.appData,
         });
       }
 
