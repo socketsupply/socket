@@ -72,12 +72,15 @@ void signalHandler (int signal) {
   static auto userConfig = SSC::getUserConfig();
   static const auto signalsDisabled = userConfig["application_signals"] == "false";
   static const auto signals = parseStringList(userConfig["application_signals"]);
-  const auto name = String(sys_signame[signal]);
+  String name;
 
-  if (
-    !signalsDisabled ||
-    std::find(signals.begin(), signals.end(), name) != signals.end()
-   ) {
+  #if defined(__APPLE__)
+    name = String(sys_signame[signal]);
+  #elif defined(__linux__)
+    name = strsignal(signal);
+  #endif
+
+  if (!signalsDisabled || std::find(signals.begin(), signals.end(), name) != signals.end()) {
     defaultWindowSignalHandler(signal);
   }
 
