@@ -10,7 +10,7 @@ function onerror (e) {
   const err = e.error || e.stack || e.reason || e.message || e
   if (err.ignore || err[Symbol.for('socket.test.error.ignore')]) return
   console.error(err)
-  if (!finishing && !process.env.DEBUG) {
+  if (!finishing && !process.env.DEBUG && globalThis.RUNTIME_TEST_FILENAME) {
     process.nextTick(() => {
       process.exit(1)
     })
