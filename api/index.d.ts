@@ -7722,14 +7722,18 @@ declare module "socket:test/index" {
          */
         strict: boolean;
         /**
-        * @type {function | void}
-        * @ignore
-        */
+         * @type {function | void}
+         * @ignore
+         */
         _onFinishCallback: Function | void;
         /**
          * @returns {string}
          */
         nextId(): string;
+        /**
+         * @type {number}
+         */
+        get length(): number;
         /**
          * @param {string} name
          * @param {TestFn} fn
