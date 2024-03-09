@@ -32,33 +32,33 @@ namespace SSC {
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
     if (this->opts.aspectRatio.size() > 0) {
-    g_signal_connect(
-      window,
-      "size-allocate",
-      G_CALLBACK(+[](GtkWidget *widget, GtkAllocation *allocation, gpointer ptr) {
-            auto w = static_cast<Window*>(ptr);
-        // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
-            auto parts = split(w->opts.aspectRatio, ':');
-            float aspectWidth = 0;
-            float aspectHeight = 0;
+      g_signal_connect(
+        window,
+        "size-allocate",
+        G_CALLBACK(+[](GtkWidget *widget, GtkAllocation *allocation, gpointer ptr) {
+          auto w = static_cast<Window*>(ptr);
+          // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
+          auto parts = split(w->opts.aspectRatio, ':');
+          float aspectWidth = 0;
+          float aspectHeight = 0;
 
-            try {
-              aspectWidth = std::stof(trim(parts[0]));
-          aspectHeight = std::stof(trim(parts[1]));
-            } catch (...) {
-              debug("invalid aspect ratio");
-            }
+          try {
+            aspectWidth = std::stof(trim(parts[0]));
+            aspectHeight = std::stof(trim(parts[1]));
+          } catch (...) {
+            debug("invalid aspect ratio");
+          }
 
-            if (aspectWidth != 0 && aspectHeight != 0) {
-          auto width = allocation->width;
-          auto height = (width * aspectHeight) / aspectWidth;
-          gtk_window_resize(GTK_WINDOW(w->window), width, height);
-        }
-          }),
-      this
-    );
+          if (aspectWidth != 0 && aspectHeight != 0) {
+            auto width = allocation->width;
+            auto height = (width * aspectHeight) / aspectWidth;
+            gtk_window_resize(GTK_WINDOW(w->window), width, height);
+          }
+        }),
+        this
+      );
 
-        // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
+      // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
     }
 
     this->index = this->opts.index;
@@ -517,67 +517,81 @@ namespace SSC {
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag-begin",
-      G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
+      "button-release-event",
+      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
-        w->isDragInvokedInsideWindow = true;
+        w->shouldDrag = false;
+        return TRUE;
+      }),
+      this
+    );
 
-        GdkDevice* device;
-        gint wx;
-        gint wy;
-        gint x;
-        gint y;
-        String sx = std::to_string(x);
-        String sy = std::to_string(y);
+    g_signal_connect(
+      G_OBJECT(webview),
+      "button-press-event",
+      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        w->shouldDrag = false;
 
-        device = gdk_drag_context_get_device(context);
-        gdk_device_get_window_at_position(device, &x, &y);
-        gdk_device_get_position(device, 0, &wx, &wy);
+        if (event->button == GDK_BUTTON_PRIMARY) {
+          auto win = GDK_WINDOW(gtk_widget_get_window(w->window));
+          gint initialX;
+          gint initialY;
 
-        String js(
-          "(() => {                                                                              "
-          "  let el = null;                                                                      "
-          "  try { el = document.elementFromPoint(" + sx + "," + sy + "); }                      "
-          "  catch (err) { console.error(err.stack || err.message || err); }                     "
-          "  if (!el) return;                                                                    "
-          "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
-          "  return isDraggable ? 'moavable' : '';                                               "
-          "})()                                                                                  "
-        );
+          gdk_window_get_position(win, &initialX, &initialY);
 
-        webkit_web_view_evaluate_javascript(
-          WEBKIT_WEB_VIEW(wv),
-          js.c_str(),
-          -1,
-          nullptr,
-          nullptr,
-          nullptr,
-          [](GObject* src, GAsyncResult* result, gpointer arg) {
-            auto *w = static_cast<Window*>(arg);
-            if (!w) return;
+          w->initialLocation.x = initialX;
+          w->initialLocation.y = initialY;
 
-            GError* error = NULL;
-            auto value = webkit_web_view_evaluate_javascript_finish(
-              WEBKIT_WEB_VIEW(src),
-              result,
-              &error
-            );
+          w->dragLastX = event->x_root;
+          w->dragLastY = event->y_root;
 
-            if (!value || error) return;
-            if (!jsc_value_is_string(value)) return;
+          GdkDevice* device;
 
-            JSCException *exception;
-            gchar *match = jsc_value_to_string(value);
+          gint x = event->x;
+          gint y = event->y;
+          String sx = std::to_string(x);
+          String sy = std::to_string(y);
 
-            w->dragLastX = 0;
-            w->dragLastY = 0;
-            w->shouldDrag = std::string(match).compare("movable") != 0;
+          String js(
+            "(() => {                                                                    "
+            "  let el = null;                                                            "
+            "  el = document.elementFromPoint(" + sx + "," + sy + ");                    "
+            "  if (!el) return '';                                                       "
+            "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
+            "  return isMovable ? 'movable' : '';                                        "
+            "})()                                                                        "
+          );
 
-            exception = jsc_context_get_exception(jsc_value_get_context(value));
-            g_free(match);
-          },
-          w
-        );
+          webkit_web_view_evaluate_javascript(
+            WEBKIT_WEB_VIEW(wv),
+            js.c_str(),
+            -1,
+            nullptr,
+            nullptr,
+            nullptr,
+            [](GObject* src, GAsyncResult* result, gpointer arg) {
+              auto *w = static_cast<Window*>(arg);
+              if (!w) return;
+
+              GError* error = NULL;
+              auto value = webkit_web_view_evaluate_javascript_finish(
+                WEBKIT_WEB_VIEW(w->webview),
+                result,
+                &error
+              );
+
+              if (error) return;
+              if (!value) return;
+              if (!jsc_value_is_string(value)) return;
+
+              auto match = std::string(jsc_value_to_string(value));
+              w->shouldDrag = match == "movable";
+            },
+            w
+          );
+          return FALSE;
+        }
       }),
       this
     );
@@ -649,15 +663,31 @@ namespace SSC {
         if (!w) return;
 
         if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
-          gint newX;
-          gint newY;
-          gdk_window_get_position(gtk_widget_get_window(w->window), &newX, &newY);
-          newX += event->x - w->dragLastX;
-          newY += event->y - w->dragLastY;
-          gdk_window_move(gtk_widget_get_window(w->window), newX, newY);
+          auto win = GDK_WINDOW(gtk_widget_get_window(w->window));
+          gint x;
+          gint y;
 
-          w->dragLastX = event->x;
-          w->dragLastY = event->y;
+          GdkRectangle frame_extents;
+          gdk_window_get_frame_extents(win, &frame_extents);
+
+          GtkAllocation allocation;
+          gtk_widget_get_allocation(wv, &allocation);
+
+          int offsetWidth = (frame_extents.width - allocation.width) / 2;
+          int offsetHeight = (frame_extents.height - allocation.height) - offsetWidth;
+
+          gdk_window_get_position(win, &x, &y);
+
+          gint offset_x = event->x_root - w->dragLastX;
+          gint offset_y = event->y_root - w->dragLastY;
+
+          gint newX = x + offset_x;
+          gint newY = y + offset_y;
+
+          gdk_window_move(win, newX - offsetWidth, newY - offsetHeight);
+
+          w->dragLastX = event->x_root;
+          w->dragLastY = event->y_root;
         }
 
         //
