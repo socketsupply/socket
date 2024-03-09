@@ -695,9 +695,9 @@ namespace SSC {
           using Handles = std::map<uint64_t, Process*>;
           struct SpawnOptions {
             String cwd;
-            bool stdin = true;
-            bool stdout = true;
-            bool stderr = true;
+            bool std_in = true;
+            bool std_out = true;
+            bool std_err = true;
           };
 
           Handles handles;
