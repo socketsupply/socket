@@ -73,7 +73,7 @@ namespace SSC {
       const auto argv = join(args.size() > 1 ? Vector<String>{ args.begin() + 1, args.end() } : Vector<String>{}, " ");
 
       const auto onStdout = [=](const String& output) {
-        if (!options.stdout || output.size() == 0) {
+        if (!options.std_out || output.size() == 0) {
           return;
         }
 
@@ -103,7 +103,7 @@ namespace SSC {
       };
 
       const auto onStderr = [=](const String& output) {
-        if (!options.stderr || output.size() == 0) {
+        if (!options.std_err || output.size() == 0) {
           return;
         }
 
@@ -177,7 +177,7 @@ namespace SSC {
         onStdout,
         onStderr,
         onExit,
-        options.stdin
+        options.std_in
       );
 
       do {
@@ -190,7 +190,7 @@ namespace SSC {
         {"source", "child_process.spawn"},
         {"data", JSON::Object::Entries {
           {"id", std::to_string(id)},
-          {"pid", pid}
+          {"pid", std::to_string(pid)}
         }}
       };
 

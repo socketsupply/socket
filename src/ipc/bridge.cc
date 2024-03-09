@@ -363,9 +363,9 @@ static void initRouterTable (Router *router) {
 
     const auto options = Core::ChildProcess::SpawnOptions {
       .cwd = message.get("cwd", getcwd()),
-      .stdin = message.get("stdin") != "false",
-      .stdout = message.get("stdout") != "false",
-      .stderr = message.get("stderr") != "false"
+      .std_in = message.get("stdin") != "false",
+      .std_out = message.get("stdout") != "false",
+      .std_err = message.get("stderr") != "false"
     };
 
     router->core->childProcess.spawn(
