@@ -666,7 +666,7 @@ namespace SSC {
     this->hotkey.init(this->bridge);
 
     if (this->opts.aspectRatio.size() > 0) {
-      String parts = split(this->opts.aspectRatio, ':');
+      auto parts = split(this->opts.aspectRatio, ':');
       double aspectRatio = 0;
 
       try {
@@ -678,7 +678,7 @@ namespace SSC {
       if (aspectRatio > 0) {
         RECT rect;
         GetClientRect(window, &rect);
-        SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), NULL);
+        // SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), NULL);
       }
     }
 
@@ -1996,33 +1996,32 @@ namespace SSC {
 
       case WM_LBUTTONDOWN: {
         w->shouldDrag = false;
-        int x = GET_X_LPARAM(lParam);
-        int y = GET_Y_LPARAM(lParam);
+        int x = LOWORD(lParam);
+        int y = HIWORD(lParam);
         String sx = std::to_string(x);
         String sy = std::to_string(y);
 
         String js(
-          "(() => {                                                                              "
-          "  const el = document.elementFromPoint(" + sx + "," + sy + ");                        "
-          "  if (!el) return;                                                                    "
-          "  const isDraggable = el.matches('[movable]') ? el : el.closest('[movable]');         "
-          "  return isDraggable ? 'movable' : '';                                                "
-          "})()                                                                                  "
+          "(() => {                                                                    "
+          "  const el = document.elementFromPoint(" + sx + "," + sy + ");              "
+          "  if (!el) return;                                                          "
+          "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
+          "  return isMovable ? 'movable' : '';                                        "
+          "})()                                                                        "
         );
 
         auto wjs = SSC::convertStringToWString(js);
 
-        w->webview->ExecuteScript(wjs.c_str(), Callback<IWebView2ExecuteScriptCompletedHandler>(
-          [&w, x, y](HRESULT result, WLPCWSTR wmatch) -> HRESULT {
+        w->webview->ExecuteScript(wjs.c_str(), Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+          [&w, x, y](HRESULT result, LPCWSTR wmatch) -> HRESULT {
             if (SUCCEEDED(result)) {
               String match = SSC::convertWStringToString(wmatch).c_str();
-              String resultValue(resultString);
               w->shouldDrag = (match == "movable");
 
               if (w->shouldDrag) {
                 w->initialCursorPos.x = x;
                 w->initialCursorPos.y = y;
-                GetWindowRect(hwnd, &w->initialWindowPos);
+                GetWindowRect((HWND)w->window, &w->initialWindowPos);
               }
             }
 
@@ -2036,19 +2035,19 @@ namespace SSC {
       case WM_MOUSEMOVE: {
         if (w->shouldDrag) {
           POINT currentCursorPos;
-          currentCursorPos.x = GET_X_LPARAM(lParam);
-          currentCursorPos.y = GET_Y_LPARAM(lParam);
+          currentCursorPos.x = LOWORD(lParam);
+          currentCursorPos.y = HIWORD(lParam);
 
-          int deltaX = currentCursorPos.x - initialCursorPos.x;
-          int deltaY = currentCursorPos.y - initialCursorPos.y;
+          int deltaX = currentCursorPos.x - w->initialCursorPos.x;
+          int deltaY = currentCursorPos.y - w->initialCursorPos.y;
 
           RECT newWindowPos;
-          newWindowPos.left = initialWindowPos.left + deltaX;
-          newWindowPos.top = initialWindowPos.top + deltaY;
-          newWindowPos.right = initialWindowPos.right + deltaX;
-          newWindowPos.bottom = initialWindowPos.bottom + deltaY;
+          newWindowPos.left = w->initialWindowPos.left + deltaX;
+          newWindowPos.top = w->initialWindowPos.top + deltaY;
+          newWindowPos.right = w->initialWindowPos.right + deltaX;
+          newWindowPos.bottom = w->initialWindowPos.bottom + deltaY;
 
-          MoveWindow(hwnd, newWindowPos.left, newWindowPos.top,
+          MoveWindow(w->window, newWindowPos.left, newWindowPos.top,
           newWindowPos.right - newWindowPos.left,
           newWindowPos.bottom - newWindowPos.top, TRUE);
         }
