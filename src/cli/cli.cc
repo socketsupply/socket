@@ -2935,7 +2935,7 @@ int main (const int argc, const char* argv[]) {
         ? paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"))
         : paths.platformSpecificOutputPath;
 
-      std::vector<std::tuple<uint, uint>> iconTypes = {};
+      std::vector<std::tuple<int, int>> iconTypes = {};
 
       const std::string prefix = isForDesktop ? "mac" : "ios";
       const std::string key = std::string(prefix + "_icon_sizes");
@@ -3012,8 +3012,8 @@ int main (const int argc, const char* argv[]) {
 
       compileAssetsCommand
         << "xcrun "
-          << "actool " << assetsPath.c_str() << " "
-          << "--compile " << dest.c_str() << " "
+          << "actool " << assetsPath.string() << " "
+          << "--compile " << dest.string() << " "
           << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
           << "--minimum-deployment-target 10.15 "
           << "--app-icon AppIcon "
