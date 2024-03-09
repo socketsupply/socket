@@ -1985,9 +1985,9 @@ static void initRouterTable (Router *router) {
     pictures = (Path(USERPROFILE) / "Pictures").string();
     videos = (Path(USERPROFILE) / "Videos").string();
     music = (Path(USERPROFILE) / "Music").string();
-    config = Path(Env::get("APPDATA")) / bundleIdentifier).string();
+    config = (Path(Env::get("APPDATA")) / bundleIdentifier).string();
     home = Path(USERPROFILE).string();
-    data = Path(Env::get("APPDATA")) / bundleIdentifier).string();
+    data = (Path(Env::get("APPDATA")) / bundleIdentifier).string();
     log = config;
   #endif
 
