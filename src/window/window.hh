@@ -217,7 +217,7 @@ namespace SSC {
       POINT m_minsz = POINT {0, 0};
       POINT m_maxsz = POINT {0, 0};
       POINT initialCursorPos = POINT {0, 0};
-      POINT initialWindowPos = POINT {0, 0};
+      RECT initialWindowPos = RECT {0, 0, 0, 0};
       HWND window;
       std::map<int, std::string> menuMap;
       std::map<int, std::string> menuTrayMap;
