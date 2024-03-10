@@ -37,6 +37,8 @@ namespace SSC {
 @interface SSCWindowDelegate : NSObject
 @property (nonatomic) SSC::Window* window;
 @end
+@interface SSCWindow : NSObject
+@end
 
 @interface SSCUIPickerDelegate : NSObject<
   UIDocumentPickerDelegate,

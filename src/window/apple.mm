@@ -92,7 +92,7 @@
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
   @implementation SSCWindowDelegate
   @end
-  @implementation SSCWindow
+  @implementation SSCWindow : NSObject
   @end
 #else
   @implementation SSCWindow
@@ -354,12 +354,16 @@ int lastY = 0;
   lastY = (int) location.y;
 
   SSC::String js(
-    "(() => {                                                                    "
-    "  const el = document.elementFromPoint(" + x + "," + y + ");                "
-    "  if (!el) return;                                                          "
-    "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
-    "  return isMovable ? 'movable' : '';                                        "
-    "})()                                                                        "
+    "(() => {                                                                      "
+    "  const v = '--app-region';                                                   "
+    "  let el = document.elementFromPoint(" + x + "," + y + ");                    "
+    "                                                                              "
+    "  while (el) {                                                                "
+    "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
+    "    el = el.parentElement;                                                    "
+    "  }                                                                           "
+    "  return ''                                                                   "
+    "})()                                                                          "
   );
 
   [self
