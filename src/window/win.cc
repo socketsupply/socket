@@ -720,7 +720,7 @@ namespace SSC {
     this->modulePath = fs::path(modulefile);
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files --enable-features=msWebView2EnableDraggableRegions");
 
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
     HRESULT oeResult = options.As(&options4);
@@ -1991,70 +1991,6 @@ namespace SSC {
         RECT bounds;
         GetClientRect(hWnd, &bounds);
         w->controller->put_Bounds(bounds);
-        break;
-      }
-
-      case WM_LBUTTONDOWN: {
-        w->shouldDrag = false;
-        int x = LOWORD(lParam);
-        int y = HIWORD(lParam);
-        String sx = std::to_string(x);
-        String sy = std::to_string(y);
-
-        String js(
-          "(() => {                                                                    "
-          "  const el = document.elementFromPoint(" + sx + "," + sy + ");              "
-          "  if (!el) return;                                                          "
-          "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
-          "  return isMovable ? 'movable' : '';                                        "
-          "})()                                                                        "
-        );
-
-        auto wjs = SSC::convertStringToWString(js);
-
-        w->webview->ExecuteScript(wjs.c_str(), Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-          [&w, x, y](HRESULT result, LPCWSTR wmatch) -> HRESULT {
-            if (SUCCEEDED(result)) {
-              String match = SSC::convertWStringToString(wmatch).c_str();
-              w->shouldDrag = (match == "movable");
-
-              if (w->shouldDrag) {
-                w->initialCursorPos.x = x;
-                w->initialCursorPos.y = y;
-                GetWindowRect((HWND)w->window, &w->initialWindowPos);
-              }
-            }
-
-            return S_OK;
-          }
-        ).Get());
-
-        break;
-      }
-
-      case WM_MOUSEMOVE: {
-        if (w->shouldDrag) {
-          POINT currentCursorPos;
-          currentCursorPos.x = LOWORD(lParam);
-          currentCursorPos.y = HIWORD(lParam);
-
-          int deltaX = currentCursorPos.x - w->initialCursorPos.x;
-          int deltaY = currentCursorPos.y - w->initialCursorPos.y;
-
-          RECT newWindowPos;
-          newWindowPos.left = w->initialWindowPos.left + deltaX;
-          newWindowPos.top = w->initialWindowPos.top + deltaY;
-          newWindowPos.right = w->initialWindowPos.right + deltaX;
-          newWindowPos.bottom = w->initialWindowPos.bottom + deltaY;
-
-          MoveWindow(w->window, newWindowPos.left, newWindowPos.top,
-          newWindowPos.right - newWindowPos.left,
-          newWindowPos.bottom - newWindowPos.top, TRUE);
-        }
-      }
-
-      case WM_LBUTTONUP: {
-        w->shouldDrag = false;
         break;
       }
 
