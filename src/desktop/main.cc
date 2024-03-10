@@ -1019,6 +1019,7 @@ MAIN {
       options.minimizable = message.get("minimizable") == "true" ? true : false;
       options.aspectRatio = message.get("aspectRatio");
       options.titleBarStyle = message.get("titleBarStyle");
+      options.title = message.get("title");
       options.trafficLightPosition = message.get("trafficLightPosition");
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
