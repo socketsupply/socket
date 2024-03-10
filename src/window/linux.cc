@@ -554,13 +554,16 @@ namespace SSC {
           String sy = std::to_string(y);
 
           String js(
-            "(() => {                                                                    "
-            "  let el = null;                                                            "
-            "  el = document.elementFromPoint(" + sx + "," + sy + ");                    "
-            "  if (!el) return '';                                                       "
-            "  const isMovable = el.matches('[movable]') ? el : el.closest('[movable]'); "
-            "  return isMovable ? 'movable' : '';                                        "
-            "})()                                                                        "
+            "(() => {                                                                      "
+            "  const v = '--app-region';                                                   "
+            "  let el = document.elementFromPoint(" + sx + "," + sy + ");                  "
+            "                                                                              "
+            "  while (el) {                                                                "
+            "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
+            "    el = el.parentElement;                                                    "
+            "  }                                                                           "
+            "  return ''                                                                   "
+            "})()                                                                          "
           );
 
           webkit_web_view_evaluate_javascript(
