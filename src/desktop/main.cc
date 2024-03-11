@@ -2,6 +2,7 @@
 #include "../cli/cli.hh"
 #include "../ipc/ipc.hh"
 #include "../core/core.hh"
+#include "../core/ini.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
 
@@ -271,7 +272,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getcwd();
-  app.appData = userConfig;
+  app.userConfig = userConfig;
 
   SSC::String suffix = "";
 
@@ -542,21 +543,21 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.appData["build_name"] += "-dev";
+    app.userConfig["build_name"] += "-dev";
   }
 
-  app.appData["build_name"] += suffix;
+  app.userConfig["build_name"] += suffix;
 
   argvForward << " --ssc-version=v" << SSC::VERSION_STRING;
-  argvForward << " --version=v" << app.appData["meta_version"];
-  argvForward << " --name=" << app.appData["build_name"];
+  argvForward << " --version=v" << app.userConfig["meta_version"];
+  argvForward << " --name=" << app.userConfig["build_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
   SSC::StringStream env;
-  for (auto const &envKey : parseStringList(app.appData["build_env"])) {
+  for (auto const &envKey : parseStringList(app.userConfig["build_env"])) {
     auto cleanKey = trim(envKey);
 
     if (!Env::has(cleanKey)) {
@@ -572,9 +573,9 @@ MAIN {
 
   SSC::String cmd;
   if (platform.os == "win32") {
-    cmd = app.appData["win_cmd"];
+    cmd = app.userConfig["win_cmd"];
   } else {
-    cmd = app.appData[platform.os + "_cmd"];
+    cmd = app.userConfig[platform.os + "_cmd"];
   }
 
   if (cmd[0] == '.') {
@@ -779,7 +780,7 @@ MAIN {
 
       if (message.name == "config") {
         auto key = message.get("key");
-        window->resolvePromise(seq, OK_STATE, app.appData[key]);
+        window->resolvePromise(seq, OK_STATE, app.userConfig[key]);
         return;
       }
 
@@ -1026,6 +1027,7 @@ MAIN {
       options.userScript = message.get("userScript");
       options.index = targetWindowIndex;
       options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
+      options.userConfig = INI::parse(message.get("config"));
 
       targetWindow = windowManager.createWindow(options);
 
@@ -1451,15 +1453,15 @@ MAIN {
   std::regex validPattern("^\\d*\\.?\\d+%?$");
 
   for (const auto& property : properties) {
-    if (app.appData[property].size() > 0) {
-      auto value = app.appData[property];
+    if (app.userConfig[property].size() > 0) {
+      auto value = app.userConfig[property];
       if (!std::regex_match(value, validPattern)) {
-        app.appData[property] = setDefaultValue(property);
-        debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.appData[property].c_str());
+        app.userConfig[property] = setDefaultValue(property);
+        debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.userConfig[property].c_str());
       }
     // set default value if it's not set in socket.ini
     } else {
-      app.appData[property] = setDefaultValue(property);
+      app.userConfig[property] = setDefaultValue(property);
     }
   }
 
@@ -1482,7 +1484,7 @@ MAIN {
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,
-    .appData = app.appData,
+    .userConfig = app.userConfig,
     .onMessage = onMessage,
     .onExit = shutdownHandler
   });
@@ -1535,15 +1537,15 @@ MAIN {
       ";"
     ));
   } else {
-    if (app.appData["webview_root"].size() != 0) {
+    if (app.userConfig["webview_root"].size() != 0) {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_root"]
+        "socket://" + app.userConfig["meta_bundle_identifier"] + app.userConfig["webview_root"]
       );
     } else {
       defaultWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + "/index.html"
+        "socket://" + app.userConfig["meta_bundle_identifier"] + "/index.html"
       );
     }
   }
