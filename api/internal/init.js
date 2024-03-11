@@ -593,7 +593,8 @@ hooks.onLoad(async () => {
   if (
     globalThis.window &&
     !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
-    globalThis.location.pathname !== '/socket/service-worker/index.html'
+    globalThis.location.pathname !== '/socket/service-worker/index.html' &&
+    String(config.permissions_allow_service_worker) !== 'false'
   ) {
     const pendingServiceRegistrations = []
 
