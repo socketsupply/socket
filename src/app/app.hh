@@ -52,7 +52,7 @@ namespace SSC {
       AtomicBool killed = false;
       bool fromSSC = false;
       bool w32ShowConsole = false;
-      Map appData;
+      Map userConfig;
       Core *core = nullptr;
 
     #ifdef _WIN32
