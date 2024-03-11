@@ -177,6 +177,7 @@ cmd |  |  The command to execute to spawn the "back-end" process.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
 minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
+trafficLightPosition |  |  If titleBarStyle is "hiddenInset", this will determine the x and y offsets of the traffic lights.
 icon |  |  The icon to use for identifying your app on MacOS.
 icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
@@ -203,13 +204,17 @@ Key | Default Value | Description
 :--- | :--- | :---
 height |  |  The initial height of the first window in pixels or as a percentage of the screen.
 width |  |  The initial width of the first window in pixels or as a percentage of the screen.
+titleBarStyle | "" |  Determine if the titlebar style (hidden, hiddenInset)
 max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
 max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
 min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen.
 min_width | 0 |  Minimum width of the window in pixels or as a percentage of the screen.
-resizable | true |  If the window is resizable or not.
-frameless | false |  If the window has a title bar or not.
-utility | false |  If the window is utility window or not.
+frameless | false |  Determines if the window has a title bar and border.
+resizable | true |  Determines if the window is resizable.
+maximizable | true |  Determines if the window is maximizable.
+minimizable | true |  Determines if the window is minimizable.
+closable | true |  Determines if the window is closable.
+utility | false |  Determines the window is utility window.
 
 # `window.alert`
 
