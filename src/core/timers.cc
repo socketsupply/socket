@@ -90,4 +90,12 @@ namespace SSC {
   bool Core::Timers::clearInterval (const ID id) {
     return this->clearTimeout(id);
   }
+
+  const Core::Timers::ID Core::Timers::setImmediate (const Callback callback) {
+    return this->setTimeout(0, callback);
+  }
+
+  bool Core::Timers::clearImmediate (const ID id) {
+    return this->clearTimeout(id);
+  }
 }
