@@ -1,3 +1,6 @@
+/**
+ * @module Signal
+ */
 import { signal as constants } from './os/constants.js'
 import { SignalEvent } from './internal/events.js'
 import os from './os.js'
@@ -138,6 +141,28 @@ export function getMessage (code) {
   return toString(code)
 }
 
+/**
+ * Add a signal event listener.
+ * @param {string|number} signal
+ * @param {function(SignalEvent)} callback
+ * @param {{ once?: boolean }=} [options]
+ */
+export function addEventListener (signalName, callback, options = null) {
+  const name = getName(signalName)
+  globalThis.addEventListener(name, callback, options)
+}
+
+/**
+ * Remove a signal event listener.
+ * @param {string|number} signal
+ * @param {function(SignalEvent)} callback
+ * @param {{ once?: boolean }=} [options]
+ */
+export function removeEventListener (signal, callback, options = null) {
+  const name = getName(signalName)
+  return globalThis.removeEventListener(name, callback, options)
+}
+
 if (!/android|ios/i.test(os.platform())) {
   channel.addEventListener('message', (event) => {
     onSignal(event.data.signal)
@@ -159,6 +184,8 @@ function onSignal (code) {
 }
 
 export default {
+  addEventListener,
+  removeEventListener,
   constants,
   channel,
   strings,
