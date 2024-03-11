@@ -1487,18 +1487,20 @@ MAIN {
     .onExit = shutdownHandler
   });
 
-  std::cout << userConfig["window_trafficLightPosition"] << std::endl;
+  auto isMaximizable = getProperty("window_maximizable");
+  auto isMinimizable = getProperty("window_minimizable");
+  auto isClosable = getProperty("window_closable");
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
     .resizable = getProperty("window_resizable") == "false" ? false : true,
+    .minimizable = (isMinimizable == "" || isMinimizable == "true") ? true : false,
+    .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
+    .closable = (isClosable == "" || isClosable == "true") ? true : false,
     .frameless = getProperty("window_frameless") == "true" ? true : false,
-    .closable = getProperty("window_closable") == "true" ? true : false,
-    .minimizable = getProperty("window_minimizable") == "true" ? true : false,
-    .maximizable = getProperty("window_maximizable") == "true" ? true : false,
-    .titleBarStyle = getProperty("window_titleBarStyle"),
-    .trafficLightPosition = getProperty("mac_trafficLightPosition"),
     .utility = userConfig["window_utility"] == "true" ? true : false,
     .canExit = true,
+    .titleBarStyle = getProperty("window_titleBarStyle"),
+    .trafficLightPosition = getProperty("mac_trafficLightPosition"),
     .onExit = shutdownHandler
   });
 
