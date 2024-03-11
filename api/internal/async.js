@@ -1,42 +1,17 @@
+import AsyncContext from '../async-context.js'
+
 const NativePromisePrototype = {
   then: globalThis.Promise.prototype.then,
   catch: globalThis.Promise.prototype.catch,
   finally: globalThis.Promise.prototype.finally
 }
 
-let currentAsyncResourceId = 0
-
-export class ExecutionAsyncResource {
-  id = getNextAsyncResourceId()
-}
-
-export const topLevelExecutionAsyncResource = new ExecutionAsyncResource()
-export const asyncResourceStack = [topLevelExecutionAsyncResource]
-
-export function getNextAsyncResourceId () {
-  return ++currentAsyncResourceId
-}
-
-export function getCurrentExecutionAsyncResource () {
-  return asyncResourceStack[asyncResourceStack.length - 1]
-}
-
-export function wrap (callback) {
-  if (typeof callback !== 'function') {
-    return callback
+export function wrap (fn) {
+  if (typeof fn === 'function') {
+    return AsyncContext.Snapshot.wrap(fn)
   }
 
-  return function (...args) {
-    // snapshot
-    try {
-      asyncResourceStack.push(new ExecutionAsyncResource())
-      // eslint-disable-next-line
-      return callback(...args)
-    } finally {
-      // restore
-      asyncResourceStack.pop()
-    }
-  }
+  return fn
 }
 
 globalThis.Promise.prototype.then = function (onFulfilled, onRejected) {
@@ -51,4 +26,4 @@ globalThis.Promise.prototype.finally = function (callback) {
   return NativePromisePrototype.finally.call(this, wrap(callback))
 }
 
-export default null
+export default { wrap }
