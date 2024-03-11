@@ -23,6 +23,19 @@ export { menu }
 // get this from constant value in runtime
 export const MAX_WINDOWS = 32
 
+function serializeConfig (config) {
+  if (!config || typeof config !== 'object') {
+    return ''
+  }
+
+  const entries = []
+  for (const key in config) {
+    entries.push(`${key} = ${config[key]}`)
+  }
+
+  return entries.join('\n')
+}
+
 /**
  * Returns the current window index
  * @return {number}
@@ -107,7 +120,13 @@ export async function createWindow (opts) {
       // @ts-ignore
         ? JSON.stringify(opts.__runtime_primordial_overrides__)
         : ''
-    )
+    ),
+    // @ts-ignore
+    config: typeof opts?.config === 'string'
+      // @ts-ignore
+      ? opts.config
+      // @ts-ignore
+      : (serializeConfig(opts?.config) ?? '')
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
