@@ -158,10 +158,10 @@ static String getcwd () {
 }
 
 static void initRouterTable (Router *router) {
-  static auto userConfig = SSC::getUserConfig();
+  auto userConfig = router->bridge->userConfig;
 #if defined(__APPLE__)
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     "socket.runtime.mobile"
   #else
@@ -174,14 +174,14 @@ static void initRouterTable (Router *router) {
    * Starts a bluetooth service
    * @param serviceId
    */
-  router->map("bluetooth.start", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.start", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"serviceId"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -203,7 +203,7 @@ static void initRouterTable (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.subscribe", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.subscribe", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -213,7 +213,7 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -236,7 +236,7 @@ static void initRouterTable (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.publish", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.publish", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -246,7 +246,7 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -283,7 +283,7 @@ static void initRouterTable (Router *router) {
    * a POST/PUT body in XHR requests natively, so instead we decorate
    * `message.buffer` with already an mapped buffer.
    */
-  router->map("buffer.map", false, [](auto message, auto router, auto reply) {
+  router->map("buffer.map", false, [=](auto message, auto router, auto reply) {
     router->setMappedBuffer(message.index, message.seq, message.buffer);
     reply(Result { message.seq, message });
   });
@@ -294,7 +294,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @param signal
    */
-  router->map("child_process.kill", [](auto message, auto router, auto reply) {
+  router->map("child_process.kill", [=](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
@@ -330,7 +330,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @param args (command, ...args)
    */
-  router->map("child_process.spawn", [](auto message, auto router, auto reply) {
+  router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
@@ -385,7 +385,7 @@ static void initRouterTable (Router *router) {
    *
    * @param id
    */
-  router->map("child_process.write", [](auto message, auto router, auto reply) {
+  router->map("child_process.write", [=](auto message, auto router, auto reply) {
   #if SSC_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
@@ -419,7 +419,7 @@ static void initRouterTable (Router *router) {
    * @param family IP address family to resolve [default = 0 (AF_UNSPEC)]
    * @see getaddrinfo(3)
    */
-  router->map("dns.lookup", [](auto message, auto router, auto reply) {
+  router->map("dns.lookup", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"hostname"});
 
     if (err.type != JSON::Type::Null) {
@@ -436,7 +436,7 @@ static void initRouterTable (Router *router) {
     );
   });
 
-  router->map("extension.stats", [](auto message, auto router, auto reply) {
+  router->map("extension.stats", [=](auto message, auto router, auto reply) {
     auto extensions = Extension::all();
     auto name = message.get("name");
 
@@ -480,7 +480,7 @@ static void initRouterTable (Router *router) {
    * Query for type of extension ('shared', 'wasm32', 'unknown')
    * @param name
    */
-  router->map("extension.type", [](auto message, auto router, auto reply) {
+  router->map("extension.type", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -505,7 +505,7 @@ static void initRouterTable (Router *router) {
    * @param name
    * @param allow
    */
-  router->map("extension.load", [](auto message, auto router, auto reply) {
+  router->map("extension.load", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -586,7 +586,7 @@ static void initRouterTable (Router *router) {
    * Unload a named native extension.
    * @param name
    */
-  router->map("extension.unload", [](auto message, auto router, auto reply) {
+  router->map("extension.unload", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -650,7 +650,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see access(2)
    */
-  router->map("fs.access", [](auto message, auto router, auto reply) {
+  router->map("fs.access", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -671,7 +671,7 @@ static void initRouterTable (Router *router) {
   /**
    * Returns a mapping of file system constants.
    */
-  router->map("fs.constants", [](auto message, auto router, auto reply) {
+  router->map("fs.constants", [=](auto message, auto router, auto reply) {
     router->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
@@ -681,7 +681,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see chmod(2)
    */
-  router->map("fs.chmod", [](auto message, auto router, auto reply) {
+  router->map("fs.chmod", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -706,7 +706,7 @@ static void initRouterTable (Router *router) {
    * @param gid
    * @see chown(2)
    */
-  router->map("fs.chown", [](auto message, auto router, auto reply) {
+  router->map("fs.chown", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "uid", "gid"});
 
     if (err.type != JSON::Type::Null) {
@@ -760,7 +760,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see close(2)
    */
-  router->map("fs.close", [](auto message, auto router, auto reply) {
+  router->map("fs.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -778,7 +778,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see closedir(3)
    */
-  router->map("fs.closedir", [](auto message, auto router, auto reply) {
+  router->map("fs.closedir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -797,7 +797,7 @@ static void initRouterTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptor", [](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -821,7 +821,7 @@ static void initRouterTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptors", [](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
     router->core->fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
@@ -836,7 +836,7 @@ static void initRouterTable (Router *router) {
    * @param flags
    * @see copyfile(3)
    */
-  router->map("fs.copyFile", [](auto message, auto router, auto reply) {
+  router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest", "flags"});
 
     if (err.type != JSON::Type::Null) {
@@ -908,7 +908,7 @@ static void initRouterTable (Router *router) {
    * @see stat(2)
    * @see fstat(2)
    */
-  router->map("fs.fstat", [](auto message, auto router, auto reply) {
+  router->map("fs.fstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -926,7 +926,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see fsync(2)
    */
-  router->map("fs.fsync", [](auto message, auto router, auto reply) {
+  router->map("fs.fsync", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -949,7 +949,7 @@ static void initRouterTable (Router *router) {
    * @param offset
    * @see ftruncate(2)
    */
-  router->map("fs.ftruncate", [](auto message, auto router, auto reply) {
+  router->map("fs.ftruncate", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -973,7 +973,7 @@ static void initRouterTable (Router *router) {
   /**
    * Returns all open file or directory descriptors.
    */
-  router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
+  router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
     router->core->fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -986,7 +986,7 @@ static void initRouterTable (Router *router) {
    * @see stat(2)
    * @see lstat(2)
    */
-  router->map("fs.lstat", [](auto message, auto router, auto reply) {
+  router->map("fs.lstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1007,7 +1007,7 @@ static void initRouterTable (Router *router) {
    * @param recursive
    * @see mkdir(2)
    */
-  router->map("fs.mkdir", [](auto message, auto router, auto reply) {
+  router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -1035,7 +1035,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see open(2)
    */
-  router->map("fs.open", [](auto message, auto router, auto reply) {
+  router->map("fs.open", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "path",
@@ -1070,7 +1070,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see opendir(3)
    */
-  router->map("fs.opendir", [](auto message, auto router, auto reply) {
+  router->map("fs.opendir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1095,7 +1095,7 @@ static void initRouterTable (Router *router) {
    * @param offset
    * @see read(2)
    */
-  router->map("fs.read", [](auto message, auto router, auto reply) {
+  router->map("fs.read", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "size", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -1123,7 +1123,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @param entries (default: 256)
    */
-  router->map("fs.readdir", [](auto message, auto router, auto reply) {
+  router->map("fs.readdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1185,7 +1185,7 @@ static void initRouterTable (Router *router) {
    * Marks a file or directory descriptor as retained.
    * @param id
    */
-  router->map("fs.retainOpenDescriptor", [](auto message, auto router, auto reply) {
+  router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1208,7 +1208,7 @@ static void initRouterTable (Router *router) {
    * @param dest
    * @see rename(2)
    */
-  router->map("fs.rename", [](auto message, auto router, auto reply) {
+  router->map("fs.rename", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -1228,7 +1228,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see rmdir(2)
    */
-  router->map("fs.rmdir", [](auto message, auto router, auto reply) {
+  router->map("fs.rmdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1247,7 +1247,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see stat(2)
    */
-  router->map("fs.stat", [](auto message, auto router, auto reply) {
+  router->map("fs.stat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1264,7 +1264,7 @@ static void initRouterTable (Router *router) {
   /**
    * Stops a already started watcher
    */
-  router->map("fs.stopWatch", [](auto message, auto router, auto reply) {
+  router->map("fs.stopWatch", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1287,7 +1287,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see unlink(2)
    */
-  router->map("fs.unlink", [](auto message, auto router, auto reply) {
+  router->map("fs.unlink", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1304,7 +1304,7 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
-  router->map("fs.watch", [](auto message, auto router, auto reply) {
+  router->map("fs.watch", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1329,7 +1329,7 @@ static void initRouterTable (Router *router) {
    * @param offset The offset to start writing at
    * @see write(2)
    */
-  router->map("fs.write", [](auto message, auto router, auto reply) {
+  router->map("fs.write", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -1358,7 +1358,7 @@ static void initRouterTable (Router *router) {
   });
 
 #if defined(__APPLE__)
-  router->map("geolocation.getCurrentPosition", [](auto message, auto router, auto reply) {
+  router->map("geolocation.getCurrentPosition", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1401,7 +1401,7 @@ static void initRouterTable (Router *router) {
     }
   });
 
-  router->map("geolocation.watchPosition", [](auto message, auto router, auto reply) {
+  router->map("geolocation.watchPosition", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1464,7 +1464,7 @@ static void initRouterTable (Router *router) {
     reply(Result { message.seq, message, json });
   });
 
-  router->map("geolocation.clearWatch", [](auto message, auto router, auto reply) {
+  router->map("geolocation.clearWatch", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1491,7 +1491,7 @@ static void initRouterTable (Router *router) {
    * This is only useful on platforms that need to set this value from an
    * external source, like Android or ChromeOS.
    */
-  router->map("internal.setcwd", [](auto message, auto router, auto reply) {
+  router->map("internal.setcwd", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -1506,7 +1506,7 @@ static void initRouterTable (Router *router) {
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
-  router->map("log", [](auto message, auto router, auto reply) {
+  router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
     NSLog(@"%s", value);
@@ -1519,7 +1519,7 @@ static void initRouterTable (Router *router) {
   });
 
 #if defined(__APPLE__)
-  router->map("notification.show", [](auto message, auto router, auto reply) {
+  router->map("notification.show", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "title"
@@ -1735,7 +1735,7 @@ static void initRouterTable (Router *router) {
     }];
   });
 
-  router->map("notification.close", [](auto message, auto router, auto reply) {
+  router->map("notification.close", [=](auto message, auto router, auto reply) {
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     auto err = validateMessageParameters(message, { "id" });
 
@@ -1766,7 +1766,7 @@ static void initRouterTable (Router *router) {
     }
   });
 
-  router->map("notification.list", [](auto message, auto router, auto reply) {
+  router->map("notification.list", [=](auto message, auto router, auto reply) {
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     [notificationCenter getDeliveredNotificationsWithCompletionHandler: ^(NSArray<UNNotification*> *notifications) {
       JSON::Array::Entries entries;
@@ -1798,7 +1798,7 @@ static void initRouterTable (Router *router) {
    * @param size If given, the size to set in the buffer [default = 0]
    * @param buffer The buffer to read/modify (SEND_BUFFER, RECV_BUFFER) [default = 0 (SEND_BUFFER)]
    */
-  router->map("os.bufferSize", [](auto message, auto router, auto reply) {
+  router->map("os.bufferSize", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1824,47 +1824,46 @@ static void initRouterTable (Router *router) {
   /**
    * Returns a mapping of operating  system constants.
    */
-  router->map("os.constants", [](auto message, auto router, auto reply) {
+  router->map("os.constants", [=](auto message, auto router, auto reply) {
     router->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns a mapping of network interfaces.
    */
-  router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
+  router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
     router->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
-  router->map("os.cpus", [](auto message, auto router, auto reply) {
+  router->map("os.cpus", [=](auto message, auto router, auto reply) {
     router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.rusage", [](auto message, auto router, auto reply) {
+  router->map("os.rusage", [=](auto message, auto router, auto reply) {
     router->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uptime", [](auto message, auto router, auto reply) {
+  router->map("os.uptime", [=](auto message, auto router, auto reply) {
     router->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uname", [](auto message, auto router, auto reply) {
+  router->map("os.uname", [=](auto message, auto router, auto reply) {
     router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.hrtime", [](auto message, auto router, auto reply) {
+  router->map("os.hrtime", [=](auto message, auto router, auto reply) {
     router->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.availableMemory", [](auto message, auto router, auto reply) {
+  router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.paths", [](auto message, auto router, auto reply) {
-    static auto userConfig = SSC::getUserConfig();
-    static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  router->map("os.paths", [=](auto message, auto router, auto reply) {
+    const auto bundleIdentifier = router->bridge->userConfig["meta_bundle_identifier"];
 
     JSON::Object json;
 
@@ -2006,7 +2005,7 @@ static void initRouterTable (Router *router) {
     return reply(Result::Data { message, json });
   });
 
-  router->map("permissions.query", [](auto message, auto router, auto reply) {
+  router->map("permissions.query", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -2061,8 +2060,8 @@ static void initRouterTable (Router *router) {
   #endif
   });
 
-  router->map("permissions.request", [](auto message, auto router, auto reply) {
-    static auto userConfig = SSC::getUserConfig();
+  router->map("permissions.request", [=](auto message, auto router, auto reply) {
+    __block auto userConfig = router->bridge->userConfig;
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -2179,7 +2178,7 @@ static void initRouterTable (Router *router) {
   /**
    * Simply returns `pong`.
    */
-  router->map("ping", [](auto message, auto router, auto reply) {
+  router->map("ping", [=](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = "pong";
     reply(result);
@@ -2190,7 +2189,7 @@ static void initRouterTable (Router *router) {
    * @param value The event name [domcontentloaded]
    * @param data Optional data associated with the platform event.
    */
-  router->map("platform.event", [](auto message, auto router, auto reply) {
+  router->map("platform.event", [=](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
     const auto frameType = message.get("runtime-frame-type");
     const auto frameSource = message.get("runtime-frame-source");
@@ -2201,7 +2200,7 @@ static void initRouterTable (Router *router) {
 
     if (frameType == "top-level" && frameSource != "serviceworker") {
       if (router->bridge == router->core->serviceWorker.bridge) {
-        if (userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
+        if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
           if (message.value == "beforeruntimeinit") {
             router->core->serviceWorker.reset();
             router->core->serviceWorker.isReady = false;
@@ -2225,7 +2224,7 @@ static void initRouterTable (Router *router) {
    * @param title
    * @param body
    */
-  router->map("platform.notify", [](auto message, auto router, auto reply) {
+  router->map("platform.notify", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"body", "title"});
 
     if (err.type != JSON::Type::Null) {
@@ -2241,7 +2240,7 @@ static void initRouterTable (Router *router) {
   });
 
 
-  router->map("platform.revealFile", [](auto message, auto router, auto reply) mutable {
+  router->map("platform.revealFile", [=](auto message, auto router, auto reply) mutable {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2259,8 +2258,8 @@ static void initRouterTable (Router *router) {
    * Requests a URL to be opened externally.
    * @param value
    */
-  router->map("platform.openExternal", [](auto message, auto router, auto reply) mutable {
-    static const auto applicationProtocol = userConfig["meta_application_protocol"];
+  router->map("platform.openExternal", [=](auto message, auto router, auto reply) mutable {
+    const auto applicationProtocol = router->bridge->userConfig["meta_application_protocol"];
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2293,7 +2292,7 @@ static void initRouterTable (Router *router) {
   /**
    * Return Socket Runtime primordials.
    */
-  router->map("platform.primordials", [](auto message, auto router, auto reply) {
+  router->map("platform.primordials", [=](auto message, auto router, auto reply) {
     std::regex platform_pattern("^mac$", std::regex_constants::icase);
     auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
@@ -2341,7 +2340,7 @@ static void initRouterTable (Router *router) {
    * `ipc://post` IPC call intercepted by an XHR request.
    * @param id The id of the post data.
    */
-  router->map("post", [](auto message, auto router, auto reply) {
+  router->map("post", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2368,7 +2367,7 @@ static void initRouterTable (Router *router) {
    * Prints incoming message value to stdout.
    * @param value
    */
-  router->map("stdout", [](auto message, auto router, auto reply) {
+  router->map("stdout", [=](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
@@ -2380,7 +2379,7 @@ static void initRouterTable (Router *router) {
    * Prints incoming message value to stderr.
    * @param value
    */
-  router->map("stderr", [](auto message, auto router, auto reply) {
+  router->map("stderr", [=](auto message, auto router, auto reply) {
     if (message.get("debug") == "true") {
       if (message.value.size() > 0) {
         debug("%s", message.value.c_str());
@@ -2400,7 +2399,7 @@ static void initRouterTable (Router *router) {
    * @param scriptURL
    * @param scope
    */
-  router->map("serviceWorker.register", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.register", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scriptURL", "scope"});
 
     if (err.type != JSON::Type::Null) {
@@ -2426,7 +2425,7 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
-  router->map("serviceWorker.reset", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
     router->core->serviceWorker.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2435,7 +2434,7 @@ static void initRouterTable (Router *router) {
    * TODO
    * @param scope
    */
-  router->map("serviceWorker.unregister", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.unregister", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scope"});
 
     if (err.type != JSON::Type::Null) {
@@ -2452,7 +2451,7 @@ static void initRouterTable (Router *router) {
    * TODO
    * @param scope
    */
-  router->map("serviceWorker.getRegistration", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.getRegistration", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scope"});
 
     if (err.type != JSON::Type::Null) {
@@ -2483,7 +2482,7 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
-  router->map("serviceWorker.getRegistrations", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     auto json = JSON::Array::Entries {};
     for (const auto& entry : router->core->serviceWorker.registrations) {
       const auto& registration = entry.second;
@@ -2496,7 +2495,7 @@ static void initRouterTable (Router *router) {
    * TODO
    * @param id
    */
-  router->map("serviceWorker.skipWaiting", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.skipWaiting", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2516,7 +2515,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @param state
    */
-  router->map("serviceWorker.updateState", [](auto message, auto router, auto reply) {
+  router->map("serviceWorker.updateState", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "state"});
 
     if (err.type != JSON::Type::Null) {
@@ -2538,7 +2537,7 @@ static void initRouterTable (Router *router) {
    * @param address The address to bind the UDP socket to (default: 0.0.0.0)
    * @param reuseAddr Reuse underlying UDP socket address (default: false)
    */
-  router->map("udp.bind", [](auto message, auto router, auto reply) {
+  router->map("udp.bind", [=](auto message, auto router, auto reply) {
     Core::UDP::BindOptions options;
     auto err = validateMessageParameters(message, {"id", "port"});
 
@@ -2565,7 +2564,7 @@ static void initRouterTable (Router *router) {
    * Close socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.close", [](auto message, auto router, auto reply) {
+  router->map("udp.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2585,7 +2584,7 @@ static void initRouterTable (Router *router) {
    * @param port Port to connect the UDP socket to
    * @param address The address to connect the UDP socket to (default: 0.0.0.0)
    */
-  router->map("udp.connect", [](auto message, auto router, auto reply) {
+  router->map("udp.connect", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -2611,7 +2610,7 @@ static void initRouterTable (Router *router) {
    * Disconnects a connected socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.disconnect", [](auto message, auto router, auto reply) {
+  router->map("udp.disconnect", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2632,7 +2631,7 @@ static void initRouterTable (Router *router) {
    * Returns connected peer socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getPeerName", [](auto message, auto router, auto reply) {
+  router->map("udp.getPeerName", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2653,7 +2652,7 @@ static void initRouterTable (Router *router) {
    * Returns local socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getSockName", [](auto message, auto router, auto reply) {
+  router->map("udp.getSockName", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2674,7 +2673,7 @@ static void initRouterTable (Router *router) {
    * Returns socket state information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getState", [](auto message, auto router, auto reply) {
+  router->map("udp.getState", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2696,7 +2695,7 @@ static void initRouterTable (Router *router) {
    * socket and route through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStart", [](auto message, auto router, auto reply) {
+  router->map("udp.readStart", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2720,7 +2719,7 @@ static void initRouterTable (Router *router) {
    * socket and routing through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStop", [](auto message, auto router, auto reply) {
+  router->map("udp.readStop", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2749,7 +2748,7 @@ static void initRouterTable (Router *router) {
    * @param address The address to send to (default: 0.0.0.0)
    * @param ephemeral Indicates that the socket handle, if created is ephemeral and should eventually be destroyed
    */
-  router->map("udp.send", [](auto message, auto router, auto reply) {
+  router->map("udp.send", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -2774,7 +2773,7 @@ static void initRouterTable (Router *router) {
     );
   });
 
-  router->map("window.showFileSystemPicker", [](auto message, auto router, auto reply) {
+  router->map("window.showFileSystemPicker", [=](auto message, auto router, auto reply) {
     const auto allowMultiple = message.get("allowMultiple") == "true";
     const auto allowFiles = message.get("allowFiles") == "true";
     const auto allowDirs = message.get("allowDirs") == "true";
@@ -2830,8 +2829,8 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  auto userConfig = router->bridge->userConfig;
+  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
 #if defined(__linux__) && !defined(__ANDROID__)
   auto ctx = router->webkitWebContext;
@@ -2915,7 +2914,8 @@ static void registerSchemeHandler (Router *router) {
   0);
 
   webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
-    static auto userConfig = SSC::getUserConfig();
+    auto router = reinterpret_cast<IPC::Router*>(ptr);
+    auto userConfig = router->bridge->userConfig;
     bool isModule = false;
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
@@ -3166,9 +3166,9 @@ static void registerSchemeHandler (Router *router) {
 }
 
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto fileManager = [[NSFileManager alloc] init];
+  auto userConfig = self.router->bridge->userConfig;
+  const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
   const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
   const auto request = task.request;
@@ -3426,13 +3426,19 @@ static void registerSchemeHandler (Router *router) {
               }
             }
 
-            const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) {
+            const auto requestURL = String(request.URL.absoluteString.UTF8String);
+            [self enqueueTask: task withMessage: message];
+            const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
               if (![self waitingForTask: task]) {
                 return;
               }
 
               if (res.statusCode == 0) {
-                [task didFinish];
+                @try {
+                  [task didFinish];
+                } @catch (id e) {
+                  // ignore possible 'NSInternalInconsistencyException'
+                }
                 return;
               }
 
@@ -3453,35 +3459,58 @@ static void registerSchemeHandler (Router *router) {
                 headers[key] = value;
               }
 
-              const auto response = [[NSHTTPURLResponse alloc]
-                 initWithURL: request.URL
+              @try {
+                if (![self waitingForTask: task]) {
+                  return;
+                }
+
+                const auto response = [[NSHTTPURLResponse alloc]
+                  initWithURL: [NSURL URLWithString: @(requestURL.c_str())]
                   statusCode: res.statusCode
-                 HTTPVersion: @"HTTP/1.1"
-                headerFields: headers
-              ];
+                  HTTPVersion: @"HTTP/1.1"
+                  headerFields: headers
+                ];
 
-              [task didReceiveResponse: response];
+                if (![self waitingForTask: task]) {
+                #if !__has_feature(objc_arc)
+                  [response release];
+                #endif
+                  return;
+                }
 
-              const auto data = [NSData
-                dataWithBytes: res.buffer.bytes
-                       length: res.buffer.size
-              ];
+                [task didReceiveResponse: response];
 
-              if (res.buffer.size && data.length > 0) {
-                [task didReceiveData: data];
+                if (![self waitingForTask: task]) {
+                #if !__has_feature(objc_arc)
+                  [response release];
+                #endif
+                  return;
+                }
+
+                const auto data = [NSData
+                  dataWithBytes: res.buffer.bytes
+                         length: res.buffer.size
+                ];
+
+                if (res.buffer.size && data.length > 0) {
+                  [task didReceiveData: data];
+                }
+
+                [task didFinish];
+                [self finalizeTask: task];
+              #if !__has_feature(objc_arc)
+                [response release];
+              #endif
+              } @catch (id e) {
+                // ignore possible 'NSInternalInconsistencyException'
               }
-
-              [task didFinish];
-
-            #if !__has_feature(objc_arc)
-              [response release];
-            #endif
             });
 
             if (fetched) {
-              [self enqueueTask: task withMessage: message];
               return;
             }
+
+            [self finalizeTask: task];
           }
 
           auto response = [[NSHTTPURLResponse alloc]
@@ -3838,6 +3867,9 @@ static void registerSchemeHandler (Router *router) {
         }
 
         if (finished) {
+          if (![self waitingForTask: task]) {
+            return false;
+          }
           [task didFinish];
           [self finalizeTask: task];
         }
@@ -3857,9 +3889,12 @@ static void registerSchemeHandler (Router *router) {
           return false;
         }
 
-        [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
+        [task didReceiveData: [NSData dataWithBytes:chunk length:chunk_size]];
 
         if (finished) {
+          if (![self waitingForTask: task]) {
+            return false;
+          }
           [task didFinish];
           [self finalizeTask: task];
         }
@@ -3883,23 +3918,50 @@ static void registerSchemeHandler (Router *router) {
       data = [NSData dataWithBytes: body length: size];
     }
 
-    auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: headers
-    ];
+    @try {
+      if (![self waitingForTask: task]) {
+        return;
+      }
 
-    [task didReceiveResponse: response];
-    if (data != nullptr) {
-      [task didReceiveData: data];
-      [task didFinish];
-      [self finalizeTask: task];
+      auto response = [[NSHTTPURLResponse alloc]
+        initWithURL: task.request.URL
+         statusCode: 200
+        HTTPVersion: @"HTTP/1.1"
+       headerFields: headers
+      ];
+
+      if (![self waitingForTask: task]) {
+      #if !__has_feature(objc_arc)
+        [response release];
+      #endif
+        return;
+      }
+
+      [task didReceiveResponse: response];
+
+      if (data != nullptr) {
+        if (![self waitingForTask: task]) {
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+        [task didReceiveData: data];
+        if (![self waitingForTask: task]) {
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+        [task didFinish];
+        [self finalizeTask: task];
+      }
+
+    #if !__has_feature(objc_arc)
+      [response release];
+    #endif
+    } @catch (::id e) {
     }
-
-  #if !__has_feature(objc_arc)
-    [response release];
-  #endif
   });
 
   if (!invoked) {
@@ -4020,7 +4082,7 @@ static void registerSchemeHandler (Router *router) {
 
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion {
   return [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.router->bridge->userConfig;
     if (!isAuthorized) {
       auto reason = @("Location observer could not be activated");
 
@@ -4074,7 +4136,7 @@ static void registerSchemeHandler (Router *router) {
   }
 
   auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.router->bridge->userConfig;
     if (!isAuthorized) {
       auto error = [NSError
         errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
@@ -4324,13 +4386,13 @@ static void registerSchemeHandler (Router *router) {
 #endif
 
 namespace SSC::IPC {
-  Bridge::Bridge (Core *core) : router() {
-    static auto userConfig = SSC::getUserConfig();
-
+  Bridge::Bridge (Core *core, Map userConfig)
+    : userConfig(userConfig),
+      router()
+  {
     this->id = rand64();
     this->core = core;
     this->router.core = core;
-    this->router.bridge = this;
 
     this->bluetooth.sendFunction = [this](
       const String& seq,
@@ -4348,7 +4410,7 @@ namespace SSC::IPC {
     };
 
   #if !SSC_PLATFORM_IOS
-    if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
+    if (isDebugEnabled() && this->userConfig["webview_watch"] == "true") {
       this->fileSystemWatcher = new FileSystemWatcher(getcwd());
       this->fileSystemWatcher->core = this->core;
       this->fileSystemWatcher->start([=, this](
@@ -4365,6 +4427,8 @@ namespace SSC::IPC {
       });
     }
   #endif
+
+    this->router.init(this);
   }
 
   Bridge::~Bridge () {
@@ -4636,8 +4700,10 @@ namespace SSC::IPC {
     return WebViewNavigatorMount {};
   }
 
-  Router::Router () {
-    static auto userConfig = SSC::getUserConfig();
+  Router::Router () {}
+
+  void Router::init (Bridge* bridge) {
+    this->bridge = bridge;
 
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
@@ -4660,7 +4726,7 @@ namespace SSC::IPC {
   #if defined(__APPLE__)
     [this->networkStatusObserver start];
 
-    if (userConfig["permissions_allow_notifications"] != "false") {
+    if (bridge->userConfig["permissions_allow_notifications"] != "false") {
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
       if (!notificationCenter.delegate) {
@@ -4750,7 +4816,7 @@ namespace SSC::IPC {
     Lock lock(mutex);
 
     if (!this->listeners.contains(name)) {
-      this->listeners[name] = std::vector<MessageCallbackListenerContext>();
+      this->listeners[name] = Vector<MessageCallbackListenerContext>();
     }
 
     auto& listeners = this->listeners.at(name);

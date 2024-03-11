@@ -288,6 +288,8 @@ namespace SSC::IPC {
       Router (const Router &) = delete;
       ~Router ();
 
+      void init (Bridge* bridge);
+
       MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
       bool hasMappedBuffer (int index, const Message::Seq seq);
       void removeMappedBuffer (int index, const Message::Seq seq);
@@ -325,6 +327,7 @@ namespace SSC::IPC {
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
+      Map userConfig = getUserConfig();
       String preload = "";
       uint64_t id = 0;
     #if !SSC_PLATFORM_IOS
@@ -335,7 +338,7 @@ namespace SSC::IPC {
       bool isAndroidEmulator = false;
     #endif
 
-      Bridge (Core *core);
+      Bridge (Core *core, Map userConfig = getUserConfig());
       ~Bridge ();
       bool route (const String& msg, const char *bytes, size_t size);
       bool route (
