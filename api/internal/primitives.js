@@ -4,6 +4,7 @@ import { URL, URLPattern, URLSearchParams } from '../url.js'
 import { ReadableStream } from './streams.js'
 import { ServiceWorker } from '../service-worker/instance.js'
 import serviceWorker from './service-worker.js'
+import AsyncContext from '../async-context.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
@@ -223,6 +224,9 @@ export function init () {
 
     // streams
     ReadableStream,
+
+    // async
+    AsyncContext,
 
     // platform detection
     isSocketRuntime: true
