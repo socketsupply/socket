@@ -439,7 +439,7 @@ export class ServiceWorkerContainer extends EventTarget {
       return // registration likely never completed
     }
 
-    if (url.pathname.startsWith(options.scope)) {
+    if (info?.registration && url.pathname.startsWith(options.scope)) {
       state.serviceWorker.state = info.registration.state.replace('registered', 'installing')
       state.serviceWorker.scriptURL = info.registration.scriptURL
 
