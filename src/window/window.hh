@@ -482,6 +482,7 @@ namespace SSC {
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
         this->options.cwd = configuration.cwd;
+        this->options.userConfig = getUserConfig();
       }
 
       void inline log (const String line) {
