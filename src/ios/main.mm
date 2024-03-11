@@ -320,7 +320,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     .isTest = userConfig["ssc_argv"].find("--test") != -1,
     .argv = join(argv, ","),
     .env = env.str(),
-    .appData = userConfig
+    .userConfig = userConfig
   };
 
   opts.clientId = bridge->id;
