@@ -757,6 +757,8 @@ namespace SSC {
 
           const ID setTimeout (uint64_t timeout, const Callback callback);
           bool clearTimeout (const ID id);
+          const ID setImmediate (const Callback callback);
+          bool clearImmediate (const ID id);
           const ID setInterval (uint64_t interval, const Callback callback);
           bool clearInterval (const ID id);
       };
@@ -897,6 +899,12 @@ namespace SSC {
       void initTimers ();
       void startTimers ();
       void stopTimers ();
+      const Timers::ID setTimeout (uint64_t timeout, const Timers::Callback callback);
+      const Timers::ID setImmediate (const Timers::Callback callback);
+      const Timers::ID setInterval (uint64_t interval, const Timers::Callback callback);
+      bool clearTimeout (const Timers::ID id);
+      bool clearImmediate (const Timers::ID id);
+      bool clearInterval (const Timers::ID id);
 
       // loop
       uv_loop_t* getEventLoop ();
