@@ -878,6 +878,11 @@ namespace SSC {
     );
 
     opts.clientId = this->bridge->id;
+
+    this->bridge->userConfig = opts.userConfig.size() > 0
+      ? opts.userConfig
+      : getUserConfig();
+
     this->bridge->preload = createPreload(opts, {
       .module = true,
       .wrap = true,
@@ -1140,7 +1145,7 @@ namespace SSC {
     GtkContainer *content = GTK_CONTAINER(body);
 
     String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      app.appData["build_name"] +
+      app.userConfig["build_name"] +
       ".png";
 
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
@@ -1157,7 +1162,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.appData["build_name"] + " v" + app.appData["meta_version"]);
+    String title_value(app.userConfig["build_name"] + " v" + app.userConfig["meta_version"]);
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
     GtkWidget *label_title = gtk_label_new("");
@@ -1169,7 +1174,7 @@ namespace SSC {
     gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["meta_copyright"].c_str());
+    gtk_label_set_markup(GTK_LABEL(label_copyright), app.userConfig["meta_copyright"].c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(

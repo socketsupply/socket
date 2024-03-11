@@ -682,6 +682,12 @@ namespace SSC {
     this->drop = new DragDrop(this);
 
     this->bridge = new IPC::Bridge(app.core);
+    this->bridge->userConfig = opts.userConfig.size() > 0
+      ? opts.userConfig
+      : getUserConfig();
+
+    opts.clientId = this->bridge->id;
+
     this->hotkey.init(this->bridge);
 
     if (this->opts.aspectRatio.size() > 0) {
@@ -725,7 +731,7 @@ namespace SSC {
 
     if (EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)) {
       usingCustomEdgeRuntimeDirectory = true;
-      opts.appData["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
+      opts.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
       debug("Using Edge Runtime Directory: %ls", EDGE_RUNTIME_DIRECTORY.c_str());
     } else {
       EDGE_RUNTIME_DIRECTORY = L"";
@@ -1335,14 +1341,14 @@ namespace SSC {
                     &tokenNewWindow
                   );
 
-                  // TODO(@jwerle): inject this into webview
-                  WindowOptions options = opts;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
-                  options.appData["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
-                  options.clientId = this->bridge->id;
-                  auto preload = createPreload(options, {
+                  this->bridge->userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
+                  this->bridge->preload = createPreload(opts, {
+                    .module = true,
+                    .wrap = true,
                     .userScript = opts.userScript
                   });
+
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires
                     // Consider using w->preloadJavascript, but apps work without this
@@ -1527,10 +1533,10 @@ namespace SSC {
 
   void Window::about () {
     auto text = SSC::String(
-      app.appData["build_name"] + " " +
-      "v" + app.appData["meta_version"] + "\n" +
+      app.userConfig["build_name"] + " " +
+      "v" + app.userConfig["meta_version"] + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
-      app.appData["meta_copyright"]
+      app.userConfig["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
@@ -1538,7 +1544,7 @@ namespace SSC {
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.appData["build_name"].c_str();
+    mbp.lpszCaption = app.userConfig["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;

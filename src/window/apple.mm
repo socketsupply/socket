@@ -20,7 +20,10 @@
                     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler
 {
   if (
+    webview != nullptr &&
+    webview.URL != nullptr &&
     webview.URL.absoluteString.UTF8String != nullptr &&
+    navigationAction != nullptr &&
     navigationAction.request.URL.absoluteString.UTF8String != nullptr
   ) {
     static auto userConfig = SSC::getUserConfig();
@@ -1023,6 +1026,10 @@ namespace SSC {
     WKUserContentController* controller = config.userContentController;
 
     opts.clientId = this->bridge->id;
+
+    this->bridge->userConfig = opts.userConfig.size() > 0
+      ? opts.userConfig
+      : getUserConfig();
 
     this->bridge->preload = createPreload(opts, {
       .module = true,
