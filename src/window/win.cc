@@ -681,11 +681,7 @@ namespace SSC {
 
     this->drop = new DragDrop(this);
 
-    this->bridge = new IPC::Bridge(app.core);
-    this->bridge->userConfig = opts.userConfig.size() > 0
-      ? opts.userConfig
-      : getUserConfig();
-
+    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
     opts.clientId = this->bridge->id;
 
     this->hotkey.init(this->bridge);

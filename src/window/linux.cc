@@ -62,7 +62,7 @@ namespace SSC {
     }
 
     this->index = this->opts.index;
-    this->bridge = new IPC::Bridge(app.core);
+    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
 
     this->hotkey.init(this->bridge);
 
