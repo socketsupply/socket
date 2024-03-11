@@ -176,6 +176,7 @@ namespace SSC {
     #if !SSC_PLATFORM_ANDROID
       const auto extname = Path(request.pathname).extension().string();
       if (
+        statusCode < 400 &&
         (message.buffer.bytes != nullptr && message.buffer.size > 0) &&
         (extname.ends_with("html") || contentType == "text/html")
       ) {
