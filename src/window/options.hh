@@ -2,6 +2,7 @@
 #define SSC_WINDOW_OPTIONS_H
 
 #include "../core/types.hh"
+#include "../core/config.hh"
 
 namespace SSC {
   struct WindowOptions {
@@ -34,7 +35,7 @@ namespace SSC {
     String argv = "";
     String preload = "";
     String env;
-    Map appData;
+    Map userConfig = getUserConfig();
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
     uint64_t clientId = 0;

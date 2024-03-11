@@ -307,7 +307,7 @@ namespace SSC {
     bool canExit = false;
     String argv = "";
     String cwd = "";
-    Map appData;
+    Map userConfig;
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
   };
@@ -475,7 +475,7 @@ namespace SSC {
         this->options.defaultMaxWidth = configuration.defaultMaxWidth;
         this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
-        this->options.appData = configuration.appData;
+        this->options.userConfig = configuration.userConfig;
         this->options.onExit = configuration.onExit;
         this->options.aspectRatio = configuration.aspectRatio;
         this->options.headless = configuration.headless;
@@ -584,8 +584,8 @@ namespace SSC {
           return windows[opts.index];
         }
 
-        if (opts.appData.size() > 0) {
-          for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
+        if (opts.userConfig.size() > 0) {
+          for (auto const &envKey : parseStringList(opts.userConfig["build_env"])) {
             auto cleanKey = trim(envKey);
 
             if (!Env::has(cleanKey)) {
@@ -599,7 +599,7 @@ namespace SSC {
             );
           }
         } else {
-          for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
+          for (auto const &envKey : parseStringList(this->options.userConfig["build_env"])) {
             auto cleanKey = trim(envKey);
 
             if (!Env::has(cleanKey)) {
@@ -654,7 +654,7 @@ namespace SSC {
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
-          .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
+          .headless = this->options.headless || opts.headless || opts.userConfig["build_headless"] == "true",
           .aspectRatio = opts.aspectRatio,
           .titleBarStyle = opts.titleBarStyle,
           .trafficLightPosition = opts.trafficLightPosition,
@@ -664,10 +664,14 @@ namespace SSC {
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
-          .appData = this->options.appData,
+          .userConfig = this->options.userConfig,
           .userScript = opts.userScript,
           .runtimePrimordialOverrides = opts.runtimePrimordialOverrides
         };
+
+        for (const auto& tuple : opts.userConfig) {
+          windowOptions.userConfig[tuple.first] = tuple.second;
+        }
 
         if (isDebugEnabled()) {
           this->log("Creating Window#" + std::to_string(opts.index));
@@ -702,7 +706,7 @@ namespace SSC {
         #endif
           .titleBarStyle = opts.titleBarStyle,
           .trafficLightPosition = opts.trafficLightPosition,
-          .appData = opts.appData,
+          .userConfig = opts.userConfig
         });
       }
 

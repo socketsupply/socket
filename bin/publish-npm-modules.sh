@@ -111,7 +111,7 @@ declare android_abis=()
 
 
 if (( !only_platforms || only_top_level )); then
-  npm run gen
+  : #npm run gen
 elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
   echo "warn - Android not supported on $platform-"$(uname -m)""
 else
@@ -148,7 +148,13 @@ if (( !only_platforms || only_top_level )); then
   cp -rf "$root/npm/bin/ssc.js" "$SOCKET_HOME/packages/$package/bin/ssc.js"
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
-  cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  if (( do_global_link )); then
+    for file in $(ls "$root/api"); do
+      ln -sf "$root/api/$file" "$SOCKET_HOME/packages/$package/$file"
+    done
+  else
+    cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  fi
   rm "$SOCKET_HOME/packages/$package/global.d.ts"
 fi
 
