@@ -26,7 +26,7 @@
     navigationAction != nullptr &&
     navigationAction.request.URL.absoluteString.UTF8String != nullptr
   ) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.bridge->userConfig;
     static const auto devHost = SSC::getDevHost();
     static const auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
 
@@ -610,7 +610,6 @@ int lastY = 0;
 #endif
 
 #if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
-
 -                                      (void) webView: (WKWebView*) webView
  requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
                                      initiatedByFrame: (WKFrameInfo*) frame
@@ -799,10 +798,10 @@ namespace SSC {
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
 
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = opts.userConfig;
 
     this->index = opts.index;
-    this->bridge = new IPC::Bridge(app.core);
+    this->bridge = new IPC::Bridge(app.core, userConfig);
     this->hotkey.init(this->bridge);
 
     this->bridge->router.dispatchFunction = [this] (auto callback) {
