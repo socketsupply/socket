@@ -51,7 +51,7 @@ namespace SSC::android {
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();
-    options.appData = this->config;
+    options.userConfig = this->config;
     options.argv = join(argv, ",");
     options.isTest = this->config["ssc_argv"].find("--test") != -1;
     options.clientId = this->bridge->id;
