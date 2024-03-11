@@ -688,6 +688,9 @@ namespace SSC {
       ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
           .resizable = opts.resizable,
+          .minimizable = opts.minimizable,
+          .maximizable = opts.maximizable,
+          .closable = opts.closable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = true,

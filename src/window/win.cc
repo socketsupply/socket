@@ -621,6 +621,7 @@ namespace SSC {
   {
     static auto userConfig = SSC::getUserConfig();
     const bool isAgent = userConfig["application_agent"] == "true" && opts.index == 0;
+
     app.isReady = false;
 
     this->index = opts.index;
@@ -640,13 +641,31 @@ namespace SSC {
         NULL
       );
     } else {
+      DWORD style = WS_THICKFRAME;
+
+      if (!opts.frameless) {
+        style |= WS_OVERLAPPED;
+
+        if (opts.titleBarStyle == "hidden" || opts.titleBarStyle == "hiddenInset") {
+          // Windows does not have the ability to reposition the decorations
+          // In this case, we can assume that the user will draw their own controls.
+        } else if (opts.closable) {
+          style |= WS_CAPTION | WS_SYSMENU;
+
+          if (opts.minimizable) style |= WS_MINIMIZEBOX;
+          if (opts.maximizable) style |= WS_MAXIMIZEBOX;
+        }
+      } else {
+        style |= WS_POPUP;
+      }
+
       window = CreateWindowEx(
         opts.headless
           ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
           : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
         userConfig["meta_bundle_identifier"].c_str(),
         userConfig["meta_title"].c_str(),
-        WS_OVERLAPPEDWINDOW,
+        style,
         100000,
         100000,
         opts.width,
@@ -2070,6 +2089,7 @@ namespace SSC {
       }
 
       case WM_CLOSE: {
+        if (!w->opts.closable) break;
         w->close(0);
         break;
       }
