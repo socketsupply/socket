@@ -9,7 +9,6 @@ namespace SSC {
     const WindowOptions opts,
     const PreloadOptions preloadOptions
   ) {
-    static auto userConfig = SSC::getUserConfig();
     auto argv = opts.argv;
   #ifdef _WIN32
     // Escape backslashes in paths.
@@ -134,10 +133,10 @@ namespace SSC {
         "  }, { once: true });                                               \n"
     );
 
-    if (opts.appData.contains("webview_watch") && opts.appData.at("webview_watch") == "true") {
+    if (opts.userConfig.contains("webview_watch") && opts.userConfig.at("webview_watch") == "true") {
       if (
-        !opts.appData.contains("webview_watch_reload") ||
-        opts.appData.at("webview_watch_reload") != "false"
+        !opts.userConfig.contains("webview_watch_reload") ||
+        opts.userConfig.at("webview_watch_reload") != "false"
       ) {
           preload += (
             "  globalThis.addEventListener('filedidchange', () => {          \n"
@@ -148,7 +147,7 @@ namespace SSC {
     }
 
     // fill in the config
-    for (auto const &tuple : opts.appData) {
+    for (auto const &tuple : opts.userConfig) {
       auto key = trim(tuple.first);
       auto value = trim(tuple.second);
 
