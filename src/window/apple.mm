@@ -117,8 +117,14 @@
 
     - (void)sendEvent:(NSEvent *)event {
       if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
-        if (event.type == NSEventTypeLeftMouseDown) [self.webview mouseDown:event];
-        if (event.type == NSEventTypeLeftMouseDragged) [self.webview mouseDragged:event];
+        if (event.type == NSEventTypeLeftMouseDown) {
+          [self.webview mouseDown:event];
+        }
+
+        if (event.type == NSEventTypeLeftMouseDragged) {
+          [self.webview mouseDragged:event];
+          return;
+        }
       }
 
       [super sendEvent:event];
