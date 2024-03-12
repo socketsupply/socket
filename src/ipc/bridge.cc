@@ -2061,7 +2061,12 @@ static void initRouterTable (Router *router) {
   });
 
   router->map("permissions.request", [=](auto message, auto router, auto reply) {
+  #if defined(__APPLE__)
     __block auto userConfig = router->bridge->userConfig;
+  #else
+    auto userConfig = router->bridge->userConfig;
+  #endif
+
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
