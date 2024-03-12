@@ -255,6 +255,7 @@ namespace SSC {
       void closeContextMenu (GtkWidget *, const String&);
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
+      String getBackgroundColor ();
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& dsl);
       void setMenu (const String& seq, const String& dsl, const bool& isTrayMenu);

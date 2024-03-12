@@ -1508,6 +1508,27 @@ namespace SSC {
     }
   }
 
+  String Window::getBackgroundColor () {
+    if (!this->window) return std::string("");
+
+    NSColor *backgroundColor = webView.window.backgroundColor;
+    NSColor *rgbColor = [backgroundColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+
+    CGFloat red, green, blue, alpha;
+    [rgbColor getRed:&red green:&green blue:&blue alpha:&alpha];
+
+    NSString *colorString = [NSString
+      stringWithFormat:
+        @"rgba(%d, %d, %d, %f)",
+          (int)(red * 255),
+          (int)(green * 255),
+          (int)(blue * 255),
+          alpha
+    ];
+
+    return [colorString UTF8String];
+  }
+
   void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
     const auto mouseLocation = NSEvent.mouseLocation;
     const auto contextMenu = [[NSMenu.alloc initWithTitle: @"contextMenu"] autorelease];
