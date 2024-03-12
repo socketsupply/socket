@@ -36,7 +36,7 @@ export { menu }
 // get this from constant value in runtime
 export const MAX_WINDOWS = 32
 
-export class WindowList {
+export class ApplicationWindowList {
   #list = []
 
   static from (...args) {
@@ -315,14 +315,14 @@ function throwOnInvalidIndex (index) {
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]} [indices] - the indices of the windows
  * @throws {Error} - if indices is not an array of integer numbers
- * @return {Promise<WindowList>}
+ * @return {Promise<ApplicationWindowList>}
  */
 export async function getWindows (indices, options = null) {
   if (
     !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
     (os.platform() === 'ios' || os.platform() === 'android')
   ) {
-    return new WindowList([
+    return new ApplicationWindowList([
       new ApplicationWindow({
         index: 0,
         id: globalThis.__args?.client?.id ?? null,
@@ -352,7 +352,7 @@ export async function getWindows (indices, options = null) {
   }
 
   // 0 indexed based key to `ApplicationWindow` object map
-  const windows = new WindowList()
+  const windows = new ApplicationWindowList()
 
   if (!Array.isArray(result.data)) {
     return windows
