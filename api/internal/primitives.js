@@ -46,7 +46,7 @@ import {
 
 import ipc from '../ipc.js'
 
-import './async.js'
+import './promise.js'
 
 let applied = false
 const natives = {}

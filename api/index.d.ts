@@ -287,6 +287,335 @@ declare module "socket:events" {
     
 }
 
+declare module "socket:async-context" {
+    /**
+     * @module AsyncContext
+     *
+     * Async Context for JavaScript based on the TC39 proposal.
+     *
+     * Example usage:
+     * ```js
+     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
+     * import AsyncContext from 'socket:async-context'
+     *
+     * const var = new AsyncContext.Variable()
+     * var.run('top', () => {
+     *   console.log(var.get()) // 'top'
+     *   queueMicrotask(() => {
+     *     var.run('nested', () => {
+     *       console.log(var.get()) // 'nested'
+     *     })
+     *   })
+     * })
+     * ```
+     *
+     * @see {@link https://tc39.es/proposal-async-context}
+     * @see {@link https://github.com/tc39/proposal-async-context}
+     */
+    /**
+     * @template T
+     * @typedef {{
+     *   name?: string,
+     *   defaultValue?: T
+     * }} VariableOptions
+     */
+    /**
+     * @callback AnyFunc
+     * @template T
+     * @this T
+     * @param {...any} args
+     * @returns {any}
+     */
+    /**
+     * `FrozenRevert` holds a frozen Mapping that will be simply restored
+     * when the revert is run.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     */
+    export class FrozenRevert {
+        /**
+         * `FrozenRevert` class constructor.
+         * @param {Mapping} mapping
+         */
+        constructor(mapping: Mapping);
+        /**
+         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
+         * called by `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping=} [unused]
+         * @return {Mapping}
+         */
+        restore(unused?: Mapping | undefined): Mapping;
+        #private;
+    }
+    /**
+     * Revert holds the state on how to revert a change to the
+     * `AsyncContext.Storage` current `Mapping`
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     * @template T
+     */
+    export class Revert<T> {
+        /**
+         * `Revert` class constructor.
+         * @param {Mapping} mapping
+         * @param {Variable<T>} key
+         */
+        constructor(mapping: Mapping, key: Variable<T>);
+        /**
+         * @type {T|undefined}
+         */
+        get previousVariable(): T;
+        /**
+         * Restores a mapping from this `Revert`. This function is called by
+         * `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping} current
+         * @return {Mapping}
+         */
+        restore(current: Mapping): Mapping;
+        #private;
+    }
+    /**
+     * A container for all `AsyncContext.Variable` instances and snapshot state.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
+     */
+    export class Mapping {
+        /**
+         * `Mapping` class constructor.
+         * @param {Map<Variable<any>, any>} data
+         */
+        constructor(data: Map<Variable<any>, any>);
+        /**
+         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
+         * `set()` and `delete()`.
+         */
+        freeze(): void;
+        /**
+         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
+         * @return {boolean}
+         */
+        isFrozen(): boolean;
+        /**
+         * Optionally returns a new `Mapping` if the current one is "frozen",
+         * otherwise it just returns the current instance.
+         * @return {Mapping}
+         */
+        fork(): Mapping;
+        /**
+         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
+         * returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        get<T_1>(key: Variable<T_1>): boolean;
+        /**
+         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
+         * then a "forked" (new) instance with the value set on it is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
+        /**
+         * Delete  an `AsyncContext.Variable` value at `key`.
+         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        delete<T_3>(key: Variable<T_3>): Mapping;
+        #private;
+    }
+    /**
+     * A container of all `AsyncContext.Variable` data.
+     * @ignore
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
+     */
+    export class Storage {
+        /**
+         * The current `Mapping` for this `AsyncContext`.
+         * @type {Mapping}
+         */
+        static "__#7@#current": Mapping;
+        /**
+         * Returns `true` if the current `Mapping` has a
+         * `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        static has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
+         * If not set, this function returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {T|undefined}
+         */
+        static get<T_1>(key: Variable<T_1>): T_1;
+        /**
+         * Set updates the `AsyncContext.Variable` with a new value and returns a
+         * revert action that allows the modification to be reversed in the future.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Revert<T>|FrozenRevert}
+         */
+        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
+        /**
+         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
+         * or `Revert` which can restore the storage state to the state at
+         * the time of the snapshot.
+         * @template T
+         * @return {FrozenRevert}
+         */
+        static snapshot<T_3>(): FrozenRevert;
+        /**
+         * Restores the storage `Mapping` state to state at the time the
+         * "revert" (`FrozenRevert` or `Revert`) was created.
+         * @template T
+         * @param {Revert<T>|FrozenRevert} revert
+         */
+        static restore<T_4>(revert: FrozenRevert | Revert<T_4>): void;
+        /**
+         * Switches storage `Mapping` state to the state at the time of a
+         * "snapshot".
+         * @param {FrozenRevert} snapshot
+         * @return {FrozenRevert}
+         */
+        static switch(snapshot: FrozenRevert): FrozenRevert;
+    }
+    /**
+     * `AsyncContext.Variable` is a container for a value that is associated with
+     * the current execution flow. The value is propagated through async execution
+     * flows, and can be snapshot and restored with Snapshot.
+     * @template T
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+     */
+    export class Variable<T> {
+        /**
+         * `Variable` class constructor.
+         * @param {VariableOptions<T>=} [options]
+         */
+        constructor(options?: VariableOptions<T> | undefined);
+        /**
+         * The name of this async context variable.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Executes a function `fn` with specified arguments,
+         * setting a new value to the current context before the call,
+         * and ensuring the environment is reverted back afterwards.
+         * The function allows for the modification of a specific context's
+         * state in a controlled manner, ensuring that any changes can be undone.
+         * @template T, F extends AnyFunc<null>
+         * @param {T} value
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        /**
+         * Get the `AsyncContext.Variable` value.
+         * @template T
+         * @return {T|undefined}
+         */
+        get<T_2>(): T_2;
+        #private;
+    }
+    /**
+     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+     * all `AsyncContext.Variable` instances and execute a function at a later time
+     * as if those values were still the current values (a snapshot and restore).
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+     */
+    export class Snapshot {
+        /**
+         * Wraps a given function `fn` with additional logic to take a snapshot of
+         * `Storage` before invoking `fn`. Returns a new function with the same
+         * signature as `fn` that when called, will invoke `fn` with the current
+         * `this` context and provided arguments, after restoring the `Storage`
+         * snapshot.
+         *
+         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
+         * of all Variables and returns a wrapped function. When invoked, this
+         * wrapped function restores the state of all Variables and executes the
+         * inner function.
+         *
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
+         *
+         * @template F
+         * @param {F} fn
+         * @returns {F}
+         */
+        static wrap<F_1>(fn: F_1): F_1;
+        /**
+         * Runs the given function `fn` with arguments `args`, using a `null`
+         * context and the current snapshot.
+         *
+         * @template F extends AnyFunc<null>
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        #private;
+    }
+    /**
+     * `AsyncContext` container.
+     */
+    export class AsyncContext {
+        /**
+         * `AsyncContext.Variable` is a container for a value that is associated with
+         * the current execution flow. The value is propagated through async execution
+         * flows, and can be snapshot and restored with Snapshot.
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+         * @type {typeof Variable}
+         */
+        static Variable: typeof Variable;
+        /**
+         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+         * all `AsyncContext.Variable` instances and execute a function at a later time
+         * as if those values were still the current values (a snapshot and restore).
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
+    }
+    export default AsyncContext;
+    export type VariableOptions<T> = {
+        name?: string;
+        defaultValue?: T;
+    };
+    export type AnyFunc = () => any;
+}
+
+declare module "socket:internal/async" {
+    export function isTagged(fn: any): boolean;
+    export function tag(fn: any): any;
+    export function wrap(fn: any): any;
+    export const symbol: unique symbol;
+    namespace _default {
+        export { tag };
+        export { wrap };
+    }
+    export default _default;
+}
+
 declare module "socket:async" {
     /**
      * Dispatched when a `Deferred` internal promise is resolved.
@@ -362,9 +691,14 @@ declare module "socket:async" {
         #private;
     }
     namespace _default {
+        export { AsyncContext };
         export { Deferred };
     }
     export default _default;
+    import AsyncContext from "socket:async-context";
+    import { wrap } from "socket:internal/async";
+    import { tag } from "socket:internal/async";
+    export { AsyncContext, wrap, tag };
 }
 
 declare module "socket:application/menu" {
@@ -873,6 +1207,24 @@ declare module "socket:signal" {
      * @return {string}
      */
     export function getMessage(code: number | string): string;
+    /**
+     * Add a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function addEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
+    /**
+     * Remove a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function removeEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
     export { constants };
     export const channel: BroadcastChannel;
     export const SIGHUP: number;
@@ -910,6 +1262,8 @@ declare module "socket:signal" {
         [x: number]: string;
     };
     namespace _default {
+        export { addEventListener };
+        export { removeEventListener };
         export { constants };
         export { channel };
         export { strings };
@@ -920,6 +1274,7 @@ declare module "socket:signal" {
     }
     export default _default;
     export type signal = import("socket:os/constants").signal;
+    import { SignalEvent } from "socket:internal/events";
     import { signal as constants } from "socket:os/constants";
 }
 
@@ -994,11 +1349,11 @@ declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
         new (t: {}, r: any, n: any): {
-            "__#11@#i": any;
-            "__#11@#n": {};
-            "__#11@#t": {};
-            "__#11@#e": {};
-            "__#11@#s": {};
+            "__#17@#i": any;
+            "__#17@#n": {};
+            "__#17@#t": {};
+            "__#17@#e": {};
+            "__#17@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -1156,11 +1511,11 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#11@#i": any;
-            "__#11@#n": {};
-            "__#11@#t": {};
-            "__#11@#e": {};
-            "__#11@#s": {};
+            "__#17@#i": any;
+            "__#17@#n": {};
+            "__#17@#t": {};
+            "__#17@#e": {};
+            "__#17@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -5801,35 +6156,83 @@ declare module "socket:assert" {
     export default _default;
 }
 
-declare module "socket:internal/async" {
+declare module "socket:internal/async_hooks" {
+    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
     export function getNextAsyncResourceId(): number;
-    export function getCurrentExecutionAsyncResource(): ExecutionAsyncResource;
-    export function wrap(callback: any): any;
-    export class ExecutionAsyncResource {
-        id: number;
+    export function executionAsyncResource(): any;
+    export function executionAsyncId(): any;
+    export function triggerAsyncId(): any;
+    export function getDefaultExecutionAsyncId(): any;
+    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    export namespace state {
+        let defaultExecutionAsyncId: number;
     }
-    export const topLevelExecutionAsyncResource: ExecutionAsyncResource;
-    export const asyncResourceStack: ExecutionAsyncResource[];
-    const _default: any;
-    export default _default;
+    export namespace hooks {
+        let init: any[];
+        let before: any[];
+        let after: any[];
+        let destroy: any[];
+        let promiseResolve: any[];
+    }
+    export class TopLevelAsyncResource {
+    }
+    export const topLevelAsyncResource: TopLevelAsyncResource;
+    export const asyncResources: Map<any, any>;
+    export const asyncContextSnapshot: import("socket:async-context").Snapshot;
+    export const asyncContextVariable: import("socket:async-context").Variable<TopLevelAsyncResource>;
+    export default hooks;
 }
 
-declare module "socket:async_context" {
+declare module "socket:async_hooks" {
     /**
-     * @typedef {{
-     *   triggerAsyncId?: number,
-     *   requireManualDestroy?: boolean
-     * }} AsyncResourceOptions
+     * @param {AsyncHookCallbackOptions} [options]
+     * @return {AsyncHook}
      */
+    export function createHook(callbacks: any): AsyncHook;
     /**
-     * The current execution async resource ID
-     * @return {number}
+     * @ignore
      */
-    export function executionAsyncId(): number;
+    export class AsyncHookCallbacks {
+        /**
+         * `AsyncHookCallbacks` class constructor.
+         * @ignore
+         * @param {AsyncHookCallbackOptions} [options]
+         */
+        constructor(options?: AsyncHookCallbackOptions);
+        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+        before(asyncId: any): void;
+        after(asyncId: any): void;
+        destroy(asyncId: any): void;
+        promiseResolve(asyncId: any): void;
+    }
+    /**
+     * TODO
+     */
+    export class AsyncHook {
+        /**
+         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
+         */
+        constructor(callbacks?: any);
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Enable the async hook.
+         * @return {AsyncHook}
+         */
+        enable(): AsyncHook;
+        disable(): this;
+        #private;
+    }
     /**
      * TODO
      */
     export class AsyncResource {
+        /**
+         * TODO
+         */
+        static bind(fn: any, type: any, thisArg: any): any;
         /**
          * `AsyncResource` class constructor.
          * @param {string} type
@@ -5848,6 +6251,9 @@ declare module "socket:async_context" {
          * @return {number}
          */
         triggerAsyncId(): number;
+        /**
+         */
+        bind(fn: any, thisArg: any): any;
         runInAsyncScope(callback: any, thisArg: any, ...args: any[]): any;
         #private;
     }
@@ -5875,26 +6281,54 @@ declare module "socket:async_context" {
          * TODO
          */
         enable(): void;
+        /**
+         * @ignore
+         * @param {AsyncResource} resource
+         * @param {AsyncResource} triggerResource
+         */
+        propagateTriggerResourceStore(resource: AsyncResource, triggerResource: AsyncResource): void;
+        /**
+         * @param {any}
+         */
         enterWith(store: any): void;
-        run(store: any, callback: any, ...args: any[]): void;
-        exit(callback: any, ...args: any[]): void;
-        getStore(): void;
+        /**
+         * TODO
+         */
+        run(store: any, callback: any, ...args: any[]): any;
+        exit(callback: any, ...args: any[]): any;
+        getStore(): any;
         #private;
     }
     namespace _default {
         export { AsyncLocalStorage };
+        export { AsyncResource };
+        export { AsyncHook };
+        export { createHook };
+        export { executionAsyncResource };
+        export { executionAsyncId };
+        export { triggerAsyncId };
     }
     export default _default;
     export type AsyncResourceOptions = {
         triggerAsyncId?: number;
         requireManualDestroy?: boolean;
     };
+    export type AsyncHookCallbackOptions = {
+        init?: (arg0: number, arg1: string, arg2: number, arg3: AsyncResource) => any;
+        before?: (arg0: number) => any;
+        after?: (arg0: number) => any;
+        destroy?: (arg0: number) => any;
+    };
+    import { executionAsyncId } from "socket:internal/async_hooks";
+    import { executionAsyncResource } from "socket:internal/async_hooks";
+    import { triggerAsyncId } from "socket:internal/async_hooks";
+    export { executionAsyncId, executionAsyncResource, triggerAsyncId };
 }
 
-declare module "socket:async_hooks" {
-    export * from "socket:async_context";
-    export default context;
-    import context from "socket:async_context";
+declare module "socket:async_context" {
+    export * from "socket:async_hooks";
+    export default hooks;
+    import hooks from "socket:async_hooks";
 }
 
 declare module "socket:bluetooth" {
@@ -10907,6 +11341,12 @@ declare module "socket:module" {
     export const builtins: {
         async_context: {
             AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
+            AsyncResource: typeof async_hooks.AsyncResource;
+            AsyncHook: typeof async_hooks.AsyncHook;
+            createHook: typeof async_hooks.createHook;
+            executionAsyncResource: typeof async_hooks.executionAsyncResource;
+            executionAsyncId: typeof async_hooks.executionAsyncId;
+            triggerAsyncId: typeof async_hooks.triggerAsyncId;
         };
         async_hooks: typeof async_hooks;
         application: typeof application;
@@ -11114,12 +11554,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#29@#id": BigInt;
-                    "__#29@#worker": any;
-                    "__#29@#signal": any;
-                    "__#29@#timeout": any;
-                    "__#29@#env": any;
-                    "__#29@#state": {
+                    "__#36@#id": BigInt;
+                    "__#36@#worker": any;
+                    "__#36@#signal": any;
+                    "__#36@#timeout": any;
+                    "__#36@#env": any;
+                    "__#36@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -11272,6 +11712,12 @@ declare module "socket:module" {
     export const builtinModules: {
         async_context: {
             AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
+            AsyncResource: typeof async_hooks.AsyncResource;
+            AsyncHook: typeof async_hooks.AsyncHook;
+            createHook: typeof async_hooks.createHook;
+            executionAsyncResource: typeof async_hooks.executionAsyncResource;
+            executionAsyncId: typeof async_hooks.executionAsyncId;
+            triggerAsyncId: typeof async_hooks.triggerAsyncId;
         };
         async_hooks: typeof async_hooks;
         application: typeof application;
@@ -11479,12 +11925,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#29@#id": BigInt;
-                    "__#29@#worker": any;
-                    "__#29@#signal": any;
-                    "__#29@#timeout": any;
-                    "__#29@#env": any;
-                    "__#29@#state": {
+                    "__#36@#id": BigInt;
+                    "__#36@#worker": any;
+                    "__#36@#signal": any;
+                    "__#36@#timeout": any;
+                    "__#36@#env": any;
+                    "__#36@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -13204,6 +13650,18 @@ declare module "socket:internal/pickers" {
         }>;
     };
     import { FileSystemHandle } from "socket:fs/web";
+}
+
+declare module "socket:internal/promise" {
+    export namespace NativePromisePrototype {
+        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => Promise<TResult1 | TResult2>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => Promise<any>;
+        export { _catch as catch };
+        let _finally: (onfinally?: () => void) => Promise<any>;
+        export { _finally as finally };
+    }
+    const Promise: PromiseConstructor;
+    export default Promise;
 }
 
 declare module "socket:internal/primitives" {

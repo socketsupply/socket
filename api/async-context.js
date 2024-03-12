@@ -281,6 +281,7 @@ export class Storage {
     const revert = this.#current.isFrozen()
       ? new FrozenRevert(this.#current)
       : /** @type {Revert<T>} */ (new Revert(this.#current, key))
+    this.#current = this.#current.set(key, value)
     return revert
   }
 
@@ -297,7 +298,7 @@ export class Storage {
   }
 
   /**
-   * Restores the storage `Mapping` state to state at the time  the
+   * Restores the storage `Mapping` state to state at the time the
    * "revert" (`FrozenRevert` or `Revert`) was created.
    * @template T
    * @param {Revert<T>|FrozenRevert} revert
@@ -367,13 +368,6 @@ export class Variable {
   }
 
   /**
-   * @type {FrozenRevert|Revert<T>|undefined}
-   */
-  get revert () {
-    return this.#revert
-  }
-
-  /**
    * Executes a function `fn` with specified arguments,
    * setting a new value to the current context before the call,
    * and ensuring the environment is reverted back afterwards.
@@ -386,12 +380,11 @@ export class Variable {
    * @returns {ReturnType<F>}
    */
   run (value, fn, ...args) {
-    this.#revert = Storage.set(this, value)
+    const revert = Storage.set(this, value)
     try {
       return Reflect.apply(fn, null, args)
     } finally {
-      Storage.restore(this.#revert)
-      this.#revert = null
+      Storage.restore(revert)
     }
   }
 
@@ -442,9 +435,6 @@ export class Snapshot {
        * @returns {ReturnType<F>}
        */
       [name] (...args) {
-        // Assumes `run` is a predefined function that executes `fn` with a
-        // specific `this` context, an array of arguments, and a snapshot.
-        // It returns the result of executing `fn`.
         return run(fn, this, args, snapshot)
       }
     }
