@@ -22,6 +22,7 @@ namespace SSC {
     String preload = "";
 
     if (preloadOptions.wrap) {
+      preload += "<meta name=\"begin-runtime-preload\">\n";
       preload += "<script type=\"text/javascript\">\n";
     }
 
@@ -325,6 +326,7 @@ namespace SSC {
 
     if (preloadOptions.wrap) {
       preload += "</script>\n";
+      preload += "<meta name=\"end-runtime-preload\">\n";
     }
 
     return preload;
