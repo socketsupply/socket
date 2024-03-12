@@ -269,6 +269,14 @@ export class ApplicationWindow {
   }
 
   /**
+   * Gets the background color of the window
+   * @return {Promise<object>}
+   */
+  async getBackgroundColor () {
+    return await ipc.send('window.getBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+  }
+
+  /**
    * Opens a native context menu.
    * @param {object} options - an options object
    * @return {Promise<object>}
