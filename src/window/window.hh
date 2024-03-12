@@ -59,11 +59,6 @@ namespace SSC {
 - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
 @end
 #else
-@interface SSCWindow : NSWindow
-@property (nonatomic, retain) NSView *titleBarView;
-@property (nonatomic) NSPoint trafficLightPosition;
-@end
-
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
@@ -77,6 +72,12 @@ namespace SSC {
 - (NSArray<NSString*>*) _acceptedMIMETypes;
 - (NSArray<NSString*>*) _acceptedFileExtensions;
 - (NSArray<NSString*>*) _allowedFileExtensions;
+@end
+
+@interface SSCWindow : NSWindow
+@property (nonatomic) SSCBridgedWebView *webview;
+@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic) NSPoint trafficLightPosition;
 @end
 
 @interface SSCBridgedWebView : WKWebView<
