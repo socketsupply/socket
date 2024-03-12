@@ -186,22 +186,30 @@ namespace SSC {
         );
 
         auto html = String(response.buffer.bytes, response.buffer.size);
+        auto begin = String("<meta name=\"begin-runtime-preload\">");
+        auto end = String("<meta name=\"end-runtime-preload\">");
+        auto x = html.find(begin);
+        auto y = html.find(end);
 
-         if (html.find("<head>") != String::npos) {
-           html = replace(html, "<head>", String("<head>" + preload));
-         } else if (html.find("<body>") != String::npos) {
-           html = replace(html, "<body>", String("<body>" + preload));
-         } else if (html.find("<html>") != String::npos) {
-           html = replace(html, "<html>", String("<html>" + preload));
-         } else {
-           html = preload + html;
-         }
+        if (x != String::npos && y != String::npos) {
+          html.erase(x, (y - x) + end.size());
+        }
 
-         response.buffer.bytes = new char[html.size()]{0};
-         response.buffer.size = html.size();
-         freeResponseBody = true;
+        if (html.find("<head>") != String::npos) {
+          html = replace(html, "<head>", String("<head>" + preload));
+        } else if (html.find("<body>") != String::npos) {
+          html = replace(html, "<body>", String("<body>" + preload));
+        } else if (html.find("<html>") != String::npos) {
+          html = replace(html, "<html>", String("<html>" + preload));
+        } else {
+          html = preload + html;
+        }
 
-         memcpy(response.buffer.bytes, html.c_str(), html.size());
+        response.buffer.bytes = new char[html.size()]{0};
+        response.buffer.size = html.size();
+        freeResponseBody = true;
+
+        memcpy(response.buffer.bytes, html.c_str(), html.size());
       }
     #endif
 
@@ -246,7 +254,9 @@ namespace SSC {
     const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
-      this->bridge->router.emit("serviceWorker.register", registration.json().str());
+      this->core->setImmediate([=, this]() {
+        this->bridge->router.emit("serviceWorker.register", registration.json().str());
+      });
     }
 
     return registration;
