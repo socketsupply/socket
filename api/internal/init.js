@@ -594,7 +594,8 @@ hooks.onLoad(async () => {
     globalThis.window &&
     !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
     globalThis.location.pathname !== '/socket/service-worker/index.html' &&
-    String(config.permissions_allow_service_worker) !== 'false'
+    String(config.permissions_allow_service_worker) !== 'false' &&
+    String(config.webview_auto_register_service_workers) !== 'false'
   ) {
     const pendingServiceRegistrations = []
 
@@ -662,6 +663,22 @@ hooks.onLoad(async () => {
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
     globalThis.dispatchEvent(new RuntimeInitEvent())
+  }
+
+  if (globalThis.document) {
+    const beginRuntimePreload = globalThis.document.querySelector('meta[name=begin-runtime-preload]')
+    if (beginRuntimePreload) {
+      let current = beginRuntimePreload
+      while (current) {
+        const next = current.nextElementSibling
+        current.remove()
+        if (current.tagName === 'META' && current.name === 'end-runtime-preload') {
+          current = null
+        } else {
+          current = next
+        }
+      }
+    }
   }
 })
 
