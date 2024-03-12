@@ -309,8 +309,11 @@ export class ServiceWorkerContainer extends EventTarget {
       })
 
       if (
-        application.config.webview_service_worker_mode === 'hybrid' ||
-        /android|ios/i.test(os.platform())
+        String(application.config.webview_service_worker_frame) !== 'false' &&
+        (
+          application.config.webview_service_worker_mode === 'hybrid' ||
+          /android|ios/i.test(os.platform())
+        )
       ) {
         await ServiceWorkerContainerRealm.init(this)
       }
