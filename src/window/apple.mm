@@ -1052,6 +1052,9 @@ namespace SSC {
       SSC::VERSION_STRING.c_str()
     ];
 
+    webview.wantsLayer = YES;
+    webview.layer.backgroundColor = [NSColor clearColor].CGColor;
+
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
         forKey: @"drawsTransparentBackground"
@@ -1212,7 +1215,7 @@ namespace SSC {
 
     // Minimum window size
     [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    [window setBackgroundColor: [NSColor controlBackgroundColor]];
+    // [window setBackgroundColor: [NSColor controlBackgroundColor]];
     [window registerForDraggedTypes: draggableTypes];
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
 
@@ -1511,7 +1514,7 @@ namespace SSC {
   String Window::getBackgroundColor () {
     if (!this->window) return std::string("");
 
-    NSColor *backgroundColor = webView.window.backgroundColor;
+    NSColor *backgroundColor = this->window.backgroundColor;
     NSColor *rgbColor = [backgroundColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
 
     CGFloat red, green, blue, alpha;
