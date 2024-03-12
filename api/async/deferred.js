@@ -103,7 +103,6 @@ export class Deferred extends EventTarget {
   /**
    * The promise associated with this Deferred instance.
    * @type {Promise<any>}
-   * @private
    */
   get promise () {
     return this.#promise

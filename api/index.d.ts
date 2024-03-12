@@ -846,9 +846,8 @@ declare module "socket:async/deferred" {
         /**
          * The promise associated with this Deferred instance.
          * @type {Promise<any>}
-         * @private
          */
-        private get promise();
+        get promise(): Promise<any>;
         /**
          * A string representation of this Deferred instance.
          * @type {string}
@@ -6144,9 +6143,9 @@ declare module "socket:application" {
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
      * @throws {Error} - if indices is not an array of integer numbers
-     * @return {Promise<WindowList>}
+     * @return {Promise<ApplicationWindowList>}
      */
-    export function getWindows(indices?: number[], options?: any): Promise<WindowList>;
+    export function getWindows(indices?: number[], options?: any): Promise<ApplicationWindowList>;
     /**
      * Returns the ApplicationWindow instance for the given index
      * @param {number} index - the index of the window
@@ -6267,8 +6266,8 @@ declare module "socket:application" {
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
     export { menu };
     export const MAX_WINDOWS: 32;
-    export class WindowList {
-        static from(...args: any[]): exports.WindowList;
+    export class ApplicationWindowList {
+        static from(...args: any[]): exports.ApplicationWindowList;
         constructor(items: any);
         get length(): number;
         get size(): number;

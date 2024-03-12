@@ -16,9 +16,9 @@
 This is a `VariableDeclaration` named `MAX_WINDOWS` in `api/application.js`, it's exported but undocumented.
 
 
-## [WindowList](https://github.com/socketsupply/socket/blob/master/api/application.js#L39)
+## [ApplicationWindowList](https://github.com/socketsupply/socket/blob/master/api/application.js#L39)
 
-This is a `ClassDeclaration` named `WindowList` in `api/application.js`, it's exported but undocumented.
+This is a `ClassDeclaration` named `ApplicationWindowList` in `api/application.js`, it's exported but undocumented.
 
 
 ## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L164)
@@ -90,7 +90,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<WindowList> |  |
+| Not specified | Promise<ApplicationWindowList> |  |
 
 ## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L377)
 
