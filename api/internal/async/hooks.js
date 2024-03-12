@@ -1,5 +1,5 @@
-import AsyncContext from '../async-context.js'
-import { wrap as asyncWrap } from './async.js'
+import { Snapshot, Variable } from '../../async/context.js'
+import { wrap as asyncWrap } from '../../async/wrap.js'
 
 let currentAsyncResourceId = 1
 
@@ -19,8 +19,8 @@ export class TopLevelAsyncResource {}
 export const topLevelAsyncResource = new TopLevelAsyncResource()
 
 export const asyncResources = new Map()
-export const asyncContextSnapshot = new AsyncContext.Snapshot()
-export const asyncContextVariable = new AsyncContext.Variable({
+export const asyncContextSnapshot = new Snapshot()
+export const asyncContextVariable = new Variable({
   name: 'async-hooks',
   defaultValue: topLevelAsyncResource
 })

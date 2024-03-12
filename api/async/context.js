@@ -6,7 +6,7 @@
  * Example usage:
  * ```js
  * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
- * import AsyncContext from 'socket:async-context'
+ * import AsyncContext from 'socket:async/context'
  *
  * const var = new AsyncContext.Variable()
  * var.run('top', () => {

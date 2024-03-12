@@ -1,4 +1,4 @@
-import AsyncContext from '../async-context.js'
+import { Snapshot } from './context.js'
 
 export const symbol = Symbol.for('socket.runtime.async')
 
@@ -35,13 +35,10 @@ export function wrap (fn) {
       return fn
     }
 
-    return tag(AsyncContext.Snapshot.wrap(fn))
+    return tag(Snapshot.wrap(fn))
   }
 
   return fn
 }
 
-export default {
-  tag,
-  wrap
-}
+export default wrap
