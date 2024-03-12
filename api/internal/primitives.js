@@ -4,7 +4,6 @@ import { URL, URLPattern, URLSearchParams } from '../url.js'
 import { ReadableStream } from './streams.js'
 import { ServiceWorker } from '../service-worker/instance.js'
 import serviceWorker from './service-worker.js'
-import AsyncContext from '../async-context.js'
 import SharedWorker from './shared-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
@@ -13,6 +12,14 @@ import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
 import scheduler from './scheduler.js'
 import symbols from './symbols.js'
+
+import {
+  AsyncContext,
+  AsyncResource,
+  AsyncHook,
+  AsyncLocalStorage,
+  Deferred
+} from '../async.js'
 
 import {
   setTimeout,
@@ -227,6 +234,10 @@ export function init () {
 
     // async
     AsyncContext,
+    AsyncResource,
+    AsyncHook,
+    AsyncLocalStorage,
+    Deferred,
 
     // platform detection
     isSocketRuntime: true

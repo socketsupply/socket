@@ -1,4 +1,4 @@
-import * as asyncHooks from './async_hooks.js'
+import * as asyncHooks from './async/hooks.js'
 
 export const NativePromisePrototype = {
   then: globalThis.Promise.prototype.then,

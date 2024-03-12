@@ -16,7 +16,7 @@ import './primitives.js'
 
 import { CustomEvent, ErrorEvent } from '../events.js'
 import { IllegalConstructor } from '../util.js'
-import * as asyncHooks from './async_hooks.js'
+import * as asyncHooks from './async/hooks.js'
 import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
