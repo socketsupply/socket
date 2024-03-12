@@ -1272,6 +1272,28 @@ MAIN {
       return;
     }
 
+    if (message.name == "window.getBackgroundColor") {
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      auto color = targetWindow->getBackgroundColor();
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", color },
+      };
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+      return;
+    }
+
     if (message.name == "window.setSize") {
       const auto seq = message.seq;
       const auto currentIndex = message.index;
