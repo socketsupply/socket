@@ -845,6 +845,17 @@ namespace SSC {
       "destroy",
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
+
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {
+          {"data", w->index}
+        };
+
+        for (auto window : App::instance()->windowManager->windows) {
+          if (window != nullptr) {
+            window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
+          }
+        }
+
         w->close(0);
       }),
       this
