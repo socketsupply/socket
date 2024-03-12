@@ -1514,7 +1514,10 @@ namespace SSC {
   String Window::getBackgroundColor () {
     if (!this->window) return std::string("");
 
-    NSColor *backgroundColor = this->window.backgroundColor;
+    CALayer *contentLayer = this->window.contentView.layer;
+    CGColorRef backgroundColorRef = contentLayer.backgroundColor;
+    NSColor *backgroundColor = [NSColor colorWithCGColor:backgroundColorRef];
+
     NSColor *rgbColor = [backgroundColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
 
     CGFloat red, green, blue, alpha;

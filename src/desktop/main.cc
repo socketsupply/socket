@@ -1286,6 +1286,7 @@ MAIN {
       };
 
       auto result = SSC::IPC::Result(message.seq, message, json);
+
       currentWindow->resolvePromise(
         message.seq,
         OK_STATE,
