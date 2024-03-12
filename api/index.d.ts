@@ -774,7 +774,7 @@ declare module "socket:async/storage" {
         /**
          * TODO
          */
-        run(store: any, callback: any, ...args: any[]): any;
+        run(store: any, callback: any, ...args: any[]): void;
         exit(callback: any, ...args: any[]): any;
         getStore(): any;
         #private;
@@ -6144,9 +6144,9 @@ declare module "socket:application" {
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
      * @throws {Error} - if indices is not an array of integer numbers
-     * @return {Promise<Object.<number?, ApplicationWindow>>}
+     * @return {Promise<WindowList>}
      */
-    export function getWindows(indices?: number[], options?: any): Promise<any>;
+    export function getWindows(indices?: number[], options?: any): Promise<WindowList>;
     /**
      * Returns the ApplicationWindow instance for the given index
      * @param {number} index - the index of the window
@@ -6267,6 +6267,23 @@ declare module "socket:application" {
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
     export { menu };
     export const MAX_WINDOWS: 32;
+    export class WindowList {
+        static from(...args: any[]): exports.WindowList;
+        constructor(items: any);
+        get length(): number;
+        get size(): number;
+        forEach(callback: any, thisArg: any): void;
+        item(index: any): any;
+        entries(): any[][];
+        keys(): any[];
+        values(): any[];
+        add(window: any): this;
+        remove(windowOrIndex: any): boolean;
+        contains(windowOrIndex: any): boolean;
+        clear(): this;
+        get [Symbol.iterator](): () => IterableIterator<any>;
+        #private;
+    }
     /**
      * Socket Runtime version.
      * @type {object} - an object containing the version information
@@ -11562,12 +11579,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#36@#id": BigInt;
-                    "__#36@#worker": any;
-                    "__#36@#signal": any;
-                    "__#36@#timeout": any;
-                    "__#36@#env": any;
-                    "__#36@#state": {
+                    "__#37@#id": BigInt;
+                    "__#37@#worker": any;
+                    "__#37@#signal": any;
+                    "__#37@#timeout": any;
+                    "__#37@#env": any;
+                    "__#37@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
@@ -11931,12 +11948,12 @@ declare module "socket:module" {
         child_process: {
             ChildProcess: {
                 new (options?: {}): {
-                    "__#36@#id": BigInt;
-                    "__#36@#worker": any;
-                    "__#36@#signal": any;
-                    "__#36@#timeout": any;
-                    "__#36@#env": any;
-                    "__#36@#state": {
+                    "__#37@#id": BigInt;
+                    "__#37@#worker": any;
+                    "__#37@#signal": any;
+                    "__#37@#timeout": any;
+                    "__#37@#env": any;
+                    "__#37@#state": {
                         killed: boolean;
                         signalCode: any;
                         exitCode: any;
