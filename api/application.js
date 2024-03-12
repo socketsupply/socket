@@ -59,6 +59,10 @@ export class WindowList {
     return this.#list.length
   }
 
+  get size () {
+    return this.length
+  }
+
   get [Symbol.iterator] () {
     return this.#list[Symbol.iterator]
   }
@@ -82,11 +86,11 @@ export class WindowList {
   }
 
   keys () {
-    return this.entries.map((entry) => entry[0])
+    return this.entries().map((entry) => entry[0])
   }
 
   values () {
-    return this.entries.map((entry) => entry[1])
+    return this.entries().map((entry) => entry[1])
   }
 
   add (window) {
