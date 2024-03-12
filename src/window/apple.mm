@@ -114,6 +114,15 @@
         [self.titleBarView addSubview: zoomButton];
       }
     }
+
+    - (void)sendEvent:(NSEvent *)event {
+      if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
+        if (event.type == NSEventTypeLeftMouseDown) [self.webview mouseDown:event];
+        if (event.type == NSEventTypeLeftMouseDragged) [self.webview mouseDragged:event];
+      }
+
+      [super sendEvent:event];
+    }
   @end
   @implementation SSCWindowDelegate
     - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
@@ -1043,6 +1052,8 @@ namespace SSC {
       margin: (CGFloat) opts.margin
     ];
 
+    window.webview = webview;
+
     const auto processInfo = NSProcessInfo.processInfo;
     webview.customUserAgent = [NSString
       stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
@@ -1320,8 +1331,6 @@ namespace SSC {
         [window setContentAspectRatio: frame.size];
       }
     }
-
-    [window makeFirstResponder: webview];
   }
 
   Window::~Window () {
@@ -1341,6 +1350,7 @@ namespace SSC {
     if (this->opts.headless == true) {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
+      [webview becomeFirstResponder];
       [window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
     }
