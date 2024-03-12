@@ -8,6 +8,7 @@ import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
 import path from '../path.js'
+import util from '../util.js'
 import ipc from '../ipc.js'
 
 const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
@@ -183,7 +184,7 @@ async function onMessage (event) {
           )
         } catch (err) {
           state.reportError(err)
-          response = new Response(err.message, {
+          response = new Response(util.inspect(err), {
             statusText: STATUS_CODES[500],
             status: 500
           })
