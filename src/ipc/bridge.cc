@@ -3432,7 +3432,6 @@ static void registerSchemeHandler (Router *router) {
             }
 
             const auto requestURL = String(request.URL.absoluteString.UTF8String);
-            [self enqueueTask: task withMessage: message];
             const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
               if (![self waitingForTask: task]) {
                 return;
@@ -3512,10 +3511,22 @@ static void registerSchemeHandler (Router *router) {
             });
 
             if (fetched) {
+              [self enqueueTask: task withMessage: message];
+              self.router->bridge->core->setTimeout(250, [=]() mutable {
+                if ([self waitingForTask: task]) {
+                  @try {
+                    [self finalizeTask: task];
+                    [task didFailWithError: [NSError
+                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                                 code: 1
+                             userInfo: @{NSLocalizedDescriptionKey: @"ServiceWorker request timed out."}
+                    ]];
+                  } @catch (id e) {
+                  }
+                }
+              });
               return;
             }
-
-            [self finalizeTask: task];
           }
 
           auto response = [[NSHTTPURLResponse alloc]
@@ -3951,6 +3962,7 @@ static void registerSchemeHandler (Router *router) {
         #endif
           return;
         }
+
         [task didReceiveData: data];
         if (![self waitingForTask: task]) {
         #if !__has_feature(objc_arc)
