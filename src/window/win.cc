@@ -2105,6 +2105,17 @@ namespace SSC {
 
       case WM_CLOSE: {
         if (!w->opts.closable) break;
+
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {
+          {"data", w->index}
+        };
+
+        for (auto window : App::instance()->windowManager->windows) {
+          if (window != nullptr) {
+            window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
+          }
+        }
+
         w->close(0);
         break;
       }

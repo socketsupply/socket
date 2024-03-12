@@ -1083,6 +1083,17 @@ namespace SSC {
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
+
+            SSC::JSON::Object json = SSC::JSON::Object::Entries {
+              {"data", window->index}
+            };
+
+            for (auto window : App::instance()->windowManager->windows) {
+              if (window != nullptr) {
+                window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
+              }
+            }
+
             if (!window || window->exiting) {
               return true;
             }
@@ -1309,6 +1320,8 @@ namespace SSC {
         [window setContentAspectRatio: frame.size];
       }
     }
+
+    [window makeFirstResponder: webview];
   }
 
   Window::~Window () {

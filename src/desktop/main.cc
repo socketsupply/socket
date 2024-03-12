@@ -1056,6 +1056,7 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
+
       if (targetWindow) {
         if (targetWindow->opts.canExit) {
           targetWindow->exit(0);
