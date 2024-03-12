@@ -2744,7 +2744,15 @@ Sets the background color of the window
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L276)
+### [`getBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L275)
+
+Gets the background color of the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<object> |  |
+
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L284)
 
 Opens a native context menu.
 
@@ -2756,7 +2764,7 @@ Opens a native context menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<object> |  |
 
-### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L285)
+### [`showOpenFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L293)
 
 Shows a native open file dialog.
 
@@ -2768,7 +2776,7 @@ Shows a native open file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L303)
+### [`showSaveFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L311)
 
 Shows a native save file dialog.
 
@@ -2780,7 +2788,7 @@ Shows a native save file dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L321)
+### [`showDirectoryFilePicker(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L329)
 
 Shows a native directory dialog.
 
@@ -2792,7 +2800,7 @@ Shows a native directory dialog.
 | :---         | :--- | :---        |
 | Not specified | Promise<string[]> | an array of file paths |
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L346)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L354)
 
 This is a high-level API that you should use instead of `ipc.send` when
  you want to send a message to another window or to the backend.
@@ -2806,7 +2814,7 @@ This is a high-level API that you should use instead of `ipc.send` when
 | options.event | string |  | false | the event to send |
 | options.value | string \| object |  | true | the value to send |
 
-### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L387)
+### [`postMessage(message)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L395)
 
 Post a message to a window
  TODO(@jwerle): research using `BroadcastChannel` instead
@@ -2819,7 +2827,7 @@ Post a message to a window
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L405)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L413)
 
 Opens an URL in the default browser.
 
@@ -2831,7 +2839,7 @@ Opens an URL in the default browser.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`revealFile(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L414)
+### [`revealFile(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L422)
 
 Opens a file in the default file explorer.
 
@@ -2843,7 +2851,7 @@ Opens a file in the default file explorer.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L425)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L433)
 
 Adds a listener to the window.
 
@@ -2852,7 +2860,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L443)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L451)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2861,7 +2869,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L460)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L468)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2870,7 +2878,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L476)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L484)
 
 Removes a listener from the window.
 
@@ -2879,7 +2887,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L489)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L497)
 
 Removes all listeners from the window.
 
@@ -2887,7 +2895,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L505)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L513)
 
 Removes a listener from the window. An alias for `removeListener`.
 
