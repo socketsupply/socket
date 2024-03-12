@@ -5953,6 +5953,11 @@ declare module "socket:window" {
             alpha: number;
         }): Promise<object>;
         /**
+         * Gets the background color of the window
+         * @return {Promise<object>}
+         */
+        getBackgroundColor(): Promise<object>;
+        /**
          * Opens a native context menu.
          * @param {object} options - an options object
          * @return {Promise<object>}
