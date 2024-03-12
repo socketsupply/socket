@@ -1980,7 +1980,25 @@ namespace SSC {
     this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
   }
 
-  void Window::setBackgroundColor(int r, int g, int b, float a) {
+  void Window::setBackgroundColor (int r, int g, int b, float a) {
+    SetBkColor(GetDC(window), RGB(r, g, b));
+    app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
+  }
+
+  String Window::getBackgroundColor () {
+    LOGBRUSH lb;
+    GetObject(app.wcex.hbrBackground, sizeof(LOGBRUSH), &lb);
+
+    int r = GetRValue(lb.lbColor);
+    int g = GetGValue(lb.lbColor);
+    int b = GetBValue(lb.lbColor);
+
+    std::stringstream ss;
+    ss << "R:" << r << ", G:" << g << ", B:" << b;
+    return ss.str();
+  }
+
+  String Window::getBackgroundColor() {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
   }
