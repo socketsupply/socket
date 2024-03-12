@@ -18,11 +18,6 @@ import os from './os.js'
 
 import * as exports from './application.js'
 
-export { menu }
-
-// get this from constant value in runtime
-export const MAX_WINDOWS = 32
-
 function serializeConfig (config) {
   if (!config || typeof config !== 'object') {
     return ''
@@ -34,6 +29,128 @@ function serializeConfig (config) {
   }
 
   return entries.join('\n')
+}
+
+export { menu }
+
+// get this from constant value in runtime
+export const MAX_WINDOWS = 32
+
+export class WindowList {
+  #list = []
+
+  static from (...args) {
+    if (Array.isArray(args[0])) {
+      return new this(args[0])
+    }
+
+    return new this(args)
+  }
+
+  constructor (items) {
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        this.add(item)
+      }
+    }
+  }
+
+  get length () {
+    return this.#list.length
+  }
+
+  get [Symbol.iterator] () {
+    return this.#list[Symbol.iterator]
+  }
+
+  forEach (callback, thisArg) {
+    this.#list.forEach(callback, thisArg)
+  }
+
+  item (index) {
+    return this[index] ?? undefined
+  }
+
+  entries () {
+    const entries = []
+
+    for (const item of this.#list) {
+      entries.push([item.index, item])
+    }
+
+    return entries
+  }
+
+  keys () {
+    return this.entries.map((entry) => entry[0])
+  }
+
+  values () {
+    return this.entries.map((entry) => entry[1])
+  }
+
+  add (window) {
+    if (Number.isFinite(window.index) && window.index > -1) {
+      this[window.index] = window
+
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === window.index) {
+          this.#list.splice(i, 1)
+          break
+        }
+      }
+
+      this.#list.push(window)
+      this.#list.sort((a, b) => a.index - b.index)
+    }
+
+    return this
+  }
+
+  remove (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      delete this[index]
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === index) {
+          this.#list.splice(i, 1)
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  contains (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      return Boolean(this[index])
+    }
+
+    return false
+  }
+
+  clear () {
+    for (const item of this.#list) {
+      delete this[item.index]
+    }
+
+    this.#list = []
+    return this
+  }
 }
 
 /**
@@ -194,12 +311,15 @@ function throwOnInvalidIndex (index) {
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]} [indices] - the indices of the windows
  * @throws {Error} - if indices is not an array of integer numbers
- * @return {Promise<Object.<number?, ApplicationWindow>>}
+ * @return {Promise<WindowList>}
  */
 export async function getWindows (indices, options = null) {
-  if (!globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS && (os.platform() === 'ios' || os.platform() === 'android')) {
-    return {
-      0: new ApplicationWindow({
+  if (
+    !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
+    (os.platform() === 'ios' || os.platform() === 'android')
+  ) {
+    return new WindowList([
+      new ApplicationWindow({
         index: 0,
         id: globalThis.__args?.client?.id ?? null,
         width: globalThis.screen?.availWidth ?? 0,
@@ -207,8 +327,9 @@ export async function getWindows (indices, options = null) {
         title: document.title,
         status: 31
       })
-    }
+    ])
   }
+
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
 
@@ -227,7 +348,7 @@ export async function getWindows (indices, options = null) {
   }
 
   // 0 indexed based key to `ApplicationWindow` object map
-  const windows = {}
+  const windows = new WindowList()
 
   if (!Array.isArray(result.data)) {
     return windows
@@ -236,7 +357,7 @@ export async function getWindows (indices, options = null) {
   for (const data of result.data) {
     const max = Number.isFinite(options?.max) ? options.max : MAX_WINDOWS
     if (options?.max === false || data.index < max) {
-      windows[data.index] = new ApplicationWindow(data)
+      windows.add(new ApplicationWindow(data))
     }
   }
 
