@@ -3,9 +3,9 @@
  *
  * Primitives for creating user defined async storage contexts.
  */
+import { Snapshot, Variable } from './context.js'
 import { AsyncResource } from './resource.js'
 import { createHook } from './hooks.js'
-import { Snapshot } from './context.js'
 import {
   executionAsyncResource,
   asyncContextVariable
@@ -34,6 +34,7 @@ const asyncLocalStorageHooks = createHook({
 export class AsyncLocalStorage {
   #store = null
   #enabled = false
+  #variable = new Variable()
   #resourceStoreSymbol = Symbol('resourceStore')
 
   /**
@@ -103,30 +104,17 @@ export class AsyncLocalStorage {
    */
   enterWith (store) {
     this.enable()
-    const resource = executionAsyncResource()
-    resource[this.#resourceStoreSymbol] = store
+    this.#store = store
   }
 
   /**
    * TODO
    */
   run (store, callback, ...args) {
-    if (Object.is(this.getStore(), store)) {
-      return Reflect.apply(callback, null, args)
-    }
-
     this.enable()
-    const resource = executionAsyncResource()
-    const previousStore = resource[this.#resourceStoreSymbol]
-
-    try {
-      // push
-      resource[this.#resourceStoreSymbol] = store
+    this.variable.run(store, () => {
       return Reflect.apply(callback, null, args)
-    } finally {
-      // pop
-      resource[this.#resourceStoreSymbol] = previousStore
-    }
+    })
   }
 
   exit (callback, ...args) {
@@ -145,8 +133,7 @@ export class AsyncLocalStorage {
 
   getStore () {
     if (this.#enabled) {
-      const resource = executionAsyncResource()
-      return resource[this.#resourceStoreSymbol]
+      return this.variable.get() ?? this.#store
     }
   }
 }
