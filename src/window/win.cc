@@ -2112,7 +2112,7 @@ namespace SSC {
 
         for (auto window : App::instance()->windowManager->windows) {
           if (window != nullptr) {
-            window->eval(getEmitToRenderProcessJavaScript("close", json.str()));
+            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
           }
         }
 
