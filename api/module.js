@@ -11,10 +11,20 @@ import { Headers } from './ipc.js'
 import { URL } from './url.js'
 
 // builtins
+import {
+  AsyncLocalStorage,
+  AsyncResource,
+  executionAsyncResource,
+  executionAsyncId,
+  triggerAsyncId,
+  createHook,
+  AsyncHook
+} from './async.js'
+
 // eslint-disable-next-line
-import async_context from './async_context.js'
+import _async from './async.js'
+
 // eslint-disable-next-line
-import * as async_hooks from './async_hooks.js'
 import application from './application.js'
 import assert from './assert.js'
 import * as buffer from './buffer.js'
@@ -240,9 +250,20 @@ function CommonJSModuleScope (
  */
 export const builtins = {
   // eslint-disable-next-line
-  async_context,
+  'async': _async,
   // eslint-disable-next-line
-  async_hooks,
+  async_context: {
+    AsyncLocalStorage,
+    AsyncResource
+  },
+  // eslint-disable-next-line
+  async_hooks: {
+    executionAsyncResource,
+    executionAsyncId,
+    triggerAsyncId,
+    createHook,
+    AsyncHook
+  },
   application,
   assert,
   buffer,
@@ -296,6 +317,7 @@ export const builtins = {
 }
 
 const socketRuntimeModules = [
+  'async',
   'application',
   'extension',
   'gc',

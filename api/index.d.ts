@@ -287,7 +287,7 @@ declare module "socket:events" {
     
 }
 
-declare module "socket:async-context" {
+declare module "socket:async/context" {
     /**
      * @module AsyncContext
      *
@@ -296,7 +296,7 @@ declare module "socket:async-context" {
      * Example usage:
      * ```js
      * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
-     * import AsyncContext from 'socket:async-context'
+     * import AsyncContext from 'socket:async/context'
      *
      * const var = new AsyncContext.Variable()
      * var.run('top', () => {
@@ -604,19 +604,186 @@ declare module "socket:async-context" {
     export type AnyFunc = () => any;
 }
 
-declare module "socket:internal/async" {
+declare module "socket:async/wrap" {
     export function isTagged(fn: any): boolean;
     export function tag(fn: any): any;
     export function wrap(fn: any): any;
     export const symbol: unique symbol;
-    namespace _default {
-        export { tag };
-        export { wrap };
-    }
-    export default _default;
+    export default wrap;
 }
 
-declare module "socket:async" {
+declare module "socket:internal/async/hooks" {
+    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+    export function getNextAsyncResourceId(): number;
+    export function executionAsyncResource(): any;
+    export function executionAsyncId(): any;
+    export function triggerAsyncId(): any;
+    export function getDefaultExecutionAsyncId(): any;
+    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    export namespace state {
+        let defaultExecutionAsyncId: number;
+    }
+    export namespace hooks {
+        let init: any[];
+        let before: any[];
+        let after: any[];
+        let destroy: any[];
+        let promiseResolve: any[];
+    }
+    export class TopLevelAsyncResource {
+    }
+    export const topLevelAsyncResource: TopLevelAsyncResource;
+    export const asyncResources: Map<any, any>;
+    export const asyncContextSnapshot: Snapshot;
+    export const asyncContextVariable: Variable<TopLevelAsyncResource>;
+    export default hooks;
+    import { Snapshot } from "socket:async/context";
+    import { Variable } from "socket:async/context";
+}
+
+declare module "socket:async/resource" {
+    /**
+     * @typedef {{
+     *   triggerAsyncId?: number,
+     *   requireManualDestroy?: boolean
+     * }} AsyncResourceOptions
+     */
+    /**
+     * TODO
+     */
+    export class AsyncResource {
+        /**
+         * TODO
+         */
+        static bind(fn: any, type: any, thisArg: any): any;
+        /**
+         * `AsyncResource` class constructor.
+         * @param {string} type
+         * @param {AsyncResourceOptions|number=} [options]
+         */
+        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
+        /**
+         * @type {string}
+         */
+        get type(): string;
+        /**
+         * @return {number}
+         */
+        asyncId(): number;
+        /**
+         * @return {number}
+         */
+        triggerAsyncId(): number;
+        /**
+         */
+        bind(fn: any, thisArg: any): any;
+        runInAsyncScope(callback: any, thisArg: any, ...args: any[]): any;
+        #private;
+    }
+    export default AsyncResource;
+    export type AsyncResourceOptions = {
+        triggerAsyncId?: number;
+        requireManualDestroy?: boolean;
+    };
+}
+
+declare module "socket:async/hooks" {
+    /**
+     * @param {AsyncHookCallbackOptions} [options]
+     * @return {AsyncHook}
+     */
+    export function createHook(callbacks: any): AsyncHook;
+    /**
+     * @ignore
+     */
+    export class AsyncHookCallbacks {
+        /**
+         * `AsyncHookCallbacks` class constructor.
+         * @ignore
+         * @param {AsyncHookCallbackOptions} [options]
+         */
+        constructor(options?: AsyncHookCallbackOptions);
+        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+        before(asyncId: any): void;
+        after(asyncId: any): void;
+        destroy(asyncId: any): void;
+        promiseResolve(asyncId: any): void;
+    }
+    /**
+     * TODO
+     */
+    export class AsyncHook {
+        /**
+         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
+         */
+        constructor(callbacks?: any);
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Enable the async hook.
+         * @return {AsyncHook}
+         */
+        enable(): AsyncHook;
+        disable(): this;
+        #private;
+    }
+    export default createHook;
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
+}
+
+declare module "socket:async/storage" {
+    /**
+     * TODO
+     */
+    export class AsyncLocalStorage {
+        /**
+         * TODO
+         */
+        static bind(fn: any): any;
+        /**
+         * TODO
+         */
+        static snapshot(): any;
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * TODO
+         */
+        disable(): void;
+        /**
+         * TODO
+         */
+        enable(): void;
+        /**
+         * @ignore
+         * @param {AsyncResource} resource
+         * @param {AsyncResource} triggerResource
+         */
+        propagateTriggerResourceStore(resource: AsyncResource, triggerResource: AsyncResource): void;
+        /**
+         * @param {any}
+         */
+        enterWith(store: any): void;
+        /**
+         * TODO
+         */
+        run(store: any, callback: any, ...args: any[]): any;
+        exit(callback: any, ...args: any[]): any;
+        getStore(): any;
+        #private;
+    }
+    export default AsyncLocalStorage;
+    import { AsyncResource } from "socket:async/resource";
+}
+
+declare module "socket:async/deferred" {
     /**
      * Dispatched when a `Deferred` internal promise is resolved.
      */
@@ -690,15 +857,23 @@ declare module "socket:async" {
         get [Symbol.toStringTag](): string;
         #private;
     }
-    namespace _default {
-        export { AsyncContext };
-        export { Deferred };
-    }
-    export default _default;
-    import AsyncContext from "socket:async-context";
-    import { wrap } from "socket:internal/async";
-    import { tag } from "socket:internal/async";
-    export { AsyncContext, wrap, tag };
+    export default Deferred;
+}
+
+declare module "socket:async" {
+    export default exports;
+    import AsyncLocalStorage from "socket:async/storage";
+    import AsyncResource from "socket:async/resource";
+    import AsyncContext from "socket:async/context";
+    import Deferred from "socket:async/deferred";
+    import { executionAsyncResource } from "socket:async/hooks";
+    import { executionAsyncId } from "socket:async/hooks";
+    import { triggerAsyncId } from "socket:async/hooks";
+    import { createHook } from "socket:async/hooks";
+    import { AsyncHook } from "socket:async/hooks";
+    import * as exports from "socket:async";
+    
+    export { AsyncLocalStorage, AsyncResource, AsyncContext, Deferred, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook, AsyncHook };
 }
 
 declare module "socket:application/menu" {
@@ -1349,11 +1524,11 @@ declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
         new (t: {}, r: any, n: any): {
-            "__#17@#i": any;
-            "__#17@#n": {};
-            "__#17@#t": {};
-            "__#17@#e": {};
-            "__#17@#s": {};
+            "__#20@#i": any;
+            "__#20@#n": {};
+            "__#20@#t": {};
+            "__#20@#e": {};
+            "__#20@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -1511,11 +1686,11 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#17@#i": any;
-            "__#17@#n": {};
-            "__#17@#t": {};
-            "__#17@#e": {};
-            "__#17@#s": {};
+            "__#20@#i": any;
+            "__#20@#n": {};
+            "__#20@#t": {};
+            "__#20@#e": {};
+            "__#20@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -6161,179 +6336,9 @@ declare module "socket:assert" {
     export default _default;
 }
 
-declare module "socket:internal/async_hooks" {
-    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
-    export function getNextAsyncResourceId(): number;
-    export function executionAsyncResource(): any;
-    export function executionAsyncId(): any;
-    export function triggerAsyncId(): any;
-    export function getDefaultExecutionAsyncId(): any;
-    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
-    export namespace state {
-        let defaultExecutionAsyncId: number;
-    }
-    export namespace hooks {
-        let init: any[];
-        let before: any[];
-        let after: any[];
-        let destroy: any[];
-        let promiseResolve: any[];
-    }
-    export class TopLevelAsyncResource {
-    }
-    export const topLevelAsyncResource: TopLevelAsyncResource;
-    export const asyncResources: Map<any, any>;
-    export const asyncContextSnapshot: import("socket:async-context").Snapshot;
-    export const asyncContextVariable: import("socket:async-context").Variable<TopLevelAsyncResource>;
-    export default hooks;
-}
-
 declare module "socket:async_hooks" {
-    /**
-     * @param {AsyncHookCallbackOptions} [options]
-     * @return {AsyncHook}
-     */
-    export function createHook(callbacks: any): AsyncHook;
-    /**
-     * @ignore
-     */
-    export class AsyncHookCallbacks {
-        /**
-         * `AsyncHookCallbacks` class constructor.
-         * @ignore
-         * @param {AsyncHookCallbackOptions} [options]
-         */
-        constructor(options?: AsyncHookCallbackOptions);
-        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
-        before(asyncId: any): void;
-        after(asyncId: any): void;
-        destroy(asyncId: any): void;
-        promiseResolve(asyncId: any): void;
-    }
-    /**
-     * TODO
-     */
-    export class AsyncHook {
-        /**
-         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
-         */
-        constructor(callbacks?: any);
-        /**
-         * @type {boolean}
-         */
-        get enabled(): boolean;
-        /**
-         * Enable the async hook.
-         * @return {AsyncHook}
-         */
-        enable(): AsyncHook;
-        disable(): this;
-        #private;
-    }
-    /**
-     * TODO
-     */
-    export class AsyncResource {
-        /**
-         * TODO
-         */
-        static bind(fn: any, type: any, thisArg: any): any;
-        /**
-         * `AsyncResource` class constructor.
-         * @param {string} type
-         * @param {AsyncResourceOptions|number=} [options]
-         */
-        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
-        /**
-         * @type {string}
-         */
-        get type(): string;
-        /**
-         * @return {number}
-         */
-        asyncId(): number;
-        /**
-         * @return {number}
-         */
-        triggerAsyncId(): number;
-        /**
-         */
-        bind(fn: any, thisArg: any): any;
-        runInAsyncScope(callback: any, thisArg: any, ...args: any[]): any;
-        #private;
-    }
-    /**
-     * TODO
-     */
-    export class AsyncLocalStorage {
-        /**
-         * TODO
-         */
-        static bind(fn: any): any;
-        /**
-         * TODO
-         */
-        static snapshot(): any;
-        /**
-         * @type {boolean}
-         */
-        get enabled(): boolean;
-        /**
-         * TODO
-         */
-        disable(): void;
-        /**
-         * TODO
-         */
-        enable(): void;
-        /**
-         * @ignore
-         * @param {AsyncResource} resource
-         * @param {AsyncResource} triggerResource
-         */
-        propagateTriggerResourceStore(resource: AsyncResource, triggerResource: AsyncResource): void;
-        /**
-         * @param {any}
-         */
-        enterWith(store: any): void;
-        /**
-         * TODO
-         */
-        run(store: any, callback: any, ...args: any[]): any;
-        exit(callback: any, ...args: any[]): any;
-        getStore(): any;
-        #private;
-    }
-    namespace _default {
-        export { AsyncLocalStorage };
-        export { AsyncResource };
-        export { AsyncHook };
-        export { createHook };
-        export { executionAsyncResource };
-        export { executionAsyncId };
-        export { triggerAsyncId };
-    }
-    export default _default;
-    export type AsyncResourceOptions = {
-        triggerAsyncId?: number;
-        requireManualDestroy?: boolean;
-    };
-    export type AsyncHookCallbackOptions = {
-        init?: (arg0: number, arg1: string, arg2: number, arg3: AsyncResource) => any;
-        before?: (arg0: number) => any;
-        after?: (arg0: number) => any;
-        destroy?: (arg0: number) => any;
-    };
-    import { executionAsyncId } from "socket:internal/async_hooks";
-    import { executionAsyncResource } from "socket:internal/async_hooks";
-    import { triggerAsyncId } from "socket:internal/async_hooks";
-    export { executionAsyncId, executionAsyncResource, triggerAsyncId };
-}
-
-declare module "socket:async_context" {
-    export * from "socket:async_hooks";
-    export default hooks;
-    import hooks from "socket:async_hooks";
+    export default exports;
+    import * as exports from "socket:async/hooks";
 }
 
 declare module "socket:bluetooth" {
@@ -11344,16 +11349,18 @@ declare module "socket:module" {
      * A limited set of builtins exposed to CommonJS modules.
      */
     export const builtins: {
+        async: typeof _async;
         async_context: {
-            AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
-            AsyncResource: typeof async_hooks.AsyncResource;
-            AsyncHook: typeof async_hooks.AsyncHook;
-            createHook: typeof async_hooks.createHook;
-            executionAsyncResource: typeof async_hooks.executionAsyncResource;
-            executionAsyncId: typeof async_hooks.executionAsyncId;
-            triggerAsyncId: typeof async_hooks.triggerAsyncId;
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
         };
-        async_hooks: typeof async_hooks;
+        async_hooks: {
+            executionAsyncResource: typeof executionAsyncResource;
+            executionAsyncId: typeof executionAsyncId;
+            triggerAsyncId: typeof triggerAsyncId;
+            createHook: typeof createHook;
+            AsyncHook: typeof AsyncHook;
+        };
         application: typeof application;
         assert: typeof import("socket:assert").assert & {
             AssertionError: typeof import("socket:assert").AssertionError;
@@ -11448,11 +11455,7 @@ declare module "socket:module" {
             ENOLCK: number;
             ENOLINK: number;
             ENOMEM: number;
-            ENOMSG: number; /**
-             * Modules children to this one, as in they were required in this
-             * module scope context.
-             * @type {Array<Module>}
-             */
+            ENOMSG: number;
             ENOPROTOOPT: number;
             ENOSPC: number;
             ENOSR: number;
@@ -11715,16 +11718,18 @@ declare module "socket:module" {
         };
     };
     export const builtinModules: {
+        async: typeof _async;
         async_context: {
-            AsyncLocalStorage: typeof async_hooks.AsyncLocalStorage;
-            AsyncResource: typeof async_hooks.AsyncResource;
-            AsyncHook: typeof async_hooks.AsyncHook;
-            createHook: typeof async_hooks.createHook;
-            executionAsyncResource: typeof async_hooks.executionAsyncResource;
-            executionAsyncId: typeof async_hooks.executionAsyncId;
-            triggerAsyncId: typeof async_hooks.triggerAsyncId;
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
         };
-        async_hooks: typeof async_hooks;
+        async_hooks: {
+            executionAsyncResource: typeof executionAsyncResource;
+            executionAsyncId: typeof executionAsyncId;
+            triggerAsyncId: typeof triggerAsyncId;
+            createHook: typeof createHook;
+            AsyncHook: typeof AsyncHook;
+        };
         application: typeof application;
         assert: typeof import("socket:assert").assert & {
             AssertionError: typeof import("socket:assert").AssertionError;
@@ -11819,11 +11824,7 @@ declare module "socket:module" {
             ENOLCK: number;
             ENOLINK: number;
             ENOMEM: number;
-            ENOMSG: number; /**
-             * Modules children to this one, as in they were required in this
-             * module scope context.
-             * @type {Array<Module>}
-             */
+            ENOMSG: number;
             ENOPROTOOPT: number;
             ENOSPC: number;
             ENOSR: number;
@@ -12252,7 +12253,14 @@ declare module "socket:module" {
     export default Module;
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
-    import * as async_hooks from "socket:async_hooks";
+    import _async from "socket:async";
+    import { AsyncLocalStorage } from "socket:async";
+    import { AsyncResource } from "socket:async";
+    import { executionAsyncResource } from "socket:async";
+    import { executionAsyncId } from "socket:async";
+    import { triggerAsyncId } from "socket:async";
+    import { createHook } from "socket:async";
+    import { AsyncHook } from "socket:async";
     import application from "socket:application";
     import * as buffer from "socket:buffer";
     import stream from "socket:stream";

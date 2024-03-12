@@ -1,4 +1,4 @@
-import * as asyncHooks from './async_hooks.js'
+import * as asyncHooks from './async/hooks.js'
 import { platform } from '../timers.js'
 
 export function setTimeout (callback, ...args) {
