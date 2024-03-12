@@ -201,6 +201,7 @@ export async function getWindows (indices, options = null) {
     return {
       0: new ApplicationWindow({
         index: 0,
+        id: globalThis.__args?.client?.id ?? null,
         width: globalThis.screen?.availWidth ?? 0,
         height: globalThis.screen?.availHeight ?? 0,
         title: document.title,
