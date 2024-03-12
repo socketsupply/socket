@@ -16,7 +16,7 @@ import './primitives.js'
 
 import { CustomEvent, ErrorEvent } from '../events.js'
 import { IllegalConstructor } from '../util.js'
-import { wrap as asyncWrap } from './async.js'
+import * as asyncHooks from './async_hooks.js'
 import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
@@ -61,7 +61,7 @@ if ((globalThis.window || globalThis.self) === globalThis) {
 
       function task () {
         try {
-          return asyncWrap(callback).call(globalThis)
+          return asyncHooks.wrap(callback, 'Microtask').call(globalThis)
         } catch (error) {
           // XXX(@jwerle): `queueMicrotask()` is broken in WebKit WebViews
           // If an error is thrown, it does not bubble to the `globalThis`

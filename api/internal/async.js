@@ -1,29 +1,47 @@
 import AsyncContext from '../async-context.js'
 
-const NativePromisePrototype = {
-  then: globalThis.Promise.prototype.then,
-  catch: globalThis.Promise.prototype.catch,
-  finally: globalThis.Promise.prototype.finally
+export const symbol = Symbol.for('socket.runtime.async')
+
+export function isTagged (fn) {
+  if (typeof fn === 'function' && fn[symbol] === true) {
+    return true
+  }
+
+  return false
+}
+
+export function tag (fn) {
+  if (typeof fn !== 'function') {
+    return fn
+  }
+
+  if (fn[symbol] === true) {
+    return fn
+  }
+
+  Object.defineProperty(fn, symbol, {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: true
+  })
+
+  return fn
 }
 
 export function wrap (fn) {
   if (typeof fn === 'function') {
-    return AsyncContext.Snapshot.wrap(fn)
+    if (isTagged(fn)) {
+      return fn
+    }
+
+    return tag(AsyncContext.Snapshot.wrap(fn))
   }
 
   return fn
 }
 
-globalThis.Promise.prototype.then = function (onFulfilled, onRejected) {
-  return NativePromisePrototype.then.call(this, wrap(onFulfilled), wrap(onRejected))
+export default {
+  tag,
+  wrap
 }
-
-globalThis.Promise.prototype.catch = function (onRejected) {
-  return NativePromisePrototype.catch.call(this, wrap(onRejected))
-}
-
-globalThis.Promise.prototype.finally = function (callback) {
-  return NativePromisePrototype.finally.call(this, wrap(callback))
-}
-
-export default { wrap }
