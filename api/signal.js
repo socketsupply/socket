@@ -158,7 +158,7 @@ export function addEventListener (signalName, callback, options = null) {
  * @param {function(SignalEvent)} callback
  * @param {{ once?: boolean }=} [options]
  */
-export function removeEventListener (signal, callback, options = null) {
+export function removeEventListener (signalName, callback, options = null) {
   const name = getName(signalName)
   return globalThis.removeEventListener(name, callback, options)
 }
