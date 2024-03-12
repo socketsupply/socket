@@ -1,4 +1,8 @@
 /* global Event, ErrorEvent */
+import AsyncContext from './async-context.js'
+import { wrap, tag } from './internal/async.js'
+
+export { AsyncContext, wrap, tag }
 
 /**
  * Dispatched when a `Deferred` internal promise is resolved.
@@ -112,9 +116,9 @@ export class Deferred extends EventTarget {
    */
   then (resolve, reject) {
     if (resolve && reject) {
-      return this.promise.then(resolve, reject)
+      return this.promise.then(wrap(resolve), wrap(reject))
     } else if (resolve) {
-      return this.promise.then(resolve)
+      return this.promise.then(wrap(resolve))
     } else {
       return this.promise.then()
     }
@@ -127,7 +131,7 @@ export class Deferred extends EventTarget {
    * @param {function(Error)=} [callback]
    */
   catch (callback) {
-    return this.promise.catch(callback)
+    return this.promise.catch(wrap(callback))
   }
 
   /**
@@ -135,10 +139,11 @@ export class Deferred extends EventTarget {
    * @type {function(any?)} [callback]
    */
   finally (callback) {
-    return this.promise.finally(callback)
+    return this.promise.finally(wrap(callback))
   }
 }
 
 export default {
+  AsyncContext,
   Deferred
 }

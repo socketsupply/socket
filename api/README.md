@@ -16,7 +16,7 @@
 This is a `VariableDeclaration` named `MAX_WINDOWS` in `api/application.js`, it's exported but undocumented.
 
 
-## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L30)
+## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L43)
 
 Returns the current window index
 
@@ -24,7 +24,7 @@ Returns the current window index
 | :---         | :--- | :---        |
 | Not specified | number |  |
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L62)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L75)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -59,15 +59,15 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-### [`radius()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L87)
+### [`radius()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L100)
 
 
 
-### [`margin()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L92)
+### [`margin()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L105)
 
 
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L154)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L173)
 
 Returns the current screen size.
 
@@ -75,7 +75,7 @@ Returns the current screen size.
 | :---         | :--- | :---        |
 | Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L180)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L199)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -87,7 +87,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<Object.<number?, ApplicationWindow>> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L232)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L251)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -99,7 +99,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L242)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L261)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -107,7 +107,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L251)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L270)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -119,7 +119,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L348)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L367)
 
 Set the native menu for the app.
 
@@ -214,11 +214,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L355)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L374)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L364)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L383)
 
 Set the enabled state of the system menu.
 
@@ -230,23 +230,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L372)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L391)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L378)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L397)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L384)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L403)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L389)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L408)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L395)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L414)
 
 
 
@@ -259,7 +259,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L403)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L422)
 
 
 
