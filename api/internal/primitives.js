@@ -281,7 +281,7 @@ export function init () {
     Error.captureStackTrace = function () {}
   }
 
-  if (globalThis.document) {
+  if (globalThis.document && globalThis.top === globalThis) {
     // create <title> tag in document if it doesn't exist
     globalThis.document.title ||= ''
     // initial value
