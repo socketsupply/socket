@@ -1088,7 +1088,31 @@ namespace SSC {
     );
   }
 
+  String Window::getBackgroundColor () {
+    GtkStyleContext *context = gtk_widget_get_style_context(widget);
+
+    GdkRGBA color;
+    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(widget), &color);
+
+    char color_str[100];
+
+    snprintf(
+      color_str,
+      sizeof(color_str),
+      "rgba(%d, %d, %d, %f)",
+      (int)(color.red * 255),
+      (int)(color.green * 255),
+      (int)(color.blue * 255),
+      color.alpha
+    );
+
+    return String(color_str);
+  }
+
   void Window::showInspector () {
+    WebKitWebInspector *inspector = webkit_web_view_get_inspector(this->webview);
+    webkit_web_inspector_show(inspector);
+
     // this->webview->inspector.show();
   }
 
