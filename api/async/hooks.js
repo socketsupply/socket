@@ -67,7 +67,7 @@ export class AsyncHookCallbacks {
 }
 
 /**
- * TODO
+ * A container for registering various callbacks for async resource hooks.
  */
 export class AsyncHook {
   /**
@@ -129,6 +129,10 @@ export class AsyncHook {
     return this
   }
 
+  /**
+   * Disables the async hook
+   * @return {AsyncHook}
+   */
   disable () {
     if (!this.#enabled) {
       return this
@@ -162,7 +166,8 @@ export class AsyncHook {
 }
 
 /**
- * @param {AsyncHookCallbackOptions} [options]
+ * Factory for creating a `AsyncHook` instance.
+ * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [callbacks]
  * @return {AsyncHook}
  */
 export function createHook (callbacks) {
