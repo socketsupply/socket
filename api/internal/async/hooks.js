@@ -1,4 +1,5 @@
 import { wrap as asyncWrap } from '../../async/wrap.js'
+import { toProperCase } from '../../util.js'
 import { Variable } from '../../async/context.js'
 import gc from '../../gc.js'
 
@@ -198,12 +199,7 @@ export class TopLevelAsyncResource extends CoreAsyncResource {}
 export function dispatch (hook, asyncId, type, triggerAsyncId, resource) {
   if (hook in hooks) {
     for (const callback of hooks[hook]) {
-      switch (callback.length) {
-        case 4: callback(asyncId, type, triggerAsyncId, resource); break
-        case 3: callback(asyncId, type, triggerAsyncId); break
-        case 2: callback(asyncId, type); break
-        case 1: callback(asyncId); break
-      }
+      callback(asyncId, type, triggerAsyncId, resource)
     }
   }
 }
@@ -257,16 +253,33 @@ export function wrap (
   return function (...args) {
     dispatch('before', asyncId)
     try {
-      // eslint-disable-next-line
-      return callback(...args)
+      return topLevelAsyncResource.runInAsyncScope(() => {
+        // eslint-disable-next-line
+        return callback(...args)
+      })
     } finally {
       dispatch('after', asyncId)
     }
   }
 }
 
-export const asyncContextVariable = new Variable({ name: 'async-hooks' })
-export const topLevelAsyncResource = new TopLevelAsyncResource('TopLevel')
+export function getTopLevelAsyncResourceName () {
+  if (globalThis.__args?.client) {
+    const { type, frameType } = globalThis.__args.client
+    return (
+      frameType.replace('none', '').split('-').map(toProperCase).join('') +
+      toProperCase(type.repl)
+    )
+  }
+
+  return 'TopLevel'
+}
+
+export const asyncContextVariable = new Variable({ name: 'internal/async/hooks' })
+export const topLevelAsyncResource = new TopLevelAsyncResource(
+  getTopLevelAsyncResourceName()
+)
+
 asyncContextVariable.defaultValue = topLevelAsyncResource
 
 export default hooks
