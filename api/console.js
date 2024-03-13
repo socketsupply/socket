@@ -152,7 +152,7 @@ export class Console {
     this.warn = this.warn.bind(this)
   }
 
-  async write (destination, ...args) {
+  write (destination, ...args) {
     let extra = ''
     let value = ''
 
@@ -166,10 +166,10 @@ export class Console {
 
     value = encodeURIComponent(value)
 
-    const uri = `ipc://${destination}?value=${value}&${extra}`
+    const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
 
     try {
-      return await this.postMessage?.(uri)
+      return this.postMessage?.(uri)
     } catch (err) {
       this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
     }
