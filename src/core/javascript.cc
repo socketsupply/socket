@@ -5,6 +5,7 @@ namespace SSC {
   String createJavaScript (const String& name, const String& source) {
     return String(
       ";(async () => {                                                       \n"
+      "  const globals = await import('socket:internal/globals');            \n"
       "  if (!globalThis.__RUNTIME_INIT_NOW__) {                             \n"
       "    await new Promise((resolve) => {                                  \n"
       "      globalThis.addEventListener('__runtime_init__', resolve, {      \n"
@@ -19,7 +20,9 @@ namespace SSC {
       "    'The webview environment may not be initialized correctly.'       \n"
       "  );                                                                  \n"
       "                                                                      \n"
-      "  " + trim(source) + ";                                               \n"
+      "  globals.get('RuntimeExecution').runInAsyncScope(async () => {       \n"
+      "    " + trim(source) + ";                                             \n"
+      "  });                                                                 \n"
       "})();                                                                 \n"
       "undefined;                                                            \n"
       "//# sourceURL=" + name + "                                            \n"
