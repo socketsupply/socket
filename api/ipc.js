@@ -520,7 +520,7 @@ export function findMessageTransfers (transfers, object) {
 /**
  * @ignore
  */
-export async function postMessage (message, ...args) {
+export function postMessage (message, ...args) {
   if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {
     return webkit.messageHandlers.external.postMessage(message, ...args)
   } else if (globalThis?.chrome?.webview?.postMessage) {
@@ -532,7 +532,7 @@ export async function postMessage (message, ...args) {
     findMessageTransfers(transfer, args)
     // worker
     if (globalThis.self && !globalThis.window) {
-      return await globalThis?.postMessage({
+      return globalThis?.postMessage({
         __runtime_worker_ipc_request: {
           message,
           bytes: args[0] ?? null
