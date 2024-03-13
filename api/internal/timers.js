@@ -1,8 +1,8 @@
-import * as asyncHooks from './async/hooks.js'
+import { Timeout, Interval, Immediate } from '../timers/timer.js'
 import { platform } from '../timers.js'
 
 export function setTimeout (callback, ...args) {
-  return platform.setTimeout(asyncHooks.wrap(callback, 'Timeout'), 0, ...args)
+  return Timeout.from(callback, ...args).id
 }
 
 export function clearTimeout (timeout) {
@@ -10,7 +10,7 @@ export function clearTimeout (timeout) {
 }
 
 export function setInterval (callback, ...args) {
-  return platform.setInterval(asyncHooks.wrap(callback, 'Timeout'), ...args)
+  return Interval.from(callback, ...args).id
 }
 
 export function clearInterval (interval) {
@@ -18,7 +18,7 @@ export function clearInterval (interval) {
 }
 
 export function setImmediate (callback, ...args) {
-  return platform.setTimeout(asyncHooks.wrap(callback, 'Timeout'), 0, ...args)
+  return Immediate.from(callback, ...args).id
 }
 
 export function clearImmediate (immediate) {
