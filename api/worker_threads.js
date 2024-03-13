@@ -96,6 +96,60 @@ export function getEnvironmentData (key) {
   return init.state.env[key] ?? null
 }
 
+export class Pipe extends AsyncResource {
+  #worker = null
+  #reading = true
+
+  /**
+   * `Pipe` class constructor.
+   * @param {Childworker} worker
+   * @ignore
+   */
+  constructor (worker) {
+    super('Pipe')
+
+    this.#worker = worker
+
+    if (worker.stdout) {
+      const { emit } = worker.stdout
+      worker.stdout.emit = (...args) => {
+        if (!this.reading) return false
+        return this.runInAsyncScope(() => {
+          return emit.call(worker.stdout, ...args)
+        })
+      }
+    }
+
+    if (worker.stderr) {
+      const { emit } = worker.stderr
+      worker.stderr.emit = (...args) => {
+        if (!this.reading) return false
+        return this.runInAsyncScope(() => {
+          return emit(worker.stderr, ...args)
+        })
+      }
+    }
+
+    worker.once('close', () => this.destroy())
+    worker.once('exit', () => this.destroy())
+  }
+
+  /**
+   * `true` if the pipe is still reading, otherwise `false`.
+   * @type {boolean}
+   */
+  get reading () {
+    return this.#reading
+  }
+
+  /**
+   * Destroys the pipe
+   */
+  destroy () {
+    this.#reading = false
+  }
+}
+
 /**
  * @typedef {{
  *   env?: object,
