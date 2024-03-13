@@ -1,11 +1,12 @@
 import { Writable, Readable } from './stream.js'
-import init, { SHARE_ENV } from './worker_threads/init.js'
 import { getTransferables } from './vm.js'
+import init, { SHARE_ENV } from './worker_threads/init.js'
 import { maybeMakeError } from './ipc.js'
+import { AsyncResource } from './async/resource.js'
 import { EventEmitter } from './events.js'
 import { env } from './process.js'
-
 /**
+
  * A pool of known worker threads.
  * @type {<Map<string, Worker>}
  */
@@ -111,6 +112,7 @@ export function getEnvironmentData (key) {
  * share environment data, and process streamed data.
  */
 export class Worker extends EventEmitter {
+  #resource = null
   #worker = null
   #stdin = null
   #stdout = null
@@ -126,7 +128,9 @@ export class Worker extends EventEmitter {
 
     options = { ...options }
 
-    const url = new URL('./worker_threads/init.js', import.meta.url)
+    const url = '/socket/worker_threads/init.js'
+    this.#resource = new AsyncResource('WorkerThread')
+
     this.onWorkerMessage = this.onWorkerMessage.bind(this)
     this.onProcessEnvironmentEvent = this.onProcessEnvironmentEvent.bind(this)
 
@@ -263,19 +267,31 @@ export class Worker extends EventEmitter {
 
     if (request.online?.id) {
       workers.set(this.id, this)
-      this.emit('online')
+      this.#resource.runInAsyncScope(() => {
+        this.emit('online')
+      })
     }
 
     if (request.error) {
-      this.emit('error', maybeMakeError(request.error))
+      this.#resource.runInAsyncScope(() => {
+        this.emit('error', maybeMakeError(request.error))
+      })
     }
 
     if (request.process?.stdout?.data && this.#stdout) {
-      this.#stdout.push(request.process.stdout.data)
+      queueMicrotask(() => {
+        this.#resource.runInAsyncScope(() => {
+          this.#stdout.push(request.process.stdout.data)
+        })
+      })
     }
 
     if (request.process?.stderr?.data && this.#stderr) {
-      this.#stderr.push(request.process.stderr.data)
+      queueMicrotask(() => {
+        this.#resource.runInAsyncScope(() => {
+          this.#stderr.push(request.process.stderr.data)
+        })
+      })
     }
 
     if (/set|delete/.test(request.process?.env?.type ?? '')) {
@@ -288,7 +304,9 @@ export class Worker extends EventEmitter {
 
     if (request.process?.exit) {
       this.#worker.terminate()
-      this.emit('exit', request.process.exit.code ?? 0)
+      this.#resource.runInAsyncScope(() => {
+        this.emit('exit', request.process.exit.code ?? 0)
+      })
     }
 
     if (event.data?.worker_threads) {
@@ -296,10 +314,14 @@ export class Worker extends EventEmitter {
       return false
     }
 
-    this.emit('message', event.data)
+    this.#resource.runInAsyncScope(() => {
+      this.emit('message', event.data)
+    })
 
     if (mainPort) {
-      mainPort.dispatchEvent(new MessageEvent('message', event))
+      this.#resource.runInAsyncScope(() => {
+        mainPort.dispatchEvent(new MessageEvent('message', event))
+      })
     }
   }
 
