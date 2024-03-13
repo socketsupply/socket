@@ -923,8 +923,6 @@ void checkIosSimulatorDeviceAvailability (const String& device) {
 int runApp (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
-  log("attempting to run " + cmd);
-
   if (!fs::exists(path)) {
     log("Executable not found at " + cmd);
     std::cout << "Try running `ssc build` first." << std::endl;
