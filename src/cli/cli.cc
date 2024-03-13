@@ -923,6 +923,8 @@ void checkIosSimulatorDeviceAvailability (const String& device) {
 int runApp (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
+  log("attempting to run " + cmd);
+
   if (!fs::exists(path)) {
     log("Executable not found at " + cmd);
     std::cout << "Try running `ssc build` first." << std::endl;
@@ -972,8 +974,9 @@ int runApp (const Path& path, const String& args, bool headless) {
   if (platform.mac) {
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
     auto configuration = [NSWorkspaceOpenConfiguration configuration];
-    auto string = path.string();
-    auto slice = string.substr(0, string.find(".app") + 4);
+    auto stringPath = path.string();
+    auto slice = stringPath.substr(0, stringPath.rfind(".app") + 4);
+
     auto url = [NSURL
       fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
     ];
@@ -1006,6 +1009,11 @@ int runApp (const Path& path, const String& args, bool headless) {
     configuration.environment = env;
     configuration.arguments = arguments;
     configuration.activates = headless ? NO : YES;
+
+    if (!bundle) {
+      log("Unable to find the application bundle");
+      return 1;
+    }
 
     log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
@@ -1766,7 +1774,8 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
     exit(0);
   } else {
     auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
-    auto exitCode = runApp(paths.pathBin / executable, argvForward, flagRunHeadless);
+    auto pathToExecutable = (paths.pathBin / executable).string();
+    auto exitCode = runApp(pathToExecutable, argvForward, flagRunHeadless);
     return exit(exitCode);
   }
 
@@ -2004,14 +2013,14 @@ int main (const int argc, const char* argv[]) {
 
   auto getPaths = [&](String platform) -> Paths {
     Paths paths;
-    String platformPath = platform == "win32"
-      ? "win"
-      : platform;
+    String platformPath = platform == "win32" ? "win" : platform;
+
     paths.platformSpecificOutputPath = {
       targetPath /
       settings["build_output"] /
       platformPath
     };
+
     if (platform == "mac") {
       Path pathBase = "Contents";
       Path packageName = Path(settings["build_name"] + ".app");
@@ -3012,8 +3021,8 @@ int main (const int argc, const char* argv[]) {
 
       compileAssetsCommand
         << "xcrun "
-          << "actool " << assetsPath.string() << " "
-          << "--compile " << dest.string() << " "
+          << "actool \"" << assetsPath.string() << "\" "
+          << "--compile \"" << dest.string() << "\" "
           << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
           << "--minimum-deployment-target 10.15 "
           << "--app-icon AppIcon "
@@ -3061,7 +3070,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
-      flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
+      flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
@@ -6137,7 +6146,7 @@ int main (const int argc, const char* argv[]) {
         << " " << files
         << " " << flags
         << " " << extraFlags
-        << " -o " << binaryPath.string()
+        << " -o \"" << binaryPath.string() << "\""
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
