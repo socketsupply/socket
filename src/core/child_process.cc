@@ -46,6 +46,146 @@ namespace SSC {
     });
   }
 
+  void Core::ChildProcess::exec (
+    const String seq,
+    uint64_t id,
+    const Vector<String> args,
+    const ExecOptions options,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this] {
+      Lock lock(mutex);
+
+      if (this->handles.contains(id)) {
+        auto json = JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"message", "A process with that id already exists"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      Process* process = nullptr;
+      Core::Timers::ID timer;
+
+      const auto command = args.size() > 0 ? args.at(0) : String("");
+      const auto argv = join(args.size() > 1 ? Vector<String>{ args.begin() + 1, args.end() } : Vector<String>{}, " ");
+
+      auto stdoutBuffer = new JSON::Array{};
+      auto stderrBuffer = new JSON::Array{};
+
+      const auto onStdout = [=](const String& output) mutable {
+        if (!options.allowStdout || output.size() == 0) {
+          return;
+        }
+
+        if (stdoutBuffer != nullptr) {
+          stdoutBuffer->push(output);
+        }
+      };
+
+      const auto onStderr = [=](const String& output) mutable {
+        if (!options.allowStderr || output.size() == 0) {
+          return;
+        }
+
+        if (stderrBuffer != nullptr) {
+          stderrBuffer->push(output);
+        }
+      };
+
+      const auto onExit = [=, this](const String& output) mutable {
+        if (timer > 0) {
+          this->core->clearTimeout(timer);
+        }
+
+        this->core->dispatchEventLoop([=, this] () mutable {
+          Lock lock(mutex);
+          if (this->handles.contains(id)) {
+            auto process = this->handles.at(id);
+            const auto pid = process->id;
+            const auto code = process->wait();
+            const auto json = JSON::Object::Entries {
+              {"source", "child_process.exec"},
+              {"data", JSON::Object::Entries {
+                {"id", std::to_string(id)},
+                {"pid", pid},
+                {"stdout", *stdoutBuffer},
+                {"stderr", *stderrBuffer},
+                {"code", code}
+              }}
+            };
+
+            this->handles.erase(id);
+            delete stdoutBuffer;
+            delete stderrBuffer;
+            delete process;
+
+            stdoutBuffer = nullptr;
+            stderrBuffer = nullptr;
+            process = nullptr;
+
+            cb(seq, json, Post{});
+          }
+        });
+      };
+
+      process = new Process(
+        command,
+        argv,
+        options.cwd,
+        onStdout,
+        onStderr,
+        onExit,
+        false
+      );
+
+      do {
+        Lock lock(mutex);
+        this->handles.insert_or_assign(id, process);
+      } while (0);
+
+      const auto pid = process->open();
+      if (options.timeout > 0) {
+        timer = this->core->setTimeout(options.timeout, [=, this] () mutable {
+          Lock lock(mutex);
+          const auto json = JSON::Object::Entries {
+            {"source", "child_process.exec"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(id)},
+              {"pid", pid},
+              {"stdout", *stdoutBuffer},
+              {"stderr", *stderrBuffer},
+              {"code", "ETIMEDOUT"}
+            }}
+          };
+
+          this->handles.erase(id);
+
+          this->core->dispatchEventLoop([=, this] {
+            cb(seq, json, Post{});
+          });
+
+        #ifdef _WIN32
+          process->kill();
+        #else
+          ::kill(-process->id, options.killSignal);
+        #endif
+
+          delete stdoutBuffer;
+          delete stderrBuffer;
+          delete process;
+
+          stdoutBuffer = nullptr;
+          stderrBuffer = nullptr;
+          process = nullptr;
+        });
+      }
+    });
+  }
+
   void Core::ChildProcess::spawn (
     const String seq,
     uint64_t id,
@@ -73,7 +213,7 @@ namespace SSC {
       const auto argv = join(args.size() > 1 ? Vector<String>{ args.begin() + 1, args.end() } : Vector<String>{}, " ");
 
       const auto onStdout = [=](const String& output) {
-        if (!options.std_out || output.size() == 0) {
+        if (!options.allowStdout || output.size() == 0) {
           return;
         }
 
@@ -103,7 +243,7 @@ namespace SSC {
       };
 
       const auto onStderr = [=](const String& output) {
-        if (!options.std_err || output.size() == 0) {
+        if (!options.allowStderr || output.size() == 0) {
           return;
         }
 
@@ -177,7 +317,7 @@ namespace SSC {
         onStdout,
         onStderr,
         onExit,
-        options.std_in
+        options.allowStdin
       );
 
       do {
