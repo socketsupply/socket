@@ -186,7 +186,7 @@ declare module "socket:console" {
          * @type {function?}
          */
         postMessage: Function | null;
-        write(destination: any, ...args: any[]): Promise<any>;
+        write(destination: any, ...args: any[]): any;
         assert(assertion: any, ...args: any[]): void;
         clear(): void;
         count(label?: string): void;
@@ -1036,6 +1036,7 @@ declare module "socket:internal/async/hooks" {
     export function triggerAsyncId(): any;
     export function getDefaultExecutionAsyncId(): any;
     export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    export function getTopLevelAsyncResourceName(): any;
     /**
      * The default top level async resource ID
      * @type {number}
@@ -4411,7 +4412,7 @@ declare module "socket:ipc" {
     /**
      * @ignore
      */
-    export function postMessage(message: any, ...args: any[]): Promise<any>;
+    export function postMessage(message: any, ...args: any[]): any;
     /**
      * Waits for the native IPC layer to be ready and exposed on the
      * global window object.
@@ -11340,11 +11341,11 @@ declare module "socket:timers/platform" {
 }
 
 declare module "socket:timers/timer" {
-    export class Timer {
-        static from(...args: any[]): void;
-        constructor(create: any, destroy: any);
+    export class Timer extends AsyncResource {
+        static from(...args: any[]): Timer;
+        constructor(type: any, create: any, destroy: any);
         get id(): number;
-        init(...args: any[]): void;
+        init(...args: any[]): this;
         close(): boolean;
         [Symbol.toPrimitive](): number;
         #private;
@@ -11355,7 +11356,8 @@ declare module "socket:timers/timer" {
     export class Interval extends Timer {
         constructor();
     }
-    export class Immediate extends Timeout {
+    export class Immediate extends Timer {
+        constructor();
     }
     namespace _default {
         export { Timer };
@@ -11364,6 +11366,7 @@ declare module "socket:timers/timer" {
         export { Interval };
     }
     export default _default;
+    import { AsyncResource } from "socket:async/resource";
 }
 
 declare module "socket:timers/promises" {
@@ -11391,11 +11394,11 @@ declare module "socket:timers/scheduler" {
 }
 
 declare module "socket:timers/index" {
-    export function setTimeout(callback: any, delay: any, ...args: any[]): void;
+    export function setTimeout(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
     export function clearTimeout(timeout: any): void;
-    export function setInterval(callback: any, delay: any, ...args: any[]): void;
+    export function setInterval(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
     export function clearInterval(interval: any): void;
-    export function setImmediate(callback: any, ...args: any[]): void;
+    export function setImmediate(callback: any, ...args: any[]): import("socket:timers/timer").Timer;
     export function clearImmediate(immediate: any): void;
     export { platform };
     namespace _default {
@@ -13641,11 +13644,11 @@ declare module "socket:internal/scheduler" {
 }
 
 declare module "socket:internal/timers" {
-    export function setTimeout(callback: any, ...args: any[]): any;
+    export function setTimeout(callback: any, ...args: any[]): number;
     export function clearTimeout(timeout: any): any;
-    export function setInterval(callback: any, ...args: any[]): any;
+    export function setInterval(callback: any, ...args: any[]): number;
     export function clearInterval(interval: any): any;
-    export function setImmediate(callback: any, ...args: any[]): any;
+    export function setImmediate(callback: any, ...args: any[]): number;
     export function clearImmediate(immediate: any): any;
     namespace _default {
         export { setTimeout };
