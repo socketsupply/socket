@@ -235,7 +235,7 @@ export class MIMEParams extends Map {
   }
 
   get size () {
-    return this.keys().length
+    return super.size
   }
 }
 
