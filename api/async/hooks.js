@@ -19,6 +19,7 @@ export {
 }
 
 /**
+ * A container for `AsyncHooks` callbacks.
  * @ignore
  */
 export class AsyncHookCallbacks {
