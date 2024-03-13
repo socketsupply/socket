@@ -1164,6 +1164,7 @@ declare module "socket:async/hooks" {
      */
     export function createHook(callbacks?: (AsyncHookCallbackOptions | AsyncHookCallbacks) | undefined): AsyncHook;
     /**
+     * A container for `AsyncHooks` callbacks.
      * @ignore
      */
     export class AsyncHookCallbacks {
