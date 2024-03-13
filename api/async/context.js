@@ -360,6 +360,21 @@ export class Variable {
   }
 
   /**
+   * @ignore
+   */
+  get defaultValue () { return this.#defaultValue }
+  set defaultValue (defaultValue) {
+    this.#defaultValue = defaultValue
+  }
+
+  /**
+   * @ignore
+   */
+  get revert () {
+    return this.#revert
+  }
+
+  /**
    * The name of this async context variable.
    * @type {string}
    */
@@ -381,10 +396,14 @@ export class Variable {
    */
   run (value, fn, ...args) {
     const revert = Storage.set(this, value)
+    this.#revert = revert
     try {
       return Reflect.apply(fn, null, args)
     } finally {
       Storage.restore(revert)
+      if (this.#revert === revert) {
+        this.#revert = null
+      }
     }
   }
 
