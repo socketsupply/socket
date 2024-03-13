@@ -258,6 +258,8 @@ export const builtins = {
   },
   // eslint-disable-next-line
   async_hooks: {
+    AsyncLocalStorage,
+    AsyncResource,
     executionAsyncResource,
     executionAsyncId,
     triggerAsyncId,
