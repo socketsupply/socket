@@ -1,18 +1,22 @@
+import { AsyncResource } from '../async/resource.js'
 import platform from './platform.js'
 import gc from '../gc.js'
 
-export class Timer {
+export class Timer extends AsyncResource {
   #id = 0
   #closed = false
   #create = null
   #destroy = null
+  #destroyed = false
 
   static from (...args) {
     const timer = new this()
     return timer.init(...args)
   }
 
-  constructor (create, destroy) {
+  constructor (type, create, destroy) {
+    super(type, { requireManualDestroy: true })
+
     if (typeof create !== 'function') {
       throw new TypeError('Timer creator must be a function')
     }
@@ -21,17 +25,32 @@ export class Timer {
       throw new TypeError('Timer destroyer must be a function')
     }
 
-    this.#create = create
-    this.#destroy = destroy
+    this.#create = (callback, ...args) => {
+      return create(() => this.runInAsyncScope(callback), ...args)
+    }
+
+    this.#destroy = (...args) => {
+      if (typeof destroy === 'function') {
+        destroy(...args)
+      }
+
+      this.#destroyed = true
+      this.emitDestroy()
+    }
   }
 
   get id () {
     return this.#id
   }
 
+  get destroyed () {
+    return this.#destroyed
+  }
+
   init (...args) {
-    this.#id = this.create(...args)
+    this.#id = this.#create(...args)
     gc.ref(this)
+    return this
   }
 
   close () {
@@ -50,10 +69,12 @@ export class Timer {
   }
 
   [gc.finalizer] () {
+    const finalizer = super[gc.finalizer]
     return {
       args: [this.id, this.#destroy],
       handle (id, destroy) {
         destroy(id)
+        finalizer.handle(...finalizer.args)
       }
     }
   }
@@ -62,6 +83,7 @@ export class Timer {
 export class Timeout extends Timer {
   constructor () {
     super(
+      'Timeout',
       (callback, delay, ...args) => {
         return platform.setTimeout(
           (...args) => {
@@ -80,11 +102,29 @@ export class Timeout extends Timer {
 
 export class Interval extends Timer {
   constructor () {
-    super(platform.setInterval, platform.clearInterval)
+    super('Interval', platform.setInterval, platform.clearInterval)
   }
 }
 
-export class Immediate extends Timeout {}
+export class Immediate extends Timer {
+  constructor () {
+    super(
+      'Immediate',
+      (callback, delay, ...args) => {
+        return platform.setImmediate(
+          (...args) => {
+            this.close()
+            // eslint-disable-next-line
+            callback(...args)
+          },
+          0,
+          ...args
+        )
+      },
+      platform.clearImmediate
+    )
+  }
+}
 
 export default {
   Timer,
