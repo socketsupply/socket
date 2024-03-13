@@ -267,7 +267,7 @@ export function getTopLevelAsyncResourceName () {
   if (globalThis.__args?.client) {
     const { type, frameType } = globalThis.__args.client
     return (
-      frameType.replace('none', '').split('-').map(toProperCase).join('') +
+      frameType.replace('none', '').split('-').filter(Boolean).map(toProperCase).join('') +
       toProperCase(type.repl)
     )
   }
