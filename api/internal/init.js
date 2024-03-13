@@ -703,6 +703,8 @@ hooks.onReady(async () => {
 
 // symbolic globals
 globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
+globals.register('RuntimeExecution', new asyncHooks.CoreAsyncResource('RuntimeExecution'))
+
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
 Object.defineProperty(globalThis, '__globals', {
