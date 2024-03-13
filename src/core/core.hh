@@ -695,9 +695,21 @@ namespace SSC {
           using Handles = std::map<uint64_t, Process*>;
           struct SpawnOptions {
             String cwd;
-            bool std_in = true;
-            bool std_out = true;
-            bool std_err = true;
+            bool allowStdin = true;
+            bool allowStdout = true;
+            bool allowStderr = true;
+          };
+
+          struct ExecOptions {
+            String cwd;
+            bool allowStdout = true;
+            bool allowStderr = true;
+            uint64_t timeout = 0;
+            #ifdef _WIN32
+              int killSignal = 0; // unused
+            #else
+              int killSignal = SIGTERM;
+            #endif
           };
 
           Handles handles;
@@ -706,6 +718,14 @@ namespace SSC {
           ChildProcess (auto core) : Module(core) {}
 
           void shutdown ();
+          void exec (
+            const String seq,
+            uint64_t id,
+            const Vector<String> args,
+            const ExecOptions options,
+            Module::Callback cb
+          );
+
           void spawn (
             const String seq,
             uint64_t id,
