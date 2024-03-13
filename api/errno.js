@@ -84,7 +84,7 @@ export const ETXTBSY = constants.ETXTBSY
 export const EWOULDBLOCK = constants.EWOULDBLOCK
 export const EXDEV = constants.EXDEV
 
-export const strings = {
+export const strings = Object.assign(Object.create(null), {
   [E2BIG]: 'Arg list too long',
   [EACCES]: 'Permission denied',
   [EADDRINUSE]: 'Address already in use',
@@ -164,7 +164,7 @@ export const strings = {
   [ETXTBSY]: 'Text file busy',
   [EWOULDBLOCK]: 'Operation would block',
   [EXDEV]: 'Improper link'
-}
+})
 
 /**
  * Converts an `errno` code to its corresponding string message.
