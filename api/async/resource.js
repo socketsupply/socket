@@ -4,7 +4,18 @@
  * Primitives for creating user defined async resources that implement
  * async hooks.
  */
-import { CoreAsyncResource } from '../internal/async/hooks.js'
+import {
+  CoreAsyncResource,
+  executionAsyncResource,
+  executionAsyncId,
+  triggerAsyncId
+} from '../internal/async/hooks.js'
+
+export {
+  executionAsyncResource,
+  executionAsyncId,
+  triggerAsyncId
+}
 
 /**
  * @typedef {{
