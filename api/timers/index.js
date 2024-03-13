@@ -2,6 +2,7 @@ import { Timeout, Immediate, Interval } from './timer.js'
 import scheduler from './scheduler.js'
 import platform from './platform.js'
 import promises from './promises.js'
+import ipc from '../ipc.js'
 
 export { platform }
 
@@ -39,6 +40,23 @@ export function clearImmediate (immediate) {
   } else {
     platform.clearImmediate(immediate)
   }
+}
+
+/**
+ * Pause async execution for `timeout` milliseconds.
+ * @param {number} timeout
+ * @return {Promise}
+ */
+export async function sleep (timeout) {
+  await new Promise((resolve) => setTimeout(resolve, timeout))
+}
+
+/**
+ * Pause sync execution for `timeout` milliseconds.
+ * @param {number} timeout
+ */
+sleep.sync = function (timeout) {
+  ipc.sendSync('timers.setTimeout', { timeout, wait: true })
 }
 
 setTimeout[Symbol.for('nodejs.util.promisify.custom')] = promises.setTimeout
