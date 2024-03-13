@@ -2377,7 +2377,6 @@ static void initRouterTable (Router *router) {
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, false);
-    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
@@ -2395,8 +2394,6 @@ static void initRouterTable (Router *router) {
     #endif
       IO::write(message.value, true);
     }
-
-    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
