@@ -1149,15 +1149,20 @@ declare module "socket:async/resource" {
         triggerAsyncId?: number;
         requireManualDestroy?: boolean;
     };
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
     import { CoreAsyncResource } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
 }
 
 declare module "socket:async/hooks" {
     /**
-     * @param {AsyncHookCallbackOptions} [options]
+     * Factory for creating a `AsyncHook` instance.
+     * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [callbacks]
      * @return {AsyncHook}
      */
-    export function createHook(callbacks: any): AsyncHook;
+    export function createHook(callbacks?: (AsyncHookCallbackOptions | AsyncHookCallbacks) | undefined): AsyncHook;
     /**
      * @ignore
      */
@@ -1175,7 +1180,7 @@ declare module "socket:async/hooks" {
         promiseResolve(asyncId: any): void;
     }
     /**
-     * TODO
+     * A container for registering various callbacks for async resource hooks.
      */
     export class AsyncHook {
         /**
@@ -1191,7 +1196,11 @@ declare module "socket:async/hooks" {
          * @return {AsyncHook}
          */
         enable(): AsyncHook;
-        disable(): this;
+        /**
+         * Disables the async hook
+         * @return {AsyncHook}
+         */
+        disable(): AsyncHook;
         #private;
     }
     export default createHook;
@@ -6423,7 +6432,15 @@ declare module "socket:assert" {
 
 declare module "socket:async_hooks" {
     export default exports;
-    import * as exports from "socket:async/hooks";
+    import { AsyncLocalStorage } from "socket:async/storage";
+    import { AsyncResource } from "socket:async/resource";
+    import { executionAsyncResource } from "socket:async/hooks";
+    import { executionAsyncId } from "socket:async/hooks";
+    import { triggerAsyncId } from "socket:async/hooks";
+    import { createHook } from "socket:async/hooks";
+    import * as exports from "socket:async_hooks";
+    
+    export { AsyncLocalStorage, AsyncResource, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook };
 }
 
 declare module "socket:bluetooth" {
@@ -11442,6 +11459,8 @@ declare module "socket:module" {
             AsyncResource: typeof AsyncResource;
         };
         async_hooks: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
             executionAsyncResource: typeof executionAsyncResource;
             executionAsyncId: typeof executionAsyncId;
             triggerAsyncId: typeof triggerAsyncId;
@@ -11544,6 +11563,10 @@ declare module "socket:module" {
             ENOMEM: number;
             ENOMSG: number;
             ENOPROTOOPT: number;
+            /**
+             * The module's exports.
+             * @type {any}
+             */
             ENOSPC: number;
             ENOSR: number;
             ENOSTR: number;
@@ -11811,6 +11834,8 @@ declare module "socket:module" {
             AsyncResource: typeof AsyncResource;
         };
         async_hooks: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
             executionAsyncResource: typeof executionAsyncResource;
             executionAsyncId: typeof executionAsyncId;
             triggerAsyncId: typeof triggerAsyncId;
@@ -11913,6 +11938,10 @@ declare module "socket:module" {
             ENOMEM: number;
             ENOMSG: number;
             ENOPROTOOPT: number;
+            /**
+             * The module's exports.
+             * @type {any}
+             */
             ENOSPC: number;
             ENOSR: number;
             ENOSTR: number;
