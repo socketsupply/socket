@@ -13,6 +13,7 @@
 import { isArrayBufferView, isFunction, noop } from './util.js'
 import { murmur3, rand64 } from './crypto.js'
 import { InternalError } from './errors.js'
+import { AsyncResource } from './async/resource.js'
 import { EventEmitter } from './events.js'
 import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
@@ -48,13 +49,17 @@ const dc = diagnostics.channels.group('udp', [
   'bind'
 ])
 
-function defaultCallback (socket) {
+function defaultCallback (socket, resource) {
   return (err) => {
-    if (err) socket.emit('error', err)
+    resource.runInAsyncScope(() => {
+      if (err) {
+        socket.emit('error', err)
+      }
+    })
   }
 }
 
-function createDataListener (socket) {
+function createDataListener (socket, resource) {
   // subscribe this socket to the firehose
   globalThis.addEventListener('data', ondata)
   return ondata
@@ -64,7 +69,9 @@ function createDataListener (socket) {
     const buffer = detail.data
 
     if (err && err.id === socket.id) {
-      return socket.emit('error', err)
+      return resource.runInAsyncScope(() => {
+        return socket.emit('error', err)
+      })
     }
 
     if (!data || BigInt(data.id) !== socket.id) return
@@ -76,7 +83,10 @@ function createDataListener (socket) {
         family: getAddressFamily(data.address)
       }
 
-      socket.emit('message', message, info)
+      resource.runInAsyncScope(() => {
+        socket.emit('message', message, info)
+      })
+
       dc.channel('message').publish({ socket, buffer: message, info })
     }
 
@@ -627,6 +637,8 @@ export const createSocket = (options, callback) => new Socket(options, callback)
  * The new keyword is not to be used to create dgram.Socket instances.
  */
 export class Socket extends EventEmitter {
+  #resource = null
+
   constructor (options, callback) {
     super()
 
@@ -642,6 +654,9 @@ export class Socket extends EventEmitter {
     if (!['udp4', 'udp6'].includes(options.type)) {
       throw new ERR_SOCKET_BAD_TYPE()
     }
+
+    this.#resource = new AsyncResource('Socket')
+    this.#resource.handle = this
 
     this.type = options.type
     this.signal = options?.signal ?? null
@@ -708,7 +723,7 @@ export class Socket extends EventEmitter {
       ? arg2
       : isFunction(arg3)
         ? arg3
-        : defaultCallback(this)
+        : defaultCallback(this, this.#resource)
 
     if (typeof arg1 === 'number' || typeof arg2 === 'string') {
       options.port = parseInt(arg1)
@@ -734,28 +749,30 @@ export class Socket extends EventEmitter {
 
     bind(this, options, (err, info) => {
       if (err) {
-        if (
-          this.knownIdWasGivenInSocketConstruction &&
-          err.code === 'ERR_SOCKET_ALREADY_BOUND'
-        ) {
-          this.dataListener = createDataListener(this)
-          cb(null)
-          this.emit('listening')
-        } else {
-          cb(err)
-        }
-
-        return
+        return this.#resource.runInAsyncScope(() => {
+          if (
+            this.knownIdWasGivenInSocketConstruction &&
+            err.code === 'ERR_SOCKET_ALREADY_BOUND'
+          ) {
+            this.dataListener = createDataListener(this, this.#resource)
+            cb(null)
+            this.emit('listening')
+          } else {
+            cb(err)
+          }
+        })
       }
 
       startReading(this, (err) => {
-        if (err) {
-          cb(err)
-        } else {
-          this.dataListener = createDataListener(this)
-          cb(null)
-          this.emit('listening')
-        }
+        this.#resource.runInAsyncScope(() => {
+          if (err) {
+            cb(err)
+          } else {
+            this.dataListener = createDataListener(this, this.#resource)
+            cb(null)
+            this.emit('listening')
+          }
+        })
       })
     })
 
@@ -785,7 +802,7 @@ export class Socket extends EventEmitter {
       ? arg2
       : isFunction(arg3)
         ? arg3
-        : defaultCallback(this)
+        : defaultCallback(this, this.#resource)
 
     if (!Number.isInteger(port) || port <= 0 || port > MAX_PORT) {
       throw new ERR_SOCKET_BAD_PORT(
@@ -798,11 +815,13 @@ export class Socket extends EventEmitter {
     }
 
     connect(this, { address, port }, (err, info) => {
-      cb(err, info)
+      this.#resource.runInAsyncScope(() => {
+        cb(err, info)
 
-      if (!err && info) {
-        this.emit('connect', info)
-      }
+        if (!err && info) {
+          this.emit('connect', info)
+        }
+      })
     })
   }
 
@@ -878,7 +897,7 @@ export class Socket extends EventEmitter {
     let length
     let port
     let address
-    let cb = defaultCallback(this)
+    let cb = defaultCallback(this, this.#resource)
 
     if (Array.isArray(buffer)) {
       buffer = fromBufferList(buffer)
@@ -941,7 +960,14 @@ export class Socket extends EventEmitter {
 
     buffer = buffer.slice(0, length)
 
-    return send(this, { id, port, address, buffer }, cb)
+    return send(this, { id, port, address, buffer }, (...args) => {
+      if (typeof cb === 'function') {
+        this.#resource.runInAsyncScope(() => {
+          // eslint-disable-next-line
+          cb(...args)
+        })
+      }
+    })
   }
 
   /**
@@ -975,7 +1001,9 @@ export class Socket extends EventEmitter {
         // gc might have already closed this
         if (!gc.finalizers.has(this)) {
           if (isFunction(cb)) {
-            cb()
+            this.#resource.runInAsyncScope(() => {
+              cb()
+            })
             return
           }
         }
@@ -986,20 +1014,24 @@ export class Socket extends EventEmitter {
           })
         }
 
-        if (isFunction(cb)) {
-          cb(err)
-        } else {
-          this.emit('error', err)
-        }
+        this.#resource.runInAsyncScope(() => {
+          if (isFunction(cb)) {
+            cb(err)
+          } else {
+            this.emit('error', err)
+          }
+        })
 
         return
       }
 
-      if (isFunction(cb)) {
-        cb(null)
-      }
+      this.#resource.runInAsyncScope(() => {
+        if (isFunction(cb)) {
+          cb(null)
+        }
 
-      this.emit('close')
+        this.emit('close')
+      })
     })
 
     return this
