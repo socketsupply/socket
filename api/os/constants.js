@@ -11,7 +11,7 @@ const constants = sendSync('os.constants', {}, { cache: true })?.data || {}
  * A container for all known "errno" constant values.
  * Unsupported values have a default value of `0`.
  */
-export const errno = {
+export const errno = Object.assign(Object.create(null), {
   /**
    * "Arg list too long"
    * The number of bytes used for the argument and environment list of the
@@ -642,13 +642,13 @@ export const errno = {
    * @type {errno}
    */
   EXDEV: constants.EXDEV ?? 0
-}
+})
 
 /**
  * A container for all known "signal" constant values.
  * Unsupported values have a default value of `0`.
  */
-export const signal = {
+export const signal = Object.assign(Object.create(null), {
   /**
    * Terminal line hangup.
    * @type {signal}
@@ -834,7 +834,7 @@ export const signal = {
    * @type {signal}
    */
   SIGSYS: constants.SIGSYS ?? 0
-}
+})
 
 export default {
   errno,
