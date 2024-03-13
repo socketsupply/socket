@@ -8,6 +8,7 @@ import {
 
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
+import { AsyncResource } from '../async/resource.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
 import { Deferred } from '../async.js'
@@ -135,6 +136,8 @@ export class FileHandle extends EventEmitter {
     return handle
   }
 
+  #resource = null
+
   /**
    * `FileHandle` class constructor
    * @ignore
@@ -151,6 +154,9 @@ export class FileHandle extends EventEmitter {
     this[kOpening] = null
     this[kClosing] = null
     this[kClosed] = false
+
+    this.#resource = new AsyncResource('FileHandle')
+    this.#resource.handle = this
 
     this.flags = normalizeFlags(options?.flags)
     this.path = options?.path || null
@@ -291,7 +297,9 @@ export class FileHandle extends EventEmitter {
     this[kClosing] = null
     this[kClosed] = true
 
-    this.emit('close')
+    this.#resource.runInAsyncScope(() => {
+      this.emit('close')
+    })
 
     dc.channel('handle.close').publish({ handle: this })
 
@@ -318,7 +326,9 @@ export class FileHandle extends EventEmitter {
         try {
           await this.close()
         } catch (err) {
-          stream.emit('error', err)
+          this.#resource.runInAsyncScope(() => {
+            stream.emit('error', err)
+          })
         }
       }
     })
@@ -346,7 +356,9 @@ export class FileHandle extends EventEmitter {
         try {
           await this.close()
         } catch (err) {
-          stream.emit('error', err)
+          this.#resource.runInAsyncScope(() => {
+            stream.emit('error', err)
+          })
         }
       }
     })
@@ -409,7 +421,9 @@ export class FileHandle extends EventEmitter {
 
     this[kOpening].resolve(true)
 
-    this.emit('open', this.fd)
+    this.#resource.runInAsyncScope(() => {
+      this.emit('open', this.fd)
+    })
 
     dc.channel('handle.open').publish({ handle: this, mode, path, flags })
 
@@ -844,6 +858,8 @@ export class DirectoryHandle extends EventEmitter {
     return handle
   }
 
+  #resource = null
+
   /**
    * `DirectoryHandle` class constructor
    * @private
@@ -860,6 +876,9 @@ export class DirectoryHandle extends EventEmitter {
     this[kOpening] = null
     this[kClosing] = null
     this[kClosed] = false
+
+    this.#resource = new AsyncResource('DirectoryHandle')
+    this.#resource.handle = this
 
     // this id will be used to identify the file handle that is a
     // reference stored in the native side
@@ -969,7 +988,9 @@ export class DirectoryHandle extends EventEmitter {
 
     this[kOpening].resolve(true)
 
-    this.emit('open', this.fd)
+    this.#resource.runInAsyncScope(() => {
+      this.emit('open', this.fd)
+    })
 
     dc.channel('handle.open').publish({ handle: this, path })
 
@@ -1017,7 +1038,10 @@ export class DirectoryHandle extends EventEmitter {
     this[kClosing] = null
     this[kClosed] = true
 
-    this.emit('close')
+    this.#resource.runInAsyncScope(() => {
+      this.emit('close')
+    })
+
     dc.channel('handle.close').publish({ handle: this })
 
     return true
