@@ -6,10 +6,7 @@
 import { Snapshot, Variable } from './context.js'
 import { AsyncResource } from './resource.js'
 import { createHook } from './hooks.js'
-import {
-  executionAsyncResource,
-  asyncContextVariable
-} from '../internal/async/hooks.js'
+import { executionAsyncResource } from '../internal/async/hooks.js'
 
 const storages = []
 
@@ -29,33 +26,32 @@ const asyncLocalStorageHooks = createHook({
 })
 
 /**
- * TODO
+ * A container for storing values that remain present during
+ * asynchronous operations.
  */
 export class AsyncLocalStorage {
   #store = null
   #enabled = false
   #variable = new Variable()
-  #resourceStoreSymbol = Symbol('resourceStore')
 
   /**
-   * TODO
+   * Binds function `fn` to run in the execution context of an
+   * anonymous `AsyncResource`.
+   * @param {function} fn
+   * @return {function}
    */
   static bind (fn) {
     return AsyncResource.bind(fn)
   }
 
   /**
-   * TODO
+   * Captures the current async context and returns a function that runs
+   * a function in that execution context.
+   * @return {function}
    */
   static snapshot () {
-    const resource = executionAsyncResource()
-    console.log({ resource0: resource })
-    return asyncContextVariable.run(resource, () => {
-      console.log({ resource1: resource })
-      // eslint-disable-next-line
-      const snapshot = Snapshot.wrap((cb, ...args) => cb(...args))
-      return AsyncResource.bind(snapshot)
-    })
+    // eslint-disable-next-line
+    return AsyncResource.bind(Snapshot.wrap((cb, ...args) => cb(...args)))
   }
 
   /**
@@ -66,7 +62,8 @@ export class AsyncLocalStorage {
   }
 
   /**
-   * TODO
+   * Disables the `AsyncLocalStorage` instance. When disabled,
+   * `getStore()` will always return `undefined`.
    */
   disable () {
     if (this.#enabled) {
@@ -79,7 +76,7 @@ export class AsyncLocalStorage {
   }
 
   /**
-   * TODO
+   * Enables the `AsyncLocalStorage` instance.
    */
   enable () {
     if (!this.#enabled) {
@@ -89,51 +86,51 @@ export class AsyncLocalStorage {
   }
 
   /**
-   * @ignore
-   * @param {AsyncResource} resource
-   * @param {AsyncResource} triggerResource
-   */
-  propagateTriggerResourceStore (resource, triggerResource) {
-    if (this.enabled) {
-      resource[this.#resourceStoreSymbol] = triggerResource[this.#resourceStoreSymbol]
-    }
-  }
-
-  /**
-   * @param {any}
+   * Enables and sets the `AsyncLocalStorage` instance default store value.
+   * @param {any} store
    */
   enterWith (store) {
     this.enable()
-    this.#store = store
+    this.#variable = new Variable({ defaultValue: store })
   }
 
   /**
-   * TODO
+   * Runs function `fn` in the current asynchronous execution context with
+   * a given `store` value and arguments given to `fn`.
+   * @param {any} store
+   * @param {function} fn
+   * @param {...any} args
+   * @return {any}
    */
-  run (store, callback, ...args) {
+  run (store, fn, ...args) {
     this.enable()
-    this.variable.run(store, () => {
-      return Reflect.apply(callback, null, args)
+    return this.#variable.run(store, () => {
+      return Reflect.apply(fn, null, args)
     })
   }
 
-  exit (callback, ...args) {
+  exit (fn, ...args) {
     if (!this.#enabled) {
-      return Reflect.apply(callback, null, args)
+      return Reflect.apply(fn, null, args)
     }
 
     try {
       this.disable()
-      return Reflect.apply(callback, null, args)
+      return Reflect.apply(fn, null, args)
     } finally {
       // revert
       this.enable()
     }
   }
 
+  /**
+   * If the `AsyncLocalStorage` instance is enabled, it returns the current
+   * store value for this asynchronous execution context.
+   * @return {any|undefined}
+   */
   getStore () {
     if (this.#enabled) {
-      return this.variable.get() ?? this.#store
+      return this.#variable.get()
     }
   }
 }
