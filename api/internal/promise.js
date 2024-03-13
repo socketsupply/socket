@@ -15,12 +15,16 @@ function wrapNativePromiseFunction (name) {
   const nativeFunction = prototype[name]
 
   prototype[name] = function (...args) {
+    if (asyncHooks.executionAsyncResource().type === 'RuntimeExecution') {
+      return nativeFunction.call(this, ...args)
+    }
+
     if (name === 'then') {
       return nativeFunction.call(
         this,
         ...args.map((arg) => {
           if (typeof arg === 'function') {
-            return asyncHooks.wrap(arg, 'init', 'Promise')
+            return asyncHooks.wrap(arg, 'Promise')
           }
 
           return arg
