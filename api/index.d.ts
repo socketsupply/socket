@@ -511,6 +511,15 @@ declare module "socket:async/context" {
          * @param {VariableOptions<T>=} [options]
          */
         constructor(options?: VariableOptions<T> | undefined);
+        set defaultValue(defaultValue: T);
+        /**
+         * @ignore
+         */
+        get defaultValue(): T;
+        /**
+         * @ignore
+         */
+        get revert(): FrozenRevert | Revert<T>;
         /**
          * The name of this async context variable.
          * @type {string}
@@ -612,6 +621,413 @@ declare module "socket:async/wrap" {
     export default wrap;
 }
 
+declare module "socket:diagnostics/channels" {
+    /**
+     * Normalizes a channel name to lower case replacing white space,
+     * hyphens (-), underscores (_), with dots (.).
+     * @ignore
+     */
+    export function normalizeName(group: any, name: any): string;
+    /**
+     * Used to preallocate a minimum sized array of subscribers for
+     * a channel.
+     * @ignore
+     */
+    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
+    /**
+     * A general interface for diagnostic channels that can be subscribed to.
+     */
+    export class Channel {
+        constructor(name: any);
+        name: any;
+        group: any;
+        /**
+         * Computed subscribers for all channels in this group.
+         * @type {Array<function>}
+         */
+        get subscribers(): Function[];
+        /**
+         * Accessor for determining if channel has subscribers. This
+         * is always `false` for `Channel instances and `true` for `ActiveChannel`
+         * instances.
+         */
+        get hasSubscribers(): boolean;
+        /**
+         * Computed number of subscribers for this channel.
+         */
+        get length(): number;
+        /**
+         * Resets channel state.
+         * @param {(boolean)} [shouldOrphan = false]
+         */
+        reset(shouldOrphan?: (boolean)): void;
+        channel(name: any): Channel;
+        /**
+         * Adds an `onMessage` subscription callback to the channel.
+         * @return {boolean}
+         */
+        subscribe(_: any, onMessage: any): boolean;
+        /**
+         * Removes an `onMessage` subscription callback from the channel.
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(_: any, onMessage: Function): boolean;
+        /**
+         * A no-op for `Channel` instances. This function always returns `false`.
+         * @param {string} name
+         * @param {object} message
+         * @return Promise<boolean>
+         */
+        publish(name: string, message: object): Promise<boolean>;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): string;
+        /**
+         * Iterator interface
+         * @ignore
+         */
+        get [Symbol.iterator](): any[];
+        /**
+         * The `Channel` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An `ActiveChannel` is a prototype implementation for a `Channel`
+     * that provides an interface what is considered an "active" channel. The
+     * `hasSubscribers` accessor always returns `true` for this class.
+     */
+    export class ActiveChannel extends Channel {
+        unsubscribe(onMessage: any): boolean;
+        /**
+         * @param {object|any} message
+         * @return Promise<boolean>
+         */
+        publish(message: object | any): Promise<boolean>;
+    }
+    /**
+     * A container for a grouping of channels that are named and owned
+     * by this group. A `ChannelGroup` can also be a regular channel.
+     */
+    export class ChannelGroup extends Channel {
+        /**
+         * @param {Array<Channel>} channels
+         * @param {string} name
+         */
+        constructor(name: string, channels: Array<Channel>);
+        channels: Channel[];
+        /**
+         * Subscribe to a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: any): boolean;
+        /**
+         * Unsubscribe from a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: any): boolean;
+        /**
+         * Gets or creates a channel for this group.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Select a test of channels from this group.
+         * The following syntax is supported:
+         *   - One Channel: `group.channel`
+         *   - All Channels: `*`
+         *   - Many Channel: `group.*`
+         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
+         * @param {string|Array<string>} keys
+         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
+         * @return {Array<{name: string, channel: Channel}>}
+         */
+        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
+            name: string;
+            channel: Channel;
+        }>;
+    }
+    /**
+     * An object mapping of named channels to `WeakRef<Channel>` instances.
+     */
+    export const registry: {
+        /**
+         * Subscribes callback `onMessage` to channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Unsubscribes callback `onMessage` from channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Predicate to determine if a named channel has subscribers.
+         * @param {string} name
+         */
+        hasSubscribers(name: string): boolean;
+        /**
+         * Get or set a channel by `name`.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Creates a `ChannelGroup` for a set of channels
+         * @param {string} name
+         * @param {Array<string>} [channels]
+         * @return {ChannelGroup}
+         */
+        group(name: string, channels?: Array<string>): ChannelGroup;
+        /**
+         * Get a channel by name. The name is normalized.
+         * @param {string} name
+         * @return {Channel?}
+         */
+        get(name: string): Channel | null;
+        /**
+         * Checks if a channel is known by  name. The name is normalized.
+         * @param {string} name
+         * @return {boolean}
+         */
+        has(name: string): boolean;
+        /**
+         * Set a channel by name. The name is normalized.
+         * @param {string} name
+         * @param {Channel} channel
+         * @return {Channel?}
+         */
+        set(name: string, channel: Channel): Channel | null;
+        /**
+         * Removes a channel by `name`
+         * @return {boolean}
+         */
+        remove(name: any): boolean;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): string;
+        /**
+         * Returns a JSON representation of the `ChannelRegistry`.
+         * @return {object}
+         */
+        toJSON(): object;
+        /**
+         * The `ChannelRegistry` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+    };
+    export default registry;
+}
+
+declare module "socket:diagnostics/metric" {
+    export class Metric {
+        init(): void;
+        update(value: any): void;
+        destroy(): void;
+        toJSON(): {};
+        toString(): string;
+        [Symbol.iterator](): any;
+        [Symbol.toStringTag](): string;
+    }
+    export default Metric;
+}
+
+declare module "socket:diagnostics/window" {
+    export class RequestAnimationFrameMetric extends Metric {
+        constructor(options: any);
+        originalRequestAnimationFrame: typeof requestAnimationFrame;
+        requestAnimationFrame(callback: any): any;
+        sampleSize: any;
+        sampleTick: number;
+        channel: import("socket:diagnostics/channels").Channel;
+        value: {
+            rate: number;
+            samples: number;
+        };
+        now: number;
+        samples: Uint8Array;
+        toJSON(): {
+            sampleSize: any;
+            sampleTick: number;
+            samples: number[];
+            rate: number;
+            now: number;
+        };
+    }
+    export class FetchMetric extends Metric {
+        constructor(options: any);
+        originalFetch: typeof fetch;
+        channel: import("socket:diagnostics/channels").Channel;
+        fetch(resource: any, options: any, extra: any): Promise<any>;
+    }
+    export class XMLHttpRequestMetric extends Metric {
+        constructor(options: any);
+        channel: import("socket:diagnostics/channels").Channel;
+        patched: {
+            open: {
+                (method: string, url: string | URL): void;
+                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
+            };
+            send: (body?: Document | XMLHttpRequestBodyInit) => void;
+        };
+    }
+    export class WorkerMetric extends Metric {
+        constructor(options: any);
+        GlobalWorker: {
+            new (scriptURL: string | URL, options?: WorkerOptions): Worker;
+            prototype: Worker;
+        };
+        channel: import("socket:diagnostics/channels").Channel;
+        Worker: {
+            new (url: any, options: any, ...args: any[]): {
+                onmessage: (this: Worker, ev: MessageEvent<any>) => any;
+                onmessageerror: (this: Worker, ev: MessageEvent<any>) => any;
+                postMessage(message: any, transfer: Transferable[]): void;
+                postMessage(message: any, options?: StructuredSerializeOptions): void;
+                terminate(): void;
+                addEventListener<K extends keyof WorkerEventMap>(type: K, listener: (this: Worker, ev: WorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+                addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+                removeEventListener<K_1 extends keyof WorkerEventMap>(type: K_1, listener: (this: Worker, ev: WorkerEventMap[K_1]) => any, options?: boolean | EventListenerOptions): void;
+                removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+                dispatchEvent(event: Event): boolean;
+                onerror: (this: AbstractWorker, ev: ErrorEvent) => any;
+            };
+        };
+    }
+    export const metrics: {
+        requestAnimationFrame: RequestAnimationFrameMetric;
+        XMLHttpRequest: XMLHttpRequestMetric;
+        Worker: WorkerMetric;
+        fetch: FetchMetric;
+        channel: import("socket:diagnostics/channels").ChannelGroup;
+        subscribe(...args: any[]): boolean;
+        unsubscribe(...args: any[]): boolean;
+        start(which: any): void;
+        stop(which: any): void;
+    };
+    namespace _default {
+        export { metrics };
+    }
+    export default _default;
+    import { Metric } from "socket:diagnostics/metric";
+}
+
+declare module "socket:diagnostics/index" {
+    /**
+     * @param {string} name
+     * @return {import('./channels.js').Channel}
+     */
+    export function channel(name: string): import("socket:diagnostics/channels").Channel;
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
+    import channels from "socket:diagnostics/channels";
+    import window from "socket:diagnostics/window";
+    
+    export { channels, window };
+}
+
+declare module "socket:diagnostics" {
+    export * from "socket:diagnostics/index";
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
+}
+
+declare module "socket:internal/symbols" {
+    export const dispose: any;
+    namespace _default {
+        export { dispose };
+    }
+    export default _default;
+}
+
+declare module "socket:gc" {
+    /**
+     * Track `object` ref to call `Symbol.for('gc.finalize')` method when
+     * environment garbage collects object.
+     * @param {object} object
+     * @return {boolean}
+     */
+    export function ref(object: object, ...args: any[]): boolean;
+    /**
+     * Stop tracking `object` ref to call `Symbol.for('gc.finalize')` method when
+     * environment garbage collects object.
+     * @param {object} object
+     * @return {boolean}
+     */
+    export function unref(object: object): boolean;
+    /**
+     * An alias for `unref()`
+     * @param {object} object}
+     * @return {boolean}
+     */
+    export function retain(object: object): boolean;
+    /**
+     * Call finalize on `object` for `gc.finalizer` implementation.
+     * @param {object} object]
+     * @return {Promise<boolean>}
+     */
+    export function finalize(object: object, ...args: any[]): Promise<boolean>;
+    /**
+     * Calls all pending finalization handlers forcefully. This function
+     * may have unintended consequences as objects be considered finalized
+     * and still strongly held (retained) somewhere.
+     */
+    export function release(): Promise<void>;
+    export const finalizers: WeakMap<object, any>;
+    export const kFinalizer: unique symbol;
+    export const finalizer: symbol;
+    export const pool: Set<any>;
+    /**
+     * Static registry for objects to clean up underlying resources when they
+     * are gc'd by the environment. There is no guarantee that the `finalizer()`
+     * is called at any time.
+     */
+    export const registry: FinalizationRegistry<Finalizer>;
+    /**
+     * Default exports which also acts a retained value to persist bound
+     * `Finalizer#handle()` functions from being gc'd before the
+     * `FinalizationRegistry` callback is called because `heldValue` must be
+     * strongly held (retained) in order for the callback to be called.
+     */
+    export const gc: any;
+    export default gc;
+    /**
+     * A container for strongly (retain) referenced finalizer function
+     * with arguments weakly referenced to an object that will be
+     * garbage collected.
+     */
+    export class Finalizer {
+        /**
+         * Creates a `Finalizer` from input.
+         */
+        static from(handler: any): Finalizer;
+        /**
+         * `Finalizer` class constructor.
+         * @private
+         * @param {array} args
+         * @param {function} handle
+         */
+        private constructor();
+        args: any[];
+        handle: any;
+    }
+}
+
 declare module "socket:internal/async/hooks" {
     export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
     export function getNextAsyncResourceId(): number;
@@ -620,6 +1036,11 @@ declare module "socket:internal/async/hooks" {
     export function triggerAsyncId(): any;
     export function getDefaultExecutionAsyncId(): any;
     export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    /**
+     * The default top level async resource ID
+     * @type {number}
+     */
+    export const TOP_LEVEL_ASYNC_RESOURCE_ID: number;
     export namespace state {
         let defaultExecutionAsyncId: number;
     }
@@ -630,14 +1051,67 @@ declare module "socket:internal/async/hooks" {
         let destroy: any[];
         let promiseResolve: any[];
     }
-    export class TopLevelAsyncResource {
+    /**
+     * A base class for the `AsyncResource` class or other higher level async
+     * resource classes.
+     */
+    export class CoreAsyncResource {
+        /**
+         * `CoreAsyncResource` class constructor.
+         * @param {string} type
+         * @param {object|number=} [options]
+         */
+        constructor(type: string, options?: (object | number) | undefined);
+        /**
+         * The `CoreAsyncResource` type.
+         * @type {string}
+         */
+        get type(): string;
+        /**
+         * `true` if the `CoreAsyncResource` was destroyed, otherwise `false`. This
+         * value is only set to `true` if `emitDestroy()` was called, likely from
+         * destroying the resource manually.
+         * @type {boolean}
+         */
+        get destroyed(): boolean;
+        /**
+         * The unique async resource ID.
+         * @return {number}
+         */
+        asyncId(): number;
+        /**
+         * The trigger async resource ID.
+         * @return {number}
+         */
+        triggerAsyncId(): number;
+        /**
+         * Manually emits destroy hook for the resource.
+         * @return {CoreAsyncResource}
+         */
+        emitDestroy(): CoreAsyncResource;
+        /**
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @return {function}
+         */
+        bind(fn: Function, thisArg?: object | undefined): Function;
+        /**
+         * Runs function `fn` in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @param {...any} [args]
+         * @return {any}
+         */
+        runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
+        #private;
     }
+    export class TopLevelAsyncResource extends CoreAsyncResource {
+    }
+    export const asyncContextVariable: Variable<any>;
     export const topLevelAsyncResource: TopLevelAsyncResource;
-    export const asyncResources: Map<any, any>;
-    export const asyncContextSnapshot: Snapshot;
-    export const asyncContextVariable: Variable<TopLevelAsyncResource>;
     export default hooks;
-    import { Snapshot } from "socket:async/context";
     import { Variable } from "socket:async/context";
 }
 
@@ -649,42 +1123,32 @@ declare module "socket:async/resource" {
      * }} AsyncResourceOptions
      */
     /**
-     * TODO
+     * A container that should be extended that represents a resource with
+     * an asynchronous execution context.
      */
-    export class AsyncResource {
+    export class AsyncResource extends CoreAsyncResource {
         /**
-         * TODO
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of an anonymous `AsyncResource`.
+         * @param {function} fn
+         * @param {object|string=} [type]
+         * @param {object=} [thisArg]
+         * @return {function}
          */
-        static bind(fn: any, type: any, thisArg: any): any;
+        static bind(fn: Function, type?: (object | string) | undefined, thisArg?: object | undefined): Function;
         /**
          * `AsyncResource` class constructor.
          * @param {string} type
          * @param {AsyncResourceOptions|number=} [options]
          */
         constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
-        /**
-         * @type {string}
-         */
-        get type(): string;
-        /**
-         * @return {number}
-         */
-        asyncId(): number;
-        /**
-         * @return {number}
-         */
-        triggerAsyncId(): number;
-        /**
-         */
-        bind(fn: any, thisArg: any): any;
-        runInAsyncScope(callback: any, thisArg: any, ...args: any[]): any;
-        #private;
     }
     export default AsyncResource;
     export type AsyncResourceOptions = {
         triggerAsyncId?: number;
         requireManualDestroy?: boolean;
     };
+    import { CoreAsyncResource } from "socket:internal/async/hooks";
 }
 
 declare module "socket:async/hooks" {
@@ -738,49 +1202,60 @@ declare module "socket:async/hooks" {
 
 declare module "socket:async/storage" {
     /**
-     * TODO
+     * A container for storing values that remain present during
+     * asynchronous operations.
      */
     export class AsyncLocalStorage {
         /**
-         * TODO
+         * Binds function `fn` to run in the execution context of an
+         * anonymous `AsyncResource`.
+         * @param {function} fn
+         * @return {function}
          */
-        static bind(fn: any): any;
+        static bind(fn: Function): Function;
         /**
-         * TODO
+         * Captures the current async context and returns a function that runs
+         * a function in that execution context.
+         * @return {function}
          */
-        static snapshot(): any;
+        static snapshot(): Function;
         /**
          * @type {boolean}
          */
         get enabled(): boolean;
         /**
-         * TODO
+         * Disables the `AsyncLocalStorage` instance. When disabled,
+         * `getStore()` will always return `undefined`.
          */
         disable(): void;
         /**
-         * TODO
+         * Enables the `AsyncLocalStorage` instance.
          */
         enable(): void;
         /**
-         * @ignore
-         * @param {AsyncResource} resource
-         * @param {AsyncResource} triggerResource
-         */
-        propagateTriggerResourceStore(resource: AsyncResource, triggerResource: AsyncResource): void;
-        /**
-         * @param {any}
+         * Enables and sets the `AsyncLocalStorage` instance default store value.
+         * @param {any} store
          */
         enterWith(store: any): void;
         /**
-         * TODO
+         * Runs function `fn` in the current asynchronous execution context with
+         * a given `store` value and arguments given to `fn`.
+         * @param {any} store
+         * @param {function} fn
+         * @param {...any} args
+         * @return {any}
          */
-        run(store: any, callback: any, ...args: any[]): void;
-        exit(callback: any, ...args: any[]): any;
-        getStore(): any;
+        run(store: any, fn: Function, ...args: any[]): any;
+        exit(fn: any, ...args: any[]): any;
+        /**
+         * If the `AsyncLocalStorage` instance is enabled, it returns the current
+         * store value for this asynchronous execution context.
+         * @return {any|undefined}
+         */
+        getStore(): any | undefined;
         #private;
     }
     export default AsyncLocalStorage;
-    import { AsyncResource } from "socket:async/resource";
 }
 
 declare module "socket:async/deferred" {
@@ -1523,11 +1998,11 @@ declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
         new (t: {}, r: any, n: any): {
-            "__#20@#i": any;
-            "__#20@#n": {};
-            "__#20@#t": {};
-            "__#20@#e": {};
-            "__#20@#s": {};
+            "__#21@#i": any;
+            "__#21@#n": {};
+            "__#21@#t": {};
+            "__#21@#e": {};
+            "__#21@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -1685,11 +2160,11 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#20@#i": any;
-            "__#20@#n": {};
-            "__#20@#t": {};
-            "__#20@#e": {};
-            "__#20@#s": {};
+            "__#21@#i": any;
+            "__#21@#n": {};
+            "__#21@#t": {};
+            "__#21@#e": {};
+            "__#21@#s": {};
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -2036,413 +2511,6 @@ declare module "socket:path" {
     import { DATA } from "socket:path/index";
     import { LOG } from "socket:path/index";
     export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
-}
-
-declare module "socket:diagnostics/channels" {
-    /**
-     * Normalizes a channel name to lower case replacing white space,
-     * hyphens (-), underscores (_), with dots (.).
-     * @ignore
-     */
-    export function normalizeName(group: any, name: any): string;
-    /**
-     * Used to preallocate a minimum sized array of subscribers for
-     * a channel.
-     * @ignore
-     */
-    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
-    /**
-     * A general interface for diagnostic channels that can be subscribed to.
-     */
-    export class Channel {
-        constructor(name: any);
-        name: any;
-        group: any;
-        /**
-         * Computed subscribers for all channels in this group.
-         * @type {Array<function>}
-         */
-        get subscribers(): Function[];
-        /**
-         * Accessor for determining if channel has subscribers. This
-         * is always `false` for `Channel instances and `true` for `ActiveChannel`
-         * instances.
-         */
-        get hasSubscribers(): boolean;
-        /**
-         * Computed number of subscribers for this channel.
-         */
-        get length(): number;
-        /**
-         * Resets channel state.
-         * @param {(boolean)} [shouldOrphan = false]
-         */
-        reset(shouldOrphan?: (boolean)): void;
-        channel(name: any): Channel;
-        /**
-         * Adds an `onMessage` subscription callback to the channel.
-         * @return {boolean}
-         */
-        subscribe(_: any, onMessage: any): boolean;
-        /**
-         * Removes an `onMessage` subscription callback from the channel.
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(_: any, onMessage: Function): boolean;
-        /**
-         * A no-op for `Channel` instances. This function always returns `false`.
-         * @param {string} name
-         * @param {object} message
-         * @return Promise<boolean>
-         */
-        publish(name: string, message: object): Promise<boolean>;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): string;
-        /**
-         * Iterator interface
-         * @ignore
-         */
-        get [Symbol.iterator](): any[];
-        /**
-         * The `Channel` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-        #private;
-    }
-    /**
-     * An `ActiveChannel` is a prototype implementation for a `Channel`
-     * that provides an interface what is considered an "active" channel. The
-     * `hasSubscribers` accessor always returns `true` for this class.
-     */
-    export class ActiveChannel extends Channel {
-        unsubscribe(onMessage: any): boolean;
-        /**
-         * @param {object|any} message
-         * @return Promise<boolean>
-         */
-        publish(message: object | any): Promise<boolean>;
-    }
-    /**
-     * A container for a grouping of channels that are named and owned
-     * by this group. A `ChannelGroup` can also be a regular channel.
-     */
-    export class ChannelGroup extends Channel {
-        /**
-         * @param {Array<Channel>} channels
-         * @param {string} name
-         */
-        constructor(name: string, channels: Array<Channel>);
-        channels: Channel[];
-        /**
-         * Subscribe to a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: any): boolean;
-        /**
-         * Unsubscribe from a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: any): boolean;
-        /**
-         * Gets or creates a channel for this group.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Select a test of channels from this group.
-         * The following syntax is supported:
-         *   - One Channel: `group.channel`
-         *   - All Channels: `*`
-         *   - Many Channel: `group.*`
-         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
-         * @param {string|Array<string>} keys
-         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
-         * @return {Array<{name: string, channel: Channel}>}
-         */
-        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
-            name: string;
-            channel: Channel;
-        }>;
-    }
-    /**
-     * An object mapping of named channels to `WeakRef<Channel>` instances.
-     */
-    export const registry: {
-        /**
-         * Subscribes callback `onMessage` to channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Unsubscribes callback `onMessage` from channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Predicate to determine if a named channel has subscribers.
-         * @param {string} name
-         */
-        hasSubscribers(name: string): boolean;
-        /**
-         * Get or set a channel by `name`.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Creates a `ChannelGroup` for a set of channels
-         * @param {string} name
-         * @param {Array<string>} [channels]
-         * @return {ChannelGroup}
-         */
-        group(name: string, channels?: Array<string>): ChannelGroup;
-        /**
-         * Get a channel by name. The name is normalized.
-         * @param {string} name
-         * @return {Channel?}
-         */
-        get(name: string): Channel | null;
-        /**
-         * Checks if a channel is known by  name. The name is normalized.
-         * @param {string} name
-         * @return {boolean}
-         */
-        has(name: string): boolean;
-        /**
-         * Set a channel by name. The name is normalized.
-         * @param {string} name
-         * @param {Channel} channel
-         * @return {Channel?}
-         */
-        set(name: string, channel: Channel): Channel | null;
-        /**
-         * Removes a channel by `name`
-         * @return {boolean}
-         */
-        remove(name: any): boolean;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): string;
-        /**
-         * Returns a JSON representation of the `ChannelRegistry`.
-         * @return {object}
-         */
-        toJSON(): object;
-        /**
-         * The `ChannelRegistry` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-    };
-    export default registry;
-}
-
-declare module "socket:diagnostics/metric" {
-    export class Metric {
-        init(): void;
-        update(value: any): void;
-        destroy(): void;
-        toJSON(): {};
-        toString(): string;
-        [Symbol.iterator](): any;
-        [Symbol.toStringTag](): string;
-    }
-    export default Metric;
-}
-
-declare module "socket:diagnostics/window" {
-    export class RequestAnimationFrameMetric extends Metric {
-        constructor(options: any);
-        originalRequestAnimationFrame: typeof requestAnimationFrame;
-        requestAnimationFrame(callback: any): any;
-        sampleSize: any;
-        sampleTick: number;
-        channel: import("socket:diagnostics/channels").Channel;
-        value: {
-            rate: number;
-            samples: number;
-        };
-        now: number;
-        samples: Uint8Array;
-        toJSON(): {
-            sampleSize: any;
-            sampleTick: number;
-            samples: number[];
-            rate: number;
-            now: number;
-        };
-    }
-    export class FetchMetric extends Metric {
-        constructor(options: any);
-        originalFetch: typeof fetch;
-        channel: import("socket:diagnostics/channels").Channel;
-        fetch(resource: any, options: any, extra: any): Promise<any>;
-    }
-    export class XMLHttpRequestMetric extends Metric {
-        constructor(options: any);
-        channel: import("socket:diagnostics/channels").Channel;
-        patched: {
-            open: {
-                (method: string, url: string | URL): void;
-                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
-            };
-            send: (body?: Document | XMLHttpRequestBodyInit) => void;
-        };
-    }
-    export class WorkerMetric extends Metric {
-        constructor(options: any);
-        GlobalWorker: {
-            new (scriptURL: string | URL, options?: WorkerOptions): Worker;
-            prototype: Worker;
-        };
-        channel: import("socket:diagnostics/channels").Channel;
-        Worker: {
-            new (url: any, options: any, ...args: any[]): {
-                onmessage: (this: Worker, ev: MessageEvent<any>) => any;
-                onmessageerror: (this: Worker, ev: MessageEvent<any>) => any;
-                postMessage(message: any, transfer: Transferable[]): void;
-                postMessage(message: any, options?: StructuredSerializeOptions): void;
-                terminate(): void;
-                addEventListener<K extends keyof WorkerEventMap>(type: K, listener: (this: Worker, ev: WorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-                addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-                removeEventListener<K_1 extends keyof WorkerEventMap>(type: K_1, listener: (this: Worker, ev: WorkerEventMap[K_1]) => any, options?: boolean | EventListenerOptions): void;
-                removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-                dispatchEvent(event: Event): boolean;
-                onerror: (this: AbstractWorker, ev: ErrorEvent) => any;
-            };
-        };
-    }
-    export const metrics: {
-        requestAnimationFrame: RequestAnimationFrameMetric;
-        XMLHttpRequest: XMLHttpRequestMetric;
-        Worker: WorkerMetric;
-        fetch: FetchMetric;
-        channel: import("socket:diagnostics/channels").ChannelGroup;
-        subscribe(...args: any[]): boolean;
-        unsubscribe(...args: any[]): boolean;
-        start(which: any): void;
-        stop(which: any): void;
-    };
-    namespace _default {
-        export { metrics };
-    }
-    export default _default;
-    import { Metric } from "socket:diagnostics/metric";
-}
-
-declare module "socket:diagnostics/index" {
-    /**
-     * @param {string} name
-     * @return {import('./channels.js').Channel}
-     */
-    export function channel(name: string): import("socket:diagnostics/channels").Channel;
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-    import channels from "socket:diagnostics/channels";
-    import window from "socket:diagnostics/window";
-    
-    export { channels, window };
-}
-
-declare module "socket:diagnostics" {
-    export * from "socket:diagnostics/index";
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-}
-
-declare module "socket:internal/symbols" {
-    export const dispose: any;
-    namespace _default {
-        export { dispose };
-    }
-    export default _default;
-}
-
-declare module "socket:gc" {
-    /**
-     * Track `object` ref to call `Symbol.for('gc.finalize')` method when
-     * environment garbage collects object.
-     * @param {object} object
-     * @return {boolean}
-     */
-    export function ref(object: object, ...args: any[]): boolean;
-    /**
-     * Stop tracking `object` ref to call `Symbol.for('gc.finalize')` method when
-     * environment garbage collects object.
-     * @param {object} object
-     * @return {boolean}
-     */
-    export function unref(object: object): boolean;
-    /**
-     * An alias for `unref()`
-     * @param {object} object}
-     * @return {boolean}
-     */
-    export function retain(object: object): boolean;
-    /**
-     * Call finalize on `object` for `gc.finalizer` implementation.
-     * @param {object} object]
-     * @return {Promise<boolean>}
-     */
-    export function finalize(object: object, ...args: any[]): Promise<boolean>;
-    /**
-     * Calls all pending finalization handlers forcefully. This function
-     * may have unintended consequences as objects be considered finalized
-     * and still strongly held (retained) somewhere.
-     */
-    export function release(): Promise<void>;
-    export const finalizers: WeakMap<object, any>;
-    export const kFinalizer: unique symbol;
-    export const finalizer: symbol;
-    export const pool: Set<any>;
-    /**
-     * Static registry for objects to clean up underlying resources when they
-     * are gc'd by the environment. There is no guarantee that the `finalizer()`
-     * is called at any time.
-     */
-    export const registry: FinalizationRegistry<Finalizer>;
-    /**
-     * Default exports which also acts a retained value to persist bound
-     * `Finalizer#handle()` functions from being gc'd before the
-     * `FinalizationRegistry` callback is called because `heldValue` must be
-     * strongly held (retained) in order for the callback to be called.
-     */
-    export const gc: any;
-    export default gc;
-    /**
-     * A container for strongly (retain) referenced finalizer function
-     * with arguments weakly referenced to an object that will be
-     * garbage collected.
-     */
-    export class Finalizer {
-        /**
-         * Creates a `Finalizer` from input.
-         */
-        static from(handler: any): Finalizer;
-        /**
-         * `Finalizer` class constructor.
-         * @private
-         * @param {array} args
-         * @param {function} handle
-         */
-        private constructor();
-        args: any[];
-        handle: any;
-    }
 }
 
 declare module "socket:stream/web" {
