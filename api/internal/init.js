@@ -640,9 +640,7 @@ hooks.onLoad(async () => {
 
       promise
         .then((registration) => {
-          if (registration) {
-            console.info('ServiceWorker registered in preload: %s', scriptURL)
-          } else {
+          if (!registration) {
             console.warn(
               'ServiceWorker failed to register in preload: %s',
               scriptURL
