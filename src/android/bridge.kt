@@ -830,13 +830,11 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
       "log", "stdout" -> {
         console.log(message.value)
-        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
       "stderr" -> {
         console.error(message.value)
-        callback(Result(0, message.seq, message.name, "{}"))
         return true
       }
 
