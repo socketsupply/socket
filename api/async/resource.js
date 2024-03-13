@@ -4,11 +4,7 @@
  * Primitives for creating user defined async resources that implement
  * async hooks.
  */
-import {
-  getDefaultExecutionAsyncId,
-  getNextAsyncResourceId,
-  asyncContextVariable
-} from '../internal/async/hooks.js'
+import { CoreAsyncResource } from '../internal/async/hooks.js'
 
 /**
  * @typedef {{
@@ -18,22 +14,28 @@ import {
  */
 
 /**
- * TODO
+ * A container that should be extended that represents a resource with
+ * an asynchronous execution context.
  */
-export class AsyncResource {
+export class AsyncResource extends CoreAsyncResource {
   /**
-   * TODO
+   * Binds function `fn` with an optional this `thisArg` binding to run
+   * in the execution context of an anonymous `AsyncResource`.
+   * @param {function} fn
+   * @param {object|string=} [type]
+   * @param {object=} [thisArg]
+   * @return {function}
    */
   static bind (fn, type, thisArg) {
+    if (typeof type === 'object') {
+      thisArg = type
+      type = fn.name
+    }
+
     type = type || fn.name || 'bound-anonymous-function'
     const resource = new AsyncResource(type)
     return resource.bind(fn, thisArg)
   }
-
-  #type = null
-  #asyncId = getNextAsyncResourceId()
-  #triggerAsyncId = getDefaultExecutionAsyncId()
-  #requireManualDestroy = false
 
   /**
    * `AsyncResource` class constructor.
@@ -41,87 +43,72 @@ export class AsyncResource {
    * @param {AsyncResourceOptions|number=} [options]
    */
   constructor (type, options = null) {
-    if (!type || typeof type !== 'string') {
-      throw new TypeError(
-        `Expecting 'type' to be a string. Received: ${type}`
-      )
-    }
-
-    if (typeof options === 'number') {
-      options = { triggerAsyncId: options }
-    }
-
-    this.#type = type
-
-    if (Number.isFinite(options?.triggerAsyncId) && options.triggerAsyncId > 0) {
-      this.#triggerAsyncId = options.triggerAsyncId
-    } else if (options?.triggerAsyncId !== undefined) {
-      throw new TypeError(
-        // eslint-disable-next-line
-        `Expecting 'options.triggerAsyncId' to be a positive number.` +
-        `Received: ${options.triggerAsyncId}`
-      )
-    }
-
-    if (typeof options?.requireManualDestroy === 'boolean') {
-      this.#requireManualDestroy = options.requireManualDestroy
-    } else if (options?.requireManualDestroy !== undefined) {
-      throw new TypeError(
-        // eslint-disable-next-line
-        `Expecting 'options.requireManualDestroy' to be a boolean.` +
-        `Received: ${options.requireManualDestroy}`
-      )
-    }
+    super(type, options)
   }
 
   /**
+   * The `AsyncResource` type.
    * @type {string}
    */
   get type () {
-    return this.#type
+    return super.type
   }
 
   /**
+   *`true` if the `AsyncResource` was destroyed, otherwise `false`. This
+   * value is only set to `true` if `emitDestroy()` was called, likely from
+   * d
+   * @type {boolean}
+   * @ignore
+   */
+  get destroyed () {
+    return super.destroyed
+  }
+
+  /**
+   * The unique async resource ID.
    * @return {number}
    */
   asyncId () {
-    return this.#asyncId
+    return super.asyncId()
   }
 
   /**
+   * The trigger async resource ID.
    * @return {number}
    */
   triggerAsyncId () {
-    return this.#triggerAsyncId
+    return super.triggerAsyncId()
   }
 
   /**
+   * Manually emits destroy hook for the resource.
+   * @return {AsyncResource}
    */
-  bind (fn, thisArg) {
-    const resource = this
-    let binding = null
-    if (thisArg === undefined) {
-      binding = function (...args) {
-        args.unshift(fn, this)
-        return Reflect.apply(resource.runInAsyncScope, resource, args)
-      }
-    } else {
-      binding = resource.runInAsyncScope.bind(this, fn, thisArg)
-    }
-
-    Object.defineProperty(binding, 'length', {
-      __proto__: null,
-      configurable: true,
-      enumerable: false,
-      writable: false,
-      value: fn.length
-    })
-
-    return binding
+  emitDestroy () {
+    return super.emitDestroy()
   }
 
-  runInAsyncScope (callback, thisArg, ...args) {
-    return asyncContextVariable.run(this, callback.bind(thisArg), ...args)
+  /**
+   * Binds function `fn` with an optional this `thisArg` binding to run
+   * in the execution context of this `AsyncResource`.
+   * @param {function} fn
+   * @param {object=} [thisArg]
+   * @return {function}
+   */
+  bind (fn, thisArg = undefined) {
+    return super.bind(fn, thisArg)
+  }
+
+  /**
+   * Runs function `fn` in the execution context of this `AsyncResource`.
+   * @param {function} fn
+   * @param {object=} [thisArg]
+   * @param {...any} [args]
+   * @return {any}
+   */
+  runInAsyncScope (fn, thisArg, ...args) {
+    return super.runInAsyncScope(fn, thisArg, ...args)
   }
 }
 
