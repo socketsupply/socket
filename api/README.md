@@ -546,7 +546,7 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
  import { createSocket } from 'socket:dgram'
  ```
 
-## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L623)
+## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L633)
 
 Creates a `Socket` instance.
 
@@ -565,12 +565,12 @@ Creates a `Socket` instance.
 | :---         | :--- | :---        |
 | Not specified | Socket |  |
 
-## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L629)
+## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L639)
 
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L705)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L720)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 Listen for datagram messages on a named port and optional address
@@ -587,7 +587,7 @@ Listen for datagram messages on a named port and optional address
 | address | string |  | false | The address to bind to (0.0.0.0) |
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L781)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L798)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 Associates the dgram.Socket to a remote address and port. Every message sent
@@ -607,7 +607,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | host | string |  | true | Host the client should connect to. |
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L816)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L835)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 A synchronous function that disassociates a connected dgram.Socket from
@@ -615,7 +615,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L875)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L894)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 Broadcasts a datagram on the socket. For connectionless sockets, the
@@ -666,7 +666,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | address | string |  | true | Destination host name or IP address. |
 | callback | Function |  | true | Called when the message has been sent. |
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L955)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L981)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 Close the underlying socket and stop listening for data on it. If a
@@ -678,7 +678,7 @@ Close the underlying socket and stop listening for data on it. If a
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | function |  | true | Called when the connection is completed or on error. |
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1021)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1053)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 Returns an object containing the address information for a socket. For
@@ -694,7 +694,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1056)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1088)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 Returns an object containing the address, family, and port of the remote
@@ -709,7 +709,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1087)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1119)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
@@ -720,7 +720,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new receive buffer |
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1104)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1136)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
@@ -731,12 +731,12 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new send buffer |
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1117)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1149)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1125)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1157)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -745,31 +745,31 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | :---         | :--- | :---        |
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
-### [`code()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1193)
+### [`code()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1225)
 
 
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1199)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1231)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1216)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1248)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1223)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1255)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1231)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1263)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1238)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1270)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1248)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1280)
 
 Thrown when a bad port is given.
 

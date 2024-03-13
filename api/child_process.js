@@ -1,12 +1,15 @@
 /* global ErrorEvent */
+import { AsyncResource } from './async/resource.js'
 import { EventEmitter } from './events.js'
 import diagnostics from './diagnostics.js'
 import { Worker } from './worker_threads.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import process from './process.js'
+import signal from './signal.js'
 import ipc from './ipc.js'
 import gc from './gc.js'
+import os from './os.js'
 
 const dc = diagnostics.channels.group('child_process', [
   'spawn',
@@ -15,12 +18,69 @@ const dc = diagnostics.channels.group('child_process', [
   'kill'
 ])
 
-class ChildProcess extends EventEmitter {
+export class Pipe extends AsyncResource {
+  #process = null
+  #reading = true
+
+  /**
+   * `Pipe` class constructor.
+   * @param {ChildProcess} process
+   * @ignore
+   */
+  constructor (process) {
+    super('Pipe')
+
+    this.#process = process
+
+    if (process.stdout) {
+      const { emit } = process.stdout
+      process.stdout.emit = (...args) => {
+        if (!this.reading) return false
+        return this.runInAsyncScope(() => {
+          return emit.call(process.stdout, ...args)
+        })
+      }
+    }
+
+    if (process.stderr) {
+      const { emit } = process.stderr
+      process.stderr.emit = (...args) => {
+        if (!this.reading) return false
+        return this.runInAsyncScope(() => {
+          return emit(process.stderr, ...args)
+        })
+      }
+    }
+
+    process.once('close', () => this.destroy())
+    process.once('exit', () => this.destroy())
+  }
+
+  /**
+   * `true` if the pipe is still reading, otherwise `false`.
+   * @type {boolean}
+   */
+  get reading () {
+    return this.#reading
+  }
+
+  /**
+   * Destroys the pipe
+   */
+  destroy () {
+    this.#reading = false
+  }
+}
+
+export class ChildProcess extends EventEmitter {
   #id = rand64()
   #worker = null
   #signal = null
   #timeout = null
+  #resource = null
   #env = { ...process.env }
+  #pipe = null
+
   #state = {
     killed: false,
     signalCode: null,
@@ -44,26 +104,37 @@ class ChildProcess extends EventEmitter {
       this.#env = options.env
     }
 
-    this.#worker = new Worker(workerLocation.toString(), {
-      env: options?.env ?? {},
-      stdin: options?.stdin !== false,
-      stdout: options?.stdout !== false,
-      stderr: options?.stderr !== false,
-      workerData: { id: this.#id }
+    this.#resource = new AsyncResource('ChildProcess')
+    this.#resource.handle = this
+
+    this.#resource.runInAsyncScope(() => {
+      this.#worker = new Worker(workerLocation.toString(), {
+        env: options?.env ?? {},
+        stdin: options?.stdin !== false,
+        stdout: options?.stdout !== false,
+        stderr: options?.stderr !== false,
+        workerData: { id: this.#id }
+      })
+
+      this.#pipe = new Pipe(this)
     })
 
     if (options?.signal) {
       this.#signal = options.signal
       this.#signal.addEventListener('abort', () => {
-        this.emit('error', new Error(this.#signal.reason))
-        this.kill(options?.killSignal ?? 'SIGKILL')
+        this.#resource.runInAsyncScope(() => {
+          this.emit('error', new Error(this.#signal.reason))
+          this.kill(options?.killSignal ?? 'SIGKILL')
+        })
       })
     }
 
     if (options?.timeout) {
       this.#timeout = setTimeout(() => {
-        this.emit('error', new Error('Child process timed out'))
-        this.kill(options?.killSignal ?? 'SIGKILL')
+        this.#resource.runInAsyncScope(() => {
+          this.emit('error', new Error('Child process timed out'))
+          this.kill(options?.killSignal ?? 'SIGKILL')
+        })
       }, options.timeout)
 
       this.once('exit', () => {
@@ -77,7 +148,12 @@ class ChildProcess extends EventEmitter {
       }
 
       if (data.method === 'state') {
-        if (this.#state.pid !== data.args[0].pid) this.emit('spawn')
+        if (this.#state.pid !== data.args[0].pid) {
+          this.#resource.runInAsyncScope(() => {
+            this.emit('spawn')
+          })
+        }
+
         Object.assign(this.#state, data.args[0])
 
         switch (this.#state.lifecycle) {
@@ -88,13 +164,18 @@ class ChildProcess extends EventEmitter {
           }
 
           case 'exit': {
-            this.emit('exit', this.#state.exitCode)
+            this.#resource.runInAsyncScope(() => {
+              this.emit('exit', this.#state.exitCode)
+            })
             dc.channel('exit').publish({ child_process: this })
             break
           }
 
           case 'close': {
-            this.emit('close', this.#state.exitCode)
+            this.#resource.runInAsyncScope(() => {
+              this.emit('close', this.#state.exitCode)
+            })
+
             dc.channel('close').publish({ child_process: this })
             break
           }
@@ -108,13 +189,25 @@ class ChildProcess extends EventEmitter {
       }
 
       if (data.method === 'exit') {
-        this.emit('exit', data.args[0])
+        this.#resource.runInAsyncScope(() => {
+          this.emit('exit', data.args[0])
+        })
       }
     })
 
     this.#worker.on('error', err => {
-      this.emit('error', err)
+      this.#resource.runInAsyncScope(() => {
+        this.emit('error', err)
+      })
     })
+  }
+
+  /**
+   * @ignore
+   * @type {Pipe}
+   */
+  get pipe () {
+    return this.#pipe
   }
 
   /**
@@ -464,6 +557,80 @@ export function exec (command, options, callback) {
       return this.then().finally(next)
     }
   })
+}
+
+export function execSync (command, options) {
+  const result = ipc.sendSync('child_process.exec', {
+    id: rand64(),
+    args: command,
+    cwd: options?.cwd ?? '',
+    stdin: options?.stdin !== false,
+    stdout: options?.stdout !== false,
+    stderr: options?.stderr !== false,
+    timeout: Number.isFinite(options?.timeout) ? options.timeout : 0,
+    killSignal: options?.killSignal ?? signal.SIGTERM
+  })
+
+  if (result.err) {
+    if (!result.err.code) {
+      throw result.err
+    }
+
+    const { stdout, stderr, signal: errorSignal, code, pid } = result.err
+    const message = code === 'ETIMEDOUT'
+      ? 'execSync ETIMEDOUT'
+      : stderr.join('\n')
+
+    const error = Object.assign(new Error(message), {
+      pid,
+      stdout,
+      stderr,
+      code: typeof code === 'string' ? code : null,
+      signal: errorSignal || signal.toString(options?.killSignal) || null,
+      status: Number.isFinite(code) ? code : null,
+      output: [null, stdout.join('\n'), stderr.join('\n')]
+    })
+
+    error.error = error
+
+    if (typeof code === 'string') {
+      error.errno = -os.constants.errno[code]
+    }
+
+    throw error
+  }
+
+  const { stdout, stderr, signal: errorSignal, code, pid } = result.data
+
+  if (code) {
+    const message = code === 'ETIMEDOUT'
+      ? 'execSync ETIMEDOUT'
+      : stderr.join('\n')
+
+    const error = Object.assign(new Error(message), {
+      pid,
+      stdout,
+      stderr,
+      code: typeof code === 'string' ? code : null,
+      signal: errorSignal || null,
+      status: Number.isFinite(code) ? code : null,
+      output: [null, stdout.join('\n'), stderr.join('\n')]
+    })
+
+    error.error = error
+
+    if (typeof code === 'string') {
+      error.errno = -os.constants.errno[code]
+    }
+
+    throw error
+  }
+
+  const output = options?.encoding === 'utf8'
+    ? stdout.join('\n')
+    : Buffer.from(stdout.join('\n'))
+
+  return output
 }
 
 export const execFile = exec
