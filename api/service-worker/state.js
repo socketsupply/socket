@@ -108,7 +108,12 @@ export const state = Object.create(null, descriptors)
 
 channel.addEventListener('message', (event) => {
   if (event.data?.serviceWorker) {
-    const scope = new URL('.', globalThis.location.href).pathname
+    let href = globalThis.location.href
+    if (href.startsWith('blob:')) {
+      href = new URL(href).pathname
+    }
+
+    const scope = new URL('.', href).pathname
     if (scope.startsWith(event.data.serviceWorker.scope)) {
       Object.assign(state.serviceWorker, event.data.serviceWorker)
     }
