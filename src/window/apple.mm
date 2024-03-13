@@ -1374,7 +1374,8 @@ namespace SSC {
   void Window::close (int code) {
     if (this->window != nullptr) {
       [this->window performClose: nil];
-
+      auto app = App::instance();
+      app->windowManager->destroyWindow(this->index);
       this->window = nullptr;
     }
 

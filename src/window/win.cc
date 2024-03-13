@@ -2110,7 +2110,10 @@ namespace SSC {
           {"data", w->index}
         };
 
-        for (auto window : App::instance()->windowManager->windows) {
+        auto app = App::instance();
+        app->windowManager->destroyWindow(w->index);
+
+        for (auto window : app->windowManager->windows) {
           if (window != nullptr) {
             window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
           }
