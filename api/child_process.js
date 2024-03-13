@@ -47,7 +47,7 @@ export class Pipe extends AsyncResource {
       process.stderr.emit = (...args) => {
         if (!this.reading) return false
         return this.runInAsyncScope(() => {
-          return emit(process.stderr, ...args)
+          return emit.call(process.stderr, ...args)
         })
       }
     }
@@ -477,6 +477,7 @@ export function exec (command, options, callback) {
       }
 
       stdout.push(Buffer.from(data))
+      stdout.push(Buffer.from('\n'))
     })
   }
 
@@ -487,6 +488,7 @@ export function exec (command, options, callback) {
       }
 
       stderr.push(Buffer.from(data))
+      stderr.push(Buffer.from('\n'))
     })
   }
 
