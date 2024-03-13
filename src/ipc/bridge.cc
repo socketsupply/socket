@@ -363,12 +363,74 @@ static void initRouterTable (Router *router) {
 
     const auto options = Core::ChildProcess::SpawnOptions {
       .cwd = message.get("cwd", getcwd()),
-      .std_in = message.get("stdin") != "false",
-      .std_out = message.get("stdout") != "false",
-      .std_err = message.get("stderr") != "false"
+      .allowStdin = message.get("stdin") != "false",
+      .allowStdout = message.get("stdout") != "false",
+      .allowStderr = message.get("stderr") != "false"
     };
 
     router->core->childProcess.spawn(
+      message.seq,
+      id,
+      args,
+      options,
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
+    );
+  #endif
+  });
+
+  router->map("child_process.exec", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_IOS
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"},
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"args", "id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto args = split(message.get("args"), 0x0001);
+
+    if (args.size() == 0 || args.at(0).size() == 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "child_process.spawn"},
+        {"err", JSON::Object::Entries {
+          {"message", "Spawn requires at least one argument with a length greater than zero"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    uint64_t timeout = 0;
+    int killSignal = 0;
+
+    if (message.has("timeout")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
+    }
+
+    if (message.has("killSignal")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
+    }
+
+    const auto options = Core::ChildProcess::ExecOptions {
+      .cwd = message.get("cwd", getcwd()),
+      .allowStdout = message.get("stdout") != "false",
+      .allowStderr = message.get("stderr") != "false",
+      .timeout = timeout,
+      .killSignal = killSignal
+    };
+
+    router->core->childProcess.exec(
       message.seq,
       id,
       args,
@@ -2397,7 +2459,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Registers a service worker script for a given scope.
    * @param scriptURL
    * @param scope
    */
@@ -2425,7 +2487,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Resets the service worker container state.
    */
   router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
     router->core->serviceWorker.reset();
@@ -2433,7 +2495,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Unregisters a service worker for given scoep.
    * @param scope
    */
   router->map("serviceWorker.unregister", [=](auto message, auto router, auto reply) {
@@ -2450,7 +2512,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Gets registration information for a service worker scope.
    * @param scope
    */
   router->map("serviceWorker.getRegistration", [=](auto message, auto router, auto reply) {
@@ -2482,7 +2544,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Gets all service worker scope registrations.
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     auto json = JSON::Array::Entries {};
@@ -2494,7 +2556,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Informs container that a service worker will skip waiting.
    * @param id
    */
   router->map("serviceWorker.skipWaiting", [=](auto message, auto router, auto reply) {
@@ -2513,7 +2575,7 @@ static void initRouterTable (Router *router) {
   });
 
   /**
-   * TODO
+   * Updates service worker controller state.
    * @param id
    * @param state
    */
@@ -2529,6 +2591,41 @@ static void initRouterTable (Router *router) {
 
     router->core->serviceWorker.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
+  });
+
+  router->map("timers.setTimeout", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"timeout"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint32_t timeout;
+    REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoul);
+    const auto wait = message.get("wait") == "true";
+    const Core::Timers::ID id = router->core->timers.setTimeout(timeout, [=]() {
+      if (wait) {
+        reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
+      }
+    });
+
+    if (!wait) {
+      reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
+    }
+  });
+
+  router->map("timers.clearTimeout", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    router->core->timers.clearTimeout(id);
+
+    reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
   });
 
   /**
