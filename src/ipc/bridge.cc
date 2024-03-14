@@ -6,6 +6,7 @@
 #endif
 
 #include "../extension/extension.hh"
+#include "../securestore/securestore.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
 
@@ -705,6 +706,57 @@ static void initRouterTable (Router *router) {
       reply(Result { message.seq, message, json });
     }
   });
+
+  /**
+   * Set an item on the secure store
+   * @param account
+   * @param service
+   * @param value
+   */
+  router->map("securestore.set", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"account","service","value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    bool success = SecureStore::set(message.get("account"), message.get("service"), message.buffer.bytes, message.buffer.size);
+
+    auto json = SSC::JSON::Object::Entries {
+      {"source", "securestore.set"},
+      {"data", JSON::Object::Entries {
+        {"success", success}
+      }}
+    };
+
+    reply(Result { message.seq, message, json });
+  });
+
+  /**
+   * Get an item on the secure store
+   * @param account
+   * @param service
+   */
+  router->map("securestore.get", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"account"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    bool success = SecureStore::set(message.buffer.bytes, message.buffer.size);
+
+    auto json = SSC::JSON::Object::Entries {
+      {"source", "securestore.get"},
+      {"data", JSON::Object::Entries {
+        {"success", success}
+      }}
+    };
+
+    reply(Result { message.seq, message, json });
+  });
+
+
 
   /**
    * Checks if current user can access file at `path` with `mode`.

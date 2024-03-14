@@ -126,6 +126,7 @@ if [[ "$platform" = "android" ]]; then
   sources+=("$root/src/process/unix.cc")
 elif [[ "$host" = "Darwin" ]]; then
   sources+=("$root/src/window/apple.mm")
+  sources+=("$root/src/securestore/apple.mm")
   if (( TARGET_OS_IPHONE)) || (( TARGET_IPHONE_SIMULATOR )); then
     cflags=("-sdk" "iphoneos" "$clang")
     clang="xcrun"
@@ -134,9 +135,11 @@ elif [[ "$host" = "Darwin" ]]; then
   fi
 elif [[ "$host" = "Linux" ]]; then
   sources+=("$root/src/window/linux.cc")
+  sources+=("$root/src/securestore/linux.cc")
   sources+=("$root/src/process/unix.cc")
 elif [[ "$host" = "Win32" ]]; then
   sources+=("$root/src/window/win.cc")
+  sources+=("$root/src/securestore/win.cc")
   sources+=("$root/src/process/win.cc")
 fi
 
