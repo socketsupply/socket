@@ -4502,7 +4502,7 @@ int main (const int argc, const char* argv[]) {
             compileExtensionObjectCommand
               << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
               << " " << compiler
-              << " -I" << Path(paths.platformSpecificOutputPath / "include").string()
+              << " -I\"" << Path(paths.platformSpecificOutputPath / "include").string() << "\""
               << " -I" << prefixFile()
               << " -I" << prefixFile("include")
               << " -DIOS=1"
@@ -4580,7 +4580,7 @@ int main (const int argc, const char* argv[]) {
             fs::create_directories(lib.parent_path());
             compileExtensionWASMCommand
               << compiler
-              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() << "\""
               << (" -I" + quote + trim(prefixFile("include")) + quote)
               << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
