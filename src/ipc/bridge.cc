@@ -3027,6 +3027,7 @@ static void registerSchemeHandler (Router *router) {
       uri = uri.substr(7);
     }
 
+    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
     auto path = String(
       uri.starts_with(bundleIdentifier)
         ? uri.substr(bundleIdentifier.size())
