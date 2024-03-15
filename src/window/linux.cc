@@ -595,6 +595,7 @@ namespace SSC {
           );
           return FALSE;
         }
+        return TRUE;
       }),
       this
     );
@@ -847,7 +848,7 @@ namespace SSC {
         auto* w = static_cast<Window*>(arg);
 
         SSC::JSON::Object json = SSC::JSON::Object::Entries {
-          {"data", w->index}
+          {"data", std::to_string(w->opts.index)}
         };
 
         auto app = App::instance();
