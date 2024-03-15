@@ -429,6 +429,7 @@ namespace SSC {
             {"name", name},
             {"state", result ? "granted" : "denied"}
           };
+          // TODO(@heapwolf): properly return this data
         }
 
         return result;
@@ -590,12 +591,13 @@ namespace SSC {
 
               auto match = std::string(jsc_value_to_string(value));
               w->shouldDrag = match == "movable";
+              return;
             },
             w
           );
-          return FALSE;
+          return 0;
         }
-        return TRUE;
+        return 1;
       }),
       this
     );
@@ -737,14 +739,13 @@ namespace SSC {
       this
     );
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(window),
       "button-release-event",
       G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
 
-        /**
          * Calling w->eval() inside button-release-event causes
          * a Segmentation Fault on Ubuntu 22, but works fine on
          * other linuxes like Ubuntu 20.
@@ -754,13 +755,12 @@ namespace SSC {
          * that do not use drag and drop at all to crash.
          *
          * So disabling this experimental linux dragdrop code for now.
-         */
 
         // w->isDragInvokedInsideWindow = false;
         // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
       }),
       this
-    );
+    ); */
 
     /* g_signal_connect(
       G_OBJECT(webview),
@@ -841,27 +841,29 @@ namespace SSC {
       this
     ); */
 
+    auto onDestroy = +[](GtkWidget*, gpointer arg) {
+      auto* w = static_cast<Window*>(arg);
+      auto* app = App::instance();
+      app->windowManager->destroyWindow(w->index);
+
+      for (auto window : app->windowManager->windows) {
+        if (window == nullptr) continue;
+
+        JSON::Object json = JSON::Object::Entries {
+          {"data", w->index}
+        };
+
+        window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+      }
+
+      w->close(0);
+      return FALSE;
+    };
+
     g_signal_connect(
       G_OBJECT(window),
       "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer arg) {
-        auto* w = static_cast<Window*>(arg);
-
-        SSC::JSON::Object json = SSC::JSON::Object::Entries {
-          {"data", std::to_string(w->opts.index)}
-        };
-
-        auto app = App::instance();
-        app->windowManager->destroyWindow(w->index);
-
-        for (auto window : app->windowManager->windows) {
-          if (window == nullptr) continue;
-
-          window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
-        }
-
-        w->close(0);
-      }),
+      G_CALLBACK(onDestroy),
       this
     );
 
@@ -1104,16 +1106,16 @@ namespace SSC {
   }
 
   String Window::getBackgroundColor () {
-    GtkStyleContext *context = gtk_widget_get_style_context(widget);
+    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
 
     GdkRGBA color;
-    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(widget), &color);
+    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
 
-    char color_str[100];
+    char str[100];
 
     snprintf(
-      color_str,
-      sizeof(color_str),
+      str,
+      sizeof(str),
       "rgba(%d, %d, %d, %f)",
       (int)(color.red * 255),
       (int)(color.green * 255),
@@ -1121,11 +1123,11 @@ namespace SSC {
       color.alpha
     );
 
-    return String(color_str);
+    return String(str);
   }
 
   void Window::showInspector () {
-    WebKitWebInspector *inspector = webkit_web_view_get_inspector(this->webview);
+    WebKitWebInspector *inspector = webkit_web_view_get_inspector((WebKitWebView*)(this->webview));
     webkit_web_inspector_show(inspector);
 
     // this->webview->inspector.show();
