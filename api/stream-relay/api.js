@@ -41,17 +41,17 @@ async function api (options = {}, events, dgram) {
   _peer = new Ctor(options, dgram)
 
   _peer.onJoin = (packet, ...args) => {
-    if (!packet.clusterId.equals(clusterId)) return
+    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
     bus._emit('#join', packet, ...args)
   }
 
   _peer.onPacket = (packet, ...args) => {
-    if (!packet.clusterId.equals(clusterId)) return
+    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
     bus._emit('#packet', packet, ...args)
   }
 
   _peer.onStream = (packet, ...args) => {
-    if (!packet.clusterId.equals(clusterId)) return
+    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
     bus._emit('#stream', packet, ...args)
   }
 
