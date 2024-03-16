@@ -1043,7 +1043,7 @@ export class Peer {
     for (const packet of packets) {
       this.cacheInsert(packet)
 
-      if (this.onPacket) this.onPacket(p, this.port, this.address, true)
+      if (this.onPacket) this.onPacket(packet, this.port, this.address, true)
 
       this.unpublished[packet.packetId.toString('hex')] = Date.now()
       if (globalThis.navigator && !globalThis.navigator.onLine) continue
