@@ -7,6 +7,7 @@
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <fstream>
+#include "../app/app.hh"
 #endif
 
 #include "../extension/extension.hh"
@@ -2264,12 +2265,27 @@ static void initRouterTable (Router *router) {
     const auto err = validateMessageParameters(message, {"value"});
     const auto frameType = message.get("runtime-frame-type");
     const auto frameSource = message.get("runtime-frame-source");
+    auto userConfig = router->bridge->userConfig;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
     }
 
     if (frameType == "top-level" && frameSource != "serviceworker") {
+      if (message.value == "load") {
+        const auto href = message.get("href");
+        if (href.size() > 0) {
+          router->location.href = href;
+          auto tmp = href;
+          tmp = replace(href, "socket://", "");
+          tmp = replace(href, "https://", "");
+          tmp = replace(userConfig["meta_bundle_identifier"], "");
+          auto parsed = Router::parseURL(tmp);
+          router->location.pathname = parsed.path;
+          router->location.query = parsed.query;
+        }
+      }
+
       if (router->bridge == router->core->serviceWorker.bridge) {
         if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
           if (message.value == "beforeruntimeinit") {
@@ -2932,16 +2948,68 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
+  static const auto MAX_BODY_BYTES = 4 * 1024 * 1024;
   static const auto devHost = SSC::getDevHost();
+  static Atomic<bool> isInitialized = false;
+
+  if (isInitialized) {
+    return;
+  }
+
+  isInitialized = true;
 
 #if defined(__linux__) && !defined(__ANDROID__)
-  auto ctx = router->webkitWebContext;
+  auto ctx = webkit_web_context_get_default();
   auto security = webkit_web_context_get_security_manager(ctx);
 
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
+    IPC::Router* router = nullptr;
+
+    auto webview = webkit_uri_scheme_request_get_web_view(request);
+    auto windowManager = App::instance()->getWindowManager();
+
+    for (auto& window : windowManager->windows) {
+      if (
+        window != nullptr &&
+        window->bridge != nullptr &&
+        WEBKIT_WEB_VIEW(window->webview) == webview
+      ) {
+        router = &window->bridge->router;
+        break;
+      }
+    }
+
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto router = reinterpret_cast<Router *>(ptr);
-    auto invoked = router->invoke(uri, [=](auto result) {
+    auto method = String(webkit_uri_scheme_request_get_http_method(request));
+    auto message = IPC::Message{ uri };
+    char bytes[MAX_BODY_BYTES]{0};
+
+    if ((method == "POST" || method == "PUT")) {
+      auto body = webkit_uri_scheme_request_get_http_body(request);
+      if (body) {
+        GError* error = nullptr;
+        message.buffer.bytes = bytes;
+
+        const auto success = g_input_stream_read_all(
+          body,
+          bytes,
+          MAX_BODY_BYTES,
+          &message.buffer.size,
+          nullptr,
+          &error
+        );
+
+        if (!success) {
+          webkit_uri_scheme_request_finish_error(
+            request,
+            error
+          );
+          return;
+        }
+      }
+    }
+
+    auto invoked = router->invoke(message, message.buffer.bytes, message.buffer.size, [=](auto result) {
       auto json = result.str();
       auto size = result.post.body != nullptr ? result.post.length : json.size();
       auto body = result.post.body != nullptr ? result.post.body : json.c_str();
@@ -3016,14 +3084,28 @@ static void registerSchemeHandler (Router *router) {
   0);
 
   webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
-    auto router = reinterpret_cast<IPC::Router*>(ptr);
+    IPC::Router* router = nullptr;
+
+    auto webview = webkit_uri_scheme_request_get_web_view(request);
+    auto windowManager = App::instance()->getWindowManager();
+
+    for (auto& window : windowManager->windows) {
+      if (
+        window != nullptr &&
+        window->bridge != nullptr &&
+        WEBKIT_WEB_VIEW(window->webview) == webview
+      ) {
+        router = &window->bridge->router;
+        break;
+      }
+    }
+
     auto userConfig = router->bridge->userConfig;
     bool isModule = false;
     auto method = String(webkit_uri_scheme_request_get_http_method(request));
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
     uint64_t clientId = router->bridge->id;
-    String html;
 
     if (uri.starts_with("socket:///")) {
       uri = uri.substr(10);
@@ -3063,7 +3145,6 @@ static void registerSchemeHandler (Router *router) {
       }
 
       uri = "socket://" + bundleIdentifier + "/" + path;
-      printf("%s\n", uri.c_str());
       auto moduleSource = trim(tmpl(
         moduleTemplate,
         Map { {"url", String(uri)} }
@@ -3277,7 +3358,7 @@ static void registerSchemeHandler (Router *router) {
         char* contents = nullptr;
         gsize size = 0;
         if (g_file_get_contents(file.c_str(), &contents, &size, &error)) {
-          html = contents;
+          String html = contents;
 
           if (html.find("<head>") != String::npos) {
             html = replace(html, "<head>", String("<head>" + script));
@@ -3289,8 +3370,10 @@ static void registerSchemeHandler (Router *router) {
             html = script + html;
           }
 
-          stream = g_memory_input_stream_new_from_data(html.data(), (gint64) html.size() - 1, 0);
-          response = webkit_uri_scheme_response_new(stream, (gint64) html.size());
+          auto data = new char[html.size()]{0};
+          memcpy(data, html.data(), html.size());
+          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), g_free);
+          response = webkit_uri_scheme_response_new(stream, -1);
           g_free(contents);
         }
       }
@@ -5024,9 +5107,6 @@ namespace SSC::IPC {
     [this->schemeHandler setRouter: this];
     [this->locationObserver setRouter: this];
     [this->networkStatusObserver setRouter: this];
-
-  #elif defined(__linux__) && !defined(__ANDROID__)
-    this->webkitWebContext = webkit_web_context_new();
   #endif
 
     initRouterTable(this);
