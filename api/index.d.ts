@@ -6932,6 +6932,7 @@ declare module "socket:worker_threads" {
      */
     export function getEnvironmentData(key: string): any;
     /**
+    
      * A pool of known worker threads.
      * @type {<Map<string, Worker>}
      */
@@ -6978,6 +6979,24 @@ declare module "socket:worker_threads" {
      * @type {any?}
      */
     export const workerData: any | null;
+    export class Pipe extends AsyncResource {
+        /**
+         * `Pipe` class constructor.
+         * @param {Childworker} worker
+         * @ignore
+         */
+        constructor(worker: Childworker);
+        /**
+         * `true` if the pipe is still reading, otherwise `false`.
+         * @type {boolean}
+         */
+        get reading(): boolean;
+        /**
+         * Destroys the pipe
+         */
+        destroy(): void;
+        #private;
+    }
     /**
      * @typedef {{
      *   env?: object,
@@ -7068,6 +7087,7 @@ declare module "socket:worker_threads" {
         transferList?: any[];
         eval?: boolean;
     };
+    import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Writable } from "socket:stream";
     import { Readable } from "socket:stream";
@@ -7092,20 +7112,31 @@ declare module "socket:child_process" {
         finally(next: any): Promise<any>;
     };
     export function execSync(command: any, options: any): any;
-    export function execFile(command: any, options: any, callback: any): ChildProcess & {
-        then(resolve: any, reject: any): Promise<any>;
-        catch(reject: any): Promise<any>;
-        finally(next: any): Promise<any>;
-    };
-    namespace _default {
-        export { ChildProcess };
-        export { spawn };
-        export { execFile };
-        export { exec };
+    export class Pipe extends AsyncResource {
+        /**
+         * `Pipe` class constructor.
+         * @param {ChildProcess} process
+         * @ignore
+         */
+        constructor(process: ChildProcess);
+        /**
+         * `true` if the pipe is still reading, otherwise `false`.
+         * @type {boolean}
+         */
+        get reading(): boolean;
+        /**
+         * Destroys the pipe
+         */
+        destroy(): void;
+        #private;
     }
-    export default _default;
-    class ChildProcess extends EventEmitter {
+    export class ChildProcess extends EventEmitter {
         constructor(options?: {});
+        /**
+         * @ignore
+         * @type {Pipe}
+         */
+        get pipe(): Pipe;
         /**
          * `true` if the child process was killed with kill()`,
          * otherwise `false`.
@@ -7215,6 +7246,19 @@ declare module "socket:child_process" {
         removeEventListener(event: string, callback: (arg0: Event) => any): void;
         #private;
     }
+    export function execFile(command: any, options: any, callback: any): ChildProcess & {
+        then(resolve: any, reject: any): Promise<any>;
+        catch(reject: any): Promise<any>;
+        finally(next: any): Promise<any>;
+    };
+    namespace _default {
+        export { ChildProcess };
+        export { spawn };
+        export { execFile };
+        export { exec };
+    }
+    export default _default;
+    import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
 }
@@ -10762,6 +10806,7 @@ declare module "socket:stream-relay/index" {
             clock: number;
             uptime: number;
             natType: number;
+            natName: string;
             peerId: string;
         }>;
         cacheInsert(packet: any): Promise<void>;
@@ -10989,77 +11034,6 @@ declare module "socket:index" {
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
 
-declare module "socket:stream-relay/worker" {
-    /**
-     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
-     * @param {{ createSocket: function('udp4', null, object?): object }} options
-     */
-    export class PeerWorkerProxy {
-        constructor(options: any, port: any, fn: any);
-        init(): Promise<Deferred>;
-        reconnect(): Promise<Deferred>;
-        disconnect(): Promise<Deferred>;
-        getInfo(): Promise<Deferred>;
-        getState(): Promise<Deferred>;
-        open(...args: any[]): Promise<Deferred>;
-        seal(...args: any[]): Promise<Deferred>;
-        sealUnsigned(...args: any[]): Promise<Deferred>;
-        openUnsigned(...args: any[]): Promise<Deferred>;
-        addEncryptionKey(...args: any[]): Promise<Deferred>;
-        send(...args: any[]): Promise<Deferred>;
-        sendUnpublished(...args: any[]): Promise<Deferred>;
-        cacheInsert(...args: any[]): Promise<Deferred>;
-        mcast(...args: any[]): Promise<Deferred>;
-        requestReflection(...args: any[]): Promise<Deferred>;
-        join(...args: any[]): Promise<Deferred>;
-        publish(...args: any[]): Promise<Deferred>;
-        sync(...args: any[]): Promise<Deferred>;
-        close(...args: any[]): Promise<Deferred>;
-        query(...args: any[]): Promise<Deferred>;
-        compileCachePredicate(src: any): Promise<Deferred>;
-        callWorkerThread(prop: any, data: any): Deferred;
-        callMainThread(prop: any, args: any): void;
-        resolveMainThread(seq: any, data: any): void;
-        #private;
-    }
-    class Deferred {
-        _promise: Promise<any>;
-        resolve: (value: any) => void;
-        reject: (reason?: any) => void;
-        then: any;
-        catch: any;
-        finally: any;
-        [Symbol.toStringTag]: string;
-    }
-    export {};
-}
-
-declare module "socket:stream-relay/api" {
-    export default api;
-    /**
-     * Initializes and returns the network bus.
-     *
-     * @async
-     * @function
-     * @param {object} options - Configuration options for the network bus.
-     * @param {object} events - A nodejs compatibe implementation of the events module.
-     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
-     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
-     */
-    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
-}
-
-declare module "socket:network" {
-    export default network;
-    export function network(options: any): Promise<events.EventEmitter>;
-    import { Cache } from "socket:stream-relay/index";
-    import { sha256 } from "socket:stream-relay/index";
-    import { Encryption } from "socket:stream-relay/index";
-    import { Packet } from "socket:stream-relay/index";
-    import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, Packet, NAT };
-}
-
 declare module "socket:string_decoder" {
     export function StringDecoder(encoding: any): void;
     export class StringDecoder {
@@ -11244,68 +11218,7 @@ declare module "socket:module" {
         console: import("socket:console").Console;
         constants: any;
         child_process: {
-            ChildProcess: {
-                new (options?: {}): {
-                    "__#40@#id": BigInt;
-                    "__#40@#worker": any;
-                    "__#40@#signal": any;
-                    "__#40@#timeout": any;
-                    "__#40@#resource": any;
-                    "__#40@#env": any;
-                    "__#40@#state": {
-                        killed: boolean;
-                        signalCode: any;
-                        exitCode: any;
-                        spawnfile: any;
-                        spawnargs: any[];
-                        lifecycle: string;
-                        pid: number;
-                    };
-                    readonly killed: boolean;
-                    readonly pid: number;
-                    readonly spawnfile: string;
-                    readonly spawnargs: string[];
-                    readonly connected: boolean;
-                    readonly exitCode: number;
-                    readonly stdin: stream.Writable;
-                    readonly stdout: stream.Readable;
-                    readonly stderr: stream.Readable;
-                    readonly worker: import("socket:worker_threads").Worker;
-                    disconnect(): boolean;
-                    send(): boolean;
-                    ref(): boolean;
-                    unref(): boolean;
-                    kill(...args: any[]): any;
-                    spawn(...args?: string[]): any;
-                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
-                        once?: false;
-                    }): void;
-                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
-                    _events: any;
-                    _eventsCount: number;
-                    _maxListeners: number;
-                    setMaxListeners(n: any): any;
-                    getMaxListeners(): any;
-                    emit(type: any, ...args: any[]): boolean;
-                    addListener(type: any, listener: any): any;
-                    on(arg0: any, arg1: any): any;
-                    prependListener(type: any, listener: any): any;
-                    once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
-                    removeListener(type: any, listener: any): any;
-                    off(type: any, listener: any): any;
-                    removeAllListeners(type: any, ...args: any[]): any;
-                    listeners(type: any): any[];
-                    rawListeners(type: any): any[];
-                    listenerCount(type: any): any;
-                    eventNames(): any;
-                };
-                EventEmitter: typeof events.EventEmitter;
-                defaultMaxListeners: number;
-                init(): void;
-                listenerCount(emitter: any, type: any): any;
-                once: typeof events.once;
-            };
+            ChildProcess: typeof import("socket:child_process").ChildProcess;
             spawn: typeof import("socket:child_process").spawn;
             execFile: typeof import("socket:child_process").exec;
             exec: typeof import("socket:child_process").exec;
@@ -11344,7 +11257,6 @@ declare module "socket:module" {
         };
         mime: typeof mime;
         net: {};
-        network: (options: any) => Promise<events.EventEmitter>;
         os: typeof os;
         path: typeof path;
         perf_hooks: {
@@ -11432,68 +11344,7 @@ declare module "socket:module" {
         console: import("socket:console").Console;
         constants: any;
         child_process: {
-            ChildProcess: {
-                new (options?: {}): {
-                    "__#40@#id": BigInt;
-                    "__#40@#worker": any;
-                    "__#40@#signal": any;
-                    "__#40@#timeout": any;
-                    "__#40@#resource": any;
-                    "__#40@#env": any;
-                    "__#40@#state": {
-                        killed: boolean;
-                        signalCode: any;
-                        exitCode: any;
-                        spawnfile: any;
-                        spawnargs: any[];
-                        lifecycle: string;
-                        pid: number;
-                    };
-                    readonly killed: boolean;
-                    readonly pid: number;
-                    readonly spawnfile: string;
-                    readonly spawnargs: string[];
-                    readonly connected: boolean;
-                    readonly exitCode: number;
-                    readonly stdin: stream.Writable;
-                    readonly stdout: stream.Readable;
-                    readonly stderr: stream.Readable;
-                    readonly worker: import("socket:worker_threads").Worker;
-                    disconnect(): boolean;
-                    send(): boolean;
-                    ref(): boolean;
-                    unref(): boolean;
-                    kill(...args: any[]): any;
-                    spawn(...args?: string[]): any;
-                    addEventListener(event: string, callback: (arg0: Event) => any, options?: {
-                        once?: false;
-                    }): void;
-                    removeEventListener(event: string, callback: (arg0: Event) => any): void;
-                    _events: any;
-                    _eventsCount: number;
-                    _maxListeners: number;
-                    setMaxListeners(n: any): any;
-                    getMaxListeners(): any;
-                    emit(type: any, ...args: any[]): boolean;
-                    addListener(type: any, listener: any): any;
-                    on(arg0: any, arg1: any): any;
-                    prependListener(type: any, listener: any): any;
-                    once(type: any, listener: any): any;
-                    prependOnceListener(type: any, listener: any): any;
-                    removeListener(type: any, listener: any): any;
-                    off(type: any, listener: any): any;
-                    removeAllListeners(type: any, ...args: any[]): any;
-                    listeners(type: any): any[];
-                    rawListeners(type: any): any[];
-                    listenerCount(type: any): any;
-                    eventNames(): any;
-                };
-                EventEmitter: typeof events.EventEmitter;
-                defaultMaxListeners: number;
-                init(): void;
-                listenerCount(emitter: any, type: any): any;
-                once: typeof events.once;
-            };
+            ChildProcess: typeof import("socket:child_process").ChildProcess;
             spawn: typeof import("socket:child_process").spawn;
             execFile: typeof import("socket:child_process").exec;
             exec: typeof import("socket:child_process").exec;
@@ -11532,7 +11383,6 @@ declare module "socket:module" {
         };
         mime: typeof mime;
         net: {};
-        network: (options: any) => Promise<events.EventEmitter>;
         os: typeof os;
         path: typeof path;
         perf_hooks: {
@@ -11767,21 +11617,92 @@ declare module "socket:module" {
     import { AsyncHook } from "socket:async";
     import application from "socket:application";
     import * as buffer from "socket:buffer";
-    import stream from "socket:stream";
-    import events from "socket:events";
     import crypto from "socket:crypto";
     import dgram from "socket:dgram";
     import dns from "socket:dns";
+    import events from "socket:events";
     import fs from "socket:fs";
     import http from "socket:http";
     import ipc from "socket:ipc";
     import mime from "socket:mime";
     import os from "socket:os";
     import { posix as path } from "socket:path";
+    import stream from "socket:stream";
     import string_decoder from "socket:string_decoder";
     import util from "socket:util";
     import timers from "socket:timers";
     import window from "socket:window";
+}
+
+declare module "socket:stream-relay/worker" {
+    /**
+     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class PeerWorkerProxy {
+        constructor(options: any, port: any, fn: any);
+        init(): Promise<Deferred>;
+        reconnect(): Promise<Deferred>;
+        disconnect(): Promise<Deferred>;
+        getInfo(): Promise<Deferred>;
+        getState(): Promise<Deferred>;
+        open(...args: any[]): Promise<Deferred>;
+        seal(...args: any[]): Promise<Deferred>;
+        sealUnsigned(...args: any[]): Promise<Deferred>;
+        openUnsigned(...args: any[]): Promise<Deferred>;
+        addEncryptionKey(...args: any[]): Promise<Deferred>;
+        send(...args: any[]): Promise<Deferred>;
+        sendUnpublished(...args: any[]): Promise<Deferred>;
+        cacheInsert(...args: any[]): Promise<Deferred>;
+        mcast(...args: any[]): Promise<Deferred>;
+        requestReflection(...args: any[]): Promise<Deferred>;
+        join(...args: any[]): Promise<Deferred>;
+        publish(...args: any[]): Promise<Deferred>;
+        sync(...args: any[]): Promise<Deferred>;
+        close(...args: any[]): Promise<Deferred>;
+        query(...args: any[]): Promise<Deferred>;
+        compileCachePredicate(src: any): Promise<Deferred>;
+        callWorkerThread(prop: any, data: any): Deferred;
+        callMainThread(prop: any, args: any): void;
+        resolveMainThread(seq: any, data: any): void;
+        #private;
+    }
+    class Deferred {
+        _promise: Promise<any>;
+        resolve: (value: any) => void;
+        reject: (reason?: any) => void;
+        then: any;
+        catch: any;
+        finally: any;
+        [Symbol.toStringTag]: string;
+    }
+    export {};
+}
+
+declare module "socket:stream-relay/api" {
+    export default api;
+    /**
+     * Initializes and returns the network bus.
+     *
+     * @async
+     * @function
+     * @param {object} options - Configuration options for the network bus.
+     * @param {object} events - A nodejs compatibe implementation of the events module.
+     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
+     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
+     */
+    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
+}
+
+declare module "socket:network" {
+    export default network;
+    export function network(options: any): Promise<events.EventEmitter>;
+    import { Cache } from "socket:stream-relay/index";
+    import { sha256 } from "socket:stream-relay/index";
+    import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
+    import { NAT } from "socket:stream-relay/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
 }
 
 declare module "socket:node-esm-loader" {

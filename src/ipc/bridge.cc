@@ -5,6 +5,10 @@
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #endif
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <fstream>
+#endif
+
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -2928,8 +2932,7 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-  auto userConfig = router->bridge->userConfig;
-  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto devHost = SSC::getDevHost();
 
 #if defined(__linux__) && !defined(__ANDROID__)
   auto ctx = router->webkitWebContext;
@@ -3016,8 +3019,11 @@ static void registerSchemeHandler (Router *router) {
     auto router = reinterpret_cast<IPC::Router*>(ptr);
     auto userConfig = router->bridge->userConfig;
     bool isModule = false;
+    auto method = String(webkit_uri_scheme_request_get_http_method(request));
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
+    uint64_t clientId = router->bridge->id;
+    String html;
 
     if (uri.starts_with("socket:///")) {
       uri = uri.substr(10);
@@ -3034,19 +3040,30 @@ static void registerSchemeHandler (Router *router) {
         : "socket/" + uri
     );
 
-    auto ext = fs::path(path).extension().string();
+    auto parsedPath = Router::parseURL(path);
+    auto ext = fs::path(parsedPath.path).extension().string();
 
     if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
 
     if (!uri.starts_with(bundleIdentifier)) {
+      path = parsedPath.path;
       if (ext.size() == 0 && !path.ends_with(".js")) {
         path += ".js";
         ext = ".js";
       }
 
+      if (parsedPath.queryString.size() > 0) {
+        path += String("?") + parsedPath.queryString;
+      }
+
+      if (parsedPath.fragment.size() > 0) {
+        path += String("#") + parsedPath.fragment;
+      }
+
       uri = "socket://" + bundleIdentifier + "/" + path;
+      printf("%s\n", uri.c_str());
       auto moduleSource = trim(tmpl(
         moduleTemplate,
         Map { {"url", String(uri)} }
@@ -3063,7 +3080,6 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    auto parsedPath = Router::parseURL(path);
     auto resolved = Router::resolveURLPathForWebView(parsedPath.path, cwd);
     auto mount = Router::resolveNavigatorMountForWebView(parsedPath.path);
     path = resolved.path;
@@ -3100,8 +3116,82 @@ static void registerSchemeHandler (Router *router) {
         g_object_unref(stream);
         return;
       }
-    } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-      path = userConfig["webview_default_index"];
+    } else if (path.size() == 0) {
+      if (userConfig.contains("webview_default_index")) {
+        path = userConfig["webview_default_index"];
+      } else {
+        if (router->core->serviceWorker.registrations.size() > 0) {
+          auto fetchRequest = ServiceWorkerContainer::FetchRequest {
+            parsedPath.path,
+            method
+          };
+
+          fetchRequest.client.id = clientId;
+          fetchRequest.client.preload = router->bridge->preload;
+          auto requestHeaders = webkit_uri_scheme_request_get_http_headers(request);
+
+          fetchRequest.query = parsedPath.queryString;
+
+          soup_message_headers_foreach(
+            requestHeaders,
+            [](auto name, auto value, auto userData) {
+              auto fetchRequest = reinterpret_cast<ServiceWorkerContainer::FetchRequest*>(userData);
+              const auto entry = String(name) + ": " + String(value);
+              fetchRequest->headers.push_back(entry);
+            },
+            &fetchRequest
+          );
+
+          const auto fetched = router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
+            if (res.statusCode == 0) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "%.*s",
+                  (int) res.buffer.size,
+                  res.buffer.bytes
+                )
+              );
+              return;
+            }
+
+            const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+            auto stream = g_memory_input_stream_new_from_data(res.buffer.bytes, res.buffer.size, 0);
+            auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+            auto response = webkit_uri_scheme_response_new(stream, (gint64) res.buffer.size);
+
+            for (const auto& line : webviewHeaders) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            for (const auto& line : res.headers) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+
+              if (key == "content-type" || key == "Content-Type") {
+                webkit_uri_scheme_response_set_content_type(response, value.c_str());
+              }
+
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            webkit_uri_scheme_response_set_http_headers(response, headers);
+            webkit_uri_scheme_request_finish_with_response(request, response);
+
+            g_object_unref(stream);
+          });
+
+          if (fetched) {
+            return;
+          }
+        }
+      }
     } else if (resolved.redirect) {
       auto redirectURL = resolved.path;
       if (parsedPath.queryString.size() > 0) {
@@ -3150,22 +3240,72 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
+    WebKitURISchemeResponse* response = nullptr;
+    GInputStream* stream = nullptr;
+    gchar* mimeType = nullptr;
     GError* error = nullptr;
 
-    auto file = g_file_new_for_path(path.c_str());
-    auto stream = (GInputStream*) g_file_read(file, nullptr, &error);
+    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+
+    if (path.ends_with(".html")) {
+      auto script = router->bridge->preload;
+
+      if (userConfig["webview_importmap"].size() > 0) {
+        const auto file = Path(userConfig["webview_importmap"]);
+
+        if (fs::exists(file)) {
+          String string;
+          std::ifstream stream(file.string().c_str());
+          auto buffer = std::istreambuf_iterator<char>(stream);
+          auto end = std::istreambuf_iterator<char>();
+          string.assign(buffer, end);
+          stream.close();
+
+          script = (
+            String("<script type=\"importmap\">\n") +
+            string +
+            String("\n</script>\n") +
+            script
+          );
+        }
+      }
+
+      const auto file = Path(path);
+
+      if (fs::exists(file)) {
+        char* contents = nullptr;
+        gsize size = 0;
+        if (g_file_get_contents(file.c_str(), &contents, &size, &error)) {
+          html = contents;
+
+          if (html.find("<head>") != String::npos) {
+            html = replace(html, "<head>", String("<head>" + script));
+          } else if (html.find("<body>") != String::npos) {
+            html = replace(html, "<body>", String("<body>" + script));
+          } else if (html.find("<html>") != String::npos) {
+            html = replace(html, "<html>", String("<html>" + script));
+          } else {
+            html = script + html;
+          }
+
+          stream = g_memory_input_stream_new_from_data(html.data(), (gint64) html.size() - 1, 0);
+          response = webkit_uri_scheme_response_new(stream, (gint64) html.size());
+          g_free(contents);
+        }
+      }
+    } else {
+      auto file = g_file_new_for_path(path.c_str());
+      auto size = fs::file_size(path);
+      stream = (GInputStream*) g_file_read(file, nullptr, &error);
+      response = webkit_uri_scheme_response_new(stream, (gint64) size);
+    }
 
     if (!stream) {
       webkit_uri_scheme_request_finish_error(request, error);
       g_error_free(error);
       return;
     }
-
-    gchar* mimeType = nullptr;
-    auto size = fs::file_size(path);
-    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-    auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
-    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
 
     soup_message_headers_append(headers, "cache-control", "no-cache");
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
@@ -3207,12 +3347,56 @@ static void registerSchemeHandler (Router *router) {
   router,
   0);
 
+  webkit_web_context_register_uri_scheme(ctx, "node", [](auto request, auto ptr) {
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto router = reinterpret_cast<IPC::Router*>(ptr);
+    auto userConfig = router->bridge->userConfig;
+
+    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+    if (uri.starts_with("node:///")) {
+      uri = uri.substr(10);
+    } else if (uri.starts_with("node://")) {
+      uri = uri.substr(9);
+    } else if (uri.starts_with("node:")) {
+      uri = uri.substr(7);
+    }
+
+    auto path = String("socket/" + uri);
+    auto ext = fs::path(path).extension().string();
+
+    if (ext.size() > 0 && !ext.starts_with(".")) {
+      ext = "." + ext;
+    }
+
+    if (ext.size() == 0 && !path.ends_with(".js")) {
+      path += ".js";
+      ext = ".js";
+    }
+
+    uri = "socket://" + bundleIdentifier + "/" + path;
+
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(uri)} }
+    ));
+
+    auto size = moduleSource.size();
+    auto bytes = moduleSource.data();
+    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+    auto response = webkit_uri_scheme_response_new(stream, size);
+
+    webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+    webkit_uri_scheme_request_finish_with_response(request, response);
+    g_object_unref(stream);
+  },
+  router,
+  0);
+
   webkit_security_manager_register_uri_scheme_as_display_isolated(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
-
-  static const auto devHost = SSC::getDevHost();
 
   if (devHost.starts_with("http:")) {
     webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
@@ -3225,6 +3409,11 @@ static void registerSchemeHandler (Router *router) {
   webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
   webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
   webkit_security_manager_register_uri_scheme_as_local(security, "socket");
+
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "node");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "node");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "node");
+  webkit_security_manager_register_uri_scheme_as_local(security, "node");
 #endif
 }
 
@@ -3534,7 +3723,12 @@ static void registerSchemeHandler (Router *router) {
 
               if (res.statusCode == 0) {
                 @try {
-                  [task didFinish];
+                  [task didFailWithError: [NSError
+                    [task didFailWithError: [NSError
+                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                                 code: 1
+                             userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
+                    ]];
                 } @catch (id e) {
                   // ignore possible 'NSInternalInconsistencyException'
                 }
@@ -4674,7 +4868,7 @@ namespace SSC::IPC {
     return Router::WebViewURLPathResolution{};
   };
 
-  Router::WebViewURLComponents Router::parseURL(const SSC::String& url) {
+  Router::WebViewURLComponents Router::parseURL (const SSC::String& url) {
     Router::WebViewURLComponents components;
     components.originalUrl = url;
 
@@ -4690,7 +4884,12 @@ namespace SSC::IPC {
     }
 
     if (queryPos != SSC::String::npos) { // Extract the query string
-      components.queryString = url.substr(queryPos + 1, fragmentPos != SSC::String::npos ? fragmentPos - queryPos - 1 : SSC::String::npos);
+      components.queryString = url.substr(
+        queryPos + 1,
+        fragmentPos != SSC::String::npos
+          ? fragmentPos - queryPos - 1
+          : SSC::String::npos
+      );
     }
 
     if (fragmentPos != SSC::String::npos) { // Extract the fragment

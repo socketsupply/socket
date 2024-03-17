@@ -233,19 +233,16 @@ export class MIMEParams extends Map {
       .map((entry) => entry.join('='))
       .join(';')
   }
-
-  get size () {
-    return super.size
-  }
 }
 
 export class MIMEType {
   #type = null
-  #params = new MIMEParams()
+  #params = null
   #subtype = null
 
   constructor (input) {
     input = String(input)
+
     const args = input.split(';')
     const mime = args.shift()
     const types = mime.split('/')
@@ -257,6 +254,7 @@ export class MIMEType {
     const [type, subtype] = types
 
     this.#type = type
+    this.#params = new MIMEParams()
     this.#subtype = subtype
   }
 

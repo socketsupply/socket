@@ -45,7 +45,7 @@ import ipc from './ipc.js'
 import language from './language.js'
 import location from './location.js'
 import mime from './mime.js'
-import network from './network.js'
+// import network from './network.js'
 import os from './os.js'
 import { posix as path } from './path.js'
 import process from './process.js'
@@ -289,7 +289,7 @@ export const builtins = {
   location,
   mime,
   net: {},
-  network,
+  //network,
   os,
   path,
   // eslint-disable-next-line

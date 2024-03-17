@@ -669,7 +669,8 @@ namespace SSC {
           .env = env.str(),
           .userConfig = this->options.userConfig,
           .userScript = opts.userScript,
-          .runtimePrimordialOverrides = opts.runtimePrimordialOverrides
+          .runtimePrimordialOverrides = opts.runtimePrimordialOverrides,
+          .preloadCommonJS = opts.preloadCommonJS != false
         };
 
         for (const auto& tuple : opts.userConfig) {
