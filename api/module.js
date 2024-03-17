@@ -45,7 +45,7 @@ import ipc from './ipc.js'
 import language from './language.js'
 import location from './location.js'
 import mime from './mime.js'
-// import network from './network.js'
+import network from './network.js'
 import os from './os.js'
 import { posix as path } from './path.js'
 import process from './process.js'
@@ -53,6 +53,7 @@ import querystring from './querystring.js'
 import stream from './stream.js'
 // eslint-disable-next-line
 import string_decoder from './string_decoder.js'
+import test from './test.js'
 import timers from './timers.js'
 import url from './url.js'
 import util from './util.js'
@@ -88,7 +89,7 @@ class ModuleRequest {
     const headers = Headers.from(request)
     const contentLocation = headers.get('content-location')
     // if a content location was given, check extension name
-    if (URL.canParse(contentLocation, globalThis.location.href)) {
+    if (contentLocation && URL.canParse(contentLocation, globalThis.location.href)) {
       const url = new URL(contentLocation, globalThis.location.href)
       if (!/js|json|mjs|cjs|jsx|ts|tsx/.test(path.extname(url.pathname))) {
         return false
@@ -289,7 +290,7 @@ export const builtins = {
   location,
   mime,
   net: {},
-  //network,
+  network,
   os,
   path,
   // eslint-disable-next-line
@@ -303,6 +304,7 @@ export const builtins = {
   // eslint-disable-next-line
   string_decoder,
   sys: util,
+  test,
   timers,
   'timers/promises': timers.promises,
   tty: {
@@ -895,8 +897,8 @@ export class Module extends EventTarget {
           !result.startsWith('socket:')
         ) {
           throw new ModuleNotFoundError(
-            `Cannot require module ${filename} without 'socket:' prefix`,
-            this.children
+            `Cannot require module "${filename}" without 'socket:' prefix`,
+            module.children
           )
         }
 
