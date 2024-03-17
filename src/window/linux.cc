@@ -19,7 +19,7 @@ namespace SSC {
       opts(opts),
       hotkey(this)
   {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = SSC::getUserConfig();
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
     this->popupId = 0;
@@ -459,7 +459,7 @@ namespace SSC {
         const auto req = webkit_navigation_action_get_request(action);
         const auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.starts_with(userConfig["meta_application_protocol"])) {
+        if (uri.starts_with(window->opts.userConfig["meta_application_protocol"])) {
           webkit_policy_decision_ignore(decision);
 
           if (window != nullptr && window->bridge != nullptr) {
@@ -531,6 +531,7 @@ namespace SSC {
       G_OBJECT(webview),
       "button-press-event",
       G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
+        return 0;
         auto *w = static_cast<Window*>(arg);
         w->shouldDrag = false;
 
@@ -595,9 +596,9 @@ namespace SSC {
             },
             w
           );
-          return 0;
         }
-        return 1;
+
+        return 0;
       }),
       this
     );
@@ -908,17 +909,6 @@ namespace SSC {
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
-
-    webkit_user_content_manager_add_script(
-      manager,
-      webkit_user_script_new(
-        this->bridge->preload.c_str(),
-        WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
-        nullptr,
-        nullptr
-      )
-    );
 
     // ALWAYS on or off
     webkit_settings_set_enable_webgl(settings, true);
