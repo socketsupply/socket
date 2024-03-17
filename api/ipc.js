@@ -70,7 +70,6 @@ function initializeXHRIntercept () {
 
   const { send, open } = globalThis.XMLHttpRequest.prototype
 
-  const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
   const encoder = new TextEncoder()
   Object.assign(globalThis.XMLHttpRequest.prototype, {
     open (method, url, ...args) {
@@ -137,42 +136,6 @@ function initializeXHRIntercept () {
                   }
                 })
             })
-          }
-
-          if (/linux/i.test(primordials.platform)) {
-            if (body?.buffer instanceof ArrayBuffer) {
-              const header = new Uint8Array(24)
-              const buffer = new Uint8Array(
-                B5_PREFIX_BUFFER.length +
-                header.length +
-                body.length
-              )
-
-              header.set(encoder.encode(index))
-              header.set(encoder.encode(seq), 4)
-
-              //  <type> |      <header>     | <body>
-              // "b5"(2) | index(2) + seq(2) | body(n)
-              buffer.set(B5_PREFIX_BUFFER)
-              buffer.set(header, B5_PREFIX_BUFFER.length)
-              buffer.set(body, B5_PREFIX_BUFFER.length + header.length)
-
-              let data = []
-              const quota = 64 * 1024
-              for (let i = 0; i < buffer.length; i += quota) {
-                data.push(String.fromCharCode(...buffer.subarray(i, i + quota)))
-              }
-
-              data = data.join('')
-
-              try {
-                // @ts-ignore
-                data = decodeURIComponent(escape(data))
-              } catch (_) {}
-              await postMessage(data)
-            }
-
-            body = null
           }
         }
       }
