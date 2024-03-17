@@ -128,11 +128,13 @@ export function init () {
               if (descriptor) {
                 if (nativeDescriptor.set && nativeDescriptor.get) {
                   descriptors[key] = { ...nativeDescriptor, ...descriptor }
+                } else if (!nativeDescriptor.get && !nativeDescriptor.set) {
+                  descriptors[key] = { ...nativeDescriptor, writable: true, configurable: true, ...descriptor }
                 } else {
                   descriptors[key] = { writable: true, configurable: true, ...descriptor }
                 }
               } else {
-                descriptors[key] = { writable: true, configurable: true }
+                descriptors[key] = { ...nativeDescriptor, writable: true, configurable: true }
               }
 
               if (descriptors[key] && typeof descriptors[key] === 'object') {
