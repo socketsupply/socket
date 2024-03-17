@@ -191,48 +191,18 @@ namespace SSC {
         auto valueString = jsc_value_to_string(value);
         auto str = String(valueString);
 
-        char *buf = nullptr;
-        size_t bufsize = 0;
-
-        // 'b5' for 'buffer'
-        if (str.size() >= 2 && str.at(0) == 'b' && str.at(1) == '5') {
-          size_t size = 0;
-          auto bytes = jsc_value_to_string_as_bytes(value);
-          auto data = (char *) g_bytes_get_data(bytes, &size);
-
-          if (size > 6) {
-            size_t offset = 2 + 4 + 20; // buf offset
-            auto index = new char[4]{0};
-            auto seq = new char[20]{0};
-
-            decodeUTF8(index, data + 2, 4);
-            decodeUTF8(seq, data + 2 + 4, 20);
-
-            buf = new char[size - offset]{0};
-            bufsize = decodeUTF8(buf, data + offset, size - offset);
-
-            str = String("ipc://buffer.map?index=") + index + "&seq=" + seq;
-
-            delete [] index;
-            delete [] seq;
-          }
-
-          g_bytes_unref(bytes);
-        }
-
-        if (!window->bridge->route(str, buf, bufsize)) {
+        if (!window->bridge->route(str, nullptr, 0)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
         }
 
         g_free(valueString);
-        delete [] buf;
       }),
       this
     );
 
-    auto webContext = this->bridge->router.webkitWebContext;
+    auto webContext = webkit_web_context_get_default();
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
     auto policies = webkit_website_policies_new_with_policies(
@@ -1260,6 +1230,8 @@ namespace SSC {
   }
 
   void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
+    Lock lock(mutex);
+
     if (menuSource.empty()) {
       return;
     }
@@ -1333,6 +1305,10 @@ namespace SSC {
 
             if (key.size() > 0) {
               auto accelerator = split(parts[1], '+');
+              if (accelerator.size() <= 1) {
+                continue;
+              }
+
               auto modifier = trim(accelerator[1]);
               // normalize modifier to lower case
               std::transform(
