@@ -49,17 +49,17 @@ namespace SSC {
     #undef linux
     #ifdef __ANDROID__
     .os = "android",
-    #else
-    .os = "linux",
-    #endif
-
     .android = true,
     .linux = true,
+    #else
+    .os = "linux",
+    .linux = true,
+    #endif
 
     #if defined(__unix__) || defined(unix) || defined(__unix)
-      .unix = true
+    .unix = true
     #else
-      .unix = false
+    .unix = false
     #endif
   #endif
 
