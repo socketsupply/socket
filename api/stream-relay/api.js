@@ -1,5 +1,5 @@
 import { Peer, Encryption, sha256, NAT, RemotePeer } from './index.js'
-import { PeerWorkerProxy } from './worker.js'
+import { PeerWorkerProxy } from './proxy.js'
 import { sodium } from '../crypto.js'
 import { Buffer } from '../buffer.js'
 import { isBufferLike } from '../util.js'
