@@ -116,7 +116,7 @@ Object.defineProperties(Request.prototype, {
     configurable: true,
     writable: true,
     value: undefined
-  },
+  }
 })
 
 Object.defineProperties(Response.prototype, {
