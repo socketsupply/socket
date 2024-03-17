@@ -475,15 +475,24 @@ export function inspect (value, options) {
     const braces = ['{', '}']
     const isArrayLikeValue = isArrayLike(value)
 
-    if (value instanceof Map) {
-      braces[0] = `Map(${value.size}) ${braces[0]}`
-    } else if (value instanceof Set) {
-      braces[0] = `Set(${value.size}) ${braces[0]}`
+    try {
+      if (value instanceof MIMEParams) {
+        braces[0] = `MIMEParams(${value.size}) ${braces[0]}`
+      } else if (value instanceof Map) {
+        braces[0] = `Map(${value.size}) ${braces[0]}`
+      } else if (value instanceof Set) {
+        braces[0] = `Set(${value.size}) ${braces[0]}`
+      }
+    } catch {
+      braces.splice(0, braces.length)
     }
 
-    const keys = value instanceof Map
-      ? Array.from(value.keys())
-      : new Set(Object.keys(value))
+    let keys = []
+    try {
+      keys = value instanceof Map
+        ? Array.from(value.keys())
+        : new Set(Object.keys(value))
+    } catch {}
 
     const enumerableKeys = value instanceof Set
       ? Array(value.size).fill(0).map((_, i) => i)

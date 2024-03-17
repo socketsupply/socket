@@ -251,6 +251,7 @@ namespace SSC {
       options
     });
 
+    printf("registerServiceWorker\n");
     const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
@@ -268,6 +269,7 @@ namespace SSC {
     const auto& scope = scopeOrScriptURL;
     const auto& scriptURL = scopeOrScriptURL;
 
+    printf("unregisterServiceWorker\n");
     if (this->registrations.contains(scope)) {
       const auto& registration = this->registrations.at(scope);
       this->registrations.erase(scope);

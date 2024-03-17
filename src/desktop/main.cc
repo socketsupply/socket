@@ -510,6 +510,7 @@ MAIN {
 
     if (s.find("--headless") == 0) {
       isHeadless = true;
+      userConfig["build_headless"] = "true";
     }
 
     // launched from the `ssc` cli
@@ -1012,7 +1013,15 @@ MAIN {
       options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
 
       options.canExit = message.get("canExit") == "true" ? true : false;
-      options.headless = message.get("headless") == "true" ? true : false;
+
+      options.headless = userConfig["build_headless"] == "true";
+
+      if (message.get("headless") == "true") {
+        options.headless = true;
+      } else if (message.get("headless") == "false") {
+        options.headless = false;
+      }
+
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.closable = message.get("closable") == "true" ? true : false;
@@ -1028,6 +1037,10 @@ MAIN {
       options.index = targetWindowIndex;
       options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
       options.userConfig = INI::parse(message.get("config"));
+
+      if (options.index >= SSC_MAX_WINDOWS) {
+        options.preloadCommonJS = false;
+      }
 
       targetWindow = windowManager.createWindow(options);
 
@@ -1504,7 +1517,6 @@ MAIN {
     .defaultMinHeight = getProperty("window_min_height"),
     .defaultMaxWidth = getProperty("window_max_width"),
     .defaultMaxHeight = getProperty("window_max_height"),
-    .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,
@@ -1527,10 +1539,9 @@ MAIN {
     .canExit = true,
     .titleBarStyle = getProperty("window_titleBarStyle"),
     .trafficLightPosition = getProperty("mac_trafficLightPosition"),
+    .userConfig = userConfig,
     .onExit = shutdownHandler
   });
-
-  defaultWindow->show(EMPTY_SEQ);
 
   if (
     userConfig["webview_service_worker_mode"] != "hybrid" &&
@@ -1540,6 +1551,7 @@ MAIN {
       .canExit = false,
       .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
       .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
+      .preloadCommonJS = false
     });
 
     app.core->serviceWorker.init(serviceWorkerWindow->bridge);
@@ -1551,6 +1563,8 @@ MAIN {
   } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
     app.core->serviceWorker.init(defaultWindow->bridge);
   }
+
+  defaultWindow->show(EMPTY_SEQ);
 
   if (_port > 0) {
     defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));

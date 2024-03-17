@@ -30,6 +30,7 @@ function onReady () {
 async function onMessage (event) {
   const { data } = event
 
+  console.log({ data })
   if (data?.register) {
     const { id, scope, scriptURL } = data.register
     const url = new URL(scriptURL)

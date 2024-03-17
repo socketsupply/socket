@@ -20,8 +20,9 @@ export class ServiceWorkerInfo {
       }
     }
 
-    this.url = new URL(this.scriptURL)
-    this.hash = crypto.murmur3(this.url.pathname + (this.scope || ''))
+    const url = new URL(this.scriptURL)
+    this.url = url.toString()
+    this.hash = crypto.murmur3(url.pathname + (this.scope || ''))
   }
 }
 

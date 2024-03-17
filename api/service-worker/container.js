@@ -300,6 +300,7 @@ export class ServiceWorkerContainer extends EventTarget {
 
     if (isServiceWorkerAllowed()) {
       state.channel.addEventListener('message', (event) => {
+        console.log({ data: event.data })
         if (event.data?.clients?.claim?.scope) {
           const { scope } = event.data.clients.claim
           if (globalThis.location.pathname.startsWith(scope)) {
