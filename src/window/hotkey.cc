@@ -702,7 +702,7 @@ namespace SSC {
         return reply(IPC::Result::Data { message, data });
       }
 
-      auto expression = message.get("expression");
+      auto expression = decodeURIComponent(message.get("expression"));
 
       if (expression.size() == 0) {
         auto err = JSON::Object::Entries {
@@ -747,7 +747,7 @@ namespace SSC {
     this->bridge->router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
       static auto userConfig = SSC::getUserConfig();
       HotKeyBinding::ID id;
-      const auto expression = message.get("expression");
+      const auto expression = decodeURIComponent(message.get("expression"));
 
       if (userConfig["permissions_allow_hotkeys"] == "false") {
         auto err = JSON::Object::Entries {
