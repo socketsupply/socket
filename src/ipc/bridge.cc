@@ -2277,12 +2277,12 @@ static void initRouterTable (Router *router) {
         if (href.size() > 0) {
           router->location.href = href;
           auto tmp = href;
-          tmp = replace(href, "socket://", "");
-          tmp = replace(href, "https://", "");
-          tmp = replace(userConfig["meta_bundle_identifier"], "");
+          tmp = replace(tmp, "socket://", "");
+          tmp = replace(tmp, "https://", "");
+          tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
           auto parsed = Router::parseURL(tmp);
           router->location.pathname = parsed.path;
-          router->location.query = parsed.query;
+          router->location.query = parsed.queryString;
         }
       }
 
@@ -3807,7 +3807,6 @@ static void registerSchemeHandler (Router *router) {
               if (res.statusCode == 0) {
                 @try {
                   [task didFailWithError: [NSError
-                    [task didFailWithError: [NSError
                       errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
                                  code: 1
                              userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
