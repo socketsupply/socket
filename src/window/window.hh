@@ -75,7 +75,7 @@ namespace SSC {
 @end
 
 @interface SSCWindow : NSWindow
-@property (nonatomic) SSCBridgedWebView *webview;
+@property (nonatomic, assign) SSCBridgedWebView *webview;
 @property (nonatomic, retain) NSView *titleBarView;
 @property (nonatomic) NSPoint trafficLightPosition;
 @end
