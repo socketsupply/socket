@@ -177,6 +177,7 @@ namespace SSC {
       int width = 0;
       int height = 0;
       bool exiting = false;
+      Mutex mutex;
 
     #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
@@ -437,9 +438,9 @@ namespace SSC {
 
       App &app;
       bool destroyed = false;
-      std::vector<bool> inits;
-      std::vector<ManagedWindow*> windows;
-      std::recursive_mutex mutex;
+      Vector<bool> inits;
+      Vector<ManagedWindow*> windows;
+      Mutex mutex;
       WindowManagerOptions options;
 
       WindowManager (App &app) :
@@ -480,7 +481,6 @@ namespace SSC {
         this->options.userConfig = configuration.userConfig;
         this->options.onExit = configuration.onExit;
         this->options.aspectRatio = configuration.aspectRatio;
-        this->options.headless = configuration.headless;
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
         this->options.cwd = configuration.cwd;
@@ -657,7 +657,7 @@ namespace SSC {
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
-          .headless = this->options.headless || opts.headless || opts.userConfig["build_headless"] == "true",
+          .headless = opts.headless,
           .aspectRatio = opts.aspectRatio,
           .titleBarStyle = opts.titleBarStyle,
           .trafficLightPosition = opts.trafficLightPosition,
@@ -708,6 +708,7 @@ namespace SSC {
         #ifdef PORT
           .port = PORT,
         #endif
+          .headless = opts.userConfig["build_headless"] == "true",
           .titleBarStyle = opts.titleBarStyle,
           .trafficLightPosition = opts.trafficLightPosition,
           .userConfig = opts.userConfig
