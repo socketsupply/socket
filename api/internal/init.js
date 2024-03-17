@@ -490,6 +490,10 @@ import { config } from '../application.js'
 import globals from './globals.js'
 import '../console.js'
 
+ipc.send('platform.event', {
+  value: 'load',
+  'location.href': globalThis.location.href
+}).catch(reportError)
 ipc.send('platform.event', 'beforeruntimeinit').catch(reportError)
 
 class ConcurrentQueue extends EventTarget {
