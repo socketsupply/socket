@@ -227,6 +227,12 @@ namespace SSC::IPC {
       using MessageCallback = std::function<void(const Message&, Router*, ReplyCallback)>;
       using BufferMap = std::map<String, MessageBuffer>;
 
+      struct Location {
+        String href;
+        String pathname;
+        String query;
+      };
+
       struct MessageCallbackContext {
         bool async = true;
         MessageCallback callback;
@@ -274,6 +280,7 @@ namespace SSC::IPC {
       Listeners listeners;
       Core *core = nullptr;
       Bridge *bridge = nullptr;
+      Location location;
     #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
       SSCLocationObserver* locationObserver = nullptr;
