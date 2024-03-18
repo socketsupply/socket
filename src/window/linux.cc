@@ -854,10 +854,6 @@ namespace SSC {
 
     opts.clientId = this->bridge->id;
 
-    this->bridge->userConfig = opts.userConfig.size() > 0
-      ? opts.userConfig
-      : getUserConfig();
-
     this->bridge->preload = createPreload(opts, {
       .module = true,
       .wrap = true,
