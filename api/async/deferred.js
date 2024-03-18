@@ -71,7 +71,8 @@ export class Deferred extends EventTarget {
     this.#promise = new Promise((resolve, reject) => {
       this.resolve = (value) => {
         try {
-          return resolve(value)
+          resolve(value)
+          return this.promise
         } finally {
           this.dispatchEvent(new DeferredResolveEvent('resolve', value))
         }
@@ -79,7 +80,8 @@ export class Deferred extends EventTarget {
 
       this.reject = (error) => {
         try {
-          return reject(error)
+          reject(error)
+          return this.promise
         } finally {
           this.dispatchEvent(new DeferredRejectEvent('reject', error))
         }
