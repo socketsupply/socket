@@ -3372,9 +3372,15 @@ static void registerSchemeHandler (Router *router) {
 
           auto data = new char[html.size()]{0};
           memcpy(data, html.data(), html.size());
-          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), g_free);
-          response = webkit_uri_scheme_response_new(stream, -1);
           g_free(contents);
+
+          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), g_free);
+
+          if (stream) {
+            response = webkit_uri_scheme_response_new(stream, -1);
+          } else {
+            delete [] data;
+          }
         }
       }
     } else {
