@@ -296,6 +296,7 @@ export class OutgoingMessage extends Writable {
     }
 
     this.emit('prefinish')
+
     super.end(null)
     return this
   }
@@ -441,6 +442,7 @@ export class IncomingMessage extends Readable {
   #headers = new Headers()
   #timeout = null
   #method = 'GET'
+  #server = null
   #url = null
 
   /**
@@ -450,6 +452,9 @@ export class IncomingMessage extends Readable {
    */
   constructor (options) {
     super()
+
+    this.#server = options?.server ?? null
+
     if (options?.headers) {
       this.#headers = new Headers(options.headers)
     }
@@ -652,6 +657,59 @@ export class IncomingMessage extends Readable {
   }
 
   /**
+   * Gets the value of the HTTP header with the given name.
+   * If that header is not set, the returned value will be `undefined`.
+   * @param {string}
+   * @return {string|undefined}
+   */
+  getHeader (name) {
+    if (name && typeof name === 'string') {
+      return this.#headers.get(name.toLowerCase()) ?? undefined
+    }
+
+    return undefined
+  }
+
+  /**
+   * Returns an array containing the unique names of the current outgoing
+   * headers. All names are lowercase.
+   * @return {string[]}
+   */
+  getHeaderNames () {
+    return Array.from(this.#headers.keys())
+  }
+
+  /**
+   * @ignore
+   */
+  getRawHeaderNames () {
+    return this.getHeaderNames()
+      .map((name) => name.split('-').map(toProperCase).join('-'))
+  }
+
+  /**
+   * Returns a copy of the HTTP headers as an object.
+   * @return {object}
+   */
+  getHeaders () {
+    return Object.fromEntries(this.#headers.entries())
+  }
+
+  /**
+   * Returns true if the header identified by name is currently set in the
+   * outgoing headers. The header name is case-insensitive.
+   * @param {string} name
+   * @return {boolean}
+   */
+  hasHeader (name) {
+    if (name && typeof name === 'string') {
+      return this.#headers.has(name.toLowerCase())
+    }
+
+    return false
+  }
+
+  /**
    * Sets the incoming message timeout with an optional callback.
    * @param {number} timeout
    * @param {function=} [callback]
@@ -826,6 +884,7 @@ export class ServerResponse extends OutgoingMessage {
   #statusCode = 200
   #request = null
   #sendDate = true
+  #server = null
 
   /**
    * `ServerResponse` class constructor.
@@ -834,6 +893,7 @@ export class ServerResponse extends OutgoingMessage {
   constructor (options) {
     super()
     this.#request = options?.request ?? null
+    this.#server = options?.server ?? null
   }
 
   /**
@@ -964,6 +1024,27 @@ export class ServerResponse extends OutgoingMessage {
       }
     }
 
+    return this
+  }
+
+  /**
+   * Finishes the server response.
+   * @param {(Buffer|Uint8Array|string|function)=} [chunk]
+   * @param {(string|function)=} [encoding]
+   * @param {function=} [callback]
+   * @return {OutgoingMessage}
+   */
+  end (chunk = null, encoding = null, callback = null) {
+    if (this.#server) {
+      for (const connection of this.#server.connections) {
+        if (connection.response === this) {
+          connection.request.destroy()
+          connection.destroy()
+        }
+      }
+    }
+
+    super.end(chunk, encoding, callback)
     return this
   }
 }
@@ -1216,6 +1297,7 @@ export class Connection extends Duplex {
     super()
     // bind duplex
     incomingMessage.pipe(this).pipe(serverResponse)
+
     this.server = server
     this.request = incomingMessage
     this.response = serverResponse
