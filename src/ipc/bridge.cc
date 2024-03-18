@@ -3153,11 +3153,22 @@ static void registerSchemeHandler (Router *router) {
       auto size = moduleSource.size();
       auto bytes = moduleSource.data();
       auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-      auto response = webkit_uri_scheme_response_new(stream, size);
 
-      webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
+      if (stream) {
+        auto response = webkit_uri_scheme_response_new(stream, size);
+        webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+        webkit_uri_scheme_request_finish_with_response(request, response);
+        g_object_unref(stream);
+      } else {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+      }
       return;
     }
 
@@ -3183,18 +3194,31 @@ static void registerSchemeHandler (Router *router) {
         auto size = redirectSource.size();
         auto bytes = redirectSource.data();
         auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-        auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-        auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
-        auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
-        soup_message_headers_append(headers, "location", redirectURL.c_str());
-        soup_message_headers_append(headers, "content-location", contentLocation.c_str());
+        if (stream) {
+          auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+          auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+          auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
-        webkit_uri_scheme_response_set_http_headers(response, headers);
-        webkit_uri_scheme_response_set_content_type(response, "text/html");
-        webkit_uri_scheme_request_finish_with_response(request, response);
+          soup_message_headers_append(headers, "location", redirectURL.c_str());
+          soup_message_headers_append(headers, "content-location", contentLocation.c_str());
 
-        g_object_unref(stream);
+          webkit_uri_scheme_response_set_http_headers(response, headers);
+          webkit_uri_scheme_response_set_content_type(response, "text/html");
+          webkit_uri_scheme_request_finish_with_response(request, response);
+
+          g_object_unref(stream);
+        } else {
+          webkit_uri_scheme_request_finish_error(
+            request,
+            g_error_new(
+              g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+              1,
+              "Failed to create response stream"
+            )
+          );
+        }
+
         return;
       }
     } else if (path.size() == 0) {
@@ -3240,6 +3264,19 @@ static void registerSchemeHandler (Router *router) {
 
             const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
             auto stream = g_memory_input_stream_new_from_data(res.buffer.bytes, res.buffer.size, 0);
+
+            if (!stream) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "Failed to create response stream"
+                )
+              );
+              return;
+            }
+
             auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
             auto response = webkit_uri_scheme_response_new(stream, (gint64) res.buffer.size);
 
@@ -3290,6 +3327,19 @@ static void registerSchemeHandler (Router *router) {
       auto size = redirectSource.size();
       auto bytes = redirectSource.data();
       auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+
+      if (!stream) {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+        return;
+      }
+
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
       auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
@@ -3313,6 +3363,19 @@ static void registerSchemeHandler (Router *router) {
 
     if (path.size() == 0 || !fs::exists(path)) {
       auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
+
+      if (!stream) {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+        return;
+      }
+
       auto response = webkit_uri_scheme_response_new(stream, 0);
 
       webkit_uri_scheme_response_set_status(response, 404, "Not found");
@@ -3325,6 +3388,7 @@ static void registerSchemeHandler (Router *router) {
     GInputStream* stream = nullptr;
     gchar* mimeType = nullptr;
     GError* error = nullptr;
+    char* data = nullptr;
 
     auto webviewHeaders = split(userConfig["webview_headers"], '\n');
     auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
@@ -3370,24 +3434,33 @@ static void registerSchemeHandler (Router *router) {
             html = script + html;
           }
 
-          auto data = new char[html.size()]{0};
+          data = new char[html.size()]{0};
           memcpy(data, html.data(), html.size());
           g_free(contents);
 
-          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), g_free);
+          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), nullptr);
 
           if (stream) {
             response = webkit_uri_scheme_response_new(stream, -1);
           } else {
             delete [] data;
+            data = nullptr;
           }
         }
       }
     } else {
       auto file = g_file_new_for_path(path.c_str());
       auto size = fs::file_size(path);
-      stream = (GInputStream*) g_file_read(file, nullptr, &error);
-      response = webkit_uri_scheme_response_new(stream, (gint64) size);
+
+      if (file) {
+        stream = (GInputStream*) g_file_read(file, nullptr, &error);
+        g_object_unref(file);
+      }
+
+      if (stream) {
+        response = webkit_uri_scheme_response_new(stream, (gint64) size);
+        g_object_unref(stream);
+      }
     }
 
     if (!stream) {
@@ -3427,7 +3500,30 @@ static void registerSchemeHandler (Router *router) {
     }
 
     webkit_uri_scheme_request_finish_with_response(request, response);
-    g_object_unref(stream);
+
+    if (data) {
+      g_input_stream_close_async(stream, 0, nullptr, +[](
+        GObject* object,
+        GAsyncResult* asyncResult,
+        gpointer userData
+      ) {
+        auto stream = (GInputStream*) object;
+        g_input_stream_close_finish(stream, asyncResult, nullptr);
+        g_object_unref(stream);
+        g_idle_add_full(
+          G_PRIORITY_DEFAULT_IDLE,
+          (GSourceFunc) [](gpointer userData) {
+            return G_SOURCE_REMOVE;
+          },
+          userData,
+           [](gpointer userData) {
+            delete [] static_cast<char *>(userData);
+          }
+        );
+      }, data);
+    } else {
+      g_object_unref(stream);
+    }
 
     if (mimeType) {
       g_free(mimeType);
