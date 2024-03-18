@@ -395,7 +395,6 @@ namespace SSC {
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
               status = WindowStatus::WINDOW_EXITED;
-              gc();
             }
           }
 
@@ -411,7 +410,9 @@ namespace SSC {
           }
 
           void gc () {
-            manager.destroyWindow(reinterpret_cast<Window*>(this));
+            if (App::instance() != nullptr) {
+              manager.destroyWindow(reinterpret_cast<Window*>(this));
+            }
           }
 
           JSON::Object json () {
@@ -502,7 +503,7 @@ namespace SSC {
       }
 
       ManagedWindow* getWindow (int index, WindowStatus status) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
@@ -534,7 +535,7 @@ namespace SSC {
       }
 
       WindowStatus getWindowStatus (int index) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (this->destroyed) return WindowStatus::WINDOW_NONE;
         if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return windows[index]->status;
@@ -544,7 +545,7 @@ namespace SSC {
       }
 
       void destroyWindow (int index) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return;
         if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return destroyWindow(windows[index]);
@@ -559,7 +560,7 @@ namespace SSC {
       }
 
       void destroyWindow (Window* window) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<ManagedWindow*>(window);
@@ -579,7 +580,7 @@ namespace SSC {
       }
 
       ManagedWindow* createWindow (WindowOptions opts) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return nullptr;
         StringStream env;
 
