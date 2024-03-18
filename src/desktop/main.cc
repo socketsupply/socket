@@ -1358,7 +1358,7 @@ MAIN {
 
     if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
-      window->setSystemMenu(seq, value);
+      window->setSystemMenu(seq, message.value);
       return;
     }
 
