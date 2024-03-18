@@ -820,7 +820,7 @@ export class Database extends EventTarget {
       try {
         existing = await this.#queue.push(store.get(key))
       } catch (err) {
-        console.log({ err })
+        globalThis.reportError(err)
       }
 
       if (existing) {
