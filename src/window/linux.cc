@@ -47,6 +47,7 @@ namespace SSC {
             aspectHeight = std::stof(trim(parts[1]));
           } catch (...) {
             debug("invalid aspect ratio");
+            return FALSE;
           }
 
           if (aspectWidth != 0 && aspectHeight != 0) {
@@ -54,6 +55,8 @@ namespace SSC {
             auto height = (width * aspectHeight) / aspectWidth;
             gtk_window_resize(GTK_WINDOW(w->window), width, height);
           }
+
+          return FALSE;
         }),
         this
       );
@@ -649,8 +652,16 @@ namespace SSC {
           GtkAllocation allocation;
           gtk_widget_get_allocation(wv, &allocation);
 
+          gint menubarHeight = 0;
+
+          if (w->menubar) {
+            GtkAllocation allocationMenubar;
+            gtk_widget_get_allocation(w->menubar, &allocationMenubar);
+            menubarHeight = allocationMenubar.height;
+          }
+
           int offsetWidth = (frame_extents.width - allocation.width) / 2;
-          int offsetHeight = (frame_extents.height - allocation.height) - offsetWidth;
+          int offsetHeight = (frame_extents.height - allocation.height) - offsetWidth - menubarHeight;
 
           gdk_window_get_position(win, &x, &y);
 
