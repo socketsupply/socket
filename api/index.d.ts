@@ -9211,6 +9211,35 @@ declare module "socket:http" {
          */
         get trailersDistinct(): {};
         /**
+         * Gets the value of the HTTP header with the given name.
+         * If that header is not set, the returned value will be `undefined`.
+         * @param {string}
+         * @return {string|undefined}
+         */
+        getHeader(name: any): string | undefined;
+        /**
+         * Returns an array containing the unique names of the current outgoing
+         * headers. All names are lowercase.
+         * @return {string[]}
+         */
+        getHeaderNames(): string[];
+        /**
+         * @ignore
+         */
+        getRawHeaderNames(): string[];
+        /**
+         * Returns a copy of the HTTP headers as an object.
+         * @return {object}
+         */
+        getHeaders(): object;
+        /**
+         * Returns true if the header identified by name is currently set in the
+         * outgoing headers. The header name is case-insensitive.
+         * @param {string} name
+         * @return {boolean}
+         */
+        hasHeader(name: string): boolean;
+        /**
          * Sets the incoming message timeout with an optional callback.
          * @param {number} timeout
          * @param {function=} [callback]
