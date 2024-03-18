@@ -93,13 +93,18 @@ namespace SSC {
         const auto file = argv.substr(start + 7, end - start - 7);
         if (file.size() > 0) {
           preload += (
-            "  globalThis.RUNTIME_TEST_FILENAME = `" + file + "`;              \n"
-            "  document.addEventListener('DOMContentLoaded', () => {           \n"
-            "    const script = document.createElement('script')               \n"
-            "    script.setAttribute('type', 'module')                         \n"
-            "    script.setAttribute('src', `" + file + "`)                    \n"
-            "    document.head.appendChild(script)                             \n"
-            "  });                                                             \n"
+            "  globalThis.RUNTIME_TEST_FILENAME = String(new URL(              \n"
+            "    `" + file + "`,                                               \n"
+            "    globalThis.location.href                                      \n"
+            "  ));                                                             \n"
+            "                                                                  \n"
+            "  if (document.readyState === 'complete') {                       \n"
+            "    import(RUNTIME_TEST_FILENAME);                                \n"
+            "  } else {                                                        \n"
+            "    document.addEventListener('DOMContentLoaded', () => {         \n"
+            "      import(RUNTIME_TEST_FILENAME);                              \n"
+            "    });                                                           \n"
+            "  }                                                               \n"
           );
         }
       }
@@ -199,6 +204,12 @@ namespace SSC {
       "  Object.freeze(globalThis.__args.config);                            \n"
       "  Object.freeze(globalThis.__args.argv);                              \n"
       "  Object.freeze(globalThis.__args.env);                               \n"
+      "                                                                      \n"
+      "  const { addEventListener } = globalThis;                            \n"
+      "  globalThis.addEventListener = function (eventName, ...args) {       \n"
+      "    eventName = eventName.replace('load', '__runtime_init__');        \n"
+      "    return addEventListener.call(this, eventName, ...args);           \n"
+      "  };                                                                  \n"
       "                                                                      \n"
       "  try {                                                               \n"
       "    const event = '__runtime_init__';                                 \n"
