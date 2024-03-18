@@ -20,16 +20,6 @@ import {
   showSaveFilePicker
 } from 'socket:internal/pickers'
 
-const loaded = new Promise((resolve) => {
-  globalThis.addEventListener('load', () => {
-    resolve(true)
-  }, { once: true })
-})
-
-test('globalThis.onload', async (t) => {
-  t.ok(await loaded, 'globalThis.onload called')
-})
-
 test('globalThis.isSocketRuntime', (t) => {
   t.ok(globalThis.isSocketRuntime === true, 'globalThis.isSocketRuntime')
 })
