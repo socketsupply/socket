@@ -3780,7 +3780,7 @@ static void registerSchemeHandler (Router *router) {
       } else if (path.size() == 0) {
         if (userConfig.contains("webview_default_index")) {
           path = userConfig["webview_default_index"];
-        } else {
+        } else if (!path.starts_with("/socket/service-worker")) {
           if (self.router->core->serviceWorker.registrations.size() > 0) {
             auto fetchRequest = ServiceWorkerContainer::FetchRequest {
               String(request.URL.path.UTF8String),
@@ -3889,7 +3889,7 @@ static void registerSchemeHandler (Router *router) {
 
             if (fetched) {
               [self enqueueTask: task withMessage: message];
-              self.router->bridge->core->setTimeout(250, [=]() mutable {
+              self.router->bridge->core->setTimeout(32000, [=]() mutable {
                 if ([self waitingForTask: task]) {
                   @try {
                     [self finalizeTask: task];
