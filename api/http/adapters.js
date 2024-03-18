@@ -118,26 +118,21 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
    * @param {import('../service-worker/events.js').FetchEvent}
    */
   async onFetch (event) {
-    console.log('fetch', event)
     if (this.server.closed) {
-      console.log('server closed')
       return
     }
 
     const url = new URL(event.request.url)
 
     if (this.server.port !== 0 && url.port !== this.server.port) {
-      console.log('port mismatch')
       return
     }
 
     if (this.server.host && url.hostname !== this.server.host) {
-      console.log('host mismatch', { url: url.hostname, server: this.server.host })
       return
     }
 
     if (this.server.connections.length >= this.server.maxConnections) {
-      console.log('too many connections')
       event.respondWith(new Response())
       return
     }
@@ -148,11 +143,13 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
       complete: !/post|put/i.test(event.request.method),
       headers: event.request.headers,
       method: event.request.method,
+      server: this.server,
       url: event.request.url
     })
 
     const serverResponse = new this.httpInterface.ServerResponse({
-      request: incomingMessage
+      request: incomingMessage,
+      server: this.server
     })
 
     const connection = new this.httpInterface.Connection(
