@@ -492,7 +492,7 @@ namespace SSC {
       G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
         w->shouldDrag = false;
-        return TRUE;
+        return FALSE;
       }),
       this
     );
@@ -501,7 +501,6 @@ namespace SSC {
       G_OBJECT(webview),
       "button-press-event",
       G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
-        return 0;
         auto *w = static_cast<Window*>(arg);
         w->shouldDrag = false;
 
@@ -568,7 +567,7 @@ namespace SSC {
           );
         }
 
-        return 0;
+        return FALSE;
       }),
       this
     );
@@ -709,29 +708,6 @@ namespace SSC {
       }),
       this
     );
-
-    /* g_signal_connect(
-      G_OBJECT(window),
-      "button-release-event",
-      G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
-        if (!w) return;
-
-         * Calling w->eval() inside button-release-event causes
-         * a Segmentation Fault on Ubuntu 22, but works fine on
-         * other linuxes like Ubuntu 20.
-         *
-         * The dragend feature causes the application to crash in
-         * all operations including non drag-drop and causes applications
-         * that do not use drag and drop at all to crash.
-         *
-         * So disabling this experimental linux dragdrop code for now.
-
-        // w->isDragInvokedInsideWindow = false;
-        // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
-      }),
-      this
-    ); */
 
     /* g_signal_connect(
       G_OBJECT(webview),
