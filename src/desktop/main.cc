@@ -1551,6 +1551,7 @@ MAIN {
       .canExit = false,
       .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
       .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
+      .userConfig = userConfig,
       .preloadCommonJS = false
     });
 
