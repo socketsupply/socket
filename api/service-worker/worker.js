@@ -40,7 +40,9 @@ async function onMessage (event) {
     state.serviceWorker.scriptURL = scriptURL
 
     Module.main.addEventListener('error', (event) => {
-      console.error('error', event.error)
+      if (event.error) {
+        globalThis.reportError(event.error)
+      }
     })
 
     Object.defineProperties(globalThis, {
