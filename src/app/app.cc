@@ -228,7 +228,7 @@ namespace SSC {
   #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
-    if (!fromSSC) {
+    if (!wasLaunchedFromCli) {
       [NSApp terminate:nil];
     }
   #elif defined(_WIN32)

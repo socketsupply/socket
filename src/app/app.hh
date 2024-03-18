@@ -50,7 +50,7 @@ namespace SSC {
       ExitCallback onExit = nullptr;
       AtomicBool shouldExit = false;
       AtomicBool killed = false;
-      bool fromSSC = false;
+      bool wasLaunchedFromCli = false;
       bool w32ShowConsole = false;
       Map userConfig;
       Core *core = nullptr;
