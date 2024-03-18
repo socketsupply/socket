@@ -639,7 +639,7 @@ namespace SSC {
         gpointer arg)
       {
         auto *w = static_cast<Window*>(arg);
-        if (!w) return;
+        if (!w) return FALSE;
 
         if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
           auto win = GDK_WINDOW(gtk_widget_get_window(w->window));
@@ -676,6 +676,8 @@ namespace SSC {
           w->dragLastX = event->x_root;
           w->dragLastY = event->y_root;
         }
+
+        return FALSE;
 
         //
         // TODO(@heapwolf): refactor legacy drag and drop stuff
