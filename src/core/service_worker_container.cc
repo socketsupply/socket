@@ -77,6 +77,77 @@ namespace SSC {
     this->reset();
     this->bridge = bridge;
     this->isReady = true;
+
+    if (bridge->userConfig["webview_service-workers"].size() > 0) {
+      const auto scripts = split(bridge->userConfig["webview_service-workers"], " ");
+      for (const auto& value : scripts) {
+        auto parts = split(value, "/");
+        parts = Vector<String>(parts.begin(), parts.end() - 1);
+
+      #if defined(__ANDROID__)
+        auto scriptURL = String("https://");
+      #else
+        auto scriptURL = String("socket://");
+      #endif
+        scriptURL += bridge->userConfig["meta_bundle_identifier"];
+
+        if (!value.starts_with("/")) {
+          scriptURL += "/";
+        }
+
+        scriptURL += value;
+
+        const auto scope = join(parts, "/");
+        const auto id = rand64();
+        this->registrations.insert_or_assign(scope, Registration {
+          id,
+          scriptURL,
+          Registration::State::Registered,
+          RegistrationOptions {
+          RegistrationOptions::Type::Module,
+            scope,
+            scriptURL,
+            id
+          }
+        });
+      }
+    }
+
+    for (const auto& entry : bridge->userConfig) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+
+      if (key.starts_with("webview_service-workers_")) {
+        const auto id = rand64();
+        const auto scope = replace(key, "webview_service-workers_", "");
+
+      #if defined(__ANDROID__)
+        auto scriptURL = String("https://");
+      #else
+        auto scriptURL = String("socket://");
+      #endif
+        scriptURL += bridge->userConfig["meta_bundle_identifier"];
+
+        if (!value.starts_with("/")) {
+          scriptURL += "/";
+        }
+
+        scriptURL += trim(value);
+
+        this->registrations.insert_or_assign(scope, Registration {
+          id,
+          scriptURL,
+          Registration::State::Registered,
+          RegistrationOptions {
+            RegistrationOptions::Type::Module,
+            scope,
+            scriptURL,
+            id
+          }
+        });
+      }
+    }
+
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
       uint64_t id = 0;
 
@@ -373,10 +444,24 @@ namespace SSC {
 
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
-      if (
-        registration.isActive() &&
-        request.pathname.starts_with(registration.options.scope)
-      ) {
+      if (request.pathname.starts_with(registration.options.scope)) {
+        uv_sem_t semaphore;
+        uv_sem_init(&semaphore, 1);
+
+        if (!registration.isActive()) {
+          auto interval = this->core->setInterval(4, [this, &semaphore, &registration] () {
+            if (registration.isActive()) {
+              this->core->setTimeout(16, [&semaphore] () {
+                uv_sem_post(&semaphore);
+              });
+            }
+          });
+
+          uv_sem_wait(&semaphore);
+          uv_sem_destroy(&semaphore);
+          this->core->clearInterval(interval);
+        }
+
         auto headers = JSON::Array {};
 
         for (const auto& header : request.headers) {
