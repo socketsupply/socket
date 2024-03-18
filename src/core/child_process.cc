@@ -111,7 +111,7 @@ namespace SSC {
               {"source", "child_process.exec"},
               {"data", JSON::Object::Entries {
                 {"id", std::to_string(id)},
-                {"pid", pid},
+                {"pid", std::to_string(pid)},
                 {"stdout", *stdoutBuffer},
                 {"stderr", *stderrBuffer},
                 {"code", code}
@@ -155,7 +155,7 @@ namespace SSC {
             {"source", "child_process.exec"},
             {"err", JSON::Object::Entries {
               {"id", std::to_string(id)},
-              {"pid", pid},
+              {"pid", std::to_string(pid)},
               {"stdout", *stdoutBuffer},
               {"stderr", *stderrBuffer},
               {"code", "ETIMEDOUT"}
