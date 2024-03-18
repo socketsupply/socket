@@ -42,6 +42,19 @@
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
+static void installSignalHandler (int signum, sighandler_t handler) {
+#if SSC_PLATFORM_LINUX
+  struct sigaction action;
+  sigemptyset(&action.sa_mask);
+  action.sa_handler = handler;
+  action.sa_flags = SA_NODEFER;
+  sigaction(signum, &action, NULL);
+#else
+  signal(signum, handler);
+#endif
+}
+
+
 using namespace SSC;
 
 static App *app_ptr = nullptr;
@@ -62,6 +75,7 @@ static void defaultWindowSignalHandler (int signal) {
             {"signal", signal}
           }
         };
+
         defaultWindow->eval(getEmitToRenderProcessJavaScript("signal", json.str()));
       }
     }
@@ -514,7 +528,7 @@ MAIN {
     }
 
     // launched from the `ssc` cli
-    app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
+    app.wasLaunchedFromCli = s.find("--from-ssc") == 0 ? true : false;
 
     #ifdef _WIN32
     if (!app.w32ShowConsole && s.find("--w32-console") == 0) {
@@ -650,11 +664,11 @@ MAIN {
     };
 
     #ifndef _WIN32
-      signal(SIGHUP, signalHandler);
+      installSignalHandler(SIGHUP, signalHandler);
     #endif
 
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
+    installSignalHandler(SIGINT, signalHandler);
+    installSignalHandler(SIGTERM, signalHandler);
 
     return exitCode;
   }
@@ -905,7 +919,7 @@ MAIN {
       }
 
     #if defined(__APPLE__)
-      if (app.fromSSC) {
+      if (app.wasLaunchedFromCli) {
         debug("__EXIT_SIGNAL__=%d", exitCode);
         CLI::notify();
       }
@@ -1458,7 +1472,7 @@ MAIN {
     windowManager.destroy();
 
   #if defined(__APPLE__)
-    if (app_ptr->fromSSC) {
+    if (app_ptr->wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", 0);
       CLI::notify();
     }
@@ -1592,12 +1606,16 @@ MAIN {
   //
   // If this is being run in a terminal/multiplexer
   //
-  #ifndef _WIN32
-    signal(SIGHUP, signalHandler);
-  #endif
+#ifndef _WIN32
+  installSignalHandler(SIGHUP, signalHandler);
+#endif
 
-  signal(SIGINT, signalHandler);
-  signal(SIGTERM, signalHandler);
+#if defined(SIGUSR1)
+  installSignalHandler(SIGUSR1, signalHandler);
+#endif
+
+  installSignalHandler(SIGINT, signalHandler);
+  installSignalHandler(SIGTERM, signalHandler);
 
   if (isReadingStdin) {
     std::string value;
@@ -1627,7 +1645,7 @@ MAIN {
     !signalsDisabled ||                                                        \
     std::find(signals.begin(), signals.end(), name) != signals.end()           \
   ) {                                                                          \
-    signal(sig, defaultWindowSignalHandler);                                   \
+    installSignalHandler(sig, defaultWindowSignalHandler);                      \
   }                                                                            \
 }
 
@@ -1654,9 +1672,6 @@ MAIN {
 #endif
 #if defined(SIGKILL)
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGKILL)
-#endif
-#if defined(SIGUSR1)
-  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGUSR1)
 #endif
 #if defined(SIGUSR2)
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGUSR2)
