@@ -105,13 +105,13 @@ namespace SSC {
   };
 
   struct Post {
-    using EventStreamCallback = std::function<bool(
+    using EventStreamCallback = Function<bool(
       const char*,
       const char*,
       bool
     )>;
 
-    using ChunkStreamCallback = std::function<bool(
+    using ChunkStreamCallback = Function<bool(
       const char*,
       size_t,
       bool
@@ -128,7 +128,7 @@ namespace SSC {
   };
 
   using Posts = std::map<uint64_t, Post>;
-  using EventLoopDispatchCallback = std::function<void()>;
+  using EventLoopDispatchCallback = Function<void()>;
 
   struct Timer {
     uv_timer_t handle;
@@ -201,13 +201,13 @@ namespace SSC {
   class Peer {
     public:
       struct RequestContext {
-        using Callback = std::function<void(int, Post)>;
+        using Callback = Function<void(int, Post)>;
         Callback cb;
         Peer *peer = nullptr;
         RequestContext (Callback cb) { this->cb = cb; }
       };
 
-      using UDPReceiveCallback = std::function<void(
+      using UDPReceiveCallback = Function<void(
         ssize_t,
         const uv_buf_t*,
         const struct sockaddr*
@@ -224,7 +224,7 @@ namespace SSC {
 
       // callbacks
       UDPReceiveCallback receiveCallback;
-      std::vector<std::function<void()>> onclose;
+      std::vector<Function<void()>> onclose;
 
       // instance state
       uint64_t id = 0;
@@ -287,7 +287,7 @@ namespace SSC {
       int resume ();
       int pause ();
       void close ();
-      void close (std::function<void()> onclose);
+      void close (Function<void()> onclose);
   };
 
   static inline String addrToIPv4 (struct sockaddr_in* sin) {
@@ -310,9 +310,9 @@ namespace SSC {
 
   class Bluetooth {
     public:
-      using SendFunction = std::function<void(const String, JSON::Any, Post)>;
-      using EmitFunction = std::function<void(const String, JSON::Any)>;
-      using Callback = std::function<void(String, JSON::Any)>;
+      using SendFunction = Function<void(const String, JSON::Any, Post)>;
+      using EmitFunction = Function<void(const String, JSON::Any)>;
+      using Callback = Function<void(String, JSON::Any)>;
 
       Core *core = nullptr;
       #if defined(__APPLE__)
@@ -353,7 +353,7 @@ namespace SSC {
     public:
       class Module {
         public:
-          using Callback = std::function<void(String, JSON::Any, Post)>;
+          using Callback = Function<void(String, JSON::Any, Post)>;
           struct RequestContext {
             String seq;
             Module::Callback cb;
@@ -754,9 +754,14 @@ namespace SSC {
       class Timers : public Module {
         public:
           using ID = uint64_t;
-          using Callback = std::function<void()>;
+          using CancelCallback = Function<void()>;
+          using Callback = Function<void(CancelCallback)>;
+          using TimeoutCallback = Function<void()>;
+          using IntervalCallback = Callback;
+          using ImmediateCallback = TimeoutCallback;
 
-          struct Timeout {
+          struct Timer {
+            Timers* timers = nullptr;
             ID id = 0;
             Callback callback;
             bool repeat = false;
@@ -764,22 +769,20 @@ namespace SSC {
             uv_timer_t timer;
           };
 
-          struct Interval : public Timeout {
-            bool repeat = true;
-          };
-
-          using Handles = std::map<ID, Timeout>;
+          using Handles = std::map<ID, Timer>;
 
           Handles handles;
           Mutex mutex;
 
           Timers (auto core): Module (core) {}
 
-          const ID setTimeout (uint64_t timeout, const Callback callback);
+          const ID createTimer (uint64_t timeout, uint64_t interval, const Callback callback);
+          bool cancelTimer (const ID id);
+          const ID setTimeout (uint64_t timeout, const TimeoutCallback callback);
           bool clearTimeout (const ID id);
-          const ID setImmediate (const Callback callback);
+          const ID setImmediate (const ImmediateCallback callback);
           bool clearImmediate (const ID id);
-          const ID setInterval (uint64_t interval, const Callback callback);
+          const ID setInterval (uint64_t interval, const IntervalCallback callback);
           bool clearInterval (const ID id);
       };
 
@@ -919,9 +922,9 @@ namespace SSC {
       void initTimers ();
       void startTimers ();
       void stopTimers ();
-      const Timers::ID setTimeout (uint64_t timeout, const Timers::Callback callback);
-      const Timers::ID setImmediate (const Timers::Callback callback);
-      const Timers::ID setInterval (uint64_t interval, const Timers::Callback callback);
+      const Timers::ID setTimeout (uint64_t timeout, const Timers::TimeoutCallback callback);
+      const Timers::ID setImmediate (const Timers::ImmediateCallback callback);
+      const Timers::ID setInterval (uint64_t interval, const Timers::IntervalCallback callback);
       bool clearTimeout (const Timers::ID id);
       bool clearImmediate (const Timers::ID id);
       bool clearInterval (const Timers::ID id);
