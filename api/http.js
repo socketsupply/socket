@@ -1038,8 +1038,7 @@ export class ServerResponse extends OutgoingMessage {
     if (this.#server) {
       for (const connection of this.#server.connections) {
         if (connection.response === this) {
-          connection.request.destroy()
-          connection.destroy()
+          connection.close()
         }
       }
     }
@@ -1294,9 +1293,25 @@ export class Connection extends Duplex {
    * @param {ServerResponse} serverResponse
    */
   constructor (server, incomingMessage, serverResponse) {
-    super()
-    // bind duplex
-    incomingMessage.pipe(this).pipe(serverResponse)
+    super({
+      read (cb) {
+        try {
+          this.push(incomingMessage.read())
+          cb(null)
+        } catch (err) {
+          cb(err)
+        }
+      },
+
+      write (data, cb) {
+        try {
+          serverResponse.write(data)
+          cb(null)
+        } catch (err) {
+          cb(err)
+        }
+      }
+    })
 
     this.server = server
     this.request = incomingMessage
@@ -1349,8 +1364,6 @@ export class Connection extends Duplex {
    */
   close () {
     this.destroy()
-    this.request.destroy()
-    this.response.destroy()
   }
 }
 
@@ -1467,7 +1480,7 @@ export class Server extends EventEmitter {
    */
   closeAllConnections () {
     for (const connection of this.#connections) {
-      connection.destroy()
+      connection.close()
     }
     this.#connections = []
   }
@@ -1478,7 +1491,7 @@ export class Server extends EventEmitter {
   closeIdleConnections () {
     for (const connection of this.#connections) {
       if (!connection.active) {
-        connection.destroy()
+        connection.close()
       }
     }
 
