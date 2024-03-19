@@ -34,9 +34,11 @@ namespace SSC {
     if (this->opts.aspectRatio.size() > 0) {
       g_signal_connect(
         window,
-        "size-allocate",
-        G_CALLBACK(+[](GtkWidget *widget, GtkAllocation *allocation, gpointer ptr) {
+        "configure-event",
+        G_CALLBACK(+[](GtkWidget *widget, GdkEventConfigure *event, gpointer ptr) {
           auto w = static_cast<Window*>(ptr);
+          if (!w) return FALSE;
+
           // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
           auto parts = split(w->opts.aspectRatio, ':');
           float aspectWidth = 0;
@@ -50,10 +52,11 @@ namespace SSC {
             return FALSE;
           }
 
-          if (aspectWidth != 0 && aspectHeight != 0) {
-            auto width = allocation->width;
-            auto height = (width * aspectHeight) / aspectWidth;
-            gtk_window_resize(GTK_WINDOW(w->window), width, height);
+          if (aspectWidth > 0 && aspectHeight > 0) {
+            GdkGeometry geom;
+            geom.min_aspect = aspectWidth / aspectHeight;
+            geom.max_aspect = geom.min_aspect;
+            gtk_window_set_geometry_hints(GTK_WINDOW(widget), widget, &geom, GdkWindowHints(GDK_HINT_ASPECT));
           }
 
           return FALSE;
