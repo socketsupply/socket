@@ -1239,6 +1239,12 @@ namespace SSC {
       menubar = menubar == nullptr ? gtk_menu_bar_new() : clear(menubar);
     }
 
+    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
+
+    GdkRGBA color;
+    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
+    gtk_widget_override_background_color(menubar, GTK_STATE_FLAG_NORMAL, &color);
+
     auto menus = split(menuSource, ';');
 
     for (auto m : menus) {
