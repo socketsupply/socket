@@ -12,22 +12,25 @@ namespace SSC {
 
   class ServiceWorkerContainer {
     public:
+      using ID = uint64_t;
+
       struct RegistrationOptions {
         enum class Type { Classic, Module };
 
         Type type = Type::Module;
         String scope;
         String scriptURL;
-        uint64_t id = 0;
+        ID id = 0;
       };
 
       struct Client {
-        uint64_t id = 0;
+        ID id = 0;
         String preload;
       };
 
       struct Registration {
         enum class State {
+          None,
           Error,
           Registered,
           Installing,
@@ -36,14 +39,30 @@ namespace SSC {
           Activated
         };
 
-        uint64_t id = 0;
+        ID id = 0;
         String scriptURL;
-        State state = State::Registered;
+        Atomic<State> state = State::None;
         RegistrationOptions options;
-        const SSC::JSON::Object json () const;
+
+        Registration (
+          const ID id,
+          const String& scriptURL,
+          const State state,
+          const RegistrationOptions& options
+        );
+
+        // les 5
+        Registration (const Registration&);
+        Registration (Registration&&);
+        ~Registration () = default;
+        Registration& operator= (const Registration&);
+        Registration& operator= (Registration&&);
+
+        const JSON::Object json () const;
         bool isActive () const;
         bool isWaiting () const;
         bool isInstalling () const;
+        const String getStateString () const;
       };
 
       struct FetchBuffer {

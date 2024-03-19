@@ -10,6 +10,56 @@
 
 namespace SSC {
   static IPC::Bridge* serviceWorkerBridge = nullptr;
+  ServiceWorkerContainer::Registration::Registration (
+    const ID id,
+    const String& scriptURL,
+    const State state,
+    const RegistrationOptions& options
+  ) : id(id),
+      scriptURL(scriptURL),
+      state(state),
+      options(options)
+  {}
+
+  ServiceWorkerContainer::Registration::Registration (const Registration& registration) {
+    this->id = registration.id;
+    this->state = registration.state.load();
+    this->options = registration.options;
+    this->scriptURL = registration.scriptURL;
+  }
+
+  ServiceWorkerContainer::Registration::Registration (Registration&& registration) {
+    this->id = registration.id;
+    this->state = registration.state.load();
+    this->options = registration.options;
+    this->scriptURL = registration.scriptURL;
+
+    registration.id = 0;
+    registration.state = State::None;
+    registration.options = RegistrationOptions {};
+    registration.scriptURL = "";
+  }
+
+  ServiceWorkerContainer::Registration& ServiceWorkerContainer::Registration::operator= (const Registration& registration) {
+    this->id = registration.id;
+    this->state = registration.state.load();
+    this->options = registration.options;
+    this->scriptURL = registration.scriptURL;
+    return *this;
+  }
+
+  ServiceWorkerContainer::Registration& ServiceWorkerContainer::Registration::operator= (Registration&& registration) {
+    this->id = registration.id;
+    this->state = registration.state.load();
+    this->options = registration.options;
+    this->scriptURL = registration.scriptURL;
+
+    registration.id = 0;
+    registration.state = State::None;
+    registration.options = RegistrationOptions {};
+    registration.scriptURL = "";
+    return *this;
+  }
 
   const JSON::Object ServiceWorkerContainer::Registration::json () const {
     String stateString = "registered";
@@ -46,6 +96,24 @@ namespace SSC {
   bool ServiceWorkerContainer::Registration::isInstalling () const {
     return this->state == Registration::State::Installing;
   }
+
+  const String ServiceWorkerContainer::Registration::getStateString () const {
+    String stateString = "none";
+
+    if (this->state == Registration::State::Registered) {
+      stateString = "registered";
+    } else if (this->state == Registration::State::Installing) {
+      stateString = "installing";
+    } else if (this->state == Registration::State::Installed) {
+      stateString = "installed";
+    } else if (this->state == Registration::State::Activating) {
+      stateString = "activating";
+    } else if (this->state == Registration::State::Activated) {
+      stateString = "activated";
+    }
+
+    return stateString;
+  };
 
   ServiceWorkerContainer::ServiceWorkerContainer (Core* core) {
     this->core = core;
@@ -325,7 +393,7 @@ namespace SSC {
     const auto& registration = this->registrations.at(options.scope);
 
     if (this->bridge != nullptr) {
-      this->core->setImmediate([=, this]() {
+      this->core->setImmediate([&, this]() {
         this->bridge->router.emit("serviceWorker.register", registration.json().str());
       });
     }
@@ -444,22 +512,27 @@ namespace SSC {
 
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
-      if (request.pathname.starts_with(registration.options.scope)) {
-        uv_sem_t semaphore;
-        uv_sem_init(&semaphore, 1);
 
-        if (!registration.isActive()) {
-          auto interval = this->core->setInterval(4, [this, &semaphore, &registration] () {
-            if (registration.isActive()) {
-              this->core->setTimeout(16, [&semaphore] () {
-                uv_sem_post(&semaphore);
-              });
-            }
+      if (request.pathname.starts_with(registration.options.scope)) {
+        if (!registration.isActive() && registration.state == Registration::State::Registered) {
+          this->core->dispatchEventLoop([this, request, callback, &registration]() {
+            this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
+              if (registration.state == Registration::State::Activated) {
+                cancel();
+                if (!this->fetch(request, callback)) {
+                  debug(
+                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s?%s' for client '%llu'",
+                    request.method.c_str(),
+                    request.pathname.c_str(),
+                    request.query.c_str(),
+                    request.client.id
+                  );
+                }
+              }
+            });
           });
 
-          uv_sem_wait(&semaphore);
-          uv_sem_destroy(&semaphore);
-          this->core->clearInterval(interval);
+          return true;
         }
 
         auto headers = JSON::Array {};
