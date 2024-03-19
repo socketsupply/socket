@@ -42,7 +42,7 @@
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
-static void installSignalHandler (int signum, sighandler_t handler) {
+static void installSignalHandler (int signum, void (*handler)(int)) {
 #if SSC_PLATFORM_LINUX
   struct sigaction action;
   sigemptyset(&action.sa_mask);
@@ -59,7 +59,7 @@ using namespace SSC;
 
 static App *app_ptr = nullptr;
 
-static std::function<void(int)> shutdownHandler;
+static Function<void(int)> shutdownHandler;
 
 // propagate signals to the default window which will use the
 // 'socket.runtime.signal' broadcast channel to propagate to all
@@ -354,7 +354,7 @@ MAIN {
 
     dbus_connection_add_filter(connection, onDBusMessage, nullptr, nullptr);
 
-    static std::function<void()> pollForMessage = [connection]() {
+    static Function<void()> pollForMessage = [connection]() {
       Thread thread([connection] () {
         while (dbus_connection_read_write_dispatch(connection, 100));
         app_ptr->dispatch(pollForMessage);
@@ -604,7 +604,7 @@ MAIN {
   }
 
   static Process* process = nullptr;
-  static std::function<void(bool)> createProcess;
+  static Function<void(bool)> createProcess;
 
   auto killProcess = [&](Process* processToKill) {
     if (processToKill != nullptr) {
@@ -864,7 +864,7 @@ MAIN {
         }
       #ifdef _WIN32
         size_t last_pos = 0;
-        while ((last_pos = process->path.find('\\', last_pos)) != std::string::npos) {
+        while ((last_pos = process->path.find('\\', last_pos)) != String::npos) {
           process->path.replace(last_pos, 1, "\\\\\\\\");
           last_pos += 4;
         }
@@ -1487,7 +1487,9 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
+#if defined(__linux__)
   Thread mainThread([&]() {
+#endif
     Vector<String> properties = {
       "window_width", "window_height",
       "window_min_width", "window_min_height",
@@ -1632,7 +1634,9 @@ MAIN {
     // thread and run it until it returns a non-zero int.
     //
     while (app.run() == 0);
+#if defined(__linux__)
   });
+#endif
 
   //
   // If this is being run in a terminal/multiplexer
@@ -1740,11 +1744,11 @@ MAIN {
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
 #endif
 
+#if defined(__linux__)
   if (mainThread.joinable()) {
     mainThread.join();
   }
 
-#if defined(__linux__)
   dbus_connection_unref(connection);
 #endif
 
