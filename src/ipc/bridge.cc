@@ -2273,7 +2273,7 @@ static void initRouterTable (Router *router) {
 
     if (frameType == "top-level" && frameSource != "serviceworker") {
       if (message.value == "load") {
-        const auto href = message.get("href");
+        const auto href = message.get("location.href");
         if (href.size() > 0) {
           router->location.href = href;
           auto tmp = href;
@@ -2291,7 +2291,7 @@ static void initRouterTable (Router *router) {
           if (message.value == "beforeruntimeinit") {
             router->core->serviceWorker.reset();
             router->core->serviceWorker.isReady = false;
-          } else if ( message.value == "runtimeinit") {
+          } else if (message.value == "runtimeinit") {
             router->core->serviceWorker.isReady = true;
           }
         }
@@ -3985,7 +3985,7 @@ static void registerSchemeHandler (Router *router) {
 
             if (fetched) {
               [self enqueueTask: task withMessage: message];
-              self.router->bridge->core->setTimeout(32000, [=]() mutable {
+              self.router->bridge->core->setTimeout(32000, [=] () mutable {
                 if ([self waitingForTask: task]) {
                   @try {
                     [self finalizeTask: task];
