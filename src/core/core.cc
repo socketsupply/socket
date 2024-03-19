@@ -436,15 +436,15 @@ namespace SSC {
     didTimersStart = false;
   }
 
-  const Core::Timers::ID Core::setTimeout (uint64_t timeout, const Core::Timers::Callback callback) {
+  const Core::Timers::ID Core::setTimeout (uint64_t timeout, const Core::Timers::TimeoutCallback callback) {
     return this->timers.setTimeout(timeout, callback);
   }
 
-  const Core::Timers::ID Core::setImmediate (const Core::Timers::Callback callback) {
+  const Core::Timers::ID Core::setImmediate (const Core::Timers::ImmediateCallback callback) {
     return this->timers.setImmediate(callback);
   }
 
-  const Core::Timers::ID Core::setInterval (uint64_t interval, const Core::Timers::Callback callback) {
+  const Core::Timers::ID Core::setInterval (uint64_t interval, const Core::Timers::IntervalCallback callback) {
     return this->timers.setInterval(interval, callback);
   }
 
