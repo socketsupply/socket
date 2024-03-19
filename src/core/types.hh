@@ -36,9 +36,10 @@ namespace SSC {
   template <typename T, int k> using Array = std::array<T, k>;
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
+  template <typename T> using Function = std::function<T>;
 
-  using ExitCallback = std::function<void(int code)>;
-  using MessageCallback = std::function<void(const String)>;
+  using ExitCallback = Function<void(int code)>;
+  using MessageCallback = Function<void(const String)>;
 }
 
 #endif
