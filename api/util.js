@@ -608,15 +608,15 @@ export function inspect (value, options) {
       }
 
       for (const key of keys) {
-        if (!/^\d+$/.test(key)) {
-          output.push(...Array.from(keys).map((key) => formatProperty(
+        if (!/^\d+$/.test(key) && key !== 'length') {
+          output.push(formatProperty(
             ctx,
             value,
             depth,
             enumerableKeys,
             key,
             true
-          )))
+          ))
         }
       }
     } else {
