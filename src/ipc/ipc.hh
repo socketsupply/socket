@@ -331,15 +331,13 @@ namespace SSC::IPC {
 
   class Bridge {
     public:
+      static Vector<Bridge*> getInstances();
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
       Map userConfig = getUserConfig();
       String preload = "";
       uint64_t id = 0;
-    #if !SSC_PLATFORM_IOS
-      FileSystemWatcher* fileSystemWatcher = nullptr;
-    #endif
 
     #if SSC_PLATFORM_ANDROID
       bool isAndroidEmulator = false;

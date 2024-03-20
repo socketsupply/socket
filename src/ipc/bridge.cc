@@ -2288,7 +2288,7 @@ static void initRouterTable (Router *router) {
 
       if (router->bridge == router->core->serviceWorker.bridge) {
         if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
-          if (message.value == "beforeruntimeinit") {
+          if (router->location.href.size() > 0 && message.value == "beforeruntimeinit") {
             router->core->serviceWorker.reset();
             router->core->serviceWorker.isReady = false;
           } else if (message.value == "runtimeinit") {
@@ -4876,10 +4876,20 @@ static void registerSchemeHandler (Router *router) {
 #endif
 
 namespace SSC::IPC {
+  static Vector<Bridge*> instances;
+  static Mutex mutex;
+
+#if SSC_PLATFORM_DESKTOP
+  static FileSystemWatcher* fileSystemWatcher = nullptr;
+#endif
+
   Bridge::Bridge (Core *core, Map userConfig)
     : userConfig(userConfig),
       router()
   {
+    Lock lock(SSC::IPC::mutex);
+    instances.push_back(this);
+
     this->id = rand64();
     this->core = core;
     this->router.core = core;
@@ -4899,21 +4909,85 @@ namespace SSC::IPC {
       this->router.emit(seq, value.str());
     };
 
-  #if !SSC_PLATFORM_IOS
-    if (isDebugEnabled() && this->userConfig["webview_watch"] == "true") {
-      this->fileSystemWatcher = new FileSystemWatcher(getcwd());
-      this->fileSystemWatcher->core = this->core;
-      this->fileSystemWatcher->start([=, this](
+  #if SSC_PLATFORM_DESKTOP
+    auto defaultUserConfig = SSC::getUserConfig();
+    if (
+      fileSystemWatcher == nullptr &&
+      isDebugEnabled() &&
+      defaultUserConfig["webview_watch"] == "true"
+    ) {
+      fileSystemWatcher = new FileSystemWatcher(getcwd());
+      fileSystemWatcher->core = this->core;
+      fileSystemWatcher->start([=](
         const auto& path,
         const auto& events,
         const auto& context
       ) mutable {
-        auto json = JSON::Object::Entries {
-          {"path", std::filesystem::relative(path, getcwd()).string()}
-        };
+        Lock lock(SSC::IPC::mutex);
 
-        auto result = SSC::IPC::Result(json);
-        this->router.emit("filedidchange", result.json().str());
+        static const auto cwd = getcwd();
+        const auto relativePath = std::filesystem::relative(path, cwd).string();
+        const auto json = JSON::Object::Entries {{"path", relativePath}};
+        const auto result = SSC::IPC::Result(json);
+
+        for (auto& bridge : instances) {
+          auto userConfig = bridge->userConfig;
+          if (
+            !platform.ios &&
+            !platform.android &&
+            userConfig["webview_watch"] == "true" &&
+            bridge->userConfig["webview_service_worker_mode"] != "hybrid" &&
+            (!userConfig.contains("webview_watch_reload") || userConfig.at("webview_watch_reload") != "false")
+          ) {
+            // check if changed path was a service worker, if so unregister it so it can be reloaded
+            for (const auto& entry : fileSystemWatcher->core->serviceWorker.registrations) {
+              const auto& registration = entry.second;
+            #if defined(__ANDROID__)
+              auto scriptURL = String("https://");
+            #else
+              auto scriptURL = String("socket://");
+            #endif
+
+              scriptURL += userConfig["meta_bundle_identifier"];
+
+              if (!relativePath.starts_with("/")) {
+                scriptURL += "/";
+              }
+
+              scriptURL += relativePath;
+              if (registration.scriptURL == scriptURL) {
+                // 1. unregister service worker
+                // 2. re-register service worker
+                // 3. wait for it to be registered
+                // 4. emit 'filedidchange' event
+                bridge->core->serviceWorker.unregisterServiceWorker(entry.first);
+                bridge->core->setTimeout(8, [bridge, result, &registration] () {
+                  bridge->core->setInterval(8, [bridge, result, &registration] (auto cancel) {
+                    if (registration.state == ServiceWorkerContainer::Registration::State::Activated) {
+                      cancel();
+
+                      uint64_t timeout = 500;
+                      if (bridge->userConfig["webview_watch_service_worker_reload_timeout"].size() > 0) {
+                        try {
+                          timeout = std::stoull(bridge->userConfig["webview_watch_service_worker_reload_timeout"]);
+                        } catch (...) {}
+                      }
+
+                      bridge->core->setTimeout(timeout, [bridge, result] () {
+                        bridge->router.emit("filedidchange", result.json().str());
+                      });
+                    }
+                  });
+
+                  bridge->core->serviceWorker.registerServiceWorker(registration.options);
+                });
+                return;
+              }
+            }
+          }
+
+          bridge->router.emit("filedidchange", result.json().str());
+        }
       });
     }
   #endif
@@ -4922,10 +4996,18 @@ namespace SSC::IPC {
   }
 
   Bridge::~Bridge () {
-  #if !SSC_PLATFORM_IOS
-    if (this->fileSystemWatcher) {
-      this->fileSystemWatcher->stop();
-      delete this->fileSystemWatcher;
+    Lock lock(SSC::IPC::mutex);
+    const auto cursor = std::find(instances.begin(), instances.end(), this);
+    if (cursor != instances.end()) {
+      instances.erase(cursor);
+    }
+
+  #if SSC_PLATFORM_DESKTOP
+    if (instances.size() == 0) {
+      if (fileSystemWatcher) {
+        fileSystemWatcher->stop();
+        delete fileSystemWatcher;
+      }
     }
   #endif
   }
