@@ -2,7 +2,6 @@ import { FinalizationRegistryCallbackError } from './errors.js'
 import diagnostics from './diagnostics.js'
 import { noop } from './util.js'
 import symbols from './internal/symbols.js'
-import console from './console.js'
 
 if (typeof FinalizationRegistry === 'undefined') {
   console.warn(

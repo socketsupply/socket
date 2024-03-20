@@ -26,7 +26,6 @@
 import { isBufferLike, isFunction, noop } from '../util.js'
 import { rand64 } from '../crypto.js'
 import { Buffer } from '../buffer.js'
-import console from '../console.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
 

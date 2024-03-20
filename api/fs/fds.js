@@ -1,5 +1,4 @@
 import diagnostics from '../diagnostics.js'
-import console from '../console.js'
 import ipc from '../ipc.js'
 
 const dc = diagnostics.channels.group('fs', [
