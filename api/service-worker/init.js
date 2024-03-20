@@ -1,4 +1,5 @@
 /* global Worker */
+import { sleep } from '../timers.js'
 import crypto from '../crypto.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
@@ -48,6 +49,19 @@ export async function onRegister (event) {
   }
 }
 
+export async function onUnregister () {
+  const info = new ServiceWorkerInfo(event.detail)
+
+  if (!workers.has(info.hash)) {
+    return
+  }
+
+  const worker = workers.get(info.hash)
+  workers.delete(info.hash)
+
+  worker.postMessage({ activate: info })
+}
+
 export async function onSkipWaiting (event) {
   onActivate(event)
 }
@@ -66,6 +80,14 @@ export async function onActivate (event) {
 
 export async function onFetch (event) {
   const info = new ServiceWorkerInfo(event.detail)
+
+  // this may be an early fetch, just try waiting at most
+  // 32*16 milliseconds for the worker to be available before
+  // generating a 404 response
+  let retries = 16
+  while (!workers.has(info.hash) && retries-- > 0) {
+    await sleep(32)
+  }
 
   if (!workers.has(info.hash)) {
     const options = {
@@ -100,6 +122,7 @@ export async function onFetch (event) {
 export default null
 
 globalThis.top.addEventListener('serviceWorker.register', onRegister)
+globalThis.top.addEventListener('serviceWorker.unregister', onUnregister)
 globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
 globalThis.top.addEventListener('serviceWorker.activate', onActivate)
 globalThis.top.addEventListener('serviceWorker.fetch', onFetch)

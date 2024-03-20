@@ -213,6 +213,11 @@ async function onMessage (event) {
     return
   }
 
+  if (data?.unregister) {
+    globalThis.close()
+    return
+  }
+
   if (data?.install?.id === state.id) {
     const event = new ExtendableEvent('install')
     state.serviceWorker.state = 'installing'
