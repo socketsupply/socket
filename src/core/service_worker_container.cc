@@ -134,9 +134,10 @@ namespace SSC {
   void ServiceWorkerContainer::reset () {
     Lock lock(this->mutex);
 
-    this->registrations.clear();
-    this->fetchRequests.clear();
-    this->fetchCallbacks.clear();
+    for (auto& entry : this->registrations) {
+      entry.second.state = Registration::State::Registered;
+      this->registerServiceWorker(entry.second.options);
+    }
   }
 
   void ServiceWorkerContainer::init (IPC::Bridge* bridge) {
@@ -409,19 +410,23 @@ namespace SSC {
 
     if (this->registrations.contains(scope)) {
       const auto& registration = this->registrations.at(scope);
-      this->registrations.erase(scope);
       if (this->bridge != nullptr) {
         return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
       }
+
+      this->registrations.erase(scope);
+      return true;
     }
 
     for (const auto& entry : this->registrations) {
       if (entry.second.scriptURL == scriptURL) {
         const auto& registration = this->registrations.at(entry.first);
-        this->registrations.erase(entry.first);
+
         if (this->bridge != nullptr) {
           return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
         }
+
+        this->registrations.erase(entry.first);
       }
     }
 
@@ -516,19 +521,23 @@ namespace SSC {
       if (request.pathname.starts_with(registration.options.scope)) {
         if (!registration.isActive() && registration.state == Registration::State::Registered) {
           this->core->dispatchEventLoop([this, request, callback, &registration]() {
-            this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
+            const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
               if (registration.state == Registration::State::Activated) {
                 cancel();
                 if (!this->fetch(request, callback)) {
                   debug(
-                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s?%s' for client '%llu'",
+                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
                     request.method.c_str(),
                     request.pathname.c_str(),
-                    request.query.c_str(),
+                    (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
                     request.client.id
                   );
                 }
               }
+            });
+
+            this->core->setTimeout(32000, [this, interval] {
+              this->core->clearInterval(interval);
             });
           });
 
