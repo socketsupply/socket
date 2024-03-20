@@ -1253,7 +1253,10 @@ export async function getContextWindow () {
       debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
       index: VM_WINDOW_INDEX,
       title: VM_WINDOW_TITLE,
-      path: VM_WINDOW_PATH
+      path: VM_WINDOW_PATH,
+      config: {
+        webview_watch_reload: false
+      }
     })
   )
 
