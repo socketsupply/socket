@@ -84,6 +84,7 @@ headers[] | "" |  Custom headers injected on all webview routes
 Key | Default Value | Description
 :--- | :--- | :---
 reload | true |  Configure webview to reload when a file changes
+service_worker_reload_timeout | 500 |  Timeout in milliseconds to wait for service worker to reload before reloading webview
 
 # `webview.navigator.mounts`
 

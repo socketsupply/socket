@@ -162,52 +162,6 @@ declare module "socket:buffer" {
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
 
-declare module "socket:console" {
-    export function patchGlobalConsole(globalConsole: any, options?: {}): any;
-    export const globalConsole: globalThis.Console;
-    export class Console {
-        /**
-         * @ignore
-         */
-        constructor(options: any);
-        /**
-         * @type {import('dom').Console}
-         */
-        console: any;
-        /**
-         * @type {Map}
-         */
-        timers: Map<any, any>;
-        /**
-         * @type {Map}
-         */
-        counters: Map<any, any>;
-        /**
-         * @type {function?}
-         */
-        postMessage: Function | null;
-        write(destination: any, ...args: any[]): any;
-        assert(assertion: any, ...args: any[]): void;
-        clear(): void;
-        count(label?: string): void;
-        countReset(label?: string): void;
-        debug(...args: any[]): void;
-        dir(...args: any[]): void;
-        dirxml(...args: any[]): void;
-        error(...args: any[]): void;
-        info(...args: any[]): void;
-        log(...args: any[]): void;
-        table(...args: any[]): any;
-        time(label?: string): void;
-        timeEnd(label?: string): void;
-        timeLog(label?: string): void;
-        trace(...objects: any[]): void;
-        warn(...args: any[]): void;
-    }
-    const _default: Console;
-    export default _default;
-}
-
 declare module "socket:events" {
     export const Event: {
         new (type: string, eventInitDict?: EventInit): Event;
@@ -6509,6 +6463,52 @@ declare module "socket:internal/shared-worker" {
         prototype: SharedWorker;
     } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
     export default SharedWorker;
+}
+
+declare module "socket:console" {
+    export function patchGlobalConsole(globalConsole: any, options?: {}): any;
+    export const globalConsole: globalThis.Console;
+    export class Console {
+        /**
+         * @ignore
+         */
+        constructor(options: any);
+        /**
+         * @type {import('dom').Console}
+         */
+        console: any;
+        /**
+         * @type {Map}
+         */
+        timers: Map<any, any>;
+        /**
+         * @type {Map}
+         */
+        counters: Map<any, any>;
+        /**
+         * @type {function?}
+         */
+        postMessage: Function | null;
+        write(destination: any, ...args: any[]): any;
+        assert(assertion: any, ...args: any[]): void;
+        clear(): void;
+        count(label?: string): void;
+        countReset(label?: string): void;
+        debug(...args: any[]): void;
+        dir(...args: any[]): void;
+        dirxml(...args: any[]): void;
+        error(...args: any[]): void;
+        info(...args: any[]): void;
+        log(...args: any[]): void;
+        table(...args: any[]): any;
+        time(label?: string): void;
+        timeEnd(label?: string): void;
+        timeLog(label?: string): void;
+        trace(...objects: any[]): void;
+        warn(...args: any[]): void;
+    }
+    const _default: Console;
+    export default _default;
 }
 
 declare module "socket:vm" {
@@ -13233,6 +13233,7 @@ declare module "socket:service-worker/global" {
 
 declare module "socket:service-worker/init" {
     export function onRegister(event: any): Promise<void>;
+    export function onUnregister(): Promise<void>;
     export function onSkipWaiting(event: any): Promise<void>;
     export function onActivate(event: any): Promise<void>;
     export function onFetch(event: any): Promise<void>;
