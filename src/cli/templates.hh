@@ -1747,6 +1747,9 @@ watch = true
 ; default value: true
 reload = true
 
+; Timeout in milliseconds to wait for service worker to reload before reloading webview
+; default value: 500
+service_worker_reload_timeout = 500
 
 ; Mount file system paths in webview navigator
 [webview.navigator.mounts]
