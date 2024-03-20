@@ -1566,11 +1566,13 @@ MAIN {
       userConfig["webview_service_worker_mode"] != "hybrid" &&
       userConfig["permissions_allow_service_worker"] != "false"
     ) {
+      auto serviceWorkerUserConfig = userConfig;
+      serviceWorkerUserConfig["webview_watch_reload"] = "false";
       auto serviceWorkerWindow = windowManager.createWindow({
         .canExit = false,
         .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
         .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
-        .userConfig = userConfig,
+        .userConfig = serviceWorkerUserConfig,
         .preloadCommonJS = false
       });
 
