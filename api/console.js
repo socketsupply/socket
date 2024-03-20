@@ -1,5 +1,6 @@
 import { format, isObject } from './util.js'
 import { postMessage } from './ipc.js'
+import os from './os.js'
 
 function isPatched (console) {
   return console?.[Symbol.for('socket.console.patched')] === true
@@ -157,15 +158,28 @@ export class Console {
     let value = ''
 
     value = format(...args)
-
     if (destination === 'debug') {
       destination = 'stderr'
       extra = 'debug=true'
       value = `(${globalThis.location.pathname}): ${value}`
     }
 
-    value = encodeURIComponent(value)
+    if (/ios|darwin/i.test(os.platform())) {
+      const parts = value.split('\n')
+      for (const part of parts) {
+        try {
+          value = encodeURIComponent(part)
+          const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+          this.postMessage?.(uri)
+        } catch (err) {
+          this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
+          return
+        }
+      }
+      return
+    }
 
+    value = encodeURIComponent(value)
     const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
 
     try {
