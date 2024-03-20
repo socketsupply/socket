@@ -80,14 +80,32 @@ export async function onActivate (event) {
 
 export async function onFetch (event) {
   const info = new ServiceWorkerInfo(event.detail)
+  const exists = workers.has(info.hash)
 
   // this may be an early fetch, just try waiting at most
-  // 32*16 milliseconds for the worker to be available before
-  // generating a 404 response
-  let retries = 16
-  while (!workers.has(info.hash) && retries-- > 0) {
-    await sleep(32)
-  }
+  // 32*16 milliseconds for the worker to be available or
+  // the 'activate' event before generating a 404 response
+  await Promise.race([
+    async function () {
+      let retries = 16
+      while (!workers.has(info.hash) && --retries > 0) {
+        await sleep(32)
+      }
+
+      if (!exists) {
+        await sleep(256)
+      }
+    }(),
+    new Promise((resolve) => {
+      globalThis.top.addEventListener('serviceWorker.activate', async function onActivate (event) {
+        const { hash } = new ServiceWorkerInfo(event.detail)
+        if (hash === info.hash) {
+          await sleep(64)
+          resolve()
+        }
+      })
+    })
+  ])
 
   if (!workers.has(info.hash)) {
     const options = {
