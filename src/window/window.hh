@@ -229,9 +229,7 @@ namespace SSC {
     #endif
 
       Window (App&, WindowOptions);
-    #if defined(__APPLE__)
       ~Window ();
-    #endif
 
       static ScreenSize getScreenSize ();
 

@@ -943,6 +943,10 @@ namespace SSC {
     gtk_widget_grab_focus(GTK_WIDGET(webview));
   }
 
+  Window::~Window () {
+    delete this->bridge;
+  }
+
   ScreenSize Window::getScreenSize () {
     auto list = gtk_window_list_toplevels();
     int width = 0;

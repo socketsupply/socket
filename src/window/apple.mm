@@ -1337,6 +1337,7 @@ namespace SSC {
 
   Window::~Window () {
     this->close(0);
+    delete this->bridge;
   }
 
   ScreenSize Window::getScreenSize () {

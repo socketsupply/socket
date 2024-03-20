@@ -1520,6 +1520,11 @@ namespace SSC {
     }
   }
 
+  Window::~Window () {
+    delete this->drop;
+    delete this->bridge;
+  }
+
   ScreenSize Window::getScreenSize () {
     return ScreenSize {
       .height = GetSystemMetrics(SM_CYFULLSCREEN),
