@@ -22,7 +22,6 @@
  * import fs from 'socket:fs/promises'
  * ```
  */
-import console from '../console.js'
 import ipc from '../ipc.js'
 
 import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
