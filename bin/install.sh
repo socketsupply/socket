@@ -126,6 +126,7 @@ if [[ "$host" == "Win32" ]]; then
   fi
 fi
 
+determine_cc || exit $?
 determine_cxx || exit $?
 read_env_data
 
@@ -281,6 +282,7 @@ function _build_cli {
     test_sources+=("$static_libs")
   elif [[ "$(uname -s)" == "Linux" ]]; then
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libuv.a")
+    static_libs+=("$BUILD_DIR/$arch-$platform/lib/libllama.a")
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a")
   fi
 
@@ -306,6 +308,7 @@ function _build_cli {
       "${static_libs[@]}"                        \
       "${cflags[@]}"                             \
       "${ldflags[@]}"                            \
+      -undefined dynamic_lookup                  \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
@@ -512,6 +515,13 @@ function _prepare {
       mv "$tempmkl" "$BUILD_DIR/uv/CMakeLists.txt"
     fi
 
+    die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
+  fi
+
+  if [ ! -d "$BUILD_DIR/llama" ]; then
+    git clone --depth=1 https://github.com/socketsupply/llama.cpp.git "$BUILD_DIR/llama" > /dev/null 2>&1
+    git rev-parse HEAD > "$BUILD_DIR/llama/COMMIT.txt"
+    rm -rf $BUILD_DIR/llama/.git
     die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
   fi
 
@@ -763,6 +773,76 @@ function _compile_libuv_android {
   fi
 }
 
+function _compile_llama {
+  target=$1
+  hosttarget=$1
+  platform=$2
+
+  if [ -z "$target" ]; then
+    target="$(host_arch)"
+    platform="desktop"
+  fi
+
+  echo "# building llama for $platform ($target) on $host..."
+  STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
+
+  if [ ! -d "$STAGING_DIR" ]; then
+    mkdir -p "$STAGING_DIR"
+    cp -rf "$BUILD_DIR"/llama/* "$STAGING_DIR"
+    cd "$STAGING_DIR" || exit 1
+  else
+    cd "$STAGING_DIR" || exit 1
+  fi
+
+  mkdir -p "$STAGING_DIR/build/lib/"
+  mkdir -p "$STAGING_DIR/include/"
+  mkdir -p "$STAGING_DIR/src/"
+
+  cp -f $BUILD_DIR/llama/common/grammar-parser.cpp $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/common/common.cpp $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/common/sampling.cpp $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/llama.cpp $STAGING_DIR/src
+
+  cp -f $BUILD_DIR/llama/ggml.c $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/ggml-quants.c $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/ggml-backend.c $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/ggml-alloc.c $STAGING_DIR/src
+  cp -f $BUILD_DIR/llama/ggml-alloc.c $STAGING_DIR/src
+
+  cp -f $BUILD_DIR/llama/*.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/grammar-parser.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/common.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/sampling.h $STAGING_DIR/include
+  cp -f $BUILD_DIR/llama/common/log.h $STAGING_DIR/include
+
+  SRC=$STAGING_DIR/src
+  DEST="$BUILD_DIR/$target-$platform"
+
+  mkdir -p "$DEST/include/llama"
+  mkdir -p "$DEST/lib"
+
+  ## -DLLAMA_COMMIT=\"$(cat COMMIT.txt)\"
+  local cxxflags=(-std=c++2b $("$root/bin/cflags.sh"))
+
+  SOURCES=($SRC/ggml.c $SRC/ggml-quants.c $SRC/ggml-backend.c $SRC/ggml-alloc.c)
+  OBJECTS=($SRC/llama.o $SRC/grammar-parser.o $SRC/common.o $SRC/sampling.o)
+
+  for src in "${SOURCES[@]}"; do
+    $CC -std=c99 -c $src -o ${src/.c/.o} -Iinclude
+    OBJECTS+=(${src/.c/.o})
+  done
+
+  $CXX "${cxxflags[@]}" -c $SRC/llama.cpp -Iinclude -o $SRC/llama.o 
+  $CXX "${cxxflags[@]}" -c $SRC/grammar-parser.cpp -Iinclude -o $SRC/grammar-parser.o 
+  $CXX "${cxxflags[@]}" -c $SRC/common.cpp -Iinclude -o $SRC/common.o 
+  $CXX "${cxxflags[@]}" -c $SRC/sampling.cpp -Iinclude -o $SRC/sampling.o 
+
+  ar crs $STAGING_DIR/build/lib/libllama.a "${OBJECTS[@]}"
+
+  cp -rf "$STAGING_DIR/build/lib/libllama.a" $DEST/lib/
+  cp -rf "$STAGING_DIR/include/" "$DEST/include/llama"
+}
+
 function _compile_libuv {
   target=$1
   hosttarget=$1
@@ -947,9 +1027,15 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   echo "ok - copied fat library"
 fi
 
+{
+  _compile_llama
+  echo "ok - built llama for $platform ($target)"
+} & _compile_llama_pid=$!
+
 if [[ "$host" != "Win32" ]]; then
   # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
   wait $_compile_libuv_pid
+  wait $_compile_llama_pid
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
@@ -972,6 +1058,7 @@ _get_web_view2
 if [[ "$host" == "Win32" ]]; then
   # Wait for Win32 lib uv build
   wait $_compile_libuv_pid
+  wait $_compile_llama_pid
 fi
 
 _check_compiler_features
