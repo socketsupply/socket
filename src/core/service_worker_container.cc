@@ -218,6 +218,7 @@ namespace SSC {
     }
 
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
+      Lock lock(this->mutex);
       uint64_t id = 0;
 
       try {
@@ -228,24 +229,16 @@ namespace SSC {
         }});
       }
 
-      do {
-        Lock lock(this->mutex);
-        if (!this->fetchRequests.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
-            {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
-          }});
-        }
-      } while (0);
+      if (!this->fetchRequests.contains(id)) {
+        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+          {"type", "NotFoundError"},
+          {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
+        }});
+      }
 
       const auto& request = this->fetchRequests.at(id);
       const auto post = Post { 0, 0, request.buffer.bytes, request.buffer.size };
       reply(IPC::Result { message.seq, message, JSON::Object {}, post });
-
-      do {
-        Lock lock(this->mutex);
-        this->fetchRequests.erase(id);
-      } while (0);
     });
 
     this->bridge->router.map("serviceWorker.fetch.response", [this](auto message, auto router, auto reply) mutable {
@@ -275,6 +268,13 @@ namespace SSC {
         return reply(IPC::Result::Err { message, JSON::Object::Entries {
           {"type", "NotFoundError"},
           {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+        }});
+      }
+
+      if (!this->fetchRequests.contains(id)) {
+        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+          {"type", "NotFoundError"},
+          {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
         }});
       }
 
@@ -334,6 +334,15 @@ namespace SSC {
         if (x != String::npos && y != String::npos) {
           html.erase(x, (y - x) + end.size());
         }
+
+        Vector<String> protocolHandlers = { "npm:", "node:" };
+        for (const auto& entry : router->core->protocolHandlers.mapping) {
+          protocolHandlers.push_back(String(entry.first) + ":");
+        }
+
+        html = tmpl(html, Map {
+          {"protocol_handlers", join(protocolHandlers, " ")}
+        });
 
         if (html.find("<head>") != String::npos) {
           html = replace(html, "<head>", String("<head>" + preload));
@@ -515,63 +524,71 @@ namespace SSC {
       }
     }
 
+    String scope;
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
 
       if (request.pathname.starts_with(registration.options.scope)) {
-        if (!registration.isActive() && registration.state == Registration::State::Registered) {
-          this->core->dispatchEventLoop([this, request, callback, &registration]() {
-            const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
-              if (registration.state == Registration::State::Activated) {
-                cancel();
-                if (!this->fetch(request, callback)) {
-                  debug(
-                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
-                    request.method.c_str(),
-                    request.pathname.c_str(),
-                    (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
-                    request.client.id
-                  );
-                }
-              }
-            });
+        if (entry.first.size() > scope.size()) {
+          scope = entry.first;
+        }
+      }
+    }
 
-            this->core->setTimeout(32000, [this, interval] {
-              this->core->clearInterval(interval);
-            });
+    if (scope.size() > 0 && this->registrations.contains(scope)) {
+      auto& registration = this->registrations.at(scope);
+      if (!registration.isActive() && registration.state == Registration::State::Registered) {
+        this->core->dispatchEventLoop([this, request, callback, &registration]() {
+          const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
+            if (registration.state == Registration::State::Activated) {
+              cancel();
+              if (!this->fetch(request, callback)) {
+                debug(
+                  "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
+                  request.method.c_str(),
+                  request.pathname.c_str(),
+                  (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
+                  request.client.id
+                );
+              }
+            }
           });
 
-          return true;
-        }
+          this->core->setTimeout(32000, [this, interval] {
+            this->core->clearInterval(interval);
+          });
+        });
 
-        auto headers = JSON::Array {};
-
-        for (const auto& header : request.headers) {
-          headers.push(header);
-        }
-
-        const auto id = rand64();
-        const auto client = JSON::Object::Entries {
-          {"id", std::to_string(request.client.id)}
-        };
-
-        const auto fetch = JSON::Object::Entries {
-          {"id", std::to_string(id)},
-          {"method", request.method},
-          {"pathname", request.pathname},
-          {"query", request.query},
-          {"headers", headers},
-          {"client", client}
-        };
-
-        auto json = registration.json();
-        json.set("fetch", fetch);
-
-        this->fetchCallbacks.insert_or_assign(id, callback);
-        this->fetchRequests.insert_or_assign(id, request);
-
-        return this->bridge->router.emit("serviceWorker.fetch", json.str());
+        return true;
       }
+
+      auto headers = JSON::Array {};
+
+      for (const auto& header : request.headers) {
+        headers.push(header);
+      }
+
+      const auto id = rand64();
+      const auto client = JSON::Object::Entries {
+        {"id", std::to_string(request.client.id)}
+      };
+
+      const auto fetch = JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"method", request.method},
+        {"pathname", request.pathname},
+        {"query", request.query},
+        {"headers", headers},
+        {"client", client}
+      };
+
+      auto json = registration.json();
+      json.set("fetch", fetch);
+
+      this->fetchCallbacks.insert_or_assign(id, callback);
+      this->fetchRequests.insert_or_assign(id, request);
+
+      return this->bridge->router.emit("serviceWorker.fetch", json.str());
     }
 
     return false;
