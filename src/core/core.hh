@@ -11,13 +11,13 @@
 #include "json.hh"
 #include "platform.hh"
 #include "preload.hh"
+#include "protocol_handlers.hh"
 #include "service_worker_container.hh"
 #include "string.hh"
 #include "types.hh"
 #include "version.hh"
 
 #include "../process/process.hh"
-
 
 #if defined(__APPLE__)
 @interface SSCBluetoothController : NSObject<
@@ -844,6 +844,7 @@ namespace SSC {
       FS fs;
       OS os;
       Platform platform;
+      ProtocolHandlers protocolHandlers;
       ServiceWorkerContainer serviceWorker;
       Timers timers;
       UDP udp;
@@ -890,6 +891,7 @@ namespace SSC {
         fs(this),
         os(this),
         platform(this),
+        protocolHandlers(this),
         timers(this),
         udp(this),
         serviceWorker(this)
