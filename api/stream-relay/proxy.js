@@ -82,8 +82,7 @@ class PeerWorkerProxy {
   constructor (options, port, fn) {
     if (!options.isWorkerThread) {
       this.#channel = new MessageChannel()
-      const p = path.join(path.dirname(pathname), 'worker.js')
-      this.#worker = new window.Worker(p)
+      this.#worker = new window.Worker(path.join(path.dirname(pathname), 'worker.js'))
 
       this.#worker.addEventListener('error', err => {
         throw err
@@ -251,7 +250,7 @@ class PeerWorkerProxy {
   callMainThread (prop, args) {
     for (const i in args) {
       const arg = args[i]
-      if (!arg.peerId) continue
+      if (!arg?.peerId) continue
       args[i] = { ...arg }
       delete args[i].localPeer // don't copy this over
     }
