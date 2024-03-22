@@ -3052,6 +3052,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework CoreBluetooth";
       flags += " -framework CoreLocation";
       flags += " -framework Network";
+      flags += " -framework Security";
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
       flags += " -framework Carbon";
@@ -4438,6 +4439,7 @@ int main (const int argc, const char* argv[]) {
               " -framework CoreBluetooth" +
               " -framework CoreLocation" +
               " -framework Network" +
+              " -framework Security" +
               " -framework UserNotifications" +
               " -framework WebKit" +
               " -framework Cocoa" +
@@ -4667,6 +4669,7 @@ int main (const int argc, const char* argv[]) {
             << " -framework CoreBluetooth"
             << " -framework CoreLocation"
             << " -framework Foundation"
+            << " -framework Security"
             << " -framework Network"
             << " -framework UserNotifications"
             << " -framework WebKit"
@@ -5751,6 +5754,7 @@ int main (const int argc, const char* argv[]) {
               compilerFlags += " -framework CoreBluetooth";
               compilerFlags += " -framework CoreLocation";
               compilerFlags += " -framework Network";
+              compilerFlags += " -framework Security";
               compilerFlags += " -framework UserNotifications";
               compilerFlags += " -framework WebKit";
               compilerFlags += " -framework Cocoa";
