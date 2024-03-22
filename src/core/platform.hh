@@ -109,6 +109,111 @@
 #include "config.hh"
 #include "types.hh"
 
+#if defined(_WIN32)
+# define SSC_PLATFORM_NAME "win32"
+# define SSC_PLATFORM_OS "win32"
+# define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_IOS 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_LINUX 0
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_UXIX 0
+# define SSC_PLATFORM_WINDOWS 1
+#elif defined(__APPLE__)
+# include <TargetConditionals.h>
+# define SSC_PLATFORM_NAME "darwin"
+# define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_LINUX 0
+# define SSC_PLATFORM_WINDOWS 0
+
+#if TARGET_OS_IPHONE
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_IOS 1
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_OS "ios"
+#elif TARGET_IPHONE_SIMULATOR
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_IOS 1
+# define SSC_PLATFORM_IOS_SIMULATOR 1
+# define SSC_PLATFORM_OS "ios"
+#else
+# define SSC_PLATFORM_MACOS 1
+# define SSC_PLATFORM_IOS 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_OS "mac"
+#endif
+
+#if defined(__unix__) || defined(unix) || defined(__unix)
+# define SSC_PLATFORM_UXIX 0
+#else
+# define SSC_PLATFORM_UXIX 0
+#endif
+
+#elif defined(__linux__)
+# undef linux
+# define SSC_PLATFORM_NAME "linux"
+# define SSC_PLATFORM_IOS 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_LINUX 1
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_WINDOWS 0
+
+#ifdef __ANDROID__
+# define SSC_PLATFORM_OS "android"
+# define SSC_PLATFORM_ANDROID 1
+#else
+# define SSC_PLATFORM_OS "linux"
+# define SSC_PLATFORM_ANDROID 0
+#endif
+
+#if defined(__unix__) || defined(unix) || defined(__unix)
+# define SSC_PLATFORM_UXIX 1
+#else
+# define SSC_PLATFORM_UXIX 0
+#endif
+
+#elif defined(__FreeBSD__)
+# define SSC_PLATFORM_NAME "freebsd"
+# define SSC_PLATFORM_OS "freebsd"
+# define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_IOS 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_LINUX 0
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_WINDOWS 0
+
+#if defined(__unix__) || defined(unix) || defined(__unix)
+# define SSC_PLATFORM_UXIX 0
+#else
+# define SSC_PLATFORM_UXIX 1
+#endif
+
+#elif defined(BSD)
+# define SSC_PLATFORM_NAME "openbsd"
+# define SSC_PLATFORM_OS "openbsd"
+# define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_IOS 0
+# define SSC_PLATFORM_IOS_SIMULATOR 0
+# define SSC_PLATFORM_LINUX 0
+# define SSC_PLATFORM_MACOS 0
+# define SSC_PLATFORM_WINDOWS 0
+
+#if defined(__unix__) || defined(unix) || defined(__unix)
+# define SSC_PLATFORM_UXIX 0
+#else
+# define SSC_PLATFORM_UXIX 1
+#endif
+#endif
+
+#if SSC_PLATFORM_ANDROID || SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+#define SSC_PLATFORM_MOBILE 1
+#define SSC_PLATFORM_DESKTOP 0
+#else
+#define SSC_PLATFORM_MOBILE 0
+#define SSC_PLATFORM_DESKTOP 1
+#endif
+
 namespace SSC {
   struct RuntimePlatform {
     const String arch = "";

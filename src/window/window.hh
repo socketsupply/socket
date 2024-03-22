@@ -15,6 +15,8 @@
 #define SSC_MAX_WINDOWS 32
 #endif
 
+#define SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX SSC_MAX_WINDOWS + 1
+
 #ifndef SSC_MAX_WINDOWS_RESERVED
 #define SSC_MAX_WINDOWS_RESERVED 16
 #endif
@@ -34,6 +36,8 @@ namespace SSC {
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 @interface SSCWindowDelegate : NSObject
 @property (nonatomic) SSC::Window* window;
+@end
+@interface SSCWindow : NSObject
 @end
 
 @interface SSCUIPickerDelegate : NSObject<
@@ -70,12 +74,25 @@ namespace SSC {
 - (NSArray<NSString*>*) _allowedFileExtensions;
 @end
 
+@interface SSCWindow : NSWindow
+@property (nonatomic, assign) SSCBridgedWebView *webview;
+@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic) NSPoint trafficLightPosition;
+@end
+
 @interface SSCBridgedWebView : WKWebView<
   WKUIDelegate,
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
   NSDraggingSource
 >
+
+@property (nonatomic) NSPoint initialWindowPos;
+@property (nonatomic) CGFloat contentHeight;
+@property (nonatomic) CGFloat radius;
+@property (nonatomic) CGFloat margin;
+@property (nonatomic) BOOL shouldDrag;
+
 -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
 sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 
@@ -112,6 +129,14 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
 @property (nonatomic) SSC::IPC::Bridge* bridge;
+-    (void) webView: (WKWebView*) webView
+  didFailNavigation: (WKNavigation*) navigation
+          withError: (NSError*) error;
+
+-               (void) webView: (WKWebView*) webView
+  didFailProvisionalNavigation: (WKNavigation*) navigation
+                     withError: (NSError*) error;
+
 -                  (void) webView: (WKWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
@@ -152,6 +177,7 @@ namespace SSC {
       int width = 0;
       int height = 0;
       bool exiting = false;
+      Mutex mutex;
 
     #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
       fs::path modulePath;
@@ -159,7 +185,7 @@ namespace SSC {
 
     #if defined(__APPLE__)
     #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-      NSWindow* window;
+      SSCWindow* window;
     #endif
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
@@ -173,11 +199,13 @@ namespace SSC {
       GtkWidget *menutray = nullptr;
       GtkWidget *vbox = nullptr;
       GtkWidget *popup = nullptr;
-      std::vector<String> draggablePayload;
+      int popupId;
       double dragLastX = 0;
       double dragLastY = 0;
+      bool shouldDrag;
+      std::vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
-      int popupId;
+      GdkPoint initialLocation;
     #elif defined(_WIN32)
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       bool usingCustomEdgeRuntimeDirectory = false;
@@ -186,9 +214,14 @@ namespace SSC {
       HMENU menubar;
       HMENU menutray;
       DWORD mainThread = GetCurrentThreadId();
+      double dragLastX = 0;
+      double dragLastY = 0;
+      bool shouldDrag;
+      DragDrop* drop;
       POINT m_minsz = POINT {0, 0};
       POINT m_maxsz = POINT {0, 0};
-      DragDrop* drop;
+      POINT initialCursorPos = POINT {0, 0};
+      RECT initialWindowPos = RECT {0, 0, 0, 0};
       HWND window;
       std::map<int, std::string> menuMap;
       std::map<int, std::string> menuTrayMap;
@@ -196,9 +229,7 @@ namespace SSC {
     #endif
 
       Window (App&, WindowOptions);
-    #if defined(__APPLE__)
       ~Window ();
-    #endif
 
       static ScreenSize getScreenSize ();
 
@@ -224,12 +255,12 @@ namespace SSC {
       void closeContextMenu (GtkWidget *, const String&);
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
+      String getBackgroundColor ();
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& dsl);
       void setMenu (const String& seq, const String& dsl, const bool& isTrayMenu);
       void setTrayMenu (const String& seq, const String& dsl);
       void showInspector ();
-      int openExternal (const String& s);
 
       void resolvePromise (
         const String& seq,
@@ -265,6 +296,7 @@ namespace SSC {
   };
 
   struct WindowManagerOptions {
+    String aspectRatio = "";
     String defaultHeight = "0";
     String defaultWidth = "0";
     String defaultMinWidth = "0";
@@ -276,7 +308,7 @@ namespace SSC {
     bool canExit = false;
     String argv = "";
     String cwd = "";
-    Map appData;
+    Map userConfig;
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
   };
@@ -361,7 +393,6 @@ namespace SSC {
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
               status = WindowStatus::WINDOW_EXITED;
-              gc();
             }
           }
 
@@ -377,14 +408,22 @@ namespace SSC {
           }
 
           void gc () {
-            manager.destroyWindow(reinterpret_cast<Window*>(this));
+            if (App::instance() != nullptr) {
+              manager.destroyWindow(reinterpret_cast<Window*>(this));
+            }
           }
 
           JSON::Object json () {
             auto index = this->opts.index;
             auto size = this->getSize();
+            uint64_t id = 0;
+
+            if (this->bridge != nullptr) {
+              id = this->bridge->id;
+            }
 
             return JSON::Object::Entries {
+              { "id", std::to_string(id) },
               { "index", index },
               { "title", this->getTitle() },
               { "width", size.width },
@@ -398,9 +437,9 @@ namespace SSC {
 
       App &app;
       bool destroyed = false;
-      std::vector<bool> inits;
-      std::vector<ManagedWindow*> windows;
-      std::recursive_mutex mutex;
+      Vector<bool> inits;
+      Vector<ManagedWindow*> windows;
+      Mutex mutex;
       WindowManagerOptions options;
 
       WindowManager (App &app) :
@@ -438,12 +477,13 @@ namespace SSC {
         this->options.defaultMaxWidth = configuration.defaultMaxWidth;
         this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
-        this->options.appData = configuration.appData;
+        this->options.userConfig = configuration.userConfig;
         this->options.onExit = configuration.onExit;
-        this->options.headless = configuration.headless;
+        this->options.aspectRatio = configuration.aspectRatio;
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
         this->options.cwd = configuration.cwd;
+        this->options.userConfig = getUserConfig();
       }
 
       void inline log (const String line) {
@@ -461,7 +501,7 @@ namespace SSC {
       }
 
       ManagedWindow* getWindow (int index, WindowStatus status) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
@@ -493,7 +533,7 @@ namespace SSC {
       }
 
       WindowStatus getWindowStatus (int index) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (this->destroyed) return WindowStatus::WINDOW_NONE;
         if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return windows[index]->status;
@@ -503,7 +543,7 @@ namespace SSC {
       }
 
       void destroyWindow (int index) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return;
         if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return destroyWindow(windows[index]);
@@ -518,7 +558,7 @@ namespace SSC {
       }
 
       void destroyWindow (Window* window) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<ManagedWindow*>(window);
@@ -538,7 +578,7 @@ namespace SSC {
       }
 
       ManagedWindow* createWindow (WindowOptions opts) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if (destroyed) return nullptr;
         StringStream env;
 
@@ -546,8 +586,8 @@ namespace SSC {
           return windows[opts.index];
         }
 
-        if (opts.appData.size() > 0) {
-          for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
+        if (opts.userConfig.size() > 0) {
+          for (auto const &envKey : parseStringList(opts.userConfig["build_env"])) {
             auto cleanKey = trim(envKey);
 
             if (!Env::has(cleanKey)) {
@@ -561,7 +601,7 @@ namespace SSC {
             );
           }
         } else {
-          for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
+          for (auto const &envKey : parseStringList(this->options.userConfig["build_env"])) {
             auto cleanKey = trim(envKey);
 
             if (!Env::has(cleanKey)) {
@@ -599,6 +639,9 @@ namespace SSC {
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
+          .minimizable = opts.minimizable,
+          .maximizable = opts.maximizable,
+          .closable = opts.closable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
@@ -608,19 +651,30 @@ namespace SSC {
           .minHeight = minHeight,
           .maxWidth = maxWidth,
           .maxHeight = maxHeight,
+          .radius = opts.radius,
+          .margin = opts.margin,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
-          .headless = this->options.headless || opts.headless || opts.appData["build_headless"] == "true",
-
+          .headless = opts.headless,
+          .aspectRatio = opts.aspectRatio,
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
-          .appData = this->options.appData
+          .userConfig = this->options.userConfig,
+          .userScript = opts.userScript,
+          .runtimePrimordialOverrides = opts.runtimePrimordialOverrides,
+          .preloadCommonJS = opts.preloadCommonJS != false
         };
+
+        for (const auto& tuple : opts.userConfig) {
+          windowOptions.userConfig[tuple.first] = tuple.second;
+        }
 
         if (isDebugEnabled()) {
           this->log("Creating Window#" + std::to_string(opts.index));
@@ -641,6 +695,9 @@ namespace SSC {
       ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
           .resizable = opts.resizable,
+          .minimizable = opts.minimizable,
+          .maximizable = opts.maximizable,
+          .closable = opts.closable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = true,
@@ -650,7 +707,10 @@ namespace SSC {
         #ifdef PORT
           .port = PORT,
         #endif
-          .appData = opts.appData
+          .headless = opts.userConfig["build_headless"] == "true",
+          .titleBarStyle = opts.titleBarStyle,
+          .trafficLightPosition = opts.trafficLightPosition,
+          .userConfig = opts.userConfig
         });
       }
 

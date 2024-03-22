@@ -2,6 +2,7 @@
 #include "../cli/cli.hh"
 #include "../ipc/ipc.hh"
 #include "../core/core.hh"
+#include "../core/ini.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
 
@@ -41,14 +42,67 @@
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
+static void installSignalHandler (int signum, void (*handler)(int)) {
+#if SSC_PLATFORM_LINUX
+  struct sigaction action;
+  sigemptyset(&action.sa_mask);
+  action.sa_handler = handler;
+  action.sa_flags = SA_NODEFER;
+  sigaction(signum, &action, NULL);
+#else
+  signal(signum, handler);
+#endif
+}
+
+
 using namespace SSC;
 
 static App *app_ptr = nullptr;
 
-std::function<void(int)> shutdownHandler;
+static Function<void(int)> shutdownHandler;
+
+// propagate signals to the default window which will use the
+// 'socket.runtime.signal' broadcast channel to propagate to all
+// other windows who may be subscribers
+static void defaultWindowSignalHandler (int signal) {
+  auto app = App::instance();
+  if (app != nullptr && app->windowManager != nullptr) {
+    auto defaultWindow = app->windowManager->getWindow(0);
+    if (defaultWindow != nullptr) {
+      if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
+        const auto json = JSON::Object {
+          JSON::Object::Entries {
+            {"signal", signal}
+          }
+        };
+
+        defaultWindow->eval(getEmitToRenderProcessJavaScript("signal", json.str()));
+      }
+    }
+  }
+}
+
 void signalHandler (int signal) {
+  static auto app = App::instance();
+  static auto userConfig = SSC::getUserConfig();
+  static const auto signalsDisabled = userConfig["application_signals"] == "false";
+  static const auto signals = parseStringList(userConfig["application_signals"]);
+  String name;
+
+  #if defined(__APPLE__)
+    name = String(sys_signame[signal]);
+  #elif defined(__linux__)
+    name = strsignal(signal);
+  #endif
+
+  if (!signalsDisabled || std::find(signals.begin(), signals.end(), name) != signals.end()) {
+    defaultWindowSignalHandler(signal);
+  }
+
   if (shutdownHandler != nullptr) {
-    shutdownHandler(signal);
+    app->dispatch([signal] () {
+      shutdownHandler(signal);
+    });
   }
 }
 
@@ -205,8 +259,10 @@ BOOL registerWindowsURISchemeInRegistry () {
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
-
 #if defined(__linux__)
+  // use 'SIGPWR' instead of the default 'SIGUSR1' handler
+  // see https://github.com/WebKit/WebKit/blob/2fd8f81aac4e867ffe107c0e1b3e34b1628c0953/Source/WTF/wtf/posix/ThreadingPOSIX.cpp#L185
+  Env::set("JSC_SIGNAL_FOR_GC", "30");
   gtk_init(&argc, &argv);
 #endif
 
@@ -232,7 +288,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getcwd();
-  app.appData = userConfig;
+  app.userConfig = userConfig;
 
   SSC::String suffix = "";
 
@@ -297,7 +353,7 @@ MAIN {
 
     dbus_connection_add_filter(connection, onDBusMessage, nullptr, nullptr);
 
-    static std::function<void()> pollForMessage = [connection]() {
+    static Function<void()> pollForMessage = [connection]() {
       Thread thread([connection] () {
         while (dbus_connection_read_write_dispatch(connection, 100));
         app_ptr->dispatch(pollForMessage);
@@ -470,10 +526,11 @@ MAIN {
 
     if (s.find("--headless") == 0) {
       isHeadless = true;
+      userConfig["build_headless"] = "true";
     }
 
     // launched from the `ssc` cli
-    app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
+    app.wasLaunchedFromCli = s.find("--from-ssc") == 0 ? true : false;
 
     #ifdef _WIN32
     if (!app.w32ShowConsole && s.find("--w32-console") == 0) {
@@ -503,21 +560,21 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.appData["build_name"] += "-dev";
+    app.userConfig["build_name"] += "-dev";
   }
 
-  app.appData["build_name"] += suffix;
+  app.userConfig["build_name"] += suffix;
 
   argvForward << " --ssc-version=v" << SSC::VERSION_STRING;
-  argvForward << " --version=v" << app.appData["meta_version"];
-  argvForward << " --name=" << app.appData["build_name"];
+  argvForward << " --version=v" << app.userConfig["meta_version"];
+  argvForward << " --name=" << app.userConfig["build_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
   SSC::StringStream env;
-  for (auto const &envKey : parseStringList(app.appData["build_env"])) {
+  for (auto const &envKey : parseStringList(app.userConfig["build_env"])) {
     auto cleanKey = trim(envKey);
 
     if (!Env::has(cleanKey)) {
@@ -533,9 +590,9 @@ MAIN {
 
   SSC::String cmd;
   if (platform.os == "win32") {
-    cmd = app.appData["win_cmd"];
+    cmd = app.userConfig["win_cmd"];
   } else {
-    cmd = app.appData[platform.os + "_cmd"];
+    cmd = app.userConfig[platform.os + "_cmd"];
   }
 
   if (cmd[0] == '.') {
@@ -546,7 +603,7 @@ MAIN {
   }
 
   static Process* process = nullptr;
-  static std::function<void(bool)> createProcess;
+  static Function<void(bool)> createProcess;
 
   auto killProcess = [&](Process* processToKill) {
     if (processToKill != nullptr) {
@@ -609,11 +666,11 @@ MAIN {
     };
 
     #ifndef _WIN32
-      signal(SIGHUP, signalHandler);
+      installSignalHandler(SIGHUP, signalHandler);
     #endif
 
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
+    installSignalHandler(SIGINT, signalHandler);
+    installSignalHandler(SIGTERM, signalHandler);
 
     return exitCode;
   }
@@ -740,7 +797,7 @@ MAIN {
 
       if (message.name == "config") {
         auto key = message.get("key");
-        window->resolvePromise(seq, OK_STATE, app.appData[key]);
+        window->resolvePromise(seq, OK_STATE, app.userConfig[key]);
         return;
       }
 
@@ -806,7 +863,7 @@ MAIN {
         }
       #ifdef _WIN32
         size_t last_pos = 0;
-        while ((last_pos = process->path.find('\\', last_pos)) != std::string::npos) {
+        while ((last_pos = process->path.find('\\', last_pos)) != String::npos) {
           process->path.replace(last_pos, 1, "\\\\\\\\");
           last_pos += 4;
         }
@@ -864,7 +921,7 @@ MAIN {
       }
 
     #if defined(__APPLE__)
-      if (app.fromSSC) {
+      if (app.wasLaunchedFromCli) {
         debug("__EXIT_SIGNAL__=%d", exitCode);
         CLI::notify();
       }
@@ -953,6 +1010,14 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
+      if (message.get("radius").size() > 0) {
+        options.radius = std::stof(message.get("radius"));
+      }
+
+      if (message.get("margin").size() > 0) {
+        options.margin = std::stof(message.get("margin"));
+      }
+
       auto screen = currentWindow->getScreenSize();
 
       options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
@@ -964,12 +1029,34 @@ MAIN {
       options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
 
       options.canExit = message.get("canExit") == "true" ? true : false;
-      options.headless = message.get("headless") == "true" ? true : false;
+
+      options.headless = userConfig["build_headless"] == "true";
+
+      if (message.get("headless") == "true") {
+        options.headless = true;
+      } else if (message.get("headless") == "false") {
+        options.headless = false;
+      }
+
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
+      options.closable = message.get("closable") == "true" ? true : false;
+      options.maximizable = message.get("maximizable") == "true" ? true : false;
+      options.minimizable = message.get("minimizable") == "true" ? true : false;
+      options.aspectRatio = message.get("aspectRatio");
+      options.titleBarStyle = message.get("titleBarStyle");
+      options.title = message.get("title");
+      options.trafficLightPosition = message.get("trafficLightPosition");
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
+      options.userScript = message.get("userScript");
       options.index = targetWindowIndex;
+      options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
+      options.userConfig = INI::parse(message.get("config"));
+
+      if (options.index >= SSC_MAX_WINDOWS) {
+        options.preloadCommonJS = false;
+      }
 
       targetWindow = windowManager.createWindow(options);
 
@@ -998,6 +1085,7 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
+
       if (targetWindow) {
         if (targetWindow->opts.canExit) {
           targetWindow->exit(0);
@@ -1214,6 +1302,29 @@ MAIN {
       return;
     }
 
+    if (message.name == "window.getBackgroundColor") {
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      auto color = targetWindow->getBackgroundColor();
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", color },
+      };
+
+      auto result = SSC::IPC::Result(message.seq, message, json);
+
+      currentWindow->resolvePromise(
+        message.seq,
+        OK_STATE,
+        result.json()
+      );
+      return;
+    }
+
     if (message.name == "window.setSize") {
       const auto seq = message.seq;
       const auto currentIndex = message.index;
@@ -1249,7 +1360,7 @@ MAIN {
 
     if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
-      window->setSystemMenu(seq, value);
+      window->setSystemMenu(seq, message.value);
       return;
     }
 
@@ -1363,7 +1474,7 @@ MAIN {
     windowManager.destroy();
 
   #if defined(__APPLE__)
-    if (app_ptr->fromSSC) {
+    if (app_ptr->wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", 0);
       CLI::notify();
     }
@@ -1375,123 +1486,270 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-  Vector<String> properties = {
-    "window_width", "window_height",
-    "window_min_width", "window_min_height",
-    "window_max_width", "window_max_height"
-  };
+#if defined(__linux__)
+  Thread mainThread([&]() {
+#endif
+    Vector<String> properties = {
+      "window_width", "window_height",
+      "window_min_width", "window_min_height",
+      "window_max_width", "window_max_height"
+    };
 
-  auto setDefaultValue = [&](String property) {
-    // for min values set 0
-    if (property.find("min") != -1) {
-      return "0";
-    // for other values set 100%
-    } else {
-      return "100%";
-    }
-  };
-
-  // Regular expression to match a float number or a percentage
-  std::regex validPattern("^\\d*\\.?\\d+%?$");
-
-  for (const auto& property : properties) {
-    if (app.appData[property].size() > 0) {
-      auto value = app.appData[property];
-      if (!std::regex_match(value, validPattern)) {
-        app.appData[property] = setDefaultValue(property);
-        debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.appData[property].c_str());
+    auto setDefaultValue = [&](String property) {
+      // for min values set 0
+      if (property.find("min") != -1) {
+        return "0";
+      // for other values set 100%
+      } else {
+        return "100%";
       }
-    // set default value if it's not set in socket.ini
-    } else {
-      app.appData[property] = setDefaultValue(property);
+    };
+
+    // Regular expression to match a float number or a percentage
+    std::regex validPattern("^\\d*\\.?\\d+%?$");
+
+    for (const auto& property : properties) {
+      if (app.userConfig[property].size() > 0) {
+        auto value = app.userConfig[property];
+        if (!std::regex_match(value, validPattern)) {
+          app.userConfig[property] = setDefaultValue(property);
+          debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.userConfig[property].c_str());
+        }
+      // set default value if it's not set in socket.ini
+      } else {
+        app.userConfig[property] = setDefaultValue(property);
+      }
     }
-  }
 
-  windowManager.configure(WindowManagerOptions {
-    .defaultHeight = app.appData["window_height"],
-    .defaultWidth = app.appData["window_width"],
-    .defaultMinWidth = app.appData["window_min_width"],
-    .defaultMinHeight = app.appData["window_min_height"],
-    .defaultMaxWidth = app.appData["window_max_width"],
-    .defaultMaxHeight = app.appData["window_max_height"],
-    .headless = isHeadless,
-    .isTest = isTest,
-    .argv = argvArray.str(),
-    .cwd = cwd,
-    .appData = app.appData,
-    .onMessage = onMessage,
-    .onExit = shutdownHandler
-  });
+    auto getProperty = [&](String property) {
+      if (userConfig.count(property) > 0) {
+        return userConfig[property];
+      }
 
-  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
-    .resizable = app.appData["window_resizable"] == "false" ? false : true,
-    .frameless = app.appData["window_frameless"] == "true" ? true : false,
-    .utility = app.appData["window_utility"] == "true" ? true : false,
-    .canExit = true,
-    .onExit = shutdownHandler
-  });
+      return String("");
+    };
 
-  defaultWindow->show(EMPTY_SEQ);
+    windowManager.configure(WindowManagerOptions {
+      .defaultHeight = getProperty("window_height"),
+      .defaultWidth = getProperty("window_width"),
+      .defaultMinWidth = getProperty("window_min_width"),
+      .defaultMinHeight = getProperty("window_min_height"),
+      .defaultMaxWidth = getProperty("window_max_width"),
+      .defaultMaxHeight = getProperty("window_max_height"),
+      .isTest = isTest,
+      .argv = argvArray.str(),
+      .cwd = cwd,
+      .userConfig = app.userConfig,
+      .onMessage = onMessage,
+      .onExit = shutdownHandler
+    });
 
-  if (_port > 0) {
-    defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
-    defaultWindow->setSystemMenu(EMPTY_SEQ, String(
-      "Developer Mode: \n"
-      "  Reload: r + CommandOrControl\n"
-      "  Quit: q + CommandOrControl\n"
-      ";"
-    ));
-  } else {
-    if (app.appData["webview_root"].size() != 0) {
-      defaultWindow->navigate(
+    auto isMaximizable = getProperty("window_maximizable");
+    auto isMinimizable = getProperty("window_minimizable");
+    auto isClosable = getProperty("window_closable");
+
+    auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
+      .resizable = getProperty("window_resizable") == "false" ? false : true,
+      .minimizable = (isMinimizable == "" || isMinimizable == "true") ? true : false,
+      .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
+      .closable = (isClosable == "" || isClosable == "true") ? true : false,
+      .frameless = getProperty("window_frameless") == "true" ? true : false,
+      .utility = userConfig["window_utility"] == "true" ? true : false,
+      .canExit = true,
+      .titleBarStyle = getProperty("window_titleBarStyle"),
+      .trafficLightPosition = getProperty("mac_trafficLightPosition"),
+      .userConfig = userConfig,
+      .onExit = shutdownHandler
+    });
+
+    if (
+      userConfig["webview_service_worker_mode"] != "hybrid" &&
+      userConfig["permissions_allow_service_worker"] != "false"
+    ) {
+      auto serviceWorkerUserConfig = userConfig;
+      serviceWorkerUserConfig["webview_watch_reload"] = "false";
+      auto serviceWorkerWindow = windowManager.createWindow({
+        .canExit = false,
+        .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
+        .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
+        .userConfig = serviceWorkerUserConfig,
+        .preloadCommonJS = false
+      });
+
+      app.core->serviceWorker.init(serviceWorkerWindow->bridge);
+      serviceWorkerWindow->show(EMPTY_SEQ);
+      serviceWorkerWindow->navigate(
         EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + app.appData["webview_root"]
+        "socket://" + userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
       );
-    } else {
-      defaultWindow->navigate(
-        EMPTY_SEQ,
-        "socket://" + app.appData["meta_bundle_identifier"] + "/index.html"
-      );
+    } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
+      app.core->serviceWorker.init(defaultWindow->bridge);
     }
-  }
+
+    defaultWindow->show(EMPTY_SEQ);
+
+    if (_port > 0) {
+      defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
+      defaultWindow->setSystemMenu(EMPTY_SEQ, String(
+        "Developer Mode: \n"
+        "  Reload: r + CommandOrControl\n"
+        "  Quit: q + CommandOrControl\n"
+        ";"
+      ));
+    } else {
+      if (app.userConfig["webview_root"].size() != 0) {
+        defaultWindow->navigate(
+          EMPTY_SEQ,
+          "socket://" + app.userConfig["meta_bundle_identifier"] + app.userConfig["webview_root"]
+        );
+      } else {
+        defaultWindow->navigate(
+          EMPTY_SEQ,
+          "socket://" + app.userConfig["meta_bundle_identifier"] + "/index.html"
+        );
+      }
+    }
+
+    if (isReadingStdin) {
+      String value;
+      Thread t([&] () {
+        do {
+          if (value.size() == 0) {
+            std::cin >> value;
+          }
+
+          if (value.size() > 0) {
+            defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
+            value.clear();
+          }
+        } while (true);
+      });
+
+      std::cin >> value;
+      t.detach();
+    }
+
+    //
+    // # Event Loop
+    // start the platform specific event loop for the main
+    // thread and run it until it returns a non-zero int.
+    //
+    while (app.run() == 0);
+#if defined(__linux__)
+  });
+#endif
 
   //
   // If this is being run in a terminal/multiplexer
   //
-  #ifndef _WIN32
-    signal(SIGHUP, signalHandler);
-  #endif
+#ifndef _WIN32
+  installSignalHandler(SIGHUP, signalHandler);
+#endif
 
-  signal(SIGINT, signalHandler);
-  signal(SIGTERM, signalHandler);
+#if defined(SIGUSR1)
+  installSignalHandler(SIGUSR1, signalHandler);
+#endif
 
-  if (isReadingStdin) {
-    std::string value;
-    std::thread t([&]() {
-      do {
-        if (value.size() == 0) {
-          std::cin >> value;
-        }
+  installSignalHandler(SIGINT, signalHandler);
+  installSignalHandler(SIGTERM, signalHandler);
 
-        if (value.size() > 0 && defaultWindow->bridge->router.isReady) {
-          defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
-          value.clear();
-        }
-      } while (true);
-    });
+  const auto signalsDisabled = userConfig["application_signals"] == "false";
+  const auto signals = parseStringList(userConfig["application_signals"]);
 
-    std::cin >> value;
-    t.detach();
-  }
+#define SET_DEFAULT_WINDOW_SIGNAL_HANDLER(sig) {                               \
+  const auto name = String(CONVERT_TO_STRING(sig));                            \
+  if (                                                                         \
+    !signalsDisabled ||                                                        \
+    std::find(signals.begin(), signals.end(), name) != signals.end()           \
+  ) {                                                                          \
+    installSignalHandler(sig, defaultWindowSignalHandler);                      \
+  }                                                                            \
+}
 
-  //
-  // # Event Loop
-  // start the platform specific event loop for the main
-  // thread and run it until it returns a non-zero int.
-  //
-  while (app.run() == 0);
+#if defined(SIGQUIT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGQUIT)
+#endif
+#if defined(SIGILL)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGILL)
+#endif
+#if defined(SIGTRAP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTRAP)
+#endif
+#if defined(SIGABRT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGABRT)
+#endif
+#if defined(SIGIOT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGIOT)
+#endif
+#if defined(SIGBUS)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGBUS)
+#endif
+#if defined(SIGFPE)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGFPE)
+#endif
+#if defined(SIGKILL)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGKILL)
+#endif
+#if defined(SIGUSR2)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGUSR2)
+#endif
+#if defined(SIGPIPE)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGPIPE)
+#endif
+#if defined(SIGALRM)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGALRM)
+#endif
+#if defined(SIGCHLD)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGCHLD)
+#endif
+#if defined(SIGCONT)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGCONT)
+#endif
+#if defined(SIGSTOP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSTOP)
+#endif
+#if defined(SIGTSTP)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTSTP)
+#endif
+#if defined(SIGTTIN)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTTIN)
+#endif
+#if defined(SIGTTOU)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGTTOU)
+#endif
+#if defined(SIGURG)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGURG)
+#endif
+#if defined(SIGXCPU)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGXCPU)
+#endif
+#if defined(SIGXFSZ)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGXFSZ)
+#endif
+#if defined(SIGVTALRM)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGVTALRM)
+#endif
+#if defined(SIGPROF)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGPROF)
+#endif
+#if defined(SIGWINCH)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGWINCH)
+#endif
+#if defined(SIGIO)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGIO)
+#endif
+#if defined(SIGINFO)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGINFO)
+#endif
+#if defined(SIGSYS)
+  SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
+#endif
 
 #if defined(__linux__)
+  if (mainThread.joinable()) {
+    mainThread.join();
+  }
+
   dbus_connection_unref(connection);
 #endif
 

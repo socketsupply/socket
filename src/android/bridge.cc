@@ -3,7 +3,14 @@
 using namespace SSC::android;
 
 static auto onInternalRouteResponseSignature =
-  "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)V";
+  "("
+  "J" // requestId
+  "Ljava/lang/String;" // seq
+  "Ljava/lang/String;" // source
+  "Ljava/lang/String;" // value
+  "Ljava/lang/String;" // headers
+  "[B" // bytes
+  ")V";
 
 namespace SSC::android {
   Bridge::Bridge (JNIEnv* env, jobject self, Runtime* runtime)
@@ -218,5 +225,20 @@ extern "C" {
     auto data = StringWrap(env, eventDataString);
 
     return bridge->router.emit(event.str(), data.str());
+  }
+
+  jstring external(Bridge, getAllowedNodeCoreModulesList)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto bridge = Bridge::from(env, self);
+
+    if (bridge == nullptr) {
+      Throw(env, BridgeNotInitializedException);
+      return nullptr;
+    }
+
+    static const auto list = SSC::join(bridge->getAllowedNodeCoreModules(), ",");
+    return env->NewStringUTF(list.c_str());
   }
 }

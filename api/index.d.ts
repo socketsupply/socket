@@ -1,318 +1,20 @@
-declare module "socket:errors" {
-    export default exports;
-    export const ABORT_ERR: any;
-    export const ENCODING_ERR: any;
-    export const INVALID_ACCESS_ERR: any;
-    export const INDEX_SIZE_ERR: any;
-    export const NETWORK_ERR: any;
-    export const NOT_ALLOWED_ERR: any;
-    export const NOT_FOUND_ERR: any;
-    export const NOT_SUPPORTED_ERR: any;
-    export const OPERATION_ERR: any;
-    export const SECURITY_ERR: any;
-    export const TIMEOUT_ERR: any;
-    /**
-     * An `AbortError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `AbortSignal` instance.
-     */
-    export class AbortError extends Error {
-        /**
-         * The code given to an `ABORT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `AbortError` class constructor.
-         * @param {AbortSignal|string} reasonOrSignal
-         * @param {AbortSignal=} [signal]
-         */
-        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
-        signal: AbortSignal;
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `BadRequestSignal` instance.
-     */
-    export class BadRequestError extends Error {
-        /**
-         * The default code given to a `BadRequestError`
-         */
-        static get code(): number;
-        /**
-         * `BadRequestError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `EncodingError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class EncodingError extends Error {
-        /**
-         * The code given to an `ENCODING_ERR` `DOMException`.
-         */
-        static get code(): any;
-        /**
-         * `EncodingError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class FinalizationRegistryCallbackError extends Error {
-        /**
-         * The default code given to an `FinalizationRegistryCallbackError`
-         */
-        static get code(): number;
-        /**
-         * `FinalizationRegistryCallbackError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IllegalConstructorError` is an error type thrown when a constructor is
-     * called for a class constructor when it shouldn't be.
-     */
-    export class IllegalConstructorError extends TypeError {
-        /**
-         * The default code given to an `IllegalConstructorError`
-         */
-        static get code(): number;
-        /**
-         * `IllegalConstructorError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IndexSizeError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class IndexSizeError extends Error {
-        /**
-         * The code given to an `INDEX_SIZE_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `IndexSizeError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    export const kInternalErrorCode: unique symbol;
-    /**
-     * An `InternalError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InternalError extends Error {
-        /**
-         * The default code given to an `InternalError`
-         */
-        static get code(): number;
-        /**
-         * `InternalError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, code?: number, ...args: any[]);
-        get name(): string;
-        /**
-         * @param {number|string}
-         */
-        set code(code: string | number);
-        /**
-         * @type {number|string}
-         */
-        get code(): string | number;
-        [exports.kInternalErrorCode]: number;
-    }
-    /**
-     * An `InvalidAccessError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InvalidAccessError extends Error {
-        /**
-         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `InvalidAccessError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NetworkError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NetworkError extends Error {
-        /**
-         * The code given to an `NETWORK_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NetworkError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotAllowedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotAllowedError extends Error {
-        /**
-         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotAllowedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotFoundError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotFoundError extends Error {
-        /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotFoundError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotSupportedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotSupportedError extends Error {
-        /**
-         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotSupportedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `ModuleNotFoundError` is an error type thrown when an imported or
-     * required module is not found.
-     */
-    export class ModuleNotFoundError extends exports.NotFoundError {
-        /**
-         * `ModuleNotFoundError` class constructor.
-         * @param {string} message
-         */
-        constructor(message: string, requireStack: any);
-        requireStack: any;
-    }
-    /**
-     * An `OperationError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class OperationError extends Error {
-        /**
-         * The code given to an `OPERATION_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `OperationError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `SecurityError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class SecurityError extends Error {
-        /**
-         * The code given to an `SECURITY_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `SecurityError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `TimeoutError` is an error type thrown when an operation timesout.
-     */
-    export class TimeoutError extends Error {
-        /**
-         * The code given to an `TIMEOUT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `TimeoutError` class constructor.
-         * @param {string} message
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    import * as exports from "socket:errors";
-    
-}
+
 declare module "socket:buffer" {
     export default Buffer;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    };
+    export const Blob: {
+        new (blobParts?: BlobPart[], options?: BlobPropertyBag): Blob;
+        prototype: Blob;
+    };
+    export namespace constants {
+        export { kMaxLength as MAX_LENGTH };
+        export { kMaxLength as MAX_STRING_LENGTH };
+    }
+    export const btoa: any;
+    export const atob: any;
     /**
      * The Buffer constructor returns instances of `Uint8Array` that have their
      * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
@@ -454,187 +156,12 @@ declare module "socket:buffer" {
         export function concat(list: any, length: any): Uint8Array;
         export { byteLength };
     }
+    export const kMaxLength: 2147483647;
     export function SlowBuffer(length: any): Uint8Array;
     export const INSPECT_MAX_BYTES: 50;
-    export const kMaxLength: 2147483647;
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
-declare module "socket:url/urlpattern/urlpattern" {
-    export { me as URLPattern };
-    var me: {
-        new (t: {}, r: any, n: any): {
-            "__#2@#i": any;
-            "__#2@#n": {};
-            "__#2@#t": {};
-            "__#2@#e": {};
-            "__#2@#s": {};
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-}
-declare module "socket:url/url/url" {
-    const _default: any;
-    export default _default;
-}
-declare module "socket:url/index" {
-    export function resolve(from: any, to: any): any;
-    export const parse: any;
-    export default URL;
-    export const URL: any;
-    import { URLPattern } from "socket:url/urlpattern/urlpattern";
-    export const URLSearchParams: any;
-    export const parseURL: any;
-    export { URLPattern };
-}
-declare module "socket:url" {
-    export * from "socket:url/index";
-    export default URL;
-    import URL from "socket:url/index";
-}
-declare module "socket:util" {
-    export function hasOwnProperty(object: any, property: any): any;
-    export function isTypedArray(object: any): boolean;
-    export function isArrayLike(object: any): boolean;
-    export function isArrayBufferView(buf: any): boolean;
-    export function isAsyncFunction(object: any): boolean;
-    export function isArgumentsObject(object: any): boolean;
-    export function isEmptyObject(object: any): boolean;
-    export function isObject(object: any): boolean;
-    export function isPlainObject(object: any): boolean;
-    export function isArrayBuffer(object: any): boolean;
-    export function isBufferLike(object: any): boolean;
-    export function isFunction(value: any): boolean;
-    export function isErrorLike(error: any): boolean;
-    export function isClass(value: any): boolean;
-    export function isPromiseLike(object: any): boolean;
-    export function toString(object: any): string;
-    export function toBuffer(object: any, encoding?: any): any;
-    export function toProperCase(string: any): any;
-    export function splitBuffer(buffer: any, highWaterMark: any): any[];
-    export function InvertedPromise(): Promise<any>;
-    export function clamp(value: any, min: any, max: any): number;
-    export function promisify(original: any): any;
-    export function inspect(value: any, options: any): any;
-    export namespace inspect {
-        let custom: symbol;
-        let ignore: symbol;
-    }
-    export function format(format: any, ...args: any[]): string;
-    export function parseJSON(string: any): any;
-    export function parseHeaders(headers: any): string[][];
-    export function noop(): void;
-    export function isValidPercentageValue(input: any): boolean;
-    export function compareBuffers(a: any, b: any): any;
-    export class IllegalConstructor {
-    }
-    export default exports;
-    import * as exports from "socket:util";
-    
-}
-declare module "socket:window/constants" {
-    export const WINDOW_ERROR: -1;
-    export const WINDOW_NONE: 0;
-    export const WINDOW_CREATING: 10;
-    export const WINDOW_CREATED: 11;
-    export const WINDOW_HIDING: 20;
-    export const WINDOW_HIDDEN: 21;
-    export const WINDOW_SHOWING: 30;
-    export const WINDOW_SHOWN: 31;
-    export const WINDOW_CLOSING: 40;
-    export const WINDOW_CLOSED: 41;
-    export const WINDOW_EXITING: 50;
-    export const WINDOW_EXITED: 51;
-    export const WINDOW_KILLING: 60;
-    export const WINDOW_KILLED: 61;
-    export * as _default from "socket:window/constants";
-    
-}
-declare module "socket:location" {
-    export function toString(): string;
-    export const globalLocation: Location | {
-        origin: string;
-        host: string;
-        hostname: string;
-        pathname: string;
-        href: string;
-    };
-    export const href: string;
-    export const protocol: "socket:";
-    export const hostname: string;
-    export const host: string;
-    export const search: string;
-    export const hash: string;
-    export const pathname: string;
-    export const origin: string;
-    namespace _default {
-        export { origin };
-        export { href };
-        export { protocol };
-        export { hostname };
-        export { host };
-        export { search };
-        export { pathname };
-        export { toString };
-    }
-    export default _default;
-}
-declare module "socket:console" {
-    export function patchGlobalConsole(globalConsole: any, options?: {}): any;
-    export const globalConsole: globalThis.Console;
-    export class Console {
-        /**
-         * @ignore
-         */
-        constructor(options: any);
-        /**
-         * @type {import('dom').Console}
-         */
-        console: any;
-        /**
-         * @type {Map}
-         */
-        timers: Map<any, any>;
-        /**
-         * @type {Map}
-         */
-        counters: Map<any, any>;
-        /**
-         * @type {function?}
-         */
-        postMessage: Function | null;
-        write(destination: any, ...args: any[]): Promise<any>;
-        assert(assertion: any, ...args: any[]): void;
-        clear(): void;
-        count(label?: string): void;
-        countReset(label?: string): void;
-        debug(...args: any[]): void;
-        dir(...args: any[]): void;
-        dirxml(...args: any[]): void;
-        error(...args: any[]): void;
-        info(...args: any[]): void;
-        log(...args: any[]): void;
-        table(...args: any[]): any;
-        time(label?: string): void;
-        timeEnd(label?: string): void;
-        timeLog(label?: string): void;
-        trace(...objects: any[]): void;
-        warn(...args: any[]): void;
-    }
-    const _default: Console;
-    export default _default;
-}
+
 declare module "socket:events" {
     export const Event: {
         new (type: string, eventInitDict?: EventInit): Event;
@@ -654,7 +181,7 @@ declare module "socket:events" {
         prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#3@#detail": any;
+            "__#1@#detail": any;
             readonly detail: any;
         };
     };
@@ -663,8 +190,8 @@ declare module "socket:events" {
         prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#4@#detail": any;
-            "__#4@#data": any;
+            "__#2@#detail": any;
+            "__#2@#data": any;
             readonly detail: any;
             readonly data: any;
         };
@@ -674,8 +201,8 @@ declare module "socket:events" {
         prototype: ErrorEvent;
     } | {
         new (type: any, options: any): {
-            "__#5@#detail": any;
-            "__#5@#error": any;
+            "__#3@#detail": any;
+            "__#3@#error": any;
             readonly detail: any;
             readonly error: any;
         };
@@ -713,620 +240,341 @@ declare module "socket:events" {
     import * as exports from "socket:events";
     
 }
-declare module "socket:os" {
+
+declare module "socket:async/context" {
     /**
-     * Returns the operating system CPU architecture for which Socket was compiled.
-     * @returns {string} - 'arm64', 'ia32', 'x64', or 'unknown'
+     * @module AsyncContext
+     *
+     * Async Context for JavaScript based on the TC39 proposal.
+     *
+     * Example usage:
+     * ```js
+     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
+     * import AsyncContext from 'socket:async/context'
+     *
+     * const var = new AsyncContext.Variable()
+     * var.run('top', () => {
+     *   console.log(var.get()) // 'top'
+     *   queueMicrotask(() => {
+     *     var.run('nested', () => {
+     *       console.log(var.get()) // 'nested'
+     *     })
+     *   })
+     * })
+     * ```
+     *
+     * @see {@link https://tc39.es/proposal-async-context}
+     * @see {@link https://github.com/tc39/proposal-async-context}
      */
-    export function arch(): string;
     /**
-     * Returns an array of objects containing information about each CPU/core.
-     * @returns {Array<object>} cpus - An array of objects containing information about each CPU/core.
-     * The properties of the objects are:
-     * - model `<string>` - CPU model name.
-     * - speed `<number>` - CPU clock speed (in MHz).
-     * - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
-     *   - user `<number>` - Time spent by this CPU or core in user mode.
-     *   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
-     *   - sys `<number>` - Time spent by this CPU or core in system mode.
-     *   - idle `<number>` - Time spent by this CPU or core in idle mode.
-     *   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
-     * @see {@link https://nodejs.org/api/os.html#os_os_cpus}
+     * @template T
+     * @typedef {{
+     *   name?: string,
+     *   defaultValue?: T
+     * }} VariableOptions
      */
-    export function cpus(): Array<object>;
     /**
-     * Returns an object containing network interfaces that have been assigned a network address.
-     * @returns {object}  - An object containing network interfaces that have been assigned a network address.
-     * Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
-     * The properties available on the assigned network address object include:
-     * - address `<string>` - The assigned IPv4 or IPv6 address.
-     * - netmask `<string>` - The IPv4 or IPv6 network mask.
-     * - family `<string>` - The address family ('IPv4' or 'IPv6').
-     * - mac `<string>` - The MAC address of the network interface.
-     * - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
-     * - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
-     * - cidr `<string>` - The CIDR notation of the interface.
-     * @see {@link https://nodejs.org/api/os.html#os_os_networkinterfaces}
+     * @callback AnyFunc
+     * @template T
+     * @this T
+     * @param {...any} args
+     * @returns {any}
      */
-    export function networkInterfaces(): object;
     /**
-     * Returns the operating system platform.
-     * @returns {string} - 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown'
-     * @see {@link https://nodejs.org/api/os.html#os_os_platform}
-     * The returned value is equivalent to `process.platform`.
+     * `FrozenRevert` holds a frozen Mapping that will be simply restored
+     * when the revert is run.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
      */
-    export function platform(): string;
-    /**
-     * Returns the operating system name.
-     * @returns {string} - 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown'
-     * @see {@link https://nodejs.org/api/os.html#os_os_type}
-     */
-    export function type(): string;
-    /**
-     * @returns {boolean} - `true` if the operating system is Windows.
-     */
-    export function isWindows(): boolean;
-    /**
-     * @returns {string} - The operating system's default directory for temporary files.
-     */
-    export function tmpdir(): string;
-    /**
-     * Get resource usage.
-     */
-    export function rusage(): any;
-    /**
-     * Returns the system uptime in seconds.
-     * @returns {number} - The system uptime in seconds.
-     */
-    export function uptime(): number;
-    /**
-     * Returns the operating system name.
-     * @returns {string} - The operating system name.
-     */
-    export function uname(): string;
-    /**
-     * It's implemented in process.hrtime.bigint()
-     * @ignore
-     */
-    export function hrtime(): any;
-    /**
-     * Node.js doesn't have this method.
-     * @ignore
-     */
-    export function availableMemory(): any;
-    /**
-     * The host operating system. This value can be one of:
-     * - android
-     * - android-emulator
-     * - iphoneos
-     * - iphone-simulator
-     * - linux
-     * - macosx
-     * - unix
-     * - unknown
-     * - win32
-     * @ignore
-     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
-     */
-    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
-    /**
-     * @type {string}
-     * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
-     */
-    export const EOL: string;
-    export default exports;
-    import * as exports from "socket:os";
-    
-}
-declare module "socket:process" {
-    /**
-     * Adds callback to the 'nextTick' queue.
-     * @param {Function} callback
-     */
-    export function nextTick(callback: Function): void;
-    /**
-     * @returns {string} The home directory of the current user.
-     */
-    export function homedir(): string;
-    /**
-     * Computed high resolution time as a `BigInt`.
-     * @param {Array<number>?} [time]
-     * @return {bigint}
-     */
-    export function hrtime(time?: Array<number> | null): bigint;
-    export namespace hrtime {
-        function bigint(): any;
+    export class FrozenRevert {
+        /**
+         * `FrozenRevert` class constructor.
+         * @param {Mapping} mapping
+         */
+        constructor(mapping: Mapping);
+        /**
+         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
+         * called by `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping=} [unused]
+         * @return {Mapping}
+         */
+        restore(unused?: Mapping | undefined): Mapping;
+        #private;
     }
     /**
-     * @param {number=} [code=0] - The exit code. Default: 0.
+     * Revert holds the state on how to revert a change to the
+     * `AsyncContext.Storage` current `Mapping`
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     * @template T
      */
-    export function exit(code?: number | undefined): Promise<void>;
-    /**
-     * Returns an object describing the memory usage of the Node.js process measured in bytes.
-     * @returns {Object}
-     */
-    export function memoryUsage(): any;
-    export namespace memoryUsage {
-        function rss(): any;
+    export class Revert<T> {
+        /**
+         * `Revert` class constructor.
+         * @param {Mapping} mapping
+         * @param {Variable<T>} key
+         */
+        constructor(mapping: Mapping, key: Variable<T>);
+        /**
+         * @type {T|undefined}
+         */
+        get previousVariable(): T;
+        /**
+         * Restores a mapping from this `Revert`. This function is called by
+         * `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping} current
+         * @return {Mapping}
+         */
+        restore(current: Mapping): Mapping;
+        #private;
     }
-    export default process;
-    const process: any;
-}
-declare module "socket:path/path" {
     /**
-     * The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
-     * @param {strig} ...paths
-     * @returns {string}
-     * @see {@link https://nodejs.org/api/path.html#path_path_resolve_paths}
+     * A container for all `AsyncContext.Variable` instances and snapshot state.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
      */
-    export function resolve(options: any, ...components: any[]): string;
-    /**
-     * Computes current working directory for a path
-     * @param {object=} [opts]
-     * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
-     * @return {string}
-     */
-    export function cwd(opts?: object | undefined): string;
-    /**
-     * Computed location origin. Defaults to `socket:///` if not available.
-     * @return {string}
-     */
-    export function origin(): string;
-    /**
-     * Computes the relative path from `from` to `to`.
-     * @param {object} options
-     * @param {PathComponent} from
-     * @param {PathComponent} to
-     * @return {string}
-     */
-    export function relative(options: object, from: PathComponent, to: PathComponent): string;
-    /**
-     * Joins path components. This function may not return an absolute path.
-     * @param {object} options
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function join(options: object, ...components: PathComponent[]): string;
-    /**
-     * Computes directory name of path.
-     * @param {object} options
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function dirname(options: object, path: any): string;
-    /**
-     * Computes base name of path.
-     * @param {object} options
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function basename(options: object, path: any): string;
-    /**
-     * Computes extension name of path.
-     * @param {object} options
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function extname(options: object, path: PathComponent): string;
-    /**
-     * Computes normalized path
-     * @param {object} options
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function normalize(options: object, path: PathComponent): string;
-    /**
-     * Formats `Path` object into a string.
-     * @param {object} options
-     * @param {object|Path} path
-     * @return {string}
-     */
-    export function format(options: object, path: object | Path): string;
-    /**
-     * Parses input `path` into a `Path` instance.
-     * @param {PathComponent} path
-     * @return {object}
-     */
-    export function parse(path: PathComponent): object;
-    /**
-     * @typedef {(string|Path|URL|{ pathname: string }|{ url: string)} PathComponent
-     */
-    /**
-     * A container for a parsed Path.
-     */
-    export class Path {
+    export class Mapping {
         /**
-         * Creates a `Path` instance from `input` and optional `cwd`.
-         * @param {PathComponent} input
-         * @param {string} [cwd]
+         * `Mapping` class constructor.
+         * @param {Map<Variable<any>, any>} data
          */
-        static from(input: PathComponent, cwd?: string): any;
+        constructor(data: Map<Variable<any>, any>);
         /**
-         * `Path` class constructor.
-         * @protected
-         * @param {string} pathname
-         * @param {string} [cwd = Path.cwd()]
+         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
+         * `set()` and `delete()`.
          */
-        protected constructor();
-        pattern: {
-            "__#2@#i": any;
-            "__#2@#n": {};
-            "__#2@#t": {};
-            "__#2@#e": {};
-            "__#2@#s": {};
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-        };
-        url: any;
-        get pathname(): any;
-        get protocol(): any;
-        get href(): any;
+        freeze(): void;
         /**
-         * `true` if the path is relative, otherwise `false.
-         * @type {boolean}
+         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
+         * @return {boolean}
          */
-        get isRelative(): boolean;
+        isFrozen(): boolean;
         /**
-         * The working value of this path.
+         * Optionally returns a new `Mapping` if the current one is "frozen",
+         * otherwise it just returns the current instance.
+         * @return {Mapping}
          */
-        get value(): any;
+        fork(): Mapping;
         /**
-         * The original source, unresolved.
-         * @type {string}
+         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
          */
-        get source(): string;
+        has<T>(key: Variable<T>): boolean;
         /**
-         * Computed parent path.
-         * @type {string}
+         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
+         * returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
          */
-        get parent(): string;
+        get<T_1>(key: Variable<T_1>): boolean;
         /**
-         * Computed root in path.
-         * @type {string}
+         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
+         * then a "forked" (new) instance with the value set on it is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
          */
-        get root(): string;
+        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
         /**
-         * Computed directory name in path.
-         * @type {string}
+         * Delete  an `AsyncContext.Variable` value at `key`.
+         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
          */
-        get dir(): string;
+        delete<T_3>(key: Variable<T_3>): Mapping;
+        #private;
+    }
+    /**
+     * A container of all `AsyncContext.Variable` data.
+     * @ignore
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
+     */
+    export class Storage {
         /**
-         * Computed base name in path.
-         * @type {string}
+         * The current `Mapping` for this `AsyncContext`.
+         * @type {Mapping}
          */
-        get base(): string;
+        static "__#7@#current": Mapping;
         /**
-         * Computed base name in path without path extension.
+         * Returns `true` if the current `Mapping` has a
+         * `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        static has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
+         * If not set, this function returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {T|undefined}
+         */
+        static get<T_1>(key: Variable<T_1>): T_1;
+        /**
+         * Set updates the `AsyncContext.Variable` with a new value and returns a
+         * revert action that allows the modification to be reversed in the future.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Revert<T>|FrozenRevert}
+         */
+        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
+        /**
+         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
+         * or `Revert` which can restore the storage state to the state at
+         * the time of the snapshot.
+         * @template T
+         * @return {FrozenRevert}
+         */
+        static snapshot<T_3>(): FrozenRevert;
+        /**
+         * Restores the storage `Mapping` state to state at the time the
+         * "revert" (`FrozenRevert` or `Revert`) was created.
+         * @template T
+         * @param {Revert<T>|FrozenRevert} revert
+         */
+        static restore<T_4>(revert: FrozenRevert | Revert<T_4>): void;
+        /**
+         * Switches storage `Mapping` state to the state at the time of a
+         * "snapshot".
+         * @param {FrozenRevert} snapshot
+         * @return {FrozenRevert}
+         */
+        static switch(snapshot: FrozenRevert): FrozenRevert;
+    }
+    /**
+     * `AsyncContext.Variable` is a container for a value that is associated with
+     * the current execution flow. The value is propagated through async execution
+     * flows, and can be snapshot and restored with Snapshot.
+     * @template T
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+     */
+    export class Variable<T> {
+        /**
+         * `Variable` class constructor.
+         * @param {VariableOptions<T>=} [options]
+         */
+        constructor(options?: VariableOptions<T> | undefined);
+        set defaultValue(defaultValue: T);
+        /**
+         * @ignore
+         */
+        get defaultValue(): T;
+        /**
+         * @ignore
+         */
+        get revert(): FrozenRevert | Revert<T>;
+        /**
+         * The name of this async context variable.
          * @type {string}
          */
         get name(): string;
         /**
-         * Computed extension name in path.
-         * @type {string}
+         * Executes a function `fn` with specified arguments,
+         * setting a new value to the current context before the call,
+         * and ensuring the environment is reverted back afterwards.
+         * The function allows for the modification of a specific context's
+         * state in a controlled manner, ensuring that any changes can be undone.
+         * @template T, F extends AnyFunc<null>
+         * @param {T} value
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
          */
-        get ext(): string;
+        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
         /**
-         * The computed drive, if given in the path.
-         * @type {string?}
+         * Get the `AsyncContext.Variable` value.
+         * @template T
+         * @return {T|undefined}
          */
-        get drive(): string;
-        /**
-         * @return {URL}
-         */
-        toURL(): URL;
-        /**
-         * Converts this `Path` instance to a string.
-         * @return {string}
-         */
-        toString(): string;
-        /**
-         * @ignore
-         */
-        inspect(): {
-            root: string;
-            dir: string;
-            base: string;
-            ext: string;
-            name: string;
-        };
-        /**
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
+        get<T_2>(): T_2;
         #private;
     }
-    export default Path;
-    export type PathComponent = (string | Path | URL | {
-        pathname: string;
-    } | {
-        url: string;
-    });
-    import { URL } from "socket:url/index";
-}
-declare module "socket:path/well-known" {
     /**
-     * Well known path to the user's "Downloads" folder.
-     * @type {?string}
+     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+     * all `AsyncContext.Variable` instances and execute a function at a later time
+     * as if those values were still the current values (a snapshot and restore).
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
      */
-    export const DOWNLOADS: string | null;
-    /**
-     * Well known path to the user's "Documents" folder.
-     * @type {?string}
-     */
-    export const DOCUMENTS: string | null;
-    /**
-     * Well known path to the user's "Pictures" folder.
-     * @type {?string}
-     */
-    export const PICTURES: string | null;
-    /**
-     * Well known path to the user's "Desktop" folder.
-     * @type {?string}
-     */
-    export const DESKTOP: string | null;
-    /**
-     * Well known path to the user's "Videos" folder.
-     * @type {?string}
-     */
-    export const VIDEOS: string | null;
-    /**
-     * Well known path to the user's "Music" folder.
-     * @type {?string}
-     */
-    export const MUSIC: string | null;
-    /**
-     * Well known path to the application's "resources" folder.
-     * @type {?string}
-     */
-    export const RESOURCES: string | null;
-    /**
-     * Well known path to the application's "home" folder.
-     * This may be the user's HOME directory or the application container sandbox.
-     * @type {?string}
-     */
-    export const HOME: string | null;
-    namespace _default {
-        export { DOWNLOADS };
-        export { DOCUMENTS };
-        export { RESOURCES };
-        export { PICTURES };
-        export { DESKTOP };
-        export { VIDEOS };
-        export { MUSIC };
-        export { HOME };
+    export class Snapshot {
+        /**
+         * Wraps a given function `fn` with additional logic to take a snapshot of
+         * `Storage` before invoking `fn`. Returns a new function with the same
+         * signature as `fn` that when called, will invoke `fn` with the current
+         * `this` context and provided arguments, after restoring the `Storage`
+         * snapshot.
+         *
+         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
+         * of all Variables and returns a wrapped function. When invoked, this
+         * wrapped function restores the state of all Variables and executes the
+         * inner function.
+         *
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
+         *
+         * @template F
+         * @param {F} fn
+         * @returns {F}
+         */
+        static wrap<F_1>(fn: F_1): F_1;
+        /**
+         * Runs the given function `fn` with arguments `args`, using a `null`
+         * context and the current snapshot.
+         *
+         * @template F extends AnyFunc<null>
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        #private;
     }
-    export default _default;
-}
-declare module "socket:path/win32" {
     /**
-     * Computes current working directory for a path
-     * @param {string}
+     * `AsyncContext` container.
      */
-    export function cwd(): any;
-    /**
-     * Resolves path components to an absolute path.
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function resolve(...components: PathComponent[]): string;
-    /**
-     * Joins path components. This function may not return an absolute path.
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function join(...components: PathComponent[]): string;
-    /**
-     * Computes directory name of path.
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function dirname(path: PathComponent): string;
-    /**
-     * Computes base name of path.
-     * @param {PathComponent} path
-     * @param {string} suffix
-     * @return {string}
-     */
-    export function basename(path: PathComponent, suffix: string): string;
-    /**
-     * Computes extension name of path.
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function extname(path: PathComponent): string;
-    /**
-     * Predicate helper to determine if path is absolute.
-     * @param {PathComponent} path
-     * @return {boolean}
-     */
-    export function isAbsolute(path: PathComponent): boolean;
-    /**
-     * Parses input `path` into a `Path` instance.
-     * @param {PathComponent} path
-     * @return {Path}
-     */
-    export function parse(path: PathComponent): Path;
-    /**
-     * Formats `Path` object into a string.
-     * @param {object|Path} path
-     * @return {string}
-     */
-    export function format(path: object | Path): string;
-    /**
-     * Normalizes `path` resolving `..` and `.\` preserving trailing
-     * slashes.
-     * @param {string} path
-     */
-    export function normalize(path: string): any;
-    /**
-     * Computes the relative path from `from` to `to`.
-     * @param {string} from
-     * @param {string} to
-     * @return {string}
-     */
-    export function relative(from: string, to: string): string;
-    export default exports;
-    export namespace win32 {
-        let sep: "\\";
-        let delimiter: ";";
+    export class AsyncContext {
+        /**
+         * `AsyncContext.Variable` is a container for a value that is associated with
+         * the current execution flow. The value is propagated through async execution
+         * flows, and can be snapshot and restored with Snapshot.
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+         * @type {typeof Variable}
+         */
+        static Variable: typeof Variable;
+        /**
+         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+         * all `AsyncContext.Variable` instances and execute a function at a later time
+         * as if those values were still the current values (a snapshot and restore).
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
     }
-    export type PathComponent = import("socket:path/path").PathComponent;
-    import { Path } from "socket:path/path";
-    import * as posix from "socket:path/posix";
-    import { RESOURCES } from "socket:path/well-known";
-    import { DOWNLOADS } from "socket:path/well-known";
-    import { DOCUMENTS } from "socket:path/well-known";
-    import { PICTURES } from "socket:path/well-known";
-    import { DESKTOP } from "socket:path/well-known";
-    import { VIDEOS } from "socket:path/well-known";
-    import { MUSIC } from "socket:path/well-known";
-    import * as exports from "socket:path/win32";
-    
-    export { posix, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+    export default AsyncContext;
+    export type VariableOptions<T> = {
+        name?: string;
+        defaultValue?: T;
+    };
+    export type AnyFunc = () => any;
 }
-declare module "socket:path/posix" {
-    /**
-     * Computes current working directory for a path
-     * @param {string}
-     * @return {string}
-     */
-    export function cwd(): string;
-    /**
-     * Resolves path components to an absolute path.
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function resolve(...components: PathComponent[]): string;
-    /**
-     * Joins path components. This function may not return an absolute path.
-     * @param {...PathComponent} components
-     * @return {string}
-     */
-    export function join(...components: PathComponent[]): string;
-    /**
-     * Computes directory name of path.
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function dirname(path: PathComponent): string;
-    /**
-     * Computes base name of path.
-     * @param {PathComponent} path
-     * @param {string} suffix
-     * @return {string}
-     */
-    export function basename(path: PathComponent, suffix: string): string;
-    /**
-     * Computes extension name of path.
-     * @param {PathComponent} path
-     * @return {string}
-     */
-    export function extname(path: PathComponent): string;
-    /**
-     * Predicate helper to determine if path is absolute.
-     * @param {PathComponent} path
-     * @return {boolean}
-     */
-    export function isAbsolute(path: PathComponent): boolean;
-    /**
-     * Parses input `path` into a `Path` instance.
-     * @param {PathComponent} path
-     * @return {Path}
-     */
-    export function parse(path: PathComponent): Path;
-    /**
-     * Formats `Path` object into a string.
-     * @param {object|Path} path
-     * @return {string}
-     */
-    export function format(path: object | Path): string;
-    /**
-     * Normalizes `path` resolving `..` and `./` preserving trailing
-     * slashes.
-     * @param {string} path
-     */
-    export function normalize(path: string): any;
-    /**
-     * Computes the relative path from `from` to `to`.
-     * @param {string} from
-     * @param {string} to
-     * @return {string}
-     */
-    export function relative(from: string, to: string): string;
-    export default exports;
-    export namespace posix {
-        let sep: "/";
-        let delimiter: ":";
-    }
-    export type PathComponent = import("socket:path/path").PathComponent;
-    import { Path } from "socket:path/path";
-    import * as win32 from "socket:path/win32";
-    import { RESOURCES } from "socket:path/well-known";
-    import { DOWNLOADS } from "socket:path/well-known";
-    import { DOCUMENTS } from "socket:path/well-known";
-    import { PICTURES } from "socket:path/well-known";
-    import { DESKTOP } from "socket:path/well-known";
-    import { VIDEOS } from "socket:path/well-known";
-    import { MUSIC } from "socket:path/well-known";
-    import * as exports from "socket:path/posix";
-    
-    export { win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC };
+
+declare module "socket:async/wrap" {
+    export function isTagged(fn: any): boolean;
+    export function tag(fn: any): any;
+    export function wrap(fn: any): any;
+    export const symbol: unique symbol;
+    export default wrap;
 }
-declare module "socket:path/index" {
-    export * as _default from "socket:path/index";
-    
-    import * as posix from "socket:path/posix";
-    import * as win32 from "socket:path/win32";
-    import { Path } from "socket:path/path";
-    import { RESOURCES } from "socket:path/well-known";
-    import { DOWNLOADS } from "socket:path/well-known";
-    import { DOCUMENTS } from "socket:path/well-known";
-    import { PICTURES } from "socket:path/well-known";
-    import { DESKTOP } from "socket:path/well-known";
-    import { VIDEOS } from "socket:path/well-known";
-    import { MUSIC } from "socket:path/well-known";
-    import { HOME } from "socket:path/well-known";
-    export { posix, win32, Path, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
-}
-declare module "socket:path" {
-    export const sep: "/" | "\\";
-    export const delimiter: ";" | ":";
-    export const resolve: typeof posix.win32.resolve;
-    export const join: typeof posix.win32.join;
-    export const dirname: typeof posix.win32.dirname;
-    export const basename: typeof posix.win32.basename;
-    export const extname: typeof posix.win32.extname;
-    export const cwd: typeof posix.win32.cwd;
-    export const isAbsolute: typeof posix.win32.isAbsolute;
-    export const parse: typeof posix.win32.parse;
-    export const format: typeof posix.win32.format;
-    export const normalize: typeof posix.win32.normalize;
-    export const relative: typeof posix.win32.relative;
-    const _default: typeof posix | typeof posix.win32;
-    export default _default;
-    import { posix } from "socket:path/index";
-    import { Path } from "socket:path/index";
-    import { win32 } from "socket:path/index";
-    import { RESOURCES } from "socket:path/index";
-    import { DOWNLOADS } from "socket:path/index";
-    import { DOCUMENTS } from "socket:path/index";
-    import { PICTURES } from "socket:path/index";
-    import { DESKTOP } from "socket:path/index";
-    import { VIDEOS } from "socket:path/index";
-    import { MUSIC } from "socket:path/index";
-    import { HOME } from "socket:path/index";
-    export { Path, posix, win32, RESOURCES, DOWNLOADS, DOCUMENTS, PICTURES, DESKTOP, VIDEOS, MUSIC, HOME };
-}
+
 declare module "socket:diagnostics/channels" {
     /**
      * Normalizes a channel name to lower case replacing white space,
@@ -1539,6 +787,7 @@ declare module "socket:diagnostics/channels" {
     };
     export default registry;
 }
+
 declare module "socket:diagnostics/metric" {
     export class Metric {
         init(): void;
@@ -1551,6 +800,7 @@ declare module "socket:diagnostics/metric" {
     }
     export default Metric;
 }
+
 declare module "socket:diagnostics/window" {
     export class RequestAnimationFrameMetric extends Metric {
         constructor(options: any);
@@ -1630,6 +880,7 @@ declare module "socket:diagnostics/window" {
     export default _default;
     import { Metric } from "socket:diagnostics/metric";
 }
+
 declare module "socket:diagnostics/index" {
     /**
      * @param {string} name
@@ -1643,11 +894,21 @@ declare module "socket:diagnostics/index" {
     
     export { channels, window };
 }
+
 declare module "socket:diagnostics" {
     export * from "socket:diagnostics/index";
     export default exports;
     import * as exports from "socket:diagnostics/index";
 }
+
+declare module "socket:internal/symbols" {
+    export const dispose: any;
+    namespace _default {
+        export { dispose };
+    }
+    export default _default;
+}
+
 declare module "socket:gc" {
     /**
      * Track `object` ref to call `Symbol.for('gc.finalize')` method when
@@ -1720,12 +981,1604 @@ declare module "socket:gc" {
         handle: any;
     }
 }
+
+declare module "socket:internal/async/hooks" {
+    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+    export function getNextAsyncResourceId(): number;
+    export function executionAsyncResource(): any;
+    export function executionAsyncId(): any;
+    export function triggerAsyncId(): any;
+    export function getDefaultExecutionAsyncId(): any;
+    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    export function getTopLevelAsyncResourceName(): any;
+    /**
+     * The default top level async resource ID
+     * @type {number}
+     */
+    export const TOP_LEVEL_ASYNC_RESOURCE_ID: number;
+    export namespace state {
+        let defaultExecutionAsyncId: number;
+    }
+    export namespace hooks {
+        let init: any[];
+        let before: any[];
+        let after: any[];
+        let destroy: any[];
+        let promiseResolve: any[];
+    }
+    /**
+     * A base class for the `AsyncResource` class or other higher level async
+     * resource classes.
+     */
+    export class CoreAsyncResource {
+        /**
+         * `CoreAsyncResource` class constructor.
+         * @param {string} type
+         * @param {object|number=} [options]
+         */
+        constructor(type: string, options?: (object | number) | undefined);
+        /**
+         * The `CoreAsyncResource` type.
+         * @type {string}
+         */
+        get type(): string;
+        /**
+         * `true` if the `CoreAsyncResource` was destroyed, otherwise `false`. This
+         * value is only set to `true` if `emitDestroy()` was called, likely from
+         * destroying the resource manually.
+         * @type {boolean}
+         */
+        get destroyed(): boolean;
+        /**
+         * The unique async resource ID.
+         * @return {number}
+         */
+        asyncId(): number;
+        /**
+         * The trigger async resource ID.
+         * @return {number}
+         */
+        triggerAsyncId(): number;
+        /**
+         * Manually emits destroy hook for the resource.
+         * @return {CoreAsyncResource}
+         */
+        emitDestroy(): CoreAsyncResource;
+        /**
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @return {function}
+         */
+        bind(fn: Function, thisArg?: object | undefined): Function;
+        /**
+         * Runs function `fn` in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @param {...any} [args]
+         * @return {any}
+         */
+        runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
+        #private;
+    }
+    export class TopLevelAsyncResource extends CoreAsyncResource {
+    }
+    export const asyncContextVariable: Variable<any>;
+    export const topLevelAsyncResource: TopLevelAsyncResource;
+    export default hooks;
+    import { Variable } from "socket:async/context";
+}
+
+declare module "socket:async/resource" {
+    /**
+     * @typedef {{
+     *   triggerAsyncId?: number,
+     *   requireManualDestroy?: boolean
+     * }} AsyncResourceOptions
+     */
+    /**
+     * A container that should be extended that represents a resource with
+     * an asynchronous execution context.
+     */
+    export class AsyncResource extends CoreAsyncResource {
+        /**
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of an anonymous `AsyncResource`.
+         * @param {function} fn
+         * @param {object|string=} [type]
+         * @param {object=} [thisArg]
+         * @return {function}
+         */
+        static bind(fn: Function, type?: (object | string) | undefined, thisArg?: object | undefined): Function;
+        /**
+         * `AsyncResource` class constructor.
+         * @param {string} type
+         * @param {AsyncResourceOptions|number=} [options]
+         */
+        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
+    }
+    export default AsyncResource;
+    export type AsyncResourceOptions = {
+        triggerAsyncId?: number;
+        requireManualDestroy?: boolean;
+    };
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
+    import { CoreAsyncResource } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
+}
+
+declare module "socket:async/hooks" {
+    /**
+     * Factory for creating a `AsyncHook` instance.
+     * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [callbacks]
+     * @return {AsyncHook}
+     */
+    export function createHook(callbacks?: (AsyncHookCallbackOptions | AsyncHookCallbacks) | undefined): AsyncHook;
+    /**
+     * A container for `AsyncHooks` callbacks.
+     * @ignore
+     */
+    export class AsyncHookCallbacks {
+        /**
+         * `AsyncHookCallbacks` class constructor.
+         * @ignore
+         * @param {AsyncHookCallbackOptions} [options]
+         */
+        constructor(options?: AsyncHookCallbackOptions);
+        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+        before(asyncId: any): void;
+        after(asyncId: any): void;
+        destroy(asyncId: any): void;
+        promiseResolve(asyncId: any): void;
+    }
+    /**
+     * A container for registering various callbacks for async resource hooks.
+     */
+    export class AsyncHook {
+        /**
+         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
+         */
+        constructor(callbacks?: any);
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Enable the async hook.
+         * @return {AsyncHook}
+         */
+        enable(): AsyncHook;
+        /**
+         * Disables the async hook
+         * @return {AsyncHook}
+         */
+        disable(): AsyncHook;
+        #private;
+    }
+    export default createHook;
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
+}
+
+declare module "socket:async/storage" {
+    /**
+     * A container for storing values that remain present during
+     * asynchronous operations.
+     */
+    export class AsyncLocalStorage {
+        /**
+         * Binds function `fn` to run in the execution context of an
+         * anonymous `AsyncResource`.
+         * @param {function} fn
+         * @return {function}
+         */
+        static bind(fn: Function): Function;
+        /**
+         * Captures the current async context and returns a function that runs
+         * a function in that execution context.
+         * @return {function}
+         */
+        static snapshot(): Function;
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Disables the `AsyncLocalStorage` instance. When disabled,
+         * `getStore()` will always return `undefined`.
+         */
+        disable(): void;
+        /**
+         * Enables the `AsyncLocalStorage` instance.
+         */
+        enable(): void;
+        /**
+         * Enables and sets the `AsyncLocalStorage` instance default store value.
+         * @param {any} store
+         */
+        enterWith(store: any): void;
+        /**
+         * Runs function `fn` in the current asynchronous execution context with
+         * a given `store` value and arguments given to `fn`.
+         * @param {any} store
+         * @param {function} fn
+         * @param {...any} args
+         * @return {any}
+         */
+        run(store: any, fn: Function, ...args: any[]): any;
+        exit(fn: any, ...args: any[]): any;
+        /**
+         * If the `AsyncLocalStorage` instance is enabled, it returns the current
+         * store value for this asynchronous execution context.
+         * @return {any|undefined}
+         */
+        getStore(): any | undefined;
+        #private;
+    }
+    export default AsyncLocalStorage;
+}
+
+declare module "socket:async/deferred" {
+    /**
+     * Dispatched when a `Deferred` internal promise is resolved.
+     */
+    export class DeferredResolveEvent extends Event {
+        /**
+         * `DeferredResolveEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {any=} [result]
+         */
+        constructor(type?: string | undefined, result?: any | undefined);
+        /**
+         * The `Deferred` promise result value.
+         * @type {any?}
+         */
+        result: any | null;
+    }
+    /**
+     * Dispatched when a `Deferred` internal promise is rejected.
+     */
+    export class DeferredRejectEvent extends ErrorEvent {
+        /**
+         * `DeferredRejectEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {Error=} [error]
+         */
+        constructor(type?: string | undefined, error?: Error | undefined);
+    }
+    /**
+     * A utility class for creating deferred promises.
+     */
+    export class Deferred extends EventTarget {
+        /**
+         * Function to resolve the associated promise.
+         * @type {function}
+         */
+        resolve: Function;
+        /**
+         * Function to reject the associated promise.
+         * @type {function}
+         */
+        reject: Function;
+        /**
+         * Attaches a fulfillment callback and a rejection callback to the promise,
+         * and returns a new promise resolving to the return value of the called
+         * callback.
+         * @param {function(any)=} [resolve]
+         * @param {function(Error)=} [reject]
+         */
+        then(resolve?: ((arg0: any) => any) | undefined, reject?: ((arg0: Error) => any) | undefined): Promise<any>;
+        /**
+         * Attaches a rejection callback to the promise, and returns a new promise
+         * resolving to the return value of the callback if it is called, or to its
+         * original fulfillment value if the promise is instead fulfilled.
+         * @param {function(Error)=} [callback]
+         */
+        catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
+        finally(arg0: any | null): any;
+        /**
+         * The promise associated with this Deferred instance.
+         * @type {Promise<any>}
+         */
+        get promise(): Promise<any>;
+        /**
+         * A string representation of this Deferred instance.
+         * @type {string}
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    export default Deferred;
+}
+
+declare module "socket:async" {
+    export default exports;
+    import AsyncLocalStorage from "socket:async/storage";
+    import AsyncResource from "socket:async/resource";
+    import AsyncContext from "socket:async/context";
+    import Deferred from "socket:async/deferred";
+    import { executionAsyncResource } from "socket:async/hooks";
+    import { executionAsyncId } from "socket:async/hooks";
+    import { triggerAsyncId } from "socket:async/hooks";
+    import { createHook } from "socket:async/hooks";
+    import { AsyncHook } from "socket:async/hooks";
+    import * as exports from "socket:async";
+    
+    export { AsyncLocalStorage, AsyncResource, AsyncContext, Deferred, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook, AsyncHook };
+}
+
+declare module "socket:application/menu" {
+    /**
+     * Internal IPC for setting an application menu
+     * @ignore
+     */
+    export function setMenu(options: any, type: any): Promise<ipc.Result>;
+    /**
+     * Internal IPC for setting an application context menu
+     * @ignore
+     */
+    export function setContextMenu(options: any): Promise<any>;
+    /**
+     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
+     */
+    export class Menu extends EventTarget {
+        /**
+         * `Menu` class constructor.
+         * @ignore
+         * @param {string} type
+         */
+        constructor(type: string);
+        /**
+         * The broadcast channel for this menu.
+         * @ignore
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
+        /**
+         * The `Menu` instance type.
+         * @type {('context'|'system'|'tray')?}
+         */
+        get type(): "tray" | "system" | "context";
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * Set the menu layout for this `Menu` instance.
+         * @param {string|object} layoutOrOptions
+         * @param {object=} [options]
+         */
+        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
+        #private;
+    }
+    /**
+     * A container for various `Menu` instances.
+     */
+    export class MenuContainer extends EventTarget {
+        /**
+         * `MenuContainer` class constructor.
+         * @param {EventTarget} [sourceEventTarget]
+         * @param {object=} [options]
+         */
+        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * The `TrayMenu` instance for the application.
+         * @type {TrayMenu}
+         */
+        get tray(): TrayMenu;
+        /**
+         * The `SystemMenu` instance for the application.
+         * @type {SystemMenu}
+         */
+        get system(): SystemMenu;
+        /**
+         * The `ContextMenu` instance for the application.
+         * @type {ContextMenu}
+         */
+        get context(): ContextMenu;
+        #private;
+    }
+    /**
+     * A `Menu` instance that represents a context menu.
+     */
+    export class ContextMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the system menu.
+     */
+    export class SystemMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the tray menu.
+     */
+    export class TrayMenu extends Menu {
+        constructor();
+    }
+    /**
+     * The application tray menu.
+     * @type {TrayMenu}
+     */
+    export const tray: TrayMenu;
+    /**
+     * The application system menu.
+     * @type {SystemMenu}
+     */
+    export const system: SystemMenu;
+    /**
+     * The application context menu.
+     * @type {ContextMenu}
+     */
+    export const context: ContextMenu;
+    /**
+     * The application menus container.
+     * @type {MenuContainer}
+     */
+    export const container: MenuContainer;
+    export default container;
+    import ipc from "socket:ipc";
+}
+
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An event dispacted for a registered global hotkey expression.
+     */
+    export class HotKeyEvent extends MessageEvent<any> {
+        /**
+         * `HotKeyEvent` class constructor.
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         */
+        constructor(type?: string | undefined, data?: object | undefined);
+        /**
+         * The global unique ID for this hotkey binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this hotkey binding.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized hotkey expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the hotkey binding.
+         * @type {string?}
+         */
+        get expression(): string;
+    }
+    /**
+     * An event dispacted when a menu item is selected.
+     */
+    export class MenuItemEvent extends MessageEvent<any> {
+        /**
+         * `MenuItemEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         * @param {import('../application/menu.js').Menu} menu
+         */
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
+        /**
+         * The `Menu` this event has been dispatched for.
+         * @type {import('../application/menu.js').Menu?}
+         */
+        get menu(): import("socket:application/menu").Menu;
+        /**
+         * The title of the menu item.
+         * @type {string?}
+         */
+        get title(): string;
+        /**
+         * An optional tag value for the menu item that may also be the
+         * parent menu item title.
+         * @type {string?}
+         */
+        get tag(): string;
+        /**
+         * The parent title of the menu item.
+         * @type {string?}
+         */
+        get parent(): string;
+        #private;
+    }
+    /**
+     * An event dispacted when the application receives an OS signal
+     */
+    export class SignalEvent extends MessageEvent<any> {
+        /**
+         * `SignalEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * The code of the signal.
+         * @type {import('../signal.js').signal}
+         */
+        get code(): number;
+        /**
+         * The name of the signal.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * An optional message describing the signal
+         * @type {string}
+         */
+        get message(): string;
+        #private;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+        export { MenuItemEvent };
+        export { SignalEvent };
+        export { HotKeyEvent };
+    }
+    export default _default;
+}
+
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    /**
+     * Well known path to the application's "resources" folder.
+     * @type {?string}
+     */
+    export const RESOURCES: string | null;
+    /**
+     * Well known path to the application's "config" folder.
+     * @type {?string}
+     */
+    export const CONFIG: string | null;
+    /**
+     * Well known path to the application's "data" folder.
+     * @type {?string}
+     */
+    export const DATA: string | null;
+    /**
+     * Well known path to the application's "log" folder.
+     * @type {?string}
+     */
+    export const LOG: string | null;
+    /**
+     * Well known path to the application's "home" folder.
+     * This may be the user's HOME directory or the application container sandbox.
+     * @type {?string}
+     */
+    export const HOME: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { RESOURCES };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { CONFIG };
+        export { MUSIC };
+        export { HOME };
+        export { DATA };
+        export { LOG };
+    }
+    export default _default;
+}
+
+declare module "socket:os" {
+    /**
+     * Returns the operating system CPU architecture for which Socket was compiled.
+     * @returns {string} - 'arm64', 'ia32', 'x64', or 'unknown'
+     */
+    export function arch(): string;
+    /**
+     * Returns an array of objects containing information about each CPU/core.
+     * @returns {Array<object>} cpus - An array of objects containing information about each CPU/core.
+     * The properties of the objects are:
+     * - model `<string>` - CPU model name.
+     * - speed `<number>` - CPU clock speed (in MHz).
+     * - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
+     *   - user `<number>` - Time spent by this CPU or core in user mode.
+     *   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
+     *   - sys `<number>` - Time spent by this CPU or core in system mode.
+     *   - idle `<number>` - Time spent by this CPU or core in idle mode.
+     *   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
+     * @see {@link https://nodejs.org/api/os.html#os_os_cpus}
+     */
+    export function cpus(): Array<object>;
+    /**
+     * Returns an object containing network interfaces that have been assigned a network address.
+     * @returns {object}  - An object containing network interfaces that have been assigned a network address.
+     * Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
+     * The properties available on the assigned network address object include:
+     * - address `<string>` - The assigned IPv4 or IPv6 address.
+     * - netmask `<string>` - The IPv4 or IPv6 network mask.
+     * - family `<string>` - The address family ('IPv4' or 'IPv6').
+     * - mac `<string>` - The MAC address of the network interface.
+     * - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
+     * - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
+     * - cidr `<string>` - The CIDR notation of the interface.
+     * @see {@link https://nodejs.org/api/os.html#os_os_networkinterfaces}
+     */
+    export function networkInterfaces(): object;
+    /**
+     * Returns the operating system platform.
+     * @returns {string} - 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_platform}
+     * The returned value is equivalent to `process.platform`.
+     */
+    export function platform(): string;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_type}
+     */
+    export function type(): string;
+    /**
+     * @returns {boolean} - `true` if the operating system is Windows.
+     */
+    export function isWindows(): boolean;
+    /**
+     * @returns {string} - The operating system's default directory for temporary files.
+     */
+    export function tmpdir(): string;
+    /**
+     * Get resource usage.
+     */
+    export function rusage(): any;
+    /**
+     * Returns the system uptime in seconds.
+     * @returns {number} - The system uptime in seconds.
+     */
+    export function uptime(): number;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - The operating system name.
+     */
+    export function uname(): string;
+    /**
+     * It's implemented in process.hrtime.bigint()
+     * @ignore
+     */
+    export function hrtime(): any;
+    /**
+     * Node.js doesn't have this method.
+     * @ignore
+     */
+    export function availableMemory(): any;
+    /**
+     * The host operating system. This value can be one of:
+     * - android
+     * - android-emulator
+     * - iphoneos
+     * - iphone-simulator
+     * - linux
+     * - macosx
+     * - unix
+     * - unknown
+     * - win32
+     * @ignore
+     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+     */
+    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
+    /**
+     * Returns the home directory of the current user.
+     * @return {string}
+     */
+    export function homedir(): string;
+    export { constants };
+    /**
+     * @type {string}
+     * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
+     */
+    export const EOL: string;
+    export default exports;
+    import constants from "socket:os/constants";
+    import * as exports from "socket:os";
+    
+}
+
+declare module "socket:signal" {
+    /**
+     * Converts an `signal` code to its corresponding string message.
+     * @param {import('./os/constants.js').signal} {code}
+     * @return {string}
+     */
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'signal' name.
+     * @param {string|number} name
+     * @return {signal}
+     */
+    export function getCode(name: string | number): signal;
+    /**
+     * Gets the name for a given 'signal' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'signal' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    /**
+     * Add a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function addEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
+    /**
+     * Remove a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function removeEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
+    export { constants };
+    export const channel: BroadcastChannel;
+    export const SIGHUP: any;
+    export const SIGINT: any;
+    export const SIGQUIT: any;
+    export const SIGILL: any;
+    export const SIGTRAP: any;
+    export const SIGABRT: any;
+    export const SIGIOT: any;
+    export const SIGBUS: any;
+    export const SIGFPE: any;
+    export const SIGKILL: any;
+    export const SIGUSR1: any;
+    export const SIGSEGV: any;
+    export const SIGUSR2: any;
+    export const SIGPIPE: any;
+    export const SIGALRM: any;
+    export const SIGTERM: any;
+    export const SIGCHLD: any;
+    export const SIGCONT: any;
+    export const SIGSTOP: any;
+    export const SIGTSTP: any;
+    export const SIGTTIN: any;
+    export const SIGTTOU: any;
+    export const SIGURG: any;
+    export const SIGXCPU: any;
+    export const SIGXFSZ: any;
+    export const SIGVTALRM: any;
+    export const SIGPROF: any;
+    export const SIGWINCH: any;
+    export const SIGIO: any;
+    export const SIGINFO: any;
+    export const SIGSYS: any;
+    export const strings: {
+        [x: number]: string;
+    };
+    namespace _default {
+        export { addEventListener };
+        export { removeEventListener };
+        export { constants };
+        export { channel };
+        export { strings };
+        export { toString };
+        export { getName };
+        export { getCode };
+        export { getMessage };
+        export { SIGHUP };
+        export { SIGINT };
+        export { SIGQUIT };
+        export { SIGILL };
+        export { SIGTRAP };
+        export { SIGABRT };
+        export { SIGIOT };
+        export { SIGBUS };
+        export { SIGFPE };
+        export { SIGKILL };
+        export { SIGUSR1 };
+        export { SIGSEGV };
+        export { SIGUSR2 };
+        export { SIGPIPE };
+        export { SIGALRM };
+        export { SIGTERM };
+        export { SIGCHLD };
+        export { SIGCONT };
+        export { SIGSTOP };
+        export { SIGTSTP };
+        export { SIGTTIN };
+        export { SIGTTOU };
+        export { SIGURG };
+        export { SIGXCPU };
+        export { SIGXFSZ };
+        export { SIGVTALRM };
+        export { SIGPROF };
+        export { SIGWINCH };
+        export { SIGIO };
+        export { SIGINFO };
+        export { SIGSYS };
+    }
+    export default _default;
+    export type signal = import("socket:os/constants").signal;
+    import { SignalEvent } from "socket:internal/events";
+    import { signal as constants } from "socket:os/constants";
+}
+
+declare module "socket:process" {
+    /**
+     * Adds callback to the 'nextTick' queue.
+     * @param {Function} callback
+     */
+    export function nextTick(callback: Function): void;
+    /**
+     * Computed high resolution time as a `BigInt`.
+     * @param {Array<number>?} [time]
+     * @return {bigint}
+     */
+    export function hrtime(time?: Array<number> | null): bigint;
+    export namespace hrtime {
+        function bigint(): any;
+    }
+    /**
+     * @param {number=} [code=0] - The exit code. Default: 0.
+     */
+    export function exit(code?: number | undefined): Promise<void>;
+    /**
+     * Returns an object describing the memory usage of the Node.js process measured in bytes.
+     * @returns {Object}
+     */
+    export function memoryUsage(): any;
+    export namespace memoryUsage {
+        function rss(): any;
+    }
+    export class ProcessEnvironmentEvent extends Event {
+        constructor(type: any, key: any, value: any);
+        key: any;
+        value: any;
+    }
+    export const env: any;
+    export default process;
+    const process: any;
+}
+
+declare module "socket:location" {
+    export function toString(): string;
+    export const globalLocation: Location | {
+        origin: string;
+        host: string;
+        hostname: string;
+        pathname: string;
+        href: string;
+    };
+    export const href: string;
+    export const protocol: "socket:";
+    export const hostname: string;
+    export const host: string;
+    export const search: string;
+    export const hash: string;
+    export const pathname: string;
+    export const origin: string;
+    namespace _default {
+        export { origin };
+        export { href };
+        export { protocol };
+        export { hostname };
+        export { host };
+        export { search };
+        export { pathname };
+        export { toString };
+    }
+    export default _default;
+}
+
+declare module "socket:url/urlpattern/urlpattern" {
+    export { me as URLPattern };
+    var me: {
+        new (t: {}, r: any, n: any): {
+            "__#21@#i": any;
+            "__#21@#n": {};
+            "__#21@#t": {};
+            "__#21@#e": {};
+            "__#21@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+}
+
+declare module "socket:url/url/url" {
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:querystring" {
+    export function unescapeBuffer(s: any, decodeSpaces: any): any;
+    export function unescape(s: any, decodeSpaces: any): any;
+    export function escape(str: any): any;
+    export function stringify(obj: any, sep: any, eq: any, options: any): string;
+    export function parse(qs: any, sep: any, eq: any, options: any): {};
+    export function decode(qs: any, sep: any, eq: any, options: any): {};
+    export function encode(obj: any, sep: any, eq: any, options: any): string;
+    namespace _default {
+        export { decode };
+        export { encode };
+        export { parse };
+        export { stringify };
+        export { escape };
+        export { unescape };
+    }
+    export default _default;
+}
+
+declare module "socket:url/index" {
+    export function parse(input: any, options?: any): any;
+    export function resolve(from: any, to: any): any;
+    export function format(input: any): any;
+    export const protocols: Set<string>;
+    export default URL;
+    export const URL: any;
+    import { URLPattern } from "socket:url/urlpattern/urlpattern";
+    export const URLSearchParams: any;
+    export const parseURL: any;
+    export { URLPattern };
+}
+
+declare module "socket:url" {
+    export * from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
+}
+
+declare module "socket:path/path" {
+    /**
+     * The path.resolve() method resolves a sequence of paths or path segments into an absolute path.
+     * @param {strig} ...paths
+     * @returns {string}
+     * @see {@link https://nodejs.org/api/path.html#path_path_resolve_paths}
+     */
+    export function resolve(options: any, ...components: any[]): string;
+    /**
+     * Computes current working directory for a path
+     * @param {object=} [opts]
+     * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
+     * @return {string}
+     */
+    export function cwd(opts?: object | undefined): string;
+    /**
+     * Computed location origin. Defaults to `socket:///` if not available.
+     * @return {string}
+     */
+    export function origin(): string;
+    /**
+     * Computes the relative path from `from` to `to`.
+     * @param {object} options
+     * @param {PathComponent} from
+     * @param {PathComponent} to
+     * @return {string}
+     */
+    export function relative(options: object, from: PathComponent, to: PathComponent): string;
+    /**
+     * Joins path components. This function may not return an absolute path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function join(options: object, ...components: PathComponent[]): string;
+    /**
+     * Computes directory name of path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function dirname(options: object, path: any): string;
+    /**
+     * Computes base name of path.
+     * @param {object} options
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function basename(options: object, path: any): string;
+    /**
+     * Computes extension name of path.
+     * @param {object} options
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function extname(options: object, path: PathComponent): string;
+    /**
+     * Computes normalized path
+     * @param {object} options
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function normalize(options: object, path: PathComponent): string;
+    /**
+     * Formats `Path` object into a string.
+     * @param {object} options
+     * @param {object|Path} path
+     * @return {string}
+     */
+    export function format(options: object, path: object | Path): string;
+    /**
+     * Parses input `path` into a `Path` instance.
+     * @param {PathComponent} path
+     * @return {object}
+     */
+    export function parse(path: PathComponent): object;
+    /**
+     * @typedef {(string|Path|URL|{ pathname: string }|{ url: string)} PathComponent
+     */
+    /**
+     * A container for a parsed Path.
+     */
+    export class Path {
+        /**
+         * Creates a `Path` instance from `input` and optional `cwd`.
+         * @param {PathComponent} input
+         * @param {string} [cwd]
+         */
+        static from(input: PathComponent, cwd?: string): any;
+        /**
+         * `Path` class constructor.
+         * @protected
+         * @param {string} pathname
+         * @param {string} [cwd = Path.cwd()]
+         */
+        protected constructor();
+        pattern: {
+            "__#21@#i": any;
+            "__#21@#n": {};
+            "__#21@#t": {};
+            "__#21@#e": {};
+            "__#21@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        url: any;
+        get pathname(): any;
+        get protocol(): any;
+        get href(): any;
+        /**
+         * `true` if the path is relative, otherwise `false.
+         * @type {boolean}
+         */
+        get isRelative(): boolean;
+        /**
+         * The working value of this path.
+         */
+        get value(): any;
+        /**
+         * The original source, unresolved.
+         * @type {string}
+         */
+        get source(): string;
+        /**
+         * Computed parent path.
+         * @type {string}
+         */
+        get parent(): string;
+        /**
+         * Computed root in path.
+         * @type {string}
+         */
+        get root(): string;
+        /**
+         * Computed directory name in path.
+         * @type {string}
+         */
+        get dir(): string;
+        /**
+         * Computed base name in path.
+         * @type {string}
+         */
+        get base(): string;
+        /**
+         * Computed base name in path without path extension.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Computed extension name in path.
+         * @type {string}
+         */
+        get ext(): string;
+        /**
+         * The computed drive, if given in the path.
+         * @type {string?}
+         */
+        get drive(): string;
+        /**
+         * @return {URL}
+         */
+        toURL(): URL;
+        /**
+         * Converts this `Path` instance to a string.
+         * @return {string}
+         */
+        toString(): string;
+        /**
+         * @ignore
+         */
+        inspect(): {
+            root: string;
+            dir: string;
+            base: string;
+            ext: string;
+            name: string;
+        };
+        /**
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+        #private;
+    }
+    export default Path;
+    export type PathComponent = (string | Path | URL | {
+        pathname: string;
+    } | {
+        url: string;
+    });
+    import { URL } from "socket:url/index";
+}
+
+declare module "socket:path/mounts" {
+    const _default: {};
+    export default _default;
+}
+
+declare module "socket:path/win32" {
+    /**
+     * Computes current working directory for a path
+     * @param {string}
+     */
+    export function cwd(): any;
+    /**
+     * Resolves path components to an absolute path.
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function resolve(...components: PathComponent[]): string;
+    /**
+     * Joins path components. This function may not return an absolute path.
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function join(...components: PathComponent[]): string;
+    /**
+     * Computes directory name of path.
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function dirname(path: PathComponent): string;
+    /**
+     * Computes base name of path.
+     * @param {PathComponent} path
+     * @param {string} suffix
+     * @return {string}
+     */
+    export function basename(path: PathComponent, suffix: string): string;
+    /**
+     * Computes extension name of path.
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function extname(path: PathComponent): string;
+    /**
+     * Predicate helper to determine if path is absolute.
+     * @param {PathComponent} path
+     * @return {boolean}
+     */
+    export function isAbsolute(path: PathComponent): boolean;
+    /**
+     * Parses input `path` into a `Path` instance.
+     * @param {PathComponent} path
+     * @return {Path}
+     */
+    export function parse(path: PathComponent): Path;
+    /**
+     * Formats `Path` object into a string.
+     * @param {object|Path} path
+     * @return {string}
+     */
+    export function format(path: object | Path): string;
+    /**
+     * Normalizes `path` resolving `..` and `.\` preserving trailing
+     * slashes.
+     * @param {string} path
+     */
+    export function normalize(path: string): any;
+    /**
+     * Computes the relative path from `from` to `to`.
+     * @param {string} from
+     * @param {string} to
+     * @return {string}
+     */
+    export function relative(from: string, to: string): string;
+    export default exports;
+    export namespace win32 {
+        let sep: "\\";
+        let delimiter: ";";
+    }
+    export type PathComponent = import("socket:path/path").PathComponent;
+    import { Path } from "socket:path/path";
+    import * as mounts from "socket:path/mounts";
+    import * as posix from "socket:path/posix";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
+    import * as exports from "socket:path/win32";
+    
+    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+}
+
+declare module "socket:path/posix" {
+    /**
+     * Computes current working directory for a path
+     * @param {string}
+     * @return {string}
+     */
+    export function cwd(): string;
+    /**
+     * Resolves path components to an absolute path.
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function resolve(...components: PathComponent[]): string;
+    /**
+     * Joins path components. This function may not return an absolute path.
+     * @param {...PathComponent} components
+     * @return {string}
+     */
+    export function join(...components: PathComponent[]): string;
+    /**
+     * Computes directory name of path.
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function dirname(path: PathComponent): string;
+    /**
+     * Computes base name of path.
+     * @param {PathComponent} path
+     * @param {string} suffix
+     * @return {string}
+     */
+    export function basename(path: PathComponent, suffix: string): string;
+    /**
+     * Computes extension name of path.
+     * @param {PathComponent} path
+     * @return {string}
+     */
+    export function extname(path: PathComponent): string;
+    /**
+     * Predicate helper to determine if path is absolute.
+     * @param {PathComponent} path
+     * @return {boolean}
+     */
+    export function isAbsolute(path: PathComponent): boolean;
+    /**
+     * Parses input `path` into a `Path` instance.
+     * @param {PathComponent} path
+     * @return {Path}
+     */
+    export function parse(path: PathComponent): Path;
+    /**
+     * Formats `Path` object into a string.
+     * @param {object|Path} path
+     * @return {string}
+     */
+    export function format(path: object | Path): string;
+    /**
+     * Normalizes `path` resolving `..` and `./` preserving trailing
+     * slashes.
+     * @param {string} path
+     */
+    export function normalize(path: string): any;
+    /**
+     * Computes the relative path from `from` to `to`.
+     * @param {string} from
+     * @param {string} to
+     * @return {string}
+     */
+    export function relative(from: string, to: string): string;
+    export default exports;
+    export namespace posix {
+        let sep: "/";
+        let delimiter: ":";
+    }
+    export type PathComponent = import("socket:path/path").PathComponent;
+    import { Path } from "socket:path/path";
+    import * as mounts from "socket:path/mounts";
+    import * as win32 from "socket:path/win32";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
+    import * as exports from "socket:path/posix";
+    
+    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+}
+
+declare module "socket:path/index" {
+    export default exports;
+    import * as mounts from "socket:path/mounts";
+    import * as posix from "socket:path/posix";
+    import * as win32 from "socket:path/win32";
+    import { Path } from "socket:path/path";
+    import { DOWNLOADS } from "socket:path/well-known";
+    import { DOCUMENTS } from "socket:path/well-known";
+    import { RESOURCES } from "socket:path/well-known";
+    import { PICTURES } from "socket:path/well-known";
+    import { DESKTOP } from "socket:path/well-known";
+    import { VIDEOS } from "socket:path/well-known";
+    import { CONFIG } from "socket:path/well-known";
+    import { MUSIC } from "socket:path/well-known";
+    import { HOME } from "socket:path/well-known";
+    import { DATA } from "socket:path/well-known";
+    import { LOG } from "socket:path/well-known";
+    import * as exports from "socket:path/index";
+    
+    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+}
+
+declare module "socket:path" {
+    export const sep: "/" | "\\";
+    export const delimiter: ":" | ";";
+    export const resolve: typeof posix.win32.resolve;
+    export const join: typeof posix.win32.join;
+    export const dirname: typeof posix.win32.dirname;
+    export const basename: typeof posix.win32.basename;
+    export const extname: typeof posix.win32.extname;
+    export const cwd: typeof posix.win32.cwd;
+    export const isAbsolute: typeof posix.win32.isAbsolute;
+    export const parse: typeof posix.win32.parse;
+    export const format: typeof posix.win32.format;
+    export const normalize: typeof posix.win32.normalize;
+    export const relative: typeof posix.win32.relative;
+    const _default: typeof posix | typeof posix.win32;
+    export default _default;
+    import { posix } from "socket:path/index";
+    import { Path } from "socket:path/index";
+    import { win32 } from "socket:path/index";
+    import { mounts } from "socket:path/index";
+    import { DOWNLOADS } from "socket:path/index";
+    import { DOCUMENTS } from "socket:path/index";
+    import { RESOURCES } from "socket:path/index";
+    import { PICTURES } from "socket:path/index";
+    import { DESKTOP } from "socket:path/index";
+    import { VIDEOS } from "socket:path/index";
+    import { CONFIG } from "socket:path/index";
+    import { MUSIC } from "socket:path/index";
+    import { HOME } from "socket:path/index";
+    import { DATA } from "socket:path/index";
+    import { LOG } from "socket:path/index";
+    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+}
+
+declare module "socket:stream/web" {
+    export const ReadableStream: {
+        new (underlyingSource: UnderlyingByteSource, strategy?: {
+            highWaterMark?: number;
+        }): ReadableStream<Uint8Array>;
+        new <R = any>(underlyingSource: UnderlyingDefaultSource<R>, strategy?: QueuingStrategy<R>): ReadableStream<R>;
+        new <R_1 = any>(underlyingSource?: UnderlyingSource<R_1>, strategy?: QueuingStrategy<R_1>): ReadableStream<R_1>;
+        prototype: ReadableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultReader: {
+        new <R = any>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
+        prototype: ReadableStreamDefaultReader<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBReader: {
+        new (stream: ReadableStream<any>): ReadableStreamBYOBReader;
+        prototype: ReadableStreamBYOBReader;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBRequest: typeof UnsupportedStreamInterface;
+    export const ReadableByteStreamController: typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const TransformStream: {
+        new <I = any, O = any>(transformer?: Transformer<I, O>, writableStrategy?: QueuingStrategy<I>, readableStrategy?: QueuingStrategy<O>): TransformStream<I, O>;
+        prototype: TransformStream<any, any>;
+    } | typeof UnsupportedStreamInterface;
+    export const TransformStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const WritableStream: {
+        new <W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
+        prototype: WritableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultWriter: {
+        new <W = any>(stream: WritableStream<W>): WritableStreamDefaultWriter<W>;
+        prototype: WritableStreamDefaultWriter<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const ByteLengthQueuingStrategy: {
+        new (init: QueuingStrategyInit): ByteLengthQueuingStrategy;
+        prototype: ByteLengthQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const CountQueuingStrategy: {
+        new (init: QueuingStrategyInit): CountQueuingStrategy;
+        prototype: CountQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const TextEncoderStream: typeof UnsupportedStreamInterface;
+    export const TextDecoderStream: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoderStream;
+        prototype: TextDecoderStream;
+    } | typeof UnsupportedStreamInterface;
+    export const CompressionStream: {
+        new (format: CompressionFormat): CompressionStream;
+        prototype: CompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export const DecompressionStream: {
+        new (format: CompressionFormat): DecompressionStream;
+        prototype: DecompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export default exports;
+    class UnsupportedStreamInterface {
+    }
+    import * as exports from "socket:stream/web";
+    
+}
+
 declare module "socket:stream" {
     export function pipelinePromise(...streams: any[]): Promise<any>;
     export function pipeline(stream: any, ...streams: any[]): any;
     export function isStream(stream: any): boolean;
     export function isStreamx(stream: any): boolean;
+    export function getStreamError(stream: any): any;
     export function isReadStreamx(stream: any): any;
+    export { web };
     export default exports;
     export class FixedFIFO {
         constructor(hwm: any);
@@ -1734,17 +2587,22 @@ declare module "socket:stream" {
         top: number;
         btm: number;
         next: any;
+        clear(): void;
         push(data: any): boolean;
         shift(): any;
+        peek(): any;
         isEmpty(): boolean;
     }
-    export class FastFIFO {
+    export class FIFO {
         constructor(hwm: any);
         hwm: any;
         head: exports.FixedFIFO;
         tail: exports.FixedFIFO;
+        length: number;
+        clear(): void;
         push(val: any): void;
         shift(): any;
+        peek(): any;
         isEmpty(): boolean;
     }
     export class WritableState {
@@ -1756,11 +2614,12 @@ declare module "socket:stream" {
             byteLengthWritable: any;
         });
         stream: any;
-        queue: exports.FastFIFO;
+        queue: exports.FIFO;
         highWaterMark: number;
         buffered: number;
         error: any;
         pipeline: any;
+        drains: any;
         byteLength: any;
         map: any;
         afterWrite: any;
@@ -1772,6 +2631,8 @@ declare module "socket:stream" {
         autoBatch(data: any, cb: any): any;
         update(): void;
         updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
         updateNextTick(): void;
     }
     export class ReadableState {
@@ -1783,9 +2644,10 @@ declare module "socket:stream" {
             byteLengthReadable: any;
         });
         stream: any;
-        queue: exports.FastFIFO;
+        queue: exports.FIFO;
         highWaterMark: number;
         buffered: number;
+        readAhead: boolean;
         error: any;
         pipeline: exports.Pipeline;
         byteLength: any;
@@ -1802,6 +2664,8 @@ declare module "socket:stream" {
         drain(): void;
         update(): void;
         updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
         updateNextTick(): void;
     }
     export class TransformState {
@@ -1833,7 +2697,6 @@ declare module "socket:stream" {
         get destroyed(): boolean;
         get destroying(): boolean;
         destroy(err: any): void;
-        on(name: any, fn: any): any;
     }
     export class Readable extends exports.Stream {
         static _fromAsyncIterator(ite: any, opts: any): exports.Readable;
@@ -1851,6 +2714,7 @@ declare module "socket:stream" {
     }
     export class Writable extends exports.Stream {
         static isBackpressured(ws: any): boolean;
+        static drained(ws: any): Promise<any>;
         _writableState: exports.WritableState;
         _writev(batch: any, cb: any): void;
         _write(data: any, cb: any): void;
@@ -1873,10 +2737,12 @@ declare module "socket:stream" {
     }
     export class PassThrough extends exports.Transform {
     }
+    import web from "socket:stream/web";
     import * as exports from "socket:stream";
     import { EventEmitter } from "socket:events";
     
 }
+
 declare module "socket:fs/stream" {
     export const DEFAULT_STREAM_HIGH_WATER_MARK: number;
     /**
@@ -1959,6 +2825,7 @@ declare module "socket:fs/stream" {
     import * as exports from "socket:fs/stream";
     
 }
+
 declare module "socket:fs/constants" {
     /**
      * This flag can be used with uv_fs_copyfile() to return an error if the
@@ -2034,12 +2901,14 @@ declare module "socket:fs/constants" {
     import * as exports from "socket:fs/constants";
     
 }
+
 declare module "socket:fs/flags" {
     export function normalizeFlags(flags: any): any;
     export default exports;
     import * as exports from "socket:fs/flags";
     
 }
+
 declare module "socket:fs/stats" {
     /**
      * A container for various stats about a file or directory.
@@ -2115,6 +2984,7 @@ declare module "socket:fs/stats" {
     import * as exports from "socket:fs/stats";
     
 }
+
 declare module "socket:fs/fds" {
     const _default: {
         types: Map<any, any>;
@@ -2136,6 +3006,7 @@ declare module "socket:fs/fds" {
     };
     export default _default;
 }
+
 declare module "socket:fs/handle" {
     export const kOpening: unique symbol;
     export const kClosing: unique symbol;
@@ -2277,6 +3148,12 @@ declare module "socket:fs/handle" {
          */
         stat(options?: object | undefined): Promise<Stats>;
         /**
+         * Returns the stats of the underlying symbolic link.
+         * @param {object=} [options]
+         * @return {Promise<Stats>}
+         */
+        lstat(options?: object | undefined): Promise<Stats>;
+        /**
          * Synchronize a file's in-core state with storage device
          * @return {Promise}
          */
@@ -2310,6 +3187,7 @@ declare module "socket:fs/handle" {
         [exports.kOpening]: any;
         [exports.kClosing]: any;
         [exports.kClosed]: boolean;
+        #private;
     }
     /**
      * A container for a directory handle tracked in `fds` and opened in the
@@ -2392,6 +3270,7 @@ declare module "socket:fs/handle" {
         [exports.kOpening]: any;
         [exports.kClosing]: any;
         [exports.kClosed]: boolean;
+        #private;
     }
     export default exports;
     export type TypedArray = Uint8Array | Int8Array;
@@ -2403,6 +3282,7 @@ declare module "socket:fs/handle" {
     import * as exports from "socket:fs/handle";
     
 }
+
 declare module "socket:fs/dir" {
     /**
      * Sorts directory entries
@@ -2530,6 +3410,7 @@ declare module "socket:fs/dir" {
     import * as exports from "socket:fs/dir";
     
 }
+
 declare module "socket:hooks" {
     /**
      * Wait for a hook event to occur.
@@ -2831,6 +3712,7 @@ declare module "socket:hooks" {
      */
     const hooks: Hooks;
 }
+
 declare module "socket:fs/watcher" {
     /**
      * A container for a file system path watcher.
@@ -2902,10 +3784,12 @@ declare module "socket:fs/watcher" {
             eventType: string;
             filename: string;
         }>;
+        #private;
     }
     export default Watcher;
     import { EventEmitter } from "socket:events";
 }
+
 declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
@@ -3029,6 +3913,7 @@ declare module "socket:fs/promises" {
      */
     export function rmdir(path: string): Promise<any>;
     /**
+     * Get the stats of a file
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
@@ -3036,6 +3921,15 @@ declare module "socket:fs/promises" {
      * @return {Promise<Stats>}
      */
     export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
+    /**
+     * Get the stats of a symbolic link.
+     * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
+     * @param {string | Buffer | URL} path
+     * @param {object?} [options]
+     * @param {boolean?} [options.bigint = false]
+     * @return {Promise<Stats>}
+     */
+    export function lstat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
@@ -3088,6 +3982,7 @@ declare module "socket:fs/promises" {
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, ReadStream, Watcher, WriteStream };
 }
+
 declare module "socket:fs/index" {
     /**
      * Asynchronously check access a file for a given mode calling `callback`
@@ -3099,11 +3994,26 @@ declare module "socket:fs/index" {
      */
     export function access(path: string | Buffer | URL, mode: any, callback?: ((arg0: Error | null) => any) | null): void;
     /**
-     * @ignore
+     * Synchronously check access a file for a given mode calling `callback`
+     * upon success or error.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @param {string | Buffer | URL} path
+     * @param {string?} [mode = F_OK(0)]
      */
-    export function appendFile(path: any, data: any, options: any, callback: any): void;
+    export function accessSync(path: string | Buffer | URL, mode?: string | null): boolean;
     /**
-     *
+     * Checks if a path exists
+     * @param {string | Buffer | URL} path
+     * @param {function(Boolean)?} [callback]
+     */
+    export function exists(path: string | Buffer | URL, callback?: ((arg0: boolean) => any) | null): void;
+    /**
+     * Checks if a path exists
+     * @param {string | Buffer | URL} path
+     * @param {function(Boolean)?} [callback]
+     */
+    export function existsSync(path: string | Buffer | URL): boolean;
+    /**
      * Asynchronously changes the permissions of a file.
      * No arguments other than a possible exception are given to the completion callback
      *
@@ -3115,6 +4025,14 @@ declare module "socket:fs/index" {
      */
     export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
     /**
+     * Synchronously changes the permissions of a file.
+     *
+     * @see {@link https://nodejs.org/api/fs.html#fschmodpath-mode-callback}
+     * @param {string | Buffer | URL} path
+     * @param {number} mode
+     */
+    export function chmodSync(path: string | Buffer | URL, mode: number): void;
+    /**
      * Changes ownership of file or directory at `path` with `uid` and `gid`.
      * @param {string} path
      * @param {number} uid
@@ -3122,6 +4040,13 @@ declare module "socket:fs/index" {
      * @param {function} callback
      */
     export function chown(path: string, uid: number, gid: number, callback: Function): void;
+    /**
+     * Changes ownership of file or directory at `path` with `uid` and `gid`.
+     * @param {string} path
+     * @param {number} uid
+     * @param {number} gid
+     */
+    export function chownSync(path: string, uid: number, gid: number): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
@@ -3138,6 +4063,14 @@ declare module "socket:fs/index" {
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
     export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
+    /**
+     * Synchronously copies `src` to `dest` calling `callback` upon success or error.
+     * @param {string} src - The source file path.
+     * @param {string} dest - The destination file path.
+     * @param {number} flags - Modifiers for copy operation.
+     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     */
+    export function copyFileSync(src: string, dest: string, flags: number): void;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
@@ -3197,6 +4130,10 @@ declare module "socket:fs/index" {
      */
     export function mkdir(path: any, options: any, callback: any): void;
     /**
+     * @ignore
+     */
+    export function mkdirSync(path: any, options: any): void;
+    /**
      * Asynchronously open a file calling `callback` upon success or error.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
@@ -3247,6 +4184,14 @@ declare module "socket:fs/index" {
      */
     export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
+     * @param {string | Buffer | URL | number } path
+     * @param {object?|function(Error?, Buffer?)} [options]
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     */
+    export function readFileSync(path: string | Buffer | URL | number, options?: {}): any;
+    /**
      * Reads link at `path`
      * @param {string} path
      * @param {function(err, string)} callback
@@ -3272,7 +4217,15 @@ declare module "socket:fs/index" {
      */
     export function rmdir(path: string, callback: Function): void;
     /**
-     *
+     * Synchronously get the stats of a file
+     * @param {string | Buffer | URL | number } path - filename or file descriptor
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     */
+    export function statSync(path: string | Buffer | URL | number, options: object | null): promises.Stats;
+    /**
+     * Get the stats of a file
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {object?} options
      * @param {string?} [options.encoding ? 'utf8']
@@ -3281,6 +4234,16 @@ declare module "socket:fs/index" {
      * @param {function(Error?, Stats?)} callback
      */
     export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
+    /**
+     * Get the stats of a symbolic link
+     * @param {string | Buffer | URL | number } path - filename or file descriptor
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.flag ? 'r']
+     * @param {AbortSignal?} [options.signal]
+     * @param {function(Error?, Stats?)} callback
+     */
+    export function lstat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
@@ -3317,9 +4280,11 @@ declare module "socket:fs/index" {
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
+    import { Buffer } from "socket:buffer";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
+    import * as promises from "socket:fs/promises";
     import { Stats } from "socket:fs/stats";
     import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
@@ -3327,23 +4292,26 @@ declare module "socket:fs/index" {
     import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
-    import * as promises from "socket:fs/promises";
     import * as exports from "socket:fs/index";
     
     export { constants, Dir, DirectoryHandle, Dirent, fds, FileHandle, promises, ReadStream, Stats, Watcher, WriteStream };
 }
+
 declare module "socket:fs" {
     export * from "socket:fs/index";
     export default exports;
     import * as exports from "socket:fs/index";
 }
+
 declare module "socket:external/libsodium/index" {
     const _default: any;
     export default _default;
 }
+
 declare module "socket:crypto/sodium" {
     export {};
 }
+
 declare module "socket:crypto" {
     /**
      * Generate cryptographically strong random values into the `buffer`
@@ -3411,6 +4379,7 @@ declare module "socket:crypto" {
     import * as exports from "socket:crypto";
     
 }
+
 declare module "socket:ipc" {
     export function maybeMakeError(error: any, caller: any): any;
     /**
@@ -3433,9 +4402,15 @@ declare module "socket:ipc" {
         function log(...args: any[]): any;
     }
     /**
+     * Find transfers for an in worker global `postMessage`
+     * that is proxied to the main thread.
      * @ignore
      */
-    export function postMessage(message: any, ...args: any[]): Promise<any>;
+    export function findMessageTransfers(transfers: any, object: any): any;
+    /**
+     * @ignore
+     */
+    export function postMessage(message: any, ...args: any[]): any;
     /**
      * Waits for the native IPC layer to be ready and exposed on the
      * global window object.
@@ -3790,264 +4765,742 @@ declare module "socket:ipc" {
     import * as exports from "socket:ipc";
     
 }
-declare module "socket:application/menu" {
+
+declare module "socket:os/constants" {
+    export type errno = number;
     /**
-     * Internal IPC for setting an application menu
-     * @ignore
+     * @typedef {number} errno
+     * @typedef {number} signal
      */
-    export function setMenu(options: any, type: any): Promise<ipc.Result>;
     /**
-     * Internal IPC for setting an application context menu
-     * @ignore
+     * A container for all known "errno" constant values.
+     * Unsupported values have a default value of `0`.
      */
-    export function setContextMenu(options: any): Promise<any>;
+    export const errno: any;
+    export type signal = number;
     /**
-     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
+     * A container for all known "signal" constant values.
+     * Unsupported values have a default value of `0`.
      */
-    export class Menu extends EventTarget {
-        /**
-         * `Menu` class constructor.
-         * @ignore
-         * @param {string} type
-         */
-        constructor(type: string);
-        /**
-         * The `Menu` instance type.
-         * @type {('context'|'system'|'tray')?}
-         */
-        get type(): "tray" | "system" | "context";
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * Set the menu layout for this `Menu` instance.
-         * @param {string|object} layoutOrOptions
-         * @param {object=} [options]
-         */
-        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
-        #private;
-    }
-    /**
-     * A container for various `Menu` instances.
-     */
-    export class MenuContainer extends EventTarget {
-        /**
-         * `MenuContainer` class constructor.
-         * @param {EventTarget} [sourceEventTarget]
-         * @param {object=} [options]
-         */
-        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * The `TrayMenu` instance for the application.
-         * @type {TrayMenu}
-         */
-        get tray(): TrayMenu;
-        /**
-         * The `SystemMenu` instance for the application.
-         * @type {SystemMenu}
-         */
-        get system(): SystemMenu;
-        /**
-         * The `ContextMenu` instance for the application.
-         * @type {ContextMenu}
-         */
-        get context(): ContextMenu;
-        #private;
-    }
-    /**
-     * A `Menu` instance that represents a context menu.
-     */
-    export class ContextMenu extends Menu {
-        constructor();
-    }
-    /**
-     * A `Menu` instance that represents the system menu.
-     */
-    export class SystemMenu extends Menu {
-        constructor();
-    }
-    /**
-     * A `Menu` instance that represents the tray menu.
-     */
-    export class TrayMenu extends Menu {
-        constructor();
-    }
-    /**
-     * The application tray menu.
-     * @type {TrayMenu}
-     */
-    export const tray: TrayMenu;
-    /**
-     * The application system menu.
-     * @type {SystemMenu}
-     */
-    export const system: SystemMenu;
-    /**
-     * The application context menu.
-     * @type {ContextMenu}
-     */
-    export const context: ContextMenu;
-    /**
-     * The application menus container.
-     * @type {MenuContainer}
-     */
-    export const container: MenuContainer;
-    export default container;
-    import ipc from "socket:ipc";
-}
-declare module "socket:internal/events" {
-    /**
-     * An event dispatched when an application URL is opening the application.
-     */
-    export class ApplicationURLEvent extends Event {
-        /**
-         * `ApplicationURLEvent` class constructor.
-         * @param {string=} [type]
-         * @param {object=} [options]
-         */
-        constructor(type?: string | undefined, options?: object | undefined);
-        /**
-         * `true` if the application URL is valid (parses correctly).
-         * @type {boolean}
-         */
-        get isValid(): boolean;
-        /**
-         * Data associated with the `ApplicationURLEvent`.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The original source URI
-         * @type {?string}
-         */
-        get source(): string;
-        /**
-         * The `URL` for the `ApplicationURLEvent`.
-         * @type {?URL}
-         */
-        get url(): URL;
-        /**
-         * String tag name for an `ApplicationURLEvent` instance.
-         * @type {string}
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    /**
-     * An event dispacted for a registered global hotkey expression.
-     */
-    export class HotKeyEvent extends MessageEvent<any> {
-        /**
-         * `HotKeyEvent` class constructor.
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
-         */
-        constructor(type?: string | undefined, data?: object | undefined);
-        /**
-         * The global unique ID for this hotkey binding.
-         * @type {number?}
-         */
-        get id(): number;
-        /**
-         * The computed hash for this hotkey binding.
-         * @type {number?}
-         */
-        get hash(): number;
-        /**
-         * The normalized hotkey expression as a sequence of tokens.
-         * @type {string[]}
-         */
-        get sequence(): string[];
-        /**
-         * The original expression of the hotkey binding.
-         * @type {string?}
-         */
-        get expression(): string;
-    }
-    /**
-     * An event dispacted when a menu item is selected.
-     */
-    export class MenuItemEvent extends MessageEvent<any> {
-        /**
-         * `MenuItemEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
-         * @param {import('../application/menu.js').Menu} menu
-         */
-        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
-        /**
-         * The `Menu` this event has been dispatched for.
-         * @type {import('../application/menu.js').Menu?}
-         */
-        get menu(): import("socket:application/menu").Menu;
-        /**
-         * The title of the menu item.
-         * @type {string?}
-         */
-        get title(): string;
-        /**
-         * An optional tag value for the menu item that may also be the
-         * parent menu item title.
-         * @type {string?}
-         */
-        get tag(): string;
-        /**
-         * The parent title of the menu item.
-         * @type {string?}
-         */
-        get parent(): string;
-        #private;
-    }
+    export const signal: any;
     namespace _default {
-        export { ApplicationURLEvent };
-        export { MenuItemEvent };
-        export { HotKeyEvent };
+        export { errno };
+        export { signal };
     }
     export default _default;
 }
+
+declare module "socket:errno" {
+    /**
+     * Converts an `errno` code to its corresponding string message.
+     * @param {import('./os/constants.js').errno} {code}
+     * @return {string}
+     */
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'errno' name.
+     * @param {string|number} name
+     * @return {errno}
+     */
+    export function getCode(name: string | number): errno;
+    /**
+     * Gets the name for a given 'errno' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'errno' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    /**
+     * @typedef {import('./os/constants.js').errno} errno
+     */
+    export const E2BIG: any;
+    export const EACCES: any;
+    export const EADDRINUSE: any;
+    export const EADDRNOTAVAIL: any;
+    export const EAFNOSUPPORT: any;
+    export const EAGAIN: any;
+    export const EALREADY: any;
+    export const EBADF: any;
+    export const EBADMSG: any;
+    export const EBUSY: any;
+    export const ECANCELED: any;
+    export const ECHILD: any;
+    export const ECONNABORTED: any;
+    export const ECONNREFUSED: any;
+    export const ECONNRESET: any;
+    export const EDEADLK: any;
+    export const EDESTADDRREQ: any;
+    export const EDOM: any;
+    export const EDQUOT: any;
+    export const EEXIST: any;
+    export const EFAULT: any;
+    export const EFBIG: any;
+    export const EHOSTUNREACH: any;
+    export const EIDRM: any;
+    export const EILSEQ: any;
+    export const EINPROGRESS: any;
+    export const EINTR: any;
+    export const EINVAL: any;
+    export const EIO: any;
+    export const EISCONN: any;
+    export const EISDIR: any;
+    export const ELOOP: any;
+    export const EMFILE: any;
+    export const EMLINK: any;
+    export const EMSGSIZE: any;
+    export const EMULTIHOP: any;
+    export const ENAMETOOLONG: any;
+    export const ENETDOWN: any;
+    export const ENETRESET: any;
+    export const ENETUNREACH: any;
+    export const ENFILE: any;
+    export const ENOBUFS: any;
+    export const ENODATA: any;
+    export const ENODEV: any;
+    export const ENOENT: any;
+    export const ENOEXEC: any;
+    export const ENOLCK: any;
+    export const ENOLINK: any;
+    export const ENOMEM: any;
+    export const ENOMSG: any;
+    export const ENOPROTOOPT: any;
+    export const ENOSPC: any;
+    export const ENOSR: any;
+    export const ENOSTR: any;
+    export const ENOSYS: any;
+    export const ENOTCONN: any;
+    export const ENOTDIR: any;
+    export const ENOTEMPTY: any;
+    export const ENOTSOCK: any;
+    export const ENOTSUP: any;
+    export const ENOTTY: any;
+    export const ENXIO: any;
+    export const EOPNOTSUPP: any;
+    export const EOVERFLOW: any;
+    export const EPERM: any;
+    export const EPIPE: any;
+    export const EPROTO: any;
+    export const EPROTONOSUPPORT: any;
+    export const EPROTOTYPE: any;
+    export const ERANGE: any;
+    export const EROFS: any;
+    export const ESPIPE: any;
+    export const ESRCH: any;
+    export const ESTALE: any;
+    export const ETIME: any;
+    export const ETIMEDOUT: any;
+    export const ETXTBSY: any;
+    export const EWOULDBLOCK: any;
+    export const EXDEV: any;
+    export const strings: any;
+    export { constants };
+    namespace _default {
+        export { constants };
+        export { strings };
+        export { toString };
+        export { getCode };
+        export { getMessage };
+    }
+    export default _default;
+    export type errno = import("socket:os/constants").errno;
+    import { errno as constants } from "socket:os/constants";
+}
+
+declare module "socket:errors" {
+    export default exports;
+    export const ABORT_ERR: any;
+    export const ENCODING_ERR: any;
+    export const INVALID_ACCESS_ERR: any;
+    export const INDEX_SIZE_ERR: any;
+    export const NETWORK_ERR: any;
+    export const NOT_ALLOWED_ERR: any;
+    export const NOT_FOUND_ERR: any;
+    export const NOT_SUPPORTED_ERR: any;
+    export const OPERATION_ERR: any;
+    export const SECURITY_ERR: any;
+    export const TIMEOUT_ERR: any;
+    /**
+     * An `AbortError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `AbortSignal` instance.
+     */
+    export class AbortError extends Error {
+        /**
+         * The code given to an `ABORT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `AbortError` class constructor.
+         * @param {AbortSignal|string} reasonOrSignal
+         * @param {AbortSignal=} [signal]
+         */
+        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
+        signal: AbortSignal;
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `BadRequestSignal` instance.
+     */
+    export class BadRequestError extends Error {
+        /**
+         * The default code given to a `BadRequestError`
+         */
+        static get code(): number;
+        /**
+         * `BadRequestError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `EncodingError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class EncodingError extends Error {
+        /**
+         * The code given to an `ENCODING_ERR` `DOMException`.
+         */
+        static get code(): any;
+        /**
+         * `EncodingError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An error type derived from an `errno` code.
+     */
+    export class ErrnoError extends Error {
+        static get code(): string;
+        static errno: any;
+        /**
+         * `ErrnoError` class constructor.
+         * @param {import('./errno').errno|string} code
+         */
+        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
+        get name(): string;
+        get code(): number;
+        #private;
+    }
+    /**
+     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class FinalizationRegistryCallbackError extends Error {
+        /**
+         * The default code given to an `FinalizationRegistryCallbackError`
+         */
+        static get code(): number;
+        /**
+         * `FinalizationRegistryCallbackError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IllegalConstructorError` is an error type thrown when a constructor is
+     * called for a class constructor when it shouldn't be.
+     */
+    export class IllegalConstructorError extends TypeError {
+        /**
+         * The default code given to an `IllegalConstructorError`
+         */
+        static get code(): number;
+        /**
+         * `IllegalConstructorError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IndexSizeError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class IndexSizeError extends Error {
+        /**
+         * The code given to an `INDEX_SIZE_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `IndexSizeError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    export const kInternalErrorCode: unique symbol;
+    /**
+     * An `InternalError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InternalError extends Error {
+        /**
+         * The default code given to an `InternalError`
+         */
+        static get code(): number;
+        /**
+         * `InternalError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, code?: number, ...args: any[]);
+        get name(): string;
+        /**
+         * @param {number|string}
+         */
+        set code(code: string | number);
+        /**
+         * @type {number|string}
+         */
+        get code(): string | number;
+        [exports.kInternalErrorCode]: number;
+    }
+    /**
+     * An `InvalidAccessError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InvalidAccessError extends Error {
+        /**
+         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `InvalidAccessError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NetworkError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NetworkError extends Error {
+        /**
+         * The code given to an `NETWORK_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NetworkError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotAllowedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotAllowedError extends Error {
+        /**
+         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotAllowedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotFoundError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotFoundError extends Error {
+        /**
+         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotFoundError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotSupportedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotSupportedError extends Error {
+        /**
+         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotSupportedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `ModuleNotFoundError` is an error type thrown when an imported or
+     * required module is not found.
+     */
+    export class ModuleNotFoundError extends exports.NotFoundError {
+        /**
+         * `ModuleNotFoundError` class constructor.
+         * @param {string} message
+         */
+        constructor(message: string, requireStack: any);
+        requireStack: any;
+    }
+    /**
+     * An `OperationError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class OperationError extends Error {
+        /**
+         * The code given to an `OPERATION_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `OperationError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `SecurityError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class SecurityError extends Error {
+        /**
+         * The code given to an `SECURITY_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `SecurityError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `TimeoutError` is an error type thrown when an operation timesout.
+     */
+    export class TimeoutError extends Error {
+        /**
+         * The code given to an `TIMEOUT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `TimeoutError` class constructor.
+         * @param {string} message
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    import * as exports from "socket:errors";
+    
+}
+
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult>;
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    export class MIMEParams extends Map<any, any> {
+        constructor();
+        constructor(entries?: readonly (readonly [any, any])[]);
+        constructor();
+        constructor(iterable?: Iterable<readonly [any, any]>);
+    }
+    export class MIMEType {
+        constructor(input: any);
+        set type(value: any);
+        get type(): any;
+        set subtype(value: any);
+        get subtype(): any;
+        get essence(): string;
+        toString(): string;
+        toJSON(): string;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { MIMEParams };
+        export { MIMEType };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
+
+declare module "socket:util" {
+    export function debug(section: any): {
+        (...args: any[]): void;
+        enabled: boolean;
+    };
+    export function hasOwnProperty(object: any, property: any): any;
+    export function isDate(object: any): boolean;
+    export function isTypedArray(object: any): boolean;
+    export function isArrayLike(object: any): boolean;
+    export function isError(object: any): boolean;
+    export function isSymbol(value: any): boolean;
+    export function isNumber(value: any): boolean;
+    export function isBoolean(value: any): boolean;
+    export function isArrayBufferView(buf: any): boolean;
+    export function isAsyncFunction(object: any): boolean;
+    export function isArgumentsObject(object: any): boolean;
+    export function isEmptyObject(object: any): boolean;
+    export function isObject(object: any): boolean;
+    export function isUndefined(value: any): boolean;
+    export function isNull(value: any): boolean;
+    export function isNullOrUndefined(value: any): boolean;
+    export function isPrimitive(value: any): boolean;
+    export function isRegExp(value: any): boolean;
+    export function isPlainObject(object: any): boolean;
+    export function isArrayBuffer(object: any): boolean;
+    export function isBufferLike(object: any): boolean;
+    export function isFunction(value: any): boolean;
+    export function isErrorLike(error: any): boolean;
+    export function isClass(value: any): boolean;
+    export function isBuffer(value: any): boolean;
+    export function isPromiseLike(object: any): boolean;
+    export function toString(object: any): string;
+    export function toBuffer(object: any, encoding?: any): any;
+    export function toProperCase(string: any): any;
+    export function splitBuffer(buffer: any, highWaterMark: any): any[];
+    export function InvertedPromise(): Promise<any>;
+    export function clamp(value: any, min: any, max: any): number;
+    export function promisify(original: any): any;
+    export function inspect(value: any, options: any): any;
+    export namespace inspect {
+        let custom: symbol;
+        let ignore: symbol;
+    }
+    export function format(format: any, ...args: any[]): string;
+    export function parseJSON(string: any): any;
+    export function parseHeaders(headers: any): string[][];
+    export function noop(): void;
+    export function isValidPercentageValue(input: any): boolean;
+    export function compareBuffers(a: any, b: any): any;
+    export function inherits(Constructor: any, Super: any): void;
+    export function deprecate(...args: any[]): void;
+    export const TextDecoder: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoder;
+        prototype: TextDecoder;
+    };
+    export const TextEncoder: {
+        new (): TextEncoder;
+        prototype: TextEncoder;
+    };
+    export const isArray: any;
+    export class IllegalConstructor {
+    }
+    export const MIMEType: typeof mime.MIMEType;
+    export const MIMEParams: typeof mime.MIMEParams;
+    export default exports;
+    import mime from "socket:mime";
+    import * as exports from "socket:util";
+    
+}
+
+declare module "socket:window/constants" {
+    export const WINDOW_ERROR: -1;
+    export const WINDOW_NONE: 0;
+    export const WINDOW_CREATING: 10;
+    export const WINDOW_CREATED: 11;
+    export const WINDOW_HIDING: 20;
+    export const WINDOW_HIDDEN: 21;
+    export const WINDOW_SHOWING: 30;
+    export const WINDOW_SHOWN: 31;
+    export const WINDOW_CLOSING: 40;
+    export const WINDOW_CLOSED: 41;
+    export const WINDOW_EXITING: 50;
+    export const WINDOW_EXITED: 51;
+    export const WINDOW_KILLING: 60;
+    export const WINDOW_KILLED: 61;
+    export default exports;
+    import * as exports from "socket:window/constants";
+    
+}
+
 declare module "socket:window/hotkey" {
     /**
      * Normalizes an expression string.
@@ -4332,6 +5785,7 @@ declare module "socket:window/hotkey" {
     export const bindings: Bindings;
     export default bindings;
 }
+
 declare module "socket:window" {
     /**
      * @param {string} url
@@ -4351,6 +5805,11 @@ declare module "socket:window" {
             index: any;
         });
         /**
+         * The unique ID of this window.
+         * @type {string}
+         */
+        get id(): string;
+        /**
          * Get the index of the window
          * @return {number} - the index of the window
          */
@@ -4359,6 +5818,11 @@ declare module "socket:window" {
          * @type {import('./window/hotkey.js').default}
          */
         get hotkey(): import("socket:window/hotkey").Bindings;
+        /**
+         * The broadcast channel for this window.
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
         /**
          * Get the size of the window
          * @return {{ width: number, height: number }} - the size of the window
@@ -4452,6 +5916,11 @@ declare module "socket:window" {
             alpha: number;
         }): Promise<object>;
         /**
+         * Gets the background color of the window
+         * @return {Promise<object>}
+         */
+        getBackgroundColor(): Promise<object>;
+        /**
          * Opens a native context menu.
          * @param {object} options - an options object
          * @return {Promise<object>}
@@ -4505,6 +5974,12 @@ declare module "socket:window" {
          * @returns {Promise<ipc.Result>}
          */
         openExternal(options: object): Promise<ipc.Result>;
+        /**
+         * Opens a file in the default file explorer.
+         * @param {object} options
+         * @returns {Promise<ipc.Result>}
+         */
+        revealFile(options: object): Promise<ipc.Result>;
         /**
          * Adds a listener to the window.
          * @param {string} event - the event to listen to
@@ -4560,6 +6035,7 @@ declare module "socket:window" {
     import * as statuses from "socket:window/constants";
     import hotkey from "socket:window/hotkey";
 }
+
 declare module "socket:application" {
     /**
      * Returns the current window index
@@ -4569,9 +6045,17 @@ declare module "socket:application" {
     /**
      * Creates a new window and returns an instance of ApplicationWindow.
      * @param {object} opts - an options object
-     * @param {number} opts.index - the index of the window
-     * @param {string} opts.path - the path to the HTML file to load into the window
-     * @param {string=} opts.title - the title of the window
+     * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
+     * @param {boolean=} opts.closable - deterime if the window can be closed.
+     * @param {boolean=} opts.minimizable - deterime if the window can be minimized.
+     * @param {boolean=} opts.maximizable - deterime if the window can be maximized.
+     * @param {number} [opts.margin] - a margin around the webview. (Private)
+     * @param {number} [opts.radius] - a radius on the webview. (Private)
+     * @param {number} opts.index - the index of the window.
+     * @param {string} opts.path - the path to the HTML file to load into the window.
+     * @param {string=} opts.title - the title of the window.
+     * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
+     * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
      * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
      * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
      * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -4583,12 +6067,21 @@ declare module "socket:application" {
      * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
      * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
      * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
+     * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
      * @return {Promise<ApplicationWindow>}
      */
     export function createWindow(opts: {
+        aspectRatio?: string | undefined;
+        closable?: boolean | undefined;
+        minimizable?: boolean | undefined;
+        maximizable?: boolean | undefined;
+        margin?: number;
+        radius?: number;
         index: number;
         path: string;
         title?: string | undefined;
+        titleBarStyle?: string | undefined;
+        trafficLightPosition?: string | undefined;
         width?: (number | string) | undefined;
         height?: (number | string) | undefined;
         minWidth?: (number | string) | undefined;
@@ -4600,6 +6093,7 @@ declare module "socket:application" {
         utility?: boolean | undefined;
         canExit?: boolean | undefined;
         headless?: boolean | undefined;
+        userScript?: string | undefined;
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
@@ -4612,19 +6106,17 @@ declare module "socket:application" {
     /**
      * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
      * @param {number[]} [indices] - the indices of the windows
-     * @return {Promise<Object.<number, ApplicationWindow>>}
      * @throws {Error} - if indices is not an array of integer numbers
+     * @return {Promise<ApplicationWindowList>}
      */
-    export function getWindows(indices?: number[]): Promise<{
-        [x: number]: ApplicationWindow;
-    }>;
+    export function getWindows(indices?: number[], options?: any): Promise<ApplicationWindowList>;
     /**
      * Returns the ApplicationWindow instance for the given index
      * @param {number} index - the index of the window
      * @throws {Error} - if index is not a valid integer number
      * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
      */
-    export function getWindow(index: number): Promise<ApplicationWindow>;
+    export function getWindow(index: number, options: any): Promise<ApplicationWindow>;
     /**
      * Returns the ApplicationWindow instance for the current window.
      * @return {Promise<ApplicationWindow>}
@@ -4737,6 +6229,24 @@ declare module "socket:application" {
      */
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
     export { menu };
+    export const MAX_WINDOWS: 32;
+    export class ApplicationWindowList {
+        static from(...args: any[]): exports.ApplicationWindowList;
+        constructor(items: any);
+        get length(): number;
+        get size(): number;
+        forEach(callback: any, thisArg: any): void;
+        item(index: any): any;
+        entries(): any[][];
+        keys(): any[];
+        values(): any[];
+        add(window: any): this;
+        remove(windowOrIndex: any): boolean;
+        contains(windowOrIndex: any): boolean;
+        clear(): this;
+        get [Symbol.iterator](): () => IterableIterator<any>;
+        #private;
+    }
     /**
      * Socket Runtime version.
      * @type {object} - an object containing the version information
@@ -4773,6 +6283,52 @@ declare module "socket:application" {
     import * as exports from "socket:application";
     
 }
+
+declare module "socket:test/fast-deep-equal" {
+    export default function equal(a: any, b: any): boolean;
+}
+
+declare module "socket:assert" {
+    export function assert(value: any, message?: any): void;
+    export function ok(value: any, message?: any): void;
+    export function equal(actual: any, expected: any, message?: any): void;
+    export function notEqual(actual: any, expected: any, message?: any): void;
+    export function strictEqual(actual: any, expected: any, message?: any): void;
+    export function notStrictEqual(actual: any, expected: any, message?: any): void;
+    export function deepEqual(actual: any, expected: any, message?: any): void;
+    export function notDeepEqual(actual: any, expected: any, message?: any): void;
+    export class AssertionError extends Error {
+        constructor(options: any);
+        actual: any;
+        expected: any;
+        operator: any;
+    }
+    const _default: typeof assert & {
+        AssertionError: typeof AssertionError;
+        ok: typeof ok;
+        equal: typeof equal;
+        notEqual: typeof notEqual;
+        strictEqual: typeof strictEqual;
+        notStrictEqual: typeof notStrictEqual;
+        deepEqual: typeof deepEqual;
+        notDeepEqual: typeof notDeepEqual;
+    };
+    export default _default;
+}
+
+declare module "socket:async_hooks" {
+    export default exports;
+    import { AsyncLocalStorage } from "socket:async/storage";
+    import { AsyncResource } from "socket:async/resource";
+    import { executionAsyncResource } from "socket:async/hooks";
+    import { executionAsyncId } from "socket:async/hooks";
+    import { triggerAsyncId } from "socket:async/hooks";
+    import { createHook } from "socket:async/hooks";
+    import * as exports from "socket:async_hooks";
+    
+    export { AsyncLocalStorage, AsyncResource, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook };
+}
+
 declare module "socket:bluetooth" {
     export default exports;
     /**
@@ -4823,6 +6379,7 @@ declare module "socket:bluetooth" {
     import ipc from "socket:ipc";
     
 }
+
 declare module "socket:bootstrap" {
     /**
      * @param {string} dest - file path
@@ -4861,6 +6418,968 @@ declare module "socket:bootstrap" {
     }
     import { EventEmitter } from "socket:events";
 }
+
+declare module "socket:internal/globals" {
+    /**
+     * Gets a runtime global value by name.
+     * @ignore
+     * @param {string} name
+     * @return {any|null}
+     */
+    export function get(name: string): any | null;
+    /**
+     * Symbolic global registry
+     * @ignore
+     */
+    export class GlobalsRegistry {
+        get global(): any;
+        symbol(name: any): symbol;
+        register(name: any, value: any): any;
+        get(name: any): any;
+    }
+    export default registry;
+    const registry: any;
+}
+
+declare module "socket:internal/shared-worker" {
+    export function getSharedWorkerImplementationForPlatform(): {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export class SharedHybridWorkerProxy extends EventTarget {
+        constructor(url: any, options: any);
+        onChannelMessage(event: any): void;
+        get id(): any;
+        get port(): any;
+        #private;
+    }
+    export class SharedHybridWorker extends EventTarget {
+        constructor(url: any, nameOrOptions: any);
+        get port(): any;
+        #private;
+    }
+    export const SharedWorker: {
+        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
+        prototype: SharedWorker;
+    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
+    export default SharedWorker;
+}
+
+declare module "socket:console" {
+    export function patchGlobalConsole(globalConsole: any, options?: {}): any;
+    export const globalConsole: globalThis.Console;
+    export class Console {
+        /**
+         * @ignore
+         */
+        constructor(options: any);
+        /**
+         * @type {import('dom').Console}
+         */
+        console: any;
+        /**
+         * @type {Map}
+         */
+        timers: Map<any, any>;
+        /**
+         * @type {Map}
+         */
+        counters: Map<any, any>;
+        /**
+         * @type {function?}
+         */
+        postMessage: Function | null;
+        write(destination: any, ...args: any[]): any;
+        assert(assertion: any, ...args: any[]): void;
+        clear(): void;
+        count(label?: string): void;
+        countReset(label?: string): void;
+        debug(...args: any[]): void;
+        dir(...args: any[]): void;
+        dirxml(...args: any[]): void;
+        error(...args: any[]): void;
+        info(...args: any[]): void;
+        log(...args: any[]): void;
+        table(...args: any[]): any;
+        time(label?: string): void;
+        timeEnd(label?: string): void;
+        timeLog(label?: string): void;
+        trace(...objects: any[]): void;
+        warn(...args: any[]): void;
+    }
+    const _default: Console;
+    export default _default;
+}
+
+declare module "socket:vm" {
+    /**
+     * @ignore
+     * @param {object[]} transfer
+     * @param {object} object
+     * @param {object=} [options]
+     * @return {object[]}
+     */
+    export function findMessageTransfers(transfers: any, object: object, options?: object | undefined): object[];
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyInputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function applyOutputContextReferences(context: object): void;
+    /**
+     * @ignore
+     * @param {object} context
+     */
+    export function filterNonTransferableValues(context: object): void;
+    /**
+     * @ignore
+     * @param {object=} [currentContext]
+     * @param {object=} [updatedContext]
+     * @param {object=} [contextReference]
+     * @return {{ deletions: string[], merges: string[] }}
+     */
+    export function applyContextDifferences(currentContext?: object | undefined, updatedContext?: object | undefined, contextReference?: object | undefined, preserveScriptArgs?: boolean): {
+        deletions: string[];
+        merges: string[];
+    };
+    /**
+     * Wrap a JavaScript function source.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     */
+    export function wrapFunctionSource(source: string, options?: object | undefined): string;
+    /**
+     * Gets the VM context window.
+     * This function will create it if it does not already exist.
+     * The current window will be used on Android or iOS platforms as there can
+     * only be one window.
+     * @return {Promise<import('./window.js').ApplicationWindow}
+     */
+    export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
+    /**
+     * Gets the `SharedWorker` that for the VM context.
+     * @return {Promise<SharedWorker>}
+     */
+    export function getContextWorker(): Promise<SharedWorker>;
+    /**
+     * Terminates the VM script context window.
+     * @ignore
+     */
+    export function terminateContextWindow(): Promise<void>;
+    /**
+     * Terminates the VM script context worker.
+     * @ignore
+     */
+    export function terminateContextWorker(): Promise<void>;
+    /**
+     * Creates a prototype object of known global reserved intrinsics.
+     * @ignore
+     */
+    export function createIntrinsics(options: any): any;
+    /**
+     * Returns `true` if value is an intrinsic, otherwise `false`.
+     * @param {any} value
+     * @return {boolean}
+     */
+    export function isIntrinsic(value: any): boolean;
+    /**
+     * Get the intrinsic type of a given `value`.
+     * @param {any}
+     * @return {function|object|null|undefined}
+     */
+    export function getIntrinsicType(value: any): Function | object | null | undefined;
+    /**
+     * Get the intrinsic type string of a given `value`.
+     * @param {any}
+     * @return {string|null}
+     */
+    export function getIntrinsicTypeString(value: any): string | null;
+    /**
+     * Creates a global proxy object for context execution.
+     * @ignore
+     * @param {object} context
+     * @return {Proxy}
+     */
+    export function createGlobalObject(context: object, options: any): ProxyConstructor;
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function detectFunctionSourceType(source: string): boolean;
+    /**
+     * Compiles `source`  with `options` into a function.
+     * @ignore
+     * @param {string} source
+     * @param {object=} [options]
+     * @return {function}
+     */
+    export function compileFunction(source: string, options?: object | undefined): Function;
+    /**
+     * Run `source` JavaScript in given context. The script context execution
+     * context is preserved until the `context` object that points to it is
+     * garbage collected or there are no longer any references to it and its
+     * associated `Script` instance.
+     * @param {string|object|function} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInContext(source: string | object | Function, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in new context. The script context is destroyed after
+     * execution. This is typically a "one off" isolated run.
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @param {object=} [context]
+     * @return {Promise<any>}
+     */
+    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    /**
+     * Run `source` JavaScript in this current context (`globalThis`).
+     * @param {string} source
+     * @param {ScriptOptions=} [options]
+     * @return {Promise<any>}
+     */
+    export function runInThisContext(source: string, options?: ScriptOptions | undefined): Promise<any>;
+    /**
+     * @ignore
+     * @param {Reference} reference
+     */
+    export function putReference(reference: Reference): void;
+    /**
+     * Create a `Reference` for a `value` in a script `context`.
+     * @param {any} value
+     * @param {object} context
+     * @param {object=} [options]
+     * @return {Reference}
+     */
+    export function createReference(value: any, context: object, options?: object | undefined): Reference;
+    /**
+     * Get a script context by ID or values
+     * @param {string|object|function} id
+     * @return {Reference?}
+     */
+    export function getReference(id: string | object | Function): Reference | null;
+    /**
+     * Remove a script context reference by ID.
+     * @param {string} id
+     */
+    export function removeReference(id: string): void;
+    /**
+     * Get all transferable values in the `object` hierarchy.
+     * @param {object} object
+     * @return {object[]}
+     */
+    export function getTransferables(object: object): object[];
+    /**
+     * @ignore
+     * @param {object} object
+     * @return {object}
+     */
+    export function createContext(object: object): object;
+    /**
+     * Returns `true` if `object` is a "context" object.
+     * @param {object}
+     * @return {boolean}
+     */
+    export function isContext(object: any): boolean;
+    /**
+     * A container for a context worker message channel that looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterface extends EventTarget {
+        get channel(): any;
+        get port(): any;
+        destroy(): void;
+        #private;
+    }
+    /**
+     * A container proxy for a context worker message channel that
+     * looks like a "worker".
+     * @ignore
+     */
+    export class ContextWorkerInterfaceProxy extends EventTarget {
+        constructor(globals: any);
+        get port(): any;
+        #private;
+    }
+    /**
+     * Global reserved values that a script context may not modify.
+     * @type {string[]}
+     */
+    export const RESERVED_GLOBAL_INTRINSICS: string[];
+    /**
+     * A unique reference to a value owner by a "context object" and a
+     * `Script` instance.
+     */
+    export class Reference {
+        /**
+         * Predicate function to determine if a `value` is an internal or external
+         * script reference value.
+         * @param {amy} value
+         * @return {boolean}
+         */
+        static isReference(value: amy): boolean;
+        /**
+         * `Reference` class constructor.
+         * @param {string} id
+         * @param {any} value
+         * @param {object=} [context]
+         * @param {object=} [options]
+         */
+        constructor(id: string, value: any, context?: object | undefined, options?: object | undefined);
+        /**
+         * The unique id of the reference
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The underling primitive type of the reference value.
+         * @ignore
+         * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
+         */
+        get type(): "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+        /**
+         * The underlying value of the reference.
+         * @type {any?}
+         */
+        get value(): any;
+        /**
+         * The name of the type.
+         * @type {string?}
+         */
+        get name(): string;
+        /**
+         * The `Script` this value belongs to, if available.
+         * @type {Script?}
+         */
+        get script(): Script;
+        /**
+         * The "context object" this reference value belongs to.
+         * @type {object?}
+         */
+        get context(): any;
+        /**
+         * A boolean value to indicate if the underlying reference value is an
+         * intrinsic value.
+         * @type {boolean}
+         */
+        get isIntrinsic(): boolean;
+        /**
+         * A boolean value to indicate if the underlying reference value is an
+         * external reference value.
+         * @type {boolean}
+         */
+        get isExternal(): boolean;
+        /**
+         * The intrinsic type this reference may be an instance of or directly refer to.
+         * @type {function|object}
+         */
+        get intrinsicType(): any;
+        /**
+         * Releases strongly held value and weak references
+         * to the "context object".
+         */
+        release(): void;
+        /**
+         * Converts this `Reference` to a JSON object.
+         * @param {boolean=} [includeValue = false]
+         */
+        toJSON(includeValue?: boolean | undefined): {
+            __vmScriptReference__: boolean;
+            id: string;
+            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
+            name: string;
+            isIntrinsic: boolean;
+            intrinsicType: string;
+        };
+        #private;
+    }
+    /**
+     * @typedef {{
+     *  filename?: string,
+     *  context?: object
+     * }} ScriptOptions
+     */
+    /**
+     * A `Script` is a container for raw JavaScript to be executed in
+     * a completely isolated virtual machine context, optionally with
+     * user supplied context. Context objects references are not actually
+     * shared, but instead provided to the script execution context using the
+     * structured cloning algorithm used by the Message Channel API. Context
+     * differences are computed and applied after execution so the user supplied
+     * context object realizes context changes after script execution. All script
+     * sources run in an "async" context so a "top level await" should work.
+     */
+    export class Script extends EventTarget {
+        /**
+         * `Script` class constructor
+         * @param {string} source
+         * @param {ScriptOptions} [options]
+         */
+        constructor(source: string, options?: ScriptOptions);
+        /**
+         * The script identifier.
+         */
+        get id(): any;
+        /**
+         * The source for this script.
+         * @type {string}
+         */
+        get source(): string;
+        /**
+         * The filename for this script.
+         * @type {string}
+         */
+        get filename(): string;
+        /**
+         * A promise that resolves when the script is ready.
+         * @type {Promise<Boolean>}
+         */
+        get ready(): Promise<boolean>;
+        /**
+         * Destroy the script execution context.
+         * @return {Promise}
+         */
+        destroy(): Promise<any>;
+        /**
+         * Run `source` JavaScript in given context. The script context execution
+         * context is preserved until the `context` object that points to it is
+         * garbage collected or there are no longer any references to it and its
+         * associated `Script` instance.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in new context. The script context is destroyed after
+         * execution. This is typically a "one off" isolated run.
+         * @param {ScriptOptions=} [options]
+         * @param {object=} [context]
+         * @return {Promise<any>}
+         */
+        runInNewContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
+        /**
+         * Run `source` JavaScript in this current context (`globalThis`).
+         * @param {ScriptOptions=} [options]
+         * @return {Promise<any>}
+         */
+        runInThisContext(options?: ScriptOptions | undefined): Promise<any>;
+        #private;
+    }
+    namespace _default {
+        export { createGlobalObject };
+        export { compileFunction };
+        export { createReference };
+        export { getContextWindow };
+        export { getContextWorker };
+        export { getReference };
+        export { getTransferables };
+        export { putReference };
+        export { Reference };
+        export { removeReference };
+        export { runInContext };
+        export { runInNewContext };
+        export { runInThisContext };
+        export { Script };
+        export { createContext };
+        export { isContext };
+    }
+    export default _default;
+    export type ScriptOptions = {
+        filename?: string;
+        context?: object;
+    };
+    import { SharedWorker } from "socket:internal/shared-worker";
+}
+
+declare module "socket:worker_threads/init" {
+    export const SHARE_ENV: unique symbol;
+    export const isMainThread: boolean;
+    export namespace state {
+        export { isMainThread };
+        export let parentPort: any;
+        export let mainPort: any;
+        export let workerData: any;
+        export let url: any;
+        export let env: {};
+        export let id: number;
+    }
+    namespace _default {
+        export { state };
+    }
+    export default _default;
+}
+
+declare module "socket:worker_threads" {
+    /**
+     * Set shared worker environment data.
+     * @param {string} key
+     * @param {any} value
+     */
+    export function setEnvironmentData(key: string, value: any): void;
+    /**
+     * Get shared worker environment data.
+     * @param {string} key
+     * @return {any}
+     */
+    export function getEnvironmentData(key: string): any;
+    /**
+    
+     * A pool of known worker threads.
+     * @type {<Map<string, Worker>}
+     */
+    export const workers: <Map_1>() => <string, Worker_1>() => any;
+    /**
+     * `true` if this is the "main" thread, otherwise `false`
+     * The "main" thread is the top level webview window.
+     * @type {boolean}
+     */
+    export const isMainThread: boolean;
+    /**
+     * The main thread `MessagePort` which is `null` when the
+     * current context is not the "main thread".
+     * @type {MessagePort?}
+     */
+    export const mainPort: MessagePort | null;
+    /**
+     * A worker thread `BroadcastChannel` class.
+     */
+    export class BroadcastChannel extends globalThis.BroadcastChannel {
+    }
+    /**
+     * A worker thread `MessageChannel` class.
+     */
+    export class MessageChannel extends globalThis.MessageChannel {
+    }
+    /**
+     * A worker thread `MessagePort` class.
+     */
+    export class MessagePort extends globalThis.MessagePort {
+    }
+    /**
+     * The current unique thread ID.
+     * @type {number}
+     */
+    export const threadId: number;
+    /**
+     * The parent `MessagePort` instance
+     * @type {MessagePort?}
+     */
+    export const parentPort: MessagePort | null;
+    /**
+     * Transferred "worker data" when creating a new `Worker` instance.
+     * @type {any?}
+     */
+    export const workerData: any | null;
+    export class Pipe extends AsyncResource {
+        /**
+         * `Pipe` class constructor.
+         * @param {Childworker} worker
+         * @ignore
+         */
+        constructor(worker: Childworker);
+        /**
+         * `true` if the pipe is still reading, otherwise `false`.
+         * @type {boolean}
+         */
+        get reading(): boolean;
+        /**
+         * Destroys the pipe
+         */
+        destroy(): void;
+        #private;
+    }
+    /**
+     * @typedef {{
+     *   env?: object,
+     *   stdin?: boolean = false,
+     *   stdout?: boolean = false,
+     *   stderr?: boolean = false,
+     *   workerData?: any,
+     *   transferList?: any[],
+     *   eval?: boolean = false
+     * }} WorkerOptions
+    
+    /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export class Worker extends EventEmitter {
+        /**
+         * `Worker` class constructor.
+         * @param {string} filename
+         * @param {WorkerOptions=} [options]
+         */
+        constructor(filename: string, options?: WorkerOptions | undefined);
+        /**
+         * Handles incoming worker messages.
+         * @ignore
+         * @param {MessageEvent} event
+         */
+        onWorkerMessage(event: MessageEvent): boolean;
+        /**
+         * Handles process environment change events
+         * @ignore
+         * @param {import('./process.js').ProcessEnvironmentEvent} event
+         */
+        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
+        /**
+         * The unique ID for this `Worker` thread instace.
+         * @type {number}
+         */
+        get id(): number;
+        get threadId(): number;
+        /**
+         * A `Writable` standard input stream if `{ stdin: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Writable?}
+         */
+        get stdin(): Writable;
+        /**
+         * A `Readable` standard output stream if `{ stdout: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stdout(): Readable;
+        /**
+         * A `Readable` standard error stream if `{ stderr: true }` was set when
+         * creating this `Worker` instance.
+         * @type {import('./stream.js').Readable?}
+         */
+        get stderr(): Readable;
+        /**
+         * Terminates the `Worker` instance
+         */
+        terminate(): void;
+        postMessage(...args: any[]): void;
+        #private;
+    }
+    namespace _default {
+        export { Worker };
+        export { isMainThread };
+        export { parentPort };
+        export { setEnvironmentData };
+        export { getEnvironmentData };
+        export { workerData };
+        export { threadId };
+        export { SHARE_ENV };
+    }
+    export default _default;
+    /**
+     * /**
+     * A worker thread that can communicate directly with a parent thread,
+     * share environment data, and process streamed data.
+     */
+    export type WorkerOptions = {
+        env?: object;
+        stdin?: boolean;
+        stdout?: boolean;
+        stderr?: boolean;
+        workerData?: any;
+        transferList?: any[];
+        eval?: boolean;
+    };
+    import { AsyncResource } from "socket:async/resource";
+    import { EventEmitter } from "socket:events";
+    import { Writable } from "socket:stream";
+    import { Readable } from "socket:stream";
+    import { SHARE_ENV } from "socket:worker_threads/init";
+    import init from "socket:worker_threads/init";
+    import { env } from "socket:process";
+    export { SHARE_ENV, init };
+}
+
+declare module "socket:child_process" {
+    /**
+     * Spawns a child process exeucting `command` with `args`
+     * @param {string} command
+     * @param {string[]|object=} [args]
+     * @param {object=} [options
+     * @return {ChildProcess}
+     */
+    export function spawn(command: string, args?: (string[] | object) | undefined, options?: object | undefined): ChildProcess;
+    export function exec(command: any, options: any, callback: any): ChildProcess & {
+        then(resolve: any, reject: any): Promise<any>;
+        catch(reject: any): Promise<any>;
+        finally(next: any): Promise<any>;
+    };
+    export function execSync(command: any, options: any): any;
+    export class Pipe extends AsyncResource {
+        /**
+         * `Pipe` class constructor.
+         * @param {ChildProcess} process
+         * @ignore
+         */
+        constructor(process: ChildProcess);
+        /**
+         * `true` if the pipe is still reading, otherwise `false`.
+         * @type {boolean}
+         */
+        get reading(): boolean;
+        /**
+         * Destroys the pipe
+         */
+        destroy(): void;
+        #private;
+    }
+    export class ChildProcess extends EventEmitter {
+        constructor(options?: {});
+        /**
+         * @ignore
+         * @type {Pipe}
+         */
+        get pipe(): Pipe;
+        /**
+         * `true` if the child process was killed with kill()`,
+         * otherwise `false`.
+         * @type {boolean}
+         */
+        get killed(): boolean;
+        /**
+         * The process identifier for the child process. This value is
+         * `> 0` if the process was spawned successfully, otherwise `0`.
+         * @type {number}
+         */
+        get pid(): number;
+        /**
+         * The executable file name of the child process that is launched. This
+         * value is `null` until the child process has successfully been spawned.
+         * @type {string?}
+         */
+        get spawnfile(): string;
+        /**
+         * The full list of command-line arguments the child process was spawned with.
+         * This value is an empty array until the child process has successfully been
+         * spawned.
+         * @type {string[]}
+         */
+        get spawnargs(): string[];
+        /**
+         * Always `false` as the IPC messaging is not supported.
+         * @type {boolean}
+         */
+        get connected(): boolean;
+        /**
+         * The child process exit code. This value is `null` if the child process
+         * is still running, otherwise it is a positive integer.
+         * @type {number?}
+         */
+        get exitCode(): number;
+        /**
+         * If available, the underlying `stdin` writable stream for
+         * the child process.
+         * @type {import('./stream').Writable?}
+         */
+        get stdin(): import("socket:stream").Writable;
+        /**
+         * If available, the underlying `stdout` readable stream for
+         * the child process.
+         * @type {import('./stream').Readable?}
+         */
+        get stdout(): import("socket:stream").Readable;
+        /**
+         * If available, the underlying `stderr` readable stream for
+         * the child process.
+         * @type {import('./stream').Readable?}
+         */
+        get stderr(): import("socket:stream").Readable;
+        /**
+         * The underlying worker thread.
+         * @ignore
+         * @type {import('./worker_threads').Worker}
+         */
+        get worker(): Worker;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        disconnect(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         * @return {boolean}
+         */
+        send(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        ref(): boolean;
+        /**
+         * This function does nothing, but is present for nodejs compat.
+         */
+        unref(): boolean;
+        /**
+         * Kills the child process. This function throws an error if the child
+         * process has not been spawned or is already killed.
+         * @param {number|string} signal
+         */
+        kill(...args: any[]): this;
+        /**
+         * Spawns the child process. This function will thrown an error if the process
+         * is already spawned.
+         * @param {string} command
+         * @param {string[]=} [args]
+         * @return {ChildProcess}
+         */
+        spawn(...args?: string[] | undefined): ChildProcess;
+        /**
+         * `EventTarget` based `addEventListener` method.
+         * @param {string} event
+         * @param {function(Event)} callback
+         * @param {{ once?: false }} [options]
+         */
+        addEventListener(event: string, callback: (arg0: Event) => any, options?: {
+            once?: false;
+        }): void;
+        /**
+         * `EventTarget` based `removeEventListener` method.
+         * @param {string} event
+         * @param {function(Event)} callback
+         * @param {{ once?: false }} [options]
+         */
+        removeEventListener(event: string, callback: (arg0: Event) => any): void;
+        #private;
+    }
+    export function execFile(command: any, options: any, callback: any): ChildProcess & {
+        then(resolve: any, reject: any): Promise<any>;
+        catch(reject: any): Promise<any>;
+        finally(next: any): Promise<any>;
+    };
+    namespace _default {
+        export { ChildProcess };
+        export { spawn };
+        export { execFile };
+        export { exec };
+    }
+    export default _default;
+    import { AsyncResource } from "socket:async/resource";
+    import { EventEmitter } from "socket:events";
+    import { Worker } from "socket:worker_threads";
+}
+
+declare module "socket:constants" {
+    export * from "socket:fs/constants";
+    export * from "socket:window/constants";
+    export const E2BIG: any;
+    export const EACCES: any;
+    export const EADDRINUSE: any;
+    export const EADDRNOTAVAIL: any;
+    export const EAFNOSUPPORT: any;
+    export const EAGAIN: any;
+    export const EALREADY: any;
+    export const EBADF: any;
+    export const EBADMSG: any;
+    export const EBUSY: any;
+    export const ECANCELED: any;
+    export const ECHILD: any;
+    export const ECONNABORTED: any;
+    export const ECONNREFUSED: any;
+    export const ECONNRESET: any;
+    export const EDEADLK: any;
+    export const EDESTADDRREQ: any;
+    export const EDOM: any;
+    export const EDQUOT: any;
+    export const EEXIST: any;
+    export const EFAULT: any;
+    export const EFBIG: any;
+    export const EHOSTUNREACH: any;
+    export const EIDRM: any;
+    export const EILSEQ: any;
+    export const EINPROGRESS: any;
+    export const EINTR: any;
+    export const EINVAL: any;
+    export const EIO: any;
+    export const EISCONN: any;
+    export const EISDIR: any;
+    export const ELOOP: any;
+    export const EMFILE: any;
+    export const EMLINK: any;
+    export const EMSGSIZE: any;
+    export const EMULTIHOP: any;
+    export const ENAMETOOLONG: any;
+    export const ENETDOWN: any;
+    export const ENETRESET: any;
+    export const ENETUNREACH: any;
+    export const ENFILE: any;
+    export const ENOBUFS: any;
+    export const ENODATA: any;
+    export const ENODEV: any;
+    export const ENOENT: any;
+    export const ENOEXEC: any;
+    export const ENOLCK: any;
+    export const ENOLINK: any;
+    export const ENOMEM: any;
+    export const ENOMSG: any;
+    export const ENOPROTOOPT: any;
+    export const ENOSPC: any;
+    export const ENOSR: any;
+    export const ENOSTR: any;
+    export const ENOSYS: any;
+    export const ENOTCONN: any;
+    export const ENOTDIR: any;
+    export const ENOTEMPTY: any;
+    export const ENOTSOCK: any;
+    export const ENOTSUP: any;
+    export const ENOTTY: any;
+    export const ENXIO: any;
+    export const EOPNOTSUPP: any;
+    export const EOVERFLOW: any;
+    export const EPERM: any;
+    export const EPIPE: any;
+    export const EPROTO: any;
+    export const EPROTONOSUPPORT: any;
+    export const EPROTOTYPE: any;
+    export const ERANGE: any;
+    export const EROFS: any;
+    export const ESPIPE: any;
+    export const ESRCH: any;
+    export const ESTALE: any;
+    export const ETIME: any;
+    export const ETIMEDOUT: any;
+    export const ETXTBSY: any;
+    export const EWOULDBLOCK: any;
+    export const EXDEV: any;
+    export const SIGHUP: any;
+    export const SIGINT: any;
+    export const SIGQUIT: any;
+    export const SIGILL: any;
+    export const SIGTRAP: any;
+    export const SIGABRT: any;
+    export const SIGIOT: any;
+    export const SIGBUS: any;
+    export const SIGFPE: any;
+    export const SIGKILL: any;
+    export const SIGUSR1: any;
+    export const SIGSEGV: any;
+    export const SIGUSR2: any;
+    export const SIGPIPE: any;
+    export const SIGALRM: any;
+    export const SIGTERM: any;
+    export const SIGCHLD: any;
+    export const SIGCONT: any;
+    export const SIGSTOP: any;
+    export const SIGTSTP: any;
+    export const SIGTTIN: any;
+    export const SIGTTOU: any;
+    export const SIGURG: any;
+    export const SIGXCPU: any;
+    export const SIGXFSZ: any;
+    export const SIGVTALRM: any;
+    export const SIGPROF: any;
+    export const SIGWINCH: any;
+    export const SIGIO: any;
+    export const SIGINFO: any;
+    export const SIGSYS: any;
+    const _default: any;
+    export default _default;
+}
+
 declare module "socket:ip" {
     /**
      * Normalizes input as an IPv4 address string
@@ -4880,6 +7399,7 @@ declare module "socket:ip" {
     }
     export default _default;
 }
+
 declare module "socket:dns/promises" {
     /**
      * @async
@@ -4894,6 +7414,7 @@ declare module "socket:dns/promises" {
     import * as exports from "socket:dns/promises";
     
 }
+
 declare module "socket:dns/index" {
     /**
      * Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
@@ -4931,11 +7452,13 @@ declare module "socket:dns/index" {
     import * as exports from "socket:dns/index";
     
 }
+
 declare module "socket:dns" {
     export * from "socket:dns/index";
     export default exports;
     import * as exports from "socket:dns/index";
 }
+
 declare module "socket:dgram" {
     export function createSocket(options: string | any, callback?: Function | undefined): Socket;
     /**
@@ -5118,6 +7641,7 @@ declare module "socket:dgram" {
         dropSourceSpecificMembership(): void;
         ref(): this;
         unref(): this;
+        #private;
     }
     /**
      * Generic error class for an error occurring on a `Socket` instance.
@@ -5184,6 +7708,7 @@ declare module "socket:dgram" {
     import * as exports from "socket:dgram";
     
 }
+
 declare module "socket:enumeration" {
     /**
      * @module enumeration
@@ -5239,156 +7764,7 @@ declare module "socket:enumeration" {
     }
     export default Enumeration;
 }
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult>;
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
-}
+
 declare module "socket:fs/web" {
     /**
      * Creates a new `File` instance from `filename`.
@@ -5492,6 +7868,7 @@ declare module "socket:fs/web" {
     export default _default;
     import fs from "socket:fs/promises";
 }
+
 declare module "socket:extension" {
     /**
      * Load an extension by name.
@@ -5612,6 +7989,7 @@ declare module "socket:extension" {
         export { stats };
     }
     export default _default;
+    export type Pointer = number;
     export type ExtensionLoadOptions = {
         allow: string[] | string;
         imports?: object;
@@ -5690,15 +8068,12 @@ declare module "socket:extension" {
     }
     const $type: unique symbol;
     /**
-     * {Pointer}
-     */
-    type $loaded = number;
-    /**
-     * @typedef {number} {Pointer}
+     * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
     import path from "socket:path";
 }
+
 declare module "socket:fetch/fetch" {
     export class DOMException {
         private constructor();
@@ -5764,16 +8139,1551 @@ declare module "socket:fetch/fetch" {
         let polyfill: boolean;
     }
 }
+
 declare module "socket:fetch/index" {
-    export * from "socket:fetch/fetch";
     export default fetch;
     import { fetch } from "socket:fetch/fetch";
+    import { Headers } from "socket:fetch/fetch";
+    import { Request } from "socket:fetch/fetch";
+    import { Response } from "socket:fetch/fetch";
+    export { fetch, Headers, Request, Response };
 }
+
 declare module "socket:fetch" {
     export * from "socket:fetch/index";
     export default fetch;
     import fetch from "socket:fetch/index";
 }
+
+declare module "socket:service-worker/database" {
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   version?: string | undefined
+     * }} DatabaseOptions
+     */
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined,
+     *   count?: number | undefined
+     * }} DatabaseGetOptions
+     */
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabasePutOptions
+     */
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseDeleteOptions
+     */
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   offset?: number | undefined,
+     *   backlog?: number | undefined
+     * }} DatabaseRequestQueueWaitOptions
+     */
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseEntriesOptions
+     */
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
+     */
+    /**
+     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
+     * @param {EventTarget} target
+     * @param {string} eventType
+     * @return {Promise<Event>}
+     */
+    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
+    /**
+     * Creates an opens a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     * @return {Promise<Database>}
+     */
+    export function open(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<Database>;
+    /**
+     * Complete deletes a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefiend} [options]
+     */
+    export function drop(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<void>;
+    /**
+     * A mapping of named `Database` instances that are currently opened
+     * @type {Map<string, WeakRef<Database>>}
+     */
+    export const opened: Map<string, WeakRef<Database>>;
+    /**
+     * A container for conflict resolution for a `DatabaseRequestQueue` instance
+     * `IDBRequest` instance.
+     */
+    export class DatabaseRequestQueueRequestConflict {
+        /**
+         * `DatabaseRequestQueueRequestConflict` class constructor
+         * @param {function(any): void)} resolve
+         * @param {function(Error): void)} reject
+         * @param {function(): void)} cleanup
+         */
+        constructor(resolve: any, reject: any, cleanup: any);
+        /**
+         * Called when a conflict is resolved.
+         * @param {any} argument
+         */
+        resolve(argument?: any): void;
+        /**
+         * Called when a conflict is rejected
+         * @param {Error} error
+         */
+        reject(error: Error): void;
+        #private;
+    }
+    /**
+     * An event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueEvent extends Event {
+        /**
+         * `DatabaseRequestQueueEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction);
+        /**
+         * A reference to the underlying request for this event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * An event dispatched on a `Database`
+     */
+    export class DatabaseEvent extends Event {
+        /**
+         * `DatabaseEvent` class constructor.
+         * @param {string} type
+         * @param {Database} database
+         */
+        constructor(type: string, database: Database);
+        /**
+         * A reference to the underlying database for this event.
+         * @type {Database}
+         */
+        get database(): Database;
+        #private;
+    }
+    /**
+     * An error event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
+        /**
+         * `DatabaseRequestQueueErrorEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         * @param {{ error: Error, cause?: Error }} options
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
+            error: Error;
+            cause?: Error;
+        });
+        /**
+         * A reference to the underlying request for this error event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * A container for various `IDBRequest` and `IDBTransaction` instances
+     * occurring during the life cycles of a `Database` instance.
+     */
+    export class DatabaseRequestQueue extends EventTarget {
+        /**
+         * Computed queue length
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
+         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
+         * upon an error' event.
+         * @param {IDBRequest|IDBTransaction}
+         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
+         * @return {Promise}
+         */
+        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
+        /**
+         * Waits for all pending requests to complete. This function will throw when
+         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
+         * Callers of this function can optionally specify a maximum backlog to wait
+         * for instead of waiting for all requests to finish.
+         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
+         */
+        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
+        #private;
+    }
+    /**
+     * An interface for reading from named databases backed by IndexedDB.
+     */
+    export class Database extends EventTarget {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         * @param {?DatabaseOptions | undefiend} [options]
+         */
+        constructor(name: string, options?: (DatabaseOptions | undefiend) | null);
+        /**
+         * `true` if the `Database` is currently opening, otherwise `false`.
+         * A `Database` instance should not attempt to be opened if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
+         * `true` if the `Database` instance was successfully opened such that the
+         * internal `IDBDatabase` storage instance was created and can be referenced
+         * on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * `true` if the `Database` instance was closed or has not been opened such
+         * that the internal `IDBDatabase` storage instance was not created or cannot
+         * be referenced on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if the `Database` is currently closing, otherwise `false`.
+         * A `Database` instance should not attempt to be closed if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
+         * The name of the `IDBDatabase` database. This value cannot be `null`.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The version of the `IDBDatabase` database. This value may be `null`.
+         * @type {?string}
+         */
+        get version(): string;
+        /**
+         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
+         * This value may ba `null`.
+         * @type {?IDBDatabase}
+         */
+        get storage(): IDBDatabase;
+        /**
+         * Opens the `IDBDatabase` database optionally at a specific "version" if
+         * one was given upon construction of the `Database` instance. This function
+         * is not idempotent and will throw if the underlying `IDBDatabase` instance
+         * was created successfully or is in the process of opening.
+         * @return {Promise}
+         */
+        open(): Promise<any>;
+        /**
+         * Closes the `IDBDatabase` database storage, if opened. This function is not
+         * idempotent and will throw if the underlying `IDBDatabase` instance is
+         * already closed (not opened) or currently closing.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Deletes entire `Database` instance and closes after successfully
+         * delete storage.
+         */
+        drop(): Promise<void>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseGetOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        get(key: string, options?: (DatabaseGetOptions | undefiend) | null): Promise<object | object[] | null>;
+        /**
+         * Put a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        put(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Inserts a new `value` at `key`. This function throws if a value at `key`
+         * already exists.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        insert(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Update a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        update(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        /**
+         * Delete a value at `key`.
+         * @param {string} key
+         * @param {?DatabaseDeleteOptions|undefiend} [options]
+         * @return {Promise}
+         */
+        delete(key: string, options?: (DatabaseDeleteOptions | undefiend) | null): Promise<any>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseEntriesOptions|undefiend} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        entries(options?: (DatabaseEntriesOptions | undefiend) | null): Promise<object | object[] | null>;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { open };
+    }
+    export default _default;
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseOptions = {
+        version?: string | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseGetOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+        count?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     */
+    export type DatabasePutOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseDeleteOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseRequestQueueWaitOptions = {
+        offset?: number | undefined;
+        backlog?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseEntriesOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     */
+    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
+}
+
+declare module "socket:service-worker/env" {
+    /**
+     * Opens an environment for a particular scope.
+     * @param {EnvironmentOptions} options
+     * @return {Promise<Environment>}
+     */
+    export function open(options: EnvironmentOptions): Promise<Environment>;
+    /**
+     * Closes an active `Environment` instance, dropping the global
+     * instance reference.
+     * @return {Promise<boolean>}
+     */
+    export function close(): Promise<boolean>;
+    /**
+     * Resets an active `Environment` instance
+     * @return {Promise<boolean>}
+     */
+    export function reset(): Promise<boolean>;
+    /**
+     * An environment context object with persistence and durability
+     * for service worker environments.
+     */
+    export class Environment extends EventTarget {
+        /**
+         * Opens an environment for a particular scope.
+         * @param {EnvironmentOptions} options
+         * @return {Environment}
+         */
+        static open(options: EnvironmentOptions): Environment;
+        /**
+         * The current `Environment` instance
+         * @type {Environment?}
+         */
+        static instance: Environment | null;
+        /**
+         * `Environment` class constructor
+         * @ignore
+         * @param {EnvironmentOptions} options
+         */
+        constructor(options: EnvironmentOptions);
+        /**
+         * A reference to the currently opened environment database.
+         * @type {import('./database.js').Database}
+         */
+        get database(): import("socket:service-worker/database").Database;
+        /**
+         * A proxied object for reading and writing environment state.
+         * Values written to this object must be cloneable with respect to the
+         * structured clone algorithm.
+         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
+         * @type {Proxy<object>}
+         */
+        get context(): ProxyConstructor;
+        /**
+         * The current environment name. This value is also used as the
+         * internal database name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Resets the current environment to an empty state.
+         */
+        reset(): Promise<void>;
+        /**
+         * Opens the environment.
+         * @ignore
+         */
+        open(): Promise<void>;
+        /**
+         * Closes the environment database, purging existing state.
+         * @ignore
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    namespace _default {
+        export { Environment };
+        export { close };
+        export { reset };
+        export { open };
+    }
+    export default _default;
+    export type EnvironmentOptions = {
+        scope: string;
+    };
+}
+
+declare module "socket:service-worker/state" {
+    export const channel: BroadcastChannel;
+    export const state: any;
+    export default state;
+}
+
+declare module "socket:service-worker/instance" {
+    export function createServiceWorker(currentState?: any, options?: any): any;
+    export const SHARED_WORKER_URL: string;
+    export const ServiceWorker: {
+        new (): ServiceWorker;
+        prototype: ServiceWorker;
+    } | {
+        new (): {
+            onmessage: any;
+            onerror: any;
+            onstatechange: any;
+            readonly state: any;
+            readonly scriptURL: any;
+            postMessage(): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+            dispatchEvent(event: Event): boolean;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+        };
+    };
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:service-worker/clients" {
+    export class Client {
+        constructor(options: any);
+        get id(): any;
+        get url(): any;
+        get type(): any;
+        get frameType(): any;
+        postMessage(message: any, optionsOrTransferables?: any): void;
+        #private;
+    }
+    export class WindowClient extends Client {
+        get focused(): boolean;
+        get ancestorOrigins(): any[];
+        get visibilityState(): string;
+        focus(): Promise<this>;
+        navigate(url: any): Promise<this>;
+        #private;
+    }
+    export class Clients {
+        get(id: any): Promise<Client>;
+        matchAll(options?: any): Promise<any>;
+        openWindow(url: any, options?: any): Promise<WindowClient>;
+        claim(): Promise<void>;
+    }
+    const _default: Clients;
+    export default _default;
+}
+
+declare module "socket:service-worker/context" {
+    /**
+     * A context given to `ExtendableEvent` interfaces and provided to
+     * simplified service worker modules
+     */
+    export class Context {
+        /**
+         * `Context` class constructor.
+         * @param {import('./events.js').ExtendableEvent} event
+         */
+        constructor(event: import('./events.js').ExtendableEvent);
+        /**
+         * The `ExtendableEvent` for this `Context` instance.
+         * @type {ExtendableEvent}
+         */
+        get event(): ExtendableEvent;
+        /**
+         * An environment context object.
+         * @type {object?}
+         */
+        get env(): any;
+        /**
+         * Resets the current environment context.
+         * @return {Promise<boolean>}
+         */
+        resetEnvironment(): Promise<boolean>;
+        /**
+         * Unused, but exists for cloudflare compat.
+         * @ignore
+         */
+        passThroughOnException(): void;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): Promise<any>;
+        /**
+         * TODO
+         */
+        handled(): Promise<any>;
+        /**
+         * Gets the client for this event context.
+         * @return {Promise<import('./clients.js').Client>}
+         */
+        client(): Promise<import('./clients.js').Client>;
+        #private;
+    }
+    namespace _default {
+        export { Context };
+    }
+    export default _default;
+}
+
+declare module "socket:service-worker/events" {
+    export const FETCH_EVENT_TIMEOUT: number;
+    /**
+     * The `ExtendableEvent` interface extends the lifetime of the "install" and
+     * "activate" events dispatched on the global scope as part of the service
+     * worker lifecycle.
+     */
+    export class ExtendableEvent extends Event {
+        /**
+         * `ExtendableEvent` class constructor.
+         * @ignore
+         */
+        constructor(...args: any[]);
+        /**
+         * A context for this `ExtendableEvent` instance.
+         * @type {import('./context.js').Context}
+         */
+        get context(): Context;
+        /**
+         * A promise that can be awaited which waits for this `ExtendableEvent`
+         * instance no longer has pending promises.
+         * @type {Promise}
+         */
+        get awaiting(): Promise<any>;
+        /**
+         * The number of pending promises
+         * @type {number}
+         */
+        get pendingPromises(): number;
+        /**
+         * `true` if the `ExtendableEvent` instance is considered "active",
+         * otherwise `false`.
+         * @type {boolean}
+         */
+        get isActive(): boolean;
+        /**
+         * Tells the event dispatcher that work is ongoing.
+         * It can also be used to detect whether that work was successful.
+         * @param {Promise} promise
+         */
+        waitUntil(promise: Promise<any>): void;
+        /**
+         * Returns a promise that this `ExtendableEvent` instance is waiting for.
+         * @return {Promise}
+         */
+        waitsFor(): Promise<any>;
+        #private;
+    }
+    /**
+     * This is the event type for "fetch" events dispatched on the service worker
+     * global scope. It contains information about the fetch, including the
+     * request and how the receiver will treat the response.
+     */
+    export class FetchEvent extends ExtendableEvent {
+        /**
+         * `FetchEvent` class constructor.
+         * @ignore
+         * @param {stirng=} [type = 'fetch']
+         * @param {object=} [options]
+         */
+        constructor(type?: stirng, options?: object | undefined);
+        /**
+         * The handled property of the `FetchEvent` interface returns a promise
+         * indicating if the event has been handled by the fetch algorithm or not.
+         * This property allows executing code after the browser has consumed a
+         * response, and is usually used together with the `waitUntil()` method.
+         * @type {Promise}
+         */
+        get handled(): Promise<any>;
+        /**
+         * The request read-only property of the `FetchEvent` interface returns the
+         * `Request` that triggered the event handler.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The `clientId` read-only property of the `FetchEvent` interface returns
+         * the id of the Client that the current service worker is controlling.
+         * @type {string}
+         */
+        get clientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get resultingClientId(): string;
+        /**
+         * @ignore
+         * @type {string}
+         */
+        get replacesClientId(): string;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get isReload(): boolean;
+        /**
+         * @ignore
+         * @type {Promise}
+         */
+        get preloadResponse(): Promise<any>;
+        /**
+         * The `respondWith()` method of `FetchEvent` prevents the webview's
+         * default fetch handling, and allows you to provide a promise for a
+         * `Response` yourself.
+         * @param {Response|Promise<Response>} response
+         */
+        respondWith(response: Response | Promise<Response>): void;
+        #private;
+    }
+    namespace _default {
+        export { ExtendableEvent };
+        export { FetchEvent };
+    }
+    export default _default;
+    import { Context } from "socket:service-worker/context";
+}
+
+declare module "socket:http/adapters" {
+    /**
+     * @typedef {{
+     *   Connection: typeof import('../http.js').Connection,
+     *   globalAgent: import('../http.js').Agent,
+     *   IncomingMessage: typeof import('../http.js').IncomingMessage,
+     *   ServerResponse: typeof import('../http.js').ServerResponse,
+     *   STATUS_CODES: object,
+     *   METHODS: string[]
+     * }} HTTPModuleInterface
+     */
+    /**
+     * An abstract base clase for a HTTP server adapter.
+     */
+    export class ServerAdapter extends EventTarget {
+        /**
+         * `ServerAdapter` class constructor.
+         * @ignore
+         * @param {import('../http.js').Server} server
+         * @param {HTTPModuleInterface} httpInterface
+         */
+        constructor(server: import('../http.js').Server, httpInterface: HTTPModuleInterface);
+        /**
+         * A readonly reference to the underlying HTTP(S) server
+         * for this adapter.
+         * @type {import('../http.js').Server}
+         */
+        get server(): import("socket:http").Server;
+        /**
+         * A readonly reference to the underlying HTTP(S) module interface
+         * for creating various HTTP module class objects.
+         * @type {HTTPModuleInterface}
+         */
+        get httpInterface(): HTTPModuleInterface;
+        /**
+         * Called when the adapter should destroy itself.
+         * @abstract
+         */
+        destroy(): Promise<void>;
+        #private;
+    }
+    /**
+     * A HTTP adapter for running a HTTP server in a service worker that uses the
+     * "fetch" event for the request and response lifecycle.
+     */
+    export class ServiceWorkerServerAdapter extends ServerAdapter {
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').ExtendableEvent}
+         */
+        onInstall(event: any): Promise<void>;
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').ExtendableEvent}
+         */
+        onActivate(event: any): Promise<void>;
+        /**
+         * @ignore
+         * @param {import('../service-worker/events.js').FetchEvent}
+         */
+        onFetch(event: any): Promise<void>;
+    }
+    namespace _default {
+        export { ServerAdapter };
+        export { ServiceWorkerServerAdapter };
+    }
+    export default _default;
+    export type HTTPModuleInterface = {
+        Connection: typeof import("socket:http").Connection;
+        globalAgent: import("socket:http").Agent;
+        IncomingMessage: typeof import("socket:http").IncomingMessage;
+        ServerResponse: typeof import("socket:http").ServerResponse;
+        STATUS_CODES: object;
+        METHODS: string[];
+    };
+}
+
+declare module "socket:http" {
+    /**
+     * Makes a HTTP or `socket:` GET request. A simplified alias to `request()`.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    export function get(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Creates a HTTP server that can listen for incoming requests.
+     * Requests that are dispatched to this server depend on the context
+     * in which it is created, such as a service worker which will use a
+     * "fetch event" adapter.
+     * @param {object|function=} [options]
+     * @param {function=} [callback]
+     * @return {Server}
+     */
+    export function createServer(options?: (object | Function) | undefined, callback?: Function | undefined): Server;
+    /**
+     * All known possible HTTP methods.
+     * @type {string[]}
+     */
+    export const METHODS: string[];
+    /**
+     * A mapping of status codes to status texts
+     * @type {object}
+     */
+    export const STATUS_CODES: object;
+    /**
+     * The parent class of `ClientRequest` and `ServerResponse`.
+     * It is an abstract outgoing message from the perspective of the
+     * participants of an HTTP transaction.
+     * @see {@link https://nodejs.org/api/http.html#class-httpoutgoingmessage}
+     */
+    export class OutgoingMessage extends Writable {
+        /**
+         * `OutgoingMessage` class constructor.
+         * @ignore
+         */
+        constructor();
+        /**
+         * `true` if the headers were sent
+         * @type {boolean}
+         */
+        headersSent: boolean;
+        /**
+         * Internal buffers
+         * @ignore
+         * @type {Buffer[]}
+         */
+        get buffers(): Buffer[];
+        /**
+         * An object of the outgoing message headers.
+         * This is equivalent to `getHeaders()`
+         * @type {object}
+         */
+        get headers(): any;
+        /**
+         * @ignore
+         */
+        get socket(): this;
+        /**
+         * `true` if the write state is "ended"
+         * @type {boolean}
+         */
+        get writableEnded(): boolean;
+        /**
+         * `true` if the write state is "finished"
+         * @type {boolean}
+         */
+        get writableFinished(): boolean;
+        /**
+         * The number of buffered bytes.
+         * @type {number}
+         */
+        get writableLength(): number;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get writableObjectMode(): boolean;
+        /**
+         * @ignore
+         */
+        get writableCorked(): number;
+        /**
+         * The `highWaterMark` of the writable stream.
+         * @type {number}
+         */
+        get writableHighWaterMark(): number;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        addTrailers(headers: any): OutgoingMessage;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        cork(): OutgoingMessage;
+        /**
+         * @ignore
+         * @return {OutgoingMessage}
+         */
+        uncork(): OutgoingMessage;
+        /**
+         * Destroys the message.
+         * Once a socket is associated with the message and is connected,
+         * that socket will be destroyed as well.
+         * @param {Error?} [err]
+         * @return {OutgoingMessage}
+         */
+        destroy(err?: Error | null): OutgoingMessage;
+        /**
+         * Finishes the outgoing message.
+         * @param {(Buffer|Uint8Array|string|function)=} [chunk]
+         * @param {(string|function)=} [encoding]
+         * @param {function=} [callback]
+         * @return {OutgoingMessage}
+         */
+        end(chunk?: (Buffer | Uint8Array | string | Function) | undefined, encoding?: (string | Function) | undefined, callback?: Function | undefined): OutgoingMessage;
+        /**
+         * Append a single header value for the header object.
+         * @param {string} name
+         * @param {string|string[]} value
+         * @return {OutgoingMessage}
+         */
+        appendHeader(name: string, value: string | string[]): OutgoingMessage;
+        /**
+         * Append a single header value for the header object.
+         * @param {string} name
+         * @param {string} value
+         * @return {OutgoingMessage}
+         */
+        setHeader(name: string, value: string): OutgoingMessage;
+        /**
+         * Flushes the message headers.
+         */
+        flushHeaders(): void;
+        /**
+         * Gets the value of the HTTP header with the given name.
+         * If that header is not set, the returned value will be `undefined`.
+         * @param {string}
+         * @return {string|undefined}
+         */
+        getHeader(name: any): string | undefined;
+        /**
+         * Returns an array containing the unique names of the current outgoing
+         * headers. All names are lowercase.
+         * @return {string[]}
+         */
+        getHeaderNames(): string[];
+        /**
+         * @ignore
+         */
+        getRawHeaderNames(): string[];
+        /**
+         * Returns a copy of the HTTP headers as an object.
+         * @return {object}
+         */
+        getHeaders(): object;
+        /**
+         * Returns true if the header identified by name is currently set in the
+         * outgoing headers. The header name is case-insensitive.
+         * @param {string} name
+         * @return {boolean}
+         */
+        hasHeader(name: string): boolean;
+        /**
+         * Removes a header that is queued for implicit sending.
+         * @param {string} name
+         */
+        removeHeader(name: string): void;
+        /**
+         * Sets the outgoing message timeout with an optional callback.
+         * @param {number} timeout
+         * @param {function=} [callback]
+         * @return {OutgoingMessage}
+         */
+        setTimeout(timeout: number, callback?: Function | undefined): OutgoingMessage;
+        #private;
+    }
+    /**
+     * An `IncomingMessage` object is created by `Server` or `ClientRequest` and
+     * passed as the first argument to the 'request' and 'response' event
+     * respectively.
+     * It may be used to access response status, headers, and data.
+     * @see {@link https://nodejs.org/api/http.html#class-httpincomingmessage}
+     */
+    export class IncomingMessage extends Readable {
+        /**
+         * `IncomingMessage` class constructor.
+         * @ignore
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * This property will be `true` if a complete HTTP message has been received
+         * and successfully parsed.
+         * @type {boolean}
+         */
+        get complete(): boolean;
+        set url(url: string);
+        /**
+         * The URL for this incoming message. This value is not absolute with
+         * respect to the protocol and hostname. It includes the path and search
+         * query component parameters.
+         * @type {string}
+         */
+        get url(): string;
+        /**
+         * An object of the incoming message headers.
+         * @type {object}
+         */
+        get headers(): any;
+        /**
+         * Similar to `message.headers`, but there is no join logic and the values
+         * are always arrays of strings, even for headers received just once.
+         * @type {object}
+         */
+        get headersDistinct(): any;
+        /**
+         * The HTTP major version of this request.
+         * @type {number}
+         */
+        get httpVersionMajor(): number;
+        /**
+         * The HTTP minor version of this request.
+         * @type {number}
+         */
+        get httpVersionMinor(): number;
+        /**
+         * The HTTP version string.
+         * A concatenation of `httpVersionMajor` and `httpVersionMinor`.
+         * @type {string}
+         */
+        get httpVersion(): string;
+        /**
+         * The HTTP request method.
+         * @type {string}
+         */
+        get method(): string;
+        /**
+         * The raw request/response headers list potentially  as they were received.
+         * @type {string[]}
+         */
+        get rawHeaders(): string[];
+        /**
+         * @ignore
+         */
+        get rawTrailers(): any[];
+        /**
+         * @ignore
+         */
+        get socket(): this;
+        /**
+         * The HTTP request status code.
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {number}
+         */
+        get statusCode(): number;
+        /**
+         * The HTTP response status message (reason phrase).
+         * Such as "OK" or "Internal Server Error."
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {string?}
+         */
+        get statusMessage(): string;
+        /**
+         * An alias for `statusCode`
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * An alias for `statusMessage`
+         * @type {string?}
+         */
+        get statusText(): string;
+        /**
+         * @ignore
+         */
+        get trailers(): {};
+        /**
+         * @ignore
+         */
+        get trailersDistinct(): {};
+        /**
+         * Gets the value of the HTTP header with the given name.
+         * If that header is not set, the returned value will be `undefined`.
+         * @param {string}
+         * @return {string|undefined}
+         */
+        getHeader(name: any): string | undefined;
+        /**
+         * Returns an array containing the unique names of the current outgoing
+         * headers. All names are lowercase.
+         * @return {string[]}
+         */
+        getHeaderNames(): string[];
+        /**
+         * @ignore
+         */
+        getRawHeaderNames(): string[];
+        /**
+         * Returns a copy of the HTTP headers as an object.
+         * @return {object}
+         */
+        getHeaders(): object;
+        /**
+         * Returns true if the header identified by name is currently set in the
+         * outgoing headers. The header name is case-insensitive.
+         * @param {string} name
+         * @return {boolean}
+         */
+        hasHeader(name: string): boolean;
+        /**
+         * Sets the incoming message timeout with an optional callback.
+         * @param {number} timeout
+         * @param {function=} [callback]
+         * @return {IncomingMessage}
+         */
+        setTimeout(timeout: number, callback?: Function | undefined): IncomingMessage;
+        #private;
+    }
+    /**
+     * An object that is created internally and returned from `request()`.
+     * @see {@link https://nodejs.org/api/http.html#class-httpclientrequest}
+     */
+    export class ClientRequest extends exports.OutgoingMessage {
+        /**
+         * `ClientRequest` class constructor.
+         * @ignore
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * The HTTP request method.
+         * @type {string}
+         */
+        get method(): string;
+        /**
+         * The request protocol
+         * @type {string?}
+         */
+        get protocol(): string;
+        /**
+         * The request path.
+         * @type {string}
+         */
+        get path(): string;
+        /**
+         * The request host name (including port).
+         * @type {string?}
+         */
+        get host(): string;
+        /**
+         * The URL for this outgoing message. This value is not absolute with
+         * respect to the protocol and hostname. It includes the path and search
+         * query component parameters.
+         * @type {string}
+         */
+        get url(): string;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get finished(): boolean;
+        /**
+         * @ignore
+         * @type {boolean}
+         */
+        get reusedSocket(): boolean;
+        /**
+         * @ignore
+         * @param {boolean=} [value]
+         * @return {ClientRequest}
+         */
+        setNoDelay(value?: boolean | undefined): ClientRequest;
+        /**
+         * @ignore
+         * @param {boolean=} [enable]
+         * @param {number=} [initialDelay]
+         * @return {ClientRequest}
+         */
+        setSocketKeepAlive(enable?: boolean | undefined, initialDelay?: number | undefined): ClientRequest;
+        #private;
+    }
+    /**
+     * An object that is created internally by a `Server` instance, not by the user.
+     * It is passed as the second parameter to the 'request' event.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserverresponse}
+     */
+    export class ServerResponse extends exports.OutgoingMessage {
+        /**
+         * `ServerResponse` class constructor.
+         * @param {object} options
+         */
+        constructor(options: object);
+        /**
+         * A reference to the original HTTP request object.
+         * @type {IncomingMessage}
+         */
+        get request(): exports.IncomingMessage;
+        /**
+         * A reference to the original HTTP request object.
+         * @type {IncomingMessage}
+         */
+        get req(): exports.IncomingMessage;
+        set statusCode(statusCode: number);
+        /**
+         * The HTTP request status code.
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {number}
+         */
+        get statusCode(): number;
+        set statusMessage(statusMessage: string);
+        /**
+         * The HTTP response status message (reason phrase).
+         * Such as "OK" or "Internal Server Error."
+         * Only valid for response obtained from `ClientRequest`.
+         * @type {string?}
+         */
+        get statusMessage(): string;
+        set status(status: number);
+        /**
+         * An alias for `statusCode`
+         * @type {number}
+         */
+        get status(): number;
+        set statusText(statusText: string);
+        /**
+         * An alias for `statusMessage`
+         * @type {string?}
+         */
+        get statusText(): string;
+        set sendDate(value: boolean);
+        /**
+         * If `true`, the "Date" header will be automatically generated and sent in
+         * the response if it is not already present in the headers.
+         * Defaults to `true`.
+         * @type {boolean}
+         */
+        get sendDate(): boolean;
+        /**
+         * @ignore
+         */
+        writeContinue(): this;
+        /**
+         * @ignore
+         */
+        writeEarlyHints(): this;
+        /**
+         * @ignore
+         */
+        writeProcessing(): this;
+        /**
+         * Writes the response header to the request.
+         * The `statusCode` is a 3-digit HTTP status code, like 200 or 404.
+         * The last argument, `headers`, are the response headers.
+         * Optionally one can give a human-readable `statusMessage`
+         * as the second argument.
+         * @param {number|string} statusCode
+         * @param {string|object|string[]} [statusMessage]
+         * @param {object|string[]} [headers]
+         * @return {ClientRequest}
+         */
+        writeHead(statusCode: number | string, statusMessage?: string | object | string[], headers?: object | string[]): ClientRequest;
+        #private;
+    }
+    /**
+     * An options object container for an `Agent` instance.
+     */
+    export class AgentOptions {
+        /**
+         * `AgentOptions` class constructor.
+         * @ignore
+         * @param {{
+         *   keepAlive?: boolean,
+         *   timeout?: number
+         * }} [options]
+         */
+        constructor(options?: {
+            keepAlive?: boolean;
+            timeout?: number;
+        });
+        keepAlive: boolean;
+        timeout: number;
+    }
+    /**
+     * An Agent is responsible for managing connection persistence
+     * and reuse for HTTP clients.
+     * @see {@link https://nodejs.org/api/http.html#class-httpagent}
+     */
+    export class Agent extends EventEmitter {
+        /**
+         * `Agent` class constructor.
+         * @param {AgentOptions=} [options]
+         */
+        constructor(options?: AgentOptions | undefined);
+        defaultProtocol: string;
+        options: any;
+        requests: Set<any>;
+        sockets: {};
+        maxFreeSockets: number;
+        maxTotalSockets: number;
+        maxSockets: number;
+        /**
+         * @ignore
+         */
+        get freeSockets(): {};
+        /**
+         * @ignore
+         * @param {object} options
+         */
+        getName(options: object): string;
+        /**
+         * Produces a socket/stream to be used for HTTP requests.
+         * @param {object} options
+         * @param {function(Duplex)=} [callback]
+         * @return {Duplex}
+         */
+        createConnection(options: object, callback?: ((arg0: Duplex) => any) | undefined): Duplex;
+        /**
+         * @ignore
+         */
+        keepSocketAlive(): void;
+        /**
+         * @ignore
+         */
+        reuseSocket(): void;
+        destroy(): void;
+    }
+    /**
+     * The global and default HTTP agent.
+     * @type {Agent}
+     */
+    export const globalAgent: Agent;
+    /**
+     * A duplex stream between a HTTP request `IncomingMessage` and the
+     * response `ServerResponse`
+     */
+    export class Connection extends Duplex {
+        /**
+         * `Connection` class constructor.
+         * @ignore
+         * @param {Server} server
+         * @param {IncomingMessage} incomingMessage
+         * @param {ServerResponse} serverResponse
+         */
+        constructor(server: Server, incomingMessage: IncomingMessage, serverResponse: ServerResponse);
+        server: any;
+        active: boolean;
+        request: any;
+        response: any;
+        /**
+         * Closes the connection, destroying the underlying duplex, request, and
+         * response streams.
+         * @return {Connection}
+         */
+        close(): Connection;
+    }
+    /**
+     * A nodejs compat HTTP server typically intended for running in a "worker"
+     * environment.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserver}
+     */
+    export class Server extends EventEmitter {
+        requestTimeout: number;
+        timeout: number;
+        maxRequestsPerSocket: number;
+        keepAliveTimeout: number;
+        headersTimeout: number;
+        /**
+         * The adapter interface for this `Server` instance.
+         * @ignore
+         */
+        get adapterInterace(): {
+            Connection: typeof exports.Connection;
+            globalAgent: exports.Agent;
+            IncomingMessage: typeof exports.IncomingMessage;
+            METHODS: string[];
+            ServerResponse: typeof exports.ServerResponse;
+            STATUS_CODES: any;
+        };
+        /**
+         * `true` if the server is closed, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * The host to listen to. This value can be `null`.
+         * Defaults to `location.hostname`. This value
+         * is used to filter requests by hostname.
+         * @type {string?}
+         */
+        get host(): string;
+        /**
+         * The `port` to listen on. This value can be `0`, which is the default.
+         * This value is used to filter requests by port, if given. A port value
+         * of `0` does not filter on any port.
+         * @type {number}
+         */
+        get port(): number;
+        /**
+         * A readonly array of all active or inactive (idle) connections.
+         * @type {Connection[]}
+         */
+        get connections(): exports.Connection[];
+        /**
+         * `true` if the server is listening for requests.
+         * @type {boolean}
+         */
+        get listening(): boolean;
+        set maxConnections(value: number);
+        /**
+         * The number of concurrent max connections this server should handle.
+         * Default: Infinity
+         * @type {number}
+         */
+        get maxConnections(): number;
+        /**
+         * Closes the server.
+         * @param {function=} [close]
+         */
+        close(callback?: any): void;
+        /**
+         * Closes all connections.
+         */
+        closeAllConnections(): void;
+        /**
+         * Closes all idle connections.
+         */
+        closeIdleConnections(): void;
+        /**
+         * @ignore
+         */
+        setTimeout(timeout?: number, callback?: any): this;
+        /**
+         * @param {number|object=} [port]
+         * @param {string=} [host]
+         * @param {function|null} [unused]
+         * @param {function=} [callback
+         * @return Server
+         */
+        listen(port?: (number | object) | undefined, host?: string | undefined, unused?: Function | null, callback?: Function | undefined): this;
+        #private;
+    }
+    export default exports;
+    import { Writable } from "socket:stream";
+    import { Buffer } from "socket:buffer";
+    import { Readable } from "socket:stream";
+    import { EventEmitter } from "socket:events";
+    import { Duplex } from "socket:stream";
+    import * as exports from "socket:http";
+    
+}
+
+declare module "socket:https" {
+    /**
+     * Makes a HTTPS request, optionally a `socket://` for relative paths when
+     * `socket:` is the origin protocol.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    export function request(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Makes a HTTPS or `socket:` GET request. A simplified alias to `request()`.
+     * @param {string|object} optionsOrURL
+     * @param {(object|function)=} [options]
+     * @param {function=} [callback]
+     * @return {ClientRequest}
+     */
+    export function get(optionsOrURL: string | object, options?: (object | Function) | undefined, callback?: Function | undefined): ClientRequest;
+    /**
+     * Creates a HTTPS server that can listen for incoming requests.
+     * Requests that are dispatched to this server depend on the context
+     * in which it is created, such as a service worker which will use a
+     * "fetch event" adapter.
+     * @param {object|function=} [options]
+     * @param {function=} [callback]
+     * @return {Server}
+     */
+    export function createServer(...args: any[]): Server;
+    /**
+     * All known possible HTTP methods.
+     * @type {string[]}
+     */
+    export const METHODS: string[];
+    /**
+     * A mapping of status codes to status texts
+     * @type {object}
+     */
+    export const STATUS_CODES: object;
+    /**
+     * An options object container for an `Agent` instance.
+     */
+    export class AgentOptions extends http.AgentOptions {
+    }
+    /**
+     * An Agent is responsible for managing connection persistence
+     * and reuse for HTTPS clients.
+     * @see {@link https://nodejs.org/api/https.html#class-httpsagent}
+     */
+    export class Agent extends http.Agent {
+    }
+    /**
+     * An object that is created internally and returned from `request()`.
+     * @see {@link https://nodejs.org/api/http.html#class-httpclientrequest}
+     */
+    export class ClientRequest extends http.ClientRequest {
+    }
+    /**
+     * The parent class of `ClientRequest` and `ServerResponse`.
+     * It is an abstract outgoing message from the perspective of the
+     * participants of an HTTP transaction.
+     * @see {@link https://nodejs.org/api/http.html#class-httpoutgoingmessage}
+     */
+    export class OutgoingMessage extends http.OutgoingMessage {
+    }
+    /**
+     * An `IncomingMessage` object is created by `Server` or `ClientRequest` and
+     * passed as the first argument to the 'request' and 'response' event
+     * respectively.
+     * It may be used to access response status, headers, and data.
+     * @see {@link https://nodejs.org/api/http.html#class-httpincomingmessage}
+     */
+    export class IncomingMessage extends http.IncomingMessage {
+    }
+    /**
+     * An object that is created internally by a `Server` instance, not by the user.
+     * It is passed as the second parameter to the 'request' event.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserverresponse}
+     */
+    export class ServerResponse extends http.ServerResponse {
+    }
+    /**
+     * A duplex stream between a HTTP request `IncomingMessage` and the
+     * response `ServerResponse`
+     */
+    export class Connection extends http.Connection {
+    }
+    /**
+     * A nodejs compat HTTP server typically intended for running in a "worker"
+     * environment.
+     * @see {@link https://nodejs.org/api/http.html#class-httpserver}
+     */
+    export class Server extends http.Server {
+    }
+    /**
+     * The global and default HTTPS agent.
+     * @type {Agent}
+     */
+    export const globalAgent: Agent;
+    export default exports;
+    import http from "socket:http";
+    import * as exports from "socket:http";
+}
+
 declare module "socket:language" {
     /**
      * Look up a language name or code by query.
@@ -5918,6 +9828,7 @@ declare module "socket:language" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:i18n" {
     /**
      * Get messages for `locale` pattern. This function could return many results
@@ -5983,6 +9894,7 @@ declare module "socket:i18n" {
     export default _default;
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:stream-relay/packets" {
     /**
      * The magic bytes prefixing every packet. They are the
@@ -6281,6 +10193,7 @@ declare module "socket:stream-relay/packets" {
     export default Packet;
     import { Buffer } from "socket:buffer";
 }
+
 declare module "socket:stream-relay/encryption" {
     /**
      * Class for handling encryption and key management.
@@ -6357,7 +10270,16 @@ declare module "socket:stream-relay/encryption" {
          */
         has(to: Uint8Array | string): boolean;
         /**
-         * Decrypts a sealed message for a specific receiver.
+         * Opens a sealed message using the specified key.
+         * @param {Buffer} message - The sealed message.
+         * @param {Object|string} v - Key object or public key.
+         * @returns {Buffer} - Decrypted message.
+         * @throws {Error} - Throws ENOKEY if the key is not found.
+         */
+        openUnsigned(message: Buffer, v: any | string): Buffer;
+        sealUnsigned(message: any, v: any): any;
+        /**
+         * Decrypts a sealed and signed message for a specific receiver.
          * @param {Buffer} message - The sealed message.
          * @param {Object|string} v - Key object or public key.
          * @returns {Buffer} - Decrypted message.
@@ -6365,15 +10287,7 @@ declare module "socket:stream-relay/encryption" {
          */
         open(message: Buffer, v: any | string): Buffer;
         /**
-         * Opens a sealed message using the specified key.
-         * @param {Buffer} message - The sealed message.
-         * @param {Object|string} v - Key object or public key.
-         * @returns {Buffer} - Decrypted message.
-         * @throws {Error} - Throws ENOKEY if the key is not found.
-         */
-        openMessage(message: Buffer, v: any | string): Buffer;
-        /**
-         * Seals a message for a specific receiver using their public key.
+         * Seals and signs a message for a specific receiver using their public key.
          *
          * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
          * a plaintext `message` for a `receiver` identity. This prevents repudiation
@@ -6406,6 +10320,7 @@ declare module "socket:stream-relay/encryption" {
     }
     import Buffer from "socket:buffer";
 }
+
 declare module "socket:stream-relay/cache" {
     /**
      * @typedef {Packet} CacheEntry
@@ -6584,6 +10499,7 @@ declare module "socket:stream-relay/cache" {
     import { Buffer } from "socket:buffer";
     import { Packet } from "socket:stream-relay/packets";
 }
+
 declare module "socket:stream-relay/nat" {
     /**
      * The NAT type is encoded using 5 bits:
@@ -6682,6 +10598,7 @@ declare module "socket:stream-relay/nat" {
     export const STRATEGY_PROXY: 4;
     export function connectionStrategy(a: any, b: any): 0 | 1 | 2 | 3 | 4;
 }
+
 declare module "socket:stream-relay/index" {
     /**
      * Computes rate limit predicate value for a port and address pair for a given
@@ -6771,320 +10688,352 @@ declare module "socket:stream-relay/index" {
         localPeer: any;
         write(sharedKey: any, args: any): Promise<any>;
     }
-    export function wrap(dgram: any): {
-        new (persistedState?: object | null): {
+    /**
+     * `Peer` class factory.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class Peer {
+        /**
+         * `Peer` class constructor. Avoid calling this directly (use the create method).
+         * @private
+         * @param {object?} [persistedState]
+         */
+        private constructor();
+        port: any;
+        address: any;
+        natType: number;
+        nextNatType: number;
+        clusters: {};
+        reflectionId: any;
+        reflectionTimeout: any;
+        reflectionStage: number;
+        reflectionRetry: number;
+        reflectionFirstResponder: any;
+        peerId: string;
+        isListening: boolean;
+        ctime: number;
+        lastUpdate: number;
+        lastSync: number;
+        closing: boolean;
+        clock: number;
+        unpublished: {};
+        cache: any;
+        uptime: number;
+        maxHops: number;
+        bdpCache: number[];
+        dgram: () => never;
+        onListening: any;
+        onDelete: any;
+        sendQueue: any[];
+        firewall: any;
+        rates: Map<any, any>;
+        streamBuffer: Map<any, any>;
+        gate: Map<any, any>;
+        returnRoutes: Map<any, any>;
+        metrics: {
+            i: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+                8: number;
+                REJECTED: number;
+            };
+            o: {
+                0: number;
+                1: number;
+                2: number;
+                3: number;
+                4: number;
+                5: number;
+                6: number;
+                7: number;
+                8: number;
+            };
+        };
+        peers: any;
+        encryption: Encryption;
+        config: any;
+        _onError: (err: any) => any;
+        socket: any;
+        probeSocket: any;
+        /**
+         * An implementation for clearning an interval that can be overridden by the test suite
+         * @param Number the number that identifies the timer
+         * @return {undefined}
+         * @ignore
+         */
+        _clearInterval(tid: any): undefined;
+        /**
+         * An implementation for clearning a timeout that can be overridden by the test suite
+         * @param Number the number that identifies the timer
+         * @return {undefined}
+         * @ignore
+         */
+        _clearTimeout(tid: any): undefined;
+        /**
+         * An implementation of an internal timer that can be overridden by the test suite
+         * @return {Number}
+         * @ignore
+         */
+        _setInterval(fn: any, t: any): number;
+        /**
+         * An implementation of an timeout timer that can be overridden by the test suite
+         * @return {Number}
+         * @ignore
+         */
+        _setTimeout(fn: any, t: any): number;
+        /**
+         * A method that encapsulates the listing procedure
+         * @return {undefined}
+         * @ignore
+         */
+        _listen(): undefined;
+        init(cb: any): Promise<any>;
+        onReady: any;
+        mainLoopTimer: number;
+        /**
+         * Continuously evaluate the state of the peer and its network
+         * @return {undefined}
+         * @ignore
+         */
+        _mainLoop(ts: any): undefined;
+        /**
+         * Enqueue packets to be sent to the network
+         * @param {Buffer} data - An encoded packet
+         * @param {number} port - The desination port of the remote host
+         * @param {string} address - The destination address of the remote host
+         * @param {Socket=this.socket} socket - The socket to send on
+         * @return {undefined}
+         * @ignore
+         */
+        send(data: Buffer, port: number, address: string, socket?: any): undefined;
+        /**
+         * @private
+         */
+        private _scheduleSend;
+        sendTimeout: number;
+        /**
+         * @private
+         */
+        private _dequeue;
+        /**
+         * Send any unpublished packets
+         * @return {undefined}
+         * @ignore
+         */
+        sendUnpublished(): undefined;
+        /**
+         * Get the serializable state of the peer (can be passed to the constructor or create method)
+         * @return {undefined}
+         */
+        getState(): undefined;
+        getInfo(): Promise<{
+            address: any;
+            port: any;
+            clock: number;
+            uptime: number;
+            natType: number;
+            natName: string;
+            peerId: string;
+        }>;
+        cacheInsert(packet: any): Promise<void>;
+        addIndexedPeer(info: any): Promise<void>;
+        reconnect(): Promise<void>;
+        disconnect(): Promise<void>;
+        probeReflectionTimeout: any;
+        sealUnsigned(...args: any[]): Promise<any>;
+        openUnsigned(...args: any[]): Promise<Buffer>;
+        seal(...args: any[]): Promise<Buffer>;
+        open(...args: any[]): Promise<Buffer>;
+        addEncryptionKey(...args: any[]): Promise<void>;
+        /**
+         * Get a selection of known peers
+         * @return {Array<RemotePeer>}
+         * @ignore
+         */
+        getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
+        /**
+         * Send an eventually consistent packet to a selection of peers (fanout)
+         * @return {undefined}
+         * @ignore
+         */
+        mcast(packet: any, ignorelist?: any[]): undefined;
+        /**
+         * The process of determining this peer's NAT behavior (firewall and dependentness)
+         * @return {undefined}
+         * @ignore
+         */
+        requestReflection(): undefined;
+        /**
+         * Ping another peer
+         * @return {PacketPing}
+         * @ignore
+         */
+        ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
+        /**
+         * Get a peer
+         * @return {RemotePeer}
+         * @ignore
+         */
+        getPeer(id: any): RemotePeer;
+        /**
+         * This should be called at least once when an app starts to multicast
+         * this peer, and starts querying the network to discover peers.
+         * @param {object} keys - Created by `Encryption.createKeyPair()`.
+         * @param {object=} args - Options
+         * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
+         * @return {RemotePeer}
+         */
+        join(sharedKey: any, args?: object | undefined): RemotePeer;
+        /**
+         * @param {Packet} T - The constructor to be used to create packets.
+         * @param {Any} message - The message to be split and packaged.
+         * @return {Array<Packet<T>>}
+         * @ignore
+         */
+        _message2packets(T: Packet, message: Any, args: any): Array<Packet<Packet>>;
+        /**
+         * Sends a packet into the network that will be replicated and buffered.
+         * Each peer that receives it will buffer it until TTL and then replicate
+         * it provided it has has not exceeded their maximum number of allowed hops.
+         *
+         * @param {object} keys - the public and private key pair created by `Encryption.createKeyPair()`.
+         * @param {object} args - The arguments to be applied.
+         * @param {Buffer} args.message - The message to be encrypted by keys and sent.
+         * @param {Packet<T>=} args.packet - The previous packet in the packet chain.
+         * @param {Buffer} args.usr1 - 32 bytes of arbitrary clusterId in the protocol framing.
+         * @param {Buffer} args.usr2 - 32 bytes of arbitrary clusterId in the protocol framing.
+         * @return {Array<PacketPublish>}
+         */
+        publish(sharedKey: any, args: {
+            message: Buffer;
+            packet?: Packet<T> | undefined;
+            usr1: Buffer;
+            usr2: Buffer;
+        }): Array<PacketPublish>;
+        /**
+         * @return {undefined}
+         */
+        sync(peer: any): undefined;
+        close(): void;
+        /**
+         * Deploy a query into the network
+         * @return {undefined}
+         *
+         */
+        query(query: any): undefined;
+        /**
+         *
+         * This is a default implementation for deciding what to summarize
+         * from the cache when receiving a request to sync. that can be overridden
+         *
+         */
+        cachePredicate(packet: any): boolean;
+        /**
+         * A connection was made, add the peer to the local list of known
+         * peers and call the onConnection if it is defined by the user.
+         *
+         * @return {undefined}
+         * @ignore
+         */
+        _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
+        connections: Map<any, any>;
+        /**
+         * Received a Sync Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onSync(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Query Packet
+         *
+         * a -> b -> c -> (d) -> c -> b -> a
+         *
+         * @return {undefined}
+         * @example
+         *
+         * ```js
+         * peer.onQuery = (packet) => {
+         *   //
+         *   // read a database or something
+         *   //
+         *   return {
+         *     message: Buffer.from('hello'),
+         *     publicKey: '',
+         *     privateKey: ''
+         *   }
+         * }
+         * ```
+         */
+        _onQuery(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Ping Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPing(packet: any, port: any, address: any): undefined;
+        /**
+         * Received a Pong Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPong(packet: any, port: any, address: any): undefined;
+        /**
+         * Received an Intro Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onIntro(packet: any, port: any, address: any, _: any, opts?: {
+            attempts: number;
+        }): undefined;
+        socketPool: any[];
+        /**
+         * Received an Join Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onJoin(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received an Publish Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onPublish(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received an Stream Packet
+         * @return {undefined}
+         * @ignore
+         */
+        _onStream(packet: any, port: any, address: any, data: any): undefined;
+        /**
+         * Received any packet on the probe port to determine the firewall:
+         * are you port restricted, host restricted, or unrestricted.
+         * @return {undefined}
+         * @ignore
+         */
+        _onProbeMessage(data: any, { port, address }: {
             port: any;
             address: any;
-            natType: number;
-            nextNatType: number;
-            clusters: {};
-            reflectionId: any;
-            reflectionTimeout: any;
-            reflectionStage: number;
-            reflectionRetry: number;
-            reflectionFirstResponder: any;
-            peerId: string;
-            isListening: boolean;
-            ctime: number;
-            lastUpdate: number;
-            lastSync: number;
-            closing: boolean;
-            clock: number;
-            unpublished: {};
-            cache: any;
-            uptime: number;
-            maxHops: number;
-            bdpCache: number[];
-            onListening: any;
-            onDelete: any;
-            sendQueue: any[];
-            firewall: any;
-            rates: Map<any, any>;
-            streamBuffer: Map<any, any>;
-            gate: Map<any, any>;
-            returnRoutes: Map<any, any>;
-            metrics: {
-                i: {
-                    0: number;
-                    1: number;
-                    2: number;
-                    3: number;
-                    4: number;
-                    5: number;
-                    6: number;
-                    7: number;
-                    8: number;
-                    REJECTED: number;
-                };
-                o: {
-                    0: number;
-                    1: number;
-                    2: number;
-                    3: number;
-                    4: number;
-                    5: number;
-                    6: number;
-                    7: number;
-                    8: number;
-                };
-            };
-            peers: any;
-            encryption: Encryption;
-            config: any;
-            _onError: (err: any) => any;
-            socket: any;
-            probeSocket: any;
-            /**
-             * An implementation for clearning an interval that can be overridden by the test suite
-             * @param Number the number that identifies the timer
-             * @return {undefined}
-             * @ignore
-             */
-            _clearInterval(tid: any): undefined;
-            /**
-             * An implementation for clearning a timeout that can be overridden by the test suite
-             * @param Number the number that identifies the timer
-             * @return {undefined}
-             * @ignore
-             */
-            _clearTimeout(tid: any): undefined;
-            /**
-             * An implementation of an internal timer that can be overridden by the test suite
-             * @return {Number}
-             * @ignore
-             */
-            _setInterval(fn: any, t: any): number;
-            /**
-             * An implementation of an timeout timer that can be overridden by the test suite
-             * @return {Number}
-             * @ignore
-             */
-            _setTimeout(fn: any, t: any): number;
-            /**
-             * A method that encapsulates the listing procedure
-             * @return {undefined}
-             * @ignore
-             */
-            _listen(): undefined;
-            init(cb: any): Promise<any>;
-            onReady: any;
-            mainLoopTimer: number;
-            /**
-             * Continuously evaluate the state of the peer and its network
-             * @return {undefined}
-             * @ignore
-             */
-            _mainLoop(ts: any): undefined;
-            /**
-             * Enqueue packets to be sent to the network
-             * @param {Buffer} data - An encoded packet
-             * @param {number} port - The desination port of the remote host
-             * @param {string} address - The destination address of the remote host
-             * @param {Socket=this.socket} socket - The socket to send on
-             * @return {undefined}
-             * @ignore
-             */
-            send(data: Buffer, port: number, address: string, socket?: any): undefined;
-            /**
-             * @private
-             */
-            _scheduleSend(): void;
-            sendTimeout: number;
-            /**
-             * @private
-             */
-            _dequeue(): void;
-            /**
-             * Send any unpublished packets
-             * @return {undefined}
-             * @ignore
-             */
-            sendUnpublished(): undefined;
-            /**
-             * Get the serializable state of the peer (can be passed to the constructor or create method)
-             * @return {undefined}
-             */
-            getState(): undefined;
-            /**
-             * Get a selection of known peers
-             * @return {Array<RemotePeer>}
-             * @ignore
-             */
-            getPeers(packet: any, peers: any, ignorelist: any, filter?: (o: any) => any): Array<RemotePeer>;
-            /**
-             * Send an eventually consistent packet to a selection of peers (fanout)
-             * @return {undefined}
-             * @ignore
-             */
-            mcast(packet: any, ignorelist?: any[]): undefined;
-            /**
-             * The process of determining this peer's NAT behavior (firewall and dependentness)
-             * @return {undefined}
-             * @ignore
-             */
-            requestReflection(): undefined;
-            probeReflectionTimeout: any;
-            /**
-             * Ping another peer
-             * @return {PacketPing}
-             * @ignore
-             */
-            ping(peer: any, withRetry: any, props: any, socket: any): PacketPing;
-            getPeer(id: any): any;
-            /**
-             * This should be called at least once when an app starts to multicast
-             * this peer, and starts querying the network to discover peers.
-             * @param {object} keys - Created by `Encryption.createKeyPair()`.
-             * @param {object=} args - Options
-             * @param {number=MAX_BANDWIDTH} args.rateLimit - How many requests per second to allow for this subclusterId.
-             * @return {RemotePeer}
-             */
-            join(sharedKey: any, args?: object | undefined): RemotePeer;
-            /**
-             * @param {Packet} T - The constructor to be used to create packets.
-             * @param {Any} message - The message to be split and packaged.
-             * @return {Array<Packet<T>>}
-             * @ignore
-             */
-            _message2packets(T: Packet, message: Any, args: any): Array<Packet<Packet>>;
-            /**
-             * Sends a packet into the network that will be replicated and buffered.
-             * Each peer that receives it will buffer it until TTL and then replicate
-             * it provided it has has not exceeded their maximum number of allowed hops.
-             *
-             * @param {object} keys - the public and private key pair created by `Encryption.createKeyPair()`.
-             * @param {object} args - The arguments to be applied.
-             * @param {Buffer} args.message - The message to be encrypted by keys and sent.
-             * @param {Packet<T>=} args.packet - The previous packet in the packet chain.
-             * @param {Buffer} args.usr1 - 32 bytes of arbitrary clusterId in the protocol framing.
-             * @param {Buffer} args.usr2 - 32 bytes of arbitrary clusterId in the protocol framing.
-             * @return {Array<PacketPublish>}
-             */
-            publish(sharedKey: any, args: {
-                message: Buffer;
-                packet?: Packet<T> | undefined;
-                usr1: Buffer;
-                usr2: Buffer;
-            }): Array<PacketPublish>;
-            /**
-             * @return {undefined}
-             */
-            sync(peer: any): undefined;
-            close(): void;
-            /**
-             * Deploy a query into the network
-             * @return {undefined}
-             *
-             */
-            query(query: any): undefined;
-            /**
-             *
-             * This is a default implementation for deciding what to summarize
-             * from the cache when receiving a request to sync. that can be overridden
-             *
-             */
-            cachePredicate(packet: any): boolean;
-            /**
-             * A connection was made, add the peer to the local list of known
-             * peers and call the onConnection if it is defined by the user.
-             *
-             * @return {undefined}
-             * @ignore
-             */
-            _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
-            connections: Map<any, any>;
-            /**
-             * Received a Sync Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onSync(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Query Packet
-             *
-             * a -> b -> c -> (d) -> c -> b -> a
-             *
-             * @return {undefined}
-             * @example
-             *
-             * ```js
-             * peer.onQuery = (packet) => {
-             *   //
-             *   // read a database or something
-             *   //
-             *   return {
-             *     message: Buffer.from('hello'),
-             *     publicKey: '',
-             *     privateKey: ''
-             *   }
-             * }
-             * ```
-             */
-            _onQuery(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Ping Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPing(packet: any, port: any, address: any): undefined;
-            /**
-             * Received a Pong Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPong(packet: any, port: any, address: any): undefined;
-            /**
-             * Received an Intro Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onIntro(packet: any, port: any, address: any, _: any, opts?: {
-                attempts: number;
-            }): undefined;
-            socketPool: any[];
-            /**
-             * Received an Join Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onJoin(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received an Publish Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onPublish(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received an Stream Packet
-             * @return {undefined}
-             * @ignore
-             */
-            _onStream(packet: any, port: any, address: any, data: any): undefined;
-            /**
-             * Received any packet on the probe port to determine the firewall:
-             * are you port restricted, host restricted, or unrestricted.
-             * @return {undefined}
-             * @ignore
-             */
-            _onProbeMessage(data: any, { port, address }: {
-                port: any;
-                address: any;
-            }): undefined;
-            /**
-             * When a packet is received it is decoded, the packet contains the type
-             * of the message. Based on the message type it is routed to a function.
-             * like WebSockets, don't answer queries unless we know its another SRP peer.
-             *
-             * @param {Buffer|Uint8Array} data
-             * @param {{ port: number, address: string }} info
-             */
-            _onMessage(data: Buffer | Uint8Array, { port, address }: {
-                port: number;
-                address: string;
-            }): Promise<undefined>;
-        };
-    };
-    export default wrap;
+        }): undefined;
+        /**
+         * When a packet is received it is decoded, the packet contains the type
+         * of the message. Based on the message type it is routed to a function.
+         * like WebSockets, don't answer queries unless we know its another SRP peer.
+         *
+         * @param {Buffer|Uint8Array} data
+         * @param {{ port: number, address: string }} info
+         */
+        _onMessage(data: Buffer | Uint8Array, { port, address }: {
+            port: number;
+            address: string;
+        }): Promise<undefined>;
+    }
+    export default Peer;
     import { Packet } from "socket:stream-relay/packets";
     import { sha256 } from "socket:stream-relay/packets";
     import { Cache } from "socket:stream-relay/cache";
@@ -7095,13 +11044,10 @@ declare module "socket:stream-relay/index" {
     import { PacketPublish } from "socket:stream-relay/packets";
     export { Packet, sha256, Cache, Encryption, NAT };
 }
-declare module "socket:stream-relay/sugar" {
-    function _default(dgram: object, events: object): Promise<events.EventEmitter>;
-    export default _default;
-}
+
 declare module "socket:node/index" {
     export default network;
-    export const network: Promise<events.EventEmitter>;
+    export const network: any;
     import { Cache } from "socket:stream-relay/index";
     import { sha256 } from "socket:stream-relay/index";
     import { Encryption } from "socket:stream-relay/index";
@@ -7109,6 +11055,7 @@ declare module "socket:node/index" {
     import { NAT } from "socket:stream-relay/index";
     export { Cache, sha256, Encryption, Packet, NAT };
 }
+
 declare module "socket:index" {
     import { network } from "socket:node/index";
     import { Cache } from "socket:node/index";
@@ -7118,12 +11065,106 @@ declare module "socket:index" {
     import { NAT } from "socket:node/index";
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
-declare module "socket:test/fast-deep-equal" {
-    export default function equal(a: any, b: any): boolean;
+
+declare module "socket:stream-relay/proxy" {
+    export default PeerWorkerProxy;
+    /**
+     * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
+     * @param {{ createSocket: function('udp4', null, object?): object }} options
+     */
+    export class PeerWorkerProxy {
+        constructor(options: any, port: any, fn: any);
+        init(): Promise<any>;
+        reconnect(): Promise<any>;
+        getInfo(): Promise<any>;
+        getState(): Promise<any>;
+        open(...args: any[]): Promise<any>;
+        seal(...args: any[]): Promise<any>;
+        sealUnsigned(...args: any[]): Promise<any>;
+        openUnsigned(...args: any[]): Promise<any>;
+        addEncryptionKey(...args: any[]): Promise<any>;
+        send(...args: any[]): Promise<any>;
+        sendUnpublished(...args: any[]): Promise<any>;
+        cacheInsert(...args: any[]): Promise<any>;
+        mcast(...args: any[]): Promise<any>;
+        requestReflection(...args: any[]): Promise<any>;
+        join(...args: any[]): Promise<any>;
+        publish(...args: any[]): Promise<any>;
+        sync(...args: any[]): Promise<any>;
+        close(...args: any[]): Promise<any>;
+        query(...args: any[]): Promise<any>;
+        compileCachePredicate(src: any): Promise<any>;
+        callWorkerThread(prop: any, data: any): Deferred;
+        callMainThread(prop: any, args: any): void;
+        resolveMainThread(seq: any, data: any): void;
+        #private;
+    }
+    import { Deferred } from "socket:async";
 }
+
+declare module "socket:stream-relay/api" {
+    export default api;
+    /**
+     * Initializes and returns the network bus.
+     *
+     * @async
+     * @function
+     * @param {object} options - Configuration options for the network bus.
+     * @param {object} events - A nodejs compatibe implementation of the events module.
+     * @param {object} dgram - A nodejs compatible implementation of the dgram module.
+     * @returns {Promise<events.EventEmitter>} - A promise that resolves to the initialized network bus.
+     */
+    export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
+}
+
+declare module "socket:network" {
+    export default network;
+    export function network(options: any): Promise<events.EventEmitter>;
+    import { Cache } from "socket:stream-relay/index";
+    import { sha256 } from "socket:stream-relay/index";
+    import { Encryption } from "socket:stream-relay/index";
+    import { Packet } from "socket:stream-relay/index";
+    import { NAT } from "socket:stream-relay/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
+}
+
+declare module "socket:string_decoder" {
+    export function StringDecoder(encoding: any): void;
+    export class StringDecoder {
+        constructor(encoding: any);
+        encoding: any;
+        text: typeof utf16Text | typeof base64Text;
+        end: typeof utf16End | typeof base64End | typeof simpleEnd;
+        fillLast: typeof utf8FillLast;
+        write: typeof simpleWrite;
+        lastNeed: number;
+        lastTotal: number;
+        lastChar: Uint8Array;
+    }
+    export default StringDecoder;
+    function utf16Text(buf: any, i: any): any;
+    class utf16Text {
+        constructor(buf: any, i: any);
+        lastNeed: number;
+        lastTotal: number;
+    }
+    function base64Text(buf: any, i: any): any;
+    class base64Text {
+        constructor(buf: any, i: any);
+        lastNeed: number;
+        lastTotal: number;
+    }
+    function utf16End(buf: any): any;
+    function base64End(buf: any): any;
+    function simpleEnd(buf: any): any;
+    function utf8FillLast(buf: any): any;
+    function simpleWrite(buf: any): any;
+}
+
 declare module "socket:test/context" {
     export default function _default(GLOBAL_TEST_RUNNER: any): void;
 }
+
 declare module "socket:test/dom-helpers" {
     /**
      * Converts querySelector string to an HTMLElement or validates an existing HTMLElement.
@@ -7209,6 +11250,7 @@ declare module "socket:test/dom-helpers" {
      */
     export function isElementVisible(element: Element | HTMLElement, previousElement?: Element | HTMLElement): boolean;
 }
+
 declare module "socket:test/index" {
     /**
      * @returns {number} - The default timeout for tests in milliseconds.
@@ -7767,391 +11809,123 @@ declare module "socket:test/index" {
     };
     export type TestFn = (t: Test) => (void | Promise<void>);
 }
+
 declare module "socket:test" {
     export * from "socket:test/index";
     export default test;
     import test from "socket:test/index";
 }
-declare module "socket:internal/globals" {
-    /**
-     * Gets a runtime global value by name.
-     * @ignore
-     * @param {string} name
-     * @return {any|null}
-     */
-    export function get(name: string): any | null;
-    /**
-     * Symbolic global registry
-     * @ignore
-     */
-    export class GlobalsRegistry {
-        get global(): any;
-        symbol(name: any): symbol;
-        register(name: any, value: any): any;
-        get(name: any): any;
+
+declare module "socket:timers/platform" {
+    export namespace platform {
+        let setTimeout: any;
+        let setInterval: any;
+        let setImmediate: any;
+        let clearTimeout: any;
+        let clearInterval: any;
+        let clearImmediate: any;
+        let postTask: any;
     }
-    export default registry;
-    const registry: any;
+    export default platform;
 }
-declare module "socket:internal/shared-worker" {
-    export function getSharedWorkerImplementationForPlatform(): {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export class SharedHybridWorkerProxy extends EventTarget {
-        constructor(url: any, options: any);
-        onChannelMessage(event: any): void;
-        get id(): any;
-        get port(): any;
+
+declare module "socket:timers/timer" {
+    export class Timer extends AsyncResource {
+        static from(...args: any[]): Timer;
+        constructor(type: any, create: any, destroy: any);
+        get id(): number;
+        init(...args: any[]): this;
+        close(): boolean;
+        [Symbol.toPrimitive](): number;
         #private;
     }
-    export class SharedHybridWorker extends EventTarget {
-        constructor(url: any, nameOrOptions: any);
-        get port(): any;
-        #private;
+    export class Timeout extends Timer {
+        constructor();
     }
-    export const SharedWorker: {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export default SharedWorker;
-}
-declare module "socket:worker" {
-    export { SharedWorker };
-    /**
-     * @type {import('dom').Worker}
-     */
-    export const Worker: any;
-    export default Worker;
-    import SharedWorker from "socket:internal/shared-worker";
-}
-declare module "socket:vm" {
-    /**
-     * @ignore
-     * @param {object[]} transfer
-     * @param {object} object
-     * @param {object=} [options]
-     * @return {object[]}
-     */
-    export function findMessageTransfers(transfers: any, object: object, options?: object | undefined): object[];
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function applyInputContextReferences(context: object): void;
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function applyOutputContextReferences(context: object): void;
-    /**
-     * @ignore
-     * @param {object} context
-     */
-    export function filterNonTransferableValues(context: object): void;
-    /**
-     * @ignore
-     * @param {object=} [currentContext]
-     * @param {object=} [updatedContext]
-     * @param {object=} [contextReference]
-     * @return {{ deletions: string[], merges: string[] }}
-     */
-    export function applyContextDifferences(currentContext?: object | undefined, updatedContext?: object | undefined, contextReference?: object | undefined, preserveScriptArgs?: boolean): {
-        deletions: string[];
-        merges: string[];
-    };
-    /**
-     * Wrap a JavaScript function source.
-     * @ignore
-     * @param {string} source
-     * @param {object=} [options]
-     */
-    export function wrapFunctionSource(source: string, options?: object | undefined): string;
-    /**
-     * Gets the VM context window.
-     * This function will create it if it does not already exist.
-     * The current window will be used on Android or iOS platforms as there can
-     * only be one window.
-     * @return {Promise<import('./window.js').ApplicationWindow}
-     */
-    export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
-    /**
-     * Gets the `SharedWorker` that for the VM context.
-     * @return {Promise<SharedWorker>}
-     */
-    export function getContextWorker(): Promise<SharedWorker>;
-    /**
-     * Terminates the VM script context window.
-     * @ignore
-     */
-    export function terminateContextWindow(): Promise<void>;
-    /**
-     * Terminates the VM script context worker.
-     * @ignore
-     */
-    export function terminateContextWorker(): Promise<void>;
-    /**
-     * Creates a prototype object of known global reserved intrinsics.
-     * @ignore
-     */
-    export function createIntrinsics(): any;
-    /**
-     * Creates a global proxy object for context execution.
-     * @ignore
-     * @param {object} context
-     * @return {Proxy}
-     */
-    export function createGlobalObject(context: object): ProxyConstructor;
-    /**
-     * @ignore
-     * @param {string} source
-     * @return {boolean}
-     */
-    export function detectFunctionSourceType(source: string): boolean;
-    /**
-     * Compiles `source`  with `options` into a function.
-     * @ignore
-     * @param {string} source
-     * @param {object=} [options]
-     * @return {function}
-     */
-    export function compileFunction(source: string, options?: object | undefined): Function;
-    /**
-     * Run `source` JavaScript in given context. The script context execution
-     * context is preserved until the `context` object that points to it is
-     * garbage collected or there are no longer any references to it and its
-     * associated `Script` instance.
-     * @param {string} source
-     * @param {ScriptOptions=} [options]
-     * @param {object=} [context]
-     * @return {Promise<any>}
-     */
-    export function runInContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
-    /**
-     * Run `source` JavaScript in new context. The script context is destroyed after
-     * execution. This is typically a "one off" isolated run.
-     * @param {string} source
-     * @param {ScriptOptions=} [options]
-     * @param {object=} [context]
-     * @return {Promise<any>}
-     */
-    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
-    /**
-     * Run `source` JavaScript in this current context (`globalThis`).
-     * @param {string} source
-     * @param {ScriptOptions=} [options]
-     * @return {Promise<any>}
-     */
-    export function runInThisContext(source: string, options?: ScriptOptions | undefined): Promise<any>;
-    /**
-     * @ignore
-     * @param {Reference} reference
-     */
-    export function putReference(reference: Reference): void;
-    /**
-     * Create a `Reference` for a `value` in a script `context`.
-     * @param {any} value
-     * @param {object} context
-     * @return {Reference}
-     */
-    export function createReference(value: any, context: object): Reference;
-    /**
-     * Get a script context by ID or values
-     * @param {string|object|function} id
-     * @return {Reference?}
-     */
-    export function getReference(id: string | object | Function): Reference | null;
-    /**
-     * Remove a script context reference by ID.
-     * @param {string} id
-     */
-    export function removeReference(id: string): void;
-    /**
-     * Get all transferable values in the `object` hierarchy.
-     * @param {object} object
-     * @return {object[]}
-     */
-    export function getTrasferables(object: object): object[];
-    /**
-     * A container for a context worker message channel that looks like a "worker".
-     * @ignore
-     */
-    export class ContextWorkerInterface extends EventTarget {
-        get channel(): any;
-        get port(): any;
-        destroy(): void;
-        #private;
+    export class Interval extends Timer {
+        constructor();
     }
-    /**
-     * A container proxy for a context worker message channel that
-     * looks like a "worker".
-     * @ignore
-     */
-    export class ContextWorkerInterfaceProxy extends EventTarget {
-        constructor(globals: any);
-        get port(): any;
-        #private;
-    }
-    /**
-     * Global reserved values that a script context may not modify.
-     * @type {string[]}
-     */
-    export const RESERVED_GLOBAL_INTRINSICS: string[];
-    /**
-     * A unique reference to a value owner by a "context object" and a
-     * `Script` instance.
-     */
-    export class Reference {
-        /**
-         * `Reference` class constructor.
-         * @param {string} id
-         * @param {any} value
-         * @param {object=} [context]
-         */
-        constructor(id: string, value: any, context?: object | undefined);
-        /**
-         * The unique id of the reference
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The underling primitive type of the reference value.
-         * @ignore
-         * @type {'undefined'|'object'|'number'|'boolean'|'function'|'symbol'}
-         */
-        get type(): "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
-        /**
-         * The underlying value of the reference.
-         * @type {any?}
-         */
-        get value(): any;
-        /**
-         * The `Script` this value belongs to, if available.
-         * @type {Script?}
-         */
-        get script(): Script;
-        /**
-         * The "context object" this reference value belongs to.
-         * @type {object?}
-         */
-        get context(): any;
-        /**
-         * Releases strongly held value and weak references
-         * to the "context object".
-         */
-        release(): void;
-        /**
-         * Converts this `Reference` to a JSON object.
-         * @param {boolean=} [includeValue = false]
-         */
-        toJSON(includeValue?: boolean | undefined): {
-            __vmScriptReference__: boolean;
-            id: string;
-            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
-            value: any;
-        } | {
-            __vmScriptReference__: boolean;
-            id: string;
-            type: "number" | "boolean" | "symbol" | "undefined" | "object" | "function";
-            value?: undefined;
-        };
-        #private;
-    }
-    /**
-     * @typedef {{
-     *  filename?: string,
-     *  context?: object
-     * }} ScriptOptions
-     */
-    /**
-     * A `Script` is a container for raw JavaScript to be executed in
-     * a completely isolated virtual machine context, optionally with
-     * user supplied context. Context objects references are not actually
-     * shared, but instead provided to the script execution context using the
-     * structured cloning algorithm used by the Message Channel API. Context
-     * differences are computed and applied after execution so the user supplied
-     * context object realizes context changes after script execution. All script
-     * sources run in an "async" context so a "top level await" should work.
-     */
-    export class Script extends EventTarget {
-        /**
-         * `Script` class constructor
-         * @param {string} source
-         * @param {ScriptOptions} [options]
-         */
-        constructor(source: string, options?: ScriptOptions);
-        /**
-         * The script identifier.
-         */
-        get id(): any;
-        /**
-         * The source for this script.
-         * @type {string}
-         */
-        get source(): string;
-        /**
-         * The filename for this script.
-         * @type {string}
-         */
-        get filename(): string;
-        /**
-         * A promise that resolves when the script is ready.
-         * @type {Promise<Boolean>}
-         */
-        get ready(): Promise<boolean>;
-        /**
-         * Destroy the script execution context.
-         * @return {Promise}
-         */
-        destroy(): Promise<any>;
-        /**
-         * Run `source` JavaScript in given context. The script context execution
-         * context is preserved until the `context` object that points to it is
-         * garbage collected or there are no longer any references to it and its
-         * associated `Script` instance.
-         * @param {ScriptOptions=} [options]
-         * @param {object=} [context]
-         * @return {Promise<any>}
-         */
-        runInContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
-        /**
-         * Run `source` JavaScript in new context. The script context is destroyed after
-         * execution. This is typically a "one off" isolated run.
-         * @param {ScriptOptions=} [options]
-         * @param {object=} [context]
-         * @return {Promise<any>}
-         */
-        runInNewContext(context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
-        /**
-         * Run `source` JavaScript in this current context (`globalThis`).
-         * @param {ScriptOptions=} [options]
-         * @return {Promise<any>}
-         */
-        runInThisContext(options?: ScriptOptions | undefined): Promise<any>;
-        #private;
+    export class Immediate extends Timer {
+        constructor();
     }
     namespace _default {
-        export { compileFunction };
-        export { createReference };
-        export { getContextWindow };
-        export { getContextWorker };
-        export { getReference };
-        export { getTrasferables };
-        export { putReference };
-        export { Reference };
-        export { removeReference };
-        export { runInContext };
-        export { runInNewContext };
-        export { runInThisContext };
-        export { Script };
+        export { Timer };
+        export { Immediate };
+        export { Timeout };
+        export { Interval };
     }
     export default _default;
-    export type ScriptOptions = {
-        filename?: string;
-        context?: object;
-    };
-    import { SharedWorker } from "socket:worker";
+    import { AsyncResource } from "socket:async/resource";
 }
+
+declare module "socket:timers/promises" {
+    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
+    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
+    export function setImmediate(value?: any, options?: any): Promise<any>;
+    namespace _default {
+        export { setImmediate };
+        export { setInterval };
+        export { setTimeout };
+    }
+    export default _default;
+}
+
+declare module "socket:timers/scheduler" {
+    export function wait(delay: any, options?: any): Promise<any>;
+    export function postTask(callback: any, options?: any): Promise<any>;
+    namespace _default {
+        export { postTask };
+        export { setImmediate as yield };
+        export { wait };
+    }
+    export default _default;
+    import { setImmediate } from "socket:timers/promises";
+}
+
+declare module "socket:timers/index" {
+    export function setTimeout(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearTimeout(timeout: any): void;
+    export function setInterval(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearInterval(interval: any): void;
+    export function setImmediate(callback: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearImmediate(immediate: any): void;
+    /**
+     * Pause async execution for `timeout` milliseconds.
+     * @param {number} timeout
+     * @return {Promise}
+     */
+    export function sleep(timeout: number): Promise<any>;
+    export namespace sleep {
+        /**
+         * Pause sync execution for `timeout` milliseconds.
+         * @param {number} timeout
+         */
+        function sync(timeout: number): void;
+    }
+    export { platform };
+    namespace _default {
+        export { platform };
+        export { promises };
+        export { scheduler };
+        export { setTimeout };
+        export { clearTimeout };
+        export { setInterval };
+        export { clearInterval };
+        export { setImmediate };
+        export { clearImmediate };
+    }
+    export default _default;
+    import platform from "socket:timers/platform";
+    import promises from "socket:timers/promises";
+    import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:timers" {
+    export * from "socket:timers/index";
+    export default exports;
+    import * as exports from "socket:timers/index";
+}
+
 declare module "socket:module" {
     export function isBuiltin(name: any): boolean;
     /**
@@ -8160,13 +11934,45 @@ declare module "socket:module" {
      * @return {function}
      */
     export function createRequire(sourcePath: URL | string): Function;
-    export default exports;
     /**
      * A limited set of builtins exposed to CommonJS modules.
      */
     export const builtins: {
+        async: typeof _async;
+        async_context: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
+            executionAsyncResource: typeof executionAsyncResource;
+            executionAsyncId: typeof executionAsyncId;
+            triggerAsyncId: typeof triggerAsyncId;
+            createHook: typeof createHook;
+            AsyncHook: typeof AsyncHook;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
         buffer: typeof buffer;
         console: import("socket:console").Console;
+        constants: any;
+        child_process: {
+            ChildProcess: typeof import("socket:child_process").ChildProcess;
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
+        crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
         'dns/promises': typeof dns.promises;
@@ -8177,23 +11983,66 @@ declare module "socket:module" {
         };
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
+        http: typeof http;
+        https: typeof http;
         gc: any;
         ipc: typeof ipc;
-        module: typeof exports;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        location: {
+            origin: string;
+            href: string;
+            protocol: string;
+            hostname: string;
+            host: string;
+            search: string;
+            pathname: string;
+            toString: typeof import("socket:location").toString;
+        };
+        mime: typeof mime;
+        net: {};
+        network: (options: any) => Promise<events.EventEmitter>;
         os: typeof os;
         path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
         process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
         stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
         test: typeof test;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
         util: typeof util;
         url: any;
         vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
             compileFunction: typeof import("socket:vm").compileFunction;
             createReference: typeof import("socket:vm").createReference;
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
-            getTrasferables: typeof import("socket:vm").getTrasferables;
+            getTransferables: typeof import("socket:vm").getTransferables;
             putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;
@@ -8201,11 +12050,57 @@ declare module "socket:module" {
             runInNewContext: typeof import("socket:vm").runInNewContext;
             runInThisContext: typeof import("socket:vm").runInThisContext;
             Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+            isContext: typeof import("socket:vm").isContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
         };
     };
     export const builtinModules: {
+        async: typeof _async;
+        async_context: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
+        };
+        async_hooks: {
+            AsyncLocalStorage: typeof AsyncLocalStorage;
+            AsyncResource: typeof AsyncResource;
+            executionAsyncResource: typeof executionAsyncResource;
+            executionAsyncId: typeof executionAsyncId;
+            triggerAsyncId: typeof triggerAsyncId;
+            createHook: typeof createHook;
+            AsyncHook: typeof AsyncHook;
+        };
+        application: typeof application;
+        assert: typeof import("socket:assert").assert & {
+            AssertionError: typeof import("socket:assert").AssertionError;
+            ok: typeof import("socket:assert").ok;
+            equal: typeof import("socket:assert").equal;
+            notEqual: typeof import("socket:assert").notEqual;
+            strictEqual: typeof import("socket:assert").strictEqual;
+            notStrictEqual: typeof import("socket:assert").notStrictEqual;
+            deepEqual: typeof import("socket:assert").deepEqual;
+            notDeepEqual: typeof import("socket:assert").notDeepEqual;
+        };
         buffer: typeof buffer;
         console: import("socket:console").Console;
+        constants: any;
+        child_process: {
+            ChildProcess: typeof import("socket:child_process").ChildProcess;
+            spawn: typeof import("socket:child_process").spawn;
+            execFile: typeof import("socket:child_process").exec;
+            exec: typeof import("socket:child_process").exec;
+        };
+        crypto: typeof crypto;
         dgram: typeof dgram;
         dns: typeof dns;
         'dns/promises': typeof dns.promises;
@@ -8216,23 +12111,66 @@ declare module "socket:module" {
         };
         fs: typeof fs;
         'fs/promises': typeof fs.promises;
+        http: typeof http;
+        https: typeof http;
         gc: any;
         ipc: typeof ipc;
-        module: typeof exports;
+        language: {
+            codes: string[];
+            describe: typeof import("socket:language").describe;
+            lookup: typeof import("socket:language").lookup;
+            names: string[];
+            tags: import("socket:enumeration").Enumeration;
+        };
+        location: {
+            origin: string;
+            href: string;
+            protocol: string;
+            hostname: string;
+            host: string;
+            search: string;
+            pathname: string;
+            toString: typeof import("socket:location").toString;
+        };
+        mime: typeof mime;
+        net: {};
+        network: (options: any) => Promise<events.EventEmitter>;
         os: typeof os;
         path: typeof path;
+        perf_hooks: {
+            performance: Performance;
+        };
         process: any;
+        querystring: {
+            decode: typeof import("socket:querystring").parse;
+            encode: typeof import("socket:querystring").stringify;
+            parse: typeof import("socket:querystring").parse;
+            stringify: typeof import("socket:querystring").stringify;
+            escape: typeof import("socket:querystring").escape;
+            unescape: typeof import("socket:querystring").unescape;
+        };
         stream: typeof stream;
+        'stream/web': typeof stream.web;
+        string_decoder: typeof string_decoder;
+        sys: typeof util;
         test: typeof test;
+        timers: typeof timers;
+        'timers/promises': any;
+        tty: {
+            isatty: () => boolean;
+            WriteStream: typeof util.IllegalConstructor;
+            ReadStream: typeof util.IllegalConstructor;
+        };
         util: typeof util;
         url: any;
         vm: {
+            createGlobalObject: typeof import("socket:vm").createGlobalObject;
             compileFunction: typeof import("socket:vm").compileFunction;
             createReference: typeof import("socket:vm").createReference;
             getContextWindow: typeof import("socket:vm").getContextWindow;
             getContextWorker: typeof import("socket:vm").getContextWorker;
             getReference: typeof import("socket:vm").getReference;
-            getTrasferables: typeof import("socket:vm").getTrasferables;
+            getTransferables: typeof import("socket:vm").getTransferables;
             putReference: typeof import("socket:vm").putReference;
             Reference: typeof import("socket:vm").Reference;
             removeReference: typeof import("socket:vm").removeReference;
@@ -8240,6 +12178,19 @@ declare module "socket:module" {
             runInNewContext: typeof import("socket:vm").runInNewContext;
             runInThisContext: typeof import("socket:vm").runInThisContext;
             Script: typeof import("socket:vm").Script;
+            createContext: typeof import("socket:vm").createContext;
+            isContext: typeof import("socket:vm").isContext;
+        };
+        window: typeof window;
+        worker_threads: {
+            Worker: typeof import("socket:worker_threads").Worker;
+            isMainThread: boolean;
+            parentPort: import("socket:worker_threads").MessagePort;
+            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
+            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
+            workerData: any;
+            threadId: number;
+            SHARE_ENV: symbol;
         };
     };
     /**
@@ -8261,18 +12212,18 @@ declare module "socket:module" {
      * to the "main" module and global object (if possible).
      */
     export class Module extends EventTarget {
-        static set current(module: exports.Module);
+        static set current(module: Module);
         /**
          * A reference to the currently scoped module.
          * @type {Module?}
          */
-        static get current(): exports.Module;
-        static set previous(module: exports.Module);
+        static get current(): Module;
+        static set previous(module: Module);
         /**
          * A reference to the previously scoped module.
          * @type {Module?}
          */
-        static get previous(): exports.Module;
+        static get previous(): Module;
         /**
          * Module cache.
          * @ignore
@@ -8289,6 +12240,11 @@ declare module "socket:module" {
          */
         static wrapper: string;
         /**
+         * A limited set of builtins exposed to CommonJS modules.
+         * @type {object}
+         */
+        static builtins: object;
+        /**
          * Creates a `require` function from a source URL.
          * @param {URL|string} sourcePath
          * @return {function}
@@ -8298,7 +12254,7 @@ declare module "socket:module" {
          * The main entry module, lazily created.
          * @type {Module}
          */
-        static get main(): exports.Module;
+        static get main(): Module;
         /**
          * Wraps source in a CommonJS module scope.
          */
@@ -8329,6 +12285,11 @@ declare module "socket:module" {
          * @type {boolean}
          */
         loaded: boolean;
+        /**
+         * `true` if the module is currently being loaded.
+         * @type {boolean}
+         */
+        loading: boolean;
         /**
          * The module's exports.
          * @type {any}
@@ -8396,36 +12357,42 @@ declare module "socket:module" {
          */
         [Symbol.toStringTag](): string;
     }
+    export default Module;
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
     import { URL } from "socket:url/index";
-    import * as exports from "socket:module";
-    import buffer from "socket:buffer";
+    import _async from "socket:async";
+    import { AsyncLocalStorage } from "socket:async";
+    import { AsyncResource } from "socket:async";
+    import { executionAsyncResource } from "socket:async";
+    import { executionAsyncId } from "socket:async";
+    import { triggerAsyncId } from "socket:async";
+    import { createHook } from "socket:async";
+    import { AsyncHook } from "socket:async";
+    import application from "socket:application";
+    import * as buffer from "socket:buffer";
+    import crypto from "socket:crypto";
     import dgram from "socket:dgram";
     import dns from "socket:dns";
     import events from "socket:events";
     import fs from "socket:fs";
+    import http from "socket:http";
     import ipc from "socket:ipc";
+    import mime from "socket:mime";
     import os from "socket:os";
     import { posix as path } from "socket:path";
     import stream from "socket:stream";
-    import test from "socket:test";
+    import string_decoder from "socket:string_decoder";
     import util from "socket:util";
-    
+    import test from "socket:test";
+    import timers from "socket:timers";
+    import window from "socket:window";
 }
-declare module "socket:network" {
-    export default network;
-    export const network: Promise<events.EventEmitter>;
-    import { Cache } from "socket:stream-relay/index";
-    import { sha256 } from "socket:stream-relay/index";
-    import { Encryption } from "socket:stream-relay/index";
-    import { Packet } from "socket:stream-relay/index";
-    import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, Packet, NAT };
-}
+
 declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
     export default resolve;
 }
+
 declare module "socket:internal/permissions" {
     /**
      * Query for a permission status.
@@ -8504,6 +12471,7 @@ declare module "socket:internal/permissions" {
     }
     import Enumeration from "socket:enumeration";
 }
+
 declare module "socket:notification" {
     /**
      * Show a notification. Creates a `Notification` instance and displays
@@ -8881,11 +12849,25 @@ declare module "socket:notification" {
     import { Enumeration } from "socket:enumeration";
     import URL from "socket:url";
 }
+
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
 }
+
+declare module "socket:worker" {
+    export default Worker;
+    import { SharedWorker } from "socket:internal/shared-worker";
+    import { ServiceWorker } from "socket:service-worker/instance";
+    import { Worker } from "socket:worker_threads";
+    export { SharedWorker, ServiceWorker, Worker };
+}
+
+declare module "socket:child_process/worker" {
+    export {};
+}
+
 declare module "socket:internal/geolocation" {
     /**
      * Get the current position of the device.
@@ -8925,6 +12907,78 @@ declare module "socket:internal/geolocation" {
     }
     export default _default;
 }
+
+declare module "socket:internal/streams" {
+    export class ReadableStream extends globalThis.ReadableStream<Uint8Array> {
+        constructor(options: any);
+    }
+    namespace _default {
+        export { ReadableStream };
+    }
+    export default _default;
+}
+
+declare module "socket:service-worker/registration" {
+    export class ServiceWorkerRegistration {
+        constructor(info: any, serviceWorker: any);
+        get scope(): any;
+        get updateViaCache(): string;
+        get installing(): any;
+        get waiting(): any;
+        get active(): any;
+        set onupdatefound(onupdatefound: any);
+        get onupdatefound(): any;
+        get navigationPreload(): any;
+        getNotifications(): Promise<any[]>;
+        showNotification(): Promise<void>;
+        unregister(): Promise<void>;
+        update(): Promise<void>;
+        #private;
+    }
+    export default ServiceWorkerRegistration;
+}
+
+declare module "socket:service-worker/container" {
+    /**
+     * Predicate to determine if service workers are allowed
+     * @return {boolean}
+     */
+    export function isServiceWorkerAllowed(): boolean;
+    /**
+     * A `ServiceWorkerContainer` implementation that is attached to the global
+     * `globalThis.navigator.serviceWorker` object.
+     */
+    export class ServiceWorkerContainer extends EventTarget {
+        get ready(): any;
+        get controller(): any;
+        /**
+         * A special initialization function for augmenting the global
+         * `globalThis.navigator.serviceWorker` platform `ServiceWorkerContainer`
+         * instance.
+         *
+         * All functions MUST be sure to what a lexically bound `this` becomes as the
+         * target could change with respect to the `internal` `Map` instance which
+         * contains private implementation properties relevant to the runtime
+         * `ServiceWorkerContainer` internal state implementations.
+         * @ignore
+         * @private
+         */
+        private init;
+        register(scriptURL: any, options?: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
+        getRegistration(clientURL: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
+        getRegistrations(): Promise<readonly globalThis.ServiceWorkerRegistration[] | ServiceWorkerRegistration[]>;
+        startMessages(): void;
+    }
+    export default ServiceWorkerContainer;
+    import { ServiceWorkerRegistration } from "socket:service-worker/registration";
+}
+
+declare module "socket:internal/service-worker" {
+    export const serviceWorker: ServiceWorkerContainer;
+    export default serviceWorker;
+    import { ServiceWorkerContainer } from "socket:service-worker/container";
+}
+
 declare module "socket:internal/webassembly" {
     /**
      * The `instantiateStreaming()` function compiles and instantiates a WebAssembly
@@ -8948,6 +13002,31 @@ declare module "socket:internal/webassembly" {
     }
     export default _default;
 }
+
+declare module "socket:internal/scheduler" {
+    export * from "socket:timers/scheduler";
+    export default scheduler;
+    import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:internal/timers" {
+    export function setTimeout(callback: any, ...args: any[]): number;
+    export function clearTimeout(timeout: any): any;
+    export function setInterval(callback: any, ...args: any[]): number;
+    export function clearInterval(interval: any): any;
+    export function setImmediate(callback: any, ...args: any[]): number;
+    export function clearImmediate(immediate: any): any;
+    namespace _default {
+        export { setTimeout };
+        export { setInterval };
+        export { setImmediate };
+        export { clearTimeout };
+        export { clearInterval };
+        export { clearImmediate };
+    }
+    export default _default;
+}
+
 declare module "socket:internal/pickers" {
     /**
      * @typedef {{
@@ -9042,7 +13121,20 @@ declare module "socket:internal/pickers" {
     };
     import { FileSystemHandle } from "socket:fs/web";
 }
-declare module "socket:internal/monkeypatch" {
+
+declare module "socket:internal/promise" {
+    export namespace NativePromisePrototype {
+        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => Promise<TResult1 | TResult2>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => Promise<any>;
+        export { _catch as catch };
+        let _finally: (onfinally?: () => void) => Promise<any>;
+        export { _finally as finally };
+    }
+    const Promise: PromiseConstructor;
+    export default Promise;
+}
+
+declare module "socket:internal/primitives" {
     export function init(): {
         natives: {};
         patches: {};
@@ -9055,6 +13147,7 @@ declare module "socket:internal/monkeypatch" {
     const natives: {};
     const patches: {};
 }
+
 declare module "socket:internal/init" {
     namespace _default {
         export { location };
@@ -9062,6 +13155,7 @@ declare module "socket:internal/init" {
     export default _default;
     import location from "socket:location";
 }
+
 declare module "socket:internal/worker" {
     export function onWorkerMessage(event: any): Promise<any>;
     export function addEventListener(eventName: any, callback: any, ...args: any[]): any;
@@ -9111,6 +13205,69 @@ declare module "socket:internal/worker" {
     }
     export default _default;
 }
+
+declare module "socket:service-worker/global" {
+    export class ServiceWorkerGlobalScope {
+        get isServiceWorkerScope(): boolean;
+        get ExtendableEvent(): typeof ExtendableEvent;
+        get FetchEvent(): typeof FetchEvent;
+        get serviceWorker(): any;
+        set registration(value: any);
+        get registration(): any;
+        get clients(): import("socket:service-worker/clients").Clients;
+        set onactivate(listener: any);
+        get onactivate(): any;
+        set onmessage(listener: any);
+        get onmessage(): any;
+        set oninstall(listener: any);
+        get oninstall(): any;
+        set onfetch(listener: any);
+        get onfetch(): any;
+        skipWaiting(): Promise<void>;
+    }
+    const _default: ServiceWorkerGlobalScope;
+    export default _default;
+    import { ExtendableEvent } from "socket:service-worker/events";
+    import { FetchEvent } from "socket:service-worker/events";
+}
+
+declare module "socket:service-worker/init" {
+    export function onRegister(event: any): Promise<void>;
+    export function onUnregister(): Promise<void>;
+    export function onSkipWaiting(event: any): Promise<void>;
+    export function onActivate(event: any): Promise<void>;
+    export function onFetch(event: any): Promise<void>;
+    export const workers: Map<any, any>;
+    export class ServiceWorkerInfo {
+        constructor(data: any);
+        id: any;
+        url: any;
+        hash: any;
+        scope: any;
+        scriptURL: any;
+    }
+    const _default: any;
+    export default _default;
+}
+declare function isTypedArray(object: any): boolean;
+declare function isTypedArray(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
+declare const Uint8ArrayPrototype: Uint8Array;
+declare const TypedArrayPrototype: any;
+declare const TypedArray: any;
+declare const ports: any[];
+
+declare module "socket:service-worker/worker" {
+    export {};
+}
+
+declare module "socket:stream-relay/worker" {
+    export {};
+}
+
 declare module "socket:test/harness" {
     /**
      * @typedef {import('./index').Test} Test
@@ -9227,13 +13384,15 @@ declare module "socket:test/harness" {
     import * as exports from "socket:test/harness";
     
 }
+
 declare module "socket:vm/init" {
     export {};
 }
-declare function reportError(e: any): void;
-declare function reportError(err: any): void;
+declare function isTypedArray(object: any): boolean;
 declare function isTypedArray(object: any): boolean;
 declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
+declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;
@@ -9286,6 +13445,7 @@ declare class State {
     init(): void;
     onPortMessage(port: any, event: any): void;
 }
+
 declare module "socket:vm/world" {
     export {};
 }

@@ -1,4 +1,4 @@
-/* global reportError, EventTarget, CustomEvent */
+/* global reportError, EventTarget, CustomEvent, MessageEvent */
 import './init.js'
 
 import { rand64 } from '../crypto.js'
@@ -95,8 +95,8 @@ if (source && typeof source === 'string') {
         // @ts-ignore
         await import(source)
         if (Array.isArray(globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG)) {
-          for (const message of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
-            globalThis.dispatchEvent(message)
+          for (const event of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
+            globalThis.dispatchEvent(new MessageEvent(event.type, event))
           }
 
           globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.splice(
@@ -104,6 +104,7 @@ if (source && typeof source === 'string') {
             globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.length
           )
         }
+        globalThis.postMessage({ __runtime_worker_init: true })
       } catch (err) {
         reportError(err)
       }
@@ -216,13 +217,11 @@ export async function onWorkerMessage (event) {
     return false
   }
 
-  return dispatchEvent(event)
+  return dispatchEvent(new MessageEvent(event.type, event))
 }
 
 export function addEventListener (eventName, callback, ...args) {
-  if (eventName === 'message') {
-    return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
-  } else if (eventName === 'connect') {
+  if (eventName === 'message' || eventName === 'connect') {
     return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
   } else {
     return worker.addEventListener(eventName, callback, ...args)
@@ -230,9 +229,7 @@ export function addEventListener (eventName, callback, ...args) {
 }
 
 export function removeEventListener (eventName, callback, ...args) {
-  if (eventName === 'message') {
-    return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
-  } else if (eventName === 'connect') {
+  if (eventName === 'message' || eventName === 'connect') {
     return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
   } else {
     return worker.removeEventListener(eventName, callback, ...args)
@@ -240,10 +237,11 @@ export function removeEventListener (eventName, callback, ...args) {
 }
 
 export function dispatchEvent (event) {
-  if (hooks.globalEvents.includes(event.type)) {
-    return worker.dispatchEvent(event)
+  if (event.type === 'message' || event.type === 'connect') {
+    return workerGlobalScopeEventTarget.dispatchEvent(event)
   }
-  return workerGlobalScopeEventTarget.dispatchEvent(event)
+
+  return worker.dispatchEvent(event)
 }
 
 export function postMessage (message, ...args) {

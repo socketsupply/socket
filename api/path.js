@@ -1,18 +1,22 @@
 import { primordials } from './ipc.js'
 import {
+  mounts,
   Path,
   posix,
   win32,
 
   // well known
-  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
+  RESOURCES,
   PICTURES,
   DESKTOP,
   VIDEOS,
+  CONFIG,
   MUSIC,
-  HOME
+  HOME,
+  DATA,
+  LOG
 } from './path/index.js'
 
 const isWin32 = primordials.platform === 'win32'
@@ -36,15 +40,19 @@ export {
   Path,
   posix,
   win32,
+  mounts,
 
-  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
+  RESOURCES,
   PICTURES,
   DESKTOP,
   VIDEOS,
+  CONFIG,
   MUSIC,
-  HOME
+  HOME,
+  DATA,
+  LOG
 }
 
 export default isWin32 ? win32 : posix

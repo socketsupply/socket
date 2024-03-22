@@ -1,5 +1,6 @@
 import { format, isObject } from './util.js'
 import { postMessage } from './ipc.js'
+import os from './os.js'
 
 function isPatched (console) {
   return console?.[Symbol.for('socket.console.patched')] === true
@@ -132,13 +133,57 @@ export class Console {
         configurable: false
       }
     })
+
+    this.write = this.write.bind(this)
+    this.assert = this.assert.bind(this)
+    this.clear = this.clear.bind(this)
+    this.count = this.count.bind(this)
+    this.countReset = this.countReset.bind(this)
+    this.debug = this.debug.bind(this)
+    this.dir = this.dir.bind(this)
+    this.dirxml = this.dirxml.bind(this)
+    this.error = this.error.bind(this)
+    this.info = this.info.bind(this)
+    this.log = this.log.bind(this)
+    this.table = this.table.bind(this)
+    this.time = this.time.bind(this)
+    this.timeEnd = this.timeEnd.bind(this)
+    this.timeLog = this.timeLog.bind(this)
+    this.trace = this.trace.bind(this)
+    this.warn = this.warn.bind(this)
   }
 
-  async write (destination, ...args) {
-    const value = encodeURIComponent(format(...args))
-    const uri = `ipc://${destination}?value=${value}`
+  write (destination, ...args) {
+    let extra = ''
+    let value = ''
+
+    value = format(...args)
+    if (destination === 'debug') {
+      destination = 'stderr'
+      extra = 'debug=true'
+      value = `(${globalThis.location.pathname}): ${value}`
+    }
+
+    if (/ios|darwin/i.test(os.platform())) {
+      const parts = value.split('\n')
+      for (const part of parts) {
+        try {
+          value = encodeURIComponent(part)
+          const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+          this.postMessage?.(uri)
+        } catch (err) {
+          this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
+          return
+        }
+      }
+      return
+    }
+
+    value = encodeURIComponent(value)
+    const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+
     try {
-      return await this.postMessage?.(uri)
+      return this.postMessage?.(uri)
     } catch (err) {
       this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
     }
@@ -175,7 +220,7 @@ export class Console {
   debug (...args) {
     this.console?.debug?.(...args)
     if (!isPatched(this.console)) {
-      this.write('stderr', ...args)
+      this.write('debug', ...args)
     }
   }
 

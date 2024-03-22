@@ -121,6 +121,41 @@ export class EncodingError extends Error {
 }
 
 /**
+ * An error type derived from an `errno` code.
+ */
+export class ErrnoError extends Error {
+  static get code () { return '' }
+  // lazily set during init phase
+  static errno = null
+
+  #name = ''
+  #code = 0
+
+  /**
+   * `ErrnoError` class constructor.
+   * @param {import('./errno').errno|string} code
+   */
+  constructor (code, message = null, ...args) {
+    super(message || ErrnoError.errno.getMessage(code) || '', ...args)
+
+    this.#code = ErrnoError.errno.getCode(code)
+    this.#name = ErrnoError.errno.getName(code) || 'SystemError'
+
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, EncodingError)
+    }
+  }
+
+  get name () {
+    return this.#name
+  }
+
+  get code () {
+    return this.#code
+  }
+}
+
+/**
  * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
  * has occurred, such as in the native IPC layer.
  */

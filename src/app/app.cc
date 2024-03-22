@@ -1,3 +1,4 @@
+#include "../core/platform.hh"
 #include "../window/window.hh"
 #include "../ipc/ipc.hh"
 #include "app.hh"
@@ -209,10 +210,17 @@ namespace SSC {
     }
   #endif
 
+    if (shouldExit) {
+      this->core->shuttingDown = true;
+    }
+
     return shouldExit ? 1 : 0;
   }
 
   void App::kill () {
+    this->killed = true;
+    this->core->shuttingDown = true;
+    this->core->shutdown();
     // Distinguish window closing with app exiting
     shouldExit = true;
   #if defined(__linux__) && !defined(__ANDROID__)
@@ -220,7 +228,7 @@ namespace SSC {
   #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
-    if (!fromSSC) {
+    if (!wasLaunchedFromCli) {
       [NSApp terminate:nil];
     }
   #elif defined(_WIN32)

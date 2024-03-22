@@ -19,16 +19,56 @@ namespace SSC {
       opts(opts),
       hotkey(this)
   {
+    auto userConfig = SSC::getUserConfig();
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
     this->popupId = 0;
     this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     this->popup = nullptr;
 
+    this->shouldDrag = false;
+    this->initialLocation = {0,0};
+
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
+    if (this->opts.aspectRatio.size() > 0) {
+      g_signal_connect(
+        window,
+        "configure-event",
+        G_CALLBACK(+[](GtkWidget *widget, GdkEventConfigure *event, gpointer ptr) {
+          auto w = static_cast<Window*>(ptr);
+          if (!w) return FALSE;
+
+          // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
+          auto parts = split(w->opts.aspectRatio, ':');
+          float aspectWidth = 0;
+          float aspectHeight = 0;
+
+          try {
+            aspectWidth = std::stof(trim(parts[0]));
+            aspectHeight = std::stof(trim(parts[1]));
+          } catch (...) {
+            debug("invalid aspect ratio");
+            return FALSE;
+          }
+
+          if (aspectWidth > 0 && aspectHeight > 0) {
+            GdkGeometry geom;
+            geom.min_aspect = aspectWidth / aspectHeight;
+            geom.max_aspect = geom.min_aspect;
+            gtk_window_set_geometry_hints(GTK_WINDOW(widget), widget, &geom, GdkWindowHints(GDK_HINT_ASPECT));
+          }
+
+          return FALSE;
+        }),
+        this
+      );
+
+      // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
+    }
+
     this->index = this->opts.index;
-    this->bridge = new IPC::Bridge(app.core);
+    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
 
     this->hotkey.init(this->bridge);
 
@@ -157,49 +197,18 @@ namespace SSC {
         auto valueString = jsc_value_to_string(value);
         auto str = String(valueString);
 
-        char *buf = nullptr;
-        size_t bufsize = 0;
-
-        // 'b5' for 'buffer'
-        if (str.size() >= 2 && str.at(0) == 'b' && str.at(1) == '5') {
-          size_t size = 0;
-          auto bytes = jsc_value_to_string_as_bytes(value);
-          auto data = (char *) g_bytes_get_data(bytes, &size);
-
-          if (size > 6) {
-            size_t offset = 2 + 4 + 20; // buf offset
-            auto index = new char[4]{0};
-            auto seq = new char[20]{0};
-
-            decodeUTF8(index, data + 2, 4);
-            decodeUTF8(seq, data + 2 + 4, 20);
-
-            buf = new char[size - offset]{0};
-            bufsize = decodeUTF8(buf, data + offset, size - offset);
-
-            str = String("ipc://buffer.map?index=") + index + "&seq=" + seq;
-
-            delete [] index;
-            delete [] seq;
-          }
-
-          g_bytes_unref(bytes);
-        }
-
-        if (!window->bridge->route(str, buf, bufsize)) {
+        if (!window->bridge->route(str, nullptr, 0)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
         }
 
         g_free(valueString);
-        delete [] buf;
       }),
       this
     );
 
-    static auto userConfig = SSC::getUserConfig();
-    auto webContext = this->bridge->router.webkitWebContext;
+    auto webContext = webkit_web_context_get_default();
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     auto settings = webkit_settings_new();
     auto policies = webkit_website_policies_new_with_policies(
@@ -396,6 +405,7 @@ namespace SSC {
             {"name", name},
             {"state", result ? "granted" : "denied"}
           };
+          // TODO(@heapwolf): properly return this data
         }
 
         return result;
@@ -425,7 +435,7 @@ namespace SSC {
         const auto req = webkit_navigation_action_get_request(action);
         const auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.starts_with(userConfig["meta_application_protocol"])) {
+        if (uri.starts_with(window->opts.userConfig["meta_application_protocol"])) {
           webkit_policy_decision_ignore(decision);
 
           if (window != nullptr && window->bridge != nullptr) {
@@ -484,65 +494,86 @@ namespace SSC {
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag-begin",
-      G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
+      "button-release-event",
+      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
-        w->isDragInvokedInsideWindow = true;
+        w->shouldDrag = false;
+        return FALSE;
+      }),
+      this
+    );
 
-        GdkDevice* device;
-        gint wx;
-        gint wy;
-        gint x;
-        gint y;
+    g_signal_connect(
+      G_OBJECT(webview),
+      "button-press-event",
+      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        w->shouldDrag = false;
 
-        device = gdk_drag_context_get_device(context);
-        gdk_device_get_window_at_position(device, &x, &y);
-        gdk_device_get_position(device, 0, &wx, &wy);
+        if (event->button == GDK_BUTTON_PRIMARY) {
+          auto win = GDK_WINDOW(gtk_widget_get_window(w->window));
+          gint initialX;
+          gint initialY;
 
-        String js(
-          "(() => {"
-          "  let el = null;"
-          "  try { el = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + "); }"
-          "  catch (err) { console.error(err.stack || err.message || err); }"
-          "  if (!el) return;"
-          "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
-          "  return found && found.dataset.src"
-          "})()"
-        );
+          gdk_window_get_position(win, &initialX, &initialY);
 
-        webkit_web_view_evaluate_javascript(
-          WEBKIT_WEB_VIEW(wv),
-          js.c_str(),
-          -1,
-          nullptr,
-          nullptr,
-          nullptr,
-          [](GObject* src, GAsyncResult* result, gpointer arg) {
-            auto *w = static_cast<Window*>(arg);
-            if (!w) return;
+          w->initialLocation.x = initialX;
+          w->initialLocation.y = initialY;
 
-            GError* error = NULL;
-            auto value = webkit_web_view_evaluate_javascript_finish(
-              WEBKIT_WEB_VIEW(src),
-              result,
-              &error
-            );
+          w->dragLastX = event->x_root;
+          w->dragLastY = event->y_root;
 
-            if (!value || error) return;
+          GdkDevice* device;
 
-            if (!jsc_value_is_string(value)) return;
+          gint x = event->x;
+          gint y = event->y;
+          String sx = std::to_string(x);
+          String sy = std::to_string(y);
 
-            JSCException *exception;
-            gchar *str_value = jsc_value_to_string(value);
+          String js(
+            "(() => {                                                                      "
+            "  const v = '--app-region';                                                   "
+            "  let el = document.elementFromPoint(" + sx + "," + sy + ");                  "
+            "                                                                              "
+            "  while (el) {                                                                "
+            "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
+            "    el = el.parentElement;                                                    "
+            "  }                                                                           "
+            "  return ''                                                                   "
+            "})()                                                                          "
+          );
 
+          webkit_web_view_evaluate_javascript(
+            WEBKIT_WEB_VIEW(wv),
+            js.c_str(),
+            -1,
+            nullptr,
+            nullptr,
+            nullptr,
+            [](GObject* src, GAsyncResult* result, gpointer arg) {
+              auto *w = static_cast<Window*>(arg);
+              if (!w) return;
 
-            w->draggablePayload = split(str_value, ';');
-            exception = jsc_context_get_exception(jsc_value_get_context(value));
+              GError* error = NULL;
+              auto value = webkit_web_view_evaluate_javascript_finish(
+                WEBKIT_WEB_VIEW(w->webview),
+                result,
+                &error
+              );
 
-            g_free(str_value);
-          },
-          w
-        );
+              if (error) return;
+              if (!value) return;
+              if (!jsc_value_is_string(value)) return;
+
+              auto match = std::string(jsc_value_to_string(value));
+              w->shouldDrag = match == "movable";
+              return;
+            },
+            w
+          );
+        }
+
+        return FALSE;
       }),
       this
     );
@@ -561,7 +592,7 @@ namespace SSC {
       this
     );
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-data-get",
       G_CALLBACK(+[](
@@ -600,28 +631,63 @@ namespace SSC {
         gtk_selection_data_set_uris(data, uris);
       }),
       this
-    );
+    ); */
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag-motion",
+      "motion-notify-event",
       G_CALLBACK(+[](
         GtkWidget *wv,
-        GdkDragContext *context,
-        gint x,
-        gint y,
-        guint32 time,
+        GdkEventMotion *event,
         gpointer arg)
       {
         auto *w = static_cast<Window*>(arg);
-        if (!w) return;
+        if (!w) return FALSE;
 
-        w->dragLastX = x;
-        w->dragLastY = y;
+        if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
+          auto win = GDK_WINDOW(gtk_widget_get_window(w->window));
+          gint x;
+          gint y;
 
+          GdkRectangle frame_extents;
+          gdk_window_get_frame_extents(win, &frame_extents);
+
+          GtkAllocation allocation;
+          gtk_widget_get_allocation(wv, &allocation);
+
+          gint menubarHeight = 0;
+
+          if (w->menubar) {
+            GtkAllocation allocationMenubar;
+            gtk_widget_get_allocation(w->menubar, &allocationMenubar);
+            menubarHeight = allocationMenubar.height;
+          }
+
+          int offsetWidth = (frame_extents.width - allocation.width) / 2;
+          int offsetHeight = (frame_extents.height - allocation.height) - offsetWidth - menubarHeight;
+
+          gdk_window_get_position(win, &x, &y);
+
+          gint offset_x = event->x_root - w->dragLastX;
+          gint offset_y = event->y_root - w->dragLastY;
+
+          gint newX = x + offset_x;
+          gint newY = y + offset_y;
+
+          gdk_window_move(win, newX - offsetWidth, newY - offsetHeight);
+
+          w->dragLastX = event->x_root;
+          w->dragLastY = event->y_root;
+        }
+
+        return FALSE;
+
+        //
+        // TODO(@heapwolf): refactor legacy drag and drop stuff
+        //
         // char* target_uri = g_file_get_uri(drag_info->target_location);
 
-        int count = w->draggablePayload.size();
+        /* int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
         // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
@@ -637,7 +703,7 @@ namespace SSC {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(getEmitToRenderProcessJavaScript("drag", json));
+        w->eval(getEmitToRenderProcessJavaScript("drag", json)); */
       }),
       this
     );
@@ -652,39 +718,14 @@ namespace SSC {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
 
-        w->isDragInvokedInsideWindow = false;
-        w->draggablePayload.clear();
+        // w->isDragInvokedInsideWindow = false;
+        // w->draggablePayload.clear();
         w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
       }),
       this
     );
 
-    g_signal_connect(
-      G_OBJECT(window),
-      "button-release-event",
-      G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
-        if (!w) return;
-
-        /**
-         * Calling w->eval() inside button-release-event causes
-         * a Segmentation Fault on Ubuntu 22, but works fine on
-         * other linuxes like Ubuntu 20.
-         *
-         * The dragend feature causes the application to crash in
-         * all operations including non drag-drop and causes applications
-         * that do not use drag and drop at all to crash.
-         *
-         * So disabling this experimental linux dragdrop code for now.
-         */
-
-        // w->isDragInvokedInsideWindow = false;
-        // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
-      }),
-      this
-    );
-
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-data-received",
       G_CALLBACK(+[](
@@ -719,9 +760,9 @@ namespace SSC {
         }
       }),
       this
-    );
+    ); */
 
-    g_signal_connect(
+    /* g_signal_connect(
       G_OBJECT(webview),
       "drag-drop",
       G_CALLBACK(+[](
@@ -761,15 +802,31 @@ namespace SSC {
         return TRUE;
       }),
       this
-    );
+    ); */
+
+    auto onDestroy = +[](GtkWidget*, gpointer arg) {
+      auto* w = static_cast<Window*>(arg);
+      auto* app = App::instance();
+      app->windowManager->destroyWindow(w->index);
+
+      for (auto window : app->windowManager->windows) {
+        if (window == nullptr) continue;
+
+        JSON::Object json = JSON::Object::Entries {
+          {"data", w->index}
+        };
+
+        window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+      }
+
+      w->close(0);
+      return FALSE;
+    };
 
     g_signal_connect(
       G_OBJECT(window),
       "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer arg) {
-        auto* w = static_cast<Window*>(arg);
-        w->close(0);
-      }),
+      G_CALLBACK(onDestroy),
       this
     );
 
@@ -800,21 +857,16 @@ namespace SSC {
       this
     );
 
-    String preload = createPreload(opts);
+    opts.clientId = this->bridge->id;
+
+    this->bridge->preload = createPreload(opts, {
+      .module = true,
+      .wrap = true,
+      .userScript = opts.userScript
+    });
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
-
-    webkit_user_content_manager_add_script(
-      manager,
-      webkit_user_script_new(
-        preload.c_str(),
-        WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
-        nullptr,
-        nullptr
-      )
-    );
 
     // ALWAYS on or off
     webkit_settings_set_enable_webgl(settings, true);
@@ -889,6 +941,10 @@ namespace SSC {
     gtk_widget_add_events(window, GDK_ALL_EVENTS_MASK);
 
     gtk_widget_grab_focus(GTK_WIDGET(webview));
+  }
+
+  Window::~Window () {
+    delete this->bridge;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1001,7 +1057,31 @@ namespace SSC {
     );
   }
 
+  String Window::getBackgroundColor () {
+    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
+
+    GdkRGBA color;
+    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
+
+    char str[100];
+
+    snprintf(
+      str,
+      sizeof(str),
+      "rgba(%d, %d, %d, %f)",
+      (int)(color.red * 255),
+      (int)(color.green * 255),
+      (int)(color.blue * 255),
+      color.alpha
+    );
+
+    return String(str);
+  }
+
   void Window::showInspector () {
+    WebKitWebInspector *inspector = webkit_web_view_get_inspector((WebKitWebView*)(this->webview));
+    webkit_web_inspector_show(inspector);
+
     // this->webview->inspector.show();
   }
 
@@ -1050,11 +1130,6 @@ namespace SSC {
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
   }
 
-  int Window::openExternal (const String& url) {
-    gtk_widget_realize(window);
-    return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, nullptr);
-  }
-
   void Window::about () {
     GtkWidget *dialog = gtk_dialog_new();
     gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 200);
@@ -1063,7 +1138,7 @@ namespace SSC {
     GtkContainer *content = GTK_CONTAINER(body);
 
     String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      app.appData["build_name"] +
+      app.userConfig["build_name"] +
       ".png";
 
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
@@ -1080,7 +1155,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.appData["build_name"] + " v" + app.appData["meta_version"]);
+    String title_value(app.userConfig["build_name"] + " v" + app.userConfig["meta_version"]);
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
     GtkWidget *label_title = gtk_label_new("");
@@ -1092,7 +1167,7 @@ namespace SSC {
     gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["meta_copyright"].c_str());
+    gtk_label_set_markup(GTK_LABEL(label_copyright), app.userConfig["meta_copyright"].c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(
@@ -1146,12 +1221,12 @@ namespace SSC {
     this->setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const String& seq, const String& source, const bool& isTrayMenu) {
-    if (source.empty()) {
+  void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
+    Lock lock(mutex);
+
+    if (menuSource.empty()) {
       return;
     }
-
-    auto menuSource = replace(SSC::String(source), "%%", "\n"); // copy and deserialize
 
     auto clear = [this](GtkWidget* menu) {
       GList *iter;
@@ -1170,6 +1245,12 @@ namespace SSC {
     } else {
       menubar = menubar == nullptr ? gtk_menu_bar_new() : clear(menubar);
     }
+
+    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
+
+    GdkRGBA color;
+    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
+    gtk_widget_override_background_color(menubar, GTK_STATE_FLAG_NORMAL, &color);
 
     auto menus = split(menuSource, ';');
 
@@ -1222,6 +1303,10 @@ namespace SSC {
 
             if (key.size() > 0) {
               auto accelerator = split(parts[1], '+');
+              if (accelerator.size() <= 1) {
+                continue;
+              }
+
               auto modifier = trim(accelerator[1]);
               // normalize modifier to lower case
               std::transform(
@@ -1401,9 +1486,10 @@ namespace SSC {
 
   void Window::setContextMenu (
     const String &seq,
-    const String &value
+    const String &menuSource
   ) {
     closeContextMenu();
+    if (menuSource.empty()) return void(0);
 
     // members
     popup = gtk_menu_new();
@@ -1414,8 +1500,7 @@ namespace SSC {
       popupId = 0;
     }
 
-    auto menuData = replace(value, "_", "\n");
-    auto menuItems = split(menuData, '\n');
+    auto menuItems = split(menuSource, '\n');
 
     for (auto itemData : menuItems) {
       if (trim(itemData).size() == 0) {

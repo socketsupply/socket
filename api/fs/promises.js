@@ -22,7 +22,6 @@
  * import fs from 'socket:fs/promises'
  * ```
  */
-import console from '../console.js'
 import ipc from '../ipc.js'
 
 import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
@@ -274,7 +273,11 @@ export async function opendir (path, options) {
  * @param {boolean?} [options.withFileTypes = false]
  */
 export async function readdir (path, options) {
-  options = { entries: DirectoryHandle.MAX_ENTRIES, ...options }
+  options = {
+    entries: DirectoryHandle.MAX_ENTRIES,
+    withFileTypes: false,
+    ...options
+  }
 
   const entries = []
   const handle = await DirectoryHandle.open(path, options)
@@ -396,6 +399,7 @@ export async function rmdir (path) {
 }
 
 /**
+ * Get the stats of a file
  * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
@@ -405,6 +409,20 @@ export async function rmdir (path) {
 export async function stat (path, options) {
   return await visit(path, {}, async (handle) => {
     return await handle.stat(options)
+  })
+}
+
+/**
+ * Get the stats of a symbolic link.
+ * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
+ * @param {string | Buffer | URL} path
+ * @param {object?} [options]
+ * @param {boolean?} [options.bigint = false]
+ * @return {Promise<Stats>}
+ */
+export async function lstat (path, options) {
+  return await visit(path, {}, async (handle) => {
+    return await handle.lstat(options)
   })
 }
 

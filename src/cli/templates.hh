@@ -193,15 +193,18 @@ constexpr auto gHelloWorld = R"HTML(
 <!doctype html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src https: file: ipc: socket: ws://localhost:*;
-        script-src https: socket: http://localhost:* 'unsafe-eval';
-        img-src https: data: file: http://localhost:*;
-        child-src 'none';
-        object-src 'none';
+        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:*;
+         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
+         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
+          frame-src socket: https: http: blob: http://localhost:*;
+            img-src socket: https: http: blob: http://localhost:*;
+          child-src socket: https: http: blob:;
+         object-src 'none';
       "
     >
     <style type="text/css">
@@ -213,6 +216,7 @@ constexpr auto gHelloWorld = R"HTML(
         justify-content: center;
         align-content: center;
         font-family: helvetica;
+        overflow: hidden;
       }
     </style>
   </head>
@@ -236,8 +240,11 @@ constexpr auto gMacOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleName</key>
   <string>{{build_name}}</string>
 
-  <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 
   <key>CFBundlePackageType</key>
   <string>APPL</string>
@@ -673,6 +680,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
 		2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */; };
 		2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A4 /* UserNotifications.framework */; };
+		2996EDB22770BC1F00C672A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5E2761336B001832A1 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -693,6 +701,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		29124C5E2761336B001832A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
@@ -763,6 +772,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				294A3C842764EAB7007B5B9A /* ui */,
 				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
 				29124C5E2761336B001832A0 /* Info.plist */,
+				29124C5E2761336B001832A1 /* Assets.xcassets */,
 				29124C4B27613369001832A0 /* Products */,
 				294A3C782763E9C6007B5B9A /* Frameworks */,
 			);
@@ -854,6 +864,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			files = (
 				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
 				294A3C852764EAB7007B5B9A /* ui in Resources */,
+				2996EDB22770BC1F00C672A5 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1169,8 +1180,20 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
 
-  <key>CFBundleIconFile</key>
-  <string>ui/icon.png</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+
+  <key>compileBitcode</key>
+  <{{meta_compile_bitcode}}/>
+
+  <key>uploadBitcode</key>
+  <{{meta_upload_bitcode}}/>
+
+  <key>uploadSymbols</key>
+  <{{meta_upload_symbols}}/>
 
   <key>CFBundleURLTypes</key>
   <array>
@@ -1651,14 +1674,6 @@ constexpr auto gDefaultConfig = R"INI(
 ;
 ; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
-
-; The value of the "script" property in the build section will be interpreted as
-; a shell command when  you run "ssc build". This is the most important command
-; in this file. It will do all the heavy lifting and should handle 99.9% of your
-; use cases for moving files into place or tweaking platform-specific build
-; artifacts. If you don't specify it, ssc will just copy everything in your
-; project to the build target.
-;
 ; Note that "~" alias won't expand to the home directory in any of the config
 ; files. Use the full path instead.
 
@@ -1697,18 +1712,21 @@ output = "build"
 
 
 [build.script]
+
 ; If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
 ; default value: false
 forward_arguments = false
 
 
 [build.watch]
+
 ; Configure your project to watch for sources that could change when running `ssc`.
 ; Could be a string or an array of strings
 sources[] = "src"
 
 
 [webview]
+
 ; Make root open index.html
 ; default value: "/"
 root = "/"
@@ -1722,7 +1740,6 @@ root = "/"
 watch = true
 
 ; Custom headers injected on all webview routes
-[webview]
 ; default value: ""
 ; headers[] = "X-Custom-Header: Some-Value"
 
@@ -1731,15 +1748,20 @@ watch = true
 ; default value: true
 reload = true
 
+; Timeout in milliseconds to wait for service worker to reload before reloading webview
+; default value: 500
+service_worker_reload_timeout = 500
 
 ; Mount file system paths in webview navigator
 [webview.navigator.mounts]
+
 ; $HOST_HOME/directory-in-home-folder/ = /mount/path/in/navigator
 ; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
 ; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
 
 [permissions]
+
 ; Allow/Disallow fullscreen in application
 ; default value: true
 ; allow_fullscreen = true
@@ -1789,6 +1811,7 @@ reload = true
 ; allow_hotkeys = true
 
 [debug]
+
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 flags = "-g"
 
@@ -1831,8 +1854,6 @@ version = 1.0.0
 
 
 [android]
-; The icon to use for identifying your app on Android.
-icon = "src/icon.png"
 
 ; Extensions of files that will not be stored compressed in the APK.
 aapt_no_compress = ""
@@ -1855,6 +1876,12 @@ native_sources = ""
 native_makefile = ""
 sources = ""
 
+; The icon to use for identifying your app on Android.
+icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
+
 
 [ios]
 
@@ -1874,8 +1901,14 @@ simulator_device = "iPhone 14"
 ; default value: false
 ; nonexempt_encryption = false
 
+; The icon to use for identifying your app on iOS.
+icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "29@1x 29@2x 29@3x 40@2x 40@3x 57@1x 57@2x 60@2x 60@3x"
 
 [linux]
+
 ; Helps to make your app searchable in Linux desktop environments.
 categories = "Developer Tools"
 
@@ -1884,6 +1917,9 @@ categories = "Developer Tools"
 
 ; The icon to use for identifying your app in Linux desktop environments.
 icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
 
 
 [mac]
@@ -1894,9 +1930,6 @@ category = ""
 ; The command to execute to spawn the "back-end" process.
 ; cmd = "node backend/index.js"
 
-; The icon to use for identifying your app on MacOS.
-icon = "src/icon.png"
-
 ; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_identity = ""
 
@@ -1906,6 +1939,15 @@ codesign_paths = ""
 ; Minimum supported MacOS version
 ; default value: "13.0.0"
 ; minimum_supported_version = "13.0.0"
+
+; If titleBarStyle is "hiddenInset", this will determine the x and y offsets of the traffic lights.
+; trafficLightPosition = "10x24"
+
+; The icon to use for identifying your app on MacOS.
+icon = "src/icon.png"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "16@1x 32@1x 128@1x"
 
 
 [native]
@@ -1922,9 +1964,6 @@ headers = native-module1.hh
 ; The command to execute to spawn the “back-end” process.
 ; cmd = "node backend/index.js"
 
-; The icon to use for identifying your app on Windows.
-icon = "src/icon.ico"
-
 ; The icon to use for identifying your app on Windows, relative to copied path resources
 logo = "icon.ico"
 
@@ -1934,6 +1973,12 @@ logo = "icon.ico"
 ; The signing information needed by the appx api.
 ; publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
 
+; The icon to use for identifying your app on Windows.
+icon = "src/icon.ico"
+
+; The various sizes and scales of the icons to create, required minimum are listed by default.
+icon_sizes = "512@1x"
+
 
 [window]
 
@@ -1942,6 +1987,10 @@ height = 50%
 
 ; The initial width of the first window in pixels or as a percentage of the screen.
 width = 50%
+
+; Determine if the titlebar style (hidden, hiddenInset)
+; default value: ""
+; titleBarStyle = "hiddenInset"
 
 ; Maximum height of the window in pixels or as a percentage of the screen.
 ; default value: 100%
@@ -1959,38 +2008,53 @@ width = 50%
 ; default value: 0
 ; min_width = 0
 
-; If the window is resizable or not.
-; default value: true
-; resizable = true
-
-; If the window has a title bar or not.
+; Determines if the window has a title bar and border.
 ; default value: false
 ; frameless = false
 
-; If the window is utility window or not.
+; Determines if the window is resizable.
+; default value: true
+; resizable = true
+
+; Determines if the window is maximizable.
+; default value: true
+; maximizable = true
+
+; Determines if the window is minimizable.
+; default value: true
+; minimizable = true
+
+; Determines if the window is closable.
+; default value: true
+; closable = true
+
+; Determines the window is utility window.
 ; default value: false
 ; utility = false
 
-
 [window.alert]
+
 ; The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS.
 ; defalut value = ""
 ; title = ""
 
 
 [application]
+
 ; If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app.
 ; default value: false
 ; agent = true
 
 
 [tray]
+
 ; The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format.
 ; defalut value = ""
-; icon = "icon.png"
+; icon = "src/icon.png"
 
 
 [headless]
+
 ; The headless runner command. It is used when no OS specific runner is set.
 runner = ""
 ; The headless runner command flags. It is used when no OS specific runner is set.

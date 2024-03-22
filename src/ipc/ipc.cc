@@ -85,24 +85,24 @@ namespace SSC::IPC {
 
       if (pair[0].compare("index") == 0) {
         try {
-          index = std::stoi(pair[1].size() > 0 ? pair[1] : "0");
+          this->index = std::stoi(pair[1].size() > 0 ? pair[1] : "0");
         } catch (...) {
           debug("Warning: received non-integer index");
         }
       }
 
       if (pair[0].compare("value") == 0) {
-        value = decodeURIComponent(pair[1]);
+        this->value = decodeURIComponent(pair[1]);
       }
 
       if (pair[0].compare("seq") == 0) {
-        seq = decodeURIComponent(pair[1]);
+        this->seq = decodeURIComponent(pair[1]);
       }
 
       if (decodeValues) {
-        args[pair[0]] = decodeURIComponent(pair[1]);
+        this->args[pair[0]] = decodeURIComponent(pair[1]);
       } else {
-        args[pair[0]] = pair[1];
+        this->args[pair[0]] = pair[1];
       }
     }
   }
@@ -119,6 +119,7 @@ namespace SSC::IPC {
   }
 
   String Message::get (const String& key, const String &fallback) const {
+    if (key == "value") return this->value;
     return args.count(key) ? decodeURIComponent(args.at(key)) : fallback;
   }
 

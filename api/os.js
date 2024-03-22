@@ -10,8 +10,12 @@
  * ```
  */
 
-import { toProperCase } from './util.js'
 import ipc, { primordials } from './ipc.js'
+import { toProperCase } from './util.js'
+import constants from './os/constants.js'
+import { HOME } from './path/well-known.js'
+
+export { constants }
 
 const UNKNOWN = 'unknown'
 
@@ -376,6 +380,14 @@ export function availableMemory () {
  */
 export function host () {
   return primordials['host-operating-system'] || 'unknown'
+}
+
+/**
+ * Returns the home directory of the current user.
+ * @return {string}
+ */
+export function homedir () {
+  return globalThis.__args.env.HOME ?? HOME ?? ''
 }
 
 // eslint-disable-next-line

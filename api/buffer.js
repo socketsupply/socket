@@ -276,6 +276,15 @@ const K_MAX_LENGTH = 0x7fffffff
 const kMaxLength = K_MAX_LENGTH
 
 export default Buffer
+export const File = globalThis.File
+export const Blob = globalThis.Blob
+export const constants = {
+  MAX_LENGTH: kMaxLength,
+  MAX_STRING_LENGTH: kMaxLength
+}
+
+export const btoa = globalThis.btoa.bind(globalThis)
+export const atob = globalThis.atob.bind(globalThis)
 
 export {
   Buffer,

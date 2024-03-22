@@ -16,6 +16,7 @@ test('ipc exports', async (t) => {
     'debug',
     'default',
     'emit',
+    'findMessageTransfers',
     'ERROR',
     'kDebugEnabled',
     'primordials',

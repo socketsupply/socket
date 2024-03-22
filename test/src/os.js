@@ -95,3 +95,7 @@ test('os.EOL', (t) => {
     t.equal(os.EOL, '\n')
   }
 })
+
+test('os.homedir()', (t) => {
+  t.ok(typeof os.homedir() === 'string', 'os.homedir() returns a string')
+})

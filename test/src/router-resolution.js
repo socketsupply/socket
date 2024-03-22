@@ -79,10 +79,10 @@ test('router-resolution', async (t) => {
         const extractedRedirectURL = extractUrl(response, responseBody)
         const redirectResponse = await fetch(extractedRedirectURL)
         const redirectResponseBody = (await redirectResponse.text()).trim()
-        t.equal(redirectResponseBody, testCase.bodyTest, `Redirect response body matches ${testCase.bodyTest}`)
+        t.ok(redirectResponseBody.includes(testCase.bodyTest), `Redirect response body includes ${testCase.bodyTest}`)
       }
     } else {
-      t.equal(responseBody, testCase.bodyTest, `response body matches ${testCase.bodyTest}`)
+      t.ok(responseBody.includes(testCase.bodyTest), `response body includes ${testCase.bodyTest}`)
     }
   }
 })

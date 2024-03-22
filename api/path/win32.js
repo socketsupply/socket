@@ -1,16 +1,20 @@
+import * as mounts from './mounts.js'
 import * as posix from './posix.js'
 import location from '../location.js'
 import { Path } from './path.js'
 import url from '../url.js'
-
 import {
-  RESOURCES,
   DOWNLOADS,
   DOCUMENTS,
+  RESOURCES,
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  CONFIG,
+  MUSIC,
+  HOME,
+  DATA,
+  LOG
 } from './well-known.js'
 
 import * as exports from './win32.js'
@@ -18,16 +22,22 @@ import * as exports from './win32.js'
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
 export {
+  mounts,
   posix,
   Path,
 
-  RESOURCES,
+  // well known paths
   DOWNLOADS,
   DOCUMENTS,
+  RESOURCES,
   PICTURES,
   DESKTOP,
   VIDEOS,
-  MUSIC
+  CONFIG,
+  MUSIC,
+  HOME,
+  DATA,
+  LOG
 }
 
 export default exports

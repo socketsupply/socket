@@ -33,10 +33,11 @@
  * ```
  */
 
-/* global webkit, chrome, external */
+/* global webkit, chrome, external, reportError */
 import {
   AbortError,
   InternalError,
+  ErrnoError,
   TimeoutError
 } from './errors.js'
 
@@ -53,16 +54,21 @@ import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { URL } from './url.js'
-import console from './console.js'
 
 let nextSeq = 1
 const cache = {}
 
 function initializeXHRIntercept () {
   if (typeof globalThis.XMLHttpRequest !== 'function') return
+  const patched = Symbol.for('socket.runtime.ipc.XMLHttpRequest.patched')
+  if (globalThis.XMLHttpRequest.prototype[patched]) {
+    return
+  }
+
+  globalThis.XMLHttpRequest.prototype[patched] = true
+
   const { send, open } = globalThis.XMLHttpRequest.prototype
 
-  const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
   const encoder = new TextEncoder()
   Object.assign(globalThis.XMLHttpRequest.prototype, {
     open (method, url, ...args) {
@@ -70,7 +76,7 @@ function initializeXHRIntercept () {
         this.readyState = globalThis.XMLHttpRequest.OPENED
       } catch (_) {}
       this.method = method
-      this.url = new URL(url)
+      this.url = new URL(url, globalThis.location.origin)
       this.seq = this.url.searchParams.get('seq')
 
       return open.call(this, method, url, ...args)
@@ -92,6 +98,9 @@ function initializeXHRIntercept () {
 
           if (/android/i.test(primordials.platform)) {
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
+            if (!globalThis.window && globalThis.self) {
+              await new Promise((resolve) => setTimeout(resolve, 200))
+            }
             body = null
           }
 
@@ -126,42 +135,6 @@ function initializeXHRIntercept () {
                   }
                 })
             })
-          }
-
-          if (/linux/i.test(primordials.platform)) {
-            if (body?.buffer instanceof ArrayBuffer) {
-              const header = new Uint8Array(24)
-              const buffer = new Uint8Array(
-                B5_PREFIX_BUFFER.length +
-                header.length +
-                body.length
-              )
-
-              header.set(encoder.encode(index))
-              header.set(encoder.encode(seq), 4)
-
-              //  <type> |      <header>     | <body>
-              // "b5"(2) | index(2) + seq(2) | body(n)
-              buffer.set(B5_PREFIX_BUFFER)
-              buffer.set(header, B5_PREFIX_BUFFER.length)
-              buffer.set(body, B5_PREFIX_BUFFER.length + header.length)
-
-              let data = []
-              const quota = 64 * 1024
-              for (let i = 0; i < buffer.length; i += quota) {
-                data.push(String.fromCharCode(...buffer.subarray(i, i + quota)))
-              }
-
-              data = data.join('')
-
-              try {
-                // @ts-ignore
-                data = decodeURIComponent(escape(data))
-              } catch (_) {}
-              await postMessage(data)
-            }
-
-            body = null
           }
         }
       }
@@ -303,6 +276,7 @@ export function maybeMakeError (error, caller) {
     GeolocationPositionError: getErrorClass('GeolocationPositionError'),
     IndexSizeError: getErrorClass('IndexSizeError'),
     InternalError,
+    DOMException: getErrorClass('DOMContentLoaded'),
     InvalidAccessError: getErrorClass('InvalidAccessError'),
     NetworkError: getErrorClass('NetworkError'),
     NotAllowedError: getErrorClass('NotAllowedError'),
@@ -330,8 +304,10 @@ export function maybeMakeError (error, caller) {
 
   delete error.type
 
-  if (type in errors) {
-    err = new errors[type](error.message || '')
+  if (code && ErrnoError.errno?.constants && -code in ErrnoError.errno.strings) {
+    err = new ErrnoError(-code)
+  } else if (type in errors) {
+    err = new errors[type](error.message || '', error.code)
   } else {
     for (const E of Object.values(errors)) {
       if ((E.code && type === E.code) || (code && code === E.code)) {
@@ -475,9 +451,38 @@ export class Headers extends globalThis.Headers {
 }
 
 /**
+ * Find transfers for an in worker global `postMessage`
+ * that is proxied to the main thread.
  * @ignore
  */
-export async function postMessage (message, ...args) {
+export function findMessageTransfers (transfers, object) {
+  if (ArrayBuffer.isView(object)) {
+    add(object.buffer)
+  } else if (object instanceof ArrayBuffer) {
+    add(object)
+  } else if (Array.isArray(object)) {
+    for (const value of object) {
+      findMessageTransfers(transfers, value)
+    }
+  } else if (object && typeof object === 'object') {
+    for (const key in object) {
+      findMessageTransfers(transfers, object[key])
+    }
+  }
+
+  return transfers
+
+  function add (value) {
+    if (!transfers.includes(value)) {
+      transfers.push(value)
+    }
+  }
+}
+
+/**
+ * @ignore
+ */
+export function postMessage (message, ...args) {
   if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {
     return webkit.messageHandlers.external.postMessage(message, ...args)
   } else if (globalThis?.chrome?.webview?.postMessage) {
@@ -485,16 +490,18 @@ export async function postMessage (message, ...args) {
   } else if (globalThis?.external?.postMessage) {
     return external.postMessage(message, ...args)
   } else if (globalThis.postMessage) {
+    const transfer = []
+    findMessageTransfers(transfer, args)
     // worker
     if (globalThis.self && !globalThis.window) {
-      return await globalThis?.postMessage({
+      return globalThis?.postMessage({
         __runtime_worker_ipc_request: {
           message,
           bytes: args[0] ?? null
         }
-      })
+      }, { transfer })
     } else {
-      return globalThis?.postMessage(message, args)
+      return globalThis.top.postMessage(message, ...args)
     }
   }
 
@@ -891,7 +898,7 @@ export class Result {
     const id = result?.id || null
     const err = maybeMakeError(result?.err || maybeError || null, Result.from)
     const data = !err && result?.data !== null && result?.data !== undefined
-      ? result.data?.data ?? result.data
+      ? result.data
       : (!err && !id && !result?.source ? result?.err ?? result : null)
 
     const source = result?.source || maybeSource || null
@@ -1023,7 +1030,7 @@ class IPCSearchParams extends URLSearchParams {
     super({
       ...params,
       index: globalThis.__args?.index ?? 0,
-      seq: 'R' + nextSeq++
+      seq: params?.seq ?? ('R' + nextSeq++)
     })
 
     if (value !== undefined) {
@@ -1036,6 +1043,27 @@ class IPCSearchParams extends URLSearchParams {
 
     if (globalThis.RUNTIME_WORKER_ID) {
       this.set('runtime-worker-id', globalThis.RUNTIME_WORKER_ID)
+    }
+
+    const runtimeFrameSource = globalThis.document
+      ? globalThis.document.querySelector('meta[name=runtime-frame-source]')?.content
+      : ''
+
+    if (globalThis.top && globalThis.top !== globalThis) {
+      this.set('runtime-frame-type', 'nested')
+    } else if (!globalThis.window && globalThis.self === globalThis) {
+      this.set('runtime-frame-type', 'worker')
+      if (globalThis.clients && globalThis.FetchEvent) {
+        this.set('runtime-worker-type', 'serviceworker')
+      } else {
+        this.set('runtime-worker-type', 'worker')
+      }
+    } else {
+      this.set('runtime-frame-type', 'top-level')
+    }
+
+    if (runtimeFrameSource) {
+      this.set('runtime-frame-source', runtimeFrameSource)
     }
   }
 
@@ -1466,19 +1494,37 @@ export const primordials = sendSync('platform.primordials')?.data || {}
 if (primordials.cwd) {
   primordials.cwd = primordials.cwd.replace(/\\$/, '')
 }
+
+if (
+  globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ &&
+  typeof globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ === 'object'
+) {
+  Object.assign(primordials, globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__)
+}
+
 Object.freeze(primordials)
 initializeXHRIntercept()
 
 if (typeof globalThis?.window !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
+  if (globalThis.document.readyState === 'complete') {
     queueMicrotask(async () => {
       try {
         await send('platform.event', 'domcontentloaded')
       } catch (err) {
-        console.error('ERR:', err)
+        reportError(err)
       }
     })
-  })
+  } else {
+    globalThis.document.addEventListener('DOMContentLoaded', () => {
+      queueMicrotask(async () => {
+        try {
+          await send('platform.event', 'domcontentloaded')
+        } catch (err) {
+          reportError(err)
+        }
+      })
+    })
+  }
 }
 
 // eslint-disable-next-line

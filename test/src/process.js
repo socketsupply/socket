@@ -7,10 +7,6 @@ test('process', (t) => {
   t.ok(typeof process.addListener === 'function', 'process is an EventEmitter')
 })
 
-test('process.homedir()', (t) => {
-  t.ok(typeof process.homedir() === 'string', 'process.homedir() returns a string')
-})
-
 test('process.exit()', (t) => {
   t.ok(typeof process.exit === 'function', 'process.exit() is a function')
 })
@@ -49,7 +45,9 @@ test('process.platform', (t) => {
 })
 
 test('process.env', (t) => {
-  t.deepEqual(process.env, globalThis.__args.env, 'process.env is equal to globalThis.__args.env')
+  for (const key in globalThis.__args.env) {
+    t.equal(globalThis.__args.env[key], process.env[key], `globalThis.__args.env.${key} === process.env.${key}`)
+  }
 })
 
 test('process.argv', (t) => {

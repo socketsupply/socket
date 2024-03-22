@@ -263,22 +263,38 @@ static dispatch_queue_t queue = dispatch_queue_create(
     dispatch_async(queue, ^{ callback(); });
   };
 
-  bridge->router.evaluateJavaScriptFunction = [=](auto js) {
+  bridge->router.evaluateJavaScriptFunction = [=](const auto source) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      auto script = [NSString stringWithUTF8String: js.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler: nil];
+      [self.webview
+        evaluateJavaScript: @(source.c_str())
+         completionHandler: ^(id result, NSError *error)
+      {
+        if (error) {
+          debug("JavaScriptError: %@", error);
+        }
+      }];
     });
   };
 
-  auto appFrame = [[UIScreen mainScreen] bounds];
-
-  self.window = [[UIWindow alloc] initWithFrame: appFrame];
-
-  UIViewController *viewController = [[UIViewController alloc] init];
-  viewController.view.frame = appFrame;
-  self.window.rootViewController = viewController;
+  core->serviceWorker.init(bridge);
 
   auto userConfig = SSC::getUserConfig();
+  const auto resourcePath = NSBundle.mainBundle.resourcePath;
+  const auto cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
+  const auto appFrame = UIScreen.mainScreen.bounds;
+  const auto viewController = [UIViewController new];
+  const auto config = [WKWebViewConfiguration new];
+  const auto processInfo = NSProcessInfo.processInfo;
+
+  Vector<String> argv;
+  for (const auto& arg : split(userConfig["ssc_argv"], ',')) {
+    argv.push_back("'" + trim(arg) + "'");
+  }
+
+  viewController.view.frame = appFrame;
+
+  self.window = [UIWindow.alloc initWithFrame: appFrame];
+  self.window.rootViewController = viewController;
 
   StringStream env;
 
@@ -299,61 +315,65 @@ static dispatch_queue_t queue = dispatch_queue_create(
   env << String("width=" + std::to_string(appFrame.size.width) + "&");
   env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
-  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
-  NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
-  const auto argv = userConfig["ssc_argv"];
+  WindowOptions opts {
+    .debug = isDebugEnabled(),
+    .isTest = userConfig["ssc_argv"].find("--test") != -1,
+    .argv = join(argv, ","),
+    .env = env.str(),
+    .userConfig = userConfig
+  };
+
+  opts.clientId = bridge->id;
+  // Note: you won't see any logs in the preload script before the
+  // Web Inspector is opened
+  bridge->preload = createPreload(opts, {
+    .module = true,
+    .wrap = true
+  });
 
   uv_chdir(cwd.UTF8String);
 
-  WindowOptions opts {
-    .debug = isDebugEnabled(),
-    .isTest = argv.find("--test") != -1,
-    .argv = argv,
-    .env = env.str(),
-    .appData = userConfig
-  };
+  [config setValue: @YES forKey: @"allowUniversalAccessFromFileURLs"];
 
-  // Note: you won't see any logs in the preload script before the
-  // Web Inspector is opened
-  String  preload = createPreload(opts);
-
-  WKUserScript* initScript = [[WKUserScript alloc]
-    initWithSource: [NSString stringWithUTF8String: preload.c_str()]
-    injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-    forMainFrameOnly: NO];
-
-  WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
-
-  [config setURLSchemeHandler: bridge->router.schemeHandler
-                 forURLScheme: @"ipc"];
-
-  [config setURLSchemeHandler: bridge->router.schemeHandler
-                 forURLScheme: @"socket"];
-
-  self.content = [config userContentController];
-
-  [self.content addScriptMessageHandler:self name: @"external"];
-  [self.content addUserScript: initScript];
-
-  self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
-  self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-  WKPreferences* prefs = self.webview.configuration.preferences;
-
-  [self.webview.configuration
-    setValue: @YES
-      forKey: @"allowUniversalAccessFromFileURLs"
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"ipc"
   ];
 
-  [self.webview.configuration.preferences
-    setValue: @YES
-      forKey: @"allowFileAccessFromFileURLs"
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"socket"
   ];
 
-  [self.webview.configuration.preferences
-    setValue: @YES
-      forKey: @"javaScriptEnabled"
+  self.content = config.userContentController;
+
+  [self.content
+    addScriptMessageHandler: self
+                       name: @"external"
   ];
+
+  self.webview = [SSCBridgedWebView.alloc
+     initWithFrame: appFrame
+     configuration: config
+  ];
+
+  self.webview.autoresizingMask = (
+    UIViewAutoresizingFlexibleWidth |
+    UIViewAutoresizingFlexibleHeight
+  );
+
+  self.webview.customUserAgent = [NSString
+    stringWithFormat: @("Mozilla/5.0 (iPhone; CPU iPhone OS %d_%d_%d like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1 SocketRuntime/%s"),
+    processInfo.operatingSystemVersion.majorVersion,
+    processInfo.operatingSystemVersion.minorVersion,
+    processInfo.operatingSystemVersion.patchVersion,
+    SSC::VERSION_STRING.c_str()
+  ];
+
+  const auto prefs = self.webview.configuration.preferences;
+
+  [prefs setValue: @YES forKey: @"allowFileAccessFromFileURLs" ];
+  [prefs setValue: @YES forKey: @"javaScriptEnabled" ];
 
   if (userConfig["permissions_allow_fullscreen"] == "false") {
     [prefs setValue: @NO forKey: @"fullScreenEnabled"];

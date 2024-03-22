@@ -1,5 +1,4 @@
 import {
-  InvertedPromise,
   isBufferLike,
   isTypedArray,
   isEmptyObject,
@@ -7,17 +6,17 @@ import {
   clamp
 } from '../util.js'
 
-import { rand64 } from '../crypto.js'
-
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
+import { AsyncResource } from '../async/resource.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
+import { Deferred } from '../async.js'
 import diagnostics from '../diagnostics.js'
 import { Buffer } from '../buffer.js'
+import { rand64 } from '../crypto.js'
 import { Stats } from './stats.js'
 import { F_OK } from './constants.js'
-import console from '../console.js'
 import fds from './fds.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
@@ -136,6 +135,8 @@ export class FileHandle extends EventEmitter {
     return handle
   }
 
+  #resource = null
+
   /**
    * `FileHandle` class constructor
    * @ignore
@@ -152,6 +153,9 @@ export class FileHandle extends EventEmitter {
     this[kOpening] = null
     this[kClosing] = null
     this[kClosed] = false
+
+    this.#resource = new AsyncResource('FileHandle')
+    this.#resource.handle = this
 
     this.flags = normalizeFlags(options?.flags)
     this.path = options?.path || null
@@ -273,7 +277,7 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
-    this[kClosing] = new InvertedPromise()
+    this[kClosing] = new Deferred()
 
     const result = await ipc.request('fs.close', { id: this.id }, options)
 
@@ -292,7 +296,9 @@ export class FileHandle extends EventEmitter {
     this[kClosing] = null
     this[kClosed] = true
 
-    this.emit('close')
+    this.#resource.runInAsyncScope(() => {
+      this.emit('close')
+    })
 
     dc.channel('handle.close').publish({ handle: this })
 
@@ -319,7 +325,9 @@ export class FileHandle extends EventEmitter {
         try {
           await this.close()
         } catch (err) {
-          stream.emit('error', err)
+          this.#resource.runInAsyncScope(() => {
+            stream.emit('error', err)
+          })
         }
       }
     })
@@ -347,7 +355,9 @@ export class FileHandle extends EventEmitter {
         try {
           await this.close()
         } catch (err) {
-          stream.emit('error', err)
+          this.#resource.runInAsyncScope(() => {
+            stream.emit('error', err)
+          })
         }
       }
     })
@@ -391,7 +401,7 @@ export class FileHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kOpening] = new InvertedPromise()
+    this[kOpening] = new Deferred()
 
     const result = await ipc.request('fs.open', {
       id,
@@ -410,7 +420,9 @@ export class FileHandle extends EventEmitter {
 
     this[kOpening].resolve(true)
 
-    this.emit('open', this.fd)
+    this.#resource.runInAsyncScope(() => {
+      this.emit('open', this.fd)
+    })
 
     dc.channel('handle.open').publish({ handle: this, mode, path, flags })
 
@@ -594,6 +606,27 @@ export class FileHandle extends EventEmitter {
     }
 
     const result = await ipc.request('fs.fstat', { ...options, id: this.id })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    const stats = Stats.from(result.data, Boolean(options?.bigint))
+    stats.handle = this
+    return stats
+  }
+
+  /**
+   * Returns the stats of the underlying symbolic link.
+   * @param {object=} [options]
+   * @return {Promise<Stats>}
+   */
+  async lstat (options) {
+    if (this.closing || this.closed) {
+      throw new Error('FileHandle is not opened')
+    }
+
+    const result = await ipc.request('fs.lstat', { ...options, path: this.path })
 
     if (result.err) {
       throw result.err
@@ -824,6 +857,8 @@ export class DirectoryHandle extends EventEmitter {
     return handle
   }
 
+  #resource = null
+
   /**
    * `DirectoryHandle` class constructor
    * @private
@@ -840,6 +875,9 @@ export class DirectoryHandle extends EventEmitter {
     this[kOpening] = null
     this[kClosing] = null
     this[kClosed] = false
+
+    this.#resource = new AsyncResource('DirectoryHandle')
+    this.#resource.handle = this
 
     // this id will be used to identify the file handle that is a
     // reference stored in the native side
@@ -935,7 +973,7 @@ export class DirectoryHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kOpening] = new InvertedPromise()
+    this[kOpening] = new Deferred()
 
     const result = await ipc.request('fs.opendir', { id, path }, options)
 
@@ -949,7 +987,9 @@ export class DirectoryHandle extends EventEmitter {
 
     this[kOpening].resolve(true)
 
-    this.emit('open', this.fd)
+    this.#resource.runInAsyncScope(() => {
+      this.emit('open', this.fd)
+    })
 
     dc.channel('handle.open').publish({ handle: this, path })
 
@@ -980,7 +1020,7 @@ export class DirectoryHandle extends EventEmitter {
       throw new AbortError(options.signal)
     }
 
-    this[kClosing] = new InvertedPromise()
+    this[kClosing] = new Deferred()
 
     const result = await ipc.request('fs.closedir', { id }, options)
 
@@ -997,7 +1037,10 @@ export class DirectoryHandle extends EventEmitter {
     this[kClosing] = null
     this[kClosed] = true
 
-    this.emit('close')
+    this.#resource.runInAsyncScope(() => {
+      this.emit('close')
+    })
+
     dc.channel('handle.close').publish({ handle: this })
 
     return true

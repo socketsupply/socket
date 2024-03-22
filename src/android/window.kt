@@ -32,7 +32,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val activity = this.activity.get() ?: return
 
     val rootDirectory = this.getRootDirectory()
-    val preload = this.getJavaScriptPreloadSource()
 
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (_: Result) {
       activity.applicationContext

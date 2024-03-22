@@ -90,7 +90,7 @@ test('fs.promises.opendir', async (t) => {
 })
 
 test('fs.promises.readdir', async (t) => {
-  const files = await fs.readdir(FIXTURES + 'directory')
+  const files = await fs.readdir(FIXTURES + 'directory', { withFileTypes: true })
   t.ok(Array.isArray(files), 'array is returned')
   t.equal(files.length, 6, 'array contains 2 items')
   t.deepEqual(files.map(file => file.name), ['0', '1', '2', 'a', 'b', 'c'].map(name => `${name}.txt`), 'array contains files')

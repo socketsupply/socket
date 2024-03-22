@@ -2,14 +2,31 @@
 #include "../ipc/ipc.hh"
 
 @implementation SSCNavigationDelegate
+-    (void) webView: (WKWebView*) webView
+  didFailNavigation: (WKNavigation*) navigation
+          withError: (NSError*) error
+{
+  // TODO(@jwerle)
+}
+
+-               (void) webView: (WKWebView*) webView
+  didFailProvisionalNavigation: (WKNavigation*) navigation
+                     withError: (NSError*) error {
+  // TODO(@jwerle)
+}
+
 -                    (void) webView: (WKWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler
+{
   if (
+    webview != nullptr &&
+    webview.URL != nullptr &&
     webview.URL.absoluteString.UTF8String != nullptr &&
+    navigationAction != nullptr &&
     navigationAction.request.URL.absoluteString.UTF8String != nullptr
   ) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.bridge->userConfig;
     static const auto devHost = SSC::getDevHost();
     static const auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
 
@@ -44,7 +61,8 @@
 
     if (
       userConfig["meta_application_protocol"].size() > 0 &&
-      request.starts_with(userConfig["meta_application_protocol"])
+      request.starts_with(userConfig["meta_application_protocol"]) &&
+      !request.starts_with("socket://" + userConfig["meta_bundle_identifier"])
     ) {
       if (self.bridge != nullptr) {
         decisionHandler(WKNavigationActionPolicyCancel);
@@ -58,18 +76,10 @@
       }
     }
 
-    if (request.starts_with("socket:")) {
-      decisionHandler(WKNavigationActionPolicyAllow);
+    if (!request.starts_with("socket:") && !request.starts_with(devHost)) {
+      decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
-
-    if (request.starts_with(devHost)) {
-      decisionHandler(WKNavigationActionPolicyAllow);
-      return;
-    }
-
-    decisionHandler(WKNavigationActionPolicyCancel);
-    return;
   }
 
   decisionHandler(WKNavigationActionPolicyAllow);
@@ -83,19 +93,111 @@
 @end
 
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@implementation SSCWindowDelegate
-@end
+  @implementation SSCWindowDelegate
+  @end
+  @implementation SSCWindow : NSObject
+  @end
 #else
-@implementation SSCWindowDelegate
-- (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {}
-@end
+  @implementation SSCWindow
+    - (void)layoutIfNeeded {
+      [super layoutIfNeeded];
+
+      if (self.titleBarView == nullptr || self.titleBarView.subviews.count > 0) return;
+
+      NSButton *closeButton = [self standardWindowButton:NSWindowCloseButton];
+      NSButton *minimizeButton = [self standardWindowButton:NSWindowMiniaturizeButton];
+      NSButton *zoomButton = [self standardWindowButton:NSWindowZoomButton];
+
+      if (closeButton && minimizeButton && zoomButton) {
+        [self.titleBarView addSubview: closeButton];
+        [self.titleBarView addSubview: minimizeButton];
+        [self.titleBarView addSubview: zoomButton];
+      }
+    }
+
+    - (void)sendEvent:(NSEvent *)event {
+      if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
+        if (event.type == NSEventTypeLeftMouseDown) {
+          [self.webview mouseDown:event];
+        }
+
+        if (event.type == NSEventTypeLeftMouseDragged) {
+          [self.webview mouseDragged:event];
+          return;
+        }
+      }
+
+      [super sendEvent:event];
+    }
+  @end
+  @implementation SSCWindowDelegate
+    - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
+    }
+  @end
 #endif
+
 @implementation SSCBridgedWebView
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 SSC::Vector<SSC::String> draggablePayload;
-
+CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
+
+- (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
+  [super resizeSubviewsWithOldSize:oldSize];
+
+  SSCWindow *w = (SSCWindow*) self.window;
+  // if (w.titleBarView.subviews.count > 0) return;
+
+  CGFloat viewWidth = w.titleBarView.frame.size.width;
+  CGFloat viewHeight = w.titleBarView.frame.size.height;
+  CGFloat newX = w.trafficLightPosition.x;
+  CGFloat newY = 0.f;
+
+  NSButton *closeButton = [w standardWindowButton:NSWindowCloseButton];
+  NSButton *minimizeButton = [w standardWindowButton:NSWindowMiniaturizeButton];
+  NSButton *zoomButton = [w standardWindowButton:NSWindowZoomButton];
+
+  if (closeButton && minimizeButton && zoomButton) {
+    [w.titleBarView addSubview: closeButton];
+    [w.titleBarView addSubview: minimizeButton];
+    [w.titleBarView addSubview: zoomButton];
+  }
+
+  w.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect configuration:(WKWebViewConfiguration *)configuration radius:(CGFloat)radius margin:(CGFloat)margin {
+  self = [super initWithFrame:frameRect configuration: configuration];
+
+  if (self && radius > 0.0) {
+    self.radius = radius;
+    self.margin = margin;
+    self.layer.cornerRadius = radius;
+    self.layer.masksToBounds = YES;
+  }
+
+  return self;
+}
+
+- (void)layout {
+  [super layout];
+  
+  NSRect bounds = self.superview.bounds;
+
+  if (self.radius > 0.0) {
+    if (self.contentHeight == 0.0) {
+      self.contentHeight = self.superview.bounds.size.height - self.bounds.size.height;
+    }
+
+    bounds.size.height = bounds.size.height - self.contentHeight;
+  }
+
+  if (self.margin > 0.0) {
+    CGFloat borderWidth = self.margin;
+    self.frame = NSInsetRect(bounds, borderWidth, borderWidth);
+  }
+}
 
 - (BOOL) wantsPeriodicDraggingUpdates {
   return YES;
@@ -193,7 +295,6 @@ int lastY = 0;
   };
 
   const auto json = SSC::JSON::Object { data };
-  debug("files: %s", json.str().c_str());
   const auto payload = SSC::getEmitToRenderProcessJavaScript("dropin", json.str());
 
   [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
@@ -258,22 +359,30 @@ int lastY = 0;
 }
 
 - (void) mouseDown: (NSEvent*) event {
+  self.shouldDrag = false;
   draggablePayload.clear();
 
   const auto location = [self convertPoint: event.locationInWindow fromView: nil];
   const auto x = std::to_string(location.x);
   const auto y = std::to_string(location.y);
 
+  self.initialWindowPos = location;
+
   lastX = (int) location.x;
   lastY = (int) location.y;
 
   SSC::String js(
-    "(() => {"
-    "  const el = document.elementFromPoint(" + x + "," + y + ");"
-    "  if (!el) return;"
-    "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
-    "  return found && found.dataset.src"
-    "})()");
+    "(() => {                                                                      "
+    "  const v = '--app-region';                                                   "
+    "  let el = document.elementFromPoint(" + x + "," + y + ");                    "
+    "                                                                              "
+    "  while (el) {                                                                "
+    "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
+    "    el = el.parentElement;                                                    "
+    "  }                                                                           "
+    "  return ''                                                                   "
+    "})()                                                                          "
+  );
 
   [self
     evaluateJavaScript: @(js.c_str())
@@ -290,27 +399,42 @@ int lastY = 0;
       return;
     }
 
-    const auto string = SSC::String([result UTF8String]);
-    const auto files = SSC::split(string, ';');
+    const auto match = SSC::String([result UTF8String]);
 
-    if (files.size() == 0) {
+    if (match.compare("movable") != 0) {
       [super mouseDown: event];
       return;
     }
 
-    draggablePayload = files;
+    self.shouldDrag = true;
     [self updateEvent: event];
   }];
 }
 
 - (void) mouseDragged: (NSEvent*) event {
-  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
+  NSPoint currentLocation = [self convertPoint:event.locationInWindow fromView:nil];
+
+  if (self.shouldDrag) {
+    CGFloat deltaX = currentLocation.x - self.initialWindowPos.x;
+    CGFloat deltaY = currentLocation.y - self.initialWindowPos.y;
+
+    NSRect frame = self.window.frame;
+    frame.origin.x += deltaX;
+    frame.origin.y -= deltaY;
+
+    [self.window setFrame:frame display:YES];
+  }
+
   [super mouseDragged:event];
 
-  if (!NSPointInRect(location, self.frame)) {
+  if (!NSPointInRect(currentLocation, self.frame)) {
     auto payload = SSC::getEmitToRenderProcessJavaScript("dragexit", "{}");
     [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
   }
+
+  /*
+
+  // TODO(@heapwolf): refactor the legacy native multi-file drag-drop stuff
 
   if (draggablePayload.size() == 0) {
     return;
@@ -391,6 +515,7 @@ int lastY = 0;
 
   session.draggingFormation = NSDraggingFormationPile;
   draggablePayload.clear();
+  */
 }
 
 -       (NSDragOperation) draggingSession: (NSDraggingSession*) session
@@ -500,7 +625,6 @@ int lastY = 0;
 #endif
 
 #if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
-
 -                                      (void) webView: (WKWebView*) webView
  requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
                                      initiatedByFrame: (WKFrameInfo*) frame
@@ -659,21 +783,23 @@ namespace SSC {
       style |= NSWindowStyleMaskResizable;
     }
 
-    if (opts.frameless) {
-      style |= NSWindowStyleMaskFullSizeContentView;
-      style |= NSWindowStyleMaskBorderless;
-    } else if (opts.utility) {
-      style |= NSWindowStyleMaskUtilityWindow;
-    } else {
+    if (opts.closable) {
       style |= NSWindowStyleMaskClosable;
+    }
+
+    if (opts.minimizable) {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
-    window = [[NSWindow alloc]
+    window = [[SSCWindow alloc]
         initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
+
+    if (opts.maximizable == false) {
+      [window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenAuxiliary];
+    }
 
     NSArray* draggableTypes = [NSArray arrayWithObjects:
       NSPasteboardTypeURL,
@@ -684,34 +810,23 @@ namespace SSC {
       nil
 		];
 
-    // Position window in center of screen
-    [window center];
-    [window setOpaque: YES];
-    // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    [window setBackgroundColor: [NSColor controlBackgroundColor]];
-    [window registerForDraggedTypes: draggableTypes];
-    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-
-    if (opts.frameless) {
-      [window setTitlebarAppearsTransparent: true];
-    }
-
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
 
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = opts.userConfig;
 
     this->index = opts.index;
-    this->bridge = new IPC::Bridge(app.core);
+    this->bridge = new IPC::Bridge(app.core, userConfig);
     this->hotkey.init(this->bridge);
 
     this->bridge->router.dispatchFunction = [this] (auto callback) {
       this->app.dispatch(callback);
     };
 
-    this->bridge->router.evaluateJavaScriptFunction = [this](auto js) {
-      dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
+    this->bridge->router.evaluateJavaScriptFunction = [this](auto source) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        this->eval(source);
+      });
     };
 
     this->bridge->router.map("window.eval", [=, this](auto message, auto router, auto reply) {
@@ -761,6 +876,9 @@ namespace SSC {
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"socket"];
 
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"node"];
+
     [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
 
     WKPreferences* prefs = [config preferences];
@@ -788,7 +906,7 @@ namespace SSC {
       debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
     }
 
-    if (SSC::isDebugEnabled()) {
+    if (opts.debug || SSC::isDebugEnabled()) {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
       if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
         [webview setInspectable: YES];
@@ -872,20 +990,46 @@ namespace SSC {
         config.allowsAirPlayForMediaPlayback = YES;
       }
     } @catch (NSException *error) {
-      debug("%@", error);
+      debug("Failed to set preference 'allowsAirPlayForMediaPlayback': %@", error);
     }
 
     config.defaultWebpagePreferences.allowsContentJavaScript = YES;
     config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
-    config.websiteDataStore = [WKWebsiteDataStore defaultDataStore];
+    config.websiteDataStore = WKWebsiteDataStore.defaultDataStore;
     config.processPool = [WKProcessPool new];
 
-    /**
     [config.websiteDataStore.httpCookieStore
-      setCookiePolicy: WKCookiePolicyAllow
+        setCookiePolicy: WKCookiePolicyAllow
       completionHandler: ^(){}
     ];
-    */
+
+    [config
+      setValue: @YES
+        forKey: @"allowUniversalAccessFromFileURLs"
+    ];
+
+    [config.preferences
+      setValue: @YES
+        forKey: @"allowFileAccessFromFileURLs"
+    ];
+
+    [config.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"socket"
+    ];
+
+    [config.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"ipc"
+    ];
+
+    static const auto devHost = SSC::getDevHost();
+    if (devHost.starts_with("http:")) {
+      [config.processPool
+        performSelector: @selector(_registerURLSchemeAsSecure:)
+        withObject: @"http"
+      ];
+    }
 
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
@@ -893,58 +1037,41 @@ namespace SSC {
       debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
     }
 
-    WKUserContentController* controller = [config userContentController];
+    WKUserContentController* controller = config.userContentController;
 
-    // Add preload script, normalizing the interface to be cross-platform.
-    SSC::String preload = createPreload(opts);
+    opts.clientId = this->bridge->id;
 
-    WKUserScript* userScript = [WKUserScript alloc];
+    this->bridge->preload = createPreload(opts, {
+      .module = true,
+      .wrap = true,
+      .userScript = opts.userScript
+    });
 
-    [userScript
-      initWithSource: [NSString stringWithUTF8String:preload.c_str()]
-      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-      forMainFrameOnly: NO
-    ];
-
-    [controller addUserScript: userScript];
-
-    webview = [[SSCBridgedWebView alloc]
+    webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect
       configuration: config
+      radius: (CGFloat) opts.radius
+      margin: (CGFloat) opts.margin
     ];
 
-    [webview.configuration
-      setValue: @YES
-        forKey: @"allowUniversalAccessFromFileURLs"
+    window.webview = webview;
+
+    const auto processInfo = NSProcessInfo.processInfo;
+    webview.customUserAgent = [NSString
+      stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
+      processInfo.operatingSystemVersion.majorVersion,
+      processInfo.operatingSystemVersion.minorVersion,
+      processInfo.operatingSystemVersion.patchVersion,
+      SSC::VERSION_STRING.c_str()
     ];
 
-    [webview.configuration.preferences
-      setValue: @YES
-        forKey: @"allowFileAccessFromFileURLs"
-    ];
+    webview.wantsLayer = YES;
+    webview.layer.backgroundColor = [NSColor clearColor].CGColor;
 
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"socket"
-    ];
-
-    [webview.configuration.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"ipc"
-    ];
-
-    static const auto devHost = SSC::getDevHost();
-    if (devHost.starts_with("http:")) {
-      [webview.configuration.processPool
-        performSelector: @selector(_registerURLSchemeAsSecure:)
-        withObject: @"http"
-      ];
-    }
-
-    /* [webview
+    [webview
       setValue: [NSNumber numberWithBool: YES]
         forKey: @"drawsTransparentBackground"
-    ]; */
+    ];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -969,17 +1096,27 @@ namespace SSC {
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
-            if (!window) {
+
+            SSC::JSON::Object json = SSC::JSON::Object::Entries {
+              {"data", window->index}
+            };
+
+            for (auto window : App::instance()->windowManager->windows) {
+              if (window != nullptr) {
+                window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+              }
+            }
+
+            if (!window || window->exiting) {
               return true;
             }
 
-            if (exiting) return true;
-
             if (window->opts.canExit) {
-              exiting = true;
+              window->exiting = true;
               window->exit(0);
               return true;
             }
+
             window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
             window->hide();
             return false;
@@ -1090,10 +1227,117 @@ namespace SSC {
     [window setContentView: webview];
 
     navigate("0", opts.url);
+
+    // Position window in center of screen
+    [window center];
+    [window setOpaque: YES];
+    [window setTitleVisibility: NSWindowTitleVisible];
+
+    if (opts.title.size() > 0) {
+      this->setTitle(opts.title);
+    }
+
+    // Minimum window size
+    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
+    // [window setBackgroundColor: [NSColor controlBackgroundColor]];
+    [window registerForDraggedTypes: draggableTypes];
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+
+    if (opts.frameless) {
+      [window setTitlebarAppearsTransparent: YES];
+      [window setMovableByWindowBackground: YES];
+      style |= NSWindowStyleMaskBorderless;
+    }
+
+    else if (opts.utility) {
+      style |= NSWindowStyleMaskBorderless;
+      style |= NSWindowStyleMaskUtilityWindow;
+    }
+
+    //
+    // results in a hidden title bar and a full-size content window.
+    //
+    if (opts.titleBarStyle == "hidden") {
+      style |= NSWindowStyleMaskFullSizeContentView;
+    }
+
+    //
+    // We don't support hiddenInset because the same thing can be accomplished by specifying trafficLightPosition
+    //
+    else if (opts.titleBarStyle == "hiddenInset") {
+      style |= NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskTitled;
+      style |= NSWindowStyleMaskResizable;
+
+      [window setStyleMask: style];
+      [window setTitleVisibility: NSWindowTitleHidden];
+
+      CGFloat x = 16.f;
+      CGFloat y = 42.f;
+
+      if (opts.trafficLightPosition.size() > 0) {
+        auto parts = split(opts.trafficLightPosition, 'x');
+        try {
+          x = std::stof(parts[0]);
+          y = std::stof(parts[1]);
+        } catch (...) {
+          debug("invalid arguments for trafficLightPosition");
+        }
+      }
+
+      NSView *titleBarView = [[NSView alloc] initWithFrame:NSZeroRect];
+
+      [titleBarView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+      [titleBarView setWantsLayer:YES];
+      [titleBarView.layer setBackgroundColor:[NSColor clearColor].CGColor]; // Set background color to clear
+
+      NSButton *closeButton = [window standardWindowButton: NSWindowCloseButton];
+      NSButton *minimizeButton = [window standardWindowButton: NSWindowMiniaturizeButton];
+      NSButton *zoomButton = [window standardWindowButton: NSWindowZoomButton];
+
+      if (closeButton && minimizeButton && zoomButton) {
+        [titleBarView addSubview:closeButton];
+        [titleBarView addSubview:minimizeButton];
+        [titleBarView addSubview:zoomButton];
+
+        CGFloat viewWidth = window.frame.size.width;
+        CGFloat viewHeight = y + MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+        CGFloat newX = x;
+        CGFloat newY = 0.f;
+
+        titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+
+        window.trafficLightPosition = NSMakePoint(x, y);
+        window.titleBarView = titleBarView;
+
+        [window.contentView addSubview:titleBarView];
+      } else {
+        NSLog(@"Failed to retrieve standard window buttons.");
+      }
+    }
+
+    if (opts.aspectRatio.size() > 2) {
+      auto parts = split(opts.aspectRatio, ':');
+      if (parts.size() != 2) return;
+      CGFloat aspectRatio;
+
+      @try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } @catch (NSException *error) {
+        debug("Invalid aspect ratio: %@", error);
+      }
+
+      if (!std::isnan(aspectRatio)) {
+        NSRect frame = [window frame];
+        frame.size.height = frame.size.width / aspectRatio;
+        [window setContentAspectRatio: frame.size];
+      }
+    }
   }
 
   Window::~Window () {
     this->close(0);
+    delete this->bridge;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1109,6 +1353,7 @@ namespace SSC {
     if (this->opts.headless == true) {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
+      [webview becomeFirstResponder];
       [window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
     }
@@ -1126,7 +1371,8 @@ namespace SSC {
   void Window::close (int code) {
     if (this->window != nullptr) {
       [this->window performClose: nil];
-
+      auto app = App::instance();
+      app->windowManager->destroyWindow(this->index);
       this->window = nullptr;
     }
 
@@ -1163,10 +1409,16 @@ namespace SSC {
     }
   }
 
-  void Window::eval (const SSC::String& js) {
+  void Window::eval (const String& source) {
     if (this->webview != nullptr) {
-      auto string = [NSString stringWithUTF8String:js.c_str()];
-      [this->webview evaluateJavaScript: string completionHandler: nil];
+      [this->webview
+        evaluateJavaScript: @(source.c_str())
+         completionHandler: ^(id result, NSError *error)
+      {
+        if (error) {
+          debug("JavaScriptError: %@", error);
+        }
+      }];
     }
   }
 
@@ -1256,11 +1508,6 @@ namespace SSC {
     }
   }
 
-  int Window::openExternal (const SSC::String& s) {
-    NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
-    return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
-  }
-
   void Window::closeContextMenu () {
     // @TODO(jwerle)
   }
@@ -1291,11 +1538,24 @@ namespace SSC {
     }
   }
 
-  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
+  String Window::getBackgroundColor () {
+    if (!this->window) return std::string("");
+
+    NSColor *backgroundColor = [this->window backgroundColor];
+    NSColor *rgbColor = [backgroundColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+
+    CGFloat r, g, b, a;
+    [rgbColor getRed:&r green:&g blue:&b alpha:&a];
+
+    NSString *colorString = [NSString stringWithFormat: @"rgba(%.0f,%.0f,%.0f,%.1f)", r * 255, g * 255, b * 255, a];
+    return [colorString UTF8String];
+  }
+
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
     const auto mouseLocation = NSEvent.mouseLocation;
     const auto contextMenu = [[NSMenu.alloc initWithTitle: @"contextMenu"] autorelease];
     const auto location = NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y));
-    const auto menuItems = split(value, '_');
+    const auto menuItems = split(menuSource, '\n');
     // remove the 'R' prefix as we'll use this value in the menu item "tag" property
     const auto id = std::stoi(seq.substr(1));
 
@@ -1357,9 +1617,8 @@ namespace SSC {
     this->setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
-    if (source.empty()) return void(0);
-    SSC::String menuSource = replace(SSC::String(source), "%%", "\n");
+  void Window::setMenu (const SSC::String& seq, const SSC::String& menuSource, const bool& isTrayMenu) {
+    if (menuSource.empty()) return void(0);
 
     NSStatusItem *statusItem;
     NSString *title;

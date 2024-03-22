@@ -1,4 +1,5 @@
 #include "process.hh"
+#include "../core/core.hh"
 
 #include <cstring>
 #include <iostream>
@@ -51,6 +52,14 @@ Process::Process(
   this->command = command;
   this->argv = argv;
   this->path = path;
+}
+
+int Process::wait () {
+  do {
+    msleep(Process::PROCESS_WAIT_TIMEOUT);
+  } while (this->closed == false);
+
+  return this->status;
 }
 
 // Simple HANDLE wrapper to close it automatically from the destructor.
@@ -168,9 +177,21 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   process_command += "\"";
 #endif
 
+  auto comspec = Env::get("COMSPEC");
+  auto shell = this->shell;
+
+  if (shell == "cmd.exe" && comspec.size() > 0) {
+    shell = comspec;
+  }
+
+  auto cmd = (
+   (this->shell == "cmd.exe" ? String("/d /s /c ") : "") +
+   (process_command.empty() ? "": &process_command[0])
+  ).c_str();
+
   BOOL bSuccess = CreateProcess(
-    nullptr,
-    process_command.empty() ? nullptr : &process_command[0],
+    (shell.size() > 0 ? shell.c_str() : nullptr),
+    const_cast<LPSTR>(cmd),
     nullptr,
     nullptr,
     stdin_fd || stdout_fd || stderr_fd || config.inherit_file_descriptors, // Cannot be false when stdout, stderr or stdin is used

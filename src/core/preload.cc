@@ -1,6 +1,8 @@
 #include "codec.hh"
+#include "core.hh"
 #include "preload.hh"
 #include "string.hh"
+#include "config.hh"
 
 namespace SSC {
   String createPreload (
@@ -17,7 +19,14 @@ namespace SSC {
     }
   #endif
 
-    auto preload = String(
+    String preload = "";
+
+    if (preloadOptions.wrap) {
+      preload += "<meta name=\"begin-runtime-preload\">\n";
+      preload += "<script type=\"text/javascript\">\n";
+    }
+
+    preload += String(
       ";(() => {                                                             \n"
       "  if (globalThis.__args) return;                                      \n"
       "  globalThis.__args = {}                                              \n"
@@ -27,11 +36,32 @@ namespace SSC {
       "    value: [" +argv + "],                                             \n"
       "    enumerable: true                                                  \n"
       "  },                                                                  \n"
-      "  config: {                                                           \n"
-      "    value: {},                                                        \n"
+      "  client: {                                                           \n"
+      "    configurable: false,                                              \n"
       "    enumerable: true,                                                 \n"
-      "    writable: true,                                                   \n"
-      "    configurable: true                                                \n"
+      "    writable: false,                                                  \n"
+      "    value: {                                                          \n"
+      "      id: globalThis.window && globalThis.top !== globalThis.window   \n"
+      "        ? '" + std::to_string(rand64()) + "'                          \n"
+      "        : globalThis.window && globalThis.top                         \n"
+      "          ? '" + std::to_string(opts.clientId) + "'                   \n"
+      "          : null,                                                     \n"
+      "      type: globalThis.window                                         \n"
+      "        ? 'window'                                                    \n"
+      "        : 'worker',                                                   \n"
+      "      frameType:                                                      \n"
+      "        globalThis.window && globalThis.top !== globalThis.window     \n"
+      "        ? 'nested'                                                    \n"
+      "        : globalThis.window && globalThis.top                         \n"
+      "          ? 'top-level'                                               \n"
+      "          : 'none'                                                    \n"
+      "    }                                                                 \n"
+      "  },                                                                  \n"
+      "  config: {                                                           \n"
+      "    configurable: false,                                              \n"
+      "    enumerable: true,                                                 \n"
+      "    writable: false,                                                  \n"
+      "    value: {}                                                         \n"
       "  },                                                                  \n"
       "  debug: {                                                            \n"
       "    value: Boolean(" + std::to_string(opts.debug) + "),               \n"
@@ -63,13 +93,18 @@ namespace SSC {
         const auto file = argv.substr(start + 7, end - start - 7);
         if (file.size() > 0) {
           preload += (
-            "  globalThis.RUNTIME_TEST_FILENAME = `" + file + "`;              \n"
-            "  document.addEventListener('DOMContentLoaded', () => {           \n"
-            "    const script = document.createElement('script')               \n"
-            "    script.setAttribute('type', 'module')                         \n"
-            "    script.setAttribute('src', `" + file + "`)                    \n"
-            "    document.head.appendChild(script)                             \n"
-            "  });                                                             \n"
+            "  globalThis.RUNTIME_TEST_FILENAME = String(new URL(              \n"
+            "    `" + file + "`,                                               \n"
+            "    globalThis.location.href                                      \n"
+            "  ));                                                             \n"
+            "                                                                  \n"
+            "  if (document.readyState === 'complete') {                       \n"
+            "    import(RUNTIME_TEST_FILENAME);                                \n"
+            "  } else {                                                        \n"
+            "    document.addEventListener('DOMContentLoaded', () => {         \n"
+            "      import(RUNTIME_TEST_FILENAME);                              \n"
+            "    });                                                           \n"
+            "  }                                                               \n"
           );
         }
       }
@@ -89,30 +124,37 @@ namespace SSC {
         "    }                                                               \n"
         "  });                                                               \n"
         "                                                                    \n"
-        "  globalThis.addEventListener(' __runtime_init__', () => {          \n"
+        "  globalThis.addEventListener('__runtime_init__', () => {           \n"
         "    if (Array.isArray(APPLICATION_URL_EVENT_BACKLOG)) {             \n"
         "      for (const event of APPLICATION_URL_EVENT_BACKLOG) {          \n"
-        "        globalThis.dispatchEvent(event);                            \n"
+        "        globalThis.dispatchEvent(                                   \n"
+        "          new ApplicationURLEvent(event.type, event)                \n"
+        "        );                                                          \n"
         "      }                                                             \n"
         "    }                                                               \n"
+        "                                                                    \n"
+        "    APPLICATION_URL_EVENT_BACKLOG.splice(                           \n"
+        "      0,                                                            \n"
+        "      APPLICATION_URL_EVENT_BACKLOG.length - 1                      \n"
+        "    );                                                              \n"
         "  }, { once: true });                                               \n"
     );
 
-    if (opts.appData.contains("webview_watch") && opts.appData.at("webview_watch") == "true") {
+    if (opts.userConfig.contains("webview_watch") && opts.userConfig.at("webview_watch") == "true") {
       if (
-        !opts.appData.contains("webview_watch_reload") ||
-        opts.appData.at("webview_watch_reload") != "false"
+        !opts.userConfig.contains("webview_watch_reload") ||
+        opts.userConfig.at("webview_watch_reload") != "false"
       ) {
           preload += (
-            "  globalThis.addEventListener('filedidchange', () => {            \n"
-            "    location.reload()                                             \n"
-            "  });                                                             \n"
+            "  globalThis.addEventListener('filedidchange', () => {          \n"
+            "    location.reload()                                           \n"
+            "  });                                                           \n"
         );
       }
     }
 
     // fill in the config
-    for (auto const &tuple : opts.appData) {
+    for (auto const &tuple : opts.userConfig) {
       auto key = trim(tuple.first);
       auto value = trim(tuple.second);
 
@@ -158,9 +200,16 @@ namespace SSC {
     }
 
     preload += (
+      "  Object.freeze(globalThis.__args.client);                            \n"
       "  Object.freeze(globalThis.__args.config);                            \n"
       "  Object.freeze(globalThis.__args.argv);                              \n"
       "  Object.freeze(globalThis.__args.env);                               \n"
+      "                                                                      \n"
+      "  const { addEventListener } = globalThis;                            \n"
+      "  globalThis.addEventListener = function (eventName, ...args) {       \n"
+      "    eventName = eventName.replace('load', '__runtime_init__');        \n"
+      "    return addEventListener.call(this, eventName, ...args);           \n"
+      "  };                                                                  \n"
       "                                                                      \n"
       "  try {                                                               \n"
       "    const event = '__runtime_init__';                                 \n"
@@ -184,17 +233,115 @@ namespace SSC {
       "})();                                                                 \n"
     );
 
-    preload += (
-      "if (document.readyState === 'complete') {                             \n"
-      "  import('socket:internal/init').catch(console.error);                \n"
-      "} else {                                                              \n"
-      "  document.addEventListener('readystatechange', () => {               \n"
-      "    if (/interactive|complete/.test(document.readyState)) {           \n"
-      "      import('socket:internal/init').catch(console.error);            \n"
-      "    }                                                                 \n"
-      "  }, { once: true });                                                 \n"
-      "}                                                                     \n"
-    );
+    if (preloadOptions.module) {
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+        preload += "<script type=\"module\">\n";
+      }
+
+      preload += (
+        "import 'socket:internal/init'                                       \n"
+      );
+
+      if (preloadOptions.userScript.size() > 0) {
+        preload += preloadOptions.userScript;
+      }
+
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+      }
+    } else {
+      preload += (
+        "if (document.readyState === 'complete') {                           \n"
+        "  import('socket:internal/init')                                    \n"
+        "    .then(async () => {                                             \n"
+        "      " + preloadOptions.userScript + "                             \n"
+        "    })                                                              \n"
+        "    .catch(console.error);                                          \n"
+        "} else {                                                            \n"
+        "  document.addEventListener('readystatechange', () => {             \n"
+        "    if (/interactive|complete/.test(document.readyState)) {         \n"
+        "      import('socket:internal/init')                                \n"
+        "        .then(async () => {                                         \n"
+        "          " + preloadOptions.userScript + "                         \n"
+        "        })                                                          \n"
+        "        .catch(console.error);                                      \n"
+        "    }                                                               \n"
+        "  }, { once: true });                                               \n"
+        "}                                                                   \n"
+      );
+
+      if (preloadOptions.wrap) {
+        preload += "</script>\n";
+      }
+    }
+
+    if (preloadOptions.wrap) {
+      preload += "<script>\n";
+    }
+
+    if (opts.preloadCommonJS) {
+      preload += (
+        ";(async function preloadCommonJSScope () {                          \n"
+        "  const href = encodeURIComponent(globalThis.location.href);        \n"
+        "  const source = `socket:module?ref=${href}`;                       \n"
+        "                                                                    \n"
+        "  const { Module } = await import(source);                          \n"
+        "  const path = await import('socket:path');                         \n"
+        "                                                                    \n"
+        "  const require = Module.createRequire(globalThis.location.href);   \n"
+        "  const __filename = Module.main.filename;                          \n"
+        "  const __dirname = path.dirname(__filename);                       \n"
+        "                                                                    \n"
+        "  Object.defineProperties(globalThis, {                             \n"
+        "    require: {                                                      \n"
+        "      configurable: true,                                           \n"
+        "      enumerable: false,                                            \n"
+        "      writable: false,                                              \n"
+        "      value: require,                                               \n"
+        "    },                                                              \n"
+        "    module: {                                                       \n"
+        "      configurable: true,                                           \n"
+        "      enumerable: false,                                            \n"
+        "      writable: false,                                              \n"
+        "      value: Module.main,                                           \n"
+        "    },                                                              \n"
+        "    exports: {                                                      \n"
+        "      configurable: true,                                           \n"
+        "      enumerable: false,                                            \n"
+        "      get: () => Module.main.exports,                               \n"
+        "    },                                                              \n"
+        "    __dirname: {                                                    \n"
+        "      configurable: true,                                           \n"
+        "      enumerable: false,                                            \n"
+        "      writable: false,                                              \n"
+        "      value: __dirname,                                             \n"
+        "    },                                                              \n"
+        "    __filename: {                                                   \n"
+        "      configurable: true,                                           \n"
+        "      enumerable: false,                                            \n"
+        "      writable: false,                                              \n"
+        "      value: require,                                               \n"
+        "    },                                                              \n"
+        "  });                                                               \n"
+        "                                                                    \n"
+        "  globalThis.addEventListener('popstate', preloadCommonJSScope);    \n"
+        "})();                                                               \n"
+      );
+    }
+
+    if (opts.runtimePrimordialOverrides.size() > 0) {
+      preload += (
+        "globalThis.__RUNTIME_PRIMORDIAL_OVERRIDES__ = (                     \n"
+        "  " + opts.runtimePrimordialOverrides + "                           \n"
+        ")                                                                   \n"
+      );
+    }
+
+    if (preloadOptions.wrap) {
+      preload += "</script>\n";
+      preload += "<meta name=\"end-runtime-preload\">\n";
+    }
 
     return preload;
   }

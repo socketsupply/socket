@@ -1,4 +1,4 @@
-/* global ArrayBuffer, Blob, DataTransfer, DragEvent, FileList */
+/* global Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -12,13 +12,20 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
-import './monkeypatch.js'
+import ipc from '../ipc.js'
+ipc.sendSync('platform.event', 'beforeruntimeinit')
 
-import { IllegalConstructor, InvertedPromise } from '../util.js'
+import './primitives.js'
+
 import { CustomEvent, ErrorEvent } from '../events.js'
+import { IllegalConstructor } from '../util.js'
+import * as asyncHooks from './async/hooks.js'
+import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import { URL } from '../url.js'
+import mime from '../mime.js'
+import path from '../path.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -52,11 +59,11 @@ if ((globalThis.window || globalThis.self) === globalThis) {
         )
       }
 
-      return originalQueueMicrotask(task)
+      originalQueueMicrotask(task)
 
       function task () {
         try {
-          return callback.call(globalThis)
+          return asyncHooks.wrap(callback, 'Microtask').call(globalThis)
         } catch (error) {
           // XXX(@jwerle): `queueMicrotask()` is broken in WebKit WebViews
           // If an error is thrown, it does not bubble to the `globalThis`
@@ -91,11 +98,33 @@ if ((globalThis.window) === globalThis) {
     if (Array.isArray(event.detail?.files)) {
       for (const file of event.detail.files) {
         if (typeof file === 'string') {
-          const stats = await fs.stat(file)
-          if (stats.isDirectory()) {
-            handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
-          } else {
-            handles.push(await createFileSystemFileHandle(file, { writable: false }))
+          try {
+            const stats = await fs.stat(file)
+            if (stats.isDirectory()) {
+              handles.push(await createFileSystemDirectoryHandle(file, { writable: false }))
+            } else {
+              handles.push(await createFileSystemFileHandle(file, { writable: false }))
+            }
+          } catch (err) {
+            try {
+              // try to read from navigator
+              const response = await fetch(file)
+              if (response.ok) {
+                const lastModified = Date.now()
+                const buffer = new Uint8Array(await response.arrayBuffer())
+                const types = await mime.lookup(path.extname(file).slice(1))
+                const type = types[0]?.mime ?? ''
+
+                handles.push(await createFileSystemFileHandle(
+                  new File(buffer, { lastModified, type }),
+                  { writable: false }
+                ))
+              } else {
+                console.warn('platformdrop: ', err)
+              }
+            } catch (err) {
+              console.warn('platformdrop: ', err)
+            }
           }
         }
       }
@@ -185,9 +214,9 @@ if ((globalThis.window) === globalThis) {
 
 class RuntimeWorker extends GlobalWorker {
   #onglobaldata = null
-  #id = rand64()
+  #id = null
 
-  static pool = new Map()
+  static pool = globalThis.top?.Worker?.pool ?? new Map()
 
   static get [Symbol.species] () {
     return GlobalWorker
@@ -199,7 +228,7 @@ class RuntimeWorker extends GlobalWorker {
    */
   constructor (filename, options, ...args) {
     const url = encodeURIComponent(new URL(filename, globalThis.location.href || '/').toString())
-    const id = rand64()
+    const id = String(rand64())
 
     const preload = `
     Object.defineProperty(globalThis, '__args', {
@@ -207,6 +236,10 @@ class RuntimeWorker extends GlobalWorker {
       enumerable: false,
       value: ${JSON.stringify(globalThis.__args)}
     })
+
+    globalThis.__args.client.id = '${id}'
+    globalThis.__args.client.type = 'worker'
+    globalThis.__args.client.frameType = 'none'
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
       configurable: false,
@@ -217,7 +250,7 @@ class RuntimeWorker extends GlobalWorker {
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_LOCATION', {
       configurable: false,
       enumerable: false,
-      value: '${url}'
+      value: decodeURIComponent('${url}')
     })
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG', {
@@ -271,8 +304,20 @@ class RuntimeWorker extends GlobalWorker {
 
     globalThis.addEventListener('data', this.#onglobaldata)
 
+    const postMessage = this.postMessage.bind(this)
     const addEventListener = this.addEventListener.bind(this)
     const removeEventListener = this.removeEventListener.bind(this)
+
+    const postMessageQueue = []
+    let isReady = false
+
+    this.postMessage = (...args) => {
+      if (!isReady) {
+        postMessageQueue.push(args)
+      } else {
+        return postMessage(...args)
+      }
+    }
 
     this.addEventListener = (eventName, ...args) => {
       if (eventName === 'message') {
@@ -305,41 +350,48 @@ class RuntimeWorker extends GlobalWorker {
       }
     })
 
-    this.addEventListener('message', (event) => {
-      const { data } = event
-      if (data?.__runtime_worker_ipc_request) {
-        const request = data.__runtime_worker_ipc_request
-        if (
-          typeof request?.message === 'string' &&
-          request.message.startsWith('ipc://')
-        ) {
-          queueMicrotask(async () => {
-            try {
-              // eslint-disable-next-line no-use-before-define
-              const message = ipc.Message.from(request.message, request.bytes)
-              const options = { bytes: message.bytes }
-              // eslint-disable-next-line no-use-before-define
-              const result = await ipc.request(message.name, message.rawParams, options)
-              const transfer = []
+    queueMicrotask(() => {
+      addEventListener('message', (event) => {
+        const { data } = event
+        if (data?.__runtime_worker_init === true) {
+          isReady = true
 
-              if (ArrayBuffer.isView(result.data) || result.data instanceof ArrayBuffer) {
-                transfer.push(result.data)
+          for (const args of postMessageQueue) {
+            postMessage(...args)
+          }
+
+          postMessageQueue.splice(0, postMessageQueue.length)
+        } else if (data?.__runtime_worker_ipc_request) {
+          const request = data.__runtime_worker_ipc_request
+          if (
+            typeof request?.message === 'string' &&
+            request.message.startsWith('ipc://')
+          ) {
+            queueMicrotask(async () => {
+              try {
+                // eslint-disable-next-line no-use-before-define
+                const transfer = []
+                const message = ipc.Message.from(request.message, request.bytes)
+                const options = { bytes: message.bytes }
+                const result = await ipc.send(message.name, message.rawParams, options)
+
+                ipc.findMessageTransfers(transfer, result)
+
+                this.postMessage({
+                  __runtime_worker_ipc_result: {
+                    message: message.toJSON(),
+                    result: result.toJSON()
+                  }
+                }, { transfer })
+              } catch (err) {
+                console.warn('RuntimeWorker:', err)
               }
-
-              this.postMessage({
-                __runtime_worker_ipc_result: {
-                  message: message.toJSON(),
-                  result: result.toJSON()
-                }
-              }, transfer)
-            } catch (err) {
-              console.warn('RuntimeWorker:', err)
-            }
-          })
+            })
+          }
+        } else {
+          return eventTarget.dispatchEvent(new MessageEvent(event.type, event))
         }
-      } else {
-        return eventTarget.dispatchEvent(event)
-      }
+      })
     })
   }
 
@@ -382,12 +434,25 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
     const value = open.call(this, method, url, isAsyncRequest !== false, ...args)
 
-    if (typeof globalThis.RUNTIME_WORKER_ID === 'string') {
-      this.setRequestHeader('Runtime-Worker-ID', globalThis.RUNTIME_WORKER_ID)
+    if (globalThis.__args?.client) {
+      this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
     }
 
     if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
       this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
+    }
+
+    if (globalThis.top && globalThis.top !== globalThis) {
+      this.setRequestHeader('Runtime-Frame-Type', 'nested')
+    } else if (!globalThis.window && globalThis.self === globalThis) {
+      this.setRequestHeader('Runtime-Frame-Type', 'worker')
+      if (globalThis.clients && globalThis.FetchEvent) {
+        this.setRequestHeader('Runtime-Worker-Type', 'serviceworker')
+      } else {
+        this.setRequestHeader('Runtime-Worker-Type', 'worker')
+      }
+    } else {
+      this.setRequestHeader('Runtime-Frame-Type', 'top-level')
     }
 
     return value
@@ -425,11 +490,12 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 import hooks, { RuntimeInitEvent } from '../hooks.js'
 import { config } from '../application.js'
 import globals from './globals.js'
-import ipc from '../ipc.js'
-
 import '../console.js'
 
-const isWorkerLike = !globalThis.window && globalThis.self && globalThis.postMessage
+ipc.send('platform.event', {
+  value: 'load',
+  'location.href': globalThis.location.href
+}).catch(reportError)
 
 class ConcurrentQueue extends EventTarget {
   concurrency = Infinity
@@ -501,7 +567,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
       }
     }
 
-    const promise = new InvertedPromise()
+    const promise = new Deferred()
     await this.push(promise, 8)
 
     if (typeof params !== 'object') {
@@ -524,24 +590,115 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
   }
 }
 
-hooks.onLoad(() => {
+hooks.onLoad(async () => {
+  const registeredServiceWorkers = new Set()
+  const serviceWorkerScripts = config['webview_service-workers']
+  const pending = []
+
+  if (
+    globalThis.window &&
+    !globalThis.__RUNTIME_SERVICE_WORKER_CONTEXT__ &&
+    globalThis.location.pathname !== '/socket/service-worker/index.html' &&
+    String(config.permissions_allow_service_worker) !== 'false' &&
+    String(config.webview_auto_register_service_workers) !== 'false'
+  ) {
+    const pendingServiceRegistrations = []
+
+    if (typeof config['webview_service-workers'] === 'string') {
+      for (const scriptURL of serviceWorkerScripts.trim().split(' ')) {
+        pendingServiceRegistrations.push({
+          scriptURL: scriptURL.trim(),
+          options: {}
+        })
+      }
+    }
+
+    for (const key in config) {
+      if (key.startsWith('webview_service-workers_')) {
+        const scope = key.replace('webview_service-workers_', '')
+        const scriptURL = config[key].trim()
+        pendingServiceRegistrations.push({
+          scriptURL,
+          options: { scope }
+        })
+      }
+    }
+
+    for (const registration of pendingServiceRegistrations) {
+      const { options } = registration
+      let { scriptURL } = registration
+
+      if (!scriptURL.startsWith('/') && scriptURL.startsWith('.')) {
+        if (!URL.canParse(scriptURL, globalThis.location.href)) {
+          scriptURL = `./${scriptURL}`
+        }
+      }
+
+      if (registeredServiceWorkers.has(scriptURL)) {
+        continue
+      }
+
+      const promise = globalThis.navigator.serviceWorker.register(scriptURL, options)
+      registeredServiceWorkers.add(scriptURL)
+
+      pending.push(promise)
+
+      promise
+        .then((registration) => {
+          if (!registration) {
+            console.warn(
+              'ServiceWorker failed to register in preload: %s',
+              scriptURL
+            )
+          }
+        })
+        .catch((err) => {
+          console.error(
+            'ServiceWorker registration error occurred in preload: %s:',
+            scriptURL,
+            err
+          )
+        })
+    }
+  }
+
+  await Promise.all(pending)
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
     globalThis.dispatchEvent(new RuntimeInitEvent())
+  }
+
+  if (globalThis.document) {
+    const beginRuntimePreload = globalThis.document.querySelector('meta[name=begin-runtime-preload]')
+    if (beginRuntimePreload) {
+      let current = beginRuntimePreload
+      while (current) {
+        const next = current.nextElementSibling
+        current.remove()
+        if (current.tagName === 'META' && current.name === 'end-runtime-preload') {
+          current = null
+        } else {
+          current = next
+        }
+      }
+    }
   }
 })
 
 // async preload modules
 hooks.onReady(async () => {
   try {
-    if (!isWorkerLike) {
-      // precache fs.constants
-      await ipc.request('fs.constants', {}, { cache: true })
-    }
-
+    // precache 'fs.constants' and 'os.constants'
+    await ipc.request('fs.constants', {}, { cache: true })
+    await ipc.request('os.constants', {}, { cache: true })
     await import('../diagnostics.js')
+    await import('../signal.js')
     await import('../fs/fds.js')
-    await import('../fs/constants.js')
+    await import('../constants.js')
+    const errors = await import('../errors.js')
+    // lazily install this
+    const errno = await import('../errno.js')
+    errors.ErrnoError.errno = errno
   } catch (err) {
     console.error(err.stack || err)
   }
@@ -549,6 +706,8 @@ hooks.onReady(async () => {
 
 // symbolic globals
 globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
+globals.register('RuntimeExecution', new asyncHooks.CoreAsyncResource('RuntimeExecution'))
+
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
 Object.defineProperty(globalThis, '__globals', {
@@ -556,6 +715,8 @@ Object.defineProperty(globalThis, '__globals', {
   configurable: false,
   value: globals
 })
+
+ipc.send('platform.event', 'runtimeinit').catch(reportError)
 
 export default {
   location

@@ -1,6 +1,7 @@
 import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 import { URL } from './url.js'
+import mime from './mime.js'
 
 import * as exports from './util.js'
 
@@ -23,8 +24,50 @@ function maybeURL (...args) {
   }
 }
 
+export const TextDecoder = globalThis.TextDecoder
+export const TextEncoder = globalThis.TextEncoder
+export const isArray = Array.isArray.bind(Array)
+
+export function debug (section) {
+  let enabled = false
+  const env = globalThis.__args?.env ?? {}
+  const sections = [].concat(
+    (env.SOCKET_DEBUG ?? '').split(','),
+    (env.NODE_DEBUG ?? '').split(',')
+  ).map((section) => section.trim())
+
+  if (section && sections.includes(section)) {
+    enabled = true
+  }
+
+  function logger (...args) {
+    if (enabled) {
+      return console.debug(...args)
+    }
+  }
+
+  Object.defineProperty(logger, 'enabled', {
+    configurable: false,
+    enumerable: false,
+    get: () => enabled,
+    set: (value) => {
+      if (value === true) {
+        enabled = true
+      } else if (value === false) {
+        enabled = false
+      }
+    }
+  })
+
+  return logger
+}
+
 export function hasOwnProperty (object, property) {
   return ObjectPrototype.hasOwnProperty.call(object, String(property))
+}
+
+export function isDate (object) {
+  return object instanceof Date
 }
 
 export function isTypedArray (object) {
@@ -39,12 +82,35 @@ export function isArrayLike (object) {
   )
 }
 
+export function isError (object) {
+  return object && object instanceof Error
+}
+
+export function isSymbol (value) {
+  return typeof value === 'symbol'
+}
+
+export function isNumber (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    typeof value === 'number' ||
+    value instanceof Number
+  )
+}
+
+export function isBoolean (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    value === true ||
+    value === false ||
+    value instanceof Boolean
+  )
+}
+
 export function isArrayBufferView (buf) {
   return !Buffer.isBuffer(buf) && ArrayBuffer.isView(buf)
 }
 
 export function isAsyncFunction (object) {
-  return object instanceof AsyncFunction
+  return object && object instanceof AsyncFunction
 }
 
 export function isArgumentsObject (object) {
@@ -68,6 +134,32 @@ export function isObject (object) {
     object !== null &&
     typeof object === 'object'
   )
+}
+
+export function isUndefined (value) {
+  return value === undefined
+}
+
+export function isNull (value) {
+  return value === null
+}
+
+export function isNullOrUndefined (value) {
+  return isNull(value) || isUndefined(value)
+}
+
+export function isPrimitive (value) {
+  return (
+    isNullOrUndefined(value) ||
+    typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'symbol' ||
+    typeof value === 'boolean'
+  )
+}
+
+export function isRegExp (value) {
+  return value && value instanceof RegExp
 }
 
 export function isPlainObject (object) {
@@ -106,6 +198,10 @@ export function isClass (value) {
   )
 }
 
+export function isBuffer (value) {
+  return Buffer.isBuffer(value)
+}
+
 export function isPromiseLike (object) {
   return isFunction(object?.then)
 }
@@ -127,6 +223,7 @@ export function toBuffer (object, encoding = undefined) {
 }
 
 export function toProperCase (string) {
+  if (!string) return ''
   return string[0].toUpperCase() + string.slice(1)
 }
 
@@ -148,6 +245,11 @@ export function splitBuffer (buffer, highWaterMark) {
 }
 
 export function InvertedPromise () {
+  console.warn(
+    '\'InvertedPromise\' is deprecated.' +
+    'Please use \'Deferred\' from \'socket:async\''
+  )
+
   const context = {}
   const promise = new Promise((resolve, reject) => {
     Object.assign(context, {
@@ -204,7 +306,12 @@ export function promisify (original) {
     }
 
     for (const key in original) {
-      object[key] = promisify(original[key])
+      const value = original[key]
+      if (typeof value === 'function' || (value && typeof value === 'object')) {
+        object[key] = promisify(original[key].bind(original))
+      } else {
+        object[key] = original[key]
+      }
     }
 
     Object.defineProperty(object, promisify.custom, {
@@ -368,15 +475,24 @@ export function inspect (value, options) {
     const braces = ['{', '}']
     const isArrayLikeValue = isArrayLike(value)
 
-    if (value instanceof Map) {
-      braces[0] = `Map(${value.size}) ${braces[0]}`
-    } else if (value instanceof Set) {
-      braces[0] = `Set(${value.size}) ${braces[0]}`
+    try {
+      if (value instanceof MIMEParams) {
+        braces[0] = `MIMEParams(${value.size}) ${braces[0]}`
+      } else if (value instanceof Map) {
+        braces[0] = `Map(${value.size}) ${braces[0]}`
+      } else if (value instanceof Set) {
+        braces[0] = `Set(${value.size}) ${braces[0]}`
+      }
+    } catch {
+      braces.splice(0, braces.length)
     }
 
-    const keys = value instanceof Map
-      ? Array.from(value.keys())
-      : new Set(Object.keys(value))
+    let keys = []
+    try {
+      keys = value instanceof Map
+        ? Array.from(value.keys())
+        : new Set(Object.keys(value))
+    } catch {}
 
     const enumerableKeys = value instanceof Set
       ? Array(value.size).fill(0).map((_, i) => i)
@@ -477,6 +593,9 @@ export function inspect (value, options) {
       for (let i = 0; i < size; ++i) {
         const key = String(i)
         if (value instanceof Set || hasOwnProperty(value, key)) {
+          if (key === 'length' && Array.isArray(value)) {
+            continue
+          }
           output.push(formatProperty(
             ctx,
             value,
@@ -489,15 +608,15 @@ export function inspect (value, options) {
       }
 
       for (const key of keys) {
-        if (!/^\d+$/.test(key)) {
-          output.push(...Array.from(keys).map((key) => formatProperty(
+        if (!/^\d+$/.test(key) && key !== 'length') {
+          output.push(formatProperty(
             ctx,
             value,
             depth,
             enumerableKeys,
             key,
             true
-          )))
+          ))
         }
       }
     } else {
@@ -800,10 +919,11 @@ export function parseHeaders (headers) {
   }
 
   return headers
-    .split('\n')
+    .split(/\r?\n/)
     .map((l) => l.trim().split(':'))
-    .filter((e) => e.length === 2)
-    .map((e) => [e[0].trim().toLowerCase(), e[1].trim().toLowerCase()])
+    .filter((e) => e.length >= 2)
+    .map((e) => [e[0].trim().toLowerCase(), e.slice(1).join(':').trim().toLowerCase()])
+    .filter((e) => e[0].length && e[1].length)
 }
 
 export function noop () {}
@@ -823,5 +943,23 @@ export function isValidPercentageValue (input) {
 export function compareBuffers (a, b) {
   return toBuffer(a).compare(toBuffer(b))
 }
+
+export function inherits (Constructor, Super) {
+  Object.defineProperty(Constructor, 'super_', {
+    configurable: true,
+    writable: true,
+    value: Super,
+    __proto__: null
+  })
+
+  Object.setPrototypeO(Constructor.prototype, Super.prototype)
+}
+
+export function deprecate (...args) {
+  // noop
+}
+
+export const MIMEType = mime.MIMEType
+export const MIMEParams = mime.MIMEParams
 
 export default exports

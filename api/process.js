@@ -8,20 +8,123 @@
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
+import signal from './signal.js'
 import os from './os.js'
 
 let didEmitExitEvent = false
+let cwd = primordials.cwd
+
+export class ProcessEnvironmentEvent extends Event {
+  constructor (type, key, value) {
+    super(type)
+    this.key = key
+    this.value = value ?? undefined
+  }
+}
+
+export const env = Object.defineProperties(new EventTarget(), {
+  proxy: {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: new Proxy({}, {
+      get (_, property, receiver) {
+        if (Reflect.has(env, property)) {
+          return Reflect.get(env, property)
+        }
+
+        return Reflect.get(globalThis.__args.env, property)
+      },
+
+      set (_, property, value) {
+        if (Reflect.get(env, property) !== value) {
+          env.dispatchEvent(new ProcessEnvironmentEvent('set', property, value))
+        }
+        return Reflect.set(env, property, value)
+      },
+
+      deleteProperty (_, property) {
+        if (Reflect.has(env, property)) {
+          env.dispatchEvent(new ProcessEnvironmentEvent('delete', property))
+        }
+        return Reflect.deleteProperty(env, property)
+      },
+
+      has (_, property) {
+        return (
+          Reflect.has(env, property) ||
+          Reflect.has(globalThis.__args.env, property)
+        )
+      },
+
+      ownKeys (_) {
+        const keys = []
+        keys.push(...Reflect.ownKeys(env))
+        keys.push(...Reflect.ownKeys(globalThis.__args.env))
+        return Array.from(new Set(keys))
+      }
+    })
+  }
+})
 
 class Process extends EventEmitter {
-  arch = primordials.arch
-  argv = globalThis.__args?.argv ?? []
-  argv0 = globalThis.__args?.argv?.[0] ?? ''
-  cwd = () => primordials.cwd
-  env = { ...(globalThis.__args?.env ?? {}) }
-  exit = exit
-  homedir = homedir
-  platform = primordials.platform
-  version = primordials.version
+  get version () {
+    return primordials.version
+  }
+
+  get platform () {
+    return primordials.platform
+  }
+
+  get env () {
+    return env.proxy
+  }
+
+  get arch () {
+    return primordials.arch
+  }
+
+  get argv () {
+    return globalThis.__args?.argv ?? []
+  }
+
+  get argv0 () {
+    return this.argv[0] ?? ''
+  }
+
+  get execArgv () {
+    return []
+  }
+
+  get versions () {
+    return {
+      socket: this.version
+    }
+  }
+
+  cwd () {
+    return cwd
+  }
+
+  exit (code) {
+    return exit(code)
+  }
+
+  nextTick (callback) {
+    return nextTick(callback)
+  }
+
+  hrtime (time = [0, 0]) {
+    return hrtime(time)
+  }
+
+  memoryUsage () {
+    return memoryUsage
+  }
+
+  chdir (dir) {
+    cwd = dir
+  }
 }
 
 const isNode = Boolean(globalThis.process?.versions?.node)
@@ -33,6 +136,24 @@ if (!isNode) {
   EventEmitter.call(process)
 }
 
+signal.channel.addEventListener('message', (event) => {
+  if (event.data.signal) {
+    const code = event.data.signal
+    const name = signal.getName(code)
+    const message = signal.getMessage(code)
+    process.emit(name, name, code, message)
+  }
+})
+
+globalThis.addEventListener('signal', (event) => {
+  if (event.detail.signal) {
+    const code = event.detail.signal
+    const name = signal.getName(code)
+    const message = signal.getMessage(code)
+    process.emit(name, name, code, message)
+  }
+})
+
 export default process
 
 /**
@@ -40,7 +161,7 @@ export default process
  * @param {Function} callback
  */
 export function nextTick (callback) {
-  if (typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
+  if (isNode && typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
     process.nextTick(callback)
   } else if (typeof globalThis.setImmediate === 'function') {
     globalThis.setImmediate(callback)
@@ -63,13 +184,6 @@ export function nextTick (callback) {
 
 if (typeof process.nextTick !== 'function') {
   process.nextTick = nextTick
-}
-
-/**
- * @returns {string} The home directory of the current user.
- */
-export function homedir () {
-  return globalThis.__args.env.HOME ?? ''
 }
 
 /**
@@ -97,6 +211,8 @@ hrtime.bigint = function bigint () {
 if (typeof process.hrtime !== 'function') {
   process.hrtime = hrtime
 }
+
+process.hrtime.bigint = hrtime.bigint
 
 /**
  * @param {number=} [code=0] - The exit code. Default: 0.
@@ -128,3 +244,5 @@ memoryUsage.rss = function rss () {
   const rusage = os.rusage()
   return rusage.ru_maxrss
 }
+
+process.memoryUsage.rss = memoryUsage.rss

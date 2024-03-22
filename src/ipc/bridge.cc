@@ -5,6 +5,11 @@
 #include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #endif
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <fstream>
+#include "../app/app.hh"
+#endif
+
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -18,6 +23,42 @@ extern bool SSC::isDebugEnabled ();
 
 using namespace SSC;
 using namespace SSC::IPC;
+
+static const Vector<String> allowedNodeCoreModules = {
+  "async_hooks",
+  "assert",
+  "buffer",
+  "console",
+  "constants",
+  "child_process",
+  "crypto",
+  "dgram",
+  "dns",
+  "dns/promises",
+  "events",
+  "fs",
+  "fs/promises",
+  "http",
+  "https",
+  "net",
+  "os",
+  "path",
+  "perf_hooks",
+  "process",
+  "querystring",
+  "stream",
+  "stream/web",
+  "string_decoder",
+  "sys",
+  "test",
+  "timers",
+  "timers/promsies",
+  "tty",
+  "util",
+  "url",
+  "vm",
+  "worker_threads"
+};
 
 #if defined(__APPLE__)
 static std::map<String, Router*> notificationRouterMap;
@@ -122,10 +163,10 @@ static String getcwd () {
 }
 
 static void initRouterTable (Router *router) {
-  static auto userConfig = SSC::getUserConfig();
+  auto userConfig = router->bridge->userConfig;
 #if defined(__APPLE__)
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     "socket.runtime.mobile"
   #else
@@ -138,14 +179,14 @@ static void initRouterTable (Router *router) {
    * Starts a bluetooth service
    * @param serviceId
    */
-  router->map("bluetooth.start", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.start", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"serviceId"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -167,7 +208,7 @@ static void initRouterTable (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.subscribe", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.subscribe", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -177,7 +218,7 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -200,7 +241,7 @@ static void initRouterTable (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.publish", [](auto message, auto router, auto reply) {
+  router->map("bluetooth.publish", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -210,7 +251,7 @@ static void initRouterTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -247,9 +288,196 @@ static void initRouterTable (Router *router) {
    * a POST/PUT body in XHR requests natively, so instead we decorate
    * `message.buffer` with already an mapped buffer.
    */
-  router->map("buffer.map", false, [](auto message, auto router, auto reply) {
+  router->map("buffer.map", false, [=](auto message, auto router, auto reply) {
     router->setMappedBuffer(message.index, message.seq, message.buffer);
     reply(Result { message.seq, message });
+  });
+
+  /**
+   * Kills an already spawned child process.
+   *
+   * @param id
+   * @param signal
+   */
+  router->map("child_process.kill", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_IOS
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"},
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"id", "signal"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    int signal;
+    REQUIRE_AND_GET_MESSAGE_VALUE(signal, "signal", std::stoi);
+
+    router->core->childProcess.kill(
+      message.seq,
+      id,
+      signal,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  #endif
+  });
+
+  /**
+   * Spawns a child process
+   *
+   * @param id
+   * @param args (command, ...args)
+   */
+  router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_IOS
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"},
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"args", "id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto args = split(message.get("args"), 0x0001);
+
+    if (args.size() == 0 || args.at(0).size() == 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "child_process.spawn"},
+        {"err", JSON::Object::Entries {
+          {"message", "Spawn requires at least one argument with a length greater than zero"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    const auto options = Core::ChildProcess::SpawnOptions {
+      .cwd = message.get("cwd", getcwd()),
+      .allowStdin = message.get("stdin") != "false",
+      .allowStdout = message.get("stdout") != "false",
+      .allowStderr = message.get("stderr") != "false"
+    };
+
+    router->core->childProcess.spawn(
+      message.seq,
+      id,
+      args,
+      options,
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
+    );
+  #endif
+  });
+
+  router->map("child_process.exec", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_IOS
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"},
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"args", "id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto args = split(message.get("args"), 0x0001);
+
+    if (args.size() == 0 || args.at(0).size() == 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "child_process.spawn"},
+        {"err", JSON::Object::Entries {
+          {"message", "Spawn requires at least one argument with a length greater than zero"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    uint64_t timeout = 0;
+    int killSignal = 0;
+
+    if (message.has("timeout")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
+    }
+
+    if (message.has("killSignal")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
+    }
+
+    const auto options = Core::ChildProcess::ExecOptions {
+      .cwd = message.get("cwd", getcwd()),
+      .allowStdout = message.get("stdout") != "false",
+      .allowStderr = message.get("stderr") != "false",
+      .timeout = timeout,
+      .killSignal = killSignal
+    };
+
+    router->core->childProcess.exec(
+      message.seq,
+      id,
+      args,
+      options,
+      [message, reply](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      }
+    );
+  #endif
+  });
+
+  /**
+   * Writes to an already spawned child process.
+   *
+   * @param id
+   */
+  router->map("child_process.write", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_IOS
+    auto err = JSON::Object::Entries {
+      {"type", "NotSupportedError"},
+      {"message", "Operation is not supported on this platform"}
+    };
+
+    return reply(Result::Err { message, err });
+  #else
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->childProcess.write(
+      message.seq,
+      id,
+      message.buffer.bytes,
+      message.buffer.size,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  #endif
   });
 
   /**
@@ -258,7 +486,7 @@ static void initRouterTable (Router *router) {
    * @param family IP address family to resolve [default = 0 (AF_UNSPEC)]
    * @see getaddrinfo(3)
    */
-  router->map("dns.lookup", [](auto message, auto router, auto reply) {
+  router->map("dns.lookup", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"hostname"});
 
     if (err.type != JSON::Type::Null) {
@@ -275,7 +503,7 @@ static void initRouterTable (Router *router) {
     );
   });
 
-  router->map("extension.stats", [](auto message, auto router, auto reply) {
+  router->map("extension.stats", [=](auto message, auto router, auto reply) {
     auto extensions = Extension::all();
     auto name = message.get("name");
 
@@ -319,7 +547,7 @@ static void initRouterTable (Router *router) {
    * Query for type of extension ('shared', 'wasm32', 'unknown')
    * @param name
    */
-  router->map("extension.type", [](auto message, auto router, auto reply) {
+  router->map("extension.type", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -344,7 +572,7 @@ static void initRouterTable (Router *router) {
    * @param name
    * @param allow
    */
-  router->map("extension.load", [](auto message, auto router, auto reply) {
+  router->map("extension.load", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -425,7 +653,7 @@ static void initRouterTable (Router *router) {
    * Unload a named native extension.
    * @param name
    */
-  router->map("extension.unload", [](auto message, auto router, auto reply) {
+  router->map("extension.unload", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -489,7 +717,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see access(2)
    */
-  router->map("fs.access", [](auto message, auto router, auto reply) {
+  router->map("fs.access", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -510,7 +738,7 @@ static void initRouterTable (Router *router) {
   /**
    * Returns a mapping of file system constants.
    */
-  router->map("fs.constants", [](auto message, auto router, auto reply) {
+  router->map("fs.constants", [=](auto message, auto router, auto reply) {
     router->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
@@ -520,7 +748,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see chmod(2)
    */
-  router->map("fs.chmod", [](auto message, auto router, auto reply) {
+  router->map("fs.chmod", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -545,7 +773,7 @@ static void initRouterTable (Router *router) {
    * @param gid
    * @see chown(2)
    */
-  router->map("fs.chown", [](auto message, auto router, auto reply) {
+  router->map("fs.chown", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "uid", "gid"});
 
     if (err.type != JSON::Type::Null) {
@@ -599,7 +827,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see close(2)
    */
-  router->map("fs.close", [](auto message, auto router, auto reply) {
+  router->map("fs.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -617,7 +845,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see closedir(3)
    */
-  router->map("fs.closedir", [](auto message, auto router, auto reply) {
+  router->map("fs.closedir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -636,7 +864,7 @@ static void initRouterTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptor", [](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -660,7 +888,7 @@ static void initRouterTable (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptors", [](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
     router->core->fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
@@ -675,7 +903,7 @@ static void initRouterTable (Router *router) {
    * @param flags
    * @see copyfile(3)
    */
-  router->map("fs.copyFile", [](auto message, auto router, auto reply) {
+  router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest", "flags"});
 
     if (err.type != JSON::Type::Null) {
@@ -747,7 +975,7 @@ static void initRouterTable (Router *router) {
    * @see stat(2)
    * @see fstat(2)
    */
-  router->map("fs.fstat", [](auto message, auto router, auto reply) {
+  router->map("fs.fstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -765,7 +993,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @see fsync(2)
    */
-  router->map("fs.fsync", [](auto message, auto router, auto reply) {
+  router->map("fs.fsync", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -788,7 +1016,7 @@ static void initRouterTable (Router *router) {
    * @param offset
    * @see ftruncate(2)
    */
-  router->map("fs.ftruncate", [](auto message, auto router, auto reply) {
+  router->map("fs.ftruncate", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -812,7 +1040,7 @@ static void initRouterTable (Router *router) {
   /**
    * Returns all open file or directory descriptors.
    */
-  router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
+  router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
     router->core->fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -825,7 +1053,7 @@ static void initRouterTable (Router *router) {
    * @see stat(2)
    * @see lstat(2)
    */
-  router->map("fs.lstat", [](auto message, auto router, auto reply) {
+  router->map("fs.lstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -846,7 +1074,7 @@ static void initRouterTable (Router *router) {
    * @param recursive
    * @see mkdir(2)
    */
-  router->map("fs.mkdir", [](auto message, auto router, auto reply) {
+  router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -874,7 +1102,7 @@ static void initRouterTable (Router *router) {
    * @param mode
    * @see open(2)
    */
-  router->map("fs.open", [](auto message, auto router, auto reply) {
+  router->map("fs.open", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "path",
@@ -909,7 +1137,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see opendir(3)
    */
-  router->map("fs.opendir", [](auto message, auto router, auto reply) {
+  router->map("fs.opendir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -934,7 +1162,7 @@ static void initRouterTable (Router *router) {
    * @param offset
    * @see read(2)
    */
-  router->map("fs.read", [](auto message, auto router, auto reply) {
+  router->map("fs.read", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "size", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -962,7 +1190,7 @@ static void initRouterTable (Router *router) {
    * @param id
    * @param entries (default: 256)
    */
-  router->map("fs.readdir", [](auto message, auto router, auto reply) {
+  router->map("fs.readdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1024,7 +1252,7 @@ static void initRouterTable (Router *router) {
    * Marks a file or directory descriptor as retained.
    * @param id
    */
-  router->map("fs.retainOpenDescriptor", [](auto message, auto router, auto reply) {
+  router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1047,7 +1275,7 @@ static void initRouterTable (Router *router) {
    * @param dest
    * @see rename(2)
    */
-  router->map("fs.rename", [](auto message, auto router, auto reply) {
+  router->map("fs.rename", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -1067,7 +1295,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see rmdir(2)
    */
-  router->map("fs.rmdir", [](auto message, auto router, auto reply) {
+  router->map("fs.rmdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1086,7 +1314,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see stat(2)
    */
-  router->map("fs.stat", [](auto message, auto router, auto reply) {
+  router->map("fs.stat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1103,7 +1331,7 @@ static void initRouterTable (Router *router) {
   /**
    * Stops a already started watcher
    */
-  router->map("fs.stopWatch", [](auto message, auto router, auto reply) {
+  router->map("fs.stopWatch", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1126,7 +1354,7 @@ static void initRouterTable (Router *router) {
    * @param path
    * @see unlink(2)
    */
-  router->map("fs.unlink", [](auto message, auto router, auto reply) {
+  router->map("fs.unlink", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1143,7 +1371,7 @@ static void initRouterTable (Router *router) {
   /**
    * TODO
    */
-  router->map("fs.watch", [](auto message, auto router, auto reply) {
+  router->map("fs.watch", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1168,7 +1396,7 @@ static void initRouterTable (Router *router) {
    * @param offset The offset to start writing at
    * @see write(2)
    */
-  router->map("fs.write", [](auto message, auto router, auto reply) {
+  router->map("fs.write", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -1197,7 +1425,7 @@ static void initRouterTable (Router *router) {
   });
 
 #if defined(__APPLE__)
-  router->map("geolocation.getCurrentPosition", [](auto message, auto router, auto reply) {
+  router->map("geolocation.getCurrentPosition", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1240,7 +1468,7 @@ static void initRouterTable (Router *router) {
     }
   });
 
-  router->map("geolocation.watchPosition", [](auto message, auto router, auto reply) {
+  router->map("geolocation.watchPosition", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1303,7 +1531,7 @@ static void initRouterTable (Router *router) {
     reply(Result { message.seq, message, json });
   });
 
-  router->map("geolocation.clearWatch", [](auto message, auto router, auto reply) {
+  router->map("geolocation.clearWatch", [=](auto message, auto router, auto reply) {
     if (!router->locationObserver) {
       auto err = JSON::Object::Entries {{ "message", "Location observer is not initialized",  }};
       err["type"] = "GeolocationPositionError";
@@ -1330,7 +1558,7 @@ static void initRouterTable (Router *router) {
    * This is only useful on platforms that need to set this value from an
    * external source, like Android or ChromeOS.
    */
-  router->map("internal.setcwd", [](auto message, auto router, auto reply) {
+  router->map("internal.setcwd", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -1345,7 +1573,7 @@ static void initRouterTable (Router *router) {
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
-  router->map("log", [](auto message, auto router, auto reply) {
+  router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
     NSLog(@"%s", value);
@@ -1358,7 +1586,7 @@ static void initRouterTable (Router *router) {
   });
 
 #if defined(__APPLE__)
-  router->map("notification.show", [](auto message, auto router, auto reply) {
+  router->map("notification.show", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "title"
@@ -1574,7 +1802,7 @@ static void initRouterTable (Router *router) {
     }];
   });
 
-  router->map("notification.close", [](auto message, auto router, auto reply) {
+  router->map("notification.close", [=](auto message, auto router, auto reply) {
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     auto err = validateMessageParameters(message, { "id" });
 
@@ -1605,7 +1833,7 @@ static void initRouterTable (Router *router) {
     }
   });
 
-  router->map("notification.list", [](auto message, auto router, auto reply) {
+  router->map("notification.list", [=](auto message, auto router, auto reply) {
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     [notificationCenter getDeliveredNotificationsWithCompletionHandler: ^(NSArray<UNNotification*> *notifications) {
       JSON::Array::Entries entries;
@@ -1637,7 +1865,7 @@ static void initRouterTable (Router *router) {
    * @param size If given, the size to set in the buffer [default = 0]
    * @param buffer The buffer to read/modify (SEND_BUFFER, RECV_BUFFER) [default = 0 (SEND_BUFFER)]
    */
-  router->map("os.bufferSize", [](auto message, auto router, auto reply) {
+  router->map("os.bufferSize", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1661,41 +1889,50 @@ static void initRouterTable (Router *router) {
   });
 
   /**
+   * Returns a mapping of operating  system constants.
+   */
+  router->map("os.constants", [=](auto message, auto router, auto reply) {
+    router->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  /**
    * Returns a mapping of network interfaces.
    */
-  router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
+  router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
     router->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
-  router->map("os.cpus", [](auto message, auto router, auto reply) {
+  router->map("os.cpus", [=](auto message, auto router, auto reply) {
     router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.rusage", [](auto message, auto router, auto reply) {
+  router->map("os.rusage", [=](auto message, auto router, auto reply) {
     router->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uptime", [](auto message, auto router, auto reply) {
+  router->map("os.uptime", [=](auto message, auto router, auto reply) {
     router->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uname", [](auto message, auto router, auto reply) {
+  router->map("os.uname", [=](auto message, auto router, auto reply) {
     router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.hrtime", [](auto message, auto router, auto reply) {
+  router->map("os.hrtime", [=](auto message, auto router, auto reply) {
     router->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.availableMemory", [](auto message, auto router, auto reply) {
+  router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
     router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.paths", [](auto message, auto router, auto reply) {
-    JSON::Object data;
+  router->map("os.paths", [=](auto message, auto router, auto reply) {
+    const auto bundleIdentifier = router->bridge->userConfig["meta_bundle_identifier"];
+
+    JSON::Object json;
 
     // paths
     String resources = getcwd();
@@ -1704,8 +1941,11 @@ static void initRouterTable (Router *router) {
     String pictures;
     String desktop;
     String videos;
+    String config;
     String music;
     String home;
+    String data;
+    String log;
 
   #if defined(__APPLE__)
     static const auto uid = getuid();
@@ -1734,7 +1974,10 @@ static void initRouterTable (Router *router) {
     desktop = DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory);
     videos = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory);
     music = DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory);
+    config = HOME + "/Library/Application Support/" + bundleIdentifier;
     home = String(NSHomeDirectory().UTF8String);
+    data = HOME + "/Library/Application Support/" + bundleIdentifier;
+    log = HOME + "/Library/Logs/" + bundleIdentifier;
 
   #undef DIRECTORY_PATH_FROM_FILE_MANAGER
 
@@ -1751,6 +1994,9 @@ static void initRouterTable (Router *router) {
     static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
     static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
     static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+
+    static const auto XDG_CONFIG_HOME = Env::get("XDG_CONFIG_HOME", HOME + "/.config");
+    static const auto XDG_DATA_HOME = Env::get("XDG_DATA_HOME", HOME + "/.local/share");
 
     if (XDG_DOCUMENTS_DIR.size() > 0) {
       documents = XDG_DOCUMENTS_DIR;
@@ -1792,7 +2038,10 @@ static void initRouterTable (Router *router) {
       music = (Path(HOME) / "Music").string();
     }
 
+    config = XDG_CONFIG_HOME + "/" + bundleIdentifier;
     home = Path(HOME).string();
+    data = XDG_DATA_HOME + "/" + bundleIdentifier;
+    log = config;
   #elif defined(_WIN32)
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
@@ -1802,22 +2051,28 @@ static void initRouterTable (Router *router) {
     pictures = (Path(USERPROFILE) / "Pictures").string();
     videos = (Path(USERPROFILE) / "Videos").string();
     music = (Path(USERPROFILE) / "Music").string();
+    config = (Path(Env::get("APPDATA")) / bundleIdentifier).string();
     home = Path(USERPROFILE).string();
+    data = (Path(Env::get("APPDATA")) / bundleIdentifier).string();
+    log = config;
   #endif
 
-    data["resources"] = resources;
-    data["downloads"] = downloads;
-    data["documents"] = documents;
-    data["pictures"] = pictures;
-    data["desktop"] = desktop;
-    data["videos"] = videos;
-    data["music"] = music;
-    data["home"] = home;
+    json["resources"] = resources;
+    json["downloads"] = downloads;
+    json["documents"] = documents;
+    json["pictures"] = pictures;
+    json["desktop"] = desktop;
+    json["videos"] = videos;
+    json["music"] = music;
+    json["config"] = config;
+    json["home"] = home;
+    json["data"] = data;
+    json["log"] = log;
 
-    return reply(Result::Data { message, data });
+    return reply(Result::Data { message, json });
   });
 
-  router->map("permissions.query", [](auto message, auto router, auto reply) {
+  router->map("permissions.query", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1872,8 +2127,13 @@ static void initRouterTable (Router *router) {
   #endif
   });
 
-  router->map("permissions.request", [](auto message, auto router, auto reply) {
-    static auto userConfig = SSC::getUserConfig();
+  router->map("permissions.request", [=](auto message, auto router, auto reply) {
+  #if defined(__APPLE__)
+    __block auto userConfig = router->bridge->userConfig;
+  #else
+    auto userConfig = router->bridge->userConfig;
+  #endif
+
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1895,7 +2155,7 @@ static void initRouterTable (Router *router) {
           }
 
           auto error = [NSError
-            errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+            errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
             code: -1
             userInfo: @{
               NSLocalizedDescriptionKey: reason
@@ -1990,7 +2250,7 @@ static void initRouterTable (Router *router) {
   /**
    * Simply returns `pong`.
    */
-  router->map("ping", [](auto message, auto router, auto reply) {
+  router->map("ping", [=](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = "pong";
     reply(result);
@@ -2001,14 +2261,42 @@ static void initRouterTable (Router *router) {
    * @param value The event name [domcontentloaded]
    * @param data Optional data associated with the platform event.
    */
-  router->map("platform.event", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"value"});
+  router->map("platform.event", [=](auto message, auto router, auto reply) {
+    const auto err = validateMessageParameters(message, {"value"});
+    const auto frameType = message.get("runtime-frame-type");
+    const auto frameSource = message.get("runtime-frame-source");
+    auto userConfig = router->bridge->userConfig;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
     }
 
-    if (!router->isReady) router->isReady = true;
+    if (frameType == "top-level" && frameSource != "serviceworker") {
+      if (message.value == "load") {
+        const auto href = message.get("location.href");
+        if (href.size() > 0) {
+          router->location.href = href;
+          auto tmp = href;
+          tmp = replace(tmp, "socket://", "");
+          tmp = replace(tmp, "https://", "");
+          tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
+          auto parsed = Router::parseURL(tmp);
+          router->location.pathname = parsed.path;
+          router->location.query = parsed.queryString;
+        }
+      }
+
+      if (router->bridge == router->core->serviceWorker.bridge) {
+        if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
+          if (router->location.href.size() > 0 && message.value == "beforeruntimeinit") {
+            router->core->serviceWorker.reset();
+            router->core->serviceWorker.isReady = false;
+          } else if (message.value == "runtimeinit") {
+            router->core->serviceWorker.isReady = true;
+          }
+        }
+      }
+    }
 
     router->core->platform.event(
       message.seq,
@@ -2023,7 +2311,7 @@ static void initRouterTable (Router *router) {
    * @param title
    * @param body
    */
-  router->map("platform.notify", [](auto message, auto router, auto reply) {
+  router->map("platform.notify", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"body", "title"});
 
     if (err.type != JSON::Type::Null) {
@@ -2038,12 +2326,27 @@ static void initRouterTable (Router *router) {
     );
   });
 
+
+  router->map("platform.revealFile", [=](auto message, auto router, auto reply) mutable {
+    auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    router->core->platform.revealFile(
+      message.seq,
+      message.value,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
   /**
    * Requests a URL to be opened externally.
    * @param value
    */
-  router->map("platform.openExternal", [](auto message, auto router, auto reply) mutable {
-    static const auto applicationProtocol = userConfig["meta_application_protocol"];
+  router->map("platform.openExternal", [=](auto message, auto router, auto reply) mutable {
+    const auto applicationProtocol = router->bridge->userConfig["meta_application_protocol"];
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2076,7 +2379,7 @@ static void initRouterTable (Router *router) {
   /**
    * Return Socket Runtime primordials.
    */
-  router->map("platform.primordials", [](auto message, auto router, auto reply) {
+  router->map("platform.primordials", [=](auto message, auto router, auto reply) {
     std::regex platform_pattern("^mac$", std::regex_constants::icase);
     auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
@@ -2124,7 +2427,7 @@ static void initRouterTable (Router *router) {
    * `ipc://post` IPC call intercepted by an XHR request.
    * @param id The id of the post data.
    */
-  router->map("post", [](auto message, auto router, auto reply) {
+  router->map("post", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2149,24 +2452,200 @@ static void initRouterTable (Router *router) {
 
   /**
    * Prints incoming message value to stdout.
+   * @param value
    */
-  router->map("stdout", [](auto message, auto router, auto reply) {
+  router->map("stdout", [=](auto message, auto router, auto reply) {
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
     IO::write(message.value, false);
-    reply(Result::Data { message, JSON::Object {}});
   });
 
   /**
    * Prints incoming message value to stderr.
+   * @param value
    */
-  router->map("stderr", [](auto message, auto router, auto reply) {
-  #if defined(__APPLE__)
-    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
-  #endif
-    IO::write(message.value, true);
+  router->map("stderr", [=](auto message, auto router, auto reply) {
+    if (message.get("debug") == "true") {
+      if (message.value.size() > 0) {
+        debug("%s", message.value.c_str());
+      }
+    } else {
+    #if defined(__APPLE__)
+      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+    #endif
+      IO::write(message.value, true);
+    }
+  });
+
+  /**
+   * Registers a service worker script for a given scope.
+   * @param scriptURL
+   * @param scope
+   */
+  router->map("serviceWorker.register", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scriptURL", "scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto options = ServiceWorkerContainer::RegistrationOptions {
+      .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
+      .scope = message.get("scope"),
+      .scriptURL = message.get("scriptURL")
+    };
+
+    const auto registration = router->core->serviceWorker.registerServiceWorker(options);
+    auto json = JSON::Object {
+      JSON::Object::Entries {
+        {"registration", registration.json()}
+      }
+    };
+
+    reply(Result::Data { message, json });
+  });
+
+  /**
+   * Resets the service worker container state.
+   */
+  router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
+    router->core->serviceWorker.reset();
     reply(Result::Data { message, JSON::Object {}});
+  });
+
+  /**
+   * Unregisters a service worker for given scoep.
+   * @param scope
+   */
+  router->map("serviceWorker.unregister", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto scope = message.get("scope");
+    router->core->serviceWorker.unregisterServiceWorker(scope);
+
+    return reply(Result::Data { message, JSON::Object {} });
+  });
+
+  /**
+   * Gets registration information for a service worker scope.
+   * @param scope
+   */
+  router->map("serviceWorker.getRegistration", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scope"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    const auto scope = message.get("scope");
+
+    for (const auto& entry : router->core->serviceWorker.registrations) {
+      const auto& registration = entry.second;
+      if (registration.options.scope.starts_with(scope)) {
+        auto json = JSON::Object {
+          JSON::Object::Entries {
+            {"registration", registration.json()},
+            {"client", JSON::Object::Entries {
+              {"id", std::to_string(router->bridge->id)}
+            }}
+          }
+        };
+
+        return reply(Result::Data { message, json });
+      }
+    }
+
+    return reply(Result::Data { message, JSON::Object {} });
+  });
+
+  /**
+   * Gets all service worker scope registrations.
+   */
+  router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
+    auto json = JSON::Array::Entries {};
+    for (const auto& entry : router->core->serviceWorker.registrations) {
+      const auto& registration = entry.second;
+      json.push_back(registration.json());
+    }
+    return reply(Result::Data { message, json });
+  });
+
+  /**
+   * Informs container that a service worker will skip waiting.
+   * @param id
+   */
+  router->map("serviceWorker.skipWaiting", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->serviceWorker.skipWaiting(id);
+
+    reply(Result::Data { message, JSON::Object {}});
+  });
+
+  /**
+   * Updates service worker controller state.
+   * @param id
+   * @param state
+   */
+  router->map("serviceWorker.updateState", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "state"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    router->core->serviceWorker.updateState(id, message.get("state"));
+    reply(Result::Data { message, JSON::Object {}});
+  });
+
+  router->map("timers.setTimeout", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"timeout"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint32_t timeout;
+    REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoul);
+    const auto wait = message.get("wait") == "true";
+    const Core::Timers::ID id = router->core->timers.setTimeout(timeout, [=]() {
+      if (wait) {
+        reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
+      }
+    });
+
+    if (!wait) {
+      reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
+    }
+  });
+
+  router->map("timers.clearTimeout", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    router->core->timers.clearTimeout(id);
+
+    reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
   });
 
   /**
@@ -2177,7 +2656,7 @@ static void initRouterTable (Router *router) {
    * @param address The address to bind the UDP socket to (default: 0.0.0.0)
    * @param reuseAddr Reuse underlying UDP socket address (default: false)
    */
-  router->map("udp.bind", [](auto message, auto router, auto reply) {
+  router->map("udp.bind", [=](auto message, auto router, auto reply) {
     Core::UDP::BindOptions options;
     auto err = validateMessageParameters(message, {"id", "port"});
 
@@ -2204,7 +2683,7 @@ static void initRouterTable (Router *router) {
    * Close socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.close", [](auto message, auto router, auto reply) {
+  router->map("udp.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2224,7 +2703,7 @@ static void initRouterTable (Router *router) {
    * @param port Port to connect the UDP socket to
    * @param address The address to connect the UDP socket to (default: 0.0.0.0)
    */
-  router->map("udp.connect", [](auto message, auto router, auto reply) {
+  router->map("udp.connect", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -2250,7 +2729,7 @@ static void initRouterTable (Router *router) {
    * Disconnects a connected socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.disconnect", [](auto message, auto router, auto reply) {
+  router->map("udp.disconnect", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2271,7 +2750,7 @@ static void initRouterTable (Router *router) {
    * Returns connected peer socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getPeerName", [](auto message, auto router, auto reply) {
+  router->map("udp.getPeerName", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2292,7 +2771,7 @@ static void initRouterTable (Router *router) {
    * Returns local socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getSockName", [](auto message, auto router, auto reply) {
+  router->map("udp.getSockName", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2313,7 +2792,7 @@ static void initRouterTable (Router *router) {
    * Returns socket state information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getState", [](auto message, auto router, auto reply) {
+  router->map("udp.getState", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2335,7 +2814,7 @@ static void initRouterTable (Router *router) {
    * socket and route through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStart", [](auto message, auto router, auto reply) {
+  router->map("udp.readStart", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2359,7 +2838,7 @@ static void initRouterTable (Router *router) {
    * socket and routing through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStop", [](auto message, auto router, auto reply) {
+  router->map("udp.readStop", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2388,7 +2867,7 @@ static void initRouterTable (Router *router) {
    * @param address The address to send to (default: 0.0.0.0)
    * @param ephemeral Indicates that the socket handle, if created is ephemeral and should eventually be destroyed
    */
-  router->map("udp.send", [](auto message, auto router, auto reply) {
+  router->map("udp.send", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -2413,7 +2892,7 @@ static void initRouterTable (Router *router) {
     );
   });
 
-  router->map("window.showFileSystemPicker", [](auto message, auto router, auto reply) {
+  router->map("window.showFileSystemPicker", [=](auto message, auto router, auto reply) {
     const auto allowMultiple = message.get("allowMultiple") == "true";
     const auto allowFiles = message.get("allowFiles") == "true";
     const auto allowDirs = message.get("allowDirs") == "true";
@@ -2469,17 +2948,68 @@ static void initRouterTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static const auto MAX_BODY_BYTES = 4 * 1024 * 1024;
+  static const auto devHost = SSC::getDevHost();
+  static Atomic<bool> isInitialized = false;
+
+  if (isInitialized) {
+    return;
+  }
+
+  isInitialized = true;
 
 #if defined(__linux__) && !defined(__ANDROID__)
-  auto ctx = router->webkitWebContext;
+  auto ctx = webkit_web_context_get_default();
   auto security = webkit_web_context_get_security_manager(ctx);
 
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
+    IPC::Router* router = nullptr;
+
+    auto webview = webkit_uri_scheme_request_get_web_view(request);
+    auto windowManager = App::instance()->getWindowManager();
+
+    for (auto& window : windowManager->windows) {
+      if (
+        window != nullptr &&
+        window->bridge != nullptr &&
+        WEBKIT_WEB_VIEW(window->webview) == webview
+      ) {
+        router = &window->bridge->router;
+        break;
+      }
+    }
+
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto router = reinterpret_cast<Router *>(ptr);
-    auto invoked = router->invoke(uri, [=](auto result) {
+    auto method = String(webkit_uri_scheme_request_get_http_method(request));
+    auto message = IPC::Message{ uri };
+    char bytes[MAX_BODY_BYTES]{0};
+
+    if ((method == "POST" || method == "PUT")) {
+      auto body = webkit_uri_scheme_request_get_http_body(request);
+      if (body) {
+        GError* error = nullptr;
+        message.buffer.bytes = bytes;
+
+        const auto success = g_input_stream_read_all(
+          body,
+          bytes,
+          MAX_BODY_BYTES,
+          &message.buffer.size,
+          nullptr,
+          &error
+        );
+
+        if (!success) {
+          webkit_uri_scheme_request_finish_error(
+            request,
+            error
+          );
+          return;
+        }
+      }
+    }
+
+    auto invoked = router->invoke(message, message.buffer.bytes, message.buffer.size, [=](auto result) {
       auto json = result.str();
       auto size = result.post.body != nullptr ? result.post.length : json.size();
       auto body = result.post.body != nullptr ? result.post.body : json.c_str();
@@ -2495,6 +3025,7 @@ static void registerSchemeHandler (Router *router) {
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
+      soup_message_headers_append(headers, "cache-control", "no-cache");
       for (const auto& header : result.headers.entries) {
         soup_message_headers_append(headers, header.key.c_str(), header.value.c_str());
       }
@@ -2553,10 +3084,28 @@ static void registerSchemeHandler (Router *router) {
   0);
 
   webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
-    static auto userConfig = SSC::getUserConfig();
+    IPC::Router* router = nullptr;
+
+    auto webview = webkit_uri_scheme_request_get_web_view(request);
+    auto windowManager = App::instance()->getWindowManager();
+
+    for (auto& window : windowManager->windows) {
+      if (
+        window != nullptr &&
+        window->bridge != nullptr &&
+        WEBKIT_WEB_VIEW(window->webview) == webview
+      ) {
+        router = &window->bridge->router;
+        break;
+      }
+    }
+
+    auto userConfig = router->bridge->userConfig;
     bool isModule = false;
+    auto method = String(webkit_uri_scheme_request_get_http_method(request));
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto cwd = getcwd();
+    uint64_t clientId = router->bridge->id;
 
     if (uri.starts_with("socket:///")) {
       uri = uri.substr(10);
@@ -2566,22 +3115,33 @@ static void registerSchemeHandler (Router *router) {
       uri = uri.substr(7);
     }
 
+    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
     auto path = String(
       uri.starts_with(bundleIdentifier)
         ? uri.substr(bundleIdentifier.size())
         : "socket/" + uri
     );
 
-    auto ext = fs::path(path).extension().string();
+    auto parsedPath = Router::parseURL(path);
+    auto ext = fs::path(parsedPath.path).extension().string();
 
     if (ext.size() > 0 && !ext.starts_with(".")) {
       ext = "." + ext;
     }
 
     if (!uri.starts_with(bundleIdentifier)) {
+      path = parsedPath.path;
       if (ext.size() == 0 && !path.ends_with(".js")) {
         path += ".js";
         ext = ".js";
+      }
+
+      if (parsedPath.queryString.size() > 0) {
+        path += String("?") + parsedPath.queryString;
+      }
+
+      if (parsedPath.fragment.size() > 0) {
+        path += String("#") + parsedPath.fragment;
       }
 
       uri = "socket://" + bundleIdentifier + "/" + path;
@@ -2593,15 +3153,25 @@ static void registerSchemeHandler (Router *router) {
       auto size = moduleSource.size();
       auto bytes = moduleSource.data();
       auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-      auto response = webkit_uri_scheme_response_new(stream, size);
 
-      webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
+      if (stream) {
+        auto response = webkit_uri_scheme_response_new(stream, size);
+        webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+        webkit_uri_scheme_request_finish_with_response(request, response);
+        g_object_unref(stream);
+      } else {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+      }
       return;
     }
 
-    auto parsedPath = Router::parseURL(path);
     auto resolved = Router::resolveURLPathForWebView(parsedPath.path, cwd);
     auto mount = Router::resolveNavigatorMountForWebView(parsedPath.path);
     path = resolved.path;
@@ -2624,21 +3194,122 @@ static void registerSchemeHandler (Router *router) {
         auto size = redirectSource.size();
         auto bytes = redirectSource.data();
         auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-        auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-        auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
 
-        soup_message_headers_append(headers, "location", redirectURL.c_str());
-        soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+        if (stream) {
+          auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+          auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+          auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
-        webkit_uri_scheme_response_set_http_headers(response, headers);
-        webkit_uri_scheme_response_set_content_type(response, "text/html");
-        webkit_uri_scheme_request_finish_with_response(request, response);
+          soup_message_headers_append(headers, "location", redirectURL.c_str());
+          soup_message_headers_append(headers, "content-location", contentLocation.c_str());
 
-        g_object_unref(stream);
+          webkit_uri_scheme_response_set_http_headers(response, headers);
+          webkit_uri_scheme_response_set_content_type(response, "text/html");
+          webkit_uri_scheme_request_finish_with_response(request, response);
+
+          g_object_unref(stream);
+        } else {
+          webkit_uri_scheme_request_finish_error(
+            request,
+            g_error_new(
+              g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+              1,
+              "Failed to create response stream"
+            )
+          );
+        }
+
         return;
       }
-    } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-      path = userConfig["webview_default_index"];
+    } else if (path.size() == 0) {
+      if (userConfig.contains("webview_default_index")) {
+        path = userConfig["webview_default_index"];
+      } else {
+        if (router->core->serviceWorker.registrations.size() > 0) {
+          auto fetchRequest = ServiceWorkerContainer::FetchRequest {
+            parsedPath.path,
+            method
+          };
+
+          fetchRequest.client.id = clientId;
+          fetchRequest.client.preload = router->bridge->preload;
+          auto requestHeaders = webkit_uri_scheme_request_get_http_headers(request);
+
+          fetchRequest.query = parsedPath.queryString;
+
+          soup_message_headers_foreach(
+            requestHeaders,
+            [](auto name, auto value, auto userData) {
+              auto fetchRequest = reinterpret_cast<ServiceWorkerContainer::FetchRequest*>(userData);
+              const auto entry = String(name) + ": " + String(value);
+              fetchRequest->headers.push_back(entry);
+            },
+            &fetchRequest
+          );
+
+          const auto fetched = router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
+            if (res.statusCode == 0) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "%.*s",
+                  (int) res.buffer.size,
+                  res.buffer.bytes
+                )
+              );
+              return;
+            }
+
+            const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+            auto stream = g_memory_input_stream_new_from_data(res.buffer.bytes, res.buffer.size, 0);
+
+            if (!stream) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "Failed to create response stream"
+                )
+              );
+              return;
+            }
+
+            auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+            auto response = webkit_uri_scheme_response_new(stream, (gint64) res.buffer.size);
+
+            for (const auto& line : webviewHeaders) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            for (const auto& line : res.headers) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+
+              if (key == "content-type" || key == "Content-Type") {
+                webkit_uri_scheme_response_set_content_type(response, value.c_str());
+              }
+
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            webkit_uri_scheme_response_set_http_headers(response, headers);
+            webkit_uri_scheme_request_finish_with_response(request, response);
+
+            g_object_unref(stream);
+          });
+
+          if (fetched) {
+            return;
+          }
+        }
+      }
     } else if (resolved.redirect) {
       auto redirectURL = resolved.path;
       if (parsedPath.queryString.size() > 0) {
@@ -2656,11 +3327,25 @@ static void registerSchemeHandler (Router *router) {
       auto size = redirectSource.size();
       auto bytes = redirectSource.data();
       auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+
+      if (!stream) {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+        return;
+      }
+
       auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
       auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
+      auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
 
       soup_message_headers_append(headers, "location", redirectURL.c_str());
-      soup_message_headers_append(headers, "content-location", redirectURL.c_str());
+      soup_message_headers_append(headers, "content-location", contentLocation.c_str());
 
       webkit_uri_scheme_response_set_http_headers(response, headers);
       webkit_uri_scheme_response_set_content_type(response, "text/html");
@@ -2678,6 +3363,19 @@ static void registerSchemeHandler (Router *router) {
 
     if (path.size() == 0 || !fs::exists(path)) {
       auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
+
+      if (!stream) {
+        webkit_uri_scheme_request_finish_error(
+          request,
+          g_error_new(
+            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+            1,
+            "Failed to create response stream"
+          )
+        );
+        return;
+      }
+
       auto response = webkit_uri_scheme_response_new(stream, 0);
 
       webkit_uri_scheme_response_set_status(response, 404, "Not found");
@@ -2686,10 +3384,84 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
+    WebKitURISchemeResponse* response = nullptr;
+    GInputStream* stream = nullptr;
+    gchar* mimeType = nullptr;
     GError* error = nullptr;
+    char* data = nullptr;
 
-    auto file = g_file_new_for_path(path.c_str());
-    auto stream = (GInputStream*) g_file_read(file, nullptr, &error);
+    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+
+    if (path.ends_with(".html")) {
+      auto script = router->bridge->preload;
+
+      if (userConfig["webview_importmap"].size() > 0) {
+        const auto file = Path(userConfig["webview_importmap"]);
+
+        if (fs::exists(file)) {
+          String string;
+          std::ifstream stream(file.string().c_str());
+          auto buffer = std::istreambuf_iterator<char>(stream);
+          auto end = std::istreambuf_iterator<char>();
+          string.assign(buffer, end);
+          stream.close();
+
+          script = (
+            String("<script type=\"importmap\">\n") +
+            string +
+            String("\n</script>\n") +
+            script
+          );
+        }
+      }
+
+      const auto file = Path(path);
+
+      if (fs::exists(file)) {
+        char* contents = nullptr;
+        gsize size = 0;
+        if (g_file_get_contents(file.c_str(), &contents, &size, &error)) {
+          String html = contents;
+
+          if (html.find("<head>") != String::npos) {
+            html = replace(html, "<head>", String("<head>" + script));
+          } else if (html.find("<body>") != String::npos) {
+            html = replace(html, "<body>", String("<body>" + script));
+          } else if (html.find("<html>") != String::npos) {
+            html = replace(html, "<html>", String("<html>" + script));
+          } else {
+            html = script + html;
+          }
+
+          data = new char[html.size()]{0};
+          memcpy(data, html.data(), html.size());
+          g_free(contents);
+
+          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), nullptr);
+
+          if (stream) {
+            response = webkit_uri_scheme_response_new(stream, -1);
+          } else {
+            delete [] data;
+            data = nullptr;
+          }
+        }
+      }
+    } else {
+      auto file = g_file_new_for_path(path.c_str());
+      auto size = fs::file_size(path);
+
+      if (file) {
+        stream = (GInputStream*) g_file_read(file, nullptr, &error);
+        g_object_unref(file);
+      }
+
+      if (stream) {
+        response = webkit_uri_scheme_response_new(stream, (gint64) size);
+        g_object_unref(stream);
+      }
+    }
 
     if (!stream) {
       webkit_uri_scheme_request_finish_error(request, error);
@@ -2697,15 +3469,11 @@ static void registerSchemeHandler (Router *router) {
       return;
     }
 
-    gchar* mimeType = nullptr;
-    auto size = fs::file_size(path);
-    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-    auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
-    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
-
+    soup_message_headers_append(headers, "cache-control", "no-cache");
     soup_message_headers_append(headers, "access-control-allow-origin", "*");
     soup_message_headers_append(headers, "access-control-allow-methods", "*");
     soup_message_headers_append(headers, "access-control-allow-headers", "*");
+    soup_message_headers_append(headers, "access-control-allow-credentials", "true");
 
     for (const auto& line : webviewHeaders) {
       auto pair = split(trim(line), ':');
@@ -2732,7 +3500,30 @@ static void registerSchemeHandler (Router *router) {
     }
 
     webkit_uri_scheme_request_finish_with_response(request, response);
-    g_object_unref(stream);
+
+    if (data) {
+      g_input_stream_close_async(stream, 0, nullptr, +[](
+        GObject* object,
+        GAsyncResult* asyncResult,
+        gpointer userData
+      ) {
+        auto stream = (GInputStream*) object;
+        g_input_stream_close_finish(stream, asyncResult, nullptr);
+        g_object_unref(stream);
+        g_idle_add_full(
+          G_PRIORITY_DEFAULT_IDLE,
+          (GSourceFunc) [](gpointer userData) {
+            return G_SOURCE_REMOVE;
+          },
+          userData,
+           [](gpointer userData) {
+            delete [] static_cast<char *>(userData);
+          }
+        );
+      }, data);
+    } else {
+      g_object_unref(stream);
+    }
 
     if (mimeType) {
       g_free(mimeType);
@@ -2741,12 +3532,56 @@ static void registerSchemeHandler (Router *router) {
   router,
   0);
 
+  webkit_web_context_register_uri_scheme(ctx, "node", [](auto request, auto ptr) {
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto router = reinterpret_cast<IPC::Router*>(ptr);
+    auto userConfig = router->bridge->userConfig;
+
+    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+    if (uri.starts_with("node:///")) {
+      uri = uri.substr(10);
+    } else if (uri.starts_with("node://")) {
+      uri = uri.substr(9);
+    } else if (uri.starts_with("node:")) {
+      uri = uri.substr(7);
+    }
+
+    auto path = String("socket/" + uri);
+    auto ext = fs::path(path).extension().string();
+
+    if (ext.size() > 0 && !ext.starts_with(".")) {
+      ext = "." + ext;
+    }
+
+    if (ext.size() == 0 && !path.ends_with(".js")) {
+      path += ".js";
+      ext = ".js";
+    }
+
+    uri = "socket://" + bundleIdentifier + "/" + path;
+
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(uri)} }
+    ));
+
+    auto size = moduleSource.size();
+    auto bytes = moduleSource.data();
+    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+    auto response = webkit_uri_scheme_response_new(stream, size);
+
+    webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
+    webkit_uri_scheme_request_finish_with_response(request, response);
+    g_object_unref(stream);
+  },
+  router,
+  0);
+
   webkit_security_manager_register_uri_scheme_as_display_isolated(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
   webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
-
-  static const auto devHost = SSC::getDevHost();
 
   if (devHost.starts_with("http:")) {
     webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
@@ -2759,6 +3594,11 @@ static void registerSchemeHandler (Router *router) {
   webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
   webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
   webkit_security_manager_register_uri_scheme_as_local(security, "socket");
+
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "node");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "node");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "node");
+  webkit_security_manager_register_uri_scheme_as_local(security, "node");
 #endif
 }
 
@@ -2800,29 +3640,43 @@ static void registerSchemeHandler (Router *router) {
 }
 
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto fileManager = [[NSFileManager alloc] init];
+  auto userConfig = self.router->bridge->userConfig;
+  const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
-  auto request = task.request;
-  auto url = String(request.URL.absoluteString.UTF8String);
+  const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+  const auto request = task.request;
+  const auto scheme = String(request.URL.scheme.UTF8String);
+  const auto url = String(request.URL.absoluteString.UTF8String);
+
+  uint64_t clientId = self.router->bridge->id;
+
+  if (request.allHTTPHeaderFields != nullptr) {
+    if (request.allHTTPHeaderFields[@"runtime-client-id"] != nullptr) {
+      try {
+        clientId = std::stoull(request.allHTTPHeaderFields[@"runtime-client-id"].UTF8String);
+      } catch (...) {}
+    }
+  }
+
   auto message = Message(url, true);
   message.isHTTP = true;
   message.cancel = std::make_shared<MessageCancellation>();
 
-  auto webviewHeaders = split(userConfig["webview_headers"], '\n');
   auto headers = [NSMutableDictionary dictionary];
 
   for (const auto& line : webviewHeaders) {
-    auto pair = split(trim(line), ':');
-    auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-    auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+    const auto pair = split(trim(line), ':');
+    const auto key = @(trim(pair[0]).c_str());
+    const auto value = @(trim(pair[1]).c_str());
     headers[key] = value;
   }
 
+  headers[@"cache-control"] = @"no-cache";
   headers[@"access-control-allow-origin"] = @"*";
   headers[@"access-control-allow-methods"] = @"*";
   headers[@"access-control-allow-headers"] = @"*";
+  headers[@"access-control-allow-credentials"] = @"true";
 
   if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto response = [[NSHTTPURLResponse alloc]
@@ -2841,7 +3695,7 @@ static void registerSchemeHandler (Router *router) {
     return;
   }
 
-  if (String(request.URL.scheme.UTF8String) == "socket") {
+  if (scheme == "socket" || scheme == "node") {
     auto host = request.URL.host;
     auto components = [NSURLComponents
             componentsWithURL: request.URL
@@ -2853,6 +3707,7 @@ static void registerSchemeHandler (Router *router) {
 
     NSData* data = nullptr;
     bool isModule = false;
+
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     const auto basePath = String(NSBundle.mainBundle.resourcePath.UTF8String) + "/ui";
   #else
@@ -2883,6 +3738,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     if (
+      scheme != "node" &&
       host.UTF8String != nullptr &&
       String(host.UTF8String) == bundleIdentifier
     ) {
@@ -2893,7 +3749,16 @@ static void registerSchemeHandler (Router *router) {
 
       if (mount.path.size() > 0) {
         if (mount.resolution.redirect) {
-          auto redirectURL = mount.resolution.path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+          auto redirectURL = mount.resolution.path;
+
+          if (parsedPath.queryString.size() > 0) {
+            redirectURL += "?" + parsedPath.queryString;
+          }
+
+          if (parsedPath.fragment.size() > 0) {
+            redirectURL += "#" + parsedPath.fragment;
+          }
+
           auto redirectSource = String(
             "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
           );
@@ -2937,9 +3802,60 @@ static void registerSchemeHandler (Router *router) {
           }
 
           [url startAccessingSecurityScopedResource];
-          const auto data = [NSData dataWithContentsOfURL: url];
+          auto data = [NSData dataWithContentsOfURL: url];
           headers[@"content-length"] = [@(data.length) stringValue];
           [url stopAccessingSecurityScopedResource];
+
+
+          if (mount.path.ends_with("html")) {
+            const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
+            auto script = self.router->bridge->preload;
+
+            if (userConfig["webview_importmap"].size() > 0) {
+              const auto filename = userConfig["webview_importmap"];
+              const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+                stringByAppendingPathComponent: [NSString
+              #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+                stringWithFormat: @"/ui/%s", filename.c_str()
+              #else
+                stringWithFormat: @"/%s", filename.c_str()
+              #endif
+                ]
+              ]];
+
+              const auto data = [NSData
+                dataWithContentsOfURL: [NSURL fileURLWithPath: url.path]
+              ];
+
+              if (data && data.length > 0) {
+                const auto string = [NSString.alloc
+                  initWithData: data
+                      encoding: NSUTF8StringEncoding
+                ];
+
+                script = (
+                  String("<script type=\"importmap\">\n") +
+                  String(string.UTF8String) +
+                  String("\n</script>\n") +
+                  script
+                );
+              }
+            }
+
+            auto html = String(string.UTF8String);
+
+            if (html.find("<head>") != String::npos) {
+              html = replace(html, "<head>", String("<head>" + script));
+            } else if (html.find("<body>") != String::npos) {
+              html = replace(html, "<body>", String("<body>" + script));
+            } else if (html.find("<html>") != String::npos) {
+              html = replace(html, "<html>", String("<html>" + script));
+            } else {
+              html = script + html;
+            }
+
+            data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+          }
 
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: request.URL
@@ -2960,7 +3876,132 @@ static void registerSchemeHandler (Router *router) {
       } else if (path.size() == 0) {
         if (userConfig.contains("webview_default_index")) {
           path = userConfig["webview_default_index"];
-        } else {
+        } else if (!path.starts_with("/socket/service-worker")) {
+          if (self.router->core->serviceWorker.registrations.size() > 0) {
+            auto fetchRequest = ServiceWorkerContainer::FetchRequest {
+              String(request.URL.path.UTF8String),
+              String(request.HTTPMethod.UTF8String)
+            };
+
+            fetchRequest.client.id = clientId;
+            fetchRequest.client.preload = self.router->bridge->preload;
+
+            if (request.URL.query != nullptr) {
+              fetchRequest.query = String(request.URL.query.UTF8String);
+            }
+
+            if (request.allHTTPHeaderFields != nullptr) {
+              for (NSString* key in request.allHTTPHeaderFields) {
+                const auto value = [request.allHTTPHeaderFields objectForKey: key];
+                if (value != nullptr) {
+                  const auto entry = String(key.UTF8String) + ": " + String(value.UTF8String);
+                  fetchRequest.headers.push_back(entry);
+                }
+              }
+            }
+
+            const auto requestURL = String(request.URL.absoluteString.UTF8String);
+            const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
+              if (![self waitingForTask: task]) {
+                return;
+              }
+
+              if (res.statusCode == 0) {
+                @try {
+                  [task didFailWithError: [NSError
+                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                                 code: 1
+                             userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
+                    ]];
+                } @catch (id e) {
+                  // ignore possible 'NSInternalInconsistencyException'
+                }
+                return;
+              }
+
+              const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+              auto headers = [NSMutableDictionary dictionary];
+
+              for (const auto& line : webviewHeaders) {
+                const auto pair = split(trim(line), ':');
+                const auto key = @(trim(pair[0]).c_str());
+                const auto value = @(trim(pair[1]).c_str());
+                headers[key] = value;
+              }
+
+              for (const auto& entry : res.headers) {
+                auto pair = split(trim(entry), ':');
+                auto key = @(trim(pair[0]).c_str());
+                auto value = @(trim(pair[1]).c_str());
+                headers[key] = value;
+              }
+
+              @try {
+                if (![self waitingForTask: task]) {
+                  return;
+                }
+
+                const auto response = [[NSHTTPURLResponse alloc]
+                  initWithURL: [NSURL URLWithString: @(requestURL.c_str())]
+                  statusCode: res.statusCode
+                  HTTPVersion: @"HTTP/1.1"
+                  headerFields: headers
+                ];
+
+                if (![self waitingForTask: task]) {
+                #if !__has_feature(objc_arc)
+                  [response release];
+                #endif
+                  return;
+                }
+
+                [task didReceiveResponse: response];
+
+                if (![self waitingForTask: task]) {
+                #if !__has_feature(objc_arc)
+                  [response release];
+                #endif
+                  return;
+                }
+
+                const auto data = [NSData
+                  dataWithBytes: res.buffer.bytes
+                         length: res.buffer.size
+                ];
+
+                if (res.buffer.size && data.length > 0) {
+                  [task didReceiveData: data];
+                }
+
+                [task didFinish];
+                [self finalizeTask: task];
+              #if !__has_feature(objc_arc)
+                [response release];
+              #endif
+              } @catch (id e) {
+                // ignore possible 'NSInternalInconsistencyException'
+              }
+            });
+
+            if (fetched) {
+              [self enqueueTask: task withMessage: message];
+              self.router->bridge->core->setTimeout(32000, [=] () mutable {
+                if ([self waitingForTask: task]) {
+                  @try {
+                    [self finalizeTask: task];
+                    [task didFailWithError: [NSError
+                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                                 code: 1
+                             userInfo: @{NSLocalizedDescriptionKey: @"ServiceWorker request timed out."}
+                    ]];
+                  } @catch (id e) {
+                  }
+                }
+              });
+              return;
+            }
+          }
+
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: request.URL
             statusCode: 404
@@ -2977,7 +4018,16 @@ static void registerSchemeHandler (Router *router) {
           return;
         }
       } else if (resolved.redirect) {
-        auto redirectURL = path + "?" + parsedPath.queryString + "#" + parsedPath.fragment;
+        auto redirectURL = path;
+
+        if (parsedPath.queryString.size() > 0) {
+          redirectURL += "?" + parsedPath.queryString;
+        }
+
+        if (parsedPath.fragment.size() > 0) {
+          redirectURL += "#" + parsedPath.fragment;
+        }
+
         auto redirectSource = String(
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
@@ -3024,9 +4074,6 @@ static void registerSchemeHandler (Router *router) {
       components.host = request.URL.host;
     } else {
       isModule = true;
-      if (ext.size() == 0 && !path.ends_with(".js")) {
-        path += ".js";
-      }
 
       auto prefix = String(
         path.starts_with(bundleIdentifier)
@@ -3035,6 +4082,34 @@ static void registerSchemeHandler (Router *router) {
       );
 
       path = replace(path, bundleIdentifier + "/", "");
+
+      if (scheme == "node") {
+        const auto specifier = replace(path, ".js", "");
+        if (
+          std::find(
+           allowedNodeCoreModules.begin(),
+           allowedNodeCoreModules.end(),
+           specifier
+          ) == allowedNodeCoreModules.end()
+        ) {
+          const auto response = [NSHTTPURLResponse.alloc
+            initWithURL: request.URL
+             statusCode: 404
+            HTTPVersion: @"HTTP/1.1"
+           headerFields: headers
+          ];
+
+          [task didReceiveResponse: response];
+          [task didFinish];
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+      }
+      if (ext.size() == 0 && !path.ends_with(".js")) {
+        path += ".js";
+      }
 
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
       components.path = [[[NSBundle mainBundle] resourcePath]
@@ -3090,14 +4165,75 @@ static void registerSchemeHandler (Router *router) {
     }
 
     components.scheme = @("socket");
-    headers[@"content-location"] = components.URL.absoluteString;
+    headers[@"content-location"] = components.URL.path;
+    const auto socketModulePrefix = "socket://" + userConfig["meta_bundle_identifier"] + "/socket/";
 
-    auto statusCode = exists ? 200 : 404;
-    auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: components.URL
-       statusCode: statusCode
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: headers
+    const auto absoluteURL = String(components.URL.absoluteString.UTF8String);
+    const auto absoluteURLPathExtension = components.URL.pathExtension != nullptr
+      ? String(components.URL.pathExtension.UTF8String)
+      : String("");
+
+
+    if (!isModule && absoluteURL.starts_with(socketModulePrefix)) {
+      isModule = true;
+    }
+
+    if (absoluteURLPathExtension.ends_with("html")) {
+      const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
+      auto script = self.router->bridge->preload;
+
+      if (userConfig["webview_importmap"].size() > 0) {
+        const auto filename = Path(userConfig["webview_importmap"]).filename();
+        const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
+          stringByAppendingPathComponent: [NSString
+        #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+          stringWithFormat: @"/ui/%s", filename.c_str()
+        #else
+          stringWithFormat: @"/%s", filename.c_str()
+        #endif
+          ]
+        ]];
+
+        const auto data = [NSData
+          dataWithContentsOfURL: [NSURL fileURLWithPath: url.path]
+        ];
+
+        if (data && data.length > 0) {
+          const auto string = [NSString.alloc
+            initWithData: data
+                encoding: NSUTF8StringEncoding
+          ];
+
+          script = (
+            String("<script type=\"importmap\">\n") +
+            String(string.UTF8String) +
+            String("\n</script>\n") +
+            script
+          );
+        }
+      }
+
+      auto html = String(string.UTF8String);
+
+      if (html.find("<head>") != String::npos) {
+        html = replace(html, "<head>", String("<head>" + script));
+      } else if (html.find("<body>") != String::npos) {
+        html = replace(html, "<body>", String("<body>" + script));
+      } else if (html.find("<html>") != String::npos) {
+        html = replace(html, "<html>", String("<html>" + script));
+      } else {
+        html = script + html;
+      }
+
+      data = [@(html.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+    }
+
+    const auto statusCode = exists ? 200 : 404;
+    const auto response = [NSHTTPURLResponse.alloc
+       initWithURL: components.URL
+        statusCode: statusCode
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: headers
     ];
 
     [task didReceiveResponse: response];
@@ -3105,12 +4241,12 @@ static void registerSchemeHandler (Router *router) {
     if (data && data.length > 0) {
       [task didReceiveData: data];
     }
+
     [task didFinish];
 
-    #if !__has_feature(objc_arc)
+  #if !__has_feature(objc_arc)
     [response release];
-    #endif
-
+  #endif
     return;
   }
 
@@ -3121,12 +4257,12 @@ static void registerSchemeHandler (Router *router) {
     headers[@"content-length"] = [@(post.length) stringValue];
 
     if (post.headers.size() > 0) {
-      auto lines = SSC::split(SSC::trim(post.headers), '\n');
+      const auto lines = SSC::split(SSC::trim(post.headers), '\n');
 
-      for (auto& line : lines) {
-        auto pair = split(trim(line), ':');
-        auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
-        auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+      for (const auto& line : lines) {
+        const auto pair = split(trim(line), ':');
+        const auto key = @(trim(pair[0]).c_str());
+        const auto value = @(trim(pair[1]).c_str());
         headers[key] = value;
       }
     }
@@ -3141,11 +4277,11 @@ static void registerSchemeHandler (Router *router) {
     [task didReceiveResponse: response];
 
     if (post.body) {
-      auto data = [NSData dataWithBytes: post.body length: post.length];
+      const auto data = [NSData dataWithBytes: post.body length: post.length];
       [task didReceiveData: data];
     } else {
-      auto string = [NSString stringWithUTF8String: ""];
-      auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
+      const auto string = @("");
+      const auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
       [task didReceiveData: data];
     }
 
@@ -3181,19 +4317,21 @@ static void registerSchemeHandler (Router *router) {
     auto id = result.id;
     auto headers = [NSMutableDictionary dictionary];
 
+    headers[@"cache-control"] = @"no-cache";
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
+    headers[@"access-control-allow-credentials"] = @"true";
 
     for (const auto& header : result.headers.entries) {
-      auto key = [NSString stringWithUTF8String: trim(header.key).c_str()];
-      auto value = [NSString stringWithUTF8String: trim(header.value.str()).c_str()];
+      const auto key = @(trim(header.key).c_str());
+      const auto value = @(trim(header.value.str()).c_str());
       headers[key] = value;
     }
 
     NSData* data = nullptr;
-    if (result.post.event_stream != nullptr) {
-      *result.post.event_stream = [=](
+    if (result.post.eventStream != nullptr) {
+      *result.post.eventStream = [=](
         const char* name,
         const char* data,
         bool finished
@@ -3202,32 +4340,36 @@ static void registerSchemeHandler (Router *router) {
           return false;
         }
 
-        auto event_name = [NSString stringWithUTF8String: name];
-        auto event_data = [NSString stringWithUTF8String: data];
+        const auto eventName = @(name);
+        const auto eventData = @(data);
 
-        if (event_name.length > 0 || event_data.length > 0) {
-          auto event =
-              event_name.length > 0 && event_data.length > 0
-                  ? [NSString stringWithFormat:@"event: %@\ndata: %@\n\n",
-                                               event_name, event_data]
-              : event_data.length > 0
-                  ? [NSString stringWithFormat:@"data: %@\n\n", event_data]
-                  : [NSString stringWithFormat:@"event: %@\n\n", event_name];
+        if (eventName.length > 0 || eventData.length > 0) {
+          auto event = eventName.length > 0 && eventData.length > 0
+            ? [NSString stringWithFormat:
+                @"event: %@\ndata: %@\n\n", eventName, eventData
+              ]
+            : eventData.length > 0
+              ? [NSString stringWithFormat: @"data: %@\n\n", eventData]
+              : [NSString stringWithFormat: @"event: %@\n\n", eventName];
 
           [task didReceiveData: [event dataUsingEncoding:NSUTF8StringEncoding]];
         }
 
         if (finished) {
+          if (![self waitingForTask: task]) {
+            return false;
+          }
           [task didFinish];
           [self finalizeTask: task];
         }
 
         return true;
       };
+
       headers[@"content-type"] = @"text/event-stream";
       headers[@"cache-control"] = @"no-store";
-    } else if (result.post.chunk_stream != nullptr) {
-      *result.post.chunk_stream = [=](
+    } else if (result.post.chunkStream != nullptr) {
+      *result.post.chunkStream = [=](
         const char* chunk,
         size_t chunk_size,
         bool finished
@@ -3236,9 +4378,12 @@ static void registerSchemeHandler (Router *router) {
           return false;
         }
 
-        [task didReceiveData:[NSData dataWithBytes:chunk length:chunk_size]];
+        [task didReceiveData: [NSData dataWithBytes:chunk length:chunk_size]];
 
         if (finished) {
+          if (![self waitingForTask: task]) {
+            return false;
+          }
           [task didFinish];
           [self finalizeTask: task];
         }
@@ -3262,23 +4407,51 @@ static void registerSchemeHandler (Router *router) {
       data = [NSData dataWithBytes: body length: size];
     }
 
-    auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: headers
-    ];
+    @try {
+      if (![self waitingForTask: task]) {
+        return;
+      }
 
-    [task didReceiveResponse: response];
-    if (data != nullptr) {
-      [task didReceiveData: data];
-      [task didFinish];
-      [self finalizeTask: task];
+      auto response = [[NSHTTPURLResponse alloc]
+        initWithURL: task.request.URL
+         statusCode: 200
+        HTTPVersion: @"HTTP/1.1"
+       headerFields: headers
+      ];
+
+      if (![self waitingForTask: task]) {
+      #if !__has_feature(objc_arc)
+        [response release];
+      #endif
+        return;
+      }
+
+      [task didReceiveResponse: response];
+
+      if (data != nullptr) {
+        if (![self waitingForTask: task]) {
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+
+        [task didReceiveData: data];
+        if (![self waitingForTask: task]) {
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+        [task didFinish];
+        [self finalizeTask: task];
+      }
+
+    #if !__has_feature(objc_arc)
+      [response release];
+    #endif
+    } @catch (::id e) {
     }
-
-  #if !__has_feature(objc_arc)
-    [response release];
-  #endif
   });
 
   if (!invoked) {
@@ -3292,9 +4465,10 @@ static void registerSchemeHandler (Router *router) {
     };
 
     auto msg = JSON::Object(json).str();
-    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto str = @(msg.c_str());
     auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
+    headers[@"access-control-allow-credentials"] = @"true";
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
     headers[@"content-length"] = [@(msg.size()) stringValue];
@@ -3398,7 +4572,7 @@ static void registerSchemeHandler (Router *router) {
 
 - (BOOL) getCurrentPositionWithCompletion: (void (^)(NSError*, CLLocation*)) completion {
   return [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.router->bridge->userConfig;
     if (!isAuthorized) {
       auto reason = @("Location observer could not be activated");
 
@@ -3409,7 +4583,7 @@ static void registerSchemeHandler (Router *router) {
       }
 
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
         code: -1
         userInfo: @{
           NSLocalizedDescriptionKey: reason
@@ -3452,10 +4626,10 @@ static void registerSchemeHandler (Router *router) {
   }
 
   auto performedActivation = [self attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-    static auto userConfig = SSC::getUserConfig();
+    auto userConfig = self.router->bridge->userConfig;
     if (!isAuthorized) {
       auto error = [NSError
-        errorWithDomain: @(userConfig["bundle_identifier"].c_str())
+        errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
         code: -1
         userInfo: @{
           @"Error reason": @("Location observer could not be activated")
@@ -3536,8 +4710,8 @@ static void registerSchemeHandler (Router *router) {
 
 - (void)            locationManager: (CLLocationManager*) locationManager
   didFinishDeferredUpdatesWithError: (NSError*) error {
-  debug("locationManager:didFinishDeferredUpdatesWithError: %@", error);
  // TODO(@jwerle): handle deferred error
+  debug("locationManager:didFinishDeferredUpdatesWithError: %@", error);
 }
 
 - (void) locationManagerDidPauseLocationUpdates: (CLLocationManager*) locationManager {
@@ -3702,12 +4876,23 @@ static void registerSchemeHandler (Router *router) {
 #endif
 
 namespace SSC::IPC {
-  Bridge::Bridge (Core *core) : router() {
-    static auto userConfig = SSC::getUserConfig();
+  static Vector<Bridge*> instances;
+  static Mutex mutex;
 
+#if SSC_PLATFORM_DESKTOP
+  static FileSystemWatcher* fileSystemWatcher = nullptr;
+#endif
+
+  Bridge::Bridge (Core *core, Map userConfig)
+    : userConfig(userConfig),
+      router()
+  {
+    Lock lock(SSC::IPC::mutex);
+    instances.push_back(this);
+
+    this->id = rand64();
     this->core = core;
     this->router.core = core;
-    this->router.bridge = this;
 
     this->bluetooth.sendFunction = [this](
       const String& seq,
@@ -3724,33 +4909,107 @@ namespace SSC::IPC {
       this->router.emit(seq, value.str());
     };
 
-  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-    if (isDebugEnabled() && userConfig["webview_watch"] == "true") {
-      this->fileSystemWatcher = new FileSystemWatcher(getcwd());
-      this->fileSystemWatcher->core = this->core;
-      this->fileSystemWatcher->start([=, this](
+  #if SSC_PLATFORM_DESKTOP
+    auto defaultUserConfig = SSC::getUserConfig();
+    if (
+      fileSystemWatcher == nullptr &&
+      isDebugEnabled() &&
+      defaultUserConfig["webview_watch"] == "true"
+    ) {
+      fileSystemWatcher = new FileSystemWatcher(getcwd());
+      fileSystemWatcher->core = this->core;
+      fileSystemWatcher->start([=](
         const auto& path,
         const auto& events,
         const auto& context
       ) mutable {
-        auto json = JSON::Object::Entries {
-          {"path", std::filesystem::relative(path, getcwd()).string()}
-        };
+        Lock lock(SSC::IPC::mutex);
 
-        auto result = SSC::IPC::Result(json);
-        this->router.emit("filedidchange", result.json().str());
+        static const auto cwd = getcwd();
+        const auto relativePath = std::filesystem::relative(path, cwd).string();
+        const auto json = JSON::Object::Entries {{"path", relativePath}};
+        const auto result = SSC::IPC::Result(json);
+
+        for (auto& bridge : instances) {
+          auto userConfig = bridge->userConfig;
+          if (
+            !platform.ios &&
+            !platform.android &&
+            userConfig["webview_watch"] == "true" &&
+            bridge->userConfig["webview_service_worker_mode"] != "hybrid" &&
+            (!userConfig.contains("webview_watch_reload") || userConfig.at("webview_watch_reload") != "false")
+          ) {
+            // check if changed path was a service worker, if so unregister it so it can be reloaded
+            for (const auto& entry : fileSystemWatcher->core->serviceWorker.registrations) {
+              const auto& registration = entry.second;
+            #if defined(__ANDROID__)
+              auto scriptURL = String("https://");
+            #else
+              auto scriptURL = String("socket://");
+            #endif
+
+              scriptURL += userConfig["meta_bundle_identifier"];
+
+              if (!relativePath.starts_with("/")) {
+                scriptURL += "/";
+              }
+
+              scriptURL += relativePath;
+              if (registration.scriptURL == scriptURL) {
+                // 1. unregister service worker
+                // 2. re-register service worker
+                // 3. wait for it to be registered
+                // 4. emit 'filedidchange' event
+                bridge->core->serviceWorker.unregisterServiceWorker(entry.first);
+                bridge->core->setTimeout(8, [bridge, result, &registration] () {
+                  bridge->core->setInterval(8, [bridge, result, &registration] (auto cancel) {
+                    if (registration.state == ServiceWorkerContainer::Registration::State::Activated) {
+                      cancel();
+
+                      uint64_t timeout = 500;
+                      if (bridge->userConfig["webview_watch_service_worker_reload_timeout"].size() > 0) {
+                        try {
+                          timeout = std::stoull(bridge->userConfig["webview_watch_service_worker_reload_timeout"]);
+                        } catch (...) {}
+                      }
+
+                      bridge->core->setTimeout(timeout, [bridge, result] () {
+                        bridge->router.emit("filedidchange", result.json().str());
+                      });
+                    }
+                  });
+
+                  bridge->core->serviceWorker.registerServiceWorker(registration.options);
+                });
+                return;
+              }
+            }
+          }
+
+          bridge->router.emit("filedidchange", result.json().str());
+        }
       });
     }
   #endif
+
+    this->router.init(this);
   }
 
   Bridge::~Bridge () {
-  #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-    if (this->fileSystemWatcher) {
-      this->fileSystemWatcher->stop();
-      delete this->fileSystemWatcher;
+    Lock lock(SSC::IPC::mutex);
+    const auto cursor = std::find(instances.begin(), instances.end(), this);
+    if (cursor != instances.end()) {
+      instances.erase(cursor);
     }
-  #endif
+
+    #if SSC_PLATFORM_DESKTOP
+      if (instances.size() == 0) {
+        if (fileSystemWatcher) {
+          fileSystemWatcher->stop();
+          delete fileSystemWatcher;
+        }
+      }
+    #endif
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
@@ -3804,8 +5063,11 @@ namespace SSC::IPC {
     }
   }
 
-  /*
+  const Vector<String>& Bridge::getAllowedNodeCoreModules () const {
+    return allowedNodeCoreModules;
+  }
 
+  /*
     .
     ├── a-conflict-index
     │             └── index.html
@@ -3838,7 +5100,7 @@ namespace SSC::IPC {
     }
 
     // Resolve the full path
-    fs::path fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
+    const auto fullPath = (fs::path(basePath) / fs::path(inputPath)).make_preferred();
 
     // 1. Try the given path if it's a file
     if (fs::is_regular_file(fullPath)) {
@@ -3846,7 +5108,7 @@ namespace SSC::IPC {
     }
 
     // 2. Try appending a `/` to the path and checking for an index.html
-    fs::path indexPath = fullPath / fs::path("index.html");
+    const auto indexPath = fullPath / fs::path("index.html");
     if (fs::is_regular_file(indexPath)) {
       if (fullPath.string().ends_with("\\") || fullPath.string().ends_with("/")) {
         return Router::WebViewURLPathResolution{
@@ -3862,7 +5124,7 @@ namespace SSC::IPC {
     }
 
     // 3. Check if appending a .html file extension gives a valid file
-    fs::path htmlPath = fullPath;
+    auto htmlPath = fullPath;
     htmlPath.replace_extension(".html");
     if (fs::is_regular_file(htmlPath)) {
       return Router::WebViewURLPathResolution{"/" + replace(fs::relative(htmlPath, basePath).string(), "\\\\", "/")};
@@ -3872,7 +5134,7 @@ namespace SSC::IPC {
     return Router::WebViewURLPathResolution{};
   };
 
-  Router::WebViewURLComponents Router::parseURL(const SSC::String& url) {
+  Router::WebViewURLComponents Router::parseURL (const SSC::String& url) {
     Router::WebViewURLComponents components;
     components.originalUrl = url;
 
@@ -3888,7 +5150,12 @@ namespace SSC::IPC {
     }
 
     if (queryPos != SSC::String::npos) { // Extract the query string
-      components.queryString = url.substr(queryPos + 1, fragmentPos != SSC::String::npos ? fragmentPos - queryPos - 1 : SSC::String::npos);
+      components.queryString = url.substr(
+        queryPos + 1,
+        fragmentPos != SSC::String::npos
+          ? fragmentPos - queryPos - 1
+          : SSC::String::npos
+      );
     }
 
     if (fragmentPos != SSC::String::npos) { // Extract the fragment
@@ -4010,8 +5277,10 @@ namespace SSC::IPC {
     return WebViewNavigatorMount {};
   }
 
-  Router::Router () {
-    static auto userConfig = SSC::getUserConfig();
+  Router::Router () {}
+
+  void Router::init (Bridge* bridge) {
+    this->bridge = bridge;
 
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
@@ -4021,9 +5290,6 @@ namespace SSC::IPC {
     [this->schemeHandler setRouter: this];
     [this->locationObserver setRouter: this];
     [this->networkStatusObserver setRouter: this];
-
-  #elif defined(__linux__) && !defined(__ANDROID__)
-    this->webkitWebContext = webkit_web_context_new();
   #endif
 
     initRouterTable(this);
@@ -4034,7 +5300,7 @@ namespace SSC::IPC {
   #if defined(__APPLE__)
     [this->networkStatusObserver start];
 
-    if (userConfig["permissions_allow_notifications"] != "false") {
+    if (bridge->userConfig["permissions_allow_notifications"] != "false") {
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
       if (!notificationCenter.delegate) {
@@ -4082,37 +5348,34 @@ namespace SSC::IPC {
   }
 
   Router::~Router () {
-  #if defined(__APPLE__)
-    if (this->networkStatusObserver != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->networkStatusObserver release];
-    #endif
-    }
+    #if defined(__APPLE__)
+      if (this->networkStatusObserver != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->networkStatusObserver release];
+        #endif
+      }
 
-    if (this->locationObserver != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->locationObserver release];
-    #endif
-    }
+      if (this->locationObserver != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->locationObserver release];
+        #endif
+      }
 
-    if (this->schemeHandler != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->schemeHandler release];
-    #endif
-    }
+      if (this->schemeHandler != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->schemeHandler release];
+        #endif
+      }
 
-    if (this->notificationPollTimer) {
-      [this->notificationPollTimer invalidate];
-    #if !__has_feature(objc_arc)
-      [this->notificationPollTimer release];
-    #endif
-    }
+      if (this->notificationPollTimer != nullptr) {
+        [this->notificationPollTimer invalidate];
+      }
 
-    this->notificationPollTimer = nullptr;
-    this->networkStatusObserver = nullptr;
-    this->locationObserver = nullptr;
-    this->schemeHandler = nullptr;
-  #endif
+      this->notificationPollTimer = nullptr;
+      this->networkStatusObserver = nullptr;
+      this->locationObserver = nullptr;
+      this->schemeHandler = nullptr;
+    #endif
   }
 
   void Router::preserveCurrentTable () {
@@ -4124,7 +5387,7 @@ namespace SSC::IPC {
     Lock lock(mutex);
 
     if (!this->listeners.contains(name)) {
-      this->listeners[name] = std::vector<MessageCallbackListenerContext>();
+      this->listeners[name] = Vector<MessageCallbackListenerContext>();
     }
 
     auto& listeners = this->listeners.at(name);
@@ -4196,6 +5459,10 @@ namespace SSC::IPC {
     size_t size,
     ResultCallback callback
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     auto message = Message(uri, true);
     return this->invoke(message, bytes, size, callback);
   }
@@ -4206,6 +5473,10 @@ namespace SSC::IPC {
     size_t size,
     ResultCallback callback
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     auto name = message.name;
     MessageCallbackContext ctx;
 
@@ -4297,6 +5568,10 @@ namespace SSC::IPC {
     const String data,
     const Post post
   ) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
@@ -4316,12 +5591,20 @@ namespace SSC::IPC {
     const String& name,
     const String data
   ) {
-    auto value = encodeURIComponent(data);
-    auto script = getEmitToRenderProcessJavaScript(name, value);
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
+    const auto value = encodeURIComponent(data);
+    const auto script = getEmitToRenderProcessJavaScript(name, value);
     return this->evaluateJavaScript(script);
   }
 
   bool Router::evaluateJavaScript (const String js) {
+    if (this->core->shuttingDown) {
+      return false;
+    }
+
     if (this->evaluateJavaScriptFunction != nullptr) {
       this->evaluateJavaScriptFunction(js);
       return true;
@@ -4331,6 +5614,10 @@ namespace SSC::IPC {
   }
 
   bool Router::dispatch (DispatchCallback callback) {
+    if (!this->core || this->core->shuttingDown) {
+      return false;
+    }
+
     if (this->dispatchFunction != nullptr) {
       this->dispatchFunction(callback);
       return true;

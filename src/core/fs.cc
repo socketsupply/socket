@@ -1755,7 +1755,11 @@ namespace SSC {
       };
 
       auto err = uv_fs_readlink(
-          &core->eventLoop, &ctx->req, path.c_str(), uv_cb);
+        &core->eventLoop,
+        &ctx->req,
+        path.c_str(),
+        uv_cb
+      );
 
       if (err < 0) {
         auto json = JSON::Object::Entries {

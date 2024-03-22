@@ -5,6 +5,7 @@ namespace SSC {
   String createJavaScript (const String& name, const String& source) {
     return String(
       ";(async () => {                                                       \n"
+      "  const globals = await import('socket:internal/globals');            \n"
       "  if (!globalThis.__RUNTIME_INIT_NOW__) {                             \n"
       "    await new Promise((resolve) => {                                  \n"
       "      globalThis.addEventListener('__runtime_init__', resolve, {      \n"
@@ -19,8 +20,11 @@ namespace SSC {
       "    'The webview environment may not be initialized correctly.'       \n"
       "  );                                                                  \n"
       "                                                                      \n"
-      "  " + trim(source) + ";                                               \n"
+      "  globals.get('RuntimeExecution').runInAsyncScope(async () => {       \n"
+      "    " + trim(source) + ";                                             \n"
+      "  });                                                                 \n"
       "})();                                                                 \n"
+      "undefined;                                                            \n"
       "//# sourceURL=" + name + "                                            \n"
     );
   }
@@ -86,7 +90,7 @@ namespace SSC {
       "}                                                                     \n"
       "                                                                      \n"
       "if (name === 'dropin' || name === 'drop') {                           \n"
-      "  return globalThis.dispatchEvent(new CustomEvent('platformdrop', {          \n"
+      "  return globalThis.dispatchEvent(new CustomEvent('platformdrop', {   \n"
       "    detail: {                                                         \n"
       "      ...detail,                                                      \n"
       "      files: Array.from(detail?.src || detail?.files || [])           \n"
@@ -94,7 +98,6 @@ namespace SSC {
       "    }                                                                 \n"
       "  }));                                                                \n"
       "}                                                                     \n"
-      "                                                                      \n"
       "const event = new CustomEvent(name, { detail, ...options });          \n"
       "target.dispatchEvent(event);                                          \n"
     );
@@ -159,7 +162,6 @@ namespace SSC {
       "} else {                                                              \n"
       "  detail = { data: detail };                                          \n"
       "}                                                                     \n"
-      "                                                                      \n"
       "                                                                      \n"
       "const event = new CustomEvent(eventName, { detail });                 \n"
       "globalThis.dispatchEvent(event);                                      \n"

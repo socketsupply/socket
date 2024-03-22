@@ -1,7 +1,7 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import debug from './index.js'
+import { debug } from './index.js'
 
 /**
  * Hash function factory.
@@ -354,7 +354,6 @@ export class Packet {
         continue
       }
 
-      // console.log(k, value, spec)
       const encoded = Buffer.from(value || spec.default, spec.encoding)
 
       if (value?.length && encoded.length > spec.bytes) {

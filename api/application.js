@@ -18,7 +18,144 @@ import os from './os.js'
 
 import * as exports from './application.js'
 
+function serializeConfig (config) {
+  if (!config || typeof config !== 'object') {
+    return ''
+  }
+
+  const entries = []
+  for (const key in config) {
+    entries.push(`${key} = ${config[key]}`)
+  }
+
+  return entries.join('\n')
+}
+
 export { menu }
+
+// get this from constant value in runtime
+export const MAX_WINDOWS = 32
+
+export class ApplicationWindowList {
+  #list = []
+
+  static from (...args) {
+    if (Array.isArray(args[0])) {
+      return new this(args[0])
+    }
+
+    return new this(args)
+  }
+
+  constructor (items) {
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        this.add(item)
+      }
+    }
+  }
+
+  get length () {
+    return this.#list.length
+  }
+
+  get size () {
+    return this.length
+  }
+
+  get [Symbol.iterator] () {
+    return this.#list[Symbol.iterator]
+  }
+
+  forEach (callback, thisArg) {
+    this.#list.forEach(callback, thisArg)
+  }
+
+  item (index) {
+    return this[index] ?? undefined
+  }
+
+  entries () {
+    const entries = []
+
+    for (const item of this.#list) {
+      entries.push([item.index, item])
+    }
+
+    return entries
+  }
+
+  keys () {
+    return this.entries().map((entry) => entry[0])
+  }
+
+  values () {
+    return this.entries().map((entry) => entry[1])
+  }
+
+  add (window) {
+    if (Number.isFinite(window.index) && window.index > -1) {
+      this[window.index] = window
+
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === window.index) {
+          this.#list.splice(i, 1)
+          break
+        }
+      }
+
+      this.#list.push(window)
+      this.#list.sort((a, b) => a.index - b.index)
+    }
+
+    return this
+  }
+
+  remove (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      delete this[index]
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === index) {
+          this.#list.splice(i, 1)
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  contains (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      return Boolean(this[index])
+    }
+
+    return false
+  }
+
+  clear () {
+    for (const item of this.#list) {
+      delete this[item.index]
+    }
+
+    this.#list = []
+    return this
+  }
+}
 
 /**
  * Returns the current window index
@@ -31,9 +168,17 @@ export function getCurrentWindowIndex () {
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
- * @param {number} opts.index - the index of the window
- * @param {string} opts.path - the path to the HTML file to load into the window
- * @param {string=} opts.title - the title of the window
+ * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
+ * @param {boolean=} opts.closable - deterime if the window can be closed.
+ * @param {boolean=} opts.minimizable - deterime if the window can be minimized.
+ * @param {boolean=} opts.maximizable - deterime if the window can be maximized.
+ * @param {number} [opts.margin] - a margin around the webview. (Private)
+ * @param {number} [opts.radius] - a radius on the webview. (Private)
+ * @param {number} opts.index - the index of the window.
+ * @param {string} opts.path - the path to the HTML file to load into the window.
+ * @param {string=} opts.title - the title of the window.
+ * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
+ * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -45,6 +190,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
  * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
+ * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -59,16 +205,49 @@ export async function createWindow (opts) {
     index: globalThis.__args.index,
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
+    closable: opts.closable === true,
+    maximizable: opts.maximizable ?? true,
+    minimizable: opts.minimizable ?? true,
     frameless: opts.frameless ?? false,
+    aspectRatio: opts.aspectRatio ?? '',
+    titleBarStyle: opts.titleBarStyle ?? '',
+    trafficLightPosition: opts.trafficLightPosition ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
+    /**
+     * @private
+     * @type {number}
+     */
+    radius: opts.radius ?? 0,
+    /**
+     * @private
+     * @type {number}
+     */
+    margin: opts.margin ?? 0,
     minWidth: opts.minWidth ?? 0,
     minHeight: opts.minHeight ?? 0,
     maxWidth: opts.maxWidth ?? '100%',
     maxHeight: opts.maxHeight ?? '100%',
     headless: opts.headless === true,
     // @ts-ignore
-    debug: opts.debug === true // internal
+    debug: opts.debug === true, // internal
+    userScript: encodeURIComponent(opts.userScript ?? ''),
+    // @ts-ignore
+    __runtime_primordial_overrides__: (
+      // @ts-ignore
+      opts.__runtime_primordial_overrides__ &&
+      // @ts-ignore
+      typeof opts.__runtime_primordial_overrides__ === 'object'
+      // @ts-ignore
+        ? JSON.stringify(opts.__runtime_primordial_overrides__)
+        : ''
+    ),
+    // @ts-ignore
+    config: typeof opts?.config === 'string'
+      // @ts-ignore
+      ? opts.config
+      // @ts-ignore
+      : (serializeConfig(opts?.config) ?? '')
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
@@ -113,10 +292,10 @@ export async function createWindow (opts) {
  * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
-  if (os.platform() === 'ios') {
+  if (os.platform() === 'ios' || os.platform() === 'android') {
     return {
-      width: globalThis.screen.availWidth,
-      height: globalThis.screen.availHeight
+      width: globalThis.screen?.availWidth ?? 0,
+      height: globalThis.screen?.availHeight ?? 0
     }
   }
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
@@ -135,31 +314,58 @@ function throwOnInvalidIndex (index) {
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]} [indices] - the indices of the windows
- * @return {Promise<Object.<number, ApplicationWindow>>}
  * @throws {Error} - if indices is not an array of integer numbers
+ * @return {Promise<ApplicationWindowList>}
  */
-export async function getWindows (indices) {
-  if (os.platform() === 'ios' || os.platform() === 'android') {
-    return {
-      0: new ApplicationWindow({
+export async function getWindows (indices, options = null) {
+  if (
+    !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
+    (os.platform() === 'ios' || os.platform() === 'android')
+  ) {
+    return new ApplicationWindowList([
+      new ApplicationWindow({
         index: 0,
-        width: globalThis.screen.availWidth,
-        height: globalThis.screen.availHeight,
+        id: globalThis.__args?.client?.id ?? null,
+        width: globalThis.screen?.availWidth ?? 0,
+        height: globalThis.screen?.availHeight ?? 0,
         title: document.title,
         status: 31
       })
-    }
+    ])
   }
+
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
+
   if (!Array.isArray(resultIndices)) {
     throw new Error('Indices list must be an array of integer numbers')
   }
+
   for (const index of resultIndices) {
     throwOnInvalidIndex(index)
   }
-  const { data: windows } = await ipc.send('application.getWindows', resultIndices)
-  return Object.fromEntries(windows.map(window => [Number(window.index), new ApplicationWindow(window)]))
+
+  const result = await ipc.send('application.getWindows', resultIndices)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  // 0 indexed based key to `ApplicationWindow` object map
+  const windows = new ApplicationWindowList()
+
+  if (!Array.isArray(result.data)) {
+    return windows
+  }
+
+  for (const data of result.data) {
+    const max = Number.isFinite(options?.max) ? options.max : MAX_WINDOWS
+    if (options?.max === false || data.index < max) {
+      windows.add(new ApplicationWindow(data))
+    }
+  }
+
+  return windows
 }
 
 /**
@@ -168,9 +374,9 @@ export async function getWindows (indices) {
  * @throws {Error} - if index is not a valid integer number
  * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
  */
-export async function getWindow (index) {
+export async function getWindow (index, options) {
   throwOnInvalidIndex(index)
-  const windows = await getWindows([index])
+  const windows = await getWindows([index], options)
   return windows[index]
 }
 
@@ -179,7 +385,7 @@ export async function getWindow (index) {
  * @return {Promise<ApplicationWindow>}
  */
 export async function getCurrentWindow () {
-  return getWindow(globalThis.__args.index)
+  return await getWindow(globalThis.__args.index, { max: false })
 }
 
 /**

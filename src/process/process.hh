@@ -3,7 +3,8 @@
 
 #include <iostream>
 
-#include "../core/core.hh"
+#include "../core/types.hh"
+#include "../core/string.hh"
 
 #ifndef WIFEXITED
 #define WIFEXITED(w) ((w) & 0x7f)
@@ -115,12 +116,20 @@ namespace SSC {
     typedef SSC::String string_type;
   #endif
 
-    SSC::String command;
-    SSC::String argv;
-    SSC::String path;
-    std::atomic<bool> closed = true;
-    std::atomic<int> status = -1;
+    String command;
+    String argv;
+    String path;
+    Atomic<bool> closed = true;
+    Atomic<int> status = -1;
+    Atomic<int> lastWriteStatus = 0;
+    bool open_stdin;
     id_type id = 0;
+
+  #ifdef _WIN32
+    String shell = "";
+  #else
+    String shell = "/bin/sh";
+  #endif
 
   private:
 
@@ -177,7 +186,8 @@ namespace SSC {
     void close_stdin() noexcept;
     id_type open() noexcept {
       if (this->command.size() == 0) return 0;
-      auto pid = open(this->command + this->argv, this->path);
+      auto str = SSC::trim(this->command + " " + this->argv);
+      auto pid = open(str, this->path);
       read();
       return pid;
     }
@@ -189,13 +199,7 @@ namespace SSC {
       this->kill(this->getPID());
     }
 
-    int wait () {
-      do {
-        msleep(Process::PROCESS_WAIT_TIMEOUT);
-      } while (this->closed == false);
-
-      return this->status;
-    }
+    int wait ();
 
   private:
     Data data;
@@ -208,7 +212,6 @@ namespace SSC {
 #else
     std::thread stdout_thread, stderr_thread;
 #endif
-    bool open_stdin;
     std::mutex stdin_mutex;
     std::mutex stdout_mutex;
     std::mutex stderr_mutex;

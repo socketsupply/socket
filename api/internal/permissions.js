@@ -244,7 +244,7 @@ export async function query (descriptor, options) {
     throw result.err
   }
 
-  return new PermissionStatus(name, result.data.state, options)
+  return new PermissionStatus(name, result.data?.state, options)
 }
 
 /**

@@ -8,36 +8,73 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
-import location from './location.js'
 import { URL } from './url.js'
 
-import * as exports from './module.js'
-export default exports
-
 // builtins
-import buffer from './buffer.js'
+import {
+  AsyncLocalStorage,
+  AsyncResource,
+  executionAsyncResource,
+  executionAsyncId,
+  triggerAsyncId,
+  createHook,
+  AsyncHook
+} from './async.js'
+
+// eslint-disable-next-line
+import _async from './async.js'
+
+// eslint-disable-next-line
+import application from './application.js'
+import assert from './assert.js'
+import * as buffer from './buffer.js'
+// eslint-disable-next-line
+import child_process from './child_process.js'
 import console from './console.js'
+import constants from './constants.js'
+import crypto from './crypto.js'
 import dgram from './dgram.js'
 import dns from './dns.js'
 import events from './events.js'
 import extension from './extension.js'
 import fs from './fs.js'
 import gc from './gc.js'
+import http from './http.js'
+import https from './https.js'
 import ipc from './ipc.js'
+import language from './language.js'
+import location from './location.js'
+import mime from './mime.js'
+import network from './network.js'
 import os from './os.js'
 import { posix as path } from './path.js'
 import process from './process.js'
+import querystring from './querystring.js'
 import stream from './stream.js'
+// eslint-disable-next-line
+import string_decoder from './string_decoder.js'
 import test from './test.js'
+import timers from './timers.js'
 import url from './url.js'
 import util from './util.js'
 import vm from './vm.js'
+import window from './window.js'
+// eslint-disable-next-line
+import worker_threads from './worker_threads.js'
 
 /**
  * @typedef {function(string, Module, function): undefined} ModuleResolver
  */
 
 const cache = new Map()
+
+function maybeParseJSON (string) {
+  try {
+    return JSON.parse(string)
+  } catch {
+    return null
+  }
+}
 
 class ModuleRequest {
   id = null
@@ -48,8 +85,26 @@ class ModuleRequest {
     return request.load()
   }
 
+  static verifyRequestContentLocation (request) {
+    const headers = Headers.from(request)
+    const contentLocation = headers.get('content-location')
+    // if a content location was given, check extension name
+    if (contentLocation && URL.canParse(contentLocation, globalThis.location.href)) {
+      const url = new URL(contentLocation, globalThis.location.href)
+      if (!/js|json|mjs|cjs|jsx|ts|tsx/.test(path.extname(url.pathname))) {
+        return false
+      }
+    }
+
+    return true
+  }
+
   constructor (pathname, parent) {
-    this.url = new URL(pathname, parent || location.origin || '/')
+    const origin = globalThis.location.origin.startsWith('blob:')
+      ? new URL(new URL(globalThis.location.href).pathname).origin
+      : globalThis.location.origin
+
+    this.url = new URL(pathname, parent || origin || '/')
     this.id = this.url.toString()
   }
 
@@ -58,6 +113,11 @@ class ModuleRequest {
     const request = new XMLHttpRequest()
     request.open('HEAD', id, false)
     request.send(null)
+
+    if (!ModuleRequest.verifyRequestContentLocation(request)) {
+      return 404
+    }
+
     return request.status
   }
 
@@ -77,6 +137,10 @@ class ModuleRequest {
     request.open('GET', id, false)
     request.send(null)
 
+    if (!ModuleRequest.verifyRequestContentLocation(request)) {
+      return null
+    }
+
     const headers = Headers.from(request)
     let responseText = null
 
@@ -89,7 +153,7 @@ class ModuleRequest {
 
     const response = new ModuleResponse(this, headers, responseText)
 
-    if (request.status < 400 && responseText) {
+    if (request.status < 400) {
       cache.set(id, response)
     }
 
@@ -130,6 +194,10 @@ function CommonJSModuleScope (
   // eslint-disable-next-line no-unused-vars
   const console = require('socket:console')
   // eslint-disable-next-line no-unused-vars
+  const crypto = require('socket:crypto')
+  // eslint-disable-next-line no-unused-vars
+  const { Buffer } = require('socket:buffer')
+  // eslint-disable-next-line no-unused-vars
   const global = new Proxy(globalThis, {
     get (target, key, receiver) {
       if (key === 'process') {
@@ -140,6 +208,30 @@ function CommonJSModuleScope (
         return console
       }
 
+      if (key === 'crypto') {
+        return crypto
+      }
+
+      if (key === 'Buffer') {
+        return Buffer
+      }
+
+      if (key === 'global') {
+        return global
+      }
+
+      if (key === 'module') {
+        return Module.main
+      }
+
+      if (key === 'exports') {
+        return Module.main.exports
+      }
+
+      if (key === 'require') {
+        return Module.main.require
+      }
+
       return Reflect.get(target, key, receiver)
     }
   })
@@ -147,7 +239,7 @@ function CommonJSModuleScope (
   // eslint-disable-next-line no-unused-expressions
   void exports, require, module, __filename, __dirname
   // eslint-disable-next-line no-unused-expressions
-  void process, console, global
+  void process, console, global, crypto, Buffer
 
   return (async function () {
     'module code'
@@ -158,8 +250,31 @@ function CommonJSModuleScope (
  * A limited set of builtins exposed to CommonJS modules.
  */
 export const builtins = {
+  // eslint-disable-next-line
+  'async': _async,
+  // eslint-disable-next-line
+  async_context: {
+    AsyncLocalStorage,
+    AsyncResource
+  },
+  // eslint-disable-next-line
+  async_hooks: {
+    AsyncLocalStorage,
+    AsyncResource,
+    executionAsyncResource,
+    executionAsyncId,
+    triggerAsyncId,
+    createHook,
+    AsyncHook
+  },
+  application,
+  assert,
   buffer,
   console,
+  constants,
+  // eslint-disable-next-line
+  child_process,
+  crypto,
   dgram,
   dns,
   'dns/promises': dns.promises,
@@ -167,24 +282,70 @@ export const builtins = {
   extension,
   fs,
   'fs/promises': fs.promises,
+  http,
+  https,
   gc,
   ipc,
-  module: exports,
+  language,
+  location,
+  mime,
+  net: {},
+  network,
   os,
   path,
+  // eslint-disable-next-line
+  perf_hooks: {
+    performance: globalThis.performance
+  },
   process,
+  querystring,
   stream,
+  'stream/web': stream.web,
+  // eslint-disable-next-line
+  string_decoder,
+  sys: util,
   test,
+  timers,
+  'timers/promises': timers.promises,
+  tty: {
+    isatty: () => false,
+    WriteStream: util.IllegalConstructor,
+    ReadStream: util.IllegalConstructor
+  },
   util,
   url,
-  vm
+  vm,
+  window,
+  // eslint-disable-next-line
+  worker_threads
 }
+
+const socketRuntimeModules = [
+  'async',
+  'application',
+  'extension',
+  'gc',
+  'ipc',
+  'language',
+  'location',
+  'mime',
+  'network',
+  'window'
+]
 
 // alias
 export const builtinModules = builtins
 
 export function isBuiltin (name) {
+  const originalName = name
   name = name.replace(/^(socket|node):/, '')
+
+  if (
+    socketRuntimeModules.includes(name) &&
+    !originalName.startsWith('socket:')
+  ) {
+    return false
+  }
 
   if (name in builtins) {
     return true
@@ -205,7 +366,9 @@ export const COMMONJS_WRAPPER = CommonJSModuleScope
  * The main entry source origin.
  * @type {string}
  */
-export const MAIN_SOURCE_ORIGIN = location.href
+export const MAIN_SOURCE_ORIGIN = globalThis.location.href.startsWith('blob:')
+  ? new URL(new URL(globalThis.location.href).pathname).href
+  : globalThis.location.href
 
 /**
  * Creates a `require` function from a source URL.
@@ -259,16 +422,22 @@ export class Module extends EventTarget {
   static wrapper = COMMONJS_WRAPPER
 
   /**
+   * A limited set of builtins exposed to CommonJS modules.
+   * @type {object}
+   */
+  static builtins = builtins
+
+  /**
    * Creates a `require` function from a source URL.
    * @param {URL|string} sourcePath
    * @return {function}
    */
   static createRequire (sourcePath) {
     if (!sourcePath) {
-      return this.main.createRequire()
+      return Module.main.createRequire()
     }
 
-    return this.from(sourcePath).createRequire()
+    return Module.from(sourcePath).createRequire()
   }
 
   /**
@@ -283,8 +452,6 @@ export class Module extends EventTarget {
     const main = this.cache[MAIN_SOURCE_ORIGIN] = new Module(MAIN_SOURCE_ORIGIN)
     main.filename = main.id
     main.loaded = true
-    Object.freeze(main)
-    Object.seal(main)
     return main
   }
 
@@ -348,6 +515,12 @@ export class Module extends EventTarget {
   loaded = false
 
   /**
+   * `true` if the module is currently being loaded.
+   * @type {boolean}
+   */
+  loading = false
+
+  /**
    * The module's exports.
    * @type {any}
    */
@@ -392,17 +565,15 @@ export class Module extends EventTarget {
     }
 
     this.addEventListener('error', (event) => {
-      // @ts-ignore
-      const { error } = event
       if (this.isMain) {
         // bubble error to globalThis, if possible
         if (typeof globalThis.dispatchEvent === 'function') {
           // @ts-ignore
-          globalThis.dispatchEvent(new ErrorEvent('error', { error }))
+          globalThis.dispatchEvent(new ErrorEvent('error', event))
         }
       } else {
         // bubble errors to main module
-        Module.main.dispatchEvent(new ErrorEvent('error', { error }))
+        Module.main.dispatchEvent(new ErrorEvent('error', event))
       }
     })
   }
@@ -420,7 +591,7 @@ export class Module extends EventTarget {
    * @type {boolean}
    */
   get isNamed () {
-    return !this.isMain && !this.sourcePath?.startsWith('.')
+    return !this.isMain && !this.sourcePath?.startsWith('.') && !this.sourcePath?.startsWith('/')
   }
 
   /**
@@ -451,9 +622,14 @@ export class Module extends EventTarget {
    */
   load () {
     const { isNamed, sourcePath } = this
-    const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
+    const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || 'node_modules').split(':')
     const urls = []
 
+    if (this.loaded || this.loading) {
+      return true
+    }
+
+    this.loading = true
     Module.previous = Module.current
     Module.current = this
 
@@ -463,12 +639,16 @@ export class Module extends EventTarget {
     if (isNamed) {
       const name = sourcePath
       for (const prefix of prefixes) {
-        let current = new URL('.', this.id).toString()
+        let current = new URL('./', this.id).toString()
+
         do {
           const prefixURL = new URL(prefix, current)
           urls.push(new URL(name, prefixURL + '/').toString())
           current = new URL('..', current).toString()
         } while (new URL(current).pathname !== '/')
+
+        const prefixURL = new URL(prefix, current)
+        urls.push(new URL(name, prefixURL + '/').toString())
       }
     } else {
       urls.push(this.id)
@@ -485,6 +665,7 @@ export class Module extends EventTarget {
       Module.current = null
     }
 
+    this.loading = false
     return this.loaded
 
     function loadPackage (module, url) {
@@ -492,7 +673,7 @@ export class Module extends EventTarget {
       const urls = []
       const extname = path.extname(url)
 
-      if (extname && !hasTrailingSlash) {
+      if (/\.(js|json|mjs|cjs)/.test(extname) && !hasTrailingSlash) {
         urls.push(url)
       } else {
         if (hasTrailingSlash) {
@@ -514,7 +695,7 @@ export class Module extends EventTarget {
         const filename = urls.shift()
         const response = request(filename)
 
-        if (response.data) {
+        if (response.data !== null) {
           try {
             evaluate(module, filename, response.data)
           } catch (error) {
@@ -529,20 +710,49 @@ export class Module extends EventTarget {
         }
       }
 
-      const response = request(path.join(url, 'package.json'))
+      const response = request(
+        url + (hasTrailingSlash ? 'package.json' : '/package.json')
+      )
+
       if (response.data) {
         try {
           // @ts-ignore
           const packageJSON = JSON.parse(response.data)
-          const filename = !packageJSON.exports
-            ? path.resolve('/', url, packageJSON.browser || packageJSON.main)
-            : (
-                packageJSON.exports?.['.'] ||
-                packageJSON.exports?.['./index.js'] ||
-                packageJSON.exports?.['index.js']
-              )
+          let filename = null
+          if (packageJSON.main || packageJSON.browser) {
+            filename = path.resolve('/', url, packageJSON.main || packageJSON.browser)
+          } else if (packageJSON.exports) {
+            if (typeof packageJSON.exports === 'object') {
+              for (const key in packageJSON.exports) {
+                const value = packageJSON.exports[key]
+                // try to find main entry
+                if (key === '.' || key === './index.js' || key === 'index.js') {
+                  if (!filename) {
+                    if (typeof value === 'string') {
+                      filename = path.resolve(url, value)
+                    } else if (Array.isArray(value)) {
+                      for (const entry of value) {
+                        if (request(path.join(url, entry)).data) {
+                          filename = path.resosolve(url, entry)
+                          break
+                        }
+                      }
+                    } else if (value && typeof value === 'object') {
+                      if (typeof value.require === 'string') {
+                        filename = path.resolve(url, value.require)
+                      }
+                    }
+                  }
+                } else {
+                  // TODO
+                }
+              }
+            } else if (typeof packageJSON.exports === 'string') {
+              filename = path.resolve(url, packageJSON.exports)
+            }
+          }
 
-          evaluate(module, filename, request(filename).data)
+          loadPackage(module, filename)
         } catch (error) {
           error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
@@ -572,8 +782,6 @@ export class Module extends EventTarget {
           return false
         } finally {
           module.loaded = true
-          Object.freeze(module)
-          Object.seal(module)
         }
 
         if (module.parent) {
@@ -589,8 +797,16 @@ export class Module extends EventTarget {
         // eslint-disable-next-line no-new-func
         const define = new Function(`return ${source}`)()
 
+        const oldId = module.id
         module.id = new URL(filename, module.parent.id).toString()
         module.filename = filename
+
+        if (oldId !== module.id && Module.cache[module.id]) {
+          module.exports = Module.cache[module.id].exports
+          return true
+        }
+
+        Module.cache[module.id] = module
 
         // eslint-disable-next-line no-useless-call
         const promise = define.call(null,
@@ -620,8 +836,6 @@ export class Module extends EventTarget {
         return false
       } finally {
         module.loaded = true
-        Object.freeze(module)
-        Object.seal(module)
       }
     }
   }
@@ -634,20 +848,61 @@ export class Module extends EventTarget {
   createRequire () {
     const module = this
 
-    Object.assign(require, { cache: Module.cache })
-    Object.freeze(require)
-    Object.seal(require)
+    Object.assign(require, {
+      cache: Module.cache,
+      resolve (filename) {
+        return resolve(filename, Array.from(Module.resolvers))
+      }
+    })
 
     return require
 
     function require (filename) {
+      if (filename.startsWith('/') || filename.startsWith('\\')) {
+        filename = filename.replace(process.cwd(), '')
+      }
+
+      const imports = globalThis.document
+        ? maybeParseJSON(globalThis.document.querySelector('script[type=importmap')?.textContent)
+        : null
+
+      if (
+        (imports && typeof imports === 'object') &&
+        (!filename.startsWith('.') && filename.startsWith('/'))
+      ) {
+        for (const key in imports) {
+          const value = imports[key]
+          if (!value || typeof value !== 'string') {
+            continue
+          }
+
+          if (filename.startsWith(key) && key.endsWith('/') && filename.includes('/')) {
+            filename = filename.replace(filename, value)
+            break
+          } else if (filename === key) {
+            filename = value
+            break
+          }
+        }
+      }
+
       const resolvers = Array.from(Module.resolvers)
       const result = resolve(filename, resolvers)
 
-      if (typeof result === 'string') {
+      if (typeof result === 'string' && result.length < 256 && !/^[\s|\n]+/.test(result)) {
         const name = result.replace(/^(socket|node):/, '')
 
-        if (name in builtins) {
+        if (
+          socketRuntimeModules.includes(name) &&
+          !result.startsWith('socket:')
+        ) {
+          throw new ModuleNotFoundError(
+            `Cannot require module "${filename}" without 'socket:' prefix`,
+            module.children
+          )
+        }
+
+        if (isBuiltin(result)) {
           return builtins[name]
         }
 
@@ -660,7 +915,7 @@ export class Module extends EventTarget {
 
       throw new ModuleNotFoundError(
         `Cannot find module ${filename}`,
-        this.children
+        module.children
       )
     }
 
@@ -702,8 +957,7 @@ export class Module extends EventTarget {
   }
 }
 
-// builtins should never be overloaded through this object, instead
-// a custom resolver should be used
-Object.freeze(Object.seal(builtins))
-// prevent misuse of the `Module` class
-Object.freeze(Object.seal(Module))
+export default Module
+
+builtins.module = Module
+builtins.module.Module = Module

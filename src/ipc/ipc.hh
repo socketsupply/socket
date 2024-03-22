@@ -3,11 +3,6 @@
 
 #include "../core/core.hh"
 
-// only available on desktop
-#if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-#include "../core/file_system_watcher.hh"
-#endif
-
 namespace SSC::IPC {
   class Router;
   class Bridge;
@@ -117,6 +112,15 @@ namespace SSC::IPC {
 #endif
 
 namespace SSC::IPC {
+  struct Client {
+    struct CurrentRequest {
+      String url;
+    };
+
+    String id;
+    CurrentRequest currentRequest;
+  };
+
   struct MessageBuffer {
     size_t size = 0;
     char* bytes = nullptr;
@@ -145,6 +149,8 @@ namespace SSC::IPC {
     public:
       using Seq = String;
       MessageBuffer buffer;
+      Client client;
+
       String value = "";
       String name = "";
       String uri = "";
@@ -221,6 +227,12 @@ namespace SSC::IPC {
       using MessageCallback = std::function<void(const Message&, Router*, ReplyCallback)>;
       using BufferMap = std::map<String, MessageBuffer>;
 
+      struct Location {
+        String href;
+        String pathname;
+        String query;
+      };
+
       struct MessageCallbackContext {
         bool async = true;
         MessageCallback callback;
@@ -263,12 +275,12 @@ namespace SSC::IPC {
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
       BufferMap buffers;
-      bool isReady = false;
       Mutex mutex;
       Table table;
       Listeners listeners;
       Core *core = nullptr;
       Bridge *bridge = nullptr;
+      Location location;
     #if defined(__APPLE__)
       SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
       SSCLocationObserver* locationObserver = nullptr;
@@ -282,6 +294,8 @@ namespace SSC::IPC {
       Router ();
       Router (const Router &) = delete;
       ~Router ();
+
+      void init (Bridge* bridge);
 
       MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
       bool hasMappedBuffer (int index, const Message::Seq seq);
@@ -317,18 +331,19 @@ namespace SSC::IPC {
 
   class Bridge {
     public:
+      static Vector<Bridge*> getInstances();
       Router router;
       Bluetooth bluetooth;
       Core *core = nullptr;
-    #if !defined(__ANDROID__) && (defined(_WIN32) || defined(__linux__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR))
-      FileSystemWatcher* fileSystemWatcher = nullptr;
-    #endif
+      Map userConfig = getUserConfig();
+      String preload = "";
+      uint64_t id = 0;
 
-    #if defined(__ANDROID__)
+    #if SSC_PLATFORM_ANDROID
       bool isAndroidEmulator = false;
     #endif
 
-      Bridge (Core *core);
+      Bridge (Core *core, Map userConfig = getUserConfig());
       ~Bridge ();
       bool route (const String& msg, const char *bytes, size_t size);
       bool route (
@@ -337,6 +352,8 @@ namespace SSC::IPC {
         size_t size,
         Router::ResultCallback
       );
+
+      const Vector<String>& getAllowedNodeCoreModules () const;
   };
 
   inline String getResolveToMainProcessMessage (

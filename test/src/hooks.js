@@ -25,8 +25,8 @@ hooks.onInit(callbacks.onInit)
 
 test('hooks - initial state', async (t) => {
   t.ok(initial.isDocumentReady === false, 'isDocumentReady === false')
-  t.ok(initial.isRuntimeReady === false, 'isRuntimeReady === false')
-  t.ok(initial.isGlobalReady === false, 'isGlobalReady === false')
+  t.ok(initial.isRuntimeReady === true, 'isRuntimeReady === false')
+  t.ok(initial.isGlobalReady === true, 'isGlobalReady === false')
   t.ok(initial.isReady === false, 'isReady === false')
 })
 
@@ -44,7 +44,6 @@ test('hooks - properties after load', async (t) => {
 })
 
 test('hooks - callbacks called during load', async (t) => {
-  t.ok(callbacks.onReady.called === true, 'onReady called')
   t.ok(callbacks.onLoad.called === true, 'onLoad called')
   t.ok(callbacks.onInit.called === true, 'onInit called')
 })

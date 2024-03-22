@@ -1,3 +1,4 @@
+import { AsyncResource } from '../async/resource.js'
 import { EventEmitter } from '../events.js'
 import { FileHandle } from './handle.js'
 import { AbortError } from '../errors.js'
@@ -56,7 +57,7 @@ async function start (watcher) {
  * @param {Watcher} watcher
  * @return {function}
  */
-function listen (watcher) {
+function listen (watcher, resource) {
   return hooks.onData((event) => {
     const { data, source } = event.detail.params
     if (source !== 'fs.watch') {
@@ -69,7 +70,9 @@ function listen (watcher) {
 
     const { path, events } = data
 
-    watcher.emit('change', events[0], encodeFilename(watcher, path))
+    resource.runInAsyncScope(() => {
+      watcher.emit('change', events[0], encodeFilename(watcher, path))
+    })
   })
 }
 
@@ -121,6 +124,8 @@ export class Watcher extends EventEmitter {
    */
   stopListening = null
 
+  #resource = null
+
   /**
    * `Watcher` class constructor.
    * @ignore
@@ -138,6 +143,9 @@ export class Watcher extends EventEmitter {
     this.signal = options?.signal || null
     this.aborted = this.signal?.aborted === true
     this.encoding = options?.encoding || this.encoding
+
+    this.#resource = new AsyncResource('FileSystemWatcher')
+    this.#resource.handle = this
 
     gc.ref(this)
 
@@ -174,9 +182,11 @@ export class Watcher extends EventEmitter {
         this.stopListening()
       }
 
-      this.stopListening = listen(this)
+      this.stopListening = listen(this, this.#resource)
     } catch (err) {
-      this.emit('err', err)
+      this.#resource.runInAsyncScope(() => {
+        this.emit('error', err)
+      })
     }
   }
 

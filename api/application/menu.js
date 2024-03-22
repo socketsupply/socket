@@ -1,6 +1,9 @@
 /* global ErrorEvent */
 import { MenuItemEvent } from '../internal/events.js'
+import { Deferred } from '../async.js'
 import ipc from '../ipc.js'
+
+let contextMenuDeferred = null
 
 /**
  * Helper for getting the current window index.
@@ -50,23 +53,19 @@ export class Menu extends EventTarget {
   constructor (type) {
     super()
     this.#type = type
-    this.#channel = new BroadcastChannel(`application.menu.${type}`)
-
+    this.#channel = new BroadcastChannel(`socket.runtime.application.menu.${type}`)
     this.#channel.addEventListener('message', (event) => {
       this.dispatchEvent(new MenuItemEvent('menuitem', event.data, this))
     })
+  }
 
-    // forward selection to other windows
-    this.addEventListener('menuitem', (event) => {
-      this.#channel.postMessage({
-        ...event.data,
-        source: {
-          window: {
-            index: getCurrentWindowIndex()
-          }
-        }
-      })
-    })
+  /**
+   * The broadcast channel for this menu.
+   * @ignore
+   * @type {BroadcastChannel}
+   */
+  get channel () {
+    return this.#channel
   }
 
   /**
@@ -264,15 +263,26 @@ export class MenuContainer extends EventTarget {
     this.#system = options?.system ?? null
     this.#context = options?.context ?? null
 
-    if (sourceEventTarget) {
-      sourceEventTarget.addEventListener('menuItemSelected', (event) => {
-        const detail = event.detail ?? {}
-        const menu = this[detail.type ?? '']
-        if (menu) {
-          menu.dispatchEvent(new MenuItemEvent('menuitem', detail, menu))
-        }
-      })
-    }
+    sourceEventTarget.addEventListener('menuItemSelected', (event) => {
+      if (contextMenuDeferred) {
+        contextMenuDeferred.resolve({ data: event.detail.parent })
+      }
+
+      const detail = event.detail ?? {}
+      const menu = this[detail.type ?? '']
+
+      if (menu) {
+        menu.dispatchEvent(new MenuItemEvent('menuitem', detail, menu))
+        menu.channel.postMessage({
+          ...detail,
+          source: {
+            window: {
+              index: getCurrentWindowIndex()
+            }
+          }
+        })
+      }
+    })
 
     if (this.#tray) {
       this.#tray.addEventListener('menuitem', (event) => {
@@ -535,16 +545,45 @@ export async function setMenu (options, type) {
  * @ignore
  */
 export async function setContextMenu (options) {
-  const o = Object
-    .entries(options)
-    .flatMap(a => a.join(':'))
-    .join('_')
+  const lines = options.value.split('\n')
+  const e = new Error()
+  const frame = e.stack.split('\n')[2]
+  const callerLineNo = frame.split(':').reverse()[1]
 
-  const { data, err } = await ipc.send('window.setContextMenu', o)
+  let err
+  let lineText
 
-  if (err) {
-    throw err
+  for (let i = 0; i < lines.length; i++) {
+    lineText = lines[i].trim()
+
+    if (!lineText.length) continue
+    if (lineText.includes('---')) continue
+    if (!lineText.includes(':')) {
+      err = 'Expected separator (:)'
+    }
+
+    const parts = lineText.split(':')
+    if (!parts[0].trim()) {
+      err = 'Expected label'
+    }
+
+    if (!parts[0].trim()) {
+      err = 'Expected accelerator'
+    }
+
+    if (err) {
+      const lineNo = Number(callerLineNo) + i
+      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
+    }
   }
 
-  return data
+  contextMenuDeferred = new Deferred()
+
+  const result = await ipc.send('window.setContextMenu', options)
+
+  if (result && result.err) {
+    return { err: result.err }
+  }
+
+  return await contextMenuDeferred
 }

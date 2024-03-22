@@ -1,4 +1,4 @@
-const Buffer = require('buffer')
+const { Buffer } = require('buffer')
 const console = require('console')
 const dgram = require('dgram')
 const dns = require('dns')

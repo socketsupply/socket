@@ -621,6 +621,7 @@ namespace SSC {
   {
     static auto userConfig = SSC::getUserConfig();
     const bool isAgent = userConfig["application_agent"] == "true" && opts.index == 0;
+
     app.isReady = false;
 
     this->index = opts.index;
@@ -640,13 +641,31 @@ namespace SSC {
         NULL
       );
     } else {
+      DWORD style = WS_THICKFRAME;
+
+      if (!opts.frameless) {
+        style |= WS_OVERLAPPED;
+
+        if (opts.titleBarStyle == "hidden" || opts.titleBarStyle == "hiddenInset") {
+          // Windows does not have the ability to reposition the decorations
+          // In this case, we can assume that the user will draw their own controls.
+        } else if (opts.closable) {
+          style |= WS_CAPTION | WS_SYSMENU;
+
+          if (opts.minimizable) style |= WS_MINIMIZEBOX;
+          if (opts.maximizable) style |= WS_MAXIMIZEBOX;
+        }
+      } else {
+        style |= WS_POPUP;
+      }
+
       window = CreateWindowEx(
         opts.headless
           ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
           : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
         userConfig["meta_bundle_identifier"].c_str(),
         userConfig["meta_title"].c_str(),
-        WS_OVERLAPPEDWINDOW,
+        style,
         100000,
         100000,
         opts.width,
@@ -662,8 +681,28 @@ namespace SSC {
 
     this->drop = new DragDrop(this);
 
-    this->bridge = new IPC::Bridge(app.core);
+    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
+    opts.clientId = this->bridge->id;
+
     this->hotkey.init(this->bridge);
+
+    if (this->opts.aspectRatio.size() > 0) {
+      auto parts = split(this->opts.aspectRatio, ':');
+      double aspectRatio = 0;
+
+      try {
+        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+      } catch (...) {
+        debug("invalid aspect ratio");
+      }
+
+      if (aspectRatio > 0) {
+        RECT rect;
+        GetClientRect(window, &rect);
+        // SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), NULL);
+      }
+    }
+
     this->bridge->router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
@@ -688,7 +727,7 @@ namespace SSC {
 
     if (EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)) {
       usingCustomEdgeRuntimeDirectory = true;
-      opts.appData["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
+      opts.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
       debug("Using Edge Runtime Directory: %ls", EDGE_RUNTIME_DIRECTORY.c_str());
     } else {
       EDGE_RUNTIME_DIRECTORY = L"";
@@ -702,7 +741,7 @@ namespace SSC {
     this->modulePath = fs::path(modulefile);
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files --enable-features=msWebView2EnableDraggableRegions");
 
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
     HRESULT oeResult = options.As(&options4);
@@ -775,7 +814,7 @@ namespace SSC {
                   Settings->put_IsStatusBarEnabled(FALSE);
 
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
-                  if (isDebugEnabled()) {
+                  if (opts.debug || isDebugEnabled()) {
                     Settings->put_AreDevToolsEnabled(TRUE);
                   } else {
                     Settings->put_AreDevToolsEnabled(FALSE);
@@ -810,11 +849,11 @@ namespace SSC {
                     return TRUE;
                   }, (LPARAM)window);
 
-		  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
-                   convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
-		    this->modulePath.parent_path().c_str(),
-		    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
-		  );
+                  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
+                    convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
+                    this->modulePath.parent_path().c_str(),
+                    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
+                  );
 
                   EventRegistrationToken tokenNavigation;
 
@@ -855,15 +894,15 @@ namespace SSC {
                   ICoreWebView2_22* webview22 = nullptr;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
 
-		  if (webview22 != nullptr) {
-		    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
+                  if (webview22 != nullptr) {
+                    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
                       L"*",
                       COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
                       COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
                     );
 
-		    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
-		  }
+                    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
+                  }
 
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
@@ -915,6 +954,7 @@ namespace SSC {
                             204,
                             L"OK",
                             L"Connection: keep-alive\n"
+                            L"Cache-Control: no-cache\n"
                             L"Access-Control-Allow-Headers: *\n"
                             L"Access-Control-Allow-Origin: *\n"
                             L"Access-Control-Allow-Methods: GET, POST, PUT, HEAD\n",
@@ -980,6 +1020,7 @@ namespace SSC {
                             }
 
                             headers += "Connection: keep-alive\n";
+                            headers += "Cache-Control: no-cache\n";
                             headers += "Access-Control-Allow-Headers: *\n";
                             headers += "Access-Control-Allow-Origin: *\n";
                             headers += "Content-Length: ";
@@ -1023,9 +1064,9 @@ namespace SSC {
                                 : "socket/" + uri
                             );
 
-			    const auto parts = split(path, '?');
-			    const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
-			    path = parts[0];
+                            const auto parts = split(path, '?');
+                            const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
+                            path = parts[0];
 
                             auto ext = fs::path(path).extension().string();
 
@@ -1059,6 +1100,7 @@ namespace SSC {
                               auto length = moduleSource.size();
 
                               headers = "Content-Type: text/javascript\n";
+                              headers += "Cache-Control: no-cache\n";
                               headers += "Connection: keep-alive\n";
                               headers += "Access-Control-Allow-Headers: *\n";
                               headers += "Access-Control-Allow-Origin: *\n";
@@ -1122,13 +1164,14 @@ namespace SSC {
                                   }
 
                                   ICoreWebView2WebResourceResponse* res = nullptr;
+                                  auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
                                   env->CreateWebResourceResponse(
                                     nullptr,
                                     301,
                                     L"Moved Permanently",
                                     WString(
                                       convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
+                                      convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
                                       ).c_str(),
                                     &res
                                   );
@@ -1149,6 +1192,7 @@ namespace SSC {
                                   redirectURL += "#" + parsedPath.fragment;
                                 }
 
+                                auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
                                 ICoreWebView2WebResourceResponse* res = nullptr;
                                 env->CreateWebResourceResponse(
                                   nullptr,
@@ -1156,7 +1200,7 @@ namespace SSC {
                                   L"Moved Permanently",
                                   WString(
                                     convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(redirectURL) + L"\n"
+                                    convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
                                     ).c_str(),
                                   &res
                                   );
@@ -1225,6 +1269,7 @@ namespace SSC {
                                   headers = "Content-Type: ";
                                   headers += convertWStringToString(mimeType) + "\n";
                                   headers += "Connection: keep-alive\n";
+                                  headers += "Cache-Control: no-cache\n";
                                   headers += "Access-Control-Allow-Headers: *\n";
                                   headers += "Access-Control-Allow-Origin: *\n";
                                   headers += "Content-Length: ";
@@ -1292,14 +1337,18 @@ namespace SSC {
                     &tokenNewWindow
                   );
 
-                  WindowOptions options = opts;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
-                  options.appData["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
-                  auto preload = createPreload(options);
+                  this->bridge->userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
+                  this->bridge->preload = createPreload(opts, {
+                    .module = true,
+                    .wrap = true,
+                    .userScript = opts.userScript
+                  });
+
                   webview->AddScriptToExecuteOnDocumentCreated(
                     // Note that this may not do anything as preload goes out of scope before event fires
                     // Consider using w->preloadJavascript, but apps work without this
-                    SSC::convertStringToWString(preload).c_str(),
+                    SSC::convertStringToWString(this->bridge->preload).c_str(),
                     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {
                         return S_OK;
@@ -1471,6 +1520,11 @@ namespace SSC {
     }
   }
 
+  Window::~Window () {
+    delete this->drop;
+    delete this->bridge;
+  }
+
   ScreenSize Window::getScreenSize () {
     return ScreenSize {
       .height = GetSystemMetrics(SM_CYFULLSCREEN),
@@ -1480,10 +1534,10 @@ namespace SSC {
 
   void Window::about () {
     auto text = SSC::String(
-      app.appData["build_name"] + " " +
-      "v" + app.appData["meta_version"] + "\n" +
+      app.userConfig["build_name"] + " " +
+      "v" + app.userConfig["meta_version"] + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
-      app.appData["meta_copyright"]
+      app.userConfig["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
@@ -1491,7 +1545,7 @@ namespace SSC {
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.appData["build_name"].c_str();
+    mbp.lpszCaption = app.userConfig["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;
@@ -1716,10 +1770,9 @@ namespace SSC {
     setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& source, const bool& isTrayMenu) {
+  void Window::setMenu (const SSC::String& seq, const SSC::String& menuSource, const bool& isTrayMenu) {
     static auto userConfig = SSC::getUserConfig();
-    if (source.empty()) return void(0);
-    auto menuSource = replace(SSC::String(source), "%%", "\n");
+    if (menuSource.empty()) return void(0);
 
     NOTIFYICONDATA nid;
 
@@ -1886,10 +1939,12 @@ namespace SSC {
     // @TODO(jwerle)
   }
 
-  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
+    if (menuSource.empty()) return void(0);
+
     HMENU hPopupMenu = CreatePopupMenu();
 
-    auto menuItems = split(value, '_');
+    auto menuItems = split(menuSource, '\n');
     int index = 1;
     std::vector<SSC::String> lookup;
     lookup.push_back("");
@@ -1930,15 +1985,22 @@ namespace SSC {
     this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
   }
 
-  int Window::openExternal (const SSC::String& url) {
-    ShellExecute(nullptr, "Open", url .c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    // TODO how to detect success here. do we care?
-    return 0;
-  }
-
-  void Window::setBackgroundColor(int r, int g, int b, float a) {
+  void Window::setBackgroundColor (int r, int g, int b, float a) {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
+  }
+
+  String Window::getBackgroundColor () {
+    LOGBRUSH lb;
+    GetObject(app.wcex.hbrBackground, sizeof(LOGBRUSH), &lb);
+
+    int r = GetRValue(lb.lbColor);
+    int g = GetGValue(lb.lbColor);
+    int b = GetBValue(lb.lbColor);
+
+    std::stringstream ss;
+    ss << "R:" << r << ", G:" << g << ", B:" << b;
+    return ss.str();
   }
 
   // message is defined in WinUser.h
@@ -1975,7 +2037,7 @@ namespace SSC {
         static auto userConfig = SSC::getUserConfig();
         auto isAgent = userConfig.count("tray_icon") != 0;
 
-	if (lParam == WM_LBUTTONDOWN) {
+        if (lParam == WM_LBUTTONDOWN) {
           SetForegroundWindow(hWnd);
           if (isAgent) {
             POINT pt;
@@ -1990,18 +2052,17 @@ namespace SSC {
             for (auto window : app->windowManager->windows) {
               if (window != nullptr) {
                 window->bridge->router.emit("tray", "true");
-	      }
+              }
             }
           }
-	}
-
+        }
         // fall through to WM_COMMAND!!
       }
 
       case WM_COMMAND: {
         if (w == nullptr) break;
 
-	if (w->menuMap.contains(wParam)) {
+        if (w->menuMap.contains(wParam)) {
           String meta(w->menuMap[wParam]);
           auto parts = split(meta, '\t');
 
@@ -2021,15 +2082,16 @@ namespace SSC {
 
             w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
           }
-	} else if (w->menuTrayMap.contains(wParam)) {
+        } else if (w->menuTrayMap.contains(wParam)) {
           String meta(w->menuTrayMap[wParam]);
           auto parts = split(meta, ':');
-	  if (parts.size() > 0) {
+
+          if (parts.size() > 0) {
             auto title = trim(parts[0]);
             auto tag = parts.size() > 1 ? trim(parts[1]) : "";
             w->eval(getResolveMenuSelectionJavaScript("0", title, tag, "tray"));
-	  }
-	}
+          }
+        }
 
         break;
       }
@@ -2047,6 +2109,21 @@ namespace SSC {
       }
 
       case WM_CLOSE: {
+        if (!w->opts.closable) break;
+
+        SSC::JSON::Object json = SSC::JSON::Object::Entries {
+          {"data", w->index}
+        };
+
+        auto app = App::instance();
+        app->windowManager->destroyWindow(w->index);
+
+        for (auto window : app->windowManager->windows) {
+          if (window != nullptr) {
+            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+          }
+        }
+
         w->close(0);
         break;
       }

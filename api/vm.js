@@ -19,14 +19,14 @@
  *   // that exists on the user context
  *   value = json.value
  * `
- * const result = await vm.runIntContext(source, context)
+ * const result = await vm.runInContext(source, context)
  * console.log(context.value) // set from `json.value` in VM context
  * ```
  */
 
 /* global ErrorEvent, EventTarget, MessagePort */
 import { maybeMakeError } from './ipc.js'
-import { SharedWorker } from './worker.js'
+import { SharedWorker } from './internal/shared-worker.js'
 import application from './application.js'
 import globals from './internal/globals.js'
 import process from './process.js'
@@ -39,6 +39,8 @@ const AsyncFunction = (async () => {}).constructor
 const Uint8ArrayPrototype = Uint8Array.prototype
 const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 const TypedArray = TypedArrayPrototype.constructor
+
+const kContextTag = Symbol('socket.vm.Context')
 
 const VM_WINDOW_INDEX = 47
 const VM_WINDOW_TITLE = 'socket:vm'
@@ -55,6 +57,15 @@ let contextWindow = null
 // resources created in the script "world" in the VM realm
 const scripts = new WeakMap()
 
+// A weak mapping of created contexts
+const contexts = new WeakMap()
+
+// a shared context when one is not given
+const sharedContext = createContext({})
+
+// blob URL caches key by content hash
+const blobURLCache = new Map()
+
 // A weak mapping of values to reference objects
 const references = Object.assign(new WeakMap(), {
   // A mapping of reference IDs to weakly held `Reference` instances
@@ -67,6 +78,27 @@ function isTypedArray (object) {
 
 function isArrayBuffer (object) {
   return object instanceof ArrayBuffer
+}
+
+function convertSourceToString (source) {
+  if (source && typeof source !== 'string') {
+    if (typeof source.valueOf === 'function') {
+      source = source.valueOf()
+    }
+
+    if (typeof source.toString === 'function') {
+      source = source.toString()
+    }
+  }
+
+  if (typeof source !== 'string') {
+    throw new TypeError(
+      'Expecting Script source to be a string ' +
+      `or a value that can be converted to one. Received: ${source}`
+    )
+  }
+
+  return source
 }
 
 /**
@@ -161,14 +193,53 @@ export function applyOutputContextReferences (context) {
   visitObject(context)
 
   function visitObject (object) {
-    for (const key in object) {
+    if (object.__vmScriptReference__ && 'value' in object) {
+      object = object.value
+    }
+
+    if (!object || typeof object !== 'object') {
+      return
+    }
+
+    const keys = new Set(Object.keys(object))
+    if (
+      object &&
+      typeof object === 'object' &&
+      !(object instanceof Reference) &&
+      Object.getPrototypeOf(object) !== Object.prototype &&
+      Object.getPrototypeOf(object) !== Array.prototype
+    ) {
+      const prototype = Object.getPrototypeOf(object)
+      if (prototype) {
+        const descriptors = Object.getOwnPropertyDescriptors(prototype)
+        if (descriptors) {
+          for (const key of Object.keys(descriptors)) {
+            if (key !== 'constructor') {
+              keys.add(key)
+            }
+          }
+        }
+      }
+    }
+
+    for (const key of keys) {
       if (key.startsWith('__vmScriptReferenceArgs_')) {
         Reflect.deleteProperty(object, key)
         continue
       }
 
-      const value = object[key]
+      let value = object[key]
       if (value && typeof value === 'object') {
+        if (Symbol.toStringTag in value) {
+          const tag = typeof value[Symbol.toStringTag] === 'function'
+            ? value[Symbol.toStringTag]()
+            : value[Symbol.toStringTag]
+
+          if (tag === 'Module') {
+            value = object[key] = { ...value }
+          }
+        }
+
         if (!(value.__vmScriptReference__ === true && value.id)) {
           visitObject(value)
         }
@@ -243,36 +314,103 @@ export function applyContextDifferences (
           Reflect.set(currentContext, key, ref.value)
         } else if (script) {
           const container = {
-            async [key] (...args) {
+            [key]: function (...args) {
+              const isConstructorCall = this instanceof container[key]
               const scriptReferenceArgsKey = `__vmScriptReferenceArgs_${reference.id}__`
 
               Reflect.set(contextReference, scriptReferenceArgsKey, args)
               Reflect.set(contextReference, reference.id, reference)
 
-              try {
-                return await script.runInContext(contextReference, {
+              const promise = new Promise((resolve, reject) => {
+                const promise = script.runInContext(contextReference, {
                   mode: 'classic',
-                  source: `globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
+                  source: `${isConstructorCall ? 'new ' : ''}globalObject['${reference.id}'](...globalObject['${scriptReferenceArgsKey}'])`
                 })
-                // eslint-disable-next-line
-              } catch (err) {
-                throw err
-              } finally {
+
+                promise.then(resolve).catch(reject)
+              })
+
+              promise.finally(() => {
                 Reflect.deleteProperty(contextReference, reference.id)
                 Reflect.deleteProperty(contextReference, scriptReferenceArgsKey)
+              })
+
+              if (!isConstructorCall) {
+                return promise.then((result) => {
+                  if (result?.__vmScriptReference__ === true) {
+                    return result.value
+                  }
+
+                  return result
+                })
               }
+
+              return new Proxy(function () {}, {
+                get (target, property, receiver) {
+                  return new Proxy(function () {}, {
+                    apply (target, __, argumentList) {
+                      return apply(promise)
+                      function apply (result) {
+                        if (!result?.then) {
+                          return result
+                        }
+
+                        return result
+                          .then((result) => {
+                            if (result?.value) {
+                              applyContextDifferences(result, result, contextReference)
+                              if (typeof result.value === 'object' && property in result.value) {
+                                if (typeof result.value[property] === 'function') {
+                                  return result.value[property](...argumentList)
+                                }
+
+                                return result.value[property]
+                              }
+
+                              return result.value
+                            } else {
+                              return result
+                            }
+                          })
+                          .then(apply)
+                      }
+                    }
+                  })
+                },
+                apply (target, thisArg, argumentList) {
+                  return promise
+                    .then((result) => typeof result === 'function'
+                      ? result(...args)
+                      : result
+                    )
+                    .then((result) => typeof result === 'function'
+                      ? isConstructorCall
+                        ? result.call(thisArg, ...argumentList)
+                        : result.bind(thisArg, ...argumentList)
+                      : result
+                    )
+                    .then((result) => {
+                      applyContextDifferences(result, result, contextReference)
+                      return result
+                    })
+                }
+              })
             }
           }
 
-          // bind `null` this for proxy function
-          const proxyFunction = container[key].bind(null)
           // wrap into container for named function, called in tail with an
           // intentional omission of `await` for an async call stack collapse
           // this preserves naming in `console.log`:
           //   [AsyncFunction: functionName]
           // while also removing an unneeded tail call in a stack trace
           const containerForNamedFunction = {
-            async [key] (...args) { return proxyFunction(...args) }
+            [key]: function (...args) {
+              if (this instanceof containerForNamedFunction[key]) {
+                return new container[key](...args)
+              }
+
+              return container[key].call(this, ...args)
+            }
           }
 
           // the reference ID was created on the other side, just use it here
@@ -282,8 +420,9 @@ export function applyContextDifferences (
           putReference(new Reference(
             reference.id,
             containerForNamedFunction[key],
-            contextReference)
-          )
+            contextReference,
+            { external: true }
+          ))
 
           // emplace an actual function on `currentContext` at the property
           // `key` which will do the actual proxy call to the VM script
@@ -342,7 +481,15 @@ export function applyContextDifferences (
  * @param {object=} [options]
  */
 export function wrapFunctionSource (source, options = null) {
-  if (source.includes('return') || source.includes(';') || source.includes('throw')) {
+  source = source.trim()
+  if (
+    source.startsWith('{') ||
+    source.startsWith('async') ||
+    source.startsWith('function') ||
+    source.startsWith('class')
+  ) {
+    source = `(${source})`
+  } else if (source.includes('return') || source.includes(';') || source.includes('throw')) {
     source = `{ ${source} }`
   } else if (source.includes('\n')) {
     const parts = source.trim().split('\n')
@@ -445,7 +592,6 @@ export const RESERVED_GLOBAL_INTRINSICS = [
   'chrome',
   'external',
   'postMessage',
-  'console',
   'globalThis',
   'Infinity',
   'NaN',
@@ -512,6 +658,24 @@ export const RESERVED_GLOBAL_INTRINSICS = [
  */
 export class Reference {
   /**
+   * Predicate function to determine if a `value` is an internal or external
+   * script reference value.
+   * @param {amy} value
+   * @return {boolean}
+   */
+  static isReference (value) {
+    if (references.has(value)) {
+      return true
+    }
+
+    if (value?.__vmScriptReference__ === true && typeof value?.id === 'string') {
+      return true
+    }
+
+    return false
+  }
+
+  /**
    * The underlying reference ID.
    * @ignore
    * @type {string}
@@ -540,12 +704,33 @@ export class Reference {
   #context = null
 
   /**
+   * A boolean value to indicate if the underlying reference value is an
+   * intrinsic value.
+   * @type {boolean}
+   */
+  #isIntrinsic = false
+
+  /**
+   * The intrinsic type this reference may be an instance of or directly refer to.
+   * @type {function|object}
+   */
+  #intrinsicType = null
+
+  /**
+   * A boolean value to indicate if the underlying reference value is an
+   * external reference value.
+   * @type {boolean}
+   */
+  #isExternal = false
+
+  /**
    * `Reference` class constructor.
    * @param {string} id
    * @param {any} value
    * @param {object=} [context]
+   * @param {object=} [options]
    */
-  constructor (id, value, context = null) {
+  constructor (id, value, context = null, options) {
     this.#id = id
     this.#type = value !== null ? typeof value : 'undefined'
     this.#value = value !== null && value !== undefined
@@ -555,6 +740,10 @@ export class Reference {
     this.#context = context !== null && context !== undefined
       ? new WeakRef(context)
       : null
+
+    this.#intrinsicType = getIntrinsicType(this.#value)
+    this.#isIntrinsic = isIntrinsic(this.#value)
+    this.#isExternal = options?.external === true
   }
 
   /**
@@ -583,6 +772,26 @@ export class Reference {
   }
 
   /**
+   * The name of the type.
+   * @type {string?}
+   */
+  get name () {
+    if (this.type === 'function') {
+      return this.value.name
+    }
+
+    if (this.value && this.type === 'object') {
+      const prototype = Reflect.getPrototypeOf(this.value)
+
+      if (prototype?.constructor?.name) {
+        return prototype.constructor.name
+      }
+    }
+
+    return null
+  }
+
+  /**
    * The `Script` this value belongs to, if available.
    * @type {Script?}
    */
@@ -599,6 +808,32 @@ export class Reference {
   }
 
   /**
+   * A boolean value to indicate if the underlying reference value is an
+   * intrinsic value.
+   * @type {boolean}
+   */
+  get isIntrinsic () {
+    return this.#isIntrinsic
+  }
+
+  /**
+   * A boolean value to indicate if the underlying reference value is an
+   * external reference value.
+   * @type {boolean}
+   */
+  get isExternal () {
+    return this.#isExternal
+  }
+
+  /**
+   * The intrinsic type this reference may be an instance of or directly refer to.
+   * @type {function|object}
+   */
+  get intrinsicType () {
+    return this.#intrinsicType
+  }
+
+  /**
    * Releases strongly held value and weak references
    * to the "context object".
    */
@@ -612,13 +847,37 @@ export class Reference {
    * @param {boolean=} [includeValue = false]
    */
   toJSON (includeValue = false) {
-    const { value, type, id } = this
-
-    if (includeValue) {
-      return { __vmScriptReference__: true, id, type, value }
+    const { isIntrinsic, name, type, id } = this
+    const intrinsicType = getIntrinsicTypeString(this.intrinsicType)
+    let { value } = this
+    const json = {
+      __vmScriptReference__: true,
+      id,
+      type,
+      name,
+      isIntrinsic,
+      intrinsicType
     }
 
-    return { __vmScriptReference__: true, id, type }
+    if (includeValue) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        Symbol.toStringTag in value
+      ) {
+        const tag = typeof value[Symbol.toStringTag] === 'function'
+          ? value[Symbol.toStringTag]()
+          : value[Symbol.toStringTag]
+
+        if (tag === 'Module') {
+          value = { ...value }
+        }
+      }
+
+      json.value = value
+    }
+
+    return json
   }
 }
 
@@ -664,7 +923,7 @@ export class Script extends EventTarget {
 
     this.#id = crypto.randomBytes(8).toString('base64')
     this.#source = source
-    this.#context = options?.context ?? null
+    this.#context = options?.context ?? {}
 
     if (typeof options?.filename === 'string' && options.filename) {
       this.#filename = options.filename
@@ -747,7 +1006,7 @@ export class Script extends EventTarget {
   async runInContext (context, options = null) {
     await this.ready
 
-    const contextReference = context ?? this.context
+    const contextReference = createContext(context ?? this.context)
     context = { ...(context ?? this.#context) }
 
     const filename = options?.filename || this.filename
@@ -792,9 +1051,26 @@ export class Script extends EventTarget {
           if (event.data.err) {
             reject(maybeMakeError(event.data.err))
           } else {
-            const result = { data: event.data.data }
-            applyContextDifferences(result, event.data, contextReference)
-            resolve(result.data)
+            const { data } = event
+            const result = { data: data.data }
+            // check if result data is an external reference
+            const isReference = Reference.isReference(result.data)
+            const name = isReference ? result.data.name : null
+
+            if (name) {
+              result[name] = result.data
+              data[name] = data.data
+              delete data.data
+              delete result.data
+            }
+
+            applyContextDifferences(result, data, contextReference)
+
+            if (name) {
+              resolve(result[name])
+            } else {
+              resolve(result.data)
+            }
           }
         }
       }
@@ -856,9 +1132,26 @@ export class Script extends EventTarget {
           if (event.data.err) {
             reject(maybeMakeError(event.data.err))
           } else {
-            const result = { data: event.data.data }
-            applyContextDifferences(result, event.data, contextReference)
-            resolve(result.data)
+            const { data } = event
+            const result = { data: data.data }
+            // check if result data is an external reference
+            const isReference = Reference.isReference(result.data)
+            const name = isReference ? result.data.name : null
+
+            if (name) {
+              result[name] = result.data
+              data[name] = data.data
+              delete data.data
+              delete result.data
+            }
+
+            applyContextDifferences(result, data, contextReference)
+
+            if (name) {
+              resolve(result[name])
+            } else {
+              resolve(result.data)
+            }
           }
         }
       }
@@ -909,7 +1202,7 @@ export async function getContextWindow () {
 
     if (!contextWindow.frame) {
       const frameId = `__${os.platform()}-vm-frame__`
-      const existingFrame = globalThis.document.querySelector(
+      const existingFrame = globalThis.top.document.querySelector(
         `iframe[id="${frameId}"]`
       )
 
@@ -917,7 +1210,7 @@ export async function getContextWindow () {
         existingFrame.parentElement.removeChild(existingFrame)
       }
 
-      const frame = globalThis.document.createElement('iframe')
+      const frame = globalThis.top.document.createElement('iframe')
 
       frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
       frame.src = VM_WINDOW_PATH
@@ -930,9 +1223,9 @@ export async function getContextWindow () {
       })
 
       const target = (
-        globalThis.document.head ??
-        globalThis.document.body ??
-        globalThis.document
+        globalThis.top.document.head ??
+        globalThis.top.document.body ??
+        globalThis.top.document
       )
 
       target.appendChild(frame)
@@ -951,16 +1244,19 @@ export async function getContextWindow () {
     return contextWindow
   }
 
-  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
   const pendingContextWindow = (
     existingContextWindow ??
     application.createWindow({
       canExit: true,
-      headless: true,
-      debug: true,
+      headless: !process.env.SOCKET_RUNTIME_VM_DEBUG,
+      debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
       index: VM_WINDOW_INDEX,
       title: VM_WINDOW_TITLE,
-      path: VM_WINDOW_PATH
+      path: VM_WINDOW_PATH,
+      config: {
+        webview_watch_reload: false
+      }
     })
   )
 
@@ -1070,7 +1366,7 @@ export async function terminateContextWindow () {
   const currentContextWindow = await pendingContextWindow
   await currentContextWindow.close()
 
-  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX)
+  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
 
   if (existingContextWindow) {
     await existingContextWindow.close()
@@ -1094,7 +1390,7 @@ export async function terminateContextWorker () {
  * Creates a prototype object of known global reserved intrinsics.
  * @ignore
  */
-export function createIntrinsics () {
+export function createIntrinsics (options) {
   const descriptors = Object.create(null)
   const propertyNames = Object.getOwnPropertyNames(globalThis)
   const propertySymbols = Object.getOwnPropertySymbols(globalThis)
@@ -1102,7 +1398,7 @@ export function createIntrinsics () {
   for (const property of propertyNames) {
     const intrinsic = Object.getOwnPropertyDescriptor(globalThis, property)
     const descriptor = Object.assign(Object.create(null), {
-      configurable: false,
+      configurable: options?.configurable === true,
       enumerable: true,
       value: intrinsic.value ?? globalThis[property] ?? undefined
     })
@@ -1112,7 +1408,7 @@ export function createIntrinsics () {
 
   for (const symbol of propertySymbols) {
     descriptors[symbol] = {
-      configurable: false,
+      configurable: options?.configurable === true,
       enumberale: false,
       value: globalThis[symbol]
     }
@@ -1122,14 +1418,101 @@ export function createIntrinsics () {
 }
 
 /**
+ * Returns `true` if value is an intrinsic, otherwise `false`.
+ * @param {any} value
+ * @return {boolean}
+ */
+export function isIntrinsic (value) {
+  if (value === undefined) {
+    return true
+  }
+
+  if (value === null) {
+    return null
+  }
+
+  for (const key of RESERVED_GLOBAL_INTRINSICS) {
+    const intrinsic = globalThis[key]
+    if (intrinsic === value) {
+      return true
+    } else if (typeof intrinsic === 'function' && typeof value === 'object') {
+      const prototype = Object.getPrototypeOf(value)
+      if (prototype === intrinsic.prototype) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * Get the intrinsic type of a given `value`.
+ * @param {any}
+ * @return {function|object|null|undefined}
+ */
+export function getIntrinsicType (value) {
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (value === null) {
+    return null
+  }
+
+  for (const key of RESERVED_GLOBAL_INTRINSICS) {
+    const intrinsic = globalThis[key]
+    if (intrinsic === value) {
+      return intrinsic
+    } else if (typeof intrinsic === 'function' && typeof value === 'object') {
+      const prototype = Object.getPrototypeOf(value)
+      if (prototype === intrinsic.prototype) {
+        return intrinsic
+      }
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Get the intrinsic type string of a given `value`.
+ * @param {any}
+ * @return {string|null}
+ */
+export function getIntrinsicTypeString (value) {
+  if (value === null) {
+    return null
+  }
+
+  if (value === undefined) {
+    return 'undefined'
+  }
+
+  for (const key of RESERVED_GLOBAL_INTRINSICS) {
+    const intrinsic = globalThis[key]
+    if (intrinsic === value) {
+      return key
+    } else if (typeof intrinsic === 'function' && typeof value === 'object') {
+      const prototype = Object.getPrototypeOf(value)
+      if (prototype === intrinsic.prototype) {
+        return key
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Creates a global proxy object for context execution.
  * @ignore
  * @param {object} context
  * @return {Proxy}
  */
-export function createGlobalObject (context) {
+export function createGlobalObject (context, options) {
   const prototype = Object.getPrototypeOf(globalThis)
-  const intrinsics = createIntrinsics()
+  const intrinsics = createIntrinsics(options)
   const descriptors = Object.getOwnPropertyDescriptors(intrinsics)
   const globalObject = Object.create(prototype, descriptors)
 
@@ -1143,7 +1526,8 @@ export function createGlobalObject (context) {
     } catch {}
   }
 
-  return new Proxy(target, {
+  const handler = {}
+  const traps = {
     get (_, property, receiver) {
       if (property === 'console') {
         return console
@@ -1194,16 +1578,20 @@ export function createGlobalObject (context) {
 
     defineProperty (_, property, descriptor) {
       if (RESERVED_GLOBAL_INTRINSICS.includes(property)) {
-        return false
-      }
-
-      if (context) {
-        Reflect.defineProperty(context, property, descriptor)
         return true
       }
 
-      Reflect.defineProperty(globalObject, property, descriptor)
-      return true
+      if (context) {
+        return (
+          Reflect.defineProperty(context, property, descriptor) &&
+          Reflect.getOwnPropertyDescriptor(context, property) !== undefined
+        )
+      }
+
+      return (
+        Reflect.defineProperty(globalObject, property, descriptor) &&
+        Reflect.getOwnPropertyDescriptor(globalObject, property) !== undefined
+      )
     },
 
     deleteProperty (_, property) {
@@ -1278,7 +1666,27 @@ export function createGlobalObject (context) {
 
       return false
     }
-  })
+  }
+
+  if (Array.isArray(options?.traps)) {
+    for (const trap of options.traps) {
+      if (typeof traps[trap] === 'function') {
+        handler[trap] = traps[trap]
+      }
+    }
+  } else if (options?.traps && typeof options?.traps === 'object') {
+    for (const key in traps) {
+      if (options.traps[key] !== false) {
+        handler[key] = traps[key]
+      }
+    }
+  } else {
+    for (const key in traps) {
+      handler[key] = traps[key]
+    }
+  }
+
+  return new Proxy(target, handler)
 }
 
 /**
@@ -1298,6 +1706,8 @@ export function detectFunctionSourceType (source) {
  * @return {function}
  */
 export function compileFunction (source, options = null) {
+  source = convertSourceToString(source)
+
   options = { ...options }
   // detect source type naively
   if (!options?.type) {
@@ -1305,8 +1715,17 @@ export function compileFunction (source, options = null) {
   }
 
   if (options?.type === 'module') {
-    const blob = new Blob([source], { type: 'text/javascript' })
-    const url = URL.createObjectURL(blob)
+    const hash = crypto.murmur3(source)
+    let url = null
+
+    if (blobURLCache.has(hash)) {
+      url = blobURLCache.get(hash)
+    } else {
+      const blob = new Blob([source], { type: 'text/javascript' })
+      url = URL.createObjectURL(blob)
+      blobURLCache.set(hash, url)
+    }
+
     const moduleSource = `
       const module = await import("${url}")
       const exports = {}
@@ -1349,19 +1768,25 @@ export function compileFunction (source, options = null) {
  * context is preserved until the `context` object that points to it is
  * garbage collected or there are no longer any references to it and its
  * associated `Script` instance.
- * @param {string} source
+ * @param {string|object|function} source
  * @param {ScriptOptions=} [options]
  * @param {object=} [context]
  * @return {Promise<any>}
  */
 export async function runInContext (source, options, context) {
-  const script = scripts.get(options?.context ?? context) ?? new Script(source, options)
+  source = convertSourceToString(source)
+  context = options?.context ?? context ?? sharedContext
 
-  if (options?.context ?? context) {
-    scripts.set(options?.context ?? context, script)
-  }
+  const script = scripts.get(context) ?? new Script(source, options)
 
-  return await script.runInContext(options?.context ?? context, { ...options, source })
+  scripts.set(context, script)
+
+  const result = await script.runInContext(context, {
+    ...options,
+    source
+  })
+
+  return result
 }
 
 /**
@@ -1373,8 +1798,11 @@ export async function runInContext (source, options, context) {
  * @return {Promise<any>}
  */
 export async function runInNewContext (source, options, context) {
+  source = convertSourceToString(source)
+  context = options?.context ?? context ?? {}
   const script = new Script(source, options)
-  const result = await script.runInNewContext(options.context ?? context, options)
+  scripts.set(script.context, script)
+  const result = await script.runInNewContext(context, options)
   await script.destroy()
   return result
 }
@@ -1386,6 +1814,8 @@ export async function runInNewContext (source, options, context) {
  * @return {Promise<any>}
  */
 export async function runInThisContext (source, options) {
+  source = convertSourceToString(source)
+
   const script = new Script(source, options)
   const result = await script.runInThisContext(options)
   await script.destroy()
@@ -1414,11 +1844,12 @@ export function putReference (reference) {
  * Create a `Reference` for a `value` in a script `context`.
  * @param {any} value
  * @param {object} context
+ * @param {object=} [options]
  * @return {Reference}
  */
-export function createReference (value, context) {
+export function createReference (value, context, options = null) {
   const id = crypto.randomBytes(8).toString('base64')
-  const reference = new Reference(id, value, context)
+  const reference = new Reference(id, value, context, options)
   putReference(reference)
   return reference
 }
@@ -1449,24 +1880,51 @@ export function removeReference (id) {
  * @param {object} object
  * @return {object[]}
  */
-export function getTrasferables (object) {
+export function getTransferables (object) {
   const transferables = []
   findMessageTransfers(transferables, object)
   return transferables
 }
 
+/**
+ * @ignore
+ * @param {object} object
+ * @return {object}
+ */
+export function createContext (object) {
+  if (isContext(object)) {
+    return object
+  } else if (object && typeof object === 'object') {
+    contexts.set(object, kContextTag)
+  }
+
+  return object
+}
+
+/**
+ * Returns `true` if `object` is a "context" object.
+ * @param {object}
+ * @return {boolean}
+ */
+export function isContext (object) {
+  return contexts.has(object)
+}
+
 export default {
+  createGlobalObject,
   compileFunction,
   createReference,
   getContextWindow,
   getContextWorker,
   getReference,
-  getTrasferables,
+  getTransferables,
   putReference,
   Reference,
   removeReference,
   runInContext,
   runInNewContext,
   runInThisContext,
-  Script
+  Script,
+  createContext,
+  isContext
 }

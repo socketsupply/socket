@@ -499,7 +499,7 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
 }
 #endif
 
-void handleBuildPhaseForUserScript (
+void handleBuildPhaseForUser (
   const Map settings,
   const String& targetPlatform,
   const Path pathResourcesRelativeToUserBuild,
@@ -972,8 +972,9 @@ int runApp (const Path& path, const String& args, bool headless) {
   if (platform.mac) {
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
     auto configuration = [NSWorkspaceOpenConfiguration configuration];
-    auto string = path.string();
-    auto slice = string.substr(0, string.find(".app") + 4);
+    auto stringPath = path.string();
+    auto slice = stringPath.substr(0, stringPath.rfind(".app") + 4);
+
     auto url = [NSURL
       fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
     ];
@@ -1006,6 +1007,11 @@ int runApp (const Path& path, const String& args, bool headless) {
     configuration.environment = env;
     configuration.arguments = arguments;
     configuration.activates = headless ? NO : YES;
+
+    if (!bundle) {
+      log("Unable to find the application bundle");
+      return 1;
+    }
 
     log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
@@ -1766,7 +1772,8 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
     exit(0);
   } else {
     auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
-    auto exitCode = runApp(paths.pathBin / executable, argvForward, flagRunHeadless);
+    auto pathToExecutable = (paths.pathBin / executable).string();
+    auto exitCode = runApp(pathToExecutable, argvForward, flagRunHeadless);
     return exit(exitCode);
   }
 
@@ -2004,14 +2011,14 @@ int main (const int argc, const char* argv[]) {
 
   auto getPaths = [&](String platform) -> Paths {
     Paths paths;
-    String platformPath = platform == "win32"
-      ? "win"
-      : platform;
+    String platformPath = platform == "win32" ? "win" : platform;
+
     paths.platformSpecificOutputPath = {
       targetPath /
       settings["build_output"] /
       platformPath
     };
+
     if (platform == "mac") {
       Path pathBase = "Contents";
       Path packageName = Path(settings["build_name"] + ".app");
@@ -2286,12 +2293,12 @@ int main (const int argc, const char* argv[]) {
         fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
         log("icon.png created in " + targetPath.string() + "/src");
 
-	if (platform.win) {
+        if (platform.win) {
           // copy icon.ico
           fs::copy(trim(prefixFile("assets/icon.ico")), targetPath / "src" / "icon.ico", fs::copy_options::overwrite_existing);
           log("icon.ico created in " + targetPath.string() + "/src");
 
-	}
+        }
       } else {
         log("Current directory was not empty. Assuming index.html and icon are already in place.");
       }
@@ -2827,6 +2834,10 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
+    if (settings.count("meta_compile_bitcode") == 0) settings["meta_compile_bitcode"] = "false";
+    if (settings.count("meta_upload_bitcode") == 0) settings["meta_upload_bitcode"] = "false";
+    if (settings.count("meta_upload_symbols") == 0) settings["meta_upload_symbols"] = "true";
+
     if (settings.count("meta_file_limit") == 0) {
       settings["meta_file_limit"] = "4096";
     }
@@ -2924,6 +2935,112 @@ int main (const int argc, const char* argv[]) {
     }
 
     //
+    // Apple requires you to compile XCAssets/AppIcon.appiconset with a catalog for iOS and MacOS.
+    //
+    auto compileIconAssets = [&]() {
+      auto src = isForDesktop
+        ? paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"))
+        : paths.platformSpecificOutputPath;
+
+      std::vector<std::tuple<int, int>> iconTypes = {};
+
+      const std::string prefix = isForDesktop ? "mac" : "ios";
+      const std::string key = std::string(prefix + "_icon_sizes");
+      const auto sizeTypes = split(settings[key], " ");
+
+      JSON::Array images;
+
+      for (const auto& type : sizeTypes) {
+        auto pair = split(type, '@');
+
+        if (pair.size() != 2 || pair.size() == 0) return log("icon size requires <size>@<scale>");
+
+        const std::string size = pair[0];
+        const std::string scale = pair[1];
+        const std::string scaled = std::to_string(std::stoi(scale) * std::stoi(size));
+
+        images.push(JSON::Object::Entries {
+          { "idiom", isForDesktop ? "mac" : "iphone" },
+          { "size", scaled + "x" + scaled },
+          { "scale", scale },
+          { "filename", "Icon-" + size + "@" + scale + ".png" }
+        });
+
+        iconTypes.push_back(std::make_tuple(stoi(pair[0]), stoi(pair[1])));
+      }
+
+      auto assetsPath = fs::path { src / "Assets.xcassets" };
+      auto iconsPath = fs::path { assetsPath / "AppIcon.appiconset" };
+
+      fs::create_directories(iconsPath);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "images", images },
+        { "info", JSON::Object::Entries {
+          { "version", 1 },
+          { "author", "xcode" }
+        }}
+      };
+
+      writeFile(iconsPath / "Contents.json", json.str());
+      if (Env::get("DEBUG") == "1") log(json.str());
+
+      for (auto& iconType : iconTypes) {
+        StringStream sipsCommand;
+
+        auto size = std::get<0>(iconType);
+        auto scale = std::get<1>(iconType);
+        auto scaled = std::to_string(size * scale);
+        auto destFileName = "Icon-" + scaled + "@" + std::to_string(scale) + "x.png";
+        auto destFilePath = fs::path { iconsPath / destFileName };
+
+        auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
+
+        sipsCommand
+          << "sips"
+          << " -z " << size << " " << size
+          << " " << src
+          << " --out " << destFilePath;
+
+        if (Env::get("DEBUG") == "1") log(sipsCommand.str());
+        auto rSip = exec(sipsCommand.str().c_str());
+
+        if (rSip.exitCode != 0) {
+          log("ERROR: failed to create project icons");
+          log(rSip.output);
+          exit(1);
+        }
+      }
+
+      auto dest = paths.pathResourcesRelativeToUserBuild;
+      if (!isForDesktop) dest = src;
+
+      StringStream compileAssetsCommand;
+
+      compileAssetsCommand
+        << "xcrun "
+          << "actool \"" << assetsPath.string() << "\" "
+          << "--compile \"" << dest.string() << "\" "
+          << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
+          << "--minimum-deployment-target 10.15 "
+          << "--app-icon AppIcon "
+          << "--output-partial-info-plist /tmp/partial-dev.plist"
+      ;
+
+      if (Env::get("DEBUG") == "1") log(compileAssetsCommand.str());
+      auto r = exec(compileAssetsCommand.str().c_str());
+
+      if (r.exitCode != 0) {
+        log("ERROR: failed to compile car file from xcode assets");
+        log(r.output);
+        exit(1);
+      }
+
+      // if (Env::get("DEBUG") != "1") fs::remove_all(assetsPath);
+      log("generated icons");
+    };
+
+    //
     // Darwin Package Prep
     // ---
     //
@@ -2951,7 +3068,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
-      flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
+      flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
@@ -3074,6 +3191,9 @@ int main (const int argc, const char* argv[]) {
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
 
+    if (platform.mac && isForDesktop) {
+      compileIconAssets();
+    }
 
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
@@ -3104,6 +3224,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(jni / "core");
       fs::create_directories(jni / "include");
       fs::create_directories(jni / "ipc");
+      fs::create_directories(jni / "process");
       fs::create_directories(jni / "src");
       fs::create_directories(jni / "window");
 
@@ -3199,14 +3320,17 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/debug.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/env.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/file_system_watcher.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/ini.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/io.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/platform.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/service_worker_container.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/string.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/types.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/version.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/process/process.hh")), jni / "process", fs::copy_options::overwrite_existing);
       // ipc
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
       // window
@@ -4033,6 +4157,8 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
 
+      compileIconAssets();
+
       if (!flagBuildForSimulator) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
@@ -4376,7 +4502,7 @@ int main (const int argc, const char* argv[]) {
             compileExtensionObjectCommand
               << "xcrun -sdk " << (flagBuildForSimulator ? "iphonesimulator" : "iphoneos")
               << " " << compiler
-              << " -I" << Path(paths.platformSpecificOutputPath / "include").string()
+              << " -I\"" << Path(paths.platformSpecificOutputPath / "include").string() << "\""
               << " -I" << prefixFile()
               << " -I" << prefixFile("include")
               << " -DIOS=1"
@@ -4454,7 +4580,7 @@ int main (const int argc, const char* argv[]) {
             fs::create_directories(lib.parent_path());
             compileExtensionWASMCommand
               << compiler
-              << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
+              << " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() << "\""
               << (" -I" + quote + trim(prefixFile("include")) + quote)
               << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
@@ -4499,7 +4625,6 @@ int main (const int argc, const char* argv[]) {
             // TODO
             continue;
           }
-
 
           auto linkerFlags = (
             settings["build_extensions_linker_flags"] + " " +
@@ -4908,7 +5033,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    handleBuildPhaseForUserScript(
+    handleBuildPhaseForUser(
       settings,
       targetPlatform,
       pathResourcesRelativeToUserBuild,
@@ -6019,7 +6144,7 @@ int main (const int argc, const char* argv[]) {
         << " " << files
         << " " << flags
         << " " << extraFlags
-        << " -o " << binaryPath.string()
+        << " -o \"" << binaryPath.string() << "\""
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
@@ -6941,7 +7066,7 @@ int main (const int argc, const char* argv[]) {
           INI::parse(readFile(targetPath / "socket.ini"))
         );
 
-        handleBuildPhaseForUserScript(
+        handleBuildPhaseForUser(
           settingsForSourcesWatcher,
           targetPlatform,
           pathResourcesRelativeToUserBuild,
