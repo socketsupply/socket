@@ -5002,14 +5002,14 @@ namespace SSC::IPC {
       instances.erase(cursor);
     }
 
-  #if SSC_PLATFORM_DESKTOP
-    if (instances.size() == 0) {
-      if (fileSystemWatcher) {
-        fileSystemWatcher->stop();
-        delete fileSystemWatcher;
+    #if SSC_PLATFORM_DESKTOP
+      if (instances.size() == 0) {
+        if (fileSystemWatcher) {
+          fileSystemWatcher->stop();
+          delete fileSystemWatcher;
+        }
       }
-    }
-  #endif
+    #endif
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
@@ -5348,37 +5348,34 @@ namespace SSC::IPC {
   }
 
   Router::~Router () {
-  #if defined(__APPLE__)
-    if (this->networkStatusObserver != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->networkStatusObserver release];
-    #endif
-    }
+    #if defined(__APPLE__)
+      if (this->networkStatusObserver != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->networkStatusObserver release];
+        #endif
+      }
 
-    if (this->locationObserver != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->locationObserver release];
-    #endif
-    }
+      if (this->locationObserver != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->locationObserver release];
+        #endif
+      }
 
-    if (this->schemeHandler != nullptr) {
-    #if !__has_feature(objc_arc)
-      [this->schemeHandler release];
-    #endif
-    }
+      if (this->schemeHandler != nullptr) {
+        #if !__has_feature(objc_arc)
+          [this->schemeHandler release];
+        #endif
+      }
 
-    if (this->notificationPollTimer) {
-      [this->notificationPollTimer invalidate];
-    #if !__has_feature(objc_arc)
-      [this->notificationPollTimer release];
-    #endif
-    }
+      if (this->notificationPollTimer != nullptr) {
+        [this->notificationPollTimer invalidate];
+      }
 
-    this->notificationPollTimer = nullptr;
-    this->networkStatusObserver = nullptr;
-    this->locationObserver = nullptr;
-    this->schemeHandler = nullptr;
-  #endif
+      this->notificationPollTimer = nullptr;
+      this->networkStatusObserver = nullptr;
+      this->locationObserver = nullptr;
+      this->schemeHandler = nullptr;
+    #endif
   }
 
   void Router::preserveCurrentTable () {
