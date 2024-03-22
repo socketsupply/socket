@@ -1068,10 +1068,10 @@ namespace SSC {
     webview.wantsLayer = YES;
     webview.layer.backgroundColor = [NSColor clearColor].CGColor;
 
-    /* [webview
+    [webview
       setValue: [NSNumber numberWithBool: YES]
         forKey: @"drawsTransparentBackground"
-    ]; */
+    ];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -1541,24 +1541,13 @@ namespace SSC {
   String Window::getBackgroundColor () {
     if (!this->window) return std::string("");
 
-    CALayer *contentLayer = this->window.contentView.layer;
-    CGColorRef backgroundColorRef = contentLayer.backgroundColor;
-    NSColor *backgroundColor = [NSColor colorWithCGColor:backgroundColorRef];
-
+    NSColor *backgroundColor = [this->window backgroundColor];
     NSColor *rgbColor = [backgroundColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
 
-    CGFloat red, green, blue, alpha;
-    [rgbColor getRed:&red green:&green blue:&blue alpha:&alpha];
+    CGFloat r, g, b, a;
+    [rgbColor getRed:&r green:&g blue:&b alpha:&a];
 
-    NSString *colorString = [NSString
-      stringWithFormat:
-        @"rgba(%d, %d, %d, %f)",
-          (int)(red * 255),
-          (int)(green * 255),
-          (int)(blue * 255),
-          alpha
-    ];
-
+    NSString *colorString = [NSString stringWithFormat: @"rgba(%.0f,%.0f,%.0f,%.1f)", r * 255, g * 255, b * 255, a];
     return [colorString UTF8String];
   }
 

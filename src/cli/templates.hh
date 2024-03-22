@@ -216,6 +216,7 @@ constexpr auto gHelloWorld = R"HTML(
         justify-content: center;
         align-content: center;
         font-family: helvetica;
+        overflow: hidden;
       }
     </style>
   </head>
