@@ -700,8 +700,6 @@ namespace SSC {
           .minimizable = opts.minimizable,
           .maximizable = opts.maximizable,
           .closable = opts.closable,
-          .backgroundColorLight = opts.backgroundColorLight,
-          .backgroundColorDark = opts.backgroundColorDark,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = true,
@@ -714,6 +712,8 @@ namespace SSC {
           .headless = opts.userConfig["build_headless"] == "true",
           .titleBarStyle = opts.titleBarStyle,
           .trafficLightPosition = opts.trafficLightPosition,
+          .backgroundColorLight = opts.backgroundColorLight,
+          .backgroundColorDark = opts.backgroundColorDark,
           .userConfig = opts.userConfig
         });
       }
