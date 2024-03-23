@@ -1047,6 +1047,8 @@ MAIN {
       options.titleBarStyle = message.get("titleBarStyle");
       options.title = message.get("title");
       options.trafficLightPosition = message.get("trafficLightPosition");
+      options.backgroundColorLight = message.get("backgroundColorLight");
+      options.backgroundColorDark = message.get("backgroundColorDark");
       options.utility = message.get("utility") == "true" ? true : false;
       options.debug = message.get("debug") == "true" ? true : false;
       options.userScript = message.get("userScript");
@@ -1554,10 +1556,12 @@ MAIN {
       .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
       .closable = (isClosable == "" || isClosable == "true") ? true : false,
       .frameless = getProperty("window_frameless") == "true" ? true : false,
-      .utility = userConfig["window_utility"] == "true" ? true : false,
+      .utility = getProperty("window_utility") == "true" ? true : false,
       .canExit = true,
       .titleBarStyle = getProperty("window_titleBarStyle"),
       .trafficLightPosition = getProperty("mac_trafficLightPosition"),
+      .backgroundColorLight = getProperty("window_backgroundColorLight"),
+      .backgroundColorDark = getProperty("window_backgroundColorDark"),
       .userConfig = userConfig,
       .onExit = shutdownHandler
     });
