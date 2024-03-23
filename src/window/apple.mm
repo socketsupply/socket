@@ -863,7 +863,6 @@ namespace SSC {
       });
     });
 
-
     // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     // https://webkit.org/blog/10882/app-bound-domains/
@@ -1066,12 +1065,50 @@ namespace SSC {
     ];
 
     webview.wantsLayer = YES;
-    webview.layer.backgroundColor = [NSColor clearColor].CGColor;
 
-    [webview
-      setValue: [NSNumber numberWithBool: YES]
-        forKey: @"drawsTransparentBackground"
-    ];
+    //
+    // Initial setup of the window background color
+    //
+    NSTextCheckingResult *rgbaMatch = nil;
+
+    if (@available(macOS 10.14, *) && (opts.backgroundColorDark.size() || opts.backgroundColorLight.size())) {
+      NSString *rgba;
+      NSRegularExpression *regex =
+        [NSRegularExpression regularExpressionWithPattern: @"rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)"
+                                                  options: NSRegularExpressionCaseInsensitive
+                                                    error: nil];
+
+      NSAppearance *appearance = [NSAppearance currentAppearance];
+
+      if ([appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]]) {
+        if (opts.backgroundColorDark.size()) rgba = @(opts.backgroundColorDark.c_str());
+      } else {
+        if (opts.backgroundColorLight.size()) rgba = @(opts.backgroundColorLight.c_str());
+      }
+
+      if (rgba) {
+        NSTextCheckingResult *rgbaMatch =
+          [regex firstMatchInString: rgba
+                            options: 0
+                              range: NSMakeRange(0, [rgba length])];
+
+        if (rgbaMatch) {
+          int r = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:1]] intValue];
+          int g = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:2]] intValue];
+          int b = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:3]] intValue];
+          float a = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:4]] floatValue];
+
+          this->setBackgroundColor(r, g, b, a);
+        } else {
+          debug("invalid arguments for window background color");
+        }
+      }
+    }
+
+    if (rgbaMatch == nil) {
+      webview.layer.backgroundColor = [NSColor clearColor].CGColor;
+      [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
+    }
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -1246,12 +1283,16 @@ namespace SSC {
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent: YES];
       [window setMovableByWindowBackground: YES];
+      style = NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskBorderless;
+      style |= NSWindowStyleMaskResizable;
+      [window setStyleMask: style];
     }
 
     else if (opts.utility) {
       style |= NSWindowStyleMaskBorderless;
       style |= NSWindowStyleMaskUtilityWindow;
+      [window setStyleMask: style];
     }
 
     //
@@ -1259,6 +1300,9 @@ namespace SSC {
     //
     if (opts.titleBarStyle == "hidden") {
       style |= NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskResizable;
+      [window setStyleMask: style];
+      [window setTitleVisibility: NSWindowTitleHidden];
     }
 
     //
@@ -1761,14 +1805,16 @@ namespace SSC {
         }
 
         if (title.find("Quit") == 0) {
-          // nssSelector = [NSString stringWithUTF8String:"terminate:"];
+          nssSelector = [NSString stringWithUTF8String:"terminate:"];
         }
 
         if (title.compare("Minimize") == 0) {
           nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
         }
 
-        // if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
+        if (title.compare("Maximize") == 0) {
+          nssSelector = [NSString stringWithUTF8String:"performZoom:"];
+        }
 
         if (title.find("---") != -1) {
           [ctx addItem: [NSMenuItem separatorItem]];
