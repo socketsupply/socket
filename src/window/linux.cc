@@ -921,23 +921,37 @@ namespace SSC {
       userConfig["permissions_allow_data_access"] != "false"
     );
 
-    if (this->opts.backgroundColorDark.size() || this->opts.backgroundColorLight.size()) {
+    GdkRGBA webviewBackground = {0.0, 0.0, 0.0, 0.0};
+    bool hasDarkValue = this->opts.backgroundColorDark.size();
+    bool hasLightValue = this->opts.backgroundColorLight.size();
+    bool isDarkMode = false;
+
+    if (hasDarkValue || hasLightValue) {
       GdkRGBA color = {0};
 
-      GSettings *settings = g_settings_new("org.gnome.desktop.interface");
-      gboolean darkMode = g_settings_get_boolean(settings, "gtk-application-prefer-dark-theme");
+      if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL) {
+        GSettings *settings = g_settings_new("org.gnome.desktop.interface");
+        isDarkMode = g_settings_get_boolean(settings, "gtk-application-prefer-dark-theme");
+      } else if (getenv("KDE_SESSION_VERSION") != NULL) {
+        //
+        // KDE doesnt have a dark or light mode, just themes, but we can check the brightness...
+        //
+        GdkRGBA bg = {0};
+        gtk_style_context_get_background_color(gtk_widget_get_style_context(window), GTK_STATE_FLAG_NORMAL, &bg);
+        double brightness = sqrt(0.299 * pow(bg->red, 2) + 0.587 * pow(bg->green, 2) + 0.114 * pow(bg->blue, 2));
+        if (brightness < 0.5) isDarkMode = true;
+      }
 
-      if (darkMode && this->opts.backgroundColorDark.size()) {
+      if (isDarkMode && hasDarkValue) {
         gdk_rgba_parse(&color, this->opts.backgroundColorDark.c_str());
-      } else if (this->opts.backgroundColorLight.size()) {
+      } else if (hasLightValue) {
         gdk_rgba_parse(&color, this->opts.backgroundColorLight.c_str());
       }
 
       gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
     }
 
-    GdkRGBA rgba = {0.0, 0.0, 0.0, 0.0};
-    webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
+    webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &webviewBackground);
 
     if (this->opts.debug) {
       webkit_settings_set_enable_developer_extras(settings, true);
