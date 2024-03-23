@@ -263,9 +263,18 @@ export class Peer {
   `/* snapshot_end=1691579150299 */).map((/** @type {object} */ o) => new RemotePeer({ ...o, indexed: true }, this))
 
   /**
-   * `Peer` class constructor. Avoid calling this directly (use the create method).
-   * @private
-   * @param {object?} [persistedState]
+   * `Peer` class constructor.
+   * @param {object=} opts - Options
+   * @param {Buffer} opts.peerId - A 32 byte buffer (ie, `Encryption.createId()`).
+   * @param {Buffer} opts.clusterId - A 32 byte buffer (ie, `Encryption.createClusterId()`).
+   * @param {number=} opts.port - A port number.
+   * @param {number=} opts.probeInternalPort - An internal port number (semi-private for testing).
+   * @param {number=} opts.probeExternalPort - An external port number (semi-private for testing).
+   * @param {number=} opts.natType - A nat type.
+   * @param {string=} opts.address - An ipv4 address.
+   * @param {number=} opts.keepalive - The interval of the main loop.
+   * @param {function=} opts.siblingResolver - A function that can be used to determine canonical data in case two packets have concurrent clock values.
+   * @param {object} dgram - A nodejs compatible implementation of the dgram module (sans multicast).
    */
   constructor (persistedState = {}, dgram) {
     const config = persistedState?.config ?? persistedState ?? {}
@@ -275,6 +284,9 @@ export class Peer {
     if (!config.peerId) throw new Error('constructor expected .peerId')
     if (typeof config.peerId !== 'string' || !PEERID_REGEX.test(config.peerId)) throw new Error('invalid .peerId')
 
+    //
+    // The purpose of this.config is to seperate transitioned state from initial state.
+    //
     this.config = {
       keepalive: DEFAULT_KEEP_ALIVE,
       ...config

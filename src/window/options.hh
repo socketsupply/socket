@@ -29,6 +29,8 @@ namespace SSC {
     String aspectRatio = "";
     String titleBarStyle = "";
     String trafficLightPosition = "";
+    String backgroundColorLight = "";
+    String backgroundColorDark = "";
     String cwd = "";
     String title = "";
     String url = "data:text/html,<html>";
@@ -42,7 +44,6 @@ namespace SSC {
     String userScript = "";
     String runtimePrimordialOverrides = "";
     bool preloadCommonJS = true;
-
   };
 }
 #endif

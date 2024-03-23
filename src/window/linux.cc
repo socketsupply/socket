@@ -921,7 +921,22 @@ namespace SSC {
       userConfig["permissions_allow_data_access"] != "false"
     );
 
-    GdkRGBA rgba = {0};
+    if (this->opts.backgroundColorDark.size() || this->opts.backgroundColorLight.size()) {
+      GdkRGBA color = {0};
+
+      GSettings *settings = g_settings_new("org.gnome.desktop.interface");
+      gboolean darkMode = g_settings_get_boolean(settings, "gtk-application-prefer-dark-theme");
+
+      if (darkMode && this->opts.backgroundColorDark.size()) {
+        gdk_rgba_parse(&color, this->opts.backgroundColorDark.c_str());
+      } else if (this->opts.backgroundColorLight.size()) {
+        gdk_rgba_parse(&color, this->opts.backgroundColorLight.c_str());
+      }
+
+      gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
+    }
+
+    GdkRGBA rgba = {0.0, 0.0, 0.0, 0.0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
 
     if (this->opts.debug) {
