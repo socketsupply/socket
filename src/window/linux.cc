@@ -1541,7 +1541,7 @@ namespace SSC {
       }
 
       auto pair = split(itemData, ':');
-      auto meta = String(seq + ";" + pair[0].c_str());
+      auto meta = String(seq + ";" + itemData);
       auto *item = gtk_menu_item_new_with_label(pair[0].c_str());
 
       g_signal_connect(
@@ -1549,13 +1549,15 @@ namespace SSC {
         "activate",
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
           auto window = static_cast<Window*>(arg);
-          auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
-          auto title = String(label);
+          if (!window) return;
+
           auto meta = gtk_widget_get_name(t);
           auto pair = split(meta, ';');
           auto seq = pair[0];
+          auto items = split(pair[1], ":");
 
-          window->eval(getResolveMenuSelectionJavaScript(seq, title, "contextMenu", "context"));
+          if (items.size() != 2) return;
+          window->eval(getResolveMenuSelectionJavaScript(seq, trim(items[0]), trim(items[1]), "context"));
         }),
         this
       );
