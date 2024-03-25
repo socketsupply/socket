@@ -934,12 +934,9 @@ namespace SSC {
         isDarkMode = g_settings_get_boolean(settings, "gtk-application-prefer-dark-theme");
       } else if (getenv("KDE_SESSION_VERSION") != NULL) {
         //
-        // KDE doesnt have a dark or light mode, just themes, but we can check the brightness...
+        // TODO(@heapwolf): KDE doesnt have a dark or light mode, it just has dark and light themes.
+        // the only reliable option to determine how to report this is to read the ini file ~/.config/kdeglobals
         //
-        GdkRGBA bg = {0};
-        gtk_style_context_get_background_color(gtk_widget_get_style_context(window), GTK_STATE_FLAG_NORMAL, &bg);
-        double brightness = sqrt(0.299 * pow(bg->red, 2) + 0.587 * pow(bg->green, 2) + 0.114 * pow(bg->blue, 2));
-        if (brightness < 0.5) isDarkMode = true;
       }
 
       if (isDarkMode && hasDarkValue) {
