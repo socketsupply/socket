@@ -212,6 +212,8 @@ export async function createWindow (opts) {
     aspectRatio: opts.aspectRatio ?? '',
     titleBarStyle: opts.titleBarStyle ?? '',
     trafficLightPosition: opts.trafficLightPosition ?? '',
+    backgroundColorDark: opts.backgroundColorDark ?? '',
+    backgroundColorLight: opts.backgroundColorLight ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
     /**
