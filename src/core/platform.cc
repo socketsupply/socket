@@ -213,19 +213,21 @@ namespace SSC {
   void Core::Platform::revealFile (const String seq, const String value, Module::Callback cb) {
     auto json = JSON::Object {};
     bool success;
+    String pathToFile = decodeURIComponent(value);
     String message = "Failed to open external file";
 
     #if TARGET_OS_MAC && !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
-      NSString *directoryPath = @(value.c_str());
+      NSString *directoryPath = @(pathToFile.c_str());
       NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+      NSLog(@"wtf %@", directoryPath);
       success = [workspace selectFile:nil inFileViewerRootedAtPath:directoryPath];
     #elif defined(__linux__) && !defined(__ANDROID__)
-      std::string command = "xdg-open " + value;
+      std::string command = "xdg-open " + pathToFile;
       auto result = exec(command.c_str());
       success = result.exitCode == 0;
       message = result.output;
     #elif defined(_WIN32)
-      std::string command = "explorer.exe " + value;
+      std::string command = "explorer.exe \"" + pathToFile + "\"";
       auto result = exec(command.c_str());
       success = result.exitCode == 0;
       message = result.output;
