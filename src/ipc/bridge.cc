@@ -2336,7 +2336,7 @@ static void initRouterTable (Router *router) {
 
     router->core->platform.revealFile(
       message.seq,
-      message.value,
+      message.get("value"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
