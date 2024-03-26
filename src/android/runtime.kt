@@ -54,7 +54,8 @@ open class RuntimeServiceWorkerContainer (
     method: String,
     path: String,
     query: String,
-    requestHeaders: MutableMap<String, String>
+    requestHeaders: MutableMap<String, String>,
+    bytes: ByteArray? = null
   ): android.webkit.WebResourceResponse? {
     val activity = runtime.activity.get() ?: return null
     var pathname = path
@@ -203,7 +204,8 @@ open class RuntimeServiceWorkerContainer (
       pathname,
       method,
       query,
-      headers
+      headers,
+      bytes
     )
 
     if (!fetched) {
