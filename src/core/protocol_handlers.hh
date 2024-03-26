@@ -35,6 +35,7 @@ namespace SSC {
       const Data getHandlerData (const String& scheme);
       bool setHandlerData (const String& scheme, const Data data = { "" });
       bool hasHandler (const String& scheme);
+      const String getServiceWorkerScope (const String& scheme);
   };
 }
 #endif
