@@ -20,6 +20,7 @@ namespace SSC {
         Type type = Type::Module;
         String scope;
         String scriptURL;
+        String scheme = "*";
         ID id = 0;
       };
 
@@ -71,12 +72,16 @@ namespace SSC {
       };
 
       struct FetchRequest {
-        String pathname;
         String method;
+        String scheme = "*";
+        String host = "";
+        String pathname;
         String query;
         Vector<String> headers;
         FetchBuffer buffer;
         Client client;
+
+        const String str () const;
       };
 
       struct FetchResponse {

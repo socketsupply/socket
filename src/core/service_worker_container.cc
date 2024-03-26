@@ -10,6 +10,30 @@
 
 namespace SSC {
   static IPC::Bridge* serviceWorkerBridge = nullptr;
+  static const String normalizeScope (const String& scope) {
+    auto normalized = trim(scope);
+
+    if (normalized.size() == 0) {
+      return "/";
+    }
+
+    if (normalized.ends_with("/") && normalized.size() > 1) {
+      normalized = normalized.substr(0, normalized.size() - 1);
+    }
+
+    return normalized;
+  }
+
+  const String ServiceWorkerContainer::FetchRequest::str () const {
+    auto string = this->scheme + "://" + this->host + this->pathname;
+
+    if (this->query.size() > 0) {
+      string += String("?") + this->query;
+    }
+
+    return string;
+  }
+
   ServiceWorkerContainer::Registration::Registration (
     const ID id,
     const String& scriptURL,
@@ -166,7 +190,7 @@ namespace SSC {
 
         scriptURL += value;
 
-        const auto scope = join(parts, "/");
+        const auto scope = normalizeScope(join(parts, "/"));
         const auto id = rand64();
         this->registrations.insert_or_assign(scope, Registration {
           id,
@@ -176,6 +200,7 @@ namespace SSC {
           RegistrationOptions::Type::Module,
             scope,
             scriptURL,
+            "*",
             id
           }
         });
@@ -188,7 +213,7 @@ namespace SSC {
 
       if (key.starts_with("webview_service-workers_")) {
         const auto id = rand64();
-        const auto scope = replace(key, "webview_service-workers_", "");
+        const auto scope = normalizeScope(replace(key, "webview_service-workers_", ""));
 
       #if defined(__ANDROID__)
         auto scriptURL = String("https://");
@@ -211,15 +236,61 @@ namespace SSC {
             RegistrationOptions::Type::Module,
             scope,
             scriptURL,
+            "*",
             id
           }
         });
       }
     }
 
+    for (const auto& entry : this->bridge->userConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        auto value = entry.second;
+        if (value.starts_with(".") || value.starts_with("/")) {
+          if (value.starts_with(".")) {
+            value = value.substr(1, value.size());
+          }
+
+          const auto id = rand64();
+          auto parts = split(value, "/");
+          parts = Vector<String>(parts.begin(), parts.end() - 1);
+          auto scope = normalizeScope(join(parts, "/"));
+
+        #if defined(__ANDROID__)
+          auto scriptURL = String("https://");
+        #else
+          auto scriptURL = String("socket://");
+        #endif
+
+          scriptURL += bridge->userConfig["meta_bundle_identifier"];
+
+          if (!value.starts_with("/")) {
+            scriptURL += "/";
+          }
+
+          scriptURL += trim(value);
+
+          this->registrations.insert_or_assign(scope, Registration {
+            id,
+            scriptURL,
+            Registration::State::Registered,
+            RegistrationOptions {
+              RegistrationOptions::Type::Module,
+              scope,
+              scriptURL,
+              scheme,
+              id
+            }
+          });
+        }
+      }
+    }
+
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
-      Lock lock(this->mutex);
-      uint64_t id = 0;
+      FetchRequest request;
+      ID id = 0;
 
       try {
         id = std::stoull(message.get("id"));
@@ -229,23 +300,29 @@ namespace SSC {
         }});
       }
 
-      if (!this->fetchRequests.contains(id)) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"type", "NotFoundError"},
-          {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
-        }});
-      }
+      do {
+        Lock lock(this->mutex);
 
-      const auto& request = this->fetchRequests.at(id);
+        if (!this->fetchRequests.contains(id)) {
+          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
+          }});
+        }
+
+        request = this->fetchRequests.at(id);
+      } while (0);
+
       const auto post = Post { 0, 0, request.buffer.bytes, request.buffer.size };
       reply(IPC::Result { message.seq, message, JSON::Object {}, post });
     });
 
     this->bridge->router.map("serviceWorker.fetch.response", [this](auto message, auto router, auto reply) mutable {
-      Lock lock(this->mutex);
+      FetchCallback callback;
+      FetchRequest request;
+      ID clientId = 0;
+      ID id = 0;
 
-      uint64_t clientId = 0;
-      uint64_t id = 0;
       int statusCode = 200;
 
       try {
@@ -264,21 +341,28 @@ namespace SSC {
         }});
       }
 
-      if (!this->fetchCallbacks.contains(id)) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"type", "NotFoundError"},
-          {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
-        }});
-      }
+      do {
+        Lock lock(this->mutex);
+        if (!this->fetchCallbacks.contains(id)) {
+          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+          }});
+        }
 
-      if (!this->fetchRequests.contains(id)) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"type", "NotFoundError"},
-          {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
-        }});
-      }
+        if (!this->fetchRequests.contains(id)) {
+          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+            {"type", "NotFoundError"},
+            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
+          }});
+        }
+      } while (0);
 
-      const auto callback = this->fetchCallbacks.at(id);
+      do {
+        Lock lock(this->mutex);
+        callback = this->fetchCallbacks.at(id);
+        request = this->fetchRequests.at(id);
+      } while (0);
 
       try {
         statusCode = std::stoi(message.get("statusCode"));
@@ -289,7 +373,6 @@ namespace SSC {
       }
 
       const auto headers = split(message.get("headers"), '\n');
-      const auto request = this->fetchRequests.at(id);
       auto response = FetchResponse {
         id,
         statusCode,
@@ -371,10 +454,13 @@ namespace SSC {
         delete response.buffer.bytes;
       }
 
-      this->fetchCallbacks.erase(id);
-      if (this->fetchRequests.contains(id)) {
-        this->fetchRequests.erase(id);
-      }
+      do {
+        Lock lock(this->mutex);
+        this->fetchCallbacks.erase(id);
+        if (this->fetchRequests.contains(id)) {
+          this->fetchRequests.erase(id);
+        }
+      } while (0);
     });
   }
 
@@ -382,9 +468,34 @@ namespace SSC {
     const RegistrationOptions& options
   ) {
     Lock lock(this->mutex);
+    auto scope = options.scope;
+    auto scriptURL = options.scriptURL;
 
-    if (this->registrations.contains(options.scope)) {
-      const auto& registration = this->registrations.at(options.scope);
+    if (scope.size() == 0) {
+      auto tmp = options.scriptURL;
+      tmp = replace(tmp, "https://", "");
+      tmp = replace(tmp, "socket://", "");
+      tmp = replace(tmp, this->bridge->userConfig["meta_bundle_identifier"], "");
+
+      auto parts = split(tmp, "/");
+      parts = Vector<String>(parts.begin(), parts.end() - 1);
+
+    #if defined(__ANDROID__)
+      scriptURL = String("https://");
+    #else
+      scriptURL = String("socket://");
+    #endif
+
+      scriptURL += bridge->userConfig["meta_bundle_identifier"];
+      scriptURL += tmp;
+
+      scope = join(parts, "/");
+    }
+
+    scope = normalizeScope(scope);
+
+    if (this->registrations.contains(scope)) {
+      const auto& registration = this->registrations.at(scope);
 
       if (this->bridge != nullptr) {
         this->bridge->router.emit("serviceWorker.register", registration.json().str());
@@ -393,14 +504,21 @@ namespace SSC {
       return registration;
     }
 
-    this->registrations.insert_or_assign(options.scope, Registration {
-      options.id > 0 ? options.id : rand64(),
+    const auto id = options.id > 0 ? options.id : rand64();
+    this->registrations.insert_or_assign(scope, Registration {
+      id,
       options.scriptURL,
       Registration::State::Registered,
-      options
+      RegistrationOptions {
+        options.type,
+        scope,
+        options.scriptURL,
+        options.scheme,
+        id
+      }
     });
 
-    const auto& registration = this->registrations.at(options.scope);
+    const auto& registration = this->registrations.at(scope);
 
     if (this->bridge != nullptr) {
       this->core->setImmediate([&, this]() {
@@ -414,7 +532,7 @@ namespace SSC {
   bool ServiceWorkerContainer::unregisterServiceWorker (String scopeOrScriptURL) {
     Lock lock(this->mutex);
 
-    const auto& scope = scopeOrScriptURL;
+    const auto& scope = normalizeScope(scopeOrScriptURL);
     const auto& scriptURL = scopeOrScriptURL;
 
     if (this->registrations.contains(scope)) {
@@ -508,6 +626,8 @@ namespace SSC {
 
   bool ServiceWorkerContainer::fetch (const FetchRequest& request, FetchCallback callback) {
     Lock lock(this->mutex);
+    String pathname = request.pathname;
+    String scope;
 
     if (this->bridge == nullptr || !this->isReady) {
       return false;
@@ -518,26 +638,39 @@ namespace SSC {
       if (parts.size() == 2) {
         const auto key = trim(parts[0]);
         const auto value = trim(parts[1]);
+
+        if (key == "Runtime-ServiceWorker-Fetch-Mode" && value == "ignore") {
+          return false;
+        }
+
         if (key == "runtime-worker-type" && value == "serviceworker") {
           return false;
         }
       }
     }
 
-    String scope;
     for (const auto& entry : this->registrations) {
       const auto& registration = entry.second;
 
-      if (request.pathname.starts_with(registration.options.scope)) {
+      if (
+        (registration.options.scheme == "*" || registration.options.scheme == request.scheme) &&
+        request.pathname.starts_with(registration.options.scope)
+      ) {
         if (entry.first.size() > scope.size()) {
           scope = entry.first;
         }
       }
     }
 
+    scope = normalizeScope(scope);
+
     if (scope.size() > 0 && this->registrations.contains(scope)) {
       auto& registration = this->registrations.at(scope);
-      if (!registration.isActive() && registration.state == Registration::State::Registered) {
+      if (
+        (registration.options.scheme == "*" || registration.options.scheme == request.scheme) &&
+        !registration.isActive() &&
+        registration.state == Registration::State::Registered
+      ) {
         this->core->dispatchEventLoop([this, request, callback, &registration]() {
           const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
             if (registration.state == Registration::State::Activated) {
@@ -573,10 +706,16 @@ namespace SSC {
         {"id", std::to_string(request.client.id)}
       };
 
+      if (this->core->protocolHandlers.hasHandler(request.scheme)) {
+        pathname = replace(pathname, scope, "");
+      }
+
       const auto fetch = JSON::Object::Entries {
         {"id", std::to_string(id)},
         {"method", request.method},
-        {"pathname", request.pathname},
+        {"scheme", request.scheme},
+        {"host", request.host},
+        {"pathname", pathname},
         {"query", request.query},
         {"headers", headers},
         {"client", client}
