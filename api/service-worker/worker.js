@@ -4,6 +4,7 @@ import { Module, createRequire } from '../module.js'
 import { STATUS_CODES } from '../http.js'
 import { Environment } from './env.js'
 import { Deferred } from '../async.js'
+import { Buffer } from '../buffer.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
@@ -187,7 +188,7 @@ async function onMessage (event) {
         } catch (err) {
           state.reportError(err)
           response = new Response(util.inspect(err), {
-            statusText: STATUS_CODES[500],
+            statusText: err.message || STATUS_CODES[500],
             status: 500
           })
         }
@@ -199,7 +200,7 @@ async function onMessage (event) {
 
           promise.resolve(response)
         } else {
-          promise.resolve(new Response('', {
+          promise.resolve(new Response('Not Found', {
             statusText: STATUS_CODES[404],
             status: 404
           }))
@@ -208,7 +209,6 @@ async function onMessage (event) {
     }
 
     globalThis.registration = data.register
-
     globalThis.postMessage({ __service_worker_registered: { id } })
     return
   }
@@ -227,6 +227,7 @@ async function onMessage (event) {
     state.serviceWorker.state = 'installed'
     await state.notify('serviceWorker')
     events.delete(event)
+    return
   }
 
   if (data?.activate?.id === state.id) {
@@ -239,29 +240,61 @@ async function onMessage (event) {
     state.serviceWorker.state = 'activated'
     await state.notify('serviceWorker')
     events.delete(event)
+    return
   }
 
   if (data?.fetch?.request) {
     if (/post|put/i.test(data.fetch.request.method)) {
       const result = await ipc.request('serviceWorker.fetch.request.body', {
         id: data.fetch.request.id
-      })
+      }, { responseType: 'arraybuffer' })
 
       if (result.data) {
-        data.fetch.request.body = result.data
+        if (result.data instanceof ArrayBuffer) {
+          data.fetch.request.body = result.data
+        } else if (result.data instanceof Buffer) {
+          data.fetch.request.body = result.data.buffer
+        } else if (result.data.buffer) {
+          data.fetch.request.body = result.data.buffer
+        } else if (typeof result.data === 'object') {
+          data.fetch.request.body = JSON.stringify(result.data)
+        } else {
+          data.fetch.request.body = result.data
+        }
       }
     }
 
+    if (data.fetch.request.body) {
+      data.fetch.request.body = new Uint8Array(data.fetch.request.body)
+    }
+
+    const url = new URL(data.fetch.request.url)
     const event = new FetchEvent('fetch', {
       clientId: data.fetch.client.id,
       fetchId: data.fetch.request.id,
       request: new Request(data.fetch.request.url, {
+        headers: new Headers(data.fetch.request.headers),
         method: (data.fetch.request.method ?? 'GET').toUpperCase(),
         body: data.fetch.request.body
       })
     })
 
+    if (url.protocol !== 'socket:') {
+      const result = await ipc.request('protocol.getData', {
+        scheme: url.protocol.replace(':', '')
+      })
+
+      if (result.data !== null && result.data !== undefined) {
+        try {
+          event.context.data = JSON.parse(result.data)
+        } catch {
+          event.context.data = result.data
+        }
+      }
+    }
+
     globalThis.dispatchEvent(event)
+    return
   }
 
   if (event.data?.notificationclick) {

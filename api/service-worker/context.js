@@ -9,6 +9,13 @@ export class Context {
   #event = null
 
   /**
+   * Context data. This may be a custom protocol handler scheme data
+   * by default, if available.
+   * @type {any?}
+   */
+  data = null
+
+  /**
    * `Context` class constructor.
    * @param {import('./events.js').ExtendableEvent} event
    */
