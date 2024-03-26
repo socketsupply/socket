@@ -1,4 +1,4 @@
-import { URLPattern } from './urlpattern/urlpattern.js'
+import { URLPattern as URLPatternImplementation } from './urlpattern/urlpattern.js'
 import url from './url/url.js'
 import qs from '../querystring.js'
 
@@ -20,13 +20,89 @@ URL.resolve = resolve
 URL.parse = parse
 URL.format = format
 
+export class URLPattern extends URLPatternImplementation {}
+
+const URLPatternDescriptors = Object.getOwnPropertyDescriptors(URLPattern.prototype)
+Object.defineProperties(URLPatternDescriptors, {
+  hash: { ...URLPatternDescriptors.hash, enumerable: true },
+  hostname: { ...URLPatternDescriptors.hostname, enumerable: true },
+  password: { ...URLPatternDescriptors.password, enumerable: true },
+  pathname: { ...URLPatternDescriptors.pathname, enumerable: true },
+  protocol: { ...URLPatternDescriptors.protocol, enumerable: true },
+  username: { ...URLPatternDescriptors.username, enumerable: true },
+  search: { ...URLPatternDescriptors.search, enumerable: true }
+})
+
 export const protocols = new Set([
   'socket:',
-  'https:',
-  'http:',
+  'node:',
+  'npm:',
+  'ipc:',
+
+  // web standard & reserved
+  'bitcoin:',
   'file:',
-  'ipc:'
+  'ftp:',
+  'ftps:',
+  'geo:',
+  'git:',
+  'http:',
+  'https:',
+  'im:',
+  'ipfs:',
+  'irc:',
+  'ircs:',
+  'magnet:',
+  'mailto:',
+  'matrix:',
+  'mms:',
+  'news:',
+  'nntp:',
+  'openpgp4fpr:',
+  'sftp:',
+  'sip:',
+  'sms:',
+  'smsto:',
+  'ssh:',
+  'tel:',
+  'urn:',
+  'webcal:',
+  'wtai:',
+  'xmpp:'
 ])
+
+if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
+  const protocolHandlers = String(globalThis.__args.config['webview_protocol-handlers'] || '')
+    .split(' ')
+    .filter(Boolean)
+
+  const webviewURLProtocols = String(globalThis.__args.config.webview_url_protocols || '')
+    .split(' ')
+    .filter(Boolean)
+
+  for (const value of webviewURLProtocols) {
+    const scheme = value.replace(':', '')
+    if (scheme) {
+      protocols.add(scheme + ':')
+    }
+  }
+
+  for (const value of protocolHandlers) {
+    const scheme = value.replace(':', '')
+    if (scheme) {
+      protocols.add(scheme + ':')
+    }
+  }
+
+  for (const key in globalThis.__args.config) {
+    if (key.startsWith('webview_protocol-handlers_')) {
+      const scheme = key.replace('webview_protocol-handlers_', '').replace(':', '')
+      if (scheme) {
+        protocols.add(scheme + ':')
+      }
+    }
+  }
+}
 
 export function parse (input, options = null) {
   if (URL.canParse(input)) {
@@ -158,4 +234,4 @@ Object.defineProperties(URL.prototype, {
 })
 
 export default URL
-export { URLPattern, URL, URLSearchParams, parseURL }
+export { URL, URLSearchParams, parseURL }
