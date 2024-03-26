@@ -14,6 +14,7 @@
     "checkJs": false,
     "allowJs": true,
     "paths": {
+      "npm:*": ["node_modules/*"],
       "socket:*": ["api/*"]
     }
   }
