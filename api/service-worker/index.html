@@ -5,9 +5,9 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:*;
-         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
-         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
+        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:* {{protocol_handlers}};
+         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline' {{protocol_handlers}};
+         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline' {{protocol_handlers}};
           frame-src socket: https: http: blob: http://localhost:*;
             img-src socket: https: http: blob: http://localhost:*;
           child-src socket: https: http: blob:;
