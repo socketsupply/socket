@@ -773,7 +773,7 @@ SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
 
     // reserved for future ABI changes
     char __reserved__[1024];
-  } __attribute__((packed));
+  };
 
   /**
    * Register a new extension. There is typically no need to call this directly.
