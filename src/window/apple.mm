@@ -869,15 +869,6 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     config.limitsNavigationsToAppBoundDomains = YES;
 
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"ipc"];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"socket"];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"node"];
-
     [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
 
     WKPreferences* prefs = [config preferences];
@@ -1012,6 +1003,40 @@ namespace SSC {
         forKey: @"allowFileAccessFromFileURLs"
     ];
 
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"npm"];
+
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"ipc"];
+
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"socket"];
+
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"node"];
+
+    for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
+      const auto scheme = replace(trim(entry), ":", "");
+      if (app.core->protocolHandlers.registerHandler(scheme)) {
+        [config setURLSchemeHandler: bridge->router.schemeHandler
+                      forURLScheme: @(replace(trim(scheme), ":", "").c_str())];
+      }
+    }
+
+    for (const auto& entry : opts.userConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        const auto data = entry.second;
+        if (app.core->protocolHandlers.registerHandler(scheme, { data })) {
+          [config setURLSchemeHandler: bridge->router.schemeHandler
+                         forURLScheme: @(scheme.c_str())];
+        }
+      }
+    }
+
+/*
+TODO(@jwerle): figure out if this is even needed anymore?
     [config.processPool
       performSelector: @selector(_registerURLSchemeAsSecure:)
       withObject: @"socket"
@@ -1021,6 +1046,12 @@ namespace SSC {
       performSelector: @selector(_registerURLSchemeAsSecure:)
       withObject: @"ipc"
     ];
+
+    [config.processPool
+      performSelector: @selector(_registerURLSchemeAsSecure:)
+      withObject: @"node"
+    ];
+*/
 
     static const auto devHost = SSC::getDevHost();
     if (devHost.starts_with("http:")) {
@@ -1049,8 +1080,8 @@ namespace SSC {
     webview = [SSCBridgedWebView.alloc
       initWithFrame: NSZeroRect
       configuration: config
-      radius: (CGFloat) opts.radius
-      margin: (CGFloat) opts.margin
+             radius: (CGFloat) opts.radius
+             margin: (CGFloat) opts.margin
     ];
 
     window.webview = webview;
