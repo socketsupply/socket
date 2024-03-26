@@ -52,7 +52,7 @@ static const Vector<String> allowedNodeCoreModules = {
   "sys",
   "test",
   "timers",
-  "timers/promsies",
+  "timers/promises",
   "tty",
   "util",
   "url",
@@ -2326,7 +2326,10 @@ static void initRouterTable (Router *router) {
     );
   });
 
-
+  /**
+   * Reveal a file in the native operating system file system explorer.
+   * @param value
+   */
   router->map("platform.revealFile", [=](auto message, auto router, auto reply) mutable {
     auto err = validateMessageParameters(message, {"value"});
 
@@ -2448,6 +2451,104 @@ static void initRouterTable (Router *router) {
     result.post = router->core->getPost(id);
     reply(result);
     router->core->removePost(id);
+  });
+
+  /**
+   * Registers a custom protocol handler scheme. Custom protocols MUST be handled in service workers.
+   * @param scheme
+   * @param data
+   */
+  router->map("protocol.register", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scheme"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto scheme = message.get("scheme");
+    const auto data = message.get("data");
+
+    if (data.size() > 0 && router->core->protocolHandlers.hasHandler(scheme)) {
+      router->core->protocolHandlers.setHandlerData(scheme, { data });
+    } else {
+      router->core->protocolHandlers.registerHandler(scheme, { data });
+    }
+
+    reply(Result { message.seq, message });
+  });
+
+  /**
+   * Unregister a custom protocol handler scheme.
+   * @param scheme
+   */
+  router->map("protocol.unregister", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scheme"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto scheme = message.get("scheme");
+
+    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Protocol handler scheme is not registered."}
+      }});
+    }
+
+    router->core->protocolHandlers.unregisterHandler(scheme);
+
+    reply(Result { message.seq, message });
+  });
+
+  /**
+   * Gets protocol handler data
+   * @param scheme
+   */
+  router->map("protocol.getData", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scheme"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto scheme = message.get("scheme");
+
+    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Protocol handler scheme is not registered."}
+      }});
+    }
+
+    const auto data = router->core->protocolHandlers.getHandlerData(scheme);
+
+    reply(Result { message.seq, message, JSON::Raw(data.json) });
+  });
+
+  /**
+   * Sets protocol handler data
+   * @param scheme
+   * @param data
+   */
+  router->map("protocol.setData", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"scheme", "data"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto scheme = message.get("scheme");
+    const auto data = message.get("data");
+
+    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+      return reply(Result::Err { message, JSON::Object::Entries {
+        {"message", "Protocol handler scheme is not registered."}
+      }});
+    }
+
+    router->core->protocolHandlers.setHandlerData(scheme, { data });
+
+    reply(Result { message.seq, message });
   });
 
   /**
@@ -3226,15 +3327,16 @@ static void registerSchemeHandler (Router *router) {
         path = userConfig["webview_default_index"];
       } else {
         if (router->core->serviceWorker.registrations.size() > 0) {
-          auto fetchRequest = ServiceWorkerContainer::FetchRequest {
-            parsedPath.path,
-            method
-          };
+          auto requestHeaders = webkit_uri_scheme_request_get_http_headers(request);
+          auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
 
           fetchRequest.client.id = clientId;
           fetchRequest.client.preload = router->bridge->preload;
-          auto requestHeaders = webkit_uri_scheme_request_get_http_headers(request);
 
+          fetchRequest.method = method;
+          fetchRequest.scheme = "socket";
+          fetchRequest.host = userConfig["meta_bundle_identifier"];
+          fetchRequest.pathname = parsedPath.path;
           fetchRequest.query = parsedPath.queryString;
 
           soup_message_headers_foreach(
@@ -3246,6 +3348,31 @@ static void registerSchemeHandler (Router *router) {
             },
             &fetchRequest
           );
+
+          if ((method == "POST" || method == "PUT")) {
+            auto body = webkit_uri_scheme_request_get_http_body(request);
+            if (body) {
+              GError* error = nullptr;
+              fetchRequest.buffer.bytes = bytes;
+
+              const auto success = g_input_stream_read_all(
+                body,
+                bytes,
+                MAX_BODY_BYTES,
+                &fetchRequest.buffer.size,
+                nullptr,
+                &error
+              );
+
+              if (!success) {
+                webkit_uri_scheme_request_finish_error(
+                  request,
+                  error
+                );
+                return;
+              }
+            }
+          }
 
           const auto fetched = router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
             if (res.statusCode == 0) {
@@ -3423,6 +3550,14 @@ static void registerSchemeHandler (Router *router) {
         gsize size = 0;
         if (g_file_get_contents(file.c_str(), &contents, &size, &error)) {
           String html = contents;
+          Vector<String> protocolHandlers = { "npm:", "node:" };
+          for (const auto& entry : router->core->protocolHandlers.mapping) {
+            protocolHandlers.push_back(String(entry.first) + ":");
+          }
+
+          html = tmpl(html, Map {
+            {"protocol_handlers", join(protocolHandlers, " ")}
+          });
 
           if (html.find("<head>") != String::npos) {
             html = replace(html, "<head>", String("<head>" + script));
@@ -3672,7 +3807,10 @@ static void registerSchemeHandler (Router *router) {
     headers[key] = value;
   }
 
-  headers[@"cache-control"] = @"no-cache";
+  if (SSC::isDebugEnabled()) {
+    headers[@"cache-control"] = @"no-cache";
+  }
+
   headers[@"access-control-allow-origin"] = @"*";
   headers[@"access-control-allow-methods"] = @"*";
   headers[@"access-control-allow-headers"] = @"*";
@@ -3692,6 +3830,207 @@ static void registerSchemeHandler (Router *router) {
     [response release];
     #endif
 
+    return;
+  }
+
+  // handle 'npm:' and custom protocol schemes - POST/PUT bodies are ignored
+  if (scheme == "npm" || self.router->core->protocolHandlers.hasHandler(scheme)) {
+    auto absoluteURL = String(request.URL.absoluteString.UTF8String);
+    auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
+
+    fetchRequest.client.id = clientId;
+    fetchRequest.client.preload = self.router->bridge->preload;
+
+    fetchRequest.method = String(request.HTTPMethod.UTF8String);
+    fetchRequest.scheme = scheme;
+
+    if (request.URL.path != nullptr) {
+      fetchRequest.pathname = String(request.URL.path.UTF8String);
+      fetchRequest.host = userConfig["meta_bundle_identifier"];
+    } else if (request.URL.host != nullptr) {
+      fetchRequest.pathname = String("/") + String(request.URL.host.UTF8String);
+      fetchRequest.host = userConfig["meta_bundle_identifier"];
+    } else {
+      fetchRequest.host = userConfig["meta_bundle_identifier"];
+      if (absoluteURL.starts_with(scheme + "://")) {
+        fetchRequest.pathname = String("/") + replace(absoluteURL, scheme + "://", "");
+      } else if (absoluteURL.starts_with(scheme + ":/")) {
+        fetchRequest.pathname = String("/") + replace(absoluteURL, scheme + ":/", "");
+      } else {
+        fetchRequest.pathname = String("/") + replace(absoluteURL, scheme + ":", "");
+      }
+    }
+
+    if (request.URL.host != nullptr && request.URL.path != nullptr) {
+      fetchRequest.host = String(request.URL.host.UTF8String);
+    } else {
+      fetchRequest.host = userConfig["meta_bundle_identifier"];
+    }
+
+    if (scheme == "npm") {
+      fetchRequest.pathname = String("/socket/npm") + fetchRequest.pathname;
+    }
+
+    if (request.URL.query != nullptr) {
+      fetchRequest.query = String(request.URL.query.UTF8String);
+    } else {
+      auto cursor = absoluteURL.find_first_of("?");
+      if (cursor != String::npos && cursor < absoluteURL.size()) {
+        Vector<String >components;
+
+        // re-encode all URI components as this part of the URL may be sitting
+        // in the "auth" position of the URI with non-encoded characters
+        for (const auto entry : split(absoluteURL.substr(cursor + 1, absoluteURL.size()), "&")) {
+          const auto parts = split(entry, "=");
+          if (parts.size() == 2) {
+            const auto component = encodeURIComponent(parts[0]) + "=" + encodeURIComponent(parts[1]);
+            components.push_back(component);
+          }
+        }
+
+        fetchRequest.query = join(components, "&");
+        auto cursor = fetchRequest.pathname.find_first_of("?");
+        if (cursor != String::npos) {
+          fetchRequest.pathname = fetchRequest.pathname.substr(0, cursor);
+        }
+      }
+    }
+
+    if (request.allHTTPHeaderFields != nullptr) {
+      for (NSString* key in request.allHTTPHeaderFields) {
+        const auto value = [request.allHTTPHeaderFields objectForKey: key];
+        if (value != nullptr) {
+          const auto entry = String(key.UTF8String) + ": " + String(value.UTF8String);
+          fetchRequest.headers.push_back(entry);
+        }
+      }
+    }
+
+    if (request.HTTPBody && request.HTTPBody.bytes && request.HTTPBody.length > 0) {
+      fetchRequest.buffer.size = request.HTTPBody.length;
+      fetchRequest.buffer.bytes = new char[fetchRequest.buffer.size]{0};
+      memcpy(
+        fetchRequest.buffer.bytes,
+        request.HTTPBody.bytes,
+        fetchRequest.buffer.size
+      );
+    }
+
+    const auto scope = self.router->core->protocolHandlers.getServiceWorkerScope(fetchRequest.scheme);
+
+    if (scope.size() > 0) {
+      fetchRequest.pathname = scope + fetchRequest.pathname;
+    }
+
+    const auto requestURL = scheme == "npm"
+      ? replace(fetchRequest.str(), "npm://", "socket://")
+      : fetchRequest.str();
+
+    const auto fetched = self.router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
+      if (![self waitingForTask: task]) {
+        return;
+      }
+
+      if (res.statusCode == 0) {
+        @try {
+          [task didFailWithError: [NSError
+              errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                         code: 1
+                     userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
+            ]];
+        } @catch (id e) {
+          // ignore possible 'NSInternalInconsistencyException'
+        }
+        return;
+      }
+
+      auto headers = [NSMutableDictionary dictionary];
+
+      for (const auto& entry : res.headers) {
+        auto pair = split(trim(entry), ':');
+        auto key = @(trim(pair[0]).c_str());
+        auto value = @(trim(pair[1]).c_str());
+        headers[key] = value;
+      }
+
+      @try {
+        if (![self waitingForTask: task]) {
+          return;
+        }
+
+        const auto response = [[NSHTTPURLResponse alloc]
+           initWithURL: [NSURL URLWithString: @(requestURL.c_str())]
+            statusCode: res.statusCode
+           HTTPVersion: @"HTTP/1.1"
+          headerFields: headers
+        ];
+
+        if (![self waitingForTask: task]) {
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
+        }
+
+        [task didReceiveResponse: response];
+
+         if (![self waitingForTask: task]) {
+         #if !__has_feature(objc_arc)
+           [response release];
+         #endif
+           return;
+         }
+
+         const auto data = [NSData
+           dataWithBytes: res.buffer.bytes
+                  length: res.buffer.size
+         ];
+
+        if (res.buffer.size && data.length > 0) {
+          [task didReceiveData: data];
+        }
+
+        [task didFinish];
+        [self finalizeTask: task];
+      #if !__has_feature(objc_arc)
+        [response release];
+      #endif
+      } @catch (id e) {
+        // ignore possible 'NSInternalInconsistencyException'
+      }
+    });
+
+    if (fetched) {
+      [self enqueueTask: task withMessage: message];
+      self.router->bridge->core->setTimeout(32000, [=] () mutable {
+        if ([self waitingForTask: task]) {
+          @try {
+            [self finalizeTask: task];
+            [task didFailWithError: [NSError
+                   errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                              code: 1
+                          userInfo: @{NSLocalizedDescriptionKey: @"ServiceWorker request timed out."}
+            ]];
+          } @catch (id e) {
+          }
+        }
+      });
+      return;
+    }
+
+    auto response = [[NSHTTPURLResponse alloc]
+       initWithURL: request.URL
+        statusCode: 404
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+    [task didFinish];
+
+  #if !__has_feature(objc_arc)
+    [response release];
+  #endif
     return;
   }
 
@@ -3842,7 +4181,14 @@ static void registerSchemeHandler (Router *router) {
               }
             }
 
-            auto html = String(string.UTF8String);
+            Vector<String> protocolHandlers = { "npm:", "node:" };
+            for (const auto& entry : self.router->core->protocolHandlers.mapping) {
+              protocolHandlers.push_back(String(entry.first) + ":");
+            }
+
+            auto html = tmpl(String(string.UTF8String), Map {
+              {"protocol_handlers", join(protocolHandlers, " ")}
+            });
 
             if (html.find("<head>") != String::npos) {
               html = replace(html, "<head>", String("<head>" + script));
@@ -3878,13 +4224,21 @@ static void registerSchemeHandler (Router *router) {
           path = userConfig["webview_default_index"];
         } else if (!path.starts_with("/socket/service-worker")) {
           if (self.router->core->serviceWorker.registrations.size() > 0) {
-            auto fetchRequest = ServiceWorkerContainer::FetchRequest {
-              String(request.URL.path.UTF8String),
-              String(request.HTTPMethod.UTF8String)
-            };
+            auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
 
             fetchRequest.client.id = clientId;
             fetchRequest.client.preload = self.router->bridge->preload;
+
+            fetchRequest.method = String(request.HTTPMethod.UTF8String);
+            fetchRequest.scheme = scheme;
+
+            if (request.URL.host != nullptr) {
+              fetchRequest.host = String(request.URL.host.UTF8String);
+            } else {
+              fetchRequest.host = userConfig["meta_bundle_identifier"];
+            }
+
+            fetchRequest.pathname = String(request.URL.path.UTF8String);
 
             if (request.URL.query != nullptr) {
               fetchRequest.query = String(request.URL.query.UTF8String);
@@ -3898,6 +4252,16 @@ static void registerSchemeHandler (Router *router) {
                   fetchRequest.headers.push_back(entry);
                 }
               }
+            }
+
+            if (request.HTTPBody && request.HTTPBody.bytes && request.HTTPBody.length > 0) {
+              fetchRequest.buffer.size = request.HTTPBody.length;
+              fetchRequest.buffer.bytes = new char[fetchRequest.buffer.size]{0};
+              memcpy(
+                fetchRequest.buffer.bytes,
+                request.HTTPBody.bytes,
+                fetchRequest.buffer.size
+              );
             }
 
             const auto requestURL = String(request.URL.absoluteString.UTF8String);
@@ -4213,7 +4577,14 @@ static void registerSchemeHandler (Router *router) {
         }
       }
 
-      auto html = String(string.UTF8String);
+      Vector<String> protocolHandlers = { "npm:", "node:" };
+      for (const auto& entry : self.router->core->protocolHandlers.mapping) {
+        protocolHandlers.push_back(String(entry.first) + ":");
+      }
+
+      auto html = tmpl(String(string.UTF8String), Map {
+        {"protocol_handlers", join(protocolHandlers, " ")}
+      });
 
       if (html.find("<head>") != String::npos) {
         html = replace(html, "<head>", String("<head>" + script));
@@ -4450,8 +4821,7 @@ static void registerSchemeHandler (Router *router) {
     #if !__has_feature(objc_arc)
       [response release];
     #endif
-    } @catch (::id e) {
-    }
+    } @catch (::id e) {}
   });
 
   if (!invoked) {
@@ -5282,6 +5652,10 @@ namespace SSC::IPC {
   void Router::init (Bridge* bridge) {
     this->bridge = bridge;
 
+    if (bridge->userConfig["permissions_allow_service_worker"] != "false") {
+      bridge->userConfig["webview_service-workers_/socket/npm/"] = "/socket/npm/service-worker.js";
+    }
+
   #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
     this->locationObserver = [SSCLocationObserver new];
@@ -5294,6 +5668,45 @@ namespace SSC::IPC {
 
     initRouterTable(this);
     registerSchemeHandler(this);
+
+  #if SSC_PLATFORM_LINUX
+    ProtocolHandlers::Mapping protocolHandlerMappings;
+
+    for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
+      const auto scheme = replace(trim(entry), ":", "");
+      protocolHandlerMappings.insert_or_assign(scheme, { scheme });
+    }
+
+    for (const auto& entry : opts.userConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        const auto data = entry.second;
+        if (data.starts_with(".") || data.starts_with("/")) {
+          protocolHandlerMappings.insert_or_assign(scheme, { scheme });
+        } else {
+          protocolHandlerMappings.insert_or_assign(scheme, { scheme, { data } });
+        }
+      }
+    }
+
+    for (const auto& entry : protocolHandlerMappings) {
+      const auto& scheme = entry.first;
+      const auto& data = entry.second.data;
+      // manually handle NPM here
+      if (scheme == "npm" || app.core->protocolHandlers.registerHandler(scheme, data)) {
+        webkit_security_manager_register_uri_scheme_as_display_isolated(security, scheme.c_str());
+        webkit_security_manager_register_uri_scheme_as_cors_enabled(security, scheme.c_str());
+        webkit_security_manager_register_uri_scheme_as_secure(security, scheme.c_str());
+        webkit_security_manager_register_uri_scheme_as_local(security, scheme.c_str());
+        webkit_web_context_register_uri_scheme(ctx, scheme.c_str(), [](auto request, auto ptr) {
+            // auto protocol = ...
+        },
+        nullptr,
+        0);
+      }
+    }
+#endif
 
     this->preserveCurrentTable();
 
