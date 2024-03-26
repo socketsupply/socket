@@ -227,7 +227,8 @@ extern "C" {
     jstring pathnameString,
     jstring methodString,
     jstring queryString,
-    jstring headersString
+    jstring headersString,
+    jbyteArray byteArray,
   ) {
     auto runtime = Runtime::from(env, self);
 
@@ -254,6 +255,15 @@ extern "C" {
       StringWrap(env, methodString).str()
     };
 
+    auto size = byteArray != nullptr ? env->GetArrayLength(byteArray) : 0;
+    auto input = size > 0 ? new char[size]{0} : nullptr;
+
+    if (size > 0 && input != nullptr) {
+      env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) input);
+    }
+
+    request.buffer.bytes = input;
+    request.buffer.size = size;
     request.query = StringWrap(env, queryString).str();
     request.headers = SSC::split(StringWrap(env, headersString).str(), '\n');
 
