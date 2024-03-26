@@ -161,7 +161,11 @@ export class Console {
     if (destination === 'debug') {
       destination = 'stderr'
       extra = 'debug=true'
-      value = `(${globalThis.location.pathname}): ${value}`
+      if (globalThis.location && !globalThis.window) {
+        value = `[${globalThis.name || globalThis.location.pathname}]: ${value}`
+      } else {
+        value = `[${globalThis.location.pathname}]: ${value}`
+      }
     }
 
     if (/ios|darwin/i.test(os.platform())) {
