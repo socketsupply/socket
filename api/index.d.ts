@@ -207,7 +207,7 @@ declare module "socket:events" {
             readonly error: any;
         };
     };
-    export default exports;
+    export default EventEmitter;
     export function EventEmitter(): void;
     export class EventEmitter {
         _events: any;
@@ -237,8 +237,6 @@ declare module "socket:events" {
         export { once };
     }
     export function once(emitter: any, name: any): Promise<any>;
-    import * as exports from "socket:events";
-    
 }
 
 declare module "socket:async/context" {
@@ -629,11 +627,11 @@ declare module "socket:diagnostics/channels" {
         unsubscribe(_: any, onMessage: Function): boolean;
         /**
          * A no-op for `Channel` instances. This function always returns `false`.
-         * @param {string} name
-         * @param {object} message
+         * @param {string|object} name
+         * @param {object=} [message]
          * @return Promise<boolean>
          */
-        publish(name: string, message: object): Promise<boolean>;
+        publish(name: string | object, message?: object | undefined): Promise<boolean>;
         /**
          * Returns a string representation of the `ChannelRegistry`.
          * @ignore
@@ -2044,13 +2042,35 @@ declare module "socket:url/index" {
     export function parse(input: any, options?: any): any;
     export function resolve(from: any, to: any): any;
     export function format(input: any): any;
+    const URLPattern_base: {
+        new (t: {}, r: any, n: any): {
+            "__#21@#i": any;
+            "__#21@#n": {};
+            "__#21@#t": {};
+            "__#21@#e": {};
+            "__#21@#s": {};
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+    export class URLPattern extends URLPattern_base {
+    }
     export const protocols: Set<string>;
     export default URL;
     export const URL: any;
-    import { URLPattern } from "socket:url/urlpattern/urlpattern";
     export const URLSearchParams: any;
     export const parseURL: any;
-    export { URLPattern };
 }
 
 declare module "socket:url" {
@@ -2155,25 +2175,7 @@ declare module "socket:path/path" {
          * @param {string} [cwd = Path.cwd()]
          */
         protected constructor();
-        pattern: {
-            "__#21@#i": any;
-            "__#21@#n": {};
-            "__#21@#t": {};
-            "__#21@#e": {};
-            "__#21@#s": {};
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-        };
+        pattern: URLPattern;
         url: any;
         get pathname(): any;
         get protocol(): any;
@@ -2258,6 +2260,7 @@ declare module "socket:path/path" {
     } | {
         url: string;
     });
+    import { URLPattern } from "socket:url/index";
     import { URL } from "socket:url/index";
 }
 
@@ -3987,7 +3990,7 @@ declare module "socket:fs/index" {
     /**
      * Asynchronously check access a file for a given mode calling `callback`
      * upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?|function(Error?)?} [mode = F_OK(0)]
      * @param {function(Error?)?} [callback]
@@ -3996,7 +3999,7 @@ declare module "socket:fs/index" {
     /**
      * Synchronously check access a file for a given mode calling `callback`
      * upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?} [mode = F_OK(0)]
      */
@@ -4049,7 +4052,7 @@ declare module "socket:fs/index" {
     export function chownSync(path: string, uid: number, gid: number): void;
     /**
      * Asynchronously close a file descriptor calling `callback` upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsclosefd-callback}
      * @param {number} fd
      * @param {function(Error?)?} [callback]
      */
@@ -4060,7 +4063,7 @@ declare module "socket:fs/index" {
      * @param {string} dest - The destination file path.
      * @param {number} flags - Modifiers for copy operation.
      * @param {function(Error=)=} [callback] - The function to call after completion.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
     export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
     /**
@@ -4068,18 +4071,18 @@ declare module "socket:fs/index" {
      * @param {string} src - The source file path.
      * @param {string} dest - The destination file path.
      * @param {number} flags - Modifiers for copy operation.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
     export function copyFileSync(src: string, dest: string, flags: number): void;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * @see {@link https://nodejs.org/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {ReadStream}
      */
     export function createReadStream(path: string | Buffer | URL, options?: object | null): ReadStream;
     /**
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
+     * @see {@link https://nodejs.org/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
      * @param {object?} [options]
      * @returns {WriteStream}
@@ -4089,7 +4092,7 @@ declare module "socket:fs/index" {
      * Invokes the callback with the <fs.Stats> for the file descriptor. See
      * the POSIX fstat(2) documentation for more detail.
      *
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsfstatfd-options-callback}
      *
      * @param {number} fd - A file descriptor.
      * @param {object?|function?} [options] - An options object.
@@ -4135,7 +4138,7 @@ declare module "socket:fs/index" {
     export function mkdirSync(path: any, options: any): void;
     /**
      * Asynchronously open a file calling `callback` upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
      * @param {string?} [flags = 'r']
      * @param {string?} [mode = 0o666]
@@ -4145,7 +4148,7 @@ declare module "socket:fs/index" {
     export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
     /**
      * Asynchronously open a directory calling `callback` upon success or error.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
      * @param {object?|function(Error?, Dir?)} [options]
      * @param {string?} [options.encoding = 'utf8']
@@ -4155,7 +4158,7 @@ declare module "socket:fs/index" {
     export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
     /**
      * Asynchronously read from an open file descriptor.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
      * @param {number} fd
      * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
      * @param {number} offset - The position in buffer to write the data to.
@@ -4165,8 +4168,19 @@ declare module "socket:fs/index" {
      */
     export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
     /**
+     * Asynchronously write to an open file descriptor.
+     * @see {@link https://nodejs.org/api/fs.html#fswritefd-buffer-offset-length-position-callback}
+     * @param {number} fd
+     * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+     * @param {number} offset - The position in buffer to write the data to.
+     * @param {number} length - The number of bytes to read.
+     * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+     * @param {function(Error?, number?, Buffer?)} callback
+     */
+    export function write(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
+    /**
      * Asynchronously read all entries in a directory.
-     * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
+     * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL } path
      * @param {object?|function(Error?, object[])} [options]
      * @param {string?} [options.encoding ? 'utf8']
@@ -4257,7 +4271,7 @@ declare module "socket:fs/index" {
      */
     export function unlink(path: string, callback: Function): void;
     /**
-     * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
+     * @see {@url https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
      * @param {string | Buffer | TypedArray | DataView | object } data
      * @param {object?} options
@@ -4518,13 +4532,11 @@ declare module "socket:ipc" {
             [k: string]: string;
         };
     }
-    const Message_base: any;
     /**
      * A container for a IPC message based on a `ipc://` URI scheme.
      * @ignore
      */
-    export class Message extends Message_base {
-        [x: string]: any;
+    export class Message extends URL {
         /**
          * The expected protocol for an IPC message.
          * @ignore
@@ -4630,7 +4642,7 @@ declare module "socket:ipc" {
          * @param {any} value
          * @ignore
          */
-        set(key: string, value: any): any;
+        set(key: string, value: any): void;
         /**
          * Get a parameter value by `key`.
          * @param {string} key
@@ -4761,7 +4773,6 @@ declare module "socket:ipc" {
     export const primordials: any;
     export default exports;
     import { Buffer } from "socket:buffer";
-    import { URL } from "socket:url/index";
     import * as exports from "socket:ipc";
     
 }
@@ -5179,9 +5190,10 @@ declare module "socket:errors" {
         /**
          * `ModuleNotFoundError` class constructor.
          * @param {string} message
+         * @param {string[]=} [requireStack]
          */
-        constructor(message: string, requireStack: any);
-        requireStack: any;
+        constructor(message: string, requireStack?: string[] | undefined);
+        requireStack: string[];
     }
     /**
      * An `OperationError` is an error type thrown when an internal exception
@@ -6070,6 +6082,7 @@ declare module "socket:application" {
      * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
      * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
      * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
+     * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
      * @return {Promise<ApplicationWindow>}
      */
     export function createWindow(opts: {
@@ -6098,6 +6111,7 @@ declare module "socket:application" {
         canExit?: boolean | undefined;
         headless?: boolean | undefined;
         userScript?: string | undefined;
+        protocolHandlers?: string[] | undefined;
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
@@ -7129,13 +7143,33 @@ declare module "socket:child_process" {
          */
         get reading(): boolean;
         /**
+         * @type {import('./process')}
+         */
+        get process(): typeof import("socket:process");
+        /**
          * Destroys the pipe
          */
         destroy(): void;
         #private;
     }
     export class ChildProcess extends EventEmitter {
-        constructor(options?: {});
+        /**
+         * `ChildProcess` class constructor.
+         * @param {{
+         *   env?: object,
+         *   stdin?: boolean,
+         *   stdout?: boolean,
+         *   stderr?: boolean,
+         *   signal?: AbortSigal,
+         * }=} [options]
+         */
+        constructor(options?: {
+            env?: object;
+            stdin?: boolean;
+            stdout?: boolean;
+            stderr?: boolean;
+            signal?: AbortSigal;
+        } | undefined);
         /**
          * @ignore
          * @type {Pipe}
@@ -7265,6 +7299,7 @@ declare module "socket:child_process" {
     import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
+    import signal from "socket:signal";
 }
 
 declare module "socket:constants" {
@@ -8144,21 +8179,6 @@ declare module "socket:fetch/fetch" {
     }
 }
 
-declare module "socket:fetch/index" {
-    export default fetch;
-    import { fetch } from "socket:fetch/fetch";
-    import { Headers } from "socket:fetch/fetch";
-    import { Request } from "socket:fetch/fetch";
-    import { Response } from "socket:fetch/fetch";
-    export { fetch, Headers, Request, Response };
-}
-
-declare module "socket:fetch" {
-    export * from "socket:fetch/index";
-    export default fetch;
-    import fetch from "socket:fetch/index";
-}
-
 declare module "socket:service-worker/database" {
     /**
      * A typed container for optional options given to the `Database`
@@ -8690,6 +8710,12 @@ declare module "socket:service-worker/context" {
          */
         constructor(event: import('./events.js').ExtendableEvent);
         /**
+         * Context data. This may be a custom protocol handler scheme data
+         * by default, if available.
+         * @type {any?}
+         */
+        data: any | null;
+        /**
          * The `ExtendableEvent` for this `Context` instance.
          * @type {ExtendableEvent}
          */
@@ -8786,6 +8812,7 @@ declare module "socket:service-worker/events" {
      * request and how the receiver will treat the response.
      */
     export class FetchEvent extends ExtendableEvent {
+        static defaultHeaders: Headers;
         /**
          * `FetchEvent` class constructor.
          * @ignore
@@ -8956,6 +8983,69 @@ declare module "socket:http" {
      * @type {object}
      */
     export const STATUS_CODES: object;
+    export const CONTINUE: 100;
+    export const SWITCHING_PROTOCOLS: 101;
+    export const PROCESSING: 102;
+    export const EARLY_HINTS: 103;
+    export const OK: 200;
+    export const CREATED: 201;
+    export const ACCEPTED: 202;
+    export const NONAUTHORITATIVE_INFORMATION: 203;
+    export const NO_CONTENT: 204;
+    export const RESET_CONTENT: 205;
+    export const PARTIAL_CONTENT: 206;
+    export const MULTISTATUS: 207;
+    export const ALREADY_REPORTED: 208;
+    export const IM_USED: 226;
+    export const MULTIPLE_CHOICES: 300;
+    export const MOVED_PERMANENTLY: 301;
+    export const FOUND: 302;
+    export const SEE_OTHER: 303;
+    export const NOT_MODIFIED: 304;
+    export const USE_PROXY: 305;
+    export const TEMPORARY_REDIRECT: 307;
+    export const PERMANENT_REDIRECT: 308;
+    export const BAD_REQUEST: 400;
+    export const UNAUTHORIZED: 401;
+    export const PAYMENT_REQUIRED: 402;
+    export const FORBIDDEN: 403;
+    export const NOT_FOUND: 404;
+    export const METHOD_NOT_ALLOWED: 405;
+    export const NOT_ACCEPTABLE: 406;
+    export const PROXY_AUTHENTICATION_REQUIRED: 407;
+    export const REQUEST_TIMEOUT: 408;
+    export const CONFLICT: 409;
+    export const GONE: 410;
+    export const LENGTH_REQUIRED: 411;
+    export const PRECONDITION_FAILED: 412;
+    export const PAYLOAD_TOO_LARGE: 413;
+    export const URI_TOO_LONG: 414;
+    export const UNSUPPORTED_MEDIA_TYPE: 415;
+    export const RANGE_NOT_SATISFIABLE: 416;
+    export const EXPECTATION_FAILED: 417;
+    export const IM_A_TEAPOT: 418;
+    export const MISDIRECTED_REQUEST: 421;
+    export const UNPROCESSABLE_ENTITY: 422;
+    export const LOCKED: 423;
+    export const FAILED_DEPENDENCY: 424;
+    export const TOO_EARLY: 425;
+    export const UPGRADE_REQUIRED: 426;
+    export const PRECONDITION_REQUIRED: 428;
+    export const TOO_MANY_REQUESTS: 429;
+    export const REQUEST_HEADER_FIELDS_TOO_LARGE: 431;
+    export const UNAVAILABLE_FOR_LEGAL_REASONS: 451;
+    export const INTERNAL_SERVER_ERROR: 500;
+    export const NOT_IMPLEMENTED: 501;
+    export const BAD_GATEWAY: 502;
+    export const SERVICE_UNAVAILABLE: 503;
+    export const GATEWAY_TIMEOUT: 504;
+    export const HTTP_VERSION_NOT_SUPPORTED: 505;
+    export const VARIANT_ALSO_NEGOTIATES: 506;
+    export const INSUFFICIENT_STORAGE: 507;
+    export const LOOP_DETECTED: 508;
+    export const BANDWIDTH_LIMIT_EXCEEDED: 509;
+    export const NOT_EXTENDED: 510;
+    export const NETWORK_AUTHENTICATION_REQUIRED: 511;
     /**
      * The parent class of `ClientRequest` and `ServerResponse`.
      * It is an abstract outgoing message from the perspective of the
@@ -9585,6 +9675,21 @@ declare module "socket:http" {
     
 }
 
+declare module "socket:fetch/index" {
+    export default fetch;
+    import { fetch } from "socket:fetch/fetch";
+    import { Headers } from "socket:fetch/fetch";
+    import { Request } from "socket:fetch/fetch";
+    import { Response } from "socket:fetch/fetch";
+    export { fetch, Headers, Request, Response };
+}
+
+declare module "socket:fetch" {
+    export * from "socket:fetch/index";
+    export default fetch;
+    import fetch from "socket:fetch/index";
+}
+
 declare module "socket:https" {
     /**
      * Makes a HTTPS request, optionally a `socket://` for relative paths when
@@ -9613,6 +9718,69 @@ declare module "socket:https" {
      * @return {Server}
      */
     export function createServer(...args: any[]): Server;
+    export const CONTINUE: 100;
+    export const SWITCHING_PROTOCOLS: 101;
+    export const PROCESSING: 102;
+    export const EARLY_HINTS: 103;
+    export const OK: 200;
+    export const CREATED: 201;
+    export const ACCEPTED: 202;
+    export const NONAUTHORITATIVE_INFORMATION: 203;
+    export const NO_CONTENT: 204;
+    export const RESET_CONTENT: 205;
+    export const PARTIAL_CONTENT: 206;
+    export const MULTISTATUS: 207;
+    export const ALREADY_REPORTED: 208;
+    export const IM_USED: 226;
+    export const MULTIPLE_CHOICES: 300;
+    export const MOVED_PERMANENTLY: 301;
+    export const FOUND: 302;
+    export const SEE_OTHER: 303;
+    export const NOT_MODIFIED: 304;
+    export const USE_PROXY: 305;
+    export const TEMPORARY_REDIRECT: 307;
+    export const PERMANENT_REDIRECT: 308;
+    export const BAD_REQUEST: 400;
+    export const UNAUTHORIZED: 401;
+    export const PAYMENT_REQUIRED: 402;
+    export const FORBIDDEN: 403;
+    export const NOT_FOUND: 404;
+    export const METHOD_NOT_ALLOWED: 405;
+    export const NOT_ACCEPTABLE: 406;
+    export const PROXY_AUTHENTICATION_REQUIRED: 407;
+    export const REQUEST_TIMEOUT: 408;
+    export const CONFLICT: 409;
+    export const GONE: 410;
+    export const LENGTH_REQUIRED: 411;
+    export const PRECONDITION_FAILED: 412;
+    export const PAYLOAD_TOO_LARGE: 413;
+    export const URI_TOO_LONG: 414;
+    export const UNSUPPORTED_MEDIA_TYPE: 415;
+    export const RANGE_NOT_SATISFIABLE: 416;
+    export const EXPECTATION_FAILED: 417;
+    export const IM_A_TEAPOT: 418;
+    export const MISDIRECTED_REQUEST: 421;
+    export const UNPROCESSABLE_ENTITY: 422;
+    export const LOCKED: 423;
+    export const FAILED_DEPENDENCY: 424;
+    export const TOO_EARLY: 425;
+    export const UPGRADE_REQUIRED: 426;
+    export const PRECONDITION_REQUIRED: 428;
+    export const TOO_MANY_REQUESTS: 429;
+    export const REQUEST_HEADER_FIELDS_TOO_LARGE: 431;
+    export const UNAVAILABLE_FOR_LEGAL_REASONS: 451;
+    export const INTERNAL_SERVER_ERROR: 500;
+    export const NOT_IMPLEMENTED: 501;
+    export const BAD_GATEWAY: 502;
+    export const SERVICE_UNAVAILABLE: 503;
+    export const GATEWAY_TIMEOUT: 504;
+    export const HTTP_VERSION_NOT_SUPPORTED: 505;
+    export const VARIANT_ALSO_NEGOTIATES: 506;
+    export const INSUFFICIENT_STORAGE: 507;
+    export const LOOP_DETECTED: 508;
+    export const BANDWIDTH_LIMIT_EXCEEDED: 509;
+    export const NOT_EXTENDED: 510;
+    export const NETWORK_AUTHENTICATION_REQUIRED: 511;
     /**
      * All known possible HTTP methods.
      * @type {string[]}
@@ -11940,330 +12108,627 @@ declare module "socket:timers" {
     import * as exports from "socket:timers/index";
 }
 
-declare module "socket:module" {
-    export function isBuiltin(name: any): boolean;
+declare module "socket:commonjs/builtins" {
     /**
-     * Creates a `require` function from a source URL.
-     * @param {URL|string} sourcePath
-     * @return {function}
+     * Predicate to determine if a given module name is a builtin module.
+     * @param {string} name
+     * @param {{ builtins?: object }}
+     * @return {boolean}
      */
-    export function createRequire(sourcePath: URL | string): Function;
+    export function isBuiltin(name: string, options?: any): boolean;
     /**
-     * A limited set of builtins exposed to CommonJS modules.
+     * Gets a builtin module by name.
+     * @param {string} name
+     * @param {{ builtins?: object }}
+     * @return {any}
      */
-    export const builtins: {
-        async: typeof _async;
-        async_context: {
-            AsyncLocalStorage: typeof AsyncLocalStorage;
-            AsyncResource: typeof AsyncResource;
-        };
-        async_hooks: {
-            AsyncLocalStorage: typeof AsyncLocalStorage;
-            AsyncResource: typeof AsyncResource;
-            executionAsyncResource: typeof executionAsyncResource;
-            executionAsyncId: typeof executionAsyncId;
-            triggerAsyncId: typeof triggerAsyncId;
-            createHook: typeof createHook;
-            AsyncHook: typeof AsyncHook;
-        };
-        application: typeof application;
-        assert: typeof import("socket:assert").assert & {
-            AssertionError: typeof import("socket:assert").AssertionError;
-            ok: typeof import("socket:assert").ok;
-            equal: typeof import("socket:assert").equal;
-            notEqual: typeof import("socket:assert").notEqual;
-            strictEqual: typeof import("socket:assert").strictEqual;
-            notStrictEqual: typeof import("socket:assert").notStrictEqual;
-            deepEqual: typeof import("socket:assert").deepEqual;
-            notDeepEqual: typeof import("socket:assert").notDeepEqual;
-        };
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        constants: any;
-        child_process: {
-            ChildProcess: typeof import("socket:child_process").ChildProcess;
-            spawn: typeof import("socket:child_process").spawn;
-            execFile: typeof import("socket:child_process").exec;
-            exec: typeof import("socket:child_process").exec;
-        };
-        crypto: typeof crypto;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        http: typeof http;
-        https: typeof http;
-        gc: any;
-        ipc: typeof ipc;
-        language: {
-            codes: string[];
-            describe: typeof import("socket:language").describe;
-            lookup: typeof import("socket:language").lookup;
-            names: string[];
-            tags: import("socket:enumeration").Enumeration;
-        };
-        location: {
-            origin: string;
-            href: string;
-            protocol: string;
-            hostname: string;
-            host: string;
-            search: string;
-            pathname: string;
-            toString: typeof import("socket:location").toString;
-        };
-        mime: typeof mime;
-        net: {};
-        network: (options: any) => Promise<events.EventEmitter>;
-        os: typeof os;
-        path: typeof path;
-        perf_hooks: {
-            performance: Performance;
-        };
-        process: any;
-        querystring: {
-            decode: typeof import("socket:querystring").parse;
-            encode: typeof import("socket:querystring").stringify;
-            parse: typeof import("socket:querystring").parse;
-            stringify: typeof import("socket:querystring").stringify;
-            escape: typeof import("socket:querystring").escape;
-            unescape: typeof import("socket:querystring").unescape;
-        };
-        stream: typeof stream;
-        'stream/web': typeof stream.web;
-        string_decoder: typeof string_decoder;
-        sys: typeof util;
-        test: typeof test;
-        timers: typeof timers;
-        'timers/promises': any;
-        tty: {
-            isatty: () => boolean;
-            WriteStream: typeof util.IllegalConstructor;
-            ReadStream: typeof util.IllegalConstructor;
-        };
-        util: typeof util;
-        url: any;
-        vm: {
-            createGlobalObject: typeof import("socket:vm").createGlobalObject;
-            compileFunction: typeof import("socket:vm").compileFunction;
-            createReference: typeof import("socket:vm").createReference;
-            getContextWindow: typeof import("socket:vm").getContextWindow;
-            getContextWorker: typeof import("socket:vm").getContextWorker;
-            getReference: typeof import("socket:vm").getReference;
-            getTransferables: typeof import("socket:vm").getTransferables;
-            putReference: typeof import("socket:vm").putReference;
-            Reference: typeof import("socket:vm").Reference;
-            removeReference: typeof import("socket:vm").removeReference;
-            runInContext: typeof import("socket:vm").runInContext;
-            runInNewContext: typeof import("socket:vm").runInNewContext;
-            runInThisContext: typeof import("socket:vm").runInThisContext;
-            Script: typeof import("socket:vm").Script;
-            createContext: typeof import("socket:vm").createContext;
-            isContext: typeof import("socket:vm").isContext;
-        };
-        window: typeof window;
-        worker_threads: {
-            Worker: typeof import("socket:worker_threads").Worker;
-            isMainThread: boolean;
-            parentPort: import("socket:worker_threads").MessagePort;
-            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
-            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
-            workerData: any;
-            threadId: number;
-            SHARE_ENV: symbol;
-        };
+    export function getBuiltin(name: string, options?: any): any;
+    /**
+     * A mapping of builtin modules
+     * @type {object}
+     */
+    export const builtins: object;
+    /**
+     * Known runtime specific builtin modules.
+     * @type {string[]}
+     */
+    export const runtimeModules: string[];
+    export default builtins;
+}
+
+declare module "socket:commonjs/loader" {
+    /**
+     * @typedef {{
+     *   extensions?: string[] | Set<string>
+     *   origin?: URL | string,
+     *   statuses?: Map
+     *   cache?: Map
+     * }} LoaderOptions
+     */
+    /**
+     * @typedef {{
+     *   loader?: Loader,
+     *   origin?: URL | string
+     * }} RequestOptions
+     */
+    /**
+     * @typedef {{
+     *   headers?: Headers | object
+     * }} RequestLoadOptions
+     */
+    /**
+     * @typedef {{
+     *   request?: Request,
+     *   headers?: Headers,
+     *   status?: number,
+     *   text?: string
+     * }} ResponseOptions
+     */
+    /**
+     * A container for the status of a CommonJS resource. A `RequestStatus` object
+     * represents meta data for a `Request` that comes from a preflight
+     * HTTP HEAD request.
+     */
+    export class RequestStatus {
+        /**
+         * `RequestStatus` class constructor.
+         * @param {Request} request
+         */
+        constructor(request: Request);
+        /**
+         * The unique ID of this `RequestStatus`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The origin for this `RequestStatus` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * A HTTP status code for this `RequestStatus` object.
+         * @type {number|undefined}
+         */
+        get status(): number;
+        /**
+         * An alias for `status`.
+         * @type {number|undefined}
+         */
+        get value(): number;
+        /**
+         * @ignore
+         */
+        get valueOf(): number;
+        /**
+         * The HTTP headers for this `RequestStatus` object.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * The resource location for this `RequestStatus` object. This value is
+         * determined from the 'Content-Location' header, if available, otherwise
+         * it is derived from the request URL pathname (including the query string).
+         * @type {string}
+         */
+        get location(): string;
+        /**
+         * `true` if the response status is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        /**
+         * Loads the internal state for this `RequestStatus` object.
+         * @param {RequestLoadOptions|boolean} [options]
+         * @return {RequestStatus}
+         */
+        load(options?: RequestLoadOptions | boolean): RequestStatus;
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request to local resource or
+     * over the network.
+     */
+    export class Request {
+        /**
+         * `Request` class constructor.
+         * @param {URL|string} url
+         * @param {URL|string=} [origin]
+         * @param {RequestOptions=} [options]
+         */
+        constructor(url: URL | string, origin?: (URL | string) | undefined, options?: RequestOptions | undefined);
+        /**
+         * The unique ID of this `Request`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute `URL` of this `Request` object.
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * The origin for this `Request`.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The `Loader` for this `Request` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `RequestStatus` for this `Request`
+         * @type {RequestStatus}
+         */
+        get status(): RequestStatus;
+        /**
+         * Loads the CommonJS source file, optionally checking the `Loader` cache
+         * first, unless ignored when `options.cache` is `false`.
+         * @param {RequestLoadOptions=} [options]
+         * @return {Response}
+         */
+        load(options?: RequestLoadOptions | undefined): Response;
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request response for a local resource
+     * or over the network.
+     */
+    export class Response {
+        /**
+         * `Response` class constructor.
+         * @param {Request|ResponseOptions} request
+         * @param {ResponseOptions=} [options]
+         */
+        constructor(request: Request | ResponseOptions, options?: ResponseOptions | undefined);
+        /**
+         * The unique ID of this `Response`, which is the absolute
+         * URL of the request as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The `Request` object associated with this `Response` object.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The `Loader` associated with this `Response` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `Response` status code from the associated `Request` object.
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * The `Response` string from the associated `Request`
+         * @type {string}
+         */
+        get text(): string;
+        /**
+         * `true` if the response is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        #private;
+    }
+    /**
+     * A container for loading CommonJS module sources
+     */
+    export class Loader {
+        /**
+         * A request class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Request: typeof Request;
+        /**
+         * A response class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Response: typeof Request;
+        /**
+         * Resolves a given module URL to an absolute URL with an optional `origin`.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        static resolve(url: URL | string, origin?: URL | string): string;
+        /**
+         * Default extensions for a loader.
+         * @type {Set<string>}
+         */
+        static defaultExtensions: Set<string>;
+        /**
+         * `Loader` class constructor.
+         * @param {string|URL|LoaderOptions} origin
+         * @param {LoaderOptions=} [options]
+         */
+        constructor(origin: string | URL | LoaderOptions, options?: LoaderOptions | undefined);
+        /**
+         * The internal cache for this `Loader` object.
+         * @type {Map}
+         */
+        get cache(): Map<any, any>;
+        /**
+         * The internal statuses for this `Loader` object.
+         * @type {Map}
+         */
+        get statuses(): Map<any, any>;
+        /**
+         * A set of supported `Loader` extensions.
+         * @type {Set<string>}
+         */
+        get extensions(): Set<string>;
+        set origin(origin: string);
+        /**
+         * The origin of this `Loader` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * Loads a CommonJS module source file at `url` with an optional `origin`, which
+         * defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {Response}
+         */
+        load(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): Response;
+        /**
+         * Queries the status of a CommonJS module source file at `url` with an
+         * optional `origin`, which defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {RequestStatus}
+         */
+        status(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): RequestStatus;
+        /**
+         * Resolves a given module URL to an absolute URL based on the loader origin.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        resolve(url: URL | string, origin?: URL | string): string;
+        #private;
+    }
+    export default Loader;
+    export type LoaderOptions = {
+        extensions?: string[] | Set<string>;
+        origin?: URL | string;
+        statuses?: Map<any, any>;
+        cache?: Map<any, any>;
     };
-    export const builtinModules: {
-        async: typeof _async;
-        async_context: {
-            AsyncLocalStorage: typeof AsyncLocalStorage;
-            AsyncResource: typeof AsyncResource;
-        };
-        async_hooks: {
-            AsyncLocalStorage: typeof AsyncLocalStorage;
-            AsyncResource: typeof AsyncResource;
-            executionAsyncResource: typeof executionAsyncResource;
-            executionAsyncId: typeof executionAsyncId;
-            triggerAsyncId: typeof triggerAsyncId;
-            createHook: typeof createHook;
-            AsyncHook: typeof AsyncHook;
-        };
-        application: typeof application;
-        assert: typeof import("socket:assert").assert & {
-            AssertionError: typeof import("socket:assert").AssertionError;
-            ok: typeof import("socket:assert").ok;
-            equal: typeof import("socket:assert").equal;
-            notEqual: typeof import("socket:assert").notEqual;
-            strictEqual: typeof import("socket:assert").strictEqual;
-            notStrictEqual: typeof import("socket:assert").notStrictEqual;
-            deepEqual: typeof import("socket:assert").deepEqual;
-            notDeepEqual: typeof import("socket:assert").notDeepEqual;
-        };
-        buffer: typeof buffer;
-        console: import("socket:console").Console;
-        constants: any;
-        child_process: {
-            ChildProcess: typeof import("socket:child_process").ChildProcess;
-            spawn: typeof import("socket:child_process").spawn;
-            execFile: typeof import("socket:child_process").exec;
-            exec: typeof import("socket:child_process").exec;
-        };
-        crypto: typeof crypto;
-        dgram: typeof dgram;
-        dns: typeof dns;
-        'dns/promises': typeof dns.promises;
-        events: typeof events;
-        extension: {
-            load: typeof import("socket:extension").load;
-            stats: typeof import("socket:extension").stats;
-        };
-        fs: typeof fs;
-        'fs/promises': typeof fs.promises;
-        http: typeof http;
-        https: typeof http;
-        gc: any;
-        ipc: typeof ipc;
-        language: {
-            codes: string[];
-            describe: typeof import("socket:language").describe;
-            lookup: typeof import("socket:language").lookup;
-            names: string[];
-            tags: import("socket:enumeration").Enumeration;
-        };
-        location: {
-            origin: string;
-            href: string;
-            protocol: string;
-            hostname: string;
-            host: string;
-            search: string;
-            pathname: string;
-            toString: typeof import("socket:location").toString;
-        };
-        mime: typeof mime;
-        net: {};
-        network: (options: any) => Promise<events.EventEmitter>;
-        os: typeof os;
-        path: typeof path;
-        perf_hooks: {
-            performance: Performance;
-        };
-        process: any;
-        querystring: {
-            decode: typeof import("socket:querystring").parse;
-            encode: typeof import("socket:querystring").stringify;
-            parse: typeof import("socket:querystring").parse;
-            stringify: typeof import("socket:querystring").stringify;
-            escape: typeof import("socket:querystring").escape;
-            unescape: typeof import("socket:querystring").unescape;
-        };
-        stream: typeof stream;
-        'stream/web': typeof stream.web;
-        string_decoder: typeof string_decoder;
-        sys: typeof util;
-        test: typeof test;
-        timers: typeof timers;
-        'timers/promises': any;
-        tty: {
-            isatty: () => boolean;
-            WriteStream: typeof util.IllegalConstructor;
-            ReadStream: typeof util.IllegalConstructor;
-        };
-        util: typeof util;
-        url: any;
-        vm: {
-            createGlobalObject: typeof import("socket:vm").createGlobalObject;
-            compileFunction: typeof import("socket:vm").compileFunction;
-            createReference: typeof import("socket:vm").createReference;
-            getContextWindow: typeof import("socket:vm").getContextWindow;
-            getContextWorker: typeof import("socket:vm").getContextWorker;
-            getReference: typeof import("socket:vm").getReference;
-            getTransferables: typeof import("socket:vm").getTransferables;
-            putReference: typeof import("socket:vm").putReference;
-            Reference: typeof import("socket:vm").Reference;
-            removeReference: typeof import("socket:vm").removeReference;
-            runInContext: typeof import("socket:vm").runInContext;
-            runInNewContext: typeof import("socket:vm").runInNewContext;
-            runInThisContext: typeof import("socket:vm").runInThisContext;
-            Script: typeof import("socket:vm").Script;
-            createContext: typeof import("socket:vm").createContext;
-            isContext: typeof import("socket:vm").isContext;
-        };
-        window: typeof window;
-        worker_threads: {
-            Worker: typeof import("socket:worker_threads").Worker;
-            isMainThread: boolean;
-            parentPort: import("socket:worker_threads").MessagePort;
-            setEnvironmentData: typeof import("socket:worker_threads").setEnvironmentData;
-            getEnvironmentData: typeof import("socket:worker_threads").getEnvironmentData;
-            workerData: any;
-            threadId: number;
-            SHARE_ENV: symbol;
-        };
+    export type RequestOptions = {
+        loader?: Loader;
+        origin?: URL | string;
     };
+    export type RequestLoadOptions = {
+        headers?: Headers | object;
+    };
+    export type ResponseOptions = {
+        request?: Request;
+        headers?: Headers;
+        status?: number;
+        text?: string;
+    };
+    import { Headers } from "socket:ipc";
+}
+
+declare module "socket:commonjs/package" {
+    /**
+     * @typedef {{
+     *   prefix?: string,
+     *   manifest?: string,
+     *   index?: string,
+     *   description?: string,
+     *   version?: string,
+     *   license?: string,
+     *   exports?: object,
+     *   type?: 'commonjs' | 'module',
+     *   info?: object
+     * }} PackageOptions
+     */
+    /**
+     * @typedef {import('./loader.js').RequestOptions & {
+     *   type?: 'commonjs' | 'module'
+     * }} PackageLoadOptions
+     */
+    /**
+     * {import('./loader.js').RequestOptions & {
+     *   load?: boolean,
+     *   type?: 'commonjs' | 'module',
+     *   browser?: boolean,
+     *   children?: string[]
+     *   extensions?: string[] | Set<string>
+     * }} PackageResolveOptions
+     */
+    /**
+     * The default package index file such as 'index.js'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_INDEX: string;
+    /**
+     * The default package manifest file name such as 'package.json'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_MANIFEST_FILE_NAME: string;
+    /**
+     * The default package path prefix such as 'node_modules/'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_PREFIX: string;
+    /**
+     * The default package version, when one is not provided
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_VERSION: string;
+    /**
+     * The default license for a package'
+     * @type {string}
+     */
+    export const DEFAULT_LICENSE: string;
+    /**
+     * A container for CommonJS module metadata, often in a `package.json` file.
+     */
+    export class Package {
+        /**
+         * @param {string} input
+         * @param {PackageOptions&PackageLoadOptions} [options]
+         * @return {Package?}
+         */
+        static find(input: string, options?: PackageOptions & PackageLoadOptions): Package | null;
+        /**
+         * `Package` class constructor.
+         * @param {string} name
+         * @param {PackageOptions} [options]
+         */
+        constructor(name: string, options?: PackageOptions);
+        /**
+         * The unique ID of this `Package`, which is the absolute
+         * URL of the directory that contains its manifest file.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute URL to the package manifest file
+         * @type {string}
+         */
+        get url(): string;
+        /**
+         * The package module path prefix.
+         * @type {string}
+         */
+        get prefix(): string;
+        /**
+         * A loader for this package, if available. This value may be `null`.
+         * @type {Loader}
+         */
+        get loader(): Loader;
+        /**
+         * The name of the package.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The description of the package.
+         * @type {string}
+         */
+        get description(): string;
+        /**
+         * The license of the package.
+         * @type {string}
+         */
+        get license(): string;
+        /**
+         * The version of the package.
+         * @type {string}
+         */
+        get version(): string;
+        /**
+         * The origin for this package.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The exports mappings for the package
+         * @type {object}
+         */
+        get exports(): any;
+        /**
+         * The package type.
+         * @type {'commonjs'|'module'}
+         */
+        get type(): "module" | "commonjs";
+        /**
+         * The raw package metadata object.
+         * @type {object?}
+         */
+        get info(): any;
+        /**
+         * The entry to the package
+         * @type {string?}
+         */
+        get entry(): string;
+        /**
+         * Load the package information at an optional `origin` with
+         * optional request `options`.
+         * @param {string|PackageLoadOptions=} [origin]
+         * @param {PackageLoadOptions=} [options]
+         * @throws SyntaxError
+         * @return {boolean}
+         */
+        load(origin?: (string | PackageLoadOptions) | undefined, options?: PackageLoadOptions | undefined): boolean;
+        /**
+         * Resolve a file's `pathname` within the package.
+         * @param {string|URL} pathname
+         * @param {PackageResolveOptions=} [options]
+         * @return {string}
+         */
+        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
+        #private;
+    }
+    export default Package;
+    export type PackageOptions = {
+        prefix?: string;
+        manifest?: string;
+        index?: string;
+        description?: string;
+        version?: string;
+        license?: string;
+        exports?: object;
+        type?: 'commonjs' | 'module';
+        info?: object;
+    };
+    export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
+        type?: 'commonjs' | 'module';
+    };
+    import { Loader } from "socket:commonjs/loader";
+}
+
+declare module "socket:commonjs/module" {
+    /**
+     * CommonJS module scope with module scoped globals.
+     * @ignore
+     * @param {object} exports
+     * @param {function(string): any} require
+     * @param {Module} module
+     * @param {string} __filename
+     * @param {string} __dirname
+     */
+    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string): Promise<void>;
+    export function createRequire(url: any, options?: any): any;
+    /**
+     * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
+     */
+    /**
+     * @typedef {import('./require.js').RequireFunction} RequireFunction
+     */
+    /**
+     * @typedef {import('./package.js').PackageOptions} PackageOptions
+     */
+    /**
+     * @typedef {{
+     *   prefix?: string,
+     *   request?: import('./loader.js').RequestOptions,
+     *   builtins?: object
+     * } CreateRequireOptions
+     */
+    /**
+     * @typedef {{
+     *   resolvers?: ModuleResolver[],
+     *   importmap?: ImportMap,
+     *   loader?: Loader | object,
+     *   package?: Package | PackageOptions
+     *   parent?: Module,
+     *   state?: State
+     * }} ModuleOptions
+     */
+    export const builtinModules: any;
     /**
      * CommonJS module scope source wrapper.
      * @type {string}
      */
     export const COMMONJS_WRAPPER: string;
     /**
-     * The main entry source origin.
-     * @type {string}
+     * A container for imports.
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap}
      */
-    export const MAIN_SOURCE_ORIGIN: string;
-    export namespace scope {
-        let current: any;
-        let previous: any;
+    export class ImportMap {
+        set imports(imports: any);
+        /**
+         * The imports object for the importmap.
+         * @type {object}
+         */
+        get imports(): any;
+        /**
+         * Extends the current imports object.
+         * @param {object} imports
+         * @return {ImportMap}
+         */
+        extend(importmap: any): ImportMap;
+        #private;
+    }
+    /**
+     * A container for `Module` instance state.
+     */
+    export class State {
+        /**
+         * `State` class constructor.
+         * @ignore
+         * @param {object|State=} [state]
+         */
+        constructor(state?: (object | State) | undefined);
+        loading: boolean;
+        loaded: boolean;
+        error: any;
+    }
+    /**
+     * The module scope for a loaded module.
+     * This is a special object that is seal, frozen, and only exposes an
+     * accessor the 'exports' field.
+     */
+    export class Scope {
+        set exports(exports: any);
+        get exports(): any;
+        toJSON(): {
+            exports: any;
+        };
+        #private;
     }
     /**
      * A container for a loaded CommonJS module. All errors bubble
      * to the "main" module and global object (if possible).
      */
     export class Module extends EventTarget {
-        static set current(module: Module);
         /**
          * A reference to the currently scoped module.
          * @type {Module?}
          */
-        static get current(): Module;
-        static set previous(module: Module);
+        static current: Module | null;
         /**
          * A reference to the previously scoped module.
          * @type {Module?}
          */
-        static get previous(): Module;
+        static previous: Module | null;
         /**
-         * Module cache.
-         * @ignore
+         * A cache of loaded modules
+         * @type {Map<string, Module>}
          */
-        static cache: any;
+        static cache: Map<string, Module>;
         /**
-         * Custom module resolvers.
-         * @type {Array<ModuleResolver>}
+         * An array of globally available module loader resolvers.
+         * @type {ModuleResolver[]}
          */
-        static resolvers: Array<ModuleResolver>;
+        static resolvers: ModuleResolver[];
         /**
-         * CommonJS module scope source wrapper.
-         * @ignore
+         * Globally available 'importmap' for all loaded modules.
+         * @type {ImportMap}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap}
          */
-        static wrapper: string;
+        static importmap: ImportMap;
         /**
          * A limited set of builtins exposed to CommonJS modules.
          * @type {object}
          */
         static builtins: object;
         /**
-         * Creates a `require` function from a source URL.
-         * @param {URL|string} sourcePath
-         * @return {function}
+         * A limited set of builtins exposed to CommonJS modules.
+         * @type {object}
          */
-        static createRequire(sourcePath: URL | string): Function;
+        static builtinModules: object;
+        /**
+         * CommonJS module scope source wrapper components.
+         * @type {string[]}
+         */
+        static wrapper: string[];
+        /**
+         * An array of global require paths, relative to the origin.
+         * @type {string[]}
+         */
+        static globalPaths: string[];
         /**
          * The main entry module, lazily created.
          * @type {Module}
@@ -12271,135 +12736,218 @@ declare module "socket:module" {
         static get main(): Module;
         /**
          * Wraps source in a CommonJS module scope.
+         * @param {string} source
          */
-        static wrap(source: any): string;
+        static wrap(source: string): string;
         /**
          * Creates a `Module` from source URL and optionally a parent module.
-         * @param {string|URL|Module} [sourcePath]
-         * @param {string|URL|Module} [parent]
+         * @param {string|URL|Module} url
+         * @param {ModuleOptions=} [options]
          */
-        static from(sourcePath?: string | URL | Module, parent?: string | URL | Module): any;
+        static from(url: string | URL | Module, options?: ModuleOptions | undefined): any;
+        /**
+         * Creates a `require` function from a given module URL.
+         * @param {string|URL} url
+         * @param {ModuleOptions=} [options]
+         */
+        static createRequire(url: string | URL, options?: ModuleOptions | undefined): any;
         /**
          * `Module` class constructor.
-         * @ignore
+         * @param {string|URL} url
+         * @param {ModuleOptions=} [options]
          */
-        constructor(id: any, parent?: any, sourcePath?: any);
+        constructor(url: string | URL, options?: ModuleOptions | undefined);
         /**
-         * The module id, most likely a file name.
+         * A unique ID for this module.
          * @type {string}
          */
-        id: string;
+        get id(): string;
         /**
-         * The parent module, if given.
+         * A reference to the "main" module.
+         * @type {Module}
+         */
+        get main(): Module;
+        /**
+         * Child modules of this module.
+         * @type {Module[]}
+         */
+        get children(): Module[];
+        /**
+         * A reference to the module cache. Possibly shared with all
+         * children modules.
+         * @type {object}
+         */
+        get cache(): any;
+        /**
+         * A reference to the module package.
+         * @type {Package}
+         */
+        get package(): Package;
+        /**
+         * The `ImportMap` for this module.
+         * @type {ImportMap}
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap}
+         */
+        get importmap(): ImportMap;
+        /**
+         * The module level resolvers.
+         * @type {ModuleResolver[]}
+         */
+        get resolvers(): ModuleResolver[];
+        /**
+         * `true` if the module is currently loading, otherwise `false`.
+         * @type {boolean}
+         */
+        get loading(): boolean;
+        /**
+         * `true` if the module is currently loaded, otherwise `false`.
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * An error associated with the module if it failed to load.
+         * @type {Error?}
+         */
+        get error(): Error;
+        /**
+         * The exports of the module
+         * @type {object}
+         */
+        get exports(): any;
+        /**
+         * The scope of the module given to parsed modules.
+         * @type {Scope}
+         */
+        get scope(): Scope;
+        /**
+         * The origin of the loaded module.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The parent module for this module.
          * @type {Module?}
          */
-        parent: Module | null;
+        get parent(): Module;
         /**
-         * `true` if the module did load successfully.
-         * @type {boolean}
+         * The `Loader` for this module.
+         * @type {Loader}
          */
-        loaded: boolean;
+        get loader(): Loader;
         /**
-         * `true` if the module is currently being loaded.
-         * @type {boolean}
+         * Factory for creating a `require()` function based on a module context.
+         * @param {CreateRequireOptions=} [options]
+         * @return {RequireFunction}
          */
-        loading: boolean;
+        createRequire(options?: CreateRequireOptions | undefined): RequireFunction;
         /**
-         * The module's exports.
-         * @type {any}
+         * Creates a `Module` from source the URL with this module as
+         * the parent.
+         * @param {string|URL|Module} url
+         * @param {ModuleOptions=} [options]
          */
-        exports: any;
+        createModule(url: string | URL | Module, options?: ModuleOptions | undefined): any;
         /**
-         * The filename of the module.
-         * @type {string}
-         */
-        filename: string;
-        /**
-         * Modules children to this one, as in they were required in this
-         * module scope context.
-         * @type {Array<Module>}
-         */
-        children: Array<Module>;
-        /**
-         * The original source URL to load this module.
-         * @type {string}
-         */
-        sourcePath: string;
-        /**
-         * `true` if the module is the main module.
-         * @type {boolean}
-         */
-        get isMain(): boolean;
-        /**
-         * `true` if the module was loaded by name, not file path.
-         * @type {boolean}
-         */
-        get isNamed(): boolean;
-        /**
-         * @type {URL}
-         */
-        get url(): URL;
-        /**
-         * @type {string}
-         */
-        get pathname(): string;
-        /**
-         * @type {string}
-         */
-        get path(): string;
-        /**
-         * Loads the module, synchronously returning `true` upon success,
-         * otherwise `false`.
+         * @param {object=} [options]
          * @return {boolean}
          */
-        load(): boolean;
-        /**
-         * Creates a require function for loaded CommonJS modules
-         * child to this module.
-         * @return {function(string): any}
-         */
-        createRequire(): (arg0: string) => any;
-        /**
-         * Requires a module at `filename` that will be loaded as a child
-         * to this module.
-         * @param {string} filename
-         * @return {any}
-         */
-        require(filename: string): any;
+        load(options?: object | undefined): boolean;
+        resolve(input: any): string;
         /**
          * @ignore
          */
         [Symbol.toStringTag](): string;
+        #private;
     }
     export default Module;
-    export type ModuleResolver = (arg0: string, arg1: Module, arg2: Function) => undefined;
-    import { URL } from "socket:url/index";
-    import _async from "socket:async";
-    import { AsyncLocalStorage } from "socket:async";
-    import { AsyncResource } from "socket:async";
-    import { executionAsyncResource } from "socket:async";
-    import { executionAsyncId } from "socket:async";
-    import { triggerAsyncId } from "socket:async";
-    import { createHook } from "socket:async";
-    import { AsyncHook } from "socket:async";
-    import application from "socket:application";
-    import * as buffer from "socket:buffer";
-    import crypto from "socket:crypto";
-    import dgram from "socket:dgram";
-    import dns from "socket:dns";
-    import events from "socket:events";
-    import fs from "socket:fs";
-    import http from "socket:http";
-    import ipc from "socket:ipc";
-    import mime from "socket:mime";
-    import os from "socket:os";
-    import { posix as path } from "socket:path";
-    import stream from "socket:stream";
-    import string_decoder from "socket:string_decoder";
-    import util from "socket:util";
-    import test from "socket:test";
-    import timers from "socket:timers";
-    import window from "socket:window";
+    export type ModuleResolver = import("socket:commonjs/require").RequireResolver[];
+    export type RequireFunction = import("socket:commonjs/require").RequireFunction;
+    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
+    export type CreateRequireOptions = {
+        prefix?: string;
+        request?: import("socket:commonjs/loader").RequestOptions;
+        builtins?: object;
+    };
+    export type ModuleOptions = {
+        resolvers?: import("socket:commonjs/require").RequireResolver[][];
+        importmap?: ImportMap;
+        loader?: Loader | object;
+        package?: Package | PackageOptions;
+        parent?: Module;
+        state?: State;
+    };
+    import { Package } from "socket:commonjs/package";
+    import { Loader } from "socket:commonjs/loader";
+    import builtins from "socket:commonjs/builtins";
+}
+
+declare module "socket:commonjs/require" {
+    /**
+     * Factory for creating a `require()` function based on a module context.
+     * @param {CreateRequireOptions} options
+     * @return {RequireFunction}
+     */
+    export function createRequire(options: CreateRequireOptions): RequireFunction;
+    /**
+     * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver
+     */
+    /**
+     * @typedef {{
+     *   module: import('./module.js').Module,
+     *   prefix?: string,
+     *   request?: import('./loader.js').RequestOptions,
+     *   builtins?: object
+     * }} CreateRequireOptions
+     */
+    /**
+     * @typedef {function(string): any} RequireFunction
+     */
+    /**
+     * @typedef {import('./package.js').PackageOptions} PackageOptions
+     */
+    /**
+     * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
+     */
+    /**
+     * @typedef {PackageResolveOptions & PackageOptions} ResolveOptions
+     */
+    /**
+     * @typedef {ResolveOptions & {
+     *   resolvers?: RequireResolver[],
+     *   importmap?: import('./module.js').ImportMap,
+     * }} RequireOptions
+     */
+    /**
+     * An array of global require paths, relative to the origin.
+     * @type {string[]}
+     */
+    export const globalPaths: string[];
+    export default createRequire;
+    export type RequireResolver = (arg0: string, arg1: import("socket:commonjs/module").Module, arg2: (arg0: string) => any) => any;
+    export type CreateRequireOptions = {
+        module: import("socket:commonjs/module").Module;
+        prefix?: string;
+        request?: import("socket:commonjs/loader").RequestOptions;
+        builtins?: object;
+    };
+    export type RequireFunction = (arg0: string) => any;
+    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
+    export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
+    export type ResolveOptions = PackageResolveOptions & PackageOptions;
+    export type RequireOptions = ResolveOptions & {
+        resolvers?: RequireResolver[];
+        importmap?: import("socket:commonjs/module").ImportMap;
+    };
+}
+
+declare module "socket:module" {
+    export const builtinModules: any;
+    export default Module;
+    import { Module } from "socket:commonjs/module";
+    import builtins from "socket:commonjs/builtins";
+    import { isBuiltin } from "socket:commonjs/builtins";
+    import { createRequire } from "socket:commonjs/require";
+    export { Module, builtins, isBuiltin, createRequire };
 }
 
 declare module "socket:node-esm-loader" {
@@ -12864,6 +13412,23 @@ declare module "socket:notification" {
     import URL from "socket:url";
 }
 
+declare module "socket:service-worker" {
+    namespace _default {
+        export { ExtendableEvent };
+        export { FetchEvent };
+        export { Environment };
+        export { Database };
+        export { Context };
+    }
+    export default _default;
+    import { ExtendableEvent } from "socket:service-worker/events";
+    import { FetchEvent } from "socket:service-worker/events";
+    import { Environment } from "socket:service-worker/env";
+    import { Database } from "socket:service-worker/database";
+    import { Context } from "socket:service-worker/context";
+    export { ExtendableEvent, FetchEvent, Environment, Database, Context };
+}
+
 declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
@@ -13220,6 +13785,34 @@ declare module "socket:internal/worker" {
     export default _default;
 }
 
+declare module "socket:npm/module" {
+    export function resolve(specifier: any, origin?: any): Promise<{
+        origin: any;
+        type: string;
+        path: string;
+    } | {
+        type: any;
+        path: string;
+        origin?: undefined;
+    }>;
+    namespace _default {
+        export { resolve };
+    }
+    export default _default;
+}
+
+declare module "socket:npm/service-worker" {
+    export function onRequest(request: any, env: any, ctx: any): Promise<Response>;
+    /**
+     * Handles incoming 'npm://<module_name>/<pathspec...>' requests.
+     * @param {Request} request
+     * @param {object} env
+     * @param {import('../service-worker/context.js').Context} ctx
+     * @return {Response?}
+     */
+    export default function _default(request: Request, env: object, ctx: import("socket:service-worker/context").Context): Response | null;
+}
+
 declare module "socket:service-worker/global" {
     export class ServiceWorkerGlobalScope {
         get isServiceWorkerScope(): boolean;
@@ -13259,6 +13852,7 @@ declare module "socket:service-worker/init" {
         hash: any;
         scope: any;
         scriptURL: any;
+        get pathname(): string;
     }
     const _default: any;
     export default _default;
