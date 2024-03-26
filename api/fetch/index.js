@@ -4,6 +4,7 @@
 import { fetch, Headers, Request, Response } from './fetch.js'
 import { Deferred } from '../async/deferred.js'
 import { Buffer } from '../buffer.js'
+import http from '../http.js'
 
 export {
   fetch,
@@ -22,10 +23,24 @@ Response.json = function (json, options) {
   })
 }
 
-const { _initBody } = Response.prototype
+const initResponseBody = Response.prototype._initBody
+const initRequestBody = Request.prototype._initBody
+const textEncoder = new TextEncoder()
 
-Response.prototype._initBody = async function (body) {
+Response.prototype._initBody = initBody
+Request.prototype._initBody = initBody
+
+async function initBody (body) {
   this.body = null
+
+  if (
+    typeof this.statusText !== 'string' &&
+    Number.isFinite(this.status) &&
+    this.status in http.STATUS_CODES
+  ) {
+    this.statusText = http.STATUS_CODES[this.status]
+  }
+
   if (typeof globalThis.ReadableStream === 'function') {
     if (body && body instanceof globalThis.ReadableStream) {
       let controller = null
@@ -72,11 +87,93 @@ Response.prototype._initBody = async function (body) {
     }
   }
 
-  return _initBody.call(this, body)
+  if (this instanceof Request) {
+    initRequestBody.call(this, body)
+  } else if (this instanceof Response) {
+    initResponseBody.call(this, body)
+  }
+
+  if (!this.body && !this._noBody) {
+    if (this._bodyArrayBuffer) {
+      const arrayBuffer = this._bodyArrayBuffer
+      this.body = new ReadableStream({
+        start (controller) {
+          controller.enqueue(arrayBuffer)
+          controller.close()
+        }
+      })
+    } else if (this._bodyBlob) {
+      const blob = this._bodyBlob
+      this.body = new ReadableStream({
+        async start (controller) {
+          controller.enqueue(await blob.arrayBuffer())
+          controller.close()
+        }
+      })
+    } else if (this._bodyText) {
+      const text = this._bodyText
+      this.body = new ReadableStream({
+        start (controller) {
+          controller.enqueue(textEncoder.encode(text))
+          controller.close()
+        }
+      })
+    } else {
+      this.body = null
+    }
+  }
 }
 
 Object.defineProperties(Request.prototype, {
+  _bodyArrayBuffer: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyFormData: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyText: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyInit: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyBlob: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _noBody: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
   url: {
+    configurable: true,
+    writable: true,
+    value: undefined
+  },
+
+  body: {
     configurable: true,
     writable: true,
     value: undefined
@@ -120,6 +217,48 @@ Object.defineProperties(Request.prototype, {
 })
 
 Object.defineProperties(Response.prototype, {
+  _bodyArrayBuffer: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyFormData: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyText: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyInit: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _bodyBlob: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
+  _noBody: {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: undefined
+  },
+
   body: {
     configurable: true,
     writable: true,
@@ -157,6 +296,12 @@ Object.defineProperties(Response.prototype, {
   },
 
   headers: {
+    configurable: true,
+    writable: true,
+    value: undefined
+  },
+
+  redirected: {
     configurable: true,
     writable: true,
     value: undefined
