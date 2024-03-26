@@ -253,8 +253,8 @@ export class MIMEType {
 
     const [type, subtype] = types
 
-    this.#type = type
-    this.#params = new MIMEParams()
+    this.#type = type.toLowerCase()
+    this.#params = new MIMEParams(args.map((a) => a.trim().split('=').map((v) => v.trim())))
     this.#subtype = subtype
   }
 
