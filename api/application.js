@@ -257,13 +257,19 @@ export async function createWindow (opts) {
 
   if (Array.isArray(opts?.protocolHandlers)) {
     for (const protocolHandler of opts.protocolHandlers) {
+      // @ts-ignore
       opts.config[`webview_protocol-handlers_${protocolHandler}`] = ''
     }
   } else if (opts?.protocolHandlers && typeof opts.protocolHandlers === 'object') {
+    // @ts-ignore
     for (const key in opts.protocolHandlers) {
+      // @ts-ignore
       if (opts.protocolHandlers[key] && typeof opts.protocolHandlers[key] === 'object') {
+        // @ts-ignore
         opts.config[`webview_protocol-handlers_${key}`] = JSON.stringify(opts.protocolHandlers[key])
+        // @ts-ignore
       } else if (typeof opts.protocolHandlers[key] === 'string') {
+        // @ts-ignore
         opts.config[`webview_protocol-handlers_${key}`] = opts.protocolHandlers[key]
       }
     }
