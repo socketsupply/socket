@@ -66,4 +66,16 @@ namespace SSC {
     Lock lock(this->mutex);
     return this->mapping.contains(scheme);
   }
+
+  const String ProtocolHandlers::getServiceWorkerScope (const String& scheme) {
+    for (const auto& entry : this->core->serviceWorker.registrations) {
+      const auto& scope = entry.first;
+      const auto& registration = entry.second;
+      if (registration.options.scheme == scheme) {
+        return scope;
+      }
+    }
+
+    return "";
+  }
 }
