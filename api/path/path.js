@@ -220,6 +220,12 @@ export function join (options, ...components) {
  * @return {string}
  */
 export function dirname (options, path) {
+  if (typeof path !== 'string') {
+    throw Object.assign(new Error(`The "path" argument must be of type string. Received: ${path}`), {
+      code: 'ERR_INVALID_ARG_TYPE'
+    })
+  }
+
   if (windowsDriveInPathRegex.test(path)) {
     path = path.slice(1)
   }
