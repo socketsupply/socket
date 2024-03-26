@@ -65,6 +65,13 @@ export class Pipe extends AsyncResource {
   }
 
   /**
+   * @type {import('./process')}
+   */
+  get process () {
+    return this.#process
+  }
+
+  /**
    * Destroys the pipe
    */
   destroy () {
@@ -91,12 +98,21 @@ export class ChildProcess extends EventEmitter {
     pid: 0
   }
 
-  constructor (options = {}) {
+  /**
+   * `ChildProcess` class constructor.
+   * @param {{
+   *   env?: object,
+   *   stdin?: boolean,
+   *   stdout?: boolean,
+   *   stderr?: boolean,
+   *   signal?: AbortSigal,
+   * }=} [options]
+   */
+  constructor (options = null) {
     super()
 
-    //
-    // This does not implement disconnect or message because this is not node!
-    //
+    // this does not implement disconnect or message because this is not node
+    // @ts-ignore
     const workerLocation = new URL('./child_process/worker.js', import.meta.url)
 
     // TODO(@jwerle): support environment variable inject
@@ -384,6 +400,7 @@ export class ChildProcess extends EventEmitter {
     callback.listener = (...args) => {
       if (event === 'error') {
         callback(new ErrorEvent('error', {
+          // @ts-ignore
           target: this,
           error: args[0]
         }))
@@ -416,7 +433,7 @@ export class ChildProcess extends EventEmitter {
    */
   [gc.finalizer] () {
     return {
-      args: [this.id],
+      args: [this.#id],
       async handle (id) {
         const result = await ipc.send('child_process.kill', {
           id,
@@ -449,13 +466,12 @@ export function spawn (command, args = [], options = null) {
   }
 
   if (args && typeof args === 'string') {
+    // @ts-ignore
     args = args.split(' ')
   }
 
   const child = new ChildProcess(options)
   child.worker.on('online', () => child.spawn(command, args, options))
-  // TODO signal
-  // TODO timeout
   return child
 }
 
@@ -468,11 +484,12 @@ export function exec (command, options, callback) {
   const child = spawn(command, options)
   const stdout = []
   const stderr = []
+  let closed = false
   let hasError = false
 
   if (child.stdout) {
     child.stdout.on('data', (data) => {
-      if (hasError) {
+      if (hasError || closed) {
         return
       }
 
@@ -483,7 +500,7 @@ export function exec (command, options, callback) {
 
   if (child.stderr) {
     child.stderr.on('data', (data) => {
-      if (hasError) {
+      if (hasError || closed) {
         return
       }
 
@@ -494,13 +511,17 @@ export function exec (command, options, callback) {
 
   child.once('error', (err) => {
     hasError = true
+    stdout.splice(0, stdout.length)
+    stderr.splice(0, stderr.length)
     if (typeof callback === 'function') {
       callback(err, null, null)
     }
   })
 
   if (typeof callback === 'function') {
-    child.on('close', () => {
+    child.once('close', () => {
+      closed = true
+
       if (hasError) {
         return
       }
@@ -515,18 +536,30 @@ export function exec (command, options, callback) {
         const encoding = options?.encoding ?? 'utf8'
         callback(
           null,
+          // @ts-ignore
           Buffer.concat(stdout).toString(encoding),
+          // @ts-ignore
           Buffer.concat(stderr).toString(encoding)
         )
       }
+
+      stdout.splice(0, stdout.length)
+      stderr.splice(0, stderr.length)
     })
   }
 
   return Object.assign(child, {
     then (resolve, reject) {
       const promise = new Promise((resolve, reject) => {
-        child.once('error', reject)
+        child.once('error', (err) => {
+          hasError = true
+          stdout.splice(0, stdout.length)
+          stderr.splice(0, stderr.length)
+        })
+
         child.once('close', () => {
+          closed = true
+
           if (options?.encoding === 'buffer') {
             resolve({
               stdout: Buffer.concat(stdout),
@@ -535,10 +568,15 @@ export function exec (command, options, callback) {
           } else {
             const encoding = options?.encoding ?? 'utf8'
             resolve({
+              // @ts-ignore
               stdout: Buffer.concat(stdout).toString(encoding),
+              // @ts-ignore
               stderr: Buffer.concat(stderr).toString(encoding)
             })
           }
+
+          stdout.splice(0, stdout.length)
+          stderr.splice(0, stderr.length)
         })
       })
 
@@ -574,10 +612,12 @@ export function execSync (command, options) {
   })
 
   if (result.err) {
+    // @ts-ignore
     if (!result.err.code) {
       throw result.err
     }
 
+    // @ts-ignore
     const { stdout, stderr, signal: errorSignal, code, pid } = result.err
     const message = code === 'ETIMEDOUT'
       ? 'execSync ETIMEDOUT'
@@ -593,9 +633,11 @@ export function execSync (command, options) {
       output: [null, stdout.join('\n'), stderr.join('\n')]
     })
 
+    // @ts-ignore
     error.error = error
 
     if (typeof code === 'string') {
+      // @ts-ignore
       error.errno = -os.constants.errno[code]
     }
 
@@ -619,9 +661,11 @@ export function execSync (command, options) {
       output: [null, stdout.join('\n'), stderr.join('\n')]
     })
 
+    // @ts-ignore
     error.error = error
 
     if (typeof code === 'string') {
+      // @ts-ignore
       error.errno = -os.constants.errno[code]
     }
 
