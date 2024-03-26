@@ -1,10 +1,14 @@
 /* global Worker */
 import { sleep } from '../timers.js'
+import globals from '../internal/globals.js'
 import crypto from '../crypto.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
 export const workers = new Map()
+
+globals.register('ServiceWorkerContext.workers', workers)
+globals.register('ServiceWorkerContext.info', new Map())
 
 export class ServiceWorkerInfo {
   id = null
@@ -24,6 +28,12 @@ export class ServiceWorkerInfo {
     const url = new URL(this.scriptURL)
     this.url = url.toString()
     this.hash = crypto.murmur3(url.pathname + (this.scope || ''))
+
+    globals.get('ServiceWorkerContext.info').set(this.hash, this)
+  }
+
+  get pathname () {
+    return new URL(this.url).pathname
   }
 }
 
@@ -34,7 +44,9 @@ export async function onRegister (event) {
     return
   }
 
-  const worker = new Worker('./worker.js')
+  const worker = new Worker('./worker.js', {
+    name: `ServiceWorker (${info.pathname})`
+  })
 
   workers.set(info.hash, worker)
   worker.addEventListener('message', onHandShakeMessage)
@@ -95,7 +107,7 @@ export async function onFetch (event) {
       if (!exists) {
         await sleep(256)
       }
-    }()),
+    })(),
     new Promise((resolve) => {
       globalThis.top.addEventListener('serviceWorker.activate', async function onActivate (event) {
         const { hash } = new ServiceWorkerInfo(event.detail)
@@ -123,13 +135,17 @@ export async function onFetch (event) {
   const request = {
     id: event.detail.fetch.id,
     url: new URL(
-      event.detail.fetch.pathname + '?' + event.detail.fetch.query,
-      globalThis.top.origin
+      (
+        event.detail.fetch.pathname +
+        (event.detail.fetch.query.length ? '?' + event.detail.fetch.query : '')
+      ),
+      `${event.detail.fetch.scheme}://${event.detail.fetch.host}`
     ).toString(),
 
+    method: event.detail.fetch.method,
     headers: event.detail.fetch.headers
       .map((entry) => entry.split(':'))
-      .reduce((object, entry) => Object.assign(object, { [entry[0]]: entry[1].trim() }), {})
+      .reduce((object, entry) => Object.assign(object, { [entry[0]]: entry.slice(1).join(':').trim() }), {})
   }
 
   const worker = workers.get(info.hash)
@@ -145,9 +161,16 @@ globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
 globalThis.top.addEventListener('serviceWorker.activate', onActivate)
 globalThis.top.addEventListener('serviceWorker.fetch', onFetch)
 
-hooks.onReady(() => {
+hooks.onReady(async () => {
   // notify top frame that the service worker init module is ready
   globalThis.top.postMessage({
     __service_worker_frame_init: true
   })
+
+  const result = await ipc.request('serviceWorker.getRegistrations')
+  if (Array.isArray(result.data)) {
+    for (const info of result.data) {
+      await navigator.serviceWorker.register(info.scriptURL, info)
+    }
+  }
 })

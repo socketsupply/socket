@@ -117,6 +117,8 @@ export class ExtendableEvent extends Event {
  * request and how the receiver will treat the response.
  */
 export class FetchEvent extends ExtendableEvent {
+  static defaultHeaders = new Headers()
+
   #handled = new Deferred()
   #request = null
   #clientId = null
@@ -237,6 +239,7 @@ export class FetchEvent extends ExtendableEvent {
         if (response.type === 'error') {
           const statusCode = 0
           const headers = Array.from(response.headers.entries())
+            .concat(FetchEvent.defaultHeaders.entries())
             .map((entry) => entry.join(':'))
             .concat('Runtime-Response-Source:serviceworker')
             .concat('Access-Control-Allow-Credentials:true')
