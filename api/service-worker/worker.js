@@ -5,6 +5,7 @@ import { STATUS_CODES } from '../http.js'
 import { Environment } from './env.js'
 import { Deferred } from '../async.js'
 import { Buffer } from '../buffer.js'
+import process from '../process.js'
 import clients from './clients.js'
 import hooks from '../hooks.js'
 import state from './state.js'
@@ -86,6 +87,18 @@ async function onMessage (event) {
         configurable: false,
         enumerable: false,
         get: () => module.exports
+      },
+
+      process: {
+        configurable: false,
+        enumerable: false,
+        get: () => process
+      },
+
+      global: {
+        configurable: false,
+        enumerable: false,
+        get: () => globalThis
       }
     })
 
@@ -99,9 +112,11 @@ async function onMessage (event) {
         Object.assign(module.exports, result)
       }
     } catch (err) {
+      console.error(err)
+      globalThis.reportError(err)
       state.serviceWorker.state = 'error'
       await state.notify('serviceWorker')
-      return state.reportError(err)
+      return
     }
 
     await Environment.open({ id, scope })
