@@ -112,7 +112,7 @@ export function createServiceWorker (
   if (options?.subscribe !== false) {
     state.channel.addEventListener('message', (event) => {
       const { data } = event
-      if (data.serviceWorker) {
+      if (data?.serviceWorker) {
         if (data.serviceWorker.state && data.serviceWorker.state !== currentState) {
           const scope = new URL(globalThis.location.href).pathname
           if (scope.startsWith(data.serviceWorker.scope)) {
