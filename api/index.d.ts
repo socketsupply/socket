@@ -901,8 +901,10 @@ declare module "socket:diagnostics" {
 
 declare module "socket:internal/symbols" {
     export const dispose: any;
+    export const serialize: any;
     namespace _default {
         export { dispose };
+        export { serialize };
     }
     export default _default;
 }
@@ -1921,6 +1923,254 @@ declare module "socket:signal" {
     import { signal as constants } from "socket:os/constants";
 }
 
+declare module "socket:stream/web" {
+    export const ReadableStream: {
+        new (underlyingSource: UnderlyingByteSource, strategy?: {
+            highWaterMark?: number;
+        }): ReadableStream<Uint8Array>;
+        new <R = any>(underlyingSource: UnderlyingDefaultSource<R>, strategy?: QueuingStrategy<R>): ReadableStream<R>;
+        new <R_1 = any>(underlyingSource?: UnderlyingSource<R_1>, strategy?: QueuingStrategy<R_1>): ReadableStream<R_1>;
+        prototype: ReadableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultReader: {
+        new <R = any>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
+        prototype: ReadableStreamDefaultReader<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBReader: {
+        new (stream: ReadableStream<any>): ReadableStreamBYOBReader;
+        prototype: ReadableStreamBYOBReader;
+    } | typeof UnsupportedStreamInterface;
+    export const ReadableStreamBYOBRequest: typeof UnsupportedStreamInterface;
+    export const ReadableByteStreamController: typeof UnsupportedStreamInterface;
+    export const ReadableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const TransformStream: {
+        new <I = any, O = any>(transformer?: Transformer<I, O>, writableStrategy?: QueuingStrategy<I>, readableStrategy?: QueuingStrategy<O>): TransformStream<I, O>;
+        prototype: TransformStream<any, any>;
+    } | typeof UnsupportedStreamInterface;
+    export const TransformStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const WritableStream: {
+        new <W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
+        prototype: WritableStream<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultWriter: {
+        new <W = any>(stream: WritableStream<W>): WritableStreamDefaultWriter<W>;
+        prototype: WritableStreamDefaultWriter<any>;
+    } | typeof UnsupportedStreamInterface;
+    export const WritableStreamDefaultController: typeof UnsupportedStreamInterface;
+    export const ByteLengthQueuingStrategy: {
+        new (init: QueuingStrategyInit): ByteLengthQueuingStrategy;
+        prototype: ByteLengthQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const CountQueuingStrategy: {
+        new (init: QueuingStrategyInit): CountQueuingStrategy;
+        prototype: CountQueuingStrategy;
+    } | typeof UnsupportedStreamInterface;
+    export const TextEncoderStream: typeof UnsupportedStreamInterface;
+    export const TextDecoderStream: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoderStream;
+        prototype: TextDecoderStream;
+    } | typeof UnsupportedStreamInterface;
+    export const CompressionStream: {
+        new (format: CompressionFormat): CompressionStream;
+        prototype: CompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export const DecompressionStream: {
+        new (format: CompressionFormat): DecompressionStream;
+        prototype: DecompressionStream;
+    } | typeof UnsupportedStreamInterface;
+    export default exports;
+    class UnsupportedStreamInterface {
+    }
+    import * as exports from "socket:stream/web";
+    
+}
+
+declare module "socket:stream" {
+    export function pipelinePromise(...streams: any[]): Promise<any>;
+    export function pipeline(stream: any, ...streams: any[]): any;
+    export function isStream(stream: any): boolean;
+    export function isStreamx(stream: any): boolean;
+    export function getStreamError(stream: any): any;
+    export function isReadStreamx(stream: any): any;
+    export { web };
+    export default exports;
+    export class FixedFIFO {
+        constructor(hwm: any);
+        buffer: any[];
+        mask: number;
+        top: number;
+        btm: number;
+        next: any;
+        clear(): void;
+        push(data: any): boolean;
+        shift(): any;
+        peek(): any;
+        isEmpty(): boolean;
+    }
+    export class FIFO {
+        constructor(hwm: any);
+        hwm: any;
+        head: exports.FixedFIFO;
+        tail: exports.FixedFIFO;
+        length: number;
+        clear(): void;
+        push(val: any): void;
+        shift(): any;
+        peek(): any;
+        isEmpty(): boolean;
+    }
+    export class WritableState {
+        constructor(stream: any, { highWaterMark, map, mapWritable, byteLength, byteLengthWritable }?: {
+            highWaterMark?: number;
+            map?: any;
+            mapWritable: any;
+            byteLength: any;
+            byteLengthWritable: any;
+        });
+        stream: any;
+        queue: exports.FIFO;
+        highWaterMark: number;
+        buffered: number;
+        error: any;
+        pipeline: any;
+        drains: any;
+        byteLength: any;
+        map: any;
+        afterWrite: any;
+        afterUpdateNextTick: any;
+        get ended(): boolean;
+        push(data: any): boolean;
+        shift(): any;
+        end(data: any): void;
+        autoBatch(data: any, cb: any): any;
+        update(): void;
+        updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
+        updateNextTick(): void;
+    }
+    export class ReadableState {
+        constructor(stream: any, { highWaterMark, map, mapReadable, byteLength, byteLengthReadable }?: {
+            highWaterMark?: number;
+            map?: any;
+            mapReadable: any;
+            byteLength: any;
+            byteLengthReadable: any;
+        });
+        stream: any;
+        queue: exports.FIFO;
+        highWaterMark: number;
+        buffered: number;
+        readAhead: boolean;
+        error: any;
+        pipeline: exports.Pipeline;
+        byteLength: any;
+        map: any;
+        pipeTo: any;
+        afterRead: any;
+        afterUpdateNextTick: any;
+        get ended(): boolean;
+        pipe(pipeTo: any, cb: any): void;
+        push(data: any): boolean;
+        shift(): any;
+        unshift(data: any): void;
+        read(): any;
+        drain(): void;
+        update(): void;
+        updateNonPrimary(): void;
+        continueUpdate(): boolean;
+        updateCallback(): void;
+        updateNextTick(): void;
+    }
+    export class TransformState {
+        constructor(stream: any);
+        data: any;
+        afterTransform: any;
+        afterFinal: any;
+    }
+    export class Pipeline {
+        constructor(src: any, dst: any, cb: any);
+        from: any;
+        to: any;
+        afterPipe: any;
+        error: any;
+        pipeToFinished: boolean;
+        finished(): void;
+        done(stream: any, err: any): void;
+    }
+    export class Stream extends EventEmitter {
+        constructor(opts: any);
+        _duplexState: number;
+        _readableState: any;
+        _writableState: any;
+        _open(cb: any): void;
+        _destroy(cb: any): void;
+        _predestroy(): void;
+        get readable(): boolean;
+        get writable(): boolean;
+        get destroyed(): boolean;
+        get destroying(): boolean;
+        destroy(err: any): void;
+    }
+    export class Readable extends exports.Stream {
+        static _fromAsyncIterator(ite: any, opts: any): exports.Readable;
+        static from(data: any, opts: any): any;
+        static isBackpressured(rs: any): boolean;
+        static isPaused(rs: any): boolean;
+        _readableState: exports.ReadableState;
+        _read(cb: any): void;
+        pipe(dest: any, cb: any): any;
+        read(): any;
+        push(data: any): boolean;
+        unshift(data: any): void;
+        resume(): this;
+        pause(): this;
+    }
+    export class Writable extends exports.Stream {
+        static isBackpressured(ws: any): boolean;
+        static drained(ws: any): Promise<any>;
+        _writableState: exports.WritableState;
+        _writev(batch: any, cb: any): void;
+        _write(data: any, cb: any): void;
+        _final(cb: any): void;
+        write(data: any): boolean;
+        end(data: any): this;
+    }
+    export class Duplex extends exports.Readable {
+        _writableState: exports.WritableState;
+        _writev(batch: any, cb: any): void;
+        _write(data: any, cb: any): void;
+        _final(cb: any): void;
+        write(data: any): boolean;
+        end(data: any): this;
+    }
+    export class Transform extends exports.Duplex {
+        _transformState: exports.TransformState;
+        _transform(data: any, cb: any): void;
+        _flush(cb: any): void;
+    }
+    export class PassThrough extends exports.Transform {
+    }
+    import web from "socket:stream/web";
+    import * as exports from "socket:stream";
+    import { EventEmitter } from "socket:events";
+    
+}
+
+declare module "socket:tty" {
+    export function WriteStream(fd: any): Writable;
+    export function ReadStream(fd: any): Readable;
+    export function isatty(fd: any): boolean;
+    namespace _default {
+        export { WriteStream };
+        export { ReadStream };
+        export { isatty };
+    }
+    export default _default;
+    import { Writable } from "socket:stream";
+    import { Readable } from "socket:stream";
+}
+
 declare module "socket:process" {
     /**
      * Adds callback to the 'nextTick' queue.
@@ -2510,240 +2760,6 @@ declare module "socket:path" {
     import { DATA } from "socket:path/index";
     import { LOG } from "socket:path/index";
     export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
-}
-
-declare module "socket:stream/web" {
-    export const ReadableStream: {
-        new (underlyingSource: UnderlyingByteSource, strategy?: {
-            highWaterMark?: number;
-        }): ReadableStream<Uint8Array>;
-        new <R = any>(underlyingSource: UnderlyingDefaultSource<R>, strategy?: QueuingStrategy<R>): ReadableStream<R>;
-        new <R_1 = any>(underlyingSource?: UnderlyingSource<R_1>, strategy?: QueuingStrategy<R_1>): ReadableStream<R_1>;
-        prototype: ReadableStream<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamDefaultReader: {
-        new <R = any>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
-        prototype: ReadableStreamDefaultReader<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamBYOBReader: {
-        new (stream: ReadableStream<any>): ReadableStreamBYOBReader;
-        prototype: ReadableStreamBYOBReader;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamBYOBRequest: typeof UnsupportedStreamInterface;
-    export const ReadableByteStreamController: typeof UnsupportedStreamInterface;
-    export const ReadableStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const TransformStream: {
-        new <I = any, O = any>(transformer?: Transformer<I, O>, writableStrategy?: QueuingStrategy<I>, readableStrategy?: QueuingStrategy<O>): TransformStream<I, O>;
-        prototype: TransformStream<any, any>;
-    } | typeof UnsupportedStreamInterface;
-    export const TransformStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const WritableStream: {
-        new <W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
-        prototype: WritableStream<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const WritableStreamDefaultWriter: {
-        new <W = any>(stream: WritableStream<W>): WritableStreamDefaultWriter<W>;
-        prototype: WritableStreamDefaultWriter<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const WritableStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const ByteLengthQueuingStrategy: {
-        new (init: QueuingStrategyInit): ByteLengthQueuingStrategy;
-        prototype: ByteLengthQueuingStrategy;
-    } | typeof UnsupportedStreamInterface;
-    export const CountQueuingStrategy: {
-        new (init: QueuingStrategyInit): CountQueuingStrategy;
-        prototype: CountQueuingStrategy;
-    } | typeof UnsupportedStreamInterface;
-    export const TextEncoderStream: typeof UnsupportedStreamInterface;
-    export const TextDecoderStream: {
-        new (label?: string, options?: TextDecoderOptions): TextDecoderStream;
-        prototype: TextDecoderStream;
-    } | typeof UnsupportedStreamInterface;
-    export const CompressionStream: {
-        new (format: CompressionFormat): CompressionStream;
-        prototype: CompressionStream;
-    } | typeof UnsupportedStreamInterface;
-    export const DecompressionStream: {
-        new (format: CompressionFormat): DecompressionStream;
-        prototype: DecompressionStream;
-    } | typeof UnsupportedStreamInterface;
-    export default exports;
-    class UnsupportedStreamInterface {
-    }
-    import * as exports from "socket:stream/web";
-    
-}
-
-declare module "socket:stream" {
-    export function pipelinePromise(...streams: any[]): Promise<any>;
-    export function pipeline(stream: any, ...streams: any[]): any;
-    export function isStream(stream: any): boolean;
-    export function isStreamx(stream: any): boolean;
-    export function getStreamError(stream: any): any;
-    export function isReadStreamx(stream: any): any;
-    export { web };
-    export default exports;
-    export class FixedFIFO {
-        constructor(hwm: any);
-        buffer: any[];
-        mask: number;
-        top: number;
-        btm: number;
-        next: any;
-        clear(): void;
-        push(data: any): boolean;
-        shift(): any;
-        peek(): any;
-        isEmpty(): boolean;
-    }
-    export class FIFO {
-        constructor(hwm: any);
-        hwm: any;
-        head: exports.FixedFIFO;
-        tail: exports.FixedFIFO;
-        length: number;
-        clear(): void;
-        push(val: any): void;
-        shift(): any;
-        peek(): any;
-        isEmpty(): boolean;
-    }
-    export class WritableState {
-        constructor(stream: any, { highWaterMark, map, mapWritable, byteLength, byteLengthWritable }?: {
-            highWaterMark?: number;
-            map?: any;
-            mapWritable: any;
-            byteLength: any;
-            byteLengthWritable: any;
-        });
-        stream: any;
-        queue: exports.FIFO;
-        highWaterMark: number;
-        buffered: number;
-        error: any;
-        pipeline: any;
-        drains: any;
-        byteLength: any;
-        map: any;
-        afterWrite: any;
-        afterUpdateNextTick: any;
-        get ended(): boolean;
-        push(data: any): boolean;
-        shift(): any;
-        end(data: any): void;
-        autoBatch(data: any, cb: any): any;
-        update(): void;
-        updateNonPrimary(): void;
-        continueUpdate(): boolean;
-        updateCallback(): void;
-        updateNextTick(): void;
-    }
-    export class ReadableState {
-        constructor(stream: any, { highWaterMark, map, mapReadable, byteLength, byteLengthReadable }?: {
-            highWaterMark?: number;
-            map?: any;
-            mapReadable: any;
-            byteLength: any;
-            byteLengthReadable: any;
-        });
-        stream: any;
-        queue: exports.FIFO;
-        highWaterMark: number;
-        buffered: number;
-        readAhead: boolean;
-        error: any;
-        pipeline: exports.Pipeline;
-        byteLength: any;
-        map: any;
-        pipeTo: any;
-        afterRead: any;
-        afterUpdateNextTick: any;
-        get ended(): boolean;
-        pipe(pipeTo: any, cb: any): void;
-        push(data: any): boolean;
-        shift(): any;
-        unshift(data: any): void;
-        read(): any;
-        drain(): void;
-        update(): void;
-        updateNonPrimary(): void;
-        continueUpdate(): boolean;
-        updateCallback(): void;
-        updateNextTick(): void;
-    }
-    export class TransformState {
-        constructor(stream: any);
-        data: any;
-        afterTransform: any;
-        afterFinal: any;
-    }
-    export class Pipeline {
-        constructor(src: any, dst: any, cb: any);
-        from: any;
-        to: any;
-        afterPipe: any;
-        error: any;
-        pipeToFinished: boolean;
-        finished(): void;
-        done(stream: any, err: any): void;
-    }
-    export class Stream extends EventEmitter {
-        constructor(opts: any);
-        _duplexState: number;
-        _readableState: any;
-        _writableState: any;
-        _open(cb: any): void;
-        _destroy(cb: any): void;
-        _predestroy(): void;
-        get readable(): boolean;
-        get writable(): boolean;
-        get destroyed(): boolean;
-        get destroying(): boolean;
-        destroy(err: any): void;
-    }
-    export class Readable extends exports.Stream {
-        static _fromAsyncIterator(ite: any, opts: any): exports.Readable;
-        static from(data: any, opts: any): any;
-        static isBackpressured(rs: any): boolean;
-        static isPaused(rs: any): boolean;
-        _readableState: exports.ReadableState;
-        _read(cb: any): void;
-        pipe(dest: any, cb: any): any;
-        read(): any;
-        push(data: any): boolean;
-        unshift(data: any): void;
-        resume(): this;
-        pause(): this;
-    }
-    export class Writable extends exports.Stream {
-        static isBackpressured(ws: any): boolean;
-        static drained(ws: any): Promise<any>;
-        _writableState: exports.WritableState;
-        _writev(batch: any, cb: any): void;
-        _write(data: any, cb: any): void;
-        _final(cb: any): void;
-        write(data: any): boolean;
-        end(data: any): this;
-    }
-    export class Duplex extends exports.Readable {
-        _writableState: exports.WritableState;
-        _writev(batch: any, cb: any): void;
-        _write(data: any, cb: any): void;
-        _final(cb: any): void;
-        write(data: any): boolean;
-        end(data: any): this;
-    }
-    export class Transform extends exports.Duplex {
-        _transformState: exports.TransformState;
-        _transform(data: any, cb: any): void;
-        _flush(cb: any): void;
-    }
-    export class PassThrough extends exports.Transform {
-    }
-    import web from "socket:stream/web";
-    import * as exports from "socket:stream";
-    import { EventEmitter } from "socket:events";
-    
 }
 
 declare module "socket:fs/stream" {
@@ -11247,6 +11263,839 @@ declare module "socket:index" {
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
 
+declare module "socket:commonjs/cache" {
+    /**
+     * @typedef {{
+     *   types?: object,
+     *   loader?: import('./loader.js').Loader
+     * }} CacheOptions
+     */
+    export const CACHE_CHANNEL_MESSAGE_ID: "id";
+    export const CACHE_CHANNEL_MESSAGE_REPLICATE: "replicate";
+    /**
+     * A container for a shared cache that lives for the life time of
+     * application execution. Updates to this storage are replicated to other
+     * instances in the application context, including windows and workers.
+     */
+    export class Cache {
+        static data: Map<any, any>;
+        static types: Map<any, any>;
+        /**
+         * `Cache` class constructor.
+         * @param {string} name
+         * @param {CacheOptions=} [options]
+         */
+        constructor(name: string, options?: CacheOptions | undefined);
+        /**
+         * The unique ID for this cache.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The loader associated with this cache.
+         * @type {import('./loader.js').Loader}
+         */
+        get loader(): import("socket:commonjs/loader").Loader;
+        /**
+         * The cache name
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The underlying cache data map.
+         * @type {Map}
+         */
+        get data(): Map<any, any>;
+        /**
+         * The broadcast channel associated with this cach.
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
+        /**
+         * The size of the cache.
+         * @type {number}
+         */
+        get size(): number;
+        /**
+         * Get a value at `key`.
+         * @param {string} key
+         * @return {object|undefined}
+         */
+        get(key: string): object | undefined;
+        /**
+         * Set `value` at `key`.
+         * @param {string} key
+         * @param {object} value
+         * @return {Cache}
+         */
+        set(key: string, value: object): Cache;
+        /**
+         * Returns `true` if `key` is in cache, otherwise `false`.
+         * @param {string}
+         * @return {boolean}
+         */
+        has(key: any): boolean;
+        /**
+         * Delete a value at `key`.
+         * This does not replicate to shared caches.
+         * @param {string} key
+         * @return {object|undefined}
+         */
+        delete(key: string): object | undefined;
+        /**
+         * Returns an iterator for all cache keys.
+         * @return {object}
+         */
+        keys(): object;
+        /**
+         * Returns an iterator for all cache values.
+         * @return {object}
+         */
+        values(): object;
+        /**
+         * Returns an iterator for all cache entries.
+         * @return {object}
+         */
+        entries(): object;
+        /**
+         * Clears all entries in the cache.
+         * This does not replicate to shared caches.
+         * @return {undefined}
+         */
+        clear(): undefined;
+        /**
+         * Enumerates entries in map calling `callback(value, key
+         * @param {function(object, string, Cache): any} callback
+         */
+        forEach(callback: (arg0: object, arg1: string, arg2: Cache) => any): void;
+        /**
+         * Broadcasts a replication to other shared caches.
+         */
+        replicate(): this;
+        /**
+         * Destroys the cache. This function stops the broadcast channel and removes
+         * and listeners
+         */
+        destroy(): void;
+        /**
+         * @ignore
+         */
+        [Symbol.iterator](): IterableIterator<[any, any]>;
+        #private;
+    }
+    export default Cache;
+    export type CacheOptions = {
+        types?: object;
+        loader?: import("socket:commonjs/loader").Loader;
+    };
+}
+
+declare module "socket:commonjs/loader" {
+    /**
+     * @typedef {{
+     *   extensions?: string[] | Set<string>
+     *   origin?: URL | string,
+     *   statuses?: Cache
+     *   cache?: { response?: Cache, status?: Cache }
+     * }} LoaderOptions
+     */
+    /**
+     * @typedef {{
+     *   loader?: Loader,
+     *   origin?: URL | string
+     * }} RequestOptions
+     */
+    /**
+     * @typedef {{
+     *   headers?: Headers | object | array[],
+     *   status?: number
+     * }} RequestStatusOptions
+     */
+    /**
+     * @typedef {{
+     *   headers?: Headers | object
+     * }} RequestLoadOptions
+     */
+    /**
+     * @typedef {{
+     *   request?: Request,
+     *   headers?: Headers,
+     *   status?: number,
+     *   buffer?: ArrayBuffer,
+     *   text?: string
+     * }} ResponseOptions
+     */
+    /**
+     * A container for the status of a CommonJS resource. A `RequestStatus` object
+     * represents meta data for a `Request` that comes from a preflight
+     * HTTP HEAD request.
+     */
+    export class RequestStatus {
+        /**
+         * Creates a `RequestStatus` from JSON input.
+         * @param {object} json
+         * @return {RequestStatus}
+         */
+        static from(json: object): RequestStatus;
+        /**
+         * `RequestStatus` class constructor.
+         * @param {Request} request
+         * @param {RequestStatusOptions} [options]
+         */
+        constructor(request: Request, options?: RequestStatusOptions);
+        set request(request: Request);
+        /**
+         * The `Request` object associated with this `RequestStatus` object.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The unique ID of this `RequestStatus`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The origin for this `RequestStatus` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * A HTTP status code for this `RequestStatus` object.
+         * @type {number|undefined}
+         */
+        get status(): number;
+        /**
+         * An alias for `status`.
+         * @type {number|undefined}
+         */
+        get value(): number;
+        /**
+         * @ignore
+         */
+        get valueOf(): number;
+        /**
+         * The HTTP headers for this `RequestStatus` object.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * The resource location for this `RequestStatus` object. This value is
+         * determined from the 'Content-Location' header, if available, otherwise
+         * it is derived from the request URL pathname (including the query string).
+         * @type {string}
+         */
+        get location(): string;
+        /**
+         * `true` if the response status is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        /**
+         * Loads the internal state for this `RequestStatus` object.
+         * @param {RequestLoadOptions|boolean} [options]
+         * @return {RequestStatus}
+         */
+        load(options?: RequestLoadOptions | boolean): RequestStatus;
+        /**
+         * Converts this `RequestStatus` to JSON.
+         * @ignore
+         * @return {{
+         *   id: string,
+         *   origin: string | null,
+         *   status: number,
+         *   headers: Array<string[]>
+         *   request: object | null | undefined
+         * }}
+         */
+        toJSON(includeRequest?: boolean): {
+            id: string;
+            origin: string | null;
+            status: number;
+            headers: Array<string[]>;
+            request: object | null | undefined;
+        };
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request to local resource or
+     * over the network.
+     */
+    export class Request {
+        /**
+         * Creates a `Request` instance from JSON input
+         * @param {object} json
+         * @param {RequestOptions=} [options]
+         * @return {Request}
+         */
+        static from(json: object, options?: RequestOptions | undefined): Request;
+        /**
+         * `Request` class constructor.
+         * @param {URL|string} url
+         * @param {URL|string=} [origin]
+         * @param {RequestOptions=} [options]
+         */
+        constructor(url: URL | string, origin?: (URL | string) | undefined, options?: RequestOptions | undefined);
+        /**
+         * The unique ID of this `Request`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute `URL` of this `Request` object.
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * The origin for this `Request`.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The `Loader` for this `Request` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `RequestStatus` for this `Request`
+         * @type {RequestStatus}
+         */
+        get status(): RequestStatus;
+        /**
+         * Loads the CommonJS source file, optionally checking the `Loader` cache
+         * first, unless ignored when `options.cache` is `false`.
+         * @param {RequestLoadOptions=} [options]
+         * @return {Response}
+         */
+        load(options?: RequestLoadOptions | undefined): Response;
+        /**
+         * Converts this `Request` to JSON.
+         * @ignore
+         * @return {{
+         *   url: string,
+         *   status: object | undefined
+         * }}
+         */
+        toJSON(includeStatus?: boolean): {
+            url: string;
+            status: object | undefined;
+        };
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request response for a local resource
+     * or over the network.
+     */
+    export class Response {
+        /**
+         * Creates a `Response` from JSON input
+         * @param {obejct} json
+         * @param {ResponseOptions=} [options]
+         * @return {Response}
+         */
+        static from(json: obejct, options?: ResponseOptions | undefined): Response;
+        /**
+         * `Response` class constructor.
+         * @param {Request|ResponseOptions} request
+         * @param {ResponseOptions=} [options]
+         */
+        constructor(request: Request | ResponseOptions, options?: ResponseOptions | undefined);
+        /**
+         * The unique ID of this `Response`, which is the absolute
+         * URL of the request as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The `Request` object associated with this `Response` object.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The response headers from the associated request.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * The `Loader` associated with this `Response` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `Response` status code from the associated `Request` object.
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * The `Response` string from the associated `Request`
+         * @type {string}
+         */
+        get text(): string;
+        /**
+         * The `Response` array buffer from the associated `Request`
+         * @type {ArrayBuffer?}
+         */
+        get buffer(): ArrayBuffer;
+        /**
+         * `true` if the response is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        /**
+         * Converts this `Response` to JSON.
+         * @ignore
+         * @return {{
+         *   id: string,
+         *   text: string,
+         *   status: number,
+         *   buffer: number[] | null,
+         *   headers: Array<string[]>
+         * }}
+         */
+        toJSON(): {
+            id: string;
+            text: string;
+            status: number;
+            buffer: number[] | null;
+            headers: Array<string[]>;
+        };
+        #private;
+    }
+    /**
+     * A container for loading CommonJS module sources
+     */
+    export class Loader {
+        /**
+         * A request class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Request: typeof Request;
+        /**
+         * A response class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Response: typeof Request;
+        /**
+         * Resolves a given module URL to an absolute URL with an optional `origin`.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        static resolve(url: URL | string, origin?: URL | string): string;
+        /**
+         * Default extensions for a loader.
+         * @type {Set<string>}
+         */
+        static defaultExtensions: Set<string>;
+        /**
+         * `Loader` class constructor.
+         * @param {string|URL|LoaderOptions} origin
+         * @param {LoaderOptions=} [options]
+         */
+        constructor(origin: string | URL | LoaderOptions, options?: LoaderOptions | undefined);
+        /**
+         * The internal caches for this `Loader` object.
+         * @type {{ response: Cache, status: Cache }}
+         */
+        get cache(): {
+            response: Cache;
+            status: Cache;
+        };
+        /**
+         * A set of supported `Loader` extensions.
+         * @type {Set<string>}
+         */
+        get extensions(): Set<string>;
+        set origin(origin: string);
+        /**
+         * The origin of this `Loader` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * Loads a CommonJS module source file at `url` with an optional `origin`, which
+         * defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {Response}
+         */
+        load(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): Response;
+        /**
+         * Queries the status of a CommonJS module source file at `url` with an
+         * optional `origin`, which defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {RequestStatus}
+         */
+        status(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): RequestStatus;
+        /**
+         * Resolves a given module URL to an absolute URL based on the loader origin.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        resolve(url: URL | string, origin?: URL | string): string;
+        #private;
+    }
+    export default Loader;
+    export type LoaderOptions = {
+        extensions?: string[] | Set<string>;
+        origin?: URL | string;
+        statuses?: Cache;
+        cache?: {
+            response?: Cache;
+            status?: Cache;
+        };
+    };
+    export type RequestOptions = {
+        loader?: Loader;
+        origin?: URL | string;
+    };
+    export type RequestStatusOptions = {
+        headers?: Headers | object | any[][];
+        status?: number;
+    };
+    export type RequestLoadOptions = {
+        headers?: Headers | object;
+    };
+    export type ResponseOptions = {
+        request?: Request;
+        headers?: Headers;
+        status?: number;
+        buffer?: ArrayBuffer;
+        text?: string;
+    };
+    import { Headers } from "socket:ipc";
+    import { Cache } from "socket:commonjs/cache";
+}
+
+declare module "socket:commonjs/package" {
+    /**
+     * @typedef {{
+     *   manifest?: string,
+     *   index?: string,
+     *   description?: string,
+     *   version?: string,
+     *   license?: string,
+     *   exports?: object,
+     *   type?: 'commonjs' | 'module',
+     *   info?: object,
+     *   origin?: string,
+     *   dependencies?: Dependencies | object | Map
+     * }} PackageOptions
+     */
+    /**
+     * @typedef {import('./loader.js').RequestOptions & {
+     *   type?: 'commonjs' | 'module'
+     *   prefix?: string
+     * }} PackageLoadOptions
+     */
+    /**
+     * {import('./loader.js').RequestOptions & {
+     *   load?: boolean,
+     *   type?: 'commonjs' | 'module',
+     *   browser?: boolean,
+     *   children?: string[]
+     *   extensions?: string[] | Set<string>
+     * }} PackageResolveOptions
+     */
+    /**
+     * @typedef {{
+     *   organization: string | null,
+     *   name: string,
+     *   version: string | null,
+     *   pathname: string,
+     *   url: URL,
+     *   isRelative: boolean,
+     *   hasManifest: boolean
+     * }} ParsedPackageName
+    /**
+     * The default package index file such as 'index.js'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_INDEX: string;
+    /**
+     * The default package manifest file name such as 'package.json'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_MANIFEST_FILE_NAME: string;
+    /**
+     * The default package path prefix such as 'node_modules/'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_PREFIX: string;
+    /**
+     * The default package version, when one is not provided
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_VERSION: string;
+    /**
+     * The default license for a package'
+     * @type {string}
+     */
+    export const DEFAULT_LICENSE: string;
+    /**
+     * A container for a package name that includes a package organization identifier,
+     * its fully qualified name, or for relative package names, its pathname
+     */
+    export class Name {
+        /**
+         * Parses a package name input resolving the actual module name, including an
+         * organization name given. If a path includes a manifest file
+         * ('package.json'), then the directory containing that file is considered a
+         * valid package and it will be included in the returned value. If a relative
+         * path is given, then the path is returned if it is a valid pathname. This
+         * function returns `null` for bad input.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {ParsedPackageName?}
+         */
+        static parse(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        }): ParsedPackageName | null;
+        /**
+         * Returns `true` if the given `input` can be parsed by `Name.parse` or given
+         * as input to the `Name` class constructor.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {boolean}
+         */
+        static canParse(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        }): boolean;
+        /**
+         * Creates a new `Name` from input.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {Name}
+         */
+        static from(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined): Name;
+        /**
+         * `Name` class constructor.
+         * @param {string|URL|NameOptions|Name} name
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @throws TypeError
+         */
+        constructor(name: string | URL | NameOptions | Name, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined);
+        /**
+         * The id of this package name.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The actual package name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The origin of the package, if available.
+         * @type {string?}
+         */
+        get origin(): string;
+        /**
+         * The package version if available.
+         * @type {string}
+         */
+        get version(): string;
+        /**
+         * The actual package pathname.
+         * @type {string}
+         */
+        get pathname(): string;
+        /**
+         * The organization name. This value may be `null`.
+         * @type {string?}
+         */
+        get organization(): string;
+        /**
+         * `true` if the package name was relative, otherwise `false`.
+         * @type {boolean}
+         */
+        get isRelative(): boolean;
+        /**
+         * Converts this package name to a string.
+         * @ignore
+         * @return {string}
+         */
+        toString(): string;
+        /**
+         * Converts this `Name` instance to JSON.
+         * @ignore
+         * @return {object}
+         */
+        toJSON(): object;
+        #private;
+    }
+    /**
+     * A container for package dependencies that map a package name to a `Package` instance.
+     */
+    export class Dependencies {
+        constructor(parent: any, options?: any);
+        get map(): Map<any, any>;
+        get origin(): any;
+        add(name: any, info?: any): void;
+        get(name: any): any;
+        entries(): IterableIterator<[any, any]>;
+        keys(): IterableIterator<any>;
+        values(): IterableIterator<any>;
+        load(options?: any): void;
+        [Symbol.iterator](): IterableIterator<[any, any]>;
+        #private;
+    }
+    /**
+     * A container for CommonJS module metadata, often in a `package.json` file.
+     */
+    export class Package {
+        /**
+         * A high level class for a package name.
+         * @type {typeof Name}
+         */
+        static Name: typeof Name;
+        /**
+         * A high level container for package dependencies.
+         * @type {typeof Dependencies}
+         */
+        static Dependencies: typeof Dependencies;
+        /**
+         * `Package` class constructor.
+         * @param {string|URL|NameOptions|Name} name
+         * @param {PackageOptions=} [options]
+         */
+        constructor(name: string | URL | NameOptions | Name, options?: PackageOptions | undefined);
+        /**
+         * The unique ID of this `Package`, which is the absolute
+         * URL of the directory that contains its manifest file.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute URL to the package manifest file
+         * @type {string}
+         */
+        get url(): string;
+        /**
+         * A loader for this package, if available. This value may be `null`.
+         * @type {Loader}
+         */
+        get loader(): Loader;
+        /**
+         * The name of the package.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The description of the package.
+         * @type {string}
+         */
+        get description(): string;
+        /**
+         * The organization of the package. This value may be `null`.
+         * @type {string?}
+         */
+        get organization(): string;
+        /**
+         * The license of the package.
+         * @type {string}
+         */
+        get license(): string;
+        /**
+         * The version of the package.
+         * @type {string}
+         */
+        get version(): string;
+        /**
+         * The origin for this package.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The exports mappings for the package
+         * @type {object}
+         */
+        get exports(): any;
+        /**
+         * The package type.
+         * @type {'commonjs'|'module'}
+         */
+        get type(): "module" | "commonjs";
+        /**
+         * The raw package metadata object.
+         * @type {object?}
+         */
+        get info(): any;
+        /**
+         * @type {Dependencies}
+         */
+        get dependencies(): Dependencies;
+        /**
+         * An alias for `entry`
+         * @type {string?}
+         */
+        get main(): string;
+        /**
+         * The entry to the package
+         * @type {string?}
+         */
+        get entry(): string;
+        /**
+         * Load the package information at an optional `origin` with
+         * optional request `options`.
+         * @param {PackageLoadOptions=} [options]
+         * @throws SyntaxError
+         * @return {boolean}
+         */
+        load(origin?: any, options?: PackageLoadOptions | undefined): boolean;
+        /**
+         * Resolve a file's `pathname` within the package.
+         * @param {string|URL} pathname
+         * @param {PackageResolveOptions=} [options]
+         * @return {string}
+         */
+        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
+        #private;
+    }
+    export default Package;
+    export type PackageOptions = {
+        manifest?: string;
+        index?: string;
+        description?: string;
+        version?: string;
+        license?: string;
+        exports?: object;
+        type?: 'commonjs' | 'module';
+        info?: object;
+        origin?: string;
+        dependencies?: Dependencies | object | Map<any, any>;
+    };
+    export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
+        type?: 'commonjs' | 'module';
+        prefix?: string;
+    };
+    /**
+     * /**
+     * The default package index file such as 'index.js'
+     */
+    export type ParsedPackageName = {
+        organization: string | null;
+        name: string;
+        version: string | null;
+        pathname: string;
+        url: URL;
+        isRelative: boolean;
+        hasManifest: boolean;
+    };
+    import { Loader } from "socket:commonjs/loader";
+}
+
 declare module "socket:stream-relay/proxy" {
     export default PeerWorkerProxy;
     /**
@@ -12110,6 +12959,13 @@ declare module "socket:timers" {
 
 declare module "socket:commonjs/builtins" {
     /**
+     * Defines a builtin module by name making a shallow copy of the
+     * module exports.
+     * @param {string}
+     * @param {object} exports
+     */
+    export function define(name: any, exports: object): void;
+    /**
      * Predicate to determine if a given module name is a builtin module.
      * @param {string} name
      * @param {{ builtins?: object }}
@@ -12136,456 +12992,85 @@ declare module "socket:commonjs/builtins" {
     export default builtins;
 }
 
-declare module "socket:commonjs/loader" {
+declare module "socket:commonjs/require" {
     /**
-     * @typedef {{
-     *   extensions?: string[] | Set<string>
-     *   origin?: URL | string,
-     *   statuses?: Map
-     *   cache?: Map
-     * }} LoaderOptions
+     * Factory for creating a `require()` function based on a module context.
+     * @param {CreateRequireOptions} options
+     * @return {RequireFunction}
+     */
+    export function createRequire(options: CreateRequireOptions): RequireFunction;
+    /**
+     * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver
      */
     /**
      * @typedef {{
-     *   loader?: Loader,
-     *   origin?: URL | string
-     * }} RequestOptions
-     */
-    /**
-     * @typedef {{
-     *   headers?: Headers | object
-     * }} RequestLoadOptions
-     */
-    /**
-     * @typedef {{
-     *   request?: Request,
-     *   headers?: Headers,
-     *   status?: number,
-     *   text?: string
-     * }} ResponseOptions
-     */
-    /**
-     * A container for the status of a CommonJS resource. A `RequestStatus` object
-     * represents meta data for a `Request` that comes from a preflight
-     * HTTP HEAD request.
-     */
-    export class RequestStatus {
-        /**
-         * `RequestStatus` class constructor.
-         * @param {Request} request
-         */
-        constructor(request: Request);
-        /**
-         * The unique ID of this `RequestStatus`, which is the absolute URL as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The origin for this `RequestStatus` object.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * A HTTP status code for this `RequestStatus` object.
-         * @type {number|undefined}
-         */
-        get status(): number;
-        /**
-         * An alias for `status`.
-         * @type {number|undefined}
-         */
-        get value(): number;
-        /**
-         * @ignore
-         */
-        get valueOf(): number;
-        /**
-         * The HTTP headers for this `RequestStatus` object.
-         * @type {Headers}
-         */
-        get headers(): Headers;
-        /**
-         * The resource location for this `RequestStatus` object. This value is
-         * determined from the 'Content-Location' header, if available, otherwise
-         * it is derived from the request URL pathname (including the query string).
-         * @type {string}
-         */
-        get location(): string;
-        /**
-         * `true` if the response status is considered OK, otherwise `false`.
-         * @type {boolean}
-         */
-        get ok(): boolean;
-        /**
-         * Loads the internal state for this `RequestStatus` object.
-         * @param {RequestLoadOptions|boolean} [options]
-         * @return {RequestStatus}
-         */
-        load(options?: RequestLoadOptions | boolean): RequestStatus;
-        #private;
-    }
-    /**
-     * A container for a synchronous CommonJS request to local resource or
-     * over the network.
-     */
-    export class Request {
-        /**
-         * `Request` class constructor.
-         * @param {URL|string} url
-         * @param {URL|string=} [origin]
-         * @param {RequestOptions=} [options]
-         */
-        constructor(url: URL | string, origin?: (URL | string) | undefined, options?: RequestOptions | undefined);
-        /**
-         * The unique ID of this `Request`, which is the absolute URL as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The absolute `URL` of this `Request` object.
-         * @type {URL}
-         */
-        get url(): URL;
-        /**
-         * The origin for this `Request`.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * The `Loader` for this `Request` object.
-         * @type {Loader?}
-         */
-        get loader(): Loader;
-        /**
-         * The `RequestStatus` for this `Request`
-         * @type {RequestStatus}
-         */
-        get status(): RequestStatus;
-        /**
-         * Loads the CommonJS source file, optionally checking the `Loader` cache
-         * first, unless ignored when `options.cache` is `false`.
-         * @param {RequestLoadOptions=} [options]
-         * @return {Response}
-         */
-        load(options?: RequestLoadOptions | undefined): Response;
-        #private;
-    }
-    /**
-     * A container for a synchronous CommonJS request response for a local resource
-     * or over the network.
-     */
-    export class Response {
-        /**
-         * `Response` class constructor.
-         * @param {Request|ResponseOptions} request
-         * @param {ResponseOptions=} [options]
-         */
-        constructor(request: Request | ResponseOptions, options?: ResponseOptions | undefined);
-        /**
-         * The unique ID of this `Response`, which is the absolute
-         * URL of the request as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The `Request` object associated with this `Response` object.
-         * @type {Request}
-         */
-        get request(): Request;
-        /**
-         * The `Loader` associated with this `Response` object.
-         * @type {Loader?}
-         */
-        get loader(): Loader;
-        /**
-         * The `Response` status code from the associated `Request` object.
-         * @type {number}
-         */
-        get status(): number;
-        /**
-         * The `Response` string from the associated `Request`
-         * @type {string}
-         */
-        get text(): string;
-        /**
-         * `true` if the response is considered OK, otherwise `false`.
-         * @type {boolean}
-         */
-        get ok(): boolean;
-        #private;
-    }
-    /**
-     * A container for loading CommonJS module sources
-     */
-    export class Loader {
-        /**
-         * A request class used by `Loader` objects.
-         * @type {typeof Request}
-         */
-        static Request: typeof Request;
-        /**
-         * A response class used by `Loader` objects.
-         * @type {typeof Request}
-         */
-        static Response: typeof Request;
-        /**
-         * Resolves a given module URL to an absolute URL with an optional `origin`.
-         * @param {URL|string} url
-         * @param {URL|string} [origin]
-         * @return {string}
-         */
-        static resolve(url: URL | string, origin?: URL | string): string;
-        /**
-         * Default extensions for a loader.
-         * @type {Set<string>}
-         */
-        static defaultExtensions: Set<string>;
-        /**
-         * `Loader` class constructor.
-         * @param {string|URL|LoaderOptions} origin
-         * @param {LoaderOptions=} [options]
-         */
-        constructor(origin: string | URL | LoaderOptions, options?: LoaderOptions | undefined);
-        /**
-         * The internal cache for this `Loader` object.
-         * @type {Map}
-         */
-        get cache(): Map<any, any>;
-        /**
-         * The internal statuses for this `Loader` object.
-         * @type {Map}
-         */
-        get statuses(): Map<any, any>;
-        /**
-         * A set of supported `Loader` extensions.
-         * @type {Set<string>}
-         */
-        get extensions(): Set<string>;
-        set origin(origin: string);
-        /**
-         * The origin of this `Loader` object.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * Loads a CommonJS module source file at `url` with an optional `origin`, which
-         * defaults to the application origin.
-         * @param {URL|string} url
-         * @param {URL|string|object} [origin]
-         * @param {RequestOptions=} [options]
-         * @return {Response}
-         */
-        load(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): Response;
-        /**
-         * Queries the status of a CommonJS module source file at `url` with an
-         * optional `origin`, which defaults to the application origin.
-         * @param {URL|string} url
-         * @param {URL|string|object} [origin]
-         * @param {RequestOptions=} [options]
-         * @return {RequestStatus}
-         */
-        status(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): RequestStatus;
-        /**
-         * Resolves a given module URL to an absolute URL based on the loader origin.
-         * @param {URL|string} url
-         * @param {URL|string} [origin]
-         * @return {string}
-         */
-        resolve(url: URL | string, origin?: URL | string): string;
-        #private;
-    }
-    export default Loader;
-    export type LoaderOptions = {
-        extensions?: string[] | Set<string>;
-        origin?: URL | string;
-        statuses?: Map<any, any>;
-        cache?: Map<any, any>;
-    };
-    export type RequestOptions = {
-        loader?: Loader;
-        origin?: URL | string;
-    };
-    export type RequestLoadOptions = {
-        headers?: Headers | object;
-    };
-    export type ResponseOptions = {
-        request?: Request;
-        headers?: Headers;
-        status?: number;
-        text?: string;
-    };
-    import { Headers } from "socket:ipc";
-}
-
-declare module "socket:commonjs/package" {
-    /**
-     * @typedef {{
+     *   module: import('./module.js').Module,
      *   prefix?: string,
-     *   manifest?: string,
-     *   index?: string,
-     *   description?: string,
-     *   version?: string,
-     *   license?: string,
-     *   exports?: object,
-     *   type?: 'commonjs' | 'module',
-     *   info?: object
-     * }} PackageOptions
+     *   request?: import('./loader.js').RequestOptions,
+     *   builtins?: object
+     * }} CreateRequireOptions
      */
     /**
-     * @typedef {import('./loader.js').RequestOptions & {
-     *   type?: 'commonjs' | 'module'
-     * }} PackageLoadOptions
+     * @typedef {function(string): any} RequireFunction
      */
     /**
-     * {import('./loader.js').RequestOptions & {
-     *   load?: boolean,
-     *   type?: 'commonjs' | 'module',
-     *   browser?: boolean,
-     *   children?: string[]
-     *   extensions?: string[] | Set<string>
-     * }} PackageResolveOptions
+     * @typedef {import('./package.js').PackageOptions} PackageOptions
      */
     /**
-     * The default package index file such as 'index.js'
-     * @type {string}
+     * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
      */
-    export const DEFAULT_PACKAGE_INDEX: string;
     /**
-     * The default package manifest file name such as 'package.json'
-     * @type {string}
+     * @typedef {PackageResolveOptions & PackageOptions} ResolveOptions
      */
-    export const DEFAULT_PACKAGE_MANIFEST_FILE_NAME: string;
     /**
-     * The default package path prefix such as 'node_modules/'
-     * @type {string}
+     * @typedef {ResolveOptions & {
+     *   resolvers?: RequireResolver[],
+     *   importmap?: import('./module.js').ImportMap,
+     * }} RequireOptions
      */
-    export const DEFAULT_PACKAGE_PREFIX: string;
     /**
-     * The default package version, when one is not provided
-     * @type {string}
+     * An array of global require paths, relative to the origin.
+     * @type {string[]}
      */
-    export const DEFAULT_PACKAGE_VERSION: string;
+    export const globalPaths: string[];
     /**
-     * The default license for a package'
-     * @type {string}
+     * An object attached to a `require()` function that contains metadata
+     * about the current module context.
      */
-    export const DEFAULT_LICENSE: string;
-    /**
-     * A container for CommonJS module metadata, often in a `package.json` file.
-     */
-    export class Package {
+    export class Meta {
         /**
-         * @param {string} input
-         * @param {PackageOptions&PackageLoadOptions} [options]
-         * @return {Package?}
+         * `Meta` class constructor.
+         * @param {import('./module.js').Module} module
          */
-        static find(input: string, options?: PackageOptions & PackageLoadOptions): Package | null;
+        constructor(module: import('./module.js').Module);
         /**
-         * `Package` class constructor.
-         * @param {string} name
-         * @param {PackageOptions} [options]
-         */
-        constructor(name: string, options?: PackageOptions);
-        /**
-         * The unique ID of this `Package`, which is the absolute
-         * URL of the directory that contains its manifest file.
+         * The referrer (parent) of this module.
          * @type {string}
          */
-        get id(): string;
+        get referrer(): string;
         /**
-         * The absolute URL to the package manifest file
+         * The referrer (parent) of this module.
          * @type {string}
          */
         get url(): string;
-        /**
-         * The package module path prefix.
-         * @type {string}
-         */
-        get prefix(): string;
-        /**
-         * A loader for this package, if available. This value may be `null`.
-         * @type {Loader}
-         */
-        get loader(): Loader;
-        /**
-         * The name of the package.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The description of the package.
-         * @type {string}
-         */
-        get description(): string;
-        /**
-         * The license of the package.
-         * @type {string}
-         */
-        get license(): string;
-        /**
-         * The version of the package.
-         * @type {string}
-         */
-        get version(): string;
-        /**
-         * The origin for this package.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * The exports mappings for the package
-         * @type {object}
-         */
-        get exports(): any;
-        /**
-         * The package type.
-         * @type {'commonjs'|'module'}
-         */
-        get type(): "module" | "commonjs";
-        /**
-         * The raw package metadata object.
-         * @type {object?}
-         */
-        get info(): any;
-        /**
-         * The entry to the package
-         * @type {string?}
-         */
-        get entry(): string;
-        /**
-         * Load the package information at an optional `origin` with
-         * optional request `options`.
-         * @param {string|PackageLoadOptions=} [origin]
-         * @param {PackageLoadOptions=} [options]
-         * @throws SyntaxError
-         * @return {boolean}
-         */
-        load(origin?: (string | PackageLoadOptions) | undefined, options?: PackageLoadOptions | undefined): boolean;
-        /**
-         * Resolve a file's `pathname` within the package.
-         * @param {string|URL} pathname
-         * @param {PackageResolveOptions=} [options]
-         * @return {string}
-         */
-        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
         #private;
     }
-    export default Package;
-    export type PackageOptions = {
+    export default createRequire;
+    export type RequireResolver = (arg0: string, arg1: import("socket:commonjs/module").Module, arg2: (arg0: string) => any) => any;
+    export type CreateRequireOptions = {
+        module: import("socket:commonjs/module").Module;
         prefix?: string;
-        manifest?: string;
-        index?: string;
-        description?: string;
-        version?: string;
-        license?: string;
-        exports?: object;
-        type?: 'commonjs' | 'module';
-        info?: object;
+        request?: import("socket:commonjs/loader").RequestOptions;
+        builtins?: object;
     };
-    export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
-        type?: 'commonjs' | 'module';
+    export type RequireFunction = (arg0: string) => any;
+    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
+    export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
+    export type ResolveOptions = PackageResolveOptions & PackageOptions;
+    export type RequireOptions = ResolveOptions & {
+        resolvers?: RequireResolver[];
+        importmap?: import("socket:commonjs/module").ImportMap;
     };
-    import { Loader } from "socket:commonjs/loader";
 }
 
 declare module "socket:commonjs/module" {
@@ -12598,7 +13083,7 @@ declare module "socket:commonjs/module" {
      * @param {string} __filename
      * @param {string} __dirname
      */
-    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string): Promise<void>;
+    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: any, global: any): void;
     export function createRequire(url: any, options?: any): any;
     /**
      * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
@@ -12621,10 +13106,16 @@ declare module "socket:commonjs/module" {
      *   resolvers?: ModuleResolver[],
      *   importmap?: ImportMap,
      *   loader?: Loader | object,
+     *   loaders?: object,
      *   package?: Package | PackageOptions
      *   parent?: Module,
      *   state?: State
      * }} ModuleOptions
+     */
+    /**
+     * @typedef {{
+     *   extensions?: object
+     * }} ModuleLoadOptions
      */
     export const builtinModules: any;
     /**
@@ -12669,14 +13160,69 @@ declare module "socket:commonjs/module" {
      * The module scope for a loaded module.
      * This is a special object that is seal, frozen, and only exposes an
      * accessor the 'exports' field.
+     * @ignore
      */
     export class Scope {
+        /**
+         * `Scope` class constructor.
+         * @param {Module} module
+         */
+        constructor(module: Module);
+        get id(): any;
+        get filename(): any;
+        get loaded(): any;
+        get children(): any;
         set exports(exports: any);
         get exports(): any;
         toJSON(): {
+            id: any;
+            filename: any;
+            children: any;
             exports: any;
         };
         #private;
+    }
+    /**
+     * An abstract base class for loading a module.
+     */
+    export class ModuleLoader {
+        /**
+         * Creates a `ModuleLoader` instance from the `module` currently being loaded.
+         * @param {Module} module
+         * @param {ModuleLoadOptions=} [options]
+         * @return {ModuleLoader}
+         */
+        static from(module: Module, options?: ModuleLoadOptions | undefined): ModuleLoader;
+        /**
+         * Creates a new `ModuleLoader` instance from the `module` currently
+         * being loaded with the `source` string to parse and load with optional
+         * `ModuleLoadOptions` options.
+         * @param {Module} module
+         * @param {ModuleLoadOptions=} [options]
+         * @return {boolean}
+         */
+        static load(module: Module, options?: ModuleLoadOptions | undefined): boolean;
+        /**
+         * @param {Module} module
+         * @param {ModuleLoadOptions=} [options]
+         * @return {boolean}
+         */
+        load(module: Module, options?: ModuleLoadOptions | undefined): boolean;
+    }
+    /**
+     * A JavaScript module loader
+     */
+    export class JavaScriptModuleLoader extends ModuleLoader {
+    }
+    /**
+     * A JSON module loader.
+     */
+    export class JSONModuleLoader extends ModuleLoader {
+    }
+    /**
+     * A WASM module loader
+     */
+    export class WASMModuleLoader extends ModuleLoader {
     }
     /**
      * A container for a loaded CommonJS module. All errors bubble
@@ -12729,6 +13275,11 @@ declare module "socket:commonjs/module" {
          * @type {string[]}
          */
         static globalPaths: string[];
+        /**
+         * Globabl module loaders
+         * @type {object}
+         */
+        static loaders: object;
         /**
          * The main entry module, lazily created.
          * @type {Module}
@@ -12835,6 +13386,16 @@ declare module "socket:commonjs/module" {
          */
         get loader(): Loader;
         /**
+         * The filename of the module.
+         * @type {string}
+         */
+        get filename(): string;
+        /**
+         * Known source loaders for this module keyed by file extension.
+         * @type {object}
+         */
+        get loaders(): any;
+        /**
          * Factory for creating a `require()` function based on a module context.
          * @param {CreateRequireOptions=} [options]
          * @return {RequireFunction}
@@ -12848,10 +13409,23 @@ declare module "socket:commonjs/module" {
          */
         createModule(url: string | URL | Module, options?: ModuleOptions | undefined): any;
         /**
-         * @param {object=} [options]
+         * Requires a module at for a given `input` which can be a relative file,
+         * named module, or an absolute URL within the context of this odule.
+         * @param {string|URL} input
+         * @param {RequireOptions=} [options]
+         * @throws ModuleNotFoundError
+         * @throws ReferenceError
+         * @throws SyntaxError
+         * @throws TypeError
+         * @return {any}
+         */
+        require(url: any, options?: RequireOptions): any;
+        /**
+         * Loads the module
+         * @param {ModuleLoadOptions=} [options]
          * @return {boolean}
          */
-        load(options?: object | undefined): boolean;
+        load(options?: ModuleLoadOptions | undefined): boolean;
         resolve(input: any): string;
         /**
          * @ignore
@@ -12872,82 +13446,27 @@ declare module "socket:commonjs/module" {
         resolvers?: import("socket:commonjs/require").RequireResolver[][];
         importmap?: ImportMap;
         loader?: Loader | object;
+        loaders?: object;
         package?: Package | PackageOptions;
         parent?: Module;
         state?: State;
+    };
+    export type ModuleLoadOptions = {
+        extensions?: object;
     };
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
     import builtins from "socket:commonjs/builtins";
 }
 
-declare module "socket:commonjs/require" {
-    /**
-     * Factory for creating a `require()` function based on a module context.
-     * @param {CreateRequireOptions} options
-     * @return {RequireFunction}
-     */
-    export function createRequire(options: CreateRequireOptions): RequireFunction;
-    /**
-     * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver
-     */
-    /**
-     * @typedef {{
-     *   module: import('./module.js').Module,
-     *   prefix?: string,
-     *   request?: import('./loader.js').RequestOptions,
-     *   builtins?: object
-     * }} CreateRequireOptions
-     */
-    /**
-     * @typedef {function(string): any} RequireFunction
-     */
-    /**
-     * @typedef {import('./package.js').PackageOptions} PackageOptions
-     */
-    /**
-     * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
-     */
-    /**
-     * @typedef {PackageResolveOptions & PackageOptions} ResolveOptions
-     */
-    /**
-     * @typedef {ResolveOptions & {
-     *   resolvers?: RequireResolver[],
-     *   importmap?: import('./module.js').ImportMap,
-     * }} RequireOptions
-     */
-    /**
-     * An array of global require paths, relative to the origin.
-     * @type {string[]}
-     */
-    export const globalPaths: string[];
-    export default createRequire;
-    export type RequireResolver = (arg0: string, arg1: import("socket:commonjs/module").Module, arg2: (arg0: string) => any) => any;
-    export type CreateRequireOptions = {
-        module: import("socket:commonjs/module").Module;
-        prefix?: string;
-        request?: import("socket:commonjs/loader").RequestOptions;
-        builtins?: object;
-    };
-    export type RequireFunction = (arg0: string) => any;
-    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
-    export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
-    export type ResolveOptions = PackageResolveOptions & PackageOptions;
-    export type RequireOptions = ResolveOptions & {
-        resolvers?: RequireResolver[];
-        importmap?: import("socket:commonjs/module").ImportMap;
-    };
-}
-
 declare module "socket:module" {
     export const builtinModules: any;
     export default Module;
+    import { createRequire } from "socket:commonjs/module";
     import { Module } from "socket:commonjs/module";
     import builtins from "socket:commonjs/builtins";
     import { isBuiltin } from "socket:commonjs/builtins";
-    import { createRequire } from "socket:commonjs/require";
-    export { Module, builtins, isBuiltin, createRequire };
+    export { createRequire, Module, builtins, isBuiltin };
 }
 
 declare module "socket:node-esm-loader" {
@@ -13447,6 +13966,59 @@ declare module "socket:child_process/worker" {
     export {};
 }
 
+declare module "socket:internal/callsite" {
+    export class CallSite {
+        static PromiseElementIndexSymbol: symbol;
+        static PromiseAllSymbol: symbol;
+        static PromiseAnySymbol: symbol;
+        constructor(error: any);
+        get error(): any;
+        getThis(): void;
+        getTypeName(): void;
+        getFunction(): void;
+        getFunctionName(): any;
+        getFileName(): string;
+        getLineNumber(): any;
+        getColumnNumber(): any;
+        getEvalOrigin(): void;
+        isTopLevel(): void;
+        isEval(): void;
+        isNative(): boolean;
+        isConstructor(): void;
+        isAsync(): boolean;
+        isPromiseAll(): any;
+        #private;
+    }
+    export default CallSite;
+}
+
+declare module "socket:internal/error" {
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error {
+        let stackTraceLimit: number;
+        /**
+         * @ignore
+         */
+        function captureStackTrace(err: any, ErrorConstructor: any): void;
+    }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    export function Error(message: any, ...args: any[]): any;
+    export namespace Error { }
+    namespace _default {
+        export { Error };
+    }
+    export default _default;
+}
+
 declare module "socket:internal/geolocation" {
     /**
      * Get the current position of the device.
@@ -13485,6 +14057,32 @@ declare module "socket:internal/geolocation" {
         export { clearWatch };
     }
     export default _default;
+}
+
+declare module "socket:internal/post-message" {
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:internal/promise" {
+    export const NativePromise: PromiseConstructor;
+    export namespace NativePromisePrototype {
+        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => Promise<TResult1 | TResult2>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => Promise<any>;
+        export { _catch as catch };
+        let _finally: (onfinally?: () => void) => Promise<any>;
+        export { _finally as finally };
+    }
+    export const NativePromiseAll: any;
+    export const NativePromiseAny: any;
+    export default Promise;
+    var Promise: PromiseConstructor;
+    interface Promise<T> {
+        then<TResult1 = T, TResult2 = never>(onfulfilled?: (value: T) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>): Promise<TResult1 | TResult2>;
+        catch<TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult>;
+        finally(onfinally?: () => void): Promise<T>;
+        readonly [Symbol.toStringTag]: string;
+    }
 }
 
 declare module "socket:internal/streams" {
@@ -13699,18 +14297,6 @@ declare module "socket:internal/pickers" {
         }>;
     };
     import { FileSystemHandle } from "socket:fs/web";
-}
-
-declare module "socket:internal/promise" {
-    export namespace NativePromisePrototype {
-        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => Promise<TResult1 | TResult2>;
-        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => Promise<any>;
-        export { _catch as catch };
-        let _finally: (onfinally?: () => void) => Promise<any>;
-        export { _finally as finally };
-    }
-    const Promise: PromiseConstructor;
-    export default Promise;
 }
 
 declare module "socket:internal/primitives" {

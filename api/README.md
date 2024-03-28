@@ -1998,17 +1998,17 @@ Converts this `Path` instance to a string.
  import process from 'socket:process'
  ```
 
-## [`ProcessEnvironmentEvent` (extends `Event`)](https://github.com/socketsupply/socket/blob/master/api/process.js#L17)
+## [`ProcessEnvironmentEvent` (extends `Event`)](https://github.com/socketsupply/socket/blob/master/api/process.js#L19)
 
 This is a `ClassDeclaration` named ``ProcessEnvironmentEvent` (extends `Event`)` in `api/process.js`, it's exported but undocumented.
 
 
-## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L25)
+## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L27)
 
 This is a `VariableDeclaration` named `env` in `api/process.js`, it's exported but undocumented.
 
 
-## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L163)
+## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L171)
 
 Adds callback to the 'nextTick' queue.
 
@@ -2016,7 +2016,7 @@ Adds callback to the 'nextTick' queue.
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | Function |  | false |  |
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L194)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L202)
 
 Computed high resolution time as a `BigInt`.
 
@@ -2028,7 +2028,7 @@ Computed high resolution time as a `BigInt`.
 | :---         | :--- | :---        |
 | Not specified | bigint |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L220)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L228)
 
 
 
@@ -2036,7 +2036,7 @@ Computed high resolution time as a `BigInt`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | code | number | 0 | true | The exit code. Default: 0. |
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L232)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L240)
 
 Returns an object describing the memory usage of the Node.js process measured in bytes.
 
