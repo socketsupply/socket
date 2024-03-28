@@ -32,7 +32,7 @@ test('builtins - dns', (t) => {
 })
 
 test('builtins - events', (t) => {
-  t.equal(typeof events, 'object', 'events is function')
+  t.equal(typeof events, 'function', 'events is function')
   t.equal(typeof events?.EventEmitter, 'function', 'events.EventEmitter is function')
 })
 
