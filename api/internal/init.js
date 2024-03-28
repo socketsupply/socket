@@ -12,10 +12,9 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
+import './primitives.js'
 import ipc from '../ipc.js'
 ipc.sendSync('platform.event', 'beforeruntimeinit')
-
-import './primitives.js'
 
 import { CustomEvent, ErrorEvent } from '../events.js'
 import { IllegalConstructor } from '../util.js'
