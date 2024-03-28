@@ -25,9 +25,9 @@ globalThis.Promise = class Promise extends NativePromise {
 }
 
 globalThis.Promise.all = function (iterable) {
-  return NativePromiseAll(...Array.from(iterable).map((promise, index) => {
+  return NativePromiseAll.call(NativePromise, Array.from(iterable).map((promise, index) => {
     return promise.catch((err) => {
-      throw Object.defineProperties(err, {
+      return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
           configurable: false,
           enumerable: false,
@@ -41,15 +41,15 @@ globalThis.Promise.all = function (iterable) {
           writable: false,
           value: true
         }
-      })
+      }))
     })
   }))
 }
 
 globalThis.Promise.any = function (iterable) {
-  return NativePromiseAny(...Array.from(iterable).map((promise, index) => {
+  return NativePromiseAny.call(NativePromise, Array.from(iterable).map((promise, index) => {
     return promise.catch((err) => {
-      throw Object.defineProperties(err, {
+      return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
           configurable: false,
           enumerable: false,
@@ -63,7 +63,7 @@ globalThis.Promise.any = function (iterable) {
           writable: false,
           value: true
         }
-      })
+      }))
     })
   }))
 }
