@@ -34,10 +34,17 @@ import path from '../path.js'
  *   resolvers?: ModuleResolver[],
  *   importmap?: ImportMap,
  *   loader?: Loader | object,
+ *   loaders?: object,
  *   package?: Package | PackageOptions
  *   parent?: Module,
  *   state?: State
  * }} ModuleOptions
+ */
+
+/**
+ * @typedef {{
+ *   extensions?: object
+ * }} ModuleLoadOptions
  */
 
 export const builtinModules = builtins
@@ -56,49 +63,21 @@ export function CommonJSModuleScope (
   require,
   module,
   __filename,
-  __dirname
+  __dirname,
+  process,
+  global
 ) {
-  // eslint-disable-next-line no-unused-vars
-  const process = require('socket:process')
-  // eslint-disable-next-line no-unused-vars
-  const console = require('socket:console')
   // eslint-disable-next-line no-unused-vars
   const crypto = require('socket:crypto')
   // eslint-disable-next-line no-unused-vars
   const { Buffer } = require('socket:buffer')
-  // eslint-disable-next-line no-unused-vars
-  const global = new Proxy(globalThis, {
-    get (target, key, receiver) {
-      if (key === 'process') {
-        return process
-      }
-
-      if (key === 'console') {
-        return console
-      }
-
-      if (key === 'crypto') {
-        return crypto
-      }
-
-      if (key === 'Buffer') {
-        return Buffer
-      }
-
-      if (key === 'global') {
-        return global
-      }
-
-      return Reflect.get(target, key, receiver)
-    }
-  })
 
   // eslint-disable-next-line no-unused-expressions
   void exports, require, module, __filename, __dirname
   // eslint-disable-next-line no-unused-expressions
   void process, console, global, crypto, Buffer
 
-  return (async function () {
+  return (function () {
     'module code'
   })()
 }
@@ -171,15 +150,35 @@ export class State {
  * The module scope for a loaded module.
  * This is a special object that is seal, frozen, and only exposes an
  * accessor the 'exports' field.
+ * @ignore
  */
 export class Scope {
+  #module = null
   #exports = Object.create(null)
 
   /**
    * `Scope` class constructor.
+   * @param {Module} module
    */
-  constructor () {
+  constructor (module) {
+    this.#module = module
     Object.freeze(this)
+  }
+
+  get id () {
+    return this.#module.id
+  }
+
+  get filename () {
+    return this.#module.filename
+  }
+
+  get loaded () {
+    return this.#module.loaded
+  }
+
+  get children () {
+    return this.#module.children
   }
 
   get exports () {
@@ -192,8 +191,131 @@ export class Scope {
 
   toJSON () {
     return {
+      id: this.id,
+      filename: this.filename,
+      children: this.children,
       exports: this.#exports
     }
+  }
+}
+
+/**
+ * An abstract base class for loading a module.
+ */
+export class ModuleLoader {
+  /**
+   * Creates a `ModuleLoader` instance from the `module` currently being loaded.
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {ModuleLoader}
+   */
+  static from (module, options = null) {
+    const loader = new this(module, options)
+    return loader
+  }
+
+  /**
+   * Creates a new `ModuleLoader` instance from the `module` currently
+   * being loaded with the `source` string to parse and load with optional
+   * `ModuleLoadOptions` options.
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {boolean}
+   */
+  static load (module, options = null) {
+    return this.from(module, options).load(module, options)
+  }
+
+  /**
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {boolean}
+   */
+  load (module, options = null) {
+    return false
+  }
+}
+
+/**
+ * A JavaScript module loader
+ */
+export class JavaScriptModuleLoader extends ModuleLoader {
+  /**
+   * Loads the JavaScript module.
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {boolean}
+   */
+  load (module, options = null) {
+    const response = module.loader.load(module.id, options)
+    // eslint-disable-next-line
+    const compiled = new Function(`return ${Module.wrap(response.text)}`)()
+    const __filename = module.id
+    const __dirname = path.dirname(__filename)
+
+    // eslint-disable-next-line no-useless-call
+    const result = compiled.call(null,
+      module.scope.exports,
+      module.createRequire(options),
+      module.scope,
+      __filename,
+      __dirname,
+      process,
+      globalThis
+    )
+
+    if (typeof result?.catch === 'function') {
+      result.catch((error) => {
+        error.module = module
+        module.dispatchEvent(new ErrorEvent('error', { error }))
+      })
+    }
+
+    return true
+  }
+}
+
+/**
+ * A JSON module loader.
+ */
+export class JSONModuleLoader extends ModuleLoader {
+  /**
+   * Loads the JSON module.
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {boolean}
+   */
+  load (module, options = null) {
+    const response = module.loader.load(module.id, options)
+    module.scope.exports = JSON.parse(response.text)
+    return true
+  }
+}
+
+/**
+ * A WASM module loader
+ */
+export class WASMModuleLoader extends ModuleLoader {
+  /**
+   * Loads the WASM module.
+   * @param {string}
+   * @param {Module} module
+   * @param {ModuleLoadOptions=} [options]
+   * @return {boolean}
+   */
+  load (module, options = null) {
+    const response = module.loader.load(module.id, {
+      ...options,
+      responseType: 'arraybuffer'
+    })
+
+    const instance = new WebAssembly.Instance(
+      new WebAssembly.Module(response.buffer),
+      options || undefined
+    )
+
+    module.scope.exports = instance.exports
+    return true
   }
 }
 
@@ -256,6 +378,28 @@ export class Module extends EventTarget {
    * @type {string[]}
    */
   static globalPaths = globalPaths
+
+  /**
+   * Globabl module loaders
+   * @type {object}
+   */
+  static loaders = Object.assign(Object.create(null), {
+    '.js' (source, module, options = null) {
+      return JavaScriptModuleLoader.load(source, module, options)
+    },
+
+    '.cjs' (source, module, options = null) {
+      return JavaScriptModuleLoader.load(source, module, options)
+    },
+
+    '.json' (source, module, options = null) {
+      return JSONModuleLoader.load(source, module, options)
+    },
+
+    '.wasm' (source, module, options = null) {
+      return WASMModuleLoader.load(source, module, options)
+    }
+  })
 
   /**
    * The main entry module, lazily created.
@@ -366,13 +510,13 @@ export class Module extends EventTarget {
   #scope = new Scope()
   #state = new State()
   #cache = Object.create(null)
-  #source = null
   #loader = null
   #parent = null
   #package = null
   #children = []
   #resolvers = []
   #importmap = new ImportMap()
+  #loaders = Object.create(null)
 
   /**
    * `Module` class constructor.
@@ -410,6 +554,10 @@ export class Module extends EventTarget {
       : this.#parent?.package ?? new Package(options.name ?? this.#id, options.package)
 
     this.addEventListener('error', (event) => {
+      if (event.error) {
+        this.#state.error = event.error
+      }
+
       if (Module.main === this) {
         // bubble error to globalThis, if possible
         if (typeof globalThis.dispatchEvent === 'function') {
@@ -423,12 +571,11 @@ export class Module extends EventTarget {
     })
 
     this.#importmap.extend(Module.importmap)
+    Object.assign(this.#loaders, Module.loaders)
 
     if (options.importmap) {
       this.#importmap.extend(options.importmap)
     }
-
-    this.#resolvers = Array.from(Module.resolvers)
 
     if (Array.isArray(options.resolvers)) {
       for (const resolver of options.resolvers) {
@@ -439,6 +586,8 @@ export class Module extends EventTarget {
     }
 
     if (this.#parent) {
+      Object.assign(this.#loaders, this.#parent.loaders)
+
       if (Array.isArray(options?.resolvers)) {
         for (const resolver of options.resolvers) {
           if (typeof resolver === 'function') {
@@ -448,6 +597,10 @@ export class Module extends EventTarget {
       }
 
       this.#importmap.extend(this.#parent.importmap)
+    }
+
+    if (options.loaders && typeof options.loaders === 'object') {
+      Object.assign(this.#loaders, options.loaders)
     }
 
     Module.cache.set(this.id, this)
@@ -508,7 +661,8 @@ export class Module extends EventTarget {
    * @type {ModuleResolver[]}
    */
   get resolvers () {
-    return this.#resolvers
+    const resolvers = Array.from(Module.resolvers).concat(this.#resolvers)
+    return Array.from(new Set(resolvers))
   }
 
   /**
@@ -576,6 +730,22 @@ export class Module extends EventTarget {
   }
 
   /**
+   * The filename of the module.
+   * @type {string}
+   */
+  get filename () {
+    return this.#id
+  }
+
+  /**
+   * Known source loaders for this module keyed by file extension.
+   * @type {object}
+   */
+  get loaders () {
+    return this.#loaders
+  }
+
+  /**
    * Factory for creating a `require()` function based on a module context.
    * @param {CreateRequireOptions=} [options]
    * @return {RequireFunction}
@@ -604,42 +774,47 @@ export class Module extends EventTarget {
   }
 
   /**
-   * @param {object=} [options]
+   * Requires a module at for a given `input` which can be a relative file,
+   * named module, or an absolute URL within the context of this odule.
+   * @param {string|URL} input
+   * @param {RequireOptions=} [options]
+   * @throws ModuleNotFoundError
+   * @throws ReferenceError
+   * @throws SyntaxError
+   * @throws TypeError
+   * @return {any}
+   */
+  require (url, options = null) {
+    const require = this.createRequire(options)
+    return require(url, options)
+  }
+
+  /**
+   * Loads the module
+   * @param {ModuleLoadOptions=} [options]
    * @return {boolean}
    */
   load (options = null) {
-    this.#source = Module.wrap(this.loader.load(this.id).text)
-    // eslint-disable-next-line
-    const define = new Function(`return ${this.#source}`)()
-    const __filename = this.id
-    const __dirname = path.dirname(__filename)
+    const extension = path.extname(this.id)
+
+    if (typeof this.#loaders[extension] !== 'function') {
+      return false
+    }
 
     try {
       this.#state.loading = true
-      // eslint-disable-next-line no-useless-call
-      const promise = define.call(null,
-        this.scope.exports,
-        this.createRequire(options),
-        this.scope,
-        __filename,
-        __dirname,
-        process,
-        globalThis
-      )
 
-      promise.catch((error) => {
-        error.module = this
-        this.dispatchEvent(new ErrorEvent('error', { error }))
-      })
+      if (this.#loaders[extension](this, options)) {
+        if (this.#parent) {
+          this.#parent.children.push(this)
+        }
 
-      if (this.parent) {
-        this.parent.children.push(this)
+        this.#state.loaded = true
       }
-
-      this.#state.loaded = true
     } catch (error) {
       error.module = this
       this.#state.error = error
+      this.dispatchEvent(new ErrorEvent('error', { error }))
       throw error
     } finally {
       this.#state.loading = false
