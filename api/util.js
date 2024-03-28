@@ -397,6 +397,10 @@ export function inspect (value, options) {
   return formatValue(ctx, value, ctx.depth)
 
   function formatValue (ctx, value, depth) {
+    if (value instanceof Symbol || typeof value === 'symbol') {
+      return String(value)
+    }
+
     // nodejs `value.inspect()` parity
     if (
       ctx.customInspect &&
