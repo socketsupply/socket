@@ -1,16 +1,23 @@
 /* global XMLHttpRequest */
+/**
+ * @module CommonJS.Loader
+ */
+import InternalSymbols from '../internal/symbols.js'
 import { Headers } from '../ipc.js'
+import { Cache } from './cache.js'
 import location from '../location.js'
 import path from '../path.js'
 
+const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
 const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
+const textDecoder = new TextDecoder()
 
 /**
  * @typedef {{
  *   extensions?: string[] | Set<string>
  *   origin?: URL | string,
- *   statuses?: Map
- *   cache?: Map
+ *   statuses?: Cache
+ *   cache?: { response?: Cache, status?: Cache }
  * }} LoaderOptions
  */
 
@@ -19,6 +26,13 @@ const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
  *   loader?: Loader,
  *   origin?: URL | string
  * }} RequestOptions
+ */
+
+/**
+ * @typedef {{
+ *   headers?: Headers | object | array[],
+ *   status?: number
+ * }} RequestStatusOptions
  */
 
 /**
@@ -32,6 +46,7 @@ const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
  *   request?: Request,
  *   headers?: Headers,
  *   status?: number,
+ *   buffer?: ArrayBuffer,
  *   text?: string
  * }} ResponseOptions
  */
@@ -42,6 +57,15 @@ const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
  * HTTP HEAD request.
  */
 export class RequestStatus {
+  /**
+   * Creates a `RequestStatus` from JSON input.
+   * @param {object} json
+   * @return {RequestStatus}
+   */
+  static from (json) {
+    return new this(null, json)
+  }
+
   #status = undefined
   #request = null
   #headers = new Headers()
@@ -49,15 +73,34 @@ export class RequestStatus {
   /**
    * `RequestStatus` class constructor.
    * @param {Request} request
+   * @param {RequestStatusOptions} [options]
    */
-  constructor (request) {
-    if (!request || !(request instanceof Request)) {
+  constructor (request, options = null) {
+    if (request && !(request instanceof Request)) {
       throw new TypeError(
         `Expecting 'request' to be a Request object. Received: ${request}`
       )
     }
 
+    if (request) {
+      this.request = request
+    }
+
+    this.#headers = options?.headers ? Headers.from(options.headers) : this.#headers
+    this.#status = options?.status ? options.status : undefined
+  }
+
+  /**
+   * The `Request` object associated with this `RequestStatus` object.
+   * @type {Request}
+   */
+  get request () { return this.#request }
+  set request (request) {
     this.#request = request
+
+    if (request.loader) {
+      this.#status = request.loader.cache.status.get(request.id)?.value
+    }
   }
 
   /**
@@ -65,7 +108,7 @@ export class RequestStatus {
    * @type {string}
    */
   get id () {
-    return this.#request.id
+    return this.#request?.id ?? null
   }
 
   /**
@@ -73,7 +116,7 @@ export class RequestStatus {
    * @type {string}
    */
   get origin () {
-    return this.#request.origin
+    return this.#request?.origin ?? null
   }
 
   /**
@@ -119,7 +162,11 @@ export class RequestStatus {
       return contentLocation
     }
 
-    return this.#request.url.pathname + this.#request.url.search
+    if (this.#request) {
+      return this.#request.url.pathname + this.#request.url.search
+    }
+
+    return ''
   }
 
   /**
@@ -145,6 +192,11 @@ export class RequestStatus {
 
     request.open('HEAD', this.#request.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
+    request.withCredentials = true
+
+    if (globalThis.isServiceWorkerScope) {
+      request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
+    }
 
     if (options?.headers && typeof options?.headers === 'object') {
       const entries = typeof options.headers.entries === 'function'
@@ -164,7 +216,8 @@ export class RequestStatus {
     const contentLocation = this.#headers.get('content-location')
 
     // verify 'Content-Location' header if given in response
-    if (contentLocation && URL.canParse(contentLocation, this.origin)) {
+    // @ts-ignore
+    if (this.#request && contentLocation && URL.canParse(contentLocation, this.origin)) {
       const url = new URL(contentLocation, this.origin)
       const extension = path.extname(url.pathname)
 
@@ -176,6 +229,52 @@ export class RequestStatus {
 
     return this
   }
+
+  /**
+   * Converts this `RequestStatus` to JSON.
+   * @ignore
+   * @return {{
+   *   id: string,
+   *   origin: string | null,
+   *   status: number,
+   *   headers: Array<string[]>
+   *   request: object | null | undefined
+   * }}
+   */
+  toJSON (includeRequest = true) {
+    if (includeRequest) {
+      return {
+        id: this.id,
+        origin: this.origin,
+        status: this.status,
+        headers: Array.from(this.headers.entries()),
+        request: this.#request ? this.#request.toJSON(false) : null
+      }
+    } else {
+      return {
+        id: this.id,
+        origin: this.origin,
+        status: this.status,
+        headers: Array.from(this.headers.entries())
+      }
+    }
+  }
+
+  /**
+   * Serializes this `Response`, suitable for `postMessage()` transfers.
+   * @ignore
+   * @return {{
+   *   __type__: 'RequestStatus',
+   *   id: string,
+   *   origin: string | null,
+   *   status: number,
+   *   headers: Array<string[]>
+   *   request: object | null
+   * }}
+   */
+  [InternalSymbols.serialize] () {
+    return { __type__: 'RequestStatus', ...this.toJSON() }
+  }
 }
 
 /**
@@ -183,7 +282,21 @@ export class RequestStatus {
  * over the network.
  */
 export class Request {
-  #id = null
+  /**
+   * Creates a `Request` instance from JSON input
+   * @param {object} json
+   * @param {RequestOptions=} [options]
+   * @return {Request}
+   */
+  static from (json, options) {
+    return new this(json.url, {
+      status: json.status && typeof json.status === 'object'
+        ? RequestStatus.from(json.status)
+        : options?.status,
+      ...options
+    })
+  }
+
   #url = null
   #loader = null
   #status = null
@@ -210,7 +323,11 @@ export class Request {
 
     this.#url = new URL(url, origin)
     this.#loader = options?.loader ?? null
-    this.#status = new RequestStatus(this)
+    this.#status = options?.status instanceof RequestStatus
+      ? options.status
+      : new RequestStatus(this)
+
+    this.#status.request = this
   }
 
   /**
@@ -262,8 +379,8 @@ export class Request {
   load (options = null) {
     // check loader cache first
     if (options?.cache !== false && this.#loader !== null) {
-      if (this.#loader.cache.has(this.id)) {
-        return this.#loader.cache.get(this.id)
+      if (this.#loader.cache.response.has(this.id)) {
+        return this.#loader.cache.response.get(this.id)
       }
     }
 
@@ -276,6 +393,15 @@ export class Request {
     const request = new XMLHttpRequest()
     request.open('GET', this.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
+    request.withCredentials = true
+
+    if (globalThis.isServiceWorkerScope) {
+      request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
+    }
+
+    if (typeof options?.responseType === 'string') {
+      request.responseType = options.responseType
+    }
 
     if (options?.headers && typeof options?.headers === 'object') {
       const entries = typeof options.headers.entries === 'function'
@@ -301,8 +427,43 @@ export class Request {
     return new Response(this, {
       headers: Headers.from(request),
       status: request.status,
-      text: responseText
+      buffer: request.response,
+      text: responseText ?? null
     })
+  }
+
+  /**
+   * Converts this `Request` to JSON.
+   * @ignore
+   * @return {{
+   *   url: string,
+   *   status: object | undefined
+   * }}
+   */
+  toJSON (includeStatus = true) {
+    if (includeStatus) {
+      return {
+        url: this.url.href,
+        status: this.status.toJSON(false)
+      }
+    } else {
+      return {
+        url: this.url.href
+      }
+    }
+  }
+
+  /**
+   * Serializes this `Response`, suitable for `postMessage()` transfers.
+   * @ignore
+   * @return {{
+   *   __type__: 'Request',
+   *   url: string,
+   *   status: object | undefined
+   * }}
+   */
+  [InternalSymbols.serialize] () {
+    return { __type__: 'Request', ...this.toJSON() }
   }
 }
 
@@ -311,9 +472,23 @@ export class Request {
  * or over the network.
  */
 export class Response {
+  /**
+   * Creates a `Response` from JSON input
+   * @param {obejct} json
+   * @param {ResponseOptions=} [options]
+   * @return {Response}
+   */
+  static from (json, options) {
+    return new this({
+      request: Request.from({ url: json.id }, options),
+      ...json
+    }, options)
+  }
+
   #request = null
-  #headers = new Headers()
+  #headers = null
   #status = 404
+  #buffer = null
   #text = ''
 
   /**
@@ -324,7 +499,7 @@ export class Response {
   constructor (request, options = null) {
     options = { ...options }
 
-    if (!typeof request === 'object' && !(request instanceof Request)) {
+    if (typeof request === 'object' && !(request instanceof Request)) {
       options = request
       request = options.request
     }
@@ -336,13 +511,14 @@ export class Response {
     }
 
     this.#request = request
-    this.#headers = options.headers
+    this.#headers = Headers.from(options.headers)
     this.#status = options.status || 404
+    this.#buffer = options.buffer ? new Uint8Array(options.buffer).buffer : null
     this.#text = options.text || ''
 
     if (request.loader) {
       // cache request response in the loader
-      request.loader.cache.set(request.id, this)
+      request.loader.cache.response.set(request.id, this)
     }
   }
 
@@ -361,6 +537,14 @@ export class Response {
    */
   get request () {
     return this.#request
+  }
+
+  /**
+   * The response headers from the associated request.
+   * @type {Headers}
+   */
+  get headers () {
+    return this.#headers
   }
 
   /**
@@ -384,7 +568,21 @@ export class Response {
    * @type {string}
    */
   get text () {
-    return this.#text
+    if (this.#text) {
+      return this.#text
+    } else if (this.#buffer) {
+      return textDecoder.decode(this.#buffer)
+    }
+
+    return ''
+  }
+
+  /**
+   * The `Response` array buffer from the associated `Request`
+   * @type {ArrayBuffer?}
+   */
+  get buffer () {
+    return this.#buffer ?? null
   }
 
   /**
@@ -393,6 +591,43 @@ export class Response {
    */
   get ok () {
     return this.status >= 200 && this.status < 400
+  }
+
+  /**
+   * Converts this `Response` to JSON.
+   * @ignore
+   * @return {{
+   *   id: string,
+   *   text: string,
+   *   status: number,
+   *   buffer: number[] | null,
+   *   headers: Array<string[]>
+   * }}
+   */
+  toJSON () {
+    return {
+      id: this.id,
+      text: this.text,
+      status: this.status,
+      buffer: this.#buffer ? Array.from(new Uint8Array(this.#buffer)) : null,
+      headers: Array.from(this.#headers.entries())
+    }
+  }
+
+  /**
+   * Serializes this `Response`, suitable for `postMessage()` transfers.
+   * @ignore
+   * @return {{
+   *   __type__: 'Response',
+   *   id: string,
+   *   text: string,
+   *   status: number,
+   *   buffer: number[] | null,
+   *   headers: Array<string[]>
+   * }}
+   */
+  [InternalSymbols.serialize] () {
+    return { __type__: 'Response', ...this.toJSON() }
   }
 }
 
@@ -438,11 +673,30 @@ export class Loader {
    * Default extensions for a loader.
    * @type {Set<string>}
    */
-  static defaultExtensions = new Set(['.js', '.json', '.mjs', '.cjs', '.jsx', '.ts', '.tsx'])
+  static defaultExtensions = new Set([
+    '.js',
+    '.json',
+    '.mjs',
+    '.cjs',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.wasm'
+  ])
 
-  #cache = null
+  #cache = {
+    /**
+     * @type {Cache?}
+     */
+    response: null,
+
+    /**
+     * @type {Cache?}
+     */
+    status: null
+  }
+
   #origin = null
-  #statuses = null
   #extensions = Loader.defaultExtensions
 
   /**
@@ -456,11 +710,15 @@ export class Loader {
       origin = options.origin
     }
 
-    this.#cache = options?.cache instanceof Map ? options.cache : new Map()
     this.#origin = Loader.resolve('.', origin)
-    this.#statuses = options?.statuses instanceof Map
-      ? options.statuses
-      : new Map()
+
+    this.#cache.response = options?.cache?.response instanceof Cache
+      ? options.cache.response
+      : new Cache('loader.response', { loader: this, types: { Response } })
+
+    this.#cache.status = options?.cache?.status instanceof Cache
+      ? options.cache.status
+      : new Cache('loader.status', { loader: this, types: { RequestStatus } })
 
     if (options?.extensions && typeof options.extensions === 'object') {
       if (Array.isArray(options.extensions) || options instanceof Set) {
@@ -473,19 +731,11 @@ export class Loader {
   }
 
   /**
-   * The internal cache for this `Loader` object.
-   * @type {Map}
+   * The internal caches for this `Loader` object.
+   * @type {{ response: Cache, status: Cache }}
    */
   get cache () {
     return this.#cache
-  }
-
-  /**
-   * The internal statuses for this `Loader` object.
-   * @type {Map}
-   */
-  get statuses () {
-    return this.#statuses
   }
 
   /**
@@ -539,7 +789,7 @@ export class Loader {
    * @param {RequestOptions=} [options]
    * @return {RequestStatus}
    */
-  status (url, origin, options) {
+  status (url, origin, options = null) {
     if (origin && typeof origin === 'object' && !(origin instanceof URL)) {
       options = origin
       origin = this.origin
@@ -551,16 +801,17 @@ export class Loader {
 
     url = this.resolve(url, origin)
 
-    if (this.#statuses.has(url)) {
-      return this.statuses.get(url)
+    if (this.#cache.status.has(url)) {
+      return this.#cache.status.get(url)
     }
 
     const request = new Request(url, {
       loader: this,
-      origin
+      origin,
+      ...options
     })
 
-    this.#statuses.set(url, request.status)
+    this.#cache.status.set(url, request.status)
     return request.status
   }
 
