@@ -1,4 +1,8 @@
 /* global MutationObserver */
+import './post-message.js'
+import './promise.js'
+import './error.js'
+
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
 import { ReadableStream } from './streams.js'
@@ -52,8 +56,6 @@ import {
 } from './pickers.js'
 
 import ipc from '../ipc.js'
-
-import './promise.js'
 
 let applied = false
 const natives = {}
@@ -173,6 +175,7 @@ export function init () {
 
   try {
     Symbol.dispose = symbols.dispose
+    Symbol.serialize = symbols.serialize
   } catch {}
 
   if (
