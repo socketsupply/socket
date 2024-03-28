@@ -18,7 +18,7 @@ const dc = diagnostics.channels.group('gc', [
 ])
 
 export const finalizers = new WeakMap()
-export const kFinalizer = Symbol.for('gc.finalizer')
+export const kFinalizer = Symbol.for('socket.runtime.gc.finalizer')
 export const finalizer = kFinalizer
 export const pool = new Set()
 

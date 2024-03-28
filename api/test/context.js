@@ -31,7 +31,9 @@ export default function (GLOBAL_TEST_RUNNER) {
   function onerror (e) {
     const err = e.error || e.stack || e.reason || e.message || e
     if (err.ignore || err[Symbol.for('socket.test.error.ignore')]) return
-    console.error(err)
+    if (globalThis.RUNTIME_TEST_FILENAME || GLOBAL_TEST_RUNNER.length > 0) {
+      console.error(err)
+    }
 
     if (finishing || process.env.DEBUG) {
       return

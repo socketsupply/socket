@@ -474,6 +474,7 @@ export class ModuleNotFoundError extends NotFoundError {
   /**
    * `ModuleNotFoundError` class constructor.
    * @param {string} message
+   * @param {string[]=} [requireStack]
    */
   constructor (message, requireStack) {
     super(message)

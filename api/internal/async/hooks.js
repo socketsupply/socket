@@ -251,14 +251,14 @@ export function wrap (
   dispatch('init', asyncId, type, triggerAsyncId, resource)
   callback = asyncWrap(callback)
   return function (...args) {
-    dispatch('before', asyncId)
+    dispatch('before', asyncId, type, triggerAsyncId)
     try {
-      return topLevelAsyncResource.runInAsyncScope(() => {
+      return (resource || topLevelAsyncResource).runInAsyncScope(() => {
         // eslint-disable-next-line
         return callback(...args)
       })
     } finally {
-      dispatch('after', asyncId)
+      dispatch('after', asyncId, type, triggerAsyncId)
     }
   }
 }

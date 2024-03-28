@@ -191,6 +191,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
  * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
  * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
+ * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -248,6 +249,26 @@ export async function createWindow (opts) {
       ? opts.config
       // @ts-ignore
       : (serializeConfig(opts?.config) ?? '')
+  }
+
+  if (Array.isArray(opts?.protocolHandlers)) {
+    for (const protocolHandler of opts.protocolHandlers) {
+      // @ts-ignore
+      opts.config[`webview_protocol-handlers_${protocolHandler}`] = ''
+    }
+  } else if (opts?.protocolHandlers && typeof opts.protocolHandlers === 'object') {
+    // @ts-ignore
+    for (const key in opts.protocolHandlers) {
+      // @ts-ignore
+      if (opts.protocolHandlers[key] && typeof opts.protocolHandlers[key] === 'object') {
+        // @ts-ignore
+        opts.config[`webview_protocol-handlers_${key}`] = JSON.stringify(opts.protocolHandlers[key])
+        // @ts-ignore
+      } else if (typeof opts.protocolHandlers[key] === 'string') {
+        // @ts-ignore
+        opts.config[`webview_protocol-handlers_${key}`] = opts.protocolHandlers[key]
+      }
+    }
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||

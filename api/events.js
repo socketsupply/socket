@@ -19,8 +19,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import * as exports from './events.js'
-
 const R = typeof Reflect === 'object' ? Reflect : null
 const ReflectApply = R && typeof R.apply === 'function'
   ? R.apply
@@ -551,5 +549,4 @@ export {
   EventEmitter,
   once
 }
-
-export default exports
+export default EventEmitter

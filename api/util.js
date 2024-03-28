@@ -386,12 +386,21 @@ export function inspect (value, options) {
     ),
 
     ...options,
-    options
+    options: {
+      stylize (label, style) {
+        return label
+      },
+      ...options
+    }
   }
 
   return formatValue(ctx, value, ctx.depth)
 
   function formatValue (ctx, value, depth) {
+    if (value instanceof Symbol || typeof value === 'symbol') {
+      return String(value)
+    }
+
     // nodejs `value.inspect()` parity
     if (
       ctx.customInspect &&
@@ -616,6 +625,25 @@ export function inspect (value, options) {
             enumerableKeys,
             key,
             true
+          ))
+        }
+      }
+    } else if (typeof value === 'function') {
+      for (const key of keys) {
+        if (
+          !/^\d+$/.test(key) &&
+          key !== 'name' &&
+          key !== 'length' &&
+          key !== 'prototype' &&
+          key !== 'constructor'
+        ) {
+          output.push(formatProperty(
+            ctx,
+            value,
+            depth,
+            enumerableKeys,
+            key,
+            false
           ))
         }
       }

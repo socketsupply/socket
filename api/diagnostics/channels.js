@@ -163,11 +163,11 @@ export class Channel {
 
   /**
    * A no-op for `Channel` instances. This function always returns `false`.
-   * @param {string} name
-   * @param {object} message
+   * @param {string|object} name
+   * @param {object=} [message]
    * @return Promise<boolean>
    */
-  async publish (name, message) {
+  async publish (name, message = undefined) {
     return false
   }
 
@@ -433,11 +433,11 @@ export class ChannelGroup extends Channel {
   /**
    * Publish a message to named subscribers in this group where `targets` is an
    * object mapping channel names to messages.
-   * @param {string} name
-   * @param {object} message
+   * @param {string|object} name
+   * @param {object=} [message]
    * @return Promise<boolean>
    */
-  async publish (name, message) {
+  async publish (name, message = undefined) {
     const pending = []
     const targets = name && message ? { [name]: message } : name
     const entries = Object.entries(targets).map((e) => normalizeEntry(this, e))
