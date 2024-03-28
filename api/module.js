@@ -1,16 +1,10 @@
 /**
  * @module Module
  */
+import { createRequire, Module } from './commonjs/module.js'
 import builtins, { isBuiltin } from './commonjs/builtins.js'
-import { createRequire } from './commonjs/require.js'
-import { Module } from './commonjs/module.js'
 
-export {
-  Module,
-  builtins,
-  isBuiltin,
-  createRequire
-}
+export { createRequire, Module, builtins, isBuiltin }
 
 export const builtinModules = builtins
 
