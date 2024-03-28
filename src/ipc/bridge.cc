@@ -2556,10 +2556,16 @@ static void initRouterTable (Router *router) {
    * @param value
    */
   router->map("stdout", [=](auto message, auto router, auto reply) {
-  #if defined(__APPLE__)
-    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
-  #endif
-    IO::write(message.value, false);
+    if (message.value.size() > 0) {
+    #if defined(__APPLE__)
+      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
+    #endif
+      IO::write(message.value, false);
+    } else if (message.buffer.size > 0) {
+      IO::write(String(message.buffer.bytes, message.buffer.size), false);
+    }
+
+    reply(Result { message.seq, message });
   });
 
   /**
@@ -2571,12 +2577,16 @@ static void initRouterTable (Router *router) {
       if (message.value.size() > 0) {
         debug("%s", message.value.c_str());
       }
-    } else {
+    } else if (message.value.size() > 0) {
     #if defined(__APPLE__)
       os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
     #endif
       IO::write(message.value, true);
+    } else if (message.buffer.size > 0) {
+      IO::write(String(message.buffer.bytes, message.buffer.size), true);
     }
+
+    reply(Result { message.seq, message });
   });
 
   /**
