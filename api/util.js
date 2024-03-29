@@ -511,7 +511,9 @@ export function inspect (value, options) {
       try {
         const hidden = Object.getOwnPropertyNames(value)
         for (const key of hidden) {
-          keys.add(key)
+          if (value instanceof Error && !/stack|message|name/.test(key)) {
+            keys.add(key)
+          }
         }
       } catch (err) {}
     }
@@ -695,11 +697,14 @@ export function inspect (value, options) {
           output.push(`(${context}:${lineno})`)
         } else if (context) {
           output.push(`${context}`)
+        } else if (!symbol) {
+          output.push('<anonymous>')
         }
 
         if (output.length) {
           output.unshift('    at')
         }
+
         return output.filter(Boolean).join(' ')
       }
 
