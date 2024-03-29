@@ -16,15 +16,15 @@ export const CACHE_CHANNEL_MESSAGE_REPLICATE = 'replicate'
  * instances in the application context, including windows and workers.
  */
 export class Cache {
-  static data = new Map()
   static types = new Map()
+  static shared = Object.create(null)
 
   #onmessage = null
   #channel = null
   #loader = null
   #name = ''
-  #types = Cache.types
-  #data = Cache.data
+  #types = null
+  #data = null
   #id = null
 
   /**
@@ -37,8 +37,14 @@ export class Cache {
       throw new TypeError(`Expecting 'name' to be a string. Received: ${name}`)
     }
 
+    if (!Cache.shared[name]) {
+      Cache.shared[name] = new Map()
+    }
+
     this.#id = Math.random().toString(16).slice(2)
     this.#name = name
+    this.#data = Cache.shared[name]
+    this.#types = new Map(Cache.types.entries())
     this.#loader = options?.loader ?? null
     this.#channel = new BroadcastChannel(`socket.runtime.commonjs.cache.${name}`)
 
