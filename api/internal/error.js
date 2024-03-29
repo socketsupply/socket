@@ -1,13 +1,35 @@
-import { CallSite } from './callsite.js'
+import { CallSite, createCallSites } from './callsite.js'
 
-function applyPlatforErrorHook (PlatformError, target, message, ...args) {
-  const error = PlatformError.call(target, message, ...args)
+/**
+ * The default `Error` class stack trace limit.
+ * @type {number}
+ */
+export const DEFAULT_ERROR_STACK_TRACE_LIMIT = 10
+
+const DefaultPlatformError = globalThis.Error
+
+/**
+ * @ignore
+ * @param {typeof globalThis.Error} PlatformError
+ * @param {Error} target
+ * @param {...any} args
+ * @return {Error}
+ */
+function applyPlatforErrorHook (PlatformError, Constructor, target, ...args) {
+  const error = PlatformError.call(target, ...args)
   const stack = error.stack.split('\n').slice(2) // slice off the `Error()` + `applyPlatforErrorHook()` call frames
   const [, callsite] = stack[0].split('@')
 
   let stackValue = stack.join('\n')
+  let sourceStack = stackValue
 
   Object.defineProperties(error, {
+    [CallSite.StackSourceSymbol]: {
+      configurable: false,
+      enumerable: false,
+      get: () => sourceStack
+    },
+
     column: {
       configurable: true,
       enumerable: false,
@@ -24,7 +46,7 @@ function applyPlatforErrorHook (PlatformError, target, message, ...args) {
       configurable: true,
       enumerable: false,
       writable: true,
-      value: message
+      value: error.message
     },
 
     name: {
@@ -45,20 +67,25 @@ function applyPlatforErrorHook (PlatformError, target, message, ...args) {
       enumerable: false,
       set: (stack) => {
         stackValue = stack
+        if (stackValue && typeof stackValue === 'string') {
+          sourceStack = stackValue
+        }
+      },
+      get: () => {
         Object.defineProperty(error, 'stack', {
           configurable: true,
           enumerable: false,
           writable: true,
           value: stackValue
         })
-      },
-      get: () => {
+
         if (Error.stackTraceLimit === 0) {
           stackValue = `${error.name}: ${error.message}`
         } else {
-          if (typeof target.constructor.prepareStackTrace === 'function') {
-            const callsites = []
-            stackValue = target.constructor.prepareStackTrace(error, callsites)
+          const prepareStackTrace = Constructor.prepareStackTrace || globalThis.Error.prepareStackTrace
+          if (typeof prepareStackTrace === 'function') {
+            const callsites = createCallSites(error, stackValue)
+            stackValue = prepareStackTrace(error, callsites)
           }
         }
 
@@ -100,29 +127,60 @@ function applyPlatforErrorHook (PlatformError, target, message, ...args) {
   return error
 }
 
-function makeError (PlatformError) {
-  const Error = function Error (message, ...args) {
-    if (!(this instanceof Error)) {
-      return new Error(message, ...args)
-    }
-
-    return applyPlatforErrorHook(PlatformError, this, message, ...args)
+/**
+ * Creates and install a new runtime `Error` class
+ * @param {typeof globalThis.Error} PlatformError
+ * @param {boolean=} [isBaseError]
+ * @return {typeof globalThis.Error}
+ */
+function installRuntimeError (PlatformError, isBaseError = false) {
+  if (!PlatformError) {
+    PlatformError = DefaultPlatformError
   }
 
+  function Error (...args) {
+    if (!(this instanceof Error)) {
+      return new Error(...args)
+    }
+
+    return applyPlatforErrorHook(PlatformError, Error, this, ...args)
+  }
+
+  // directly inherit platform `Error` prototype
   Error.prototype = PlatformError.prototype
 
   /**
    * @ignore
    */
-  Error.stackTraceLimit = 32
+  Error.stackTraceLimit = DEFAULT_ERROR_STACK_TRACE_LIMIT
 
-  /**
-   * @ignore
-   */
-  // eslint-disable-next-line
-  Error.captureStackTrace = function (err, ErrorConstructor) {
-    // TODO
-  }
+  Object.defineProperty(Error, 'captureStackTrace', {
+    configurable: true,
+    enumerable: false,
+    // eslint-disable-next-line
+    value (target) {
+      if (!target || typeof target !== 'object') {
+        throw new TypeError(
+          `Invalid target given to ${PlatformError.name}.captureStackTrace. ` +
+          `Expecting 'target' to be an object. Received: ${target}`
+        )
+      }
+
+      // prepareStackTrace is already called there
+      if (target instanceof Error) {
+        target.stack = new PlatformError().stack.split('\n').slice(2).join('\n')
+      } else {
+        const stack = new PlatformError().stack.split('\n').slice(2).join('\n')
+        const prepareStackTrace = Error.prepareStackTrace || globalThis.Error.prepareStackTrace
+        if (typeof prepareStackTrace === 'function') {
+          const callsites = createCallSites(target, stack)
+          target.stack = prepareStackTrace(target, callsites)
+        } else {
+          target.stack = stack
+        }
+      }
+    }
+  })
 
   // Install
   globalThis[PlatformError.name] = Error
@@ -130,14 +188,40 @@ function makeError (PlatformError) {
   return Error
 }
 
-export const Error = makeError(globalThis.Error)
-export const URIError = makeError(globalThis.URIError)
-export const EvalError = makeError(globalThis.EvalError)
-export const TypeError = makeError(globalThis.TypeError)
-export const RangeError = makeError(globalThis.RangeError)
-export const SyntaxError = makeError(globalThis.SyntaxError)
-export const ReferenceError = makeError(globalThis.ReferenceError)
+export const Error = installRuntimeError(globalThis.Error, true)
+export const URIError = installRuntimeError(globalThis.URIError)
+export const EvalError = installRuntimeError(globalThis.EvalError)
+export const TypeError = installRuntimeError(globalThis.TypeError)
+export const RangeError = installRuntimeError(globalThis.RangeError)
+export const MediaError = installRuntimeError(globalThis.MediaError)
+export const SyntaxError = installRuntimeError(globalThis.SyntaxError)
+export const ReferenceError = installRuntimeError(globalThis.ReferenceError)
+export const AggregateError = installRuntimeError(globalThis.AggregateError)
+
+// web
+export const RTCError = installRuntimeError(globalThis.RTCError)
+export const OverconstrainedError = installRuntimeError(globalThis.OverconstrainedError)
+export const GeolocationPositionError = installRuntimeError(globalThis.GeolocationPositionError)
+
+// not-standard
+export const ApplePayError = installRuntimeError(globalThis.ApplePayError)
 
 export default {
-  Error
+  Error,
+  URIError,
+  EvalError,
+  TypeError,
+  RangeError,
+  MediaError,
+  SyntaxError,
+  ReferenceError,
+  AggregateError,
+
+  // web
+  RTCError,
+  OverconstrainedError,
+  GeolocationPositionError,
+
+  // non-standard
+  ApplePayError
 }
