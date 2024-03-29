@@ -48,6 +48,25 @@ export {
   WriteStream
 }
 
+function normalizePath (path) {
+  if (path instanceof URL) {
+    if (path.origin === globalThis.location.origin) {
+      return normalizePath(path.href)
+    }
+
+    return null
+  }
+
+  if (URL.canParse(path)) {
+    const url = new URL(path)
+    if (url.origin === globalThis.location.origin) {
+      path = `./${url.pathname.slice(1)}`
+    }
+  }
+
+  return path
+}
+
 /**
  * @typedef {import('../buffer.js').Buffer} Buffer
  * @typedef {import('.stats.js').Stats} Stats
@@ -61,6 +80,7 @@ async function visit (path, options, callback) {
   }
 
   const { flags, flag, mode } = options || {}
+  path = normalizePath(path)
 
   // just visit `FileHandle`, without closing if given
   if (path instanceof FileHandle) {
@@ -83,6 +103,7 @@ async function visit (path, options, callback) {
  * @param {object?} [options]
  */
 export async function access (path, mode, options) {
+  path = normalizePath(path)
   return await FileHandle.access(path, mode, options)
 }
 
@@ -93,6 +114,8 @@ export async function access (path, mode, options) {
  * @returns {Promise<void>}
  */
 export async function chmod (path, mode) {
+  path = normalizePath(path)
+
   if (typeof mode !== 'number') {
     throw new TypeError(`The argument 'mode' must be a 32-bit unsigned integer or an octal string. Received ${mode}`)
   }
@@ -116,6 +139,8 @@ export async function chmod (path, mode) {
  * @return {Promise}
  */
 export async function chown (path, uid, gid) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -143,6 +168,9 @@ export async function chown (path, uid, gid) {
  * @return {Promise}
  */
 export async function copyFile (src, dest, flags) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -170,6 +198,8 @@ export async function copyFile (src, dest, flags) {
  * @return {Promise}
  */
 export async function lchown (path, uid, gid) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -196,6 +226,9 @@ export async function lchown (path, uid, gid) {
  * @return {Promise}
  */
 export async function link (src, dest) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -224,6 +257,8 @@ export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
   const recursive = Boolean(options.recursive)
 
+  path = normalizePath(path)
+
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
   }
@@ -249,6 +284,7 @@ export async function mkdir (path, options = {}) {
  * @return {Promise<FileHandle>}
  */
 export async function open (path, flags = 'r', mode = 0o666) {
+  path = normalizePath(path)
   return await FileHandle.open(path, flags, mode)
 }
 
@@ -261,6 +297,7 @@ export async function open (path, flags = 'r', mode = 0o666) {
  * @return {Promise<Dir>}
  */
 export async function opendir (path, options) {
+  path = normalizePath(path)
   const handle = await DirectoryHandle.open(path, options)
   return new Dir(handle, options)
 }
@@ -273,6 +310,7 @@ export async function opendir (path, options) {
  * @param {boolean?} [options.withFileTypes = false]
  */
 export async function readdir (path, options) {
+  path = normalizePath(path)
   options = {
     entries: DirectoryHandle.MAX_ENTRIES,
     withFileTypes: false,
@@ -314,6 +352,7 @@ export async function readFile (path, options) {
     options = { encoding: options }
   }
 
+  path = normalizePath(path)
   options = { flags: 'r', ...options }
 
   return await visit(path, options, async (handle) => {
@@ -327,6 +366,8 @@ export async function readFile (path, options) {
  * @return {Promise<string>}
  */
 export async function readlink (path) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -346,6 +387,8 @@ export async function readlink (path) {
  * @return {Promise<string>}
  */
 export async function realpath (path) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -366,6 +409,9 @@ export async function realpath (path) {
  * @return {Promise}
  */
 export async function rename (src, dest) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -387,6 +433,8 @@ export async function rename (src, dest) {
  * @return {Promise}
  */
 export async function rmdir (path) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -407,6 +455,7 @@ export async function rmdir (path) {
  * @return {Promise<Stats>}
  */
 export async function stat (path, options) {
+  path = normalizePath(path)
   return await visit(path, {}, async (handle) => {
     return await handle.stat(options)
   })
@@ -421,6 +470,7 @@ export async function stat (path, options) {
  * @return {Promise<Stats>}
  */
 export async function lstat (path, options) {
+  path = normalizePath(path)
   return await visit(path, {}, async (handle) => {
     return await handle.lstat(options)
   })
@@ -434,6 +484,7 @@ export async function lstat (path, options) {
  */
 export async function symlink (src, dest, type = null) {
   let flags = 0
+  src = normalizePath(dest)
 
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
@@ -468,6 +519,8 @@ export async function symlink (src, dest, type = null) {
  * @return {Promise}
  */
 export async function unlink (path) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -495,6 +548,7 @@ export async function writeFile (path, data, options) {
     options = { encoding: options }
   }
 
+  path = normalizePath(path)
   options = { flag: 'w', mode: 0o666, ...options }
 
   return await visit(path, options, async (handle) => {
@@ -511,6 +565,7 @@ export async function writeFile (path, data, options) {
  * @return {Watcher}
  */
 export function watch (path, options) {
+  path = normalizePath(path)
   return new Watcher(path, options)
 }
 
