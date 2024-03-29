@@ -639,11 +639,17 @@ namespace SSC {
         const auto key = trim(parts[0]);
         const auto value = trim(parts[1]);
 
-        if (key == "Runtime-ServiceWorker-Fetch-Mode" && value == "ignore") {
+        if (
+          (key == "Runtime-ServiceWorker-Fetch-Mode" && value == "ignore") ||
+          (key == "runtime-serviceworker-fetch-mode" && value == "ignore")
+        ) {
           return false;
         }
 
-        if (key == "runtime-worker-type" && value == "serviceworker") {
+        if (
+          (key == "Runtime-Worker-Type" && value == "serviceworker") ||
+          (key == "runtime-worker-type" && value == "serviceworker")
+        ) {
           return false;
         }
       }
@@ -660,6 +666,10 @@ namespace SSC {
           scope = entry.first;
         }
       }
+    }
+
+    if (scope.size() == 0) {
+      return false;
     }
 
     scope = normalizeScope(scope);
