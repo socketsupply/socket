@@ -555,6 +555,7 @@ export function exec (command, options, callback) {
           hasError = true
           stdout.splice(0, stdout.length)
           stderr.splice(0, stderr.length)
+          reject(err)
         })
 
         child.once('close', () => {
