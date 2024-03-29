@@ -35,6 +35,25 @@ const dc = diagnostics.channels.group('fs', [
   'handle.close'
 ])
 
+function normalizePath (path) {
+  if (path instanceof URL) {
+    if (path.origin === globalThis.location.origin) {
+      return normalizePath(path.href)
+    }
+
+    return null
+  }
+
+  if (URL.canParse(path)) {
+    const url = new URL(path)
+    if (url.origin === globalThis.location.origin) {
+      path = `./${url.pathname.slice(1)}`
+    }
+  }
+
+  return path
+}
+
 export const kOpening = Symbol.for('fs.FileHandle.opening')
 export const kClosing = Symbol.for('fs.FileHandle.closing')
 export const kClosed = Symbol.for('fs.FileHandle.closed')
@@ -96,6 +115,7 @@ export class FileHandle extends EventEmitter {
       mode = FileHandle.DEFAULT_ACCESS_MODE
     }
 
+    path = normalizePath(path)
     const result = await ipc.request('fs.access', { mode, path }, options)
 
     if (result.err) {
@@ -124,6 +144,7 @@ export class FileHandle extends EventEmitter {
       mode = FileHandle.DEFAULT_OPEN_MODE
     }
 
+    path = normalizePath(path)
     const handle = new this({ path, flags, mode })
 
     if (typeof handle.path !== 'string') {
@@ -160,6 +181,10 @@ export class FileHandle extends EventEmitter {
     this.flags = normalizeFlags(options?.flags)
     this.path = options?.path || null
     this.mode = options?.mode || FileHandle.DEFAULT_OPEN_MODE
+
+    if (this.path) {
+      this.path = normalizePath(this.path)
+    }
 
     // this id will be used to identify the file handle that is a
     // reference stored in the native side
@@ -846,6 +871,7 @@ export class DirectoryHandle extends EventEmitter {
    * @return {Promise<DirectoryHandle>}
    */
   static async open (path, options) {
+    path = normalizePath(path)
     const handle = new this({ path })
 
     if (typeof handle.path !== 'string') {
@@ -883,6 +909,10 @@ export class DirectoryHandle extends EventEmitter {
     // reference stored in the native side
     this.id = String(options?.id || rand64())
     this.path = options?.path || null
+
+    if (this.path) {
+      this.path = normalizePath(this.path)
+    }
 
     // @TODO(jwerle): implement usage of this internally
     this.bufferSize = Math.min(

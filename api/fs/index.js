@@ -50,11 +50,32 @@ function defaultCallback (err) {
   if (err) throw err
 }
 
+function normalizePath (path) {
+  if (path instanceof URL) {
+    if (path.origin === globalThis.location.origin) {
+      return normalizePath(path.href)
+    }
+
+    return null
+  }
+
+  if (URL.canParse(path)) {
+    const url = new URL(path)
+    if (url.origin === globalThis.location.origin) {
+      path = `./${url.pathname.slice(1)}`
+    }
+  }
+
+  return path
+}
+
 async function visit (path, options = null, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
   }
+
+  path = normalizePath(path)
 
   const { flags, flag, mode } = options || {}
 
@@ -94,6 +115,8 @@ export function access (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
+
   FileHandle
     .access(path, mode)
     .then((mode) => callback(null, mode))
@@ -108,6 +131,7 @@ export function access (path, mode, callback) {
  * @param {string?} [mode = F_OK(0)]
  */
 export function accessSync (path, mode) {
+  path = normalizePath(path)
   const result = ipc.sendSync('fs.access', { path, mode })
 
   if (result.err) {
@@ -128,6 +152,7 @@ export function exists (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   access(path, (err) => {
     // eslint-disable-next-line
     callback(err !== null)
@@ -140,6 +165,7 @@ export function exists (path, callback) {
  * @param {function(Boolean)?} [callback]
  */
 export function existsSync (path) {
+  path = normalizePath(path)
   try {
     accessSync(path)
     return true
@@ -171,6 +197,7 @@ export function chmod (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
@@ -192,6 +219,7 @@ export function chmodSync (path, mode) {
     throw new RangeError(`The value of "mode" is out of range. It must be an integer. Received ${mode}`)
   }
 
+  path = normalizePath(path)
   const result = ipc.sendSync('fs.chmod', { mode, path })
 
   if (result.err) {
@@ -207,6 +235,7 @@ export function chmodSync (path, mode) {
  * @param {function} callback
  */
 export function chown (path, uid, gid, callback) {
+  path = normalizePath(path)
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -235,6 +264,7 @@ export function chown (path, uid, gid, callback) {
  * @param {number} gid
  */
 export function chownSync (path, uid, gid) {
+  path = normalizePath(path)
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -285,6 +315,9 @@ export function close (fd, callback) {
  * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
  */
 export function copyFile (src, dest, flags, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -314,6 +347,9 @@ export function copyFile (src, dest, flags, callback) {
  * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
  */
 export function copyFileSync (src, dest, flags) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -344,6 +380,8 @@ export function createReadStream (path, options) {
     options = path
     path = options?.path || null
   }
+
+  path = normalizePath(path)
 
   let handle = null
   const stream = new ReadStream({
@@ -387,6 +425,8 @@ export function createWriteStream (path, options) {
     options = path
     path = options?.path || null
   }
+
+  path = normalizePath(path)
 
   let handle = null
   const stream = new WriteStream({
@@ -506,6 +546,8 @@ export function ftruncate (fd, offset, callback) {
  * @param {function} callback
  */
 export function lchown (path, uid, gid, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -534,6 +576,9 @@ export function lchown (path, uid, gid, callback) {
  * @param {function}
  */
 export function link (src, dest, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -555,6 +600,8 @@ export function link (src, dest, callback) {
  * @ignore
  */
 export function mkdir (path, options, callback) {
+  path = normalizePath(path)
+
   if ((typeof options === 'undefined') || (typeof options === 'function')) {
     throw new TypeError('options must be an object.')
   }
@@ -584,6 +631,8 @@ export function mkdir (path, options, callback) {
  * @ignore
  */
 export function mkdirSync (path, options) {
+  path = normalizePath(path)
+
   if ((typeof options === 'undefined') || (typeof options === 'function')) {
     throw new TypeError('options must be an object.')
   }
@@ -650,6 +699,8 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
+
   FileHandle
     .open(path, flags, mode, options)
     .then((handle) => {
@@ -677,6 +728,8 @@ export function opendir (path, options = {}, callback) {
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
   }
+
+  path = normalizePath(path)
 
   DirectoryHandle
     .open(path, options)
@@ -777,6 +830,7 @@ export function readdir (path, options = {}, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   options = {
     entries: DirectoryHandle.MAX_ENTRIES,
     withFileTypes: false,
@@ -824,10 +878,8 @@ export function readFile (path, options = {}, callback) {
     options = { encoding: options }
   }
 
-  options = {
-    flags: 'r',
-    ...options
-  }
+  path = normalizePath(path)
+  options = { flags: 'r', ...options }
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
@@ -864,10 +916,8 @@ export function readFileSync (path, options = {}) {
     options = { encoding: options }
   }
 
-  options = {
-    flags: 'r',
-    ...options
-  }
+  path = normalizePath(path)
+  options = { flags: 'r', ...options }
 
   let result = null
 
@@ -926,6 +976,7 @@ export function readlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   ipc.request('fs.readlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null, result.data.path)
   }).catch(callback)
@@ -957,6 +1008,9 @@ export function realpath (path, callback) {
  * @param {function} callback
  */
 export function rename (src, dest, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -980,6 +1034,8 @@ export function rename (src, dest, callback) {
  * @param {function} callback
  */
 export function rmdir (path, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -1001,6 +1057,7 @@ export function rmdir (path, callback) {
  * @param {string?} [options.flag ? 'r']
  */
 export function statSync (path, options) {
+  path = normalizePath(path)
   const result = ipc.sendSync('fs.stat', { path })
 
   if (result.err) {
@@ -1093,6 +1150,8 @@ export function lstat (path, options, callback) {
  */
 export function symlink (src, dest, type = null, callback) {
   let flags = 0
+  src = normalizePath(src)
+  dest = normalizePath(dest)
 
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
@@ -1133,6 +1192,8 @@ export function symlink (src, dest, type = null, callback) {
  * @param {function} callback
  */
 export function unlink (path, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -1167,11 +1228,8 @@ export function writeFile (path, data, options, callback) {
     options = { encoding: options }
   }
 
-  options = {
-    mode: 0o666,
-    flag: 'w',
-    ...options
-  }
+  path = normalizePath(path)
+  options = { mode: 0o666, flag: 'w', ...options }
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
@@ -1207,6 +1265,7 @@ export function watch (path, options, callback = null) {
     callback = options
   }
 
+  path = normalizePath(path)
   const watcher = new Watcher(path, options)
   watcher.on('change', callback)
   return watcher
