@@ -26,6 +26,10 @@ globalThis.Promise = class Promise extends NativePromise {
 
 globalThis.Promise.all = function (iterable) {
   return NativePromiseAll.call(NativePromise, Array.from(iterable).map((promise, index) => {
+    if (!promise || typeof promise.catch !== 'function') {
+      return promise
+    }
+
     return promise.catch((err) => {
       return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
@@ -48,6 +52,10 @@ globalThis.Promise.all = function (iterable) {
 
 globalThis.Promise.any = function (iterable) {
   return NativePromiseAny.call(NativePromise, Array.from(iterable).map((promise, index) => {
+    if (!promise || typeof promise.catch !== 'function') {
+      return promise
+    }
+
     return promise.catch((err) => {
       return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
