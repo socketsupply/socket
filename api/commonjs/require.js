@@ -108,6 +108,29 @@ export function createRequire (options) {
   })
 
   /**
+   * Gets an ESM default export, if requested and applicable.
+   * @ignore
+   * @param {object} exports
+   */
+  function getDefaultExports (exports) {
+    if (options?.default !== true) {
+      return exports
+    }
+
+    if (exports && typeof exports === 'object') {
+      if (
+        Object.keys(exports).length === 2 &&
+        exports.__esModule === true &&
+        'default' in exports
+      ) {
+        return exports.default
+      }
+    }
+
+    return exports
+  }
+
+  /**
    * @param {string} input
    * @param {ResolveOptions & RequireOptions=} [options
    * @ignore
@@ -156,7 +179,7 @@ export function createRequire (options) {
     }
 
     if (cache[input]) {
-      return cache[input].exports
+      return getDefaultExports(cache[input].exports)
     }
 
     const resolved = resolve(input, {
@@ -165,7 +188,7 @@ export function createRequire (options) {
     })
 
     if (cache[resolved]) {
-      return cache[resolved].exports
+      return getDefaultExports(cache[resolved].exports)
     }
 
     const child = module.createModule(resolved, {
@@ -182,7 +205,7 @@ export function createRequire (options) {
     cache[input] = child
 
     if (child.load(options)) {
-      return child.exports
+      return getDefaultExports(child.exports)
     }
 
     throw new ModuleNotFoundError(
