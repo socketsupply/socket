@@ -1012,7 +1012,7 @@ export class Package {
       }
 
       const url = new URL(id)
-      const prefix = new URL('.', origin).href
+      const prefix = new URL('.', origin || location.origin).href
       const pathname = `./${url.href.replace(prefix, '')}`
 
       if (info.browser && typeof info.browser === 'object') {
