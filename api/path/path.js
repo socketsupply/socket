@@ -170,9 +170,11 @@ export function join (options, ...components) {
   const { sep } = options
   const queries = []
   const resolved = []
-  let protocol = null
-
   const isAbsolute = components[0].trim().startsWith(sep)
+
+  let protocol = null
+  let hostname = null
+  let origin = null
 
   while (components.length) {
     let component = String(components.shift() || '')
@@ -181,6 +183,7 @@ export function join (options, ...components) {
     if (url.protocol) {
       if (!protocol) {
         protocol = url.protocol
+        origin = url.origin
       }
 
       component = url.pathname
@@ -207,6 +210,10 @@ export function join (options, ...components) {
   }
 
   const joined = resolved.join(sep)
+
+  if (origin) {
+    return new URL(joined, origin).href
+  }
 
   return isAbsolute
     ? sep + joined
