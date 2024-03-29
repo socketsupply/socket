@@ -8,7 +8,6 @@
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
-import { Buffer } from './buffer.js'
 import signal from './signal.js'
 import tty from './tty.js'
 import os from './os.js'
