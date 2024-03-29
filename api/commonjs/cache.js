@@ -67,7 +67,6 @@ export class Cache {
           if (!this.has(...entry)) {
             const [key, value] = entry
             if (value?.__type__) {
-              console.log(key)
               this.#data.set(key, this.#types.get(value.__type__).from(value, {
                 loader: this.#loader
               }))

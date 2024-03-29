@@ -57,6 +57,8 @@ export const builtinModules = builtins
  * @param {Module} module
  * @param {string} __filename
  * @param {string} __dirname
+ * @param {typeof process} process
+ * @param {object} global
  */
 export function CommonJSModuleScope (
   exports,
@@ -248,8 +250,7 @@ export class JavaScriptModuleLoader extends ModuleLoader {
    */
   load (module, options = null) {
     const response = module.loader.load(module.id, options)
-    // eslint-disable-next-line
-    const compiled = new Function(`return ${Module.wrap(response.text)}`)()
+    const compiled = Module.compile(response.text, { url: response.id })
     const __filename = module.id
     const __dirname = path.dirname(__filename)
 
@@ -384,20 +385,20 @@ export class Module extends EventTarget {
    * @type {object}
    */
   static loaders = Object.assign(Object.create(null), {
-    '.js' (source, module, options = null) {
-      return JavaScriptModuleLoader.load(source, module, options)
+    '.js' (module, options = null) {
+      return JavaScriptModuleLoader.load(module, options)
     },
 
-    '.cjs' (source, module, options = null) {
-      return JavaScriptModuleLoader.load(source, module, options)
+    '.cjs' (module, options = null) {
+      return JavaScriptModuleLoader.load(module, options)
     },
 
-    '.json' (source, module, options = null) {
-      return JSONModuleLoader.load(source, module, options)
+    '.json' (module, options = null) {
+      return JSONModuleLoader.load(module, options)
     },
 
     '.wasm' (source, module, options = null) {
-      return WASMModuleLoader.load(source, module, options)
+      return WASMModuleLoader.load(module, options)
     }
   })
 
@@ -460,6 +461,30 @@ export class Module extends EventTarget {
     const [head, tail] = this.wrapper
     const body = String(source || '')
     return [head, body, tail].join('\n')
+  }
+
+  /**
+   * Compiles given JavaScript module source.
+   * @param {string} source
+   * @param {{ url?: URL | string }=} [options]
+   * @return {function(
+   *   object,
+   *   function(string): any,
+   *   Module,
+   *   string,
+   *   string,
+   *   typeof process,
+   *   object
+   * ): any}
+   */
+  static compile (source, options = null) {
+    // eslint-disable-next-line
+    const compiled = new Function(
+      `return ${Module.wrap(source)}\n` +
+      `// # sourceURL=${options?.url ?? ''}`
+    )()
+
+    return compiled
   }
 
   /**

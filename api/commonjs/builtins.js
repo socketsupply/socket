@@ -62,8 +62,12 @@ export const builtins = {}
  * @param {string}
  * @param {object} exports
  */
-export function define (name, exports) {
-  builtins[name] = { ...exports }
+export function define (name, exports, copy = true) {
+  if (copy) {
+    builtins[name] = { ...exports }
+  } else {
+    builtins[name] = exports
+  }
 }
 
 // eslint-disable-next-line
@@ -83,8 +87,8 @@ define('async_hooks', {
 })
 
 define('application', application)
-define('assert', assert)
-define('buffer', buffer)
+define('assert', assert, false)
+define('buffer', buffer, false)
 define('console', console)
 define('constants', constants)
 // eslint-disable-next-line
@@ -109,7 +113,7 @@ define('network', network)
 define('os', os)
 define('path', path)
 define('perf_hooks', { performance: globalThis.performance })
-define('process', process)
+define('process', process, false)
 define('querystring', querystring)
 define('stream', stream)
 define('stream/web', stream.web)
