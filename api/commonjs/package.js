@@ -903,7 +903,7 @@ export class Package {
       }
     }
 
-    const extensions = extname !== ''
+    const extensions = extname !== '' && this.loader.extensions.has(extname)
       ? new Set([extname])
       : new Set(Array
         .from(options?.extensions ?? [])
@@ -970,11 +970,8 @@ export class Package {
         }
       }
 
-      if (!extname) {
-        let response = null
-
-        response = this.loader.load(pathname + extension, origin, options)
-
+      if (!extname || !this.loader.extensions.has(extname)) {
+        let response = this.loader.load(pathname + extension, origin, options)
         if (response.ok) {
           return interpolateBrowserResolution(response.id)
         }
