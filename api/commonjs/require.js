@@ -37,6 +37,7 @@ import location from '../location.js'
  * @typedef {ResolveOptions & {
  *   resolvers?: RequireResolver[],
  *   importmap?: import('./module.js').ImportMap,
+ *   cache?: boolean
  * }} RequireOptions
  */
 
@@ -201,8 +202,13 @@ export function createRequire (options) {
         })
     })
 
-    cache[resolved] = child
-    cache[input] = child
+    if (options?.cache === false) {
+      delete cache[resolved]
+      delete cache[input]
+    } else {
+      cache[resolved] = child
+      cache[input] = child
+    }
 
     if (child.load(options)) {
       return getDefaultExports(child.exports)
