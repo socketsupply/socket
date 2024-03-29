@@ -12964,7 +12964,7 @@ declare module "socket:commonjs/builtins" {
      * @param {string}
      * @param {object} exports
      */
-    export function define(name: any, exports: object): void;
+    export function define(name: any, exports: object, copy?: boolean): void;
     /**
      * Predicate to determine if a given module name is a builtin module.
      * @param {string} name
@@ -13082,8 +13082,10 @@ declare module "socket:commonjs/module" {
      * @param {Module} module
      * @param {string} __filename
      * @param {string} __dirname
+     * @param {typeof process} process
+     * @param {object} global
      */
-    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: any, global: any): void;
+    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: typeof process, global: object): void;
     export function createRequire(url: any, options?: any): any;
     /**
      * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
@@ -13291,6 +13293,23 @@ declare module "socket:commonjs/module" {
          */
         static wrap(source: string): string;
         /**
+         * Compiles given JavaScript module source.
+         * @param {string} source
+         * @param {{ url?: URL | string }=} [options]
+         * @return {function(
+         *   object,
+         *   function(string): any,
+         *   Module,
+         *   string,
+         *   string,
+         *   typeof process,
+         *   object
+         * ): any}
+         */
+        static compile(source: string, options?: {
+            url?: URL | string;
+        } | undefined): (arg0: object, arg1: (arg0: string) => any, arg2: Module, arg3: string, arg4: string, arg5: typeof process, arg6: object) => any;
+        /**
          * Creates a `Module` from source URL and optionally a parent module.
          * @param {string|URL|Module} url
          * @param {ModuleOptions=} [options]
@@ -13454,6 +13473,7 @@ declare module "socket:commonjs/module" {
     export type ModuleLoadOptions = {
         extensions?: object;
     };
+    import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
     import builtins from "socket:commonjs/builtins";
@@ -13967,54 +13987,501 @@ declare module "socket:child_process/worker" {
 }
 
 declare module "socket:internal/callsite" {
+    /**
+     * Creates an ordered and link array of `CallSite` instances from a
+     * given `Error`.
+     * @param {Error} error
+     * @param {string} source
+     * @return {CallSite[]}
+     */
+    export function createCallSites(error: Error, source: string): CallSite[];
+    /**
+     * @typedef {{
+     *   sourceURL: string | null,
+     *   symbol: string,
+     *   column: number | undefined,
+     *   line: number | undefined,
+     *   native: boolean
+     * }} ParsedStackFrame
+     */
+    /**
+     * A container for location data related to a `StackFrame`
+     */
+    export class StackFrameLocation {
+        /**
+         * Creates a `StackFrameLocation` from JSON input.
+         * @param {object=} json
+         * @return {StackFrameLocation}
+         */
+        static from(json?: object | undefined): StackFrameLocation;
+        /**
+         * The line number of the location of the stack frame, if available.
+         * @type {number | undefined}
+         */
+        lineNumber: number | undefined;
+        /**
+         * The column number of the location of the stack frame, if available.
+         * @type {number | undefined}
+         */
+        columnNumber: number | undefined;
+        /**
+         * The source URL of the location of the stack frame, if available. This value
+         * may be `null`.
+         * @type {string?}
+         */
+        sourceURL: string | null;
+        /**
+         * `true` if the stack frame location is in native location, otherwise
+         * this value `false` (default).
+         * @type
+         */
+        isNative: any;
+        /**
+         * Converts this `StackFrameLocation` to a JSON object.
+         * @ignore
+         * @return {{
+         *   lineNumber: number | undefined,
+         *   columnNumber: number | undefined,
+         *   sourceURL: string | null,
+         *   isNative: boolean
+         * }}
+         */
+        toJSON(): {
+            lineNumber: number | undefined;
+            columnNumber: number | undefined;
+            sourceURL: string | null;
+            isNative: boolean;
+        };
+    }
+    /**
+     * A stack frame container related to a `CallSite`.
+     */
+    export class StackFrame {
+        /**
+         * Parses a raw stack frame string into structured data.
+         * @param {string} rawStackFrame
+         * @return {ParsedStackFrame}
+         */
+        static parse(rawStackFrame: string): ParsedStackFrame;
+        /**
+         * Creates a new `StackFrame` from an `Error` and raw stack frame
+         * source `rawStackFrame`.
+         * @param {Error} error
+         * @param {string} rawStackFrame
+         * @return {StackFrame}
+         */
+        static from(error: Error, rawStackFrame: string): StackFrame;
+        /**
+         * `StackFrame` class constructor.
+         * @param {Error} error
+         * @param {ParsedStackFrame=} [frame]
+         * @param {string=} [source]
+         */
+        constructor(error: Error, frame?: ParsedStackFrame | undefined, source?: string | undefined);
+        /**
+         * The stack frame location data.
+         * @type {StackFrameLocation}
+         */
+        location: StackFrameLocation;
+        /**
+         * The `Error` associated with this `StackFrame` instance.
+         * @type {Error?}
+         */
+        error: Error | null;
+        /**
+         * The name of the function where the stack frame is located.
+         * @type {string?}
+         */
+        symbol: string | null;
+        /**
+         * The raw stack frame source string.
+         * @type {string?}
+         */
+        source: string | null;
+        /**
+         * Converts this `StackFrameLocation` to a JSON object.
+         * @ignore
+         * @return {{
+         *   location: {
+         *     lineNumber: number | undefined,
+         *     columnNumber: number | undefined,
+         *     sourceURL: string | null,
+         *     isNative: boolean
+         *   },
+         *   isNative: boolean,
+         *   symbol: string | null,
+         *   source: string | null,
+         *   error: { message: string, name: string, stack: string } | null
+         * }}
+         */
+        toJSON(): {
+            location: {
+                lineNumber: number | undefined;
+                columnNumber: number | undefined;
+                sourceURL: string | null;
+                isNative: boolean;
+            };
+            isNative: boolean;
+            symbol: string | null;
+            source: string | null;
+            error: {
+                message: string;
+                name: string;
+                stack: string;
+            } | null;
+        };
+    }
+    /**
+     * A v8 compatible interface and container for call site information.
+     */
     export class CallSite {
+        /**
+         * An internal symbol used to refer to the index of a promise in
+         * `Promise.all` or `Promise.any` function call site.
+         * @ignore
+         * @type {symbol}
+         */
         static PromiseElementIndexSymbol: symbol;
+        /**
+         * An internal symbol used to indicate that a call site is in a `Promise.all`
+         * function call.
+         * @ignore
+         * @type {symbol}
+         */
         static PromiseAllSymbol: symbol;
+        /**
+         * An internal symbol used to indicate that a call site is in a `Promise.any`
+         * function call.
+         * @ignore
+         * @type {symbol}
+         */
         static PromiseAnySymbol: symbol;
-        constructor(error: any);
-        get error(): any;
-        getThis(): void;
-        getTypeName(): void;
-        getFunction(): void;
-        getFunctionName(): any;
+        /**
+         * An internal source symbol used to store the original `Error` stack source.
+         * @ignore
+         * @type {symbol}
+         */
+        static StackSourceSymbol: symbol;
+        /**
+         * `CallSite` class constructor
+         * @param {Error} error
+         * @param {string} rawStackFrame
+         * @param {CallSite=} previous
+         */
+        constructor(error: Error, rawStackFrame: string, previous?: CallSite | undefined);
+        /**
+         * The `Error` associated with the call site.
+         * @type {Error}
+         */
+        get error(): Error;
+        /**
+         * The previous `CallSite` instance, if available.
+         * @type {CallSite?}
+         */
+        get previous(): CallSite;
+        /**
+         * A reference to the `StackFrame` data.
+         * @type {StackFrame}
+         */
+        get frame(): StackFrame;
+        /**
+         * This function _ALWAYS__ returns `globalThis` as `this` cannot be determined.
+         * @return {object}
+         */
+        getThis(): object;
+        /**
+         * This function _ALWAYS__ returns `null` as the type name of `this`
+         * cannot be determined.
+         * @return {null}
+         */
+        getTypeName(): null;
+        /**
+         * This function _ALWAYS__ returns `undefined` as the current function
+         * reference cannot be determined.
+         * @return {undefined}
+         */
+        getFunction(): undefined;
+        /**
+         * Returns the name of the function in at the call site, if available.
+         * @return {string|undefined}
+         */
+        getFunctionName(): string | undefined;
+        /**
+         * An alias to `getFunctionName()
+         * @return {string}
+         */
+        getMethodName(): string;
+        /**
+         * Get the filename of the call site location, if available, otherwise this
+         * function returns 'unknown location'.
+         * @return {string}
+         */
         getFileName(): string;
-        getLineNumber(): any;
-        getColumnNumber(): any;
-        getEvalOrigin(): void;
-        isTopLevel(): void;
-        isEval(): void;
+        /**
+         * Returns the location source URL defaulting to the global location.
+         * @return {string}
+         */
+        getScriptNameOrSourceURL(): string;
+        /**
+         * Returns a hash value of the source URL return by `getScriptNameOrSourceURL()`
+         * @return {string}
+         */
+        getScriptHash(): string;
+        /**
+         * Returns the line number of the call site location.
+         * This value may be `undefined`.
+         * @return {number|undefined}
+         */
+        getLineNumber(): number | undefined;
+        /**
+         * @ignore
+         * @return {number}
+         */
+        getPosition(): number;
+        /**
+         * Attempts to get an "enclosing" line number, potentially the previous
+         * line number of the call site
+         * @param {number|undefined}
+         */
+        getEnclosingLineNumber(): any;
+        /**
+         * Returns the column number of the call site location.
+         * This value may be `undefined`.
+         * @return {number|undefined}
+         */
+        getColumnNumber(): number | undefined;
+        /**
+         * Attempts to get an "enclosing" column number, potentially the previous
+         * line number of the call site
+         * @param {number|undefined}
+         */
+        getEnclosingColumnNumber(): any;
+        /**
+         * Gets the origin of where `eval()` was called if this call site function
+         * originated from a call to `eval()`. This function may return `undefined`.
+         * @return {string|undefined}
+         */
+        getEvalOrigin(): string | undefined;
+        /**
+         * This function _ALWAYS__ returns `false` as `this` cannot be determined so
+         * "top level" detection is not possible.
+         * @return {boolean}
+         */
+        isTopLevel(): boolean;
+        /**
+         * Returns `true` if this call site originated from a call to `eval()`.
+         * @return {boolean}
+         */
+        isEval(): boolean;
+        /**
+         * Returns `true` if the call site is in a native location, otherwise `false`.
+         * @return {boolean}
+         */
         isNative(): boolean;
-        isConstructor(): void;
+        /**
+         * This function _ALWAYS_ returns `false` as constructor detection
+         * is not possible.
+         * @return {boolean}
+         */
+        isConstructor(): boolean;
+        /**
+         * Returns `true` if the call site is in async context, otherwise `false`.
+         * @return {boolean}
+         */
         isAsync(): boolean;
-        isPromiseAll(): any;
+        /**
+         * Returns `true` if the call site is in a `Promise.all()` function call,
+         * otherwise `false.
+         * @return {boolean}
+         */
+        isPromiseAll(): boolean;
+        /**
+         * Gets the index of the promise element that was followed in a
+         * `Promise.all()` or `Promise.any()` function call. If not available, then
+         * this function returns `null`.
+         * @return {number|null}
+         */
+        getPromiseIndex(): number | null;
+        /**
+         * Converts this call site to a string.
+         * @return {string}
+         */
+        toString(): string;
+        /**
+         * Converts this `CallSite` to a JSON object.
+         * @ignore
+         * @return {{
+         *   frame: {
+         *     location: {
+         *       lineNumber: number | undefined,
+         *       columnNumber: number | undefined,
+         *       sourceURL: string | null,
+         *       isNative: boolean
+         *     },
+         *     isNative: boolean,
+         *     symbol: string | null,
+         *     source: string | null,
+         *     error: { message: string, name: string, stack: string } | null
+         *   }
+         * }}
+         */
+        toJSON(): {
+            frame: {
+                location: {
+                    lineNumber: number | undefined;
+                    columnNumber: number | undefined;
+                    sourceURL: string | null;
+                    isNative: boolean;
+                };
+                isNative: boolean;
+                symbol: string | null;
+                source: string | null;
+                error: {
+                    message: string;
+                    name: string;
+                    stack: string;
+                } | null;
+            };
+        };
+        set [$previous](previous: any);
+        /**
+         * Private accessor to "friend class" `CallSiteList`.
+         * @ignore
+         */
+        get [$previous](): any;
+        #private;
+    }
+    /**
+     * An array based list container for `CallSite` instances.
+     */
+    export class CallSiteList extends Array<any> {
+        /**
+         * Creates a `CallSiteList` instance from `Error` input.
+         * @param {Error} error
+         * @param {string} source
+         * @return {CallSiteList}
+         */
+        static from(error: Error, source: string): CallSiteList;
+        /**
+         * `CallSiteList` class constructor.
+         * @param {Error} error
+         * @param {string[]=} [sources]
+         */
+        constructor(error: Error, sources?: string[] | undefined);
+        /**
+         * A reference to the `Error` for this `CallSiteList` instance.
+         * @type {Error}
+         */
+        get error(): Error;
+        /**
+         * An array of stack frame source strings.
+         * @type {string[]}
+         */
+        get sources(): string[];
+        /**
+         * The original stack string derived from the sources.
+         * @type {string}
+         */
+        get stack(): string;
+        /**
+         * Adds `CallSite` instances to the top of the list, linking previous
+         * instances to the next one.
+         * @param {...CallSite} callsites
+         * @return {number}
+         */
+        unshift(...callsites: CallSite[]): number;
+        /**
+         * A no-op function as `CallSite` instances cannot be added to the end
+         * of the list.
+         * @return {number}
+         */
+        push(): number;
+        /**
+         * Pops a `CallSite` off the end of the list.
+         * @return {CallSite|undefined}
+         */
+        pop(): CallSite | undefined;
+        /**
+         * Converts this `CallSiteList` to a JSON object.
+         * @return {{
+         *   frame: {
+         *     location: {
+         *       lineNumber: number | undefined,
+         *       columnNumber: number | undefined,
+         *       sourceURL: string | null,
+         *       isNative: boolean
+         *     },
+         *     isNative: boolean,
+         *     symbol: string | null,
+         *     source: string | null,
+         *     error: { message: string, name: string, stack: string } | null
+         *   }
+         * }[]}
+         */
+        toJSON(): {
+            frame: {
+                location: {
+                    lineNumber: number | undefined;
+                    columnNumber: number | undefined;
+                    sourceURL: string | null;
+                    isNative: boolean;
+                };
+                isNative: boolean;
+                symbol: string | null;
+                source: string | null;
+                error: {
+                    message: string;
+                    name: string;
+                    stack: string;
+                } | null;
+            };
+        }[];
         #private;
     }
     export default CallSite;
+    export type ParsedStackFrame = {
+        sourceURL: string | null;
+        symbol: string;
+        column: number | undefined;
+        line: number | undefined;
+        native: boolean;
+    };
+    const $previous: unique symbol;
 }
 
 declare module "socket:internal/error" {
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error {
-        let stackTraceLimit: number;
-        /**
-         * @ignore
-         */
-        function captureStackTrace(err: any, ErrorConstructor: any): void;
-    }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
-    export function Error(message: any, ...args: any[]): any;
-    export namespace Error { }
+    /**
+     * The default `Error` class stack trace limit.
+     * @type {number}
+     */
+    export const DEFAULT_ERROR_STACK_TRACE_LIMIT: number;
+    export const Error: ErrorConstructor;
+    export const URIError: ErrorConstructor;
+    export const EvalError: ErrorConstructor;
+    export const TypeError: ErrorConstructor;
+    export const RangeError: ErrorConstructor;
+    export const MediaError: ErrorConstructor;
+    export const SyntaxError: ErrorConstructor;
+    export const ReferenceError: ErrorConstructor;
+    export const AggregateError: ErrorConstructor;
+    export const RTCError: ErrorConstructor;
+    export const OverconstrainedError: ErrorConstructor;
+    export const GeolocationPositionError: ErrorConstructor;
+    export const ApplePayError: ErrorConstructor;
     namespace _default {
         export { Error };
+        export { URIError };
+        export { EvalError };
+        export { TypeError };
+        export { RangeError };
+        export { MediaError };
+        export { SyntaxError };
+        export { ReferenceError };
+        export { AggregateError };
+        export { RTCError };
+        export { OverconstrainedError };
+        export { GeolocationPositionError };
+        export { ApplePayError };
     }
     export default _default;
 }
@@ -14088,11 +14555,48 @@ declare module "socket:internal/promise" {
 declare module "socket:internal/streams" {
     export class ReadableStream extends globalThis.ReadableStream<Uint8Array> {
         constructor(options: any);
+        getReader(options: any): any;
     }
+    export const ReadableStreamBYOBReader: {
+        new (stream: globalThis.ReadableStream<any>): ReadableStreamBYOBReader;
+        prototype: ReadableStreamBYOBReader;
+    } | {
+        new (): {
+            "__#91@#closed": Deferred;
+            "__#91@#cancellation": ReadableStreamBYOBReaderCancellation;
+            readonly closed: Promise<any>;
+            cancel(reason?: any): Promise<any>;
+            read(view: any): ReadableStreamBYOBReadResult;
+        };
+    };
+    export const ReadableStreamBYOBRequest: {
+        new (): ReadableStreamBYOBRequest;
+        prototype: ReadableStreamBYOBRequest;
+    } | {
+        new (): {
+            "__#92@#view": any;
+            readonly view: any;
+            respond(bytesWritten: any): void;
+            respondWithNewView(view: any): void;
+        };
+    };
+    export const ReadableByteStreamController: {
+        new (): {};
+    };
     namespace _default {
         export { ReadableStream };
     }
     export default _default;
+    import { Deferred } from "socket:async/deferred";
+    class ReadableStreamBYOBReaderCancellation {
+        reason: any;
+        state: boolean;
+    }
+    class ReadableStreamBYOBReadResult {
+        constructor(value?: any, done?: boolean);
+        value: any;
+        done: boolean;
+    }
 }
 
 declare module "socket:service-worker/registration" {
