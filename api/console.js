@@ -170,14 +170,26 @@ export class Console {
 
     if (/ios|darwin/i.test(os.platform())) {
       const parts = value.split('\n')
+      const pending = []
       for (const part of parts) {
-        try {
-          value = encodeURIComponent(part)
-          const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
-          this.postMessage?.(uri)
-        } catch (err) {
-          this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
-          return
+        if (part.length > 256) {
+          for (let i = 0; i < part.length; i += 256) {
+            pending.push(part.slice(i, i + 256))
+          }
+        } else {
+          pending.push(part)
+        }
+
+        while (pending.length) {
+          const output = pending.shift()
+          try {
+            const value = encodeURIComponent(output)
+            const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+            this.postMessage?.(uri)
+          } catch (err) {
+            this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
+            return
+          }
         }
       }
       return
