@@ -3991,14 +3991,16 @@ static void registerSchemeHandler (Router *router) {
            return;
          }
 
-         const auto data = [NSData
-           dataWithBytes: res.buffer.bytes
-                  length: res.buffer.size
-         ];
+         if (fetchRequest.method != "HEAD" && fetchRequest.method != "OPTIONS") {
+           const auto data = [NSData
+             dataWithBytes: res.buffer.bytes
+                    length: res.buffer.size
+           ];
 
-        if (res.buffer.size && data.length > 0) {
-          [task didReceiveData: data];
-        }
+           if (res.buffer.size && data.length > 0) {
+             [task didReceiveData: data];
+           }
+         }
 
         [task didFinish];
         [self finalizeTask: task];
@@ -4112,7 +4114,7 @@ static void registerSchemeHandler (Router *router) {
             "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
           );
 
-          data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+          headers[@"content-length"] = @(redirectSource.size());
 
           auto response = [[NSHTTPURLResponse alloc]
             initWithURL: [NSURL URLWithString: @(redirectURL.c_str())]
@@ -4122,7 +4124,12 @@ static void registerSchemeHandler (Router *router) {
           ];
 
           [task didReceiveResponse: response];
-          [task didReceiveData: data];
+
+          if (String(request.HTTPMethod.UTF8String) != "HEAD") {
+            data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+            [task didReceiveData: data];
+          }
+
           [task didFinish];
 
         #if !__has_feature(objc_arc)
@@ -4148,6 +4155,35 @@ static void registerSchemeHandler (Router *router) {
             if (types.count > 0 && types.firstObject.preferredMIMEType) {
               headers[@"content-type"] = types.firstObject.preferredMIMEType;
             }
+          }
+
+          if (String(request.HTTPMethod.UTF8String) == "HEAD") {
+            NSNumber* size = nullptr;
+            NSError* error = nullptr;
+            [url startAccessingSecurityScopedResource];
+            [url getResourceValue: &size
+                           forKey: NSURLFileSizeKey
+                            error: &error
+            ];
+            [url stopAccessingSecurityScopedResource];
+
+            if (size != nullptr) {
+              headers[@"content-length"] = size.stringValue;
+            }
+
+            auto response = [[NSHTTPURLResponse alloc]
+              initWithURL: request.URL
+               statusCode: 200
+              HTTPVersion: @"HTTP/1.1"
+             headerFields: headers
+            ];
+
+            [task didReceiveResponse: response];
+            [task didFinish];
+
+          #if !__has_feature(objc_arc)
+            [response release];
+          #endif
           }
 
           [url startAccessingSecurityScopedResource];
@@ -4338,13 +4374,15 @@ static void registerSchemeHandler (Router *router) {
                   return;
                 }
 
-                const auto data = [NSData
-                  dataWithBytes: res.buffer.bytes
-                         length: res.buffer.size
-                ];
+                if (fetchRequest.method != "HEAD" && fetchRequest.method != "OPTIONS") {
+                  const auto data = [NSData
+                    dataWithBytes: res.buffer.bytes
+                           length: res.buffer.size
+                  ];
 
-                if (res.buffer.size && data.length > 0) {
-                  [task didReceiveData: data];
+                  if (res.buffer.size && data.length > 0) {
+                    [task didReceiveData: data];
+                  }
                 }
 
                 [task didFinish];
@@ -4406,7 +4444,7 @@ static void registerSchemeHandler (Router *router) {
           "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
         );
 
-        data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+        headers[@"content-length"] = @(redirectSource.size());
 
         auto response = [[NSHTTPURLResponse alloc]
           initWithURL: [NSURL URLWithString: @(redirectURL.c_str())]
@@ -4416,7 +4454,12 @@ static void registerSchemeHandler (Router *router) {
         ];
 
         [task didReceiveResponse: response];
-        [task didReceiveData: data];
+
+        if (String(request.HTTPMethod.UTF8String) != "HEAD") {
+          data = [@(redirectSource.c_str()) dataUsingEncoding: NSUTF8StringEncoding];
+          [task didReceiveData: data];
+        }
+
         [task didFinish];
 
         #if !__has_feature(objc_arc)
@@ -4441,7 +4484,19 @@ static void registerSchemeHandler (Router *router) {
         ];
       #endif
 
-      if (String(request.HTTPMethod.UTF8String) == "GET") {
+      if (String(request.HTTPMethod.UTF8String) == "HEAD") {
+        NSNumber* size = nullptr;
+        NSError* error = nullptr;
+        [components.URL
+          getResourceValue: &size
+                    forKey: NSURLFileSizeKey
+                     error: &error
+        ];
+
+        if (size != nullptr) {
+          headers[@"content-length"] = size.stringValue;
+        }
+      } else if (String(request.HTTPMethod.UTF8String) == "GET") {
         data = [NSData dataWithContentsOfURL: components.URL];
       }
 
