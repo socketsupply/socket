@@ -11278,8 +11278,8 @@ declare module "socket:commonjs/cache" {
      * instances in the application context, including windows and workers.
      */
     export class Cache {
-        static data: Map<any, any>;
         static types: Map<any, any>;
+        static shared: any;
         /**
          * `Cache` class constructor.
          * @param {string} name
@@ -11380,7 +11380,7 @@ declare module "socket:commonjs/cache" {
         /**
          * @ignore
          */
-        [Symbol.iterator](): IterableIterator<[any, any]>;
+        [Symbol.iterator](): any;
         #private;
     }
     export default Cache;
@@ -13026,6 +13026,7 @@ declare module "socket:commonjs/require" {
      * @typedef {ResolveOptions & {
      *   resolvers?: RequireResolver[],
      *   importmap?: import('./module.js').ImportMap,
+     *   cache?: boolean
      * }} RequireOptions
      */
     /**
@@ -13070,6 +13071,7 @@ declare module "socket:commonjs/require" {
     export type RequireOptions = ResolveOptions & {
         resolvers?: RequireResolver[];
         importmap?: import("socket:commonjs/module").ImportMap;
+        cache?: boolean;
     };
 }
 
