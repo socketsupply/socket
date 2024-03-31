@@ -205,6 +205,8 @@ Key | Default Value | Description
 :--- | :--- | :---
 height |  |  The initial height of the first window in pixels or as a percentage of the screen.
 width |  |  The initial width of the first window in pixels or as a percentage of the screen.
+backgroundColorDark | "" |  The initial color of the window in dark mode. If not provided, matches the current theme.
+backgroundColorLight | "" |  The initial color of the window in light mode. If not provided, matches the current theme.
 titleBarStyle | "" |  Determine if the titlebar style (hidden, hiddenInset)
 max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
 max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
