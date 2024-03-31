@@ -49,7 +49,7 @@ export async function onRegister (event) {
   }
 }
 
-export async function onUnregister () {
+export async function onUnregister (event) {
   const info = new ServiceWorkerInfo(event.detail)
 
   if (!workers.has(info.hash)) {
@@ -86,7 +86,7 @@ export async function onFetch (event) {
   // 32*16 milliseconds for the worker to be available or
   // the 'activate' event before generating a 404 response
   await Promise.race([
-    async function () {
+    (async function () {
       let retries = 16
       while (!workers.has(info.hash) && --retries > 0) {
         await sleep(32)
@@ -95,7 +95,7 @@ export async function onFetch (event) {
       if (!exists) {
         await sleep(256)
       }
-    }(),
+    }()),
     new Promise((resolve) => {
       globalThis.top.addEventListener('serviceWorker.activate', async function onActivate (event) {
         const { hash } = new ServiceWorkerInfo(event.detail)

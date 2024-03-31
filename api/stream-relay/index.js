@@ -590,7 +590,7 @@ export class Peer {
     })
 
     return {
-      peers, 
+      peers,
       config: this.config,
       data: [...this.cache.data.entries()],
       unpublished: this.unpublished
