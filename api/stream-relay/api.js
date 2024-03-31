@@ -160,11 +160,12 @@ async function api (options = {}, events, dgram) {
   const unpack = async packet => {
     let opened
     let verified
-    const sub = bus.subclusters.get(packet.subclusterId.toString('base64'))
+    const scid = Buffer.from(packet.subclusterId).toString('base64')
+    const sub = bus.subclusters.get(scid)
     if (!sub) return {}
 
     try {
-      opened = await _peer.open(packet.message, packet.subclusterId.toString('base64'))
+      opened = await _peer.open(packet.message, scid)
     } catch (err) {
       sub._emit('warning', err)
       return {}
@@ -247,9 +248,10 @@ async function api (options = {}, events, dgram) {
 
         for (const packet of packets) {
           const p = Packet.from(packet)
-          _peer.cache.insert(packet.packetId.toString('hex'), p)
+          const pid = Buffer.from(packet.packetId).toString('hex')
+          _peer.cache.insert(pid, p)
 
-          _peer.unpublished[packet.packetId.toString('hex')] = Date.now()
+          _peer.unpublished[pid] = Date.now()
           if (globalThis.navigator && !globalThis.navigator.onLine) continue
 
           _peer.mcast(packet)
@@ -274,7 +276,8 @@ async function api (options = {}, events, dgram) {
     sub.join = () => _peer.join(sub.sharedKey, options)
 
     bus._on('#ready', () => {
-      const subcluster = bus.subclusters.get(sub.subclusterId.toString('base64'))
+      const scid = Buffer.from(sub.subclusterId).toString('base64')
+      const subcluster = bus.subclusters.get(scid)
       if (subcluster) _peer.join(subcluster.sharedKey, options)
     })
 
@@ -283,7 +286,8 @@ async function api (options = {}, events, dgram) {
   }
 
   bus._on('#join', async (packet, peer) => {
-    const sub = bus.subclusters.get(packet.subclusterId.toString('base64'))
+    const scid = Buffer.from(packet.subclusterId).toString('base64')
+    const sub = bus.subclusters.get(scid)
     if (!sub) return
 
     let ee = sub.peers.get(peer.peerId)
@@ -327,11 +331,11 @@ async function api (options = {}, events, dgram) {
   })
 
   const handlePacket = async (packet, peer, port, address) => {
-    const scid = packet.subclusterId.toString('base64')
+    const scid = Buffer.from(packet.subclusterId).toString('base64')
     const sub = bus.subclusters.get(scid)
     if (!sub) return
 
-    const eventName = packet.usr1.toString('hex')
+    const eventName = Buffer.from(packet.usr1).toString('hex')
     const { verified, opened } = await unpack(packet)
     if (verified) packet.verified = true
 

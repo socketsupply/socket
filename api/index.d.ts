@@ -6056,6 +6056,8 @@ declare module "socket:application" {
      * @param {string=} opts.title - the title of the window.
      * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
      * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
+     * @param {string=} opts.backgroundColorDark - determines the background color of the window in dark mode.
+     * @param {string=} opts.backgroundColorLight - determines the background color of the window in light mode.
      * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
      * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
      * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -6082,6 +6084,8 @@ declare module "socket:application" {
         title?: string | undefined;
         titleBarStyle?: string | undefined;
         trafficLightPosition?: string | undefined;
+        backgroundColorDark?: string | undefined;
+        backgroundColorLight?: string | undefined;
         width?: (number | string) | undefined;
         height?: (number | string) | undefined;
         minWidth?: (number | string) | undefined;
@@ -10694,11 +10698,20 @@ declare module "socket:stream-relay/index" {
      */
     export class Peer {
         /**
-         * `Peer` class constructor. Avoid calling this directly (use the create method).
-         * @private
-         * @param {object?} [persistedState]
+         * `Peer` class constructor.
+         * @param {object=} opts - Options
+         * @param {Buffer} opts.peerId - A 32 byte buffer (ie, `Encryption.createId()`).
+         * @param {Buffer} opts.clusterId - A 32 byte buffer (ie, `Encryption.createClusterId()`).
+         * @param {number=} opts.port - A port number.
+         * @param {number=} opts.probeInternalPort - An internal port number (semi-private for testing).
+         * @param {number=} opts.probeExternalPort - An external port number (semi-private for testing).
+         * @param {number=} opts.natType - A nat type.
+         * @param {string=} opts.address - An ipv4 address.
+         * @param {number=} opts.keepalive - The interval of the main loop.
+         * @param {function=} opts.siblingResolver - A function that can be used to determine canonical data in case two packets have concurrent clock values.
+         * @param {object} dgram - A nodejs compatible implementation of the dgram module (sans multicast).
          */
-        private constructor();
+        constructor(persistedState: {}, dgram: object);
         port: any;
         address: any;
         natType: number;
