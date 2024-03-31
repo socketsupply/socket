@@ -11089,6 +11089,7 @@ declare module "socket:stream-relay/proxy" {
         constructor(options: any, port: any, fn: any);
         init(): Promise<any>;
         reconnect(): Promise<any>;
+        disconnect(): Promise<any>;
         getInfo(): Promise<any>;
         getState(): Promise<any>;
         open(...args: any[]): Promise<any>;
@@ -13246,7 +13247,7 @@ declare module "socket:service-worker/global" {
 
 declare module "socket:service-worker/init" {
     export function onRegister(event: any): Promise<void>;
-    export function onUnregister(): Promise<void>;
+    export function onUnregister(event: any): Promise<void>;
     export function onSkipWaiting(event: any): Promise<void>;
     export function onActivate(event: any): Promise<void>;
     export function onFetch(event: any): Promise<void>;
