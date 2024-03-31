@@ -179,6 +179,8 @@ export function getCurrentWindowIndex () {
  * @param {string=} opts.title - the title of the window.
  * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
  * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
+ * @param {string=} opts.backgroundColorDark - determines the background color of the window in dark mode.
+ * @param {string=} opts.backgroundColorLight - determines the background color of the window in light mode.
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
