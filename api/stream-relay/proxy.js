@@ -151,7 +151,7 @@ class PeerWorkerProxy {
     return await this.callWorkerThread('reconnect')
   }
 
-  async reconnect () {
+  async disconnect () {
     return await this.callWorkerThread('disconnect')
   }
 
