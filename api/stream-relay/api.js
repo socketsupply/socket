@@ -172,7 +172,7 @@ async function api (options = {}, events, dgram) {
 
     if (packet.sig) {
       try {
-        if (Encryption.verify(opened, packet.sig, packet.usr2)) {
+        if (Encryption.verify(opened.data || opened, packet.sig, packet.usr2)) {
           verified = true
         }
       } catch (err) {
