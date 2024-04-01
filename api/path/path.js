@@ -173,7 +173,6 @@ export function join (options, ...components) {
   const isAbsolute = components[0].trim().startsWith(sep)
 
   let protocol = null
-  let hostname = null
   let origin = null
 
   while (components.length) {
