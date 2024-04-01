@@ -30,7 +30,11 @@ import location from '../location.js'
  */
 
 /**
- * @typedef {PackageResolveOptions & PackageOptions} ResolveOptions
+ * @typedef {
+ *   PackageResolveOptions &
+ *   PackageOptions &
+ *   { origins?: string[] | URL[] }
+ * } ResolveOptions
  */
 
 /**
@@ -256,7 +260,11 @@ export function createRequire (options) {
       })
     }
 
-    const origins = resolve.paths(input)
+    const origins = new Set([]
+      .concat(options?.origins)
+      .concat(resolve.paths(input))
+      .filter(Boolean)
+    )
 
     for (const origin of origins) {
       // relative require
