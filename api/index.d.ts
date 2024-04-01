@@ -11897,22 +11897,32 @@ declare module "socket:commonjs/package" {
          */
         get name(): string;
         /**
+         * An alias for 'name'.
+         * @type {string}
+         */
+        get value(): string;
+        /**
          * The origin of the package, if available.
+         * This value may be `null`.
          * @type {string?}
          */
         get origin(): string;
         /**
          * The package version if available.
-         * @type {string}
+         * This value may be `null`.
+         * @type {string?}
          */
         get version(): string;
         /**
-         * The actual package pathname.
+         * The actual package pathname, if given in name string.
+         * This value is always a string defaulting to '.' if no path
+         * was given in name string.
          * @type {string}
          */
         get pathname(): string;
         /**
-         * The organization name. This value may be `null`.
+         * The organization name.
+         * This value may be `null`.
          * @type {string?}
          */
         get organization(): string;
@@ -13020,7 +13030,11 @@ declare module "socket:commonjs/require" {
      * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
      */
     /**
-     * @typedef {PackageResolveOptions & PackageOptions} ResolveOptions
+     * @typedef {
+     *   PackageResolveOptions &
+     *   PackageOptions &
+     *   { origins?: string[] | URL[] }
+     * } ResolveOptions
      */
     /**
      * @typedef {ResolveOptions & {
@@ -13067,7 +13081,6 @@ declare module "socket:commonjs/require" {
     export type RequireFunction = (arg0: string) => any;
     export type PackageOptions = import("socket:commonjs/package").PackageOptions;
     export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
-    export type ResolveOptions = PackageResolveOptions & PackageOptions;
     export type RequireOptions = ResolveOptions & {
         resolvers?: RequireResolver[];
         importmap?: import("socket:commonjs/module").ImportMap;
@@ -14878,19 +14891,39 @@ declare module "socket:internal/worker" {
 }
 
 declare module "socket:npm/module" {
-    export function resolve(specifier: any, origin?: any): Promise<{
-        origin: any;
-        type: string;
-        path: string;
-    } | {
-        type: any;
-        path: string;
-        origin?: undefined;
-    }>;
+    /**
+     * @typedef {{
+     * package: Package
+     * origin: string,
+     * type: 'commonjs' | 'module',,
+     * url: string
+     * }} ModuleResolution
+     */
+    /**
+     * Resolves an NPM module for a given `specifier` and an optional `origin`.
+     * @param {string|URL} specifier
+     * @param {string|URL=} [origin]
+     * @param {{ prefix?: string }} [options]
+     * @return {ModuleResolution|null}
+     */
+    export function resolve(specifier: string | URL, origin?: (string | URL) | undefined, options?: {
+        prefix?: string;
+    }): ModuleResolution | null;
+    /**
+     * ,
+     * url: string
+     * }} ModuleResolution
+     */
+    export type resolve = {
+        package: Package;
+        origin: string;
+        type: 'commonjs' | 'module';
+    };
     namespace _default {
         export { resolve };
     }
     export default _default;
+    import { Package } from "socket:commonjs/package";
 }
 
 declare module "socket:npm/service-worker" {
