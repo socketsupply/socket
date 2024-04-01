@@ -1,6 +1,5 @@
-import { createRequire } from '../module.js'
+import { resolve } from './module.js'
 import process from '../process.js'
-import module from './module.js'
 import http from '../http.js'
 import util from '../util.js'
 
@@ -43,15 +42,13 @@ export async function onRequest (request, env, ctx) {
     const origin = origins.shift()
 
     if (origin.startsWith('npm:')) {
-      const potentialSpeciifier = new URL(origin).pathname
+      const potentialSpecifier = new URL(origin).pathname
       for (const potentialOrigin of origins) {
-        try {
-          const resolution = await module.resolve(potentialSpeciifier, potentialOrigin)
-          if (resolution) {
-            potentialOrigins.push(new URL(resolution.path, resolution.origin).href)
-            break
-          }
-        } catch { }
+        const resolution = await resolve(potentialSpecifier, potentialOrigin)
+        if (resolution) {
+          potentialOrigins.push(resolution.url)
+          break
+        }
       }
     } else {
       potentialOrigins.push(origin)
@@ -59,14 +56,7 @@ export async function onRequest (request, env, ctx) {
 
     while (potentialOrigins.length && resolved === null) {
       const importOrigin = new URL('./', potentialOrigins.shift()).href
-      try {
-        resolved = await module.resolve(specifier, importOrigin)
-      } catch (err) {
-        globalThis.reportError(err)
-        return new Response(util.inspect(err), {
-          status: 500
-        })
-      }
+      resolved = await resolve(specifier, importOrigin)
     }
   }
 
@@ -78,20 +68,18 @@ export async function onRequest (request, env, ctx) {
     return
   }
 
-  const source = new URL(resolved.path, resolved.origin)
-
   if (resolved.type === 'module') {
-    const response = await fetch(source.href)
+    const response = await fetch(resolved.url)
     const text = await response.text()
     const proxy = text.includes('export default')
       ? `
-        import module from '${source.href}'
-        export * from '${source.href}'
+        import module from '${resolved.url}'
+        export * from '${resolved.url}'
         export default module
         `
       : `
-        import * as module from '${source.href}'
-        export * from '${source.href}'
+        import * as module from '${resolved.url}'
+        export * from '${resolved.url}'
         export default module
         `
 
@@ -103,19 +91,11 @@ export async function onRequest (request, env, ctx) {
   }
 
   if (resolved.type === 'commonjs') {
-    const pathspec = (source.pathname + source.search).replace(/^\/node_modules\//, '')
-    console.log({ origin: source.origin, pathspec })
     const proxy = `
-      import { createRequire } from 'socket:module'
-      const require = createRequire('${source.origin + '/'}', {
-        headers: {
-          'Runtime-ServiceWorker-Fetch-Mode': 'ignore'
-        }
-      })
-      const exports = require('${pathspec}')
-      console.log('${pathspec}', exports)
+      import { Module } from 'socket:module'
+      const exports = Module.main.require('${resolved.url}')
       export default exports?.default ?? exports ?? null
-      `
+    `
 
     return new Response(proxy, {
       headers: {
@@ -147,5 +127,9 @@ export default async function (request, env, ctx) {
     if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
       console.debug(err)
     }
+
+    return new Response(util.inspect(err), {
+      status: 500
+    })
   }
 }
