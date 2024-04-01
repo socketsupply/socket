@@ -232,9 +232,9 @@ export class Name {
 
     return {
       organization: null,
-      name,
+      name: name ?? pathname,
       version,
-      pathname,
+      pathname: name && pathname ? pathname : null,
       url,
       isRelative,
       hasManifest
@@ -342,25 +342,36 @@ export class Name {
   get name () { return this.#name }
 
   /**
+   * An alias for 'name'.
+   * @type {string}
+   */
+  get value () { return this.#name }
+
+  /**
    * The origin of the package, if available.
+   * This value may be `null`.
    * @type {string?}
    */
   get origin () { return this.#origin }
 
   /**
    * The package version if available.
-   * @type {string}
+   * This value may be `null`.
+   * @type {string?}
    */
   get version () { return this.#version }
 
   /**
-   * The actual package pathname.
+   * The actual package pathname, if given in name string.
+   * This value is always a string defaulting to '.' if no path
+   * was given in name string.
    * @type {string}
    */
-  get pathname () { return this.#pathname }
+  get pathname () { return this.#pathname || '.' }
 
   /**
-   * The organization name. This value may be `null`.
+   * The organization name.
+   * This value may be `null`.
    * @type {string?}
    */
   get organization () { return this.#organization }
@@ -698,7 +709,9 @@ export class Package {
         entry = `.${entry}`
       }
 
-      return new URL(entry, this.id).href
+      if (URL.canParse(entry, this.id)) {
+        return new URL(entry, this.id).href
+      }
     }
 
     return null
@@ -731,6 +744,28 @@ export class Package {
     const response = this.loader.load(pathname, origin, options)
 
     if (!response.text) {
+      const entry = path.basename(this.entry ?? './index.js')
+      const pathname = `${prefix}${this.name}/${entry}`
+      const response = this.loader.load(pathname, origin, options)
+
+      if (response.text) {
+        this.#id = response.id
+        this.#info = {
+          name: this.name.value,
+          main: entry,
+          module: entry
+        }
+
+        if (/(import|export|export default|from)\s/.test(response.text)) {
+          this.#info.type = 'module'
+        } else {
+          this.#info.type = 'commonjs'
+        }
+
+        this.#type = this.#info.type
+        return true
+      }
+
       return false
     }
 
