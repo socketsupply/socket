@@ -122,7 +122,6 @@ async function onMessage (event) {
       state.serviceWorker.state = 'registered'
       await state.notify('serviceWorker')
     } catch (err) {
-      console.error(err)
       globalThis.reportError(err)
       state.serviceWorker.state = 'error'
       await state.notify('serviceWorker')
@@ -199,10 +198,10 @@ async function onMessage (event) {
       }
 
       globalThis.addEventListener('fetch', async (event) => {
-        const promise = new Deferred()
+        const deferred = new Deferred()
         let response = null
 
-        event.respondWith(promise)
+        event.respondWith(deferred.promise)
 
         try {
           response = await state.fetch(
@@ -223,9 +222,9 @@ async function onMessage (event) {
             response.statusText = STATUS_CODES[response.status]
           }
 
-          promise.resolve(response)
+          deferred.resolve(response)
         } else {
-          promise.resolve(new Response('Not Found', {
+          deferred.resolve(new Response('Not Found', {
             statusText: STATUS_CODES[404],
             status: 404
           }))
