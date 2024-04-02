@@ -231,6 +231,7 @@ namespace SSC::IPC {
         String href;
         String pathname;
         String query;
+        Map workers;
       };
 
       struct MessageCallbackContext {
