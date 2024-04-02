@@ -44,6 +44,7 @@ namespace SSC {
     String userScript = "";
     String runtimePrimordialOverrides = "";
     bool preloadCommonJS = true;
+    String referrerPolicy = "unsafe-url";
   };
 }
 #endif
