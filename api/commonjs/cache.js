@@ -271,7 +271,6 @@ export class Cache {
     return {
       args: [this.#data, this.#channel, this.#onmessage],
       handle (data, channel, onmessage) {
-        console.log('gc')
         data.clear()
         channel.removeEventListener('message', onmessage)
       }
