@@ -570,9 +570,7 @@ export class Module extends EventTarget {
       this.#state = options.state
     }
 
-    this.#loader = options?.loader instanceof Loader
-      ? options.loader
-      : new Loader(this.#id, options?.loader)
+    this.#loader = new Loader(this.#id, options?.loader)
 
     this.#package = options.package instanceof Package
       ? options.package
@@ -607,6 +605,20 @@ export class Module extends EventTarget {
         if (typeof resolver === 'function') {
           this.#resolvers.push(resolver)
         }
+      }
+    }
+
+    // includes `.browser` field mapping
+    for (const key in this.package.imports) {
+      const value = this.package.imports[key]
+      if (value) {
+        this.#resolvers.push((specifier, ctx, next) => {
+          if (specifier === key) {
+            return value.default ?? value.browser ?? next(specifier)
+          }
+
+          return next(specifier)
+        })
       }
     }
 
@@ -822,6 +834,10 @@ export class Module extends EventTarget {
   load (options = null) {
     const extension = path.extname(this.id)
 
+    if (this.#state.loaded) {
+      return true
+    }
+
     if (typeof this.#loaders[extension] !== 'function') {
       return false
     }
@@ -860,6 +876,12 @@ export class Module extends EventTarget {
   }
 }
 
+/**
+ * Creates a `require` function from a given module URL.
+ * @param {string|URL} url
+ * @param {ModuleOptions=} [options]
+ * @return {RequireFunction}
+ */
 export function createRequire (url, options = null) {
   return Module.createRequire(url, options)
 }
