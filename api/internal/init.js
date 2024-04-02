@@ -212,21 +212,35 @@ if ((globalThis.window) === globalThis) {
 }
 
 class RuntimeWorker extends GlobalWorker {
-  #onglobaldata = null
-  #id = null
-
+  /**
+   * Internal worker pool
+   * @ignore
+   */
   static pool = globalThis.top?.Worker?.pool ?? new Map()
 
+  /**
+   * Handles `Symbol.species`
+   * @ignore
+   */
   static get [Symbol.species] () {
     return GlobalWorker
   }
 
+  #id = null
+  #objectURL = null
+  #onglobaldata = null
+
   /**
    * `RuntimeWorker` class worker.
    * @ignore
+   * @param {string|URL} filename
+   * @param {object=} [options]
    */
   constructor (filename, options, ...args) {
-    const url = encodeURIComponent(new URL(filename, globalThis.location.href || '/').toString())
+    options = { ...options }
+
+    const workerType = options[Symbol.for('socket.runtime.internal.worker.type')] ?? 'worker'
+    const url = encodeURIComponent(new URL(filename, location.href || '/').toString())
     const id = String(rand64())
 
     const preload = `
@@ -246,9 +260,16 @@ class RuntimeWorker extends GlobalWorker {
       value: '${id}'
     })
 
+    Object.defineProperty(globalThis, 'RUNTIME_WORKER_TYPE', {
+      configurable: false,
+      enumerable: false,
+      value: '${workerType}'
+    })
+
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_LOCATION', {
       configurable: false,
       enumerable: false,
+      writable: true,
       value: decodeURIComponent('${url}')
     })
 
@@ -264,12 +285,18 @@ class RuntimeWorker extends GlobalWorker {
       RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG.push(event)
     }
 
-    import '${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/worker.js?source=${url}'
-    import hooks from 'socket:hooks'
+    try {
+      await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/init.js')
+      const hooks = await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/hooks.js')
 
-    hooks.onReady(() => {
-      globalThis.removeEventListener('message', onInitialWorkerMessages)
-    })
+      hooks.onReady(() => {
+        globalThis.removeEventListener('message', onInitialWorkerMessages)
+      })
+
+      await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/worker.js?source=${url}')
+    } catch (err) {
+      globalThis.reportError(err)
+    }
     `.trim()
 
     const objectURL = URL.createObjectURL(
@@ -287,6 +314,7 @@ class RuntimeWorker extends GlobalWorker {
     RuntimeWorker.pool.set(id, new WeakRef(this))
 
     this.#id = id
+    this.#objectURL = objectURL
 
     this.#onglobaldata = (event) => {
       const data = new Uint8Array(event.detail.data).buffer
@@ -383,7 +411,7 @@ class RuntimeWorker extends GlobalWorker {
                   }
                 }, { transfer })
               } catch (err) {
-                console.warn('RuntimeWorker:', err)
+                globalThis.reportError(err)
               }
             })
           }
@@ -396,6 +424,10 @@ class RuntimeWorker extends GlobalWorker {
 
   get id () {
     return this.#id
+  }
+
+  get objectURL () {
+    return this.#objectURL
   }
 
   terminate () {
@@ -491,10 +523,10 @@ import { config } from '../application.js'
 import globals from './globals.js'
 import '../console.js'
 
-ipc.send('platform.event', {
+ipc.sendSync('platform.event', {
   value: 'load',
   'location.href': globalThis.location.href
-}).catch(reportError)
+})
 
 class ConcurrentQueue extends EventTarget {
   concurrency = Infinity
