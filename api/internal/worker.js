@@ -1,6 +1,4 @@
 /* global reportError, EventTarget, CustomEvent, MessageEvent */
-import './init.js'
-
 import { rand64 } from '../crypto.js'
 import globals from './globals.js'
 import hooks from '../hooks.js'
