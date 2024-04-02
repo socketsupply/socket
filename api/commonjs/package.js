@@ -401,7 +401,27 @@ export class Name {
    * @return {string}
    */
   toString () {
-    return this.id
+    const { organization, name } = this
+
+    let pathname = this.#pathname !== name ? this.#pathname : ''
+
+    if (pathname && pathname.startsWith('/')) {
+      pathname = path.slice(1)
+    }
+
+    if (this.#organization) {
+      if (pathname) {
+        return `@${this.organization}/${this.name}/${pathname}`
+      }
+
+      return `@${this.organization}/${this.name}`
+    } else if (this.isRelative) {
+      return `./${this.#pathname}`
+    } else if (pathname) {
+      return `${name}/${pathname}`
+    }
+
+    return name
   }
 
   /**
@@ -829,7 +849,9 @@ export class Package {
     this.#type = type
 
     this.#id = new URL('./', response.id).href
-    this.#name = Name.from(info.name, { origin })
+    this.#name = info.name
+      ? Name.from(info.name, { origin })
+      : Name.from(this.#name.value, { origin })
     this.#license = info.license ?? 'Unlicensed'
     this.#version = info.version
     this.#description = info.description
