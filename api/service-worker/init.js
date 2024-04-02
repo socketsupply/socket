@@ -45,7 +45,8 @@ export async function onRegister (event) {
   }
 
   const worker = new Worker('./worker.js', {
-    name: `ServiceWorker (${info.pathname})`
+    name: `ServiceWorker (${info.pathname})`,
+    [Symbol.for('socket.runtime.internal.worker.type')]: 'serviceWorker'
   })
 
   workers.set(info.hash, worker)
