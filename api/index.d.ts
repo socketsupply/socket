@@ -6541,7 +6541,10 @@ declare module "socket:console" {
         trace(...objects: any[]): void;
         warn(...args: any[]): void;
     }
-    const _default: Console;
+    const _default: Console & {
+        Console: typeof Console;
+        globalConsole: globalThis.Console;
+    };
     export default _default;
 }
 
@@ -11396,7 +11399,8 @@ declare module "socket:commonjs/loader" {
      *   extensions?: string[] | Set<string>
      *   origin?: URL | string,
      *   statuses?: Cache
-     *   cache?: { response?: Cache, status?: Cache }
+     *   cache?: { response?: Cache, status?: Cache },
+     *   headers?: Headers | Map | object | string[][]
      * }} LoaderOptions
      */
     /**
@@ -11701,6 +11705,11 @@ declare module "socket:commonjs/loader" {
             status: Cache;
         };
         /**
+         * Headers used in too loader requests.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
          * A set of supported `Loader` extensions.
          * @type {Set<string>}
          */
@@ -11747,6 +11756,7 @@ declare module "socket:commonjs/loader" {
             response?: Cache;
             status?: Cache;
         };
+        headers?: Headers | Map<any, any> | object | string[][];
     };
     export type RequestOptions = {
         loader?: Loader;
@@ -11976,6 +11986,13 @@ declare module "socket:commonjs/package" {
          */
         static Dependencies: typeof Dependencies;
         /**
+         * Creates and loads a package
+         * @param {string|URL|NameOptions|Name} name
+         * @param {PackageOptions & PackageLoadOptions=} [options]
+         * @return {Package}
+         */
+        static load(name: string | URL | NameOptions | Name, options?: (PackageOptions & PackageLoadOptions) | undefined): Package;
+        /**
          * `Package` class constructor.
          * @param {string|URL|NameOptions|Name} name
          * @param {PackageOptions=} [options]
@@ -11993,10 +12010,22 @@ declare module "socket:commonjs/package" {
          */
         get url(): string;
         /**
+         * A reference to the package subpath imports and browser mappings.
+         * These values are typically used with its corresponding `Module`
+         * instance require resolvers.
+         * @type {object}
+         */
+        get imports(): any;
+        /**
          * A loader for this package, if available. This value may be `null`.
          * @type {Loader}
          */
         get loader(): Loader;
+        /**
+         * `true` if the package was actually "loaded", otherwise `false`.
+         * @type {boolean}
+         */
+        get loaded(): boolean;
         /**
          * The name of the package.
          * @type {string}
@@ -13101,7 +13130,13 @@ declare module "socket:commonjs/module" {
      * @param {object} global
      */
     export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: typeof process, global: object): void;
-    export function createRequire(url: any, options?: any): any;
+    /**
+     * Creates a `require` function from a given module URL.
+     * @param {string|URL} url
+     * @param {ModuleOptions=} [options]
+     * @return {RequireFunction}
+     */
+    export function createRequire(url: string | URL, options?: ModuleOptions | undefined): RequireFunction;
     /**
      * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
      */
@@ -14895,7 +14930,7 @@ declare module "socket:npm/module" {
      * @typedef {{
      * package: Package
      * origin: string,
-     * type: 'commonjs' | 'module',,
+     * type: 'commonjs' | 'module',
      * url: string
      * }} ModuleResolution
      */
@@ -14903,26 +14938,23 @@ declare module "socket:npm/module" {
      * Resolves an NPM module for a given `specifier` and an optional `origin`.
      * @param {string|URL} specifier
      * @param {string|URL=} [origin]
-     * @param {{ prefix?: string }} [options]
+     * @param {{ prefix?: string, type?: 'commonjs' | 'module' }} [options]
      * @return {ModuleResolution|null}
      */
     export function resolve(specifier: string | URL, origin?: (string | URL) | undefined, options?: {
         prefix?: string;
+        type?: 'commonjs' | 'module';
     }): ModuleResolution | null;
-    /**
-     * ,
-     * url: string
-     * }} ModuleResolution
-     */
-    export type resolve = {
-        package: Package;
-        origin: string;
-        type: 'commonjs' | 'module';
-    };
     namespace _default {
         export { resolve };
     }
     export default _default;
+    export type ModuleResolution = {
+        package: Package;
+        origin: string;
+        type: 'commonjs' | 'module';
+        url: string;
+    };
     import { Package } from "socket:commonjs/package";
 }
 
