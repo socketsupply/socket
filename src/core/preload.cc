@@ -22,6 +22,10 @@ namespace SSC {
     String preload = "";
 
     if (preloadOptions.wrap) {
+      if (opts.referrerPolicy.size() > 0) {
+        preload += "<meta name=\"referrer\" content=\"" + opts.referrerPolicy + "\">\n";
+        preload += "<meta http-equiv=\"Referrer-Policy\" content=\"" + opts.referrerPolicy + "\">\n";
+      }
       preload += "<meta name=\"begin-runtime-preload\">\n";
       preload += "<script type=\"text/javascript\">\n";
     }
