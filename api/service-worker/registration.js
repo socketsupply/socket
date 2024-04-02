@@ -10,7 +10,8 @@ export class ServiceWorkerRegistration {
   constructor (info, serviceWorker) {
     this.#info = info
 
-    if (serviceWorker.state === 'installing' || serviceWorker.state === 'parsed') {
+    // many states here just end up being the 'installing' state to the front end
+    if (/installing|parsed|registered|registering/.test(serviceWorker.state)) {
       this.#installing = serviceWorker
     } else if (serviceWorker.state === 'installed') {
       this.#waiting = serviceWorker
