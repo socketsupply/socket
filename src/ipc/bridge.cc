@@ -2276,6 +2276,7 @@ static void initRouterTable (Router *router) {
         const auto href = message.get("location.href");
         if (href.size() > 0) {
           router->location.href = href;
+          router->location.workers.clear();
           auto tmp = href;
           tmp = replace(tmp, "socket://", "");
           tmp = replace(tmp, "https://", "");
@@ -2295,6 +2296,14 @@ static void initRouterTable (Router *router) {
             router->core->serviceWorker.isReady = true;
           }
         }
+      }
+    }
+
+    if (message.value == "load" && frameType == "worker") {
+      const auto workerLocation = message.get("runtime-worker-location");
+      const auto href = message.get("location.href");
+      if (href.size() > 0 && workerLocation.size() > 0) {
+        router->location.workers[href] = workerLocation;
       }
     }
 
@@ -2719,6 +2728,13 @@ static void initRouterTable (Router *router) {
 
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    const auto workerURL = message.get("workerURL");
+    const auto scriptURL = message.get("scriptURL");
+
+    if (workerURL.size() > 0 && scriptURL.size() > 0) {
+      router->location.workers[workerURL] = scriptURL;
+    }
 
     router->core->serviceWorker.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
@@ -3910,6 +3926,20 @@ static void registerSchemeHandler (Router *router) {
       for (NSString* key in request.allHTTPHeaderFields) {
         const auto value = [request.allHTTPHeaderFields objectForKey: key];
         if (value != nullptr) {
+          if (String(key.UTF8String) == "referer" || String(key.UTF8String) == "Referer") {
+            if (self.router->location.workers.contains(value.UTF8String)) {
+              const auto workerLocation = self.router->location.workers[value.UTF8String];
+              const auto entry = String(key.UTF8String) + ": " + workerLocation;
+              fetchRequest.headers.push_back(entry);
+              continue;
+            } else if (self.router->core->serviceWorker.bridge->router.location.workers.contains(value.UTF8String)) {
+              const auto workerLocation = self.router->core->serviceWorker.bridge->router.location.workers[value.UTF8String];
+              const auto entry = String(key.UTF8String) + ": " + workerLocation;
+              fetchRequest.headers.push_back(entry);
+              continue;
+            }
+          }
+
           const auto entry = String(key.UTF8String) + ": " + String(value.UTF8String);
           fetchRequest.headers.push_back(entry);
         }
@@ -4294,6 +4324,20 @@ static void registerSchemeHandler (Router *router) {
               for (NSString* key in request.allHTTPHeaderFields) {
                 const auto value = [request.allHTTPHeaderFields objectForKey: key];
                 if (value != nullptr) {
+                  if (String(key.UTF8String) == "referer" || String(key.UTF8String) == "Referer") {
+                    if (self.router->location.workers.contains(value.UTF8String)) {
+                      const auto workerLocation = self.router->location.workers[value.UTF8String];
+                      const auto entry = String(key.UTF8String) + ": " + workerLocation;
+                      fetchRequest.headers.push_back(entry);
+                      continue;
+                    } else if (self.router->core->serviceWorker.bridge->router.location.workers.contains(value.UTF8String)) {
+                      const auto workerLocation = self.router->core->serviceWorker.bridge->router.location.workers[value.UTF8String];
+                      const auto entry = String(key.UTF8String) + ": " + workerLocation;
+                      fetchRequest.headers.push_back(entry);
+                      continue;
+                    }
+                  }
+
                   const auto entry = String(key.UTF8String) + ": " + String(value.UTF8String);
                   fetchRequest.headers.push_back(entry);
                 }
