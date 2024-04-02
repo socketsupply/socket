@@ -29,7 +29,8 @@ const descriptors = {
           id: this.id,
           scope: this.serviceWorker.scope,
           state: this.serviceWorker.state,
-          scriptURL: this.serviceWorker.scriptURL
+          scriptURL: this.serviceWorker.scriptURL,
+          workerURL: globalThis.location.href
         })
       }
     }
