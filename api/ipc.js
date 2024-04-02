@@ -1044,6 +1044,10 @@ class IPCSearchParams extends URLSearchParams {
       this.set('runtime-worker-id', globalThis.RUNTIME_WORKER_ID)
     }
 
+    if (globalThis.RUNTIME_WORKER_LOCATION) {
+      this.set('runtime-worker-location', globalThis.RUNTIME_WORKER_LOCATION)
+    }
+
     const runtimeFrameSource = globalThis.document
       ? globalThis.document.querySelector('meta[name=runtime-frame-source]')?.content
       : ''
@@ -1052,7 +1056,11 @@ class IPCSearchParams extends URLSearchParams {
       this.set('runtime-frame-type', 'nested')
     } else if (!globalThis.window && globalThis.self === globalThis) {
       this.set('runtime-frame-type', 'worker')
-      if (globalThis.clients && globalThis.FetchEvent) {
+      if (
+        globalThis.isServiceWorkerScope ||
+        (globalThis.clients && globalThis.FetchEvent) ||
+        globalThis.RUNTIME_WORKER_TYPE === 'serviceWorker'
+      ) {
         this.set('runtime-worker-type', 'serviceworker')
       } else {
         this.set('runtime-worker-type', 'worker')
