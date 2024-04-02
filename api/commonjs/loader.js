@@ -17,7 +17,8 @@ const textDecoder = new TextDecoder()
  *   extensions?: string[] | Set<string>
  *   origin?: URL | string,
  *   statuses?: Cache
- *   cache?: { response?: Cache, status?: Cache }
+ *   cache?: { response?: Cache, status?: Cache },
+ *   headers?: Headers | Map | object | string[][]
  * }} LoaderOptions
  */
 
@@ -198,13 +199,20 @@ export class RequestStatus {
       request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
     }
 
+    if (this.#request?.loader) {
+      const entries = this.#request.loader.headers.entries()
+      for (const entry of entries) {
+        request.setRequestHeader(...entry)
+      }
+    }
+
     if (options?.headers && typeof options?.headers === 'object') {
       const entries = typeof options.headers.entries === 'function'
         ? options.headers.entries()
         : Object.entries(options.headers)
 
       for (const entry of entries) {
-        request.setRequestHeader(entry[0], entry[1])
+        request.setRequestHeader(...entry)
       }
     }
 
@@ -403,13 +411,20 @@ export class Request {
       request.responseType = options.responseType
     }
 
+    if (this.#loader) {
+      const entries = this.#loader.headers.entries()
+      for (const entry of entries) {
+        request.setRequestHeader(...entry)
+      }
+    }
+
     if (options?.headers && typeof options?.headers === 'object') {
       const entries = typeof options.headers.entries === 'function'
         ? options.headers.entries()
         : Object.entries(options.headers)
 
       for (const entry of entries) {
-        request.setRequestHeader(entry[0], entry[1])
+        request.setRequestHeader(...entry)
       }
     }
 
@@ -697,6 +712,7 @@ export class Loader {
   }
 
   #origin = null
+  #headers = new Headers()
   #extensions = Loader.defaultExtensions
 
   /**
@@ -711,6 +727,22 @@ export class Loader {
     }
 
     this.#origin = Loader.resolve('.', origin)
+
+    if (options?.headers && typeof options.headers === 'object') {
+      if (Array.isArray(options.headers)) {
+        for (const entry of options.headers) {
+          this.#headers.set(...entry)
+        }
+      } else if (typeof options.headers.entries === 'function') {
+        for (const entry of options.headers.entries()) {
+          this.#headers.set(...entry)
+        }
+      } else {
+        for (const key in options.headers) {
+          this.#headers.set(key, options.headers[key])
+        }
+      }
+    }
 
     this.#cache.response = options?.cache?.response instanceof Cache
       ? options.cache.response
@@ -736,6 +768,14 @@ export class Loader {
    */
   get cache () {
     return this.#cache
+  }
+
+  /**
+   * Headers used in too loader requests.
+   * @type {Headers}
+   */
+  get headers () {
+    return this.#headers
   }
 
   /**
@@ -766,7 +806,7 @@ export class Loader {
   load (url, origin, options) {
     if (origin && typeof origin === 'object' && !(origin instanceof URL)) {
       options = origin
-      origin = this.origin
+      origin = options.origin ?? this.origin
     }
 
     if (!origin) {
@@ -792,7 +832,7 @@ export class Loader {
   status (url, origin, options = null) {
     if (origin && typeof origin === 'object' && !(origin instanceof URL)) {
       options = origin
-      origin = this.origin
+      origin = options.origin ?? this.origin
     }
 
     if (!origin) {
@@ -823,6 +863,13 @@ export class Loader {
    */
   resolve (url, origin) {
     return Loader.resolve(url, origin || this.origin)
+  }
+
+  /**
+   * @ignore
+   */
+  [Symbol.for('socket.util.inspect.custom')] () {
+    return `Loader ('${this.origin}') { }`
   }
 }
 
