@@ -14,6 +14,19 @@ import path from '../path.js'
 const isWorkerScope = globalThis.self === globalThis && !globalThis.window
 
 /**
+ * @ignore
+ * @param {string} source
+ * @return {boolean}
+ */
+function detectESM (source) {
+  if (/(import\s|export[{|\s]|export\sdefault|(from\s['|"]))\s/.test(source)) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * @typedef {{
  *   manifest?: string,
  *   index?: string,
@@ -485,6 +498,18 @@ export class Package {
    */
   static Dependencies = Dependencies
 
+  /**
+   * Creates and loads a package
+   * @param {string|URL|NameOptions|Name} name
+   * @param {PackageOptions & PackageLoadOptions=} [options]
+   * @return {Package}
+   */
+  static load (name, options = null) {
+    const pkg = new this(name, options)
+    pkg.load(options)
+    return pkg
+  }
+
   #id = null
   #name = null
   #type = 'commonjs'
@@ -495,6 +520,8 @@ export class Package {
 
   #info = null
   #loader = null
+
+  #imports = {}
 
   #exports = {
     '.': {
@@ -517,9 +544,7 @@ export class Package {
     }
 
     // the module loader
-    this.#loader = options.loader instanceof Loader
-      ? options.loader
-      : new Loader(options.loader)
+    this.#loader = new Loader(options.loader)
 
     this.#id = options.id ?? null
     this.#name = Name.from(name, {
@@ -529,6 +554,9 @@ export class Package {
 
     // early meta data
     this.#info = options.info ?? null
+    this.#type = options.type && /(commonjs|module)/.test(options.type)
+      ? options.type
+      : this.#type
     this.#exports = options.exports ?? this.#exports
     this.#license = options.license ?? DEFAULT_LICENSE
     this.#version = options.version ?? this.#name.version ?? DEFAULT_PACKAGE_VERSION
@@ -581,11 +609,29 @@ export class Package {
   }
 
   /**
+   * A reference to the package subpath imports and browser mappings.
+   * These values are typically used with its corresponding `Module`
+   * instance require resolvers.
+   * @type {object}
+   */
+  get imports () {
+    return this.#imports
+  }
+
+  /**
    * A loader for this package, if available. This value may be `null`.
    * @type {Loader}
    */
   get loader () {
     return this.#loader
+  }
+
+  /**
+   * `true` if the package was actually "loaded", otherwise `false`.
+   * @type {boolean}
+   */
+  get loaded () {
+    return this.#info !== null
   }
 
   /**
@@ -730,8 +776,10 @@ export class Package {
       origin = options.origin
     }
 
-    if (options?.force !== true && this.#info) {
-      return true
+    if (!this.origin || origin === this.origin) {
+      if (options?.force !== true && this.#info) {
+        return true
+      }
     }
 
     if (!origin) {
@@ -756,7 +804,7 @@ export class Package {
           module: entry
         }
 
-        if (/(import|export|export default|from)\s/.test(response.text)) {
+        if (detectESM(response.text)) {
           this.#info.type = 'module'
         } else {
           this.#info.type = 'commonjs'
@@ -786,6 +834,8 @@ export class Package {
     this.#version = info.version
     this.#description = info.description
 
+    this.#loader.origin = origin
+
     if (info.dependencies && typeof info.dependencies === 'object') {
       for (const name in info.dependencies) {
         const version = info.dependencies[name]
@@ -799,7 +849,9 @@ export class Package {
 
     if (info.main) {
       this.#exports['.'].require = info.main
-      this.#exports['.'].import = info.main
+      if (info.type === 'module') {
+        this.#exports['.'].import = info.main
+      }
     }
 
     if (info.module) {
@@ -871,6 +923,67 @@ export class Package {
       }
     }
 
+    if (
+      this.#info.imports &&
+      !Array.isArray(this.#info.imports) &&
+      typeof this.#info.imports === 'object'
+    ) {
+      for (const key in this.#info.imports) {
+        const value = this.#info.imports[key]
+        if (typeof value === 'string') {
+          this.#imports[key] = { default: value }
+        } else if (value && typeof value === 'object') {
+          this.#imports[key] = {}
+          if (value.default) {
+            this.#imports[key].default = value.default
+          }
+
+          if (value.browser) {
+            this.#imports[key].browser = value.browser
+          }
+        }
+      }
+    }
+
+    if (
+      this.#info.browser &&
+      !Array.isArray(this.#info.browser) &&
+      typeof this.#info.browser === 'object'
+    ) {
+      for (const key in this.#info.browser) {
+        const value = this.#info.browser[key]
+
+        if (typeof value === 'string') {
+          if (key.startsWith('.')) {
+            if (this.#exports[key]) {
+              this.#exports[key].browser = value
+            }
+          } else {
+            this.#imports[key] ??= { }
+            this.#imports[key].browser = value
+          }
+        } else if (value && typeof value === 'object') {
+          this.#imports[key] ??= {}
+          if (value.default) {
+            this.#imports[key].default = value.default
+          }
+
+          if (value.browser) {
+            this.#imports[key].browser = value.browser
+          }
+        }
+      }
+    }
+
+    if (this.#type === 'module') {
+      if (this.#info.type !== 'module' && this.entry) {
+        const source = this.loader.load(this.entry, origin, options).text
+        if (!detectESM(source)) {
+          this.#type = 'commonjs'
+        }
+      }
+    }
+
     return true
   }
 
@@ -889,6 +1002,13 @@ export class Package {
     const manifest = options?.manifest ?? DEFAULT_PACKAGE_MANIFEST_FILE_NAME
     const extname = path.extname(pathname)
     const type = options?.type ?? this.type
+
+    if (info?.addon === true) {
+      throw new ModuleNotFoundError(
+        `Cannot find module '${pathname}' (requested module is a Node.js addon)`,
+        options?.children?.map?.((mod) => mod.id)
+      )
+    }
 
     let origin = this.id
 
@@ -1061,6 +1181,19 @@ export class Package {
       }
 
       return id
+    }
+  }
+
+  /**
+   * @ignore
+   */
+  [Symbol.for('socket.util.inspect.custom')] () {
+    if (this.name && this.version) {
+      return `Package '(${this.name}@${this.version}') { }`
+    } else if (this.name) {
+      return `Package ('${this.name}') { }`
+    } else {
+      return 'Package { }'
     }
   }
 }
