@@ -86,23 +86,11 @@ namespace SSC {
   }
 
   const JSON::Object ServiceWorkerContainer::Registration::json () const {
-    String stateString = "registered";
-
-    if (this->state == Registration::State::Installing) {
-      stateString = "installing";
-    } else if (this->state == Registration::State::Installed) {
-      stateString = "installed";
-    } else if (this->state == Registration::State::Activating) {
-      stateString = "activating";
-    } else if (this->state == Registration::State::Activated) {
-      stateString = "activated";
-    }
-
     return JSON::Object::Entries {
       {"id", std::to_string(this->id)},
       {"scriptURL", this->scriptURL},
       {"scope", this->options.scope},
-      {"state", stateString}
+      {"state", this->getStateString()}
     };
   }
 
@@ -124,7 +112,11 @@ namespace SSC {
   const String ServiceWorkerContainer::Registration::getStateString () const {
     String stateString = "none";
 
-    if (this->state == Registration::State::Registered) {
+    if (this->state == Registration::State::Error) {
+      stateString = "error";
+    } else if (this->state == Registration::State::Registering) {
+      stateString = "registering";
+    } else if (this->state == Registration::State::Registered) {
       stateString = "registered";
     } else if (this->state == Registration::State::Installing) {
       stateString = "installing";
@@ -677,9 +669,15 @@ namespace SSC {
     if (scope.size() > 0 && this->registrations.contains(scope)) {
       auto& registration = this->registrations.at(scope);
       if (
-        (registration.options.scheme == "*" || registration.options.scheme == request.scheme) &&
         !registration.isActive() &&
-        registration.state == Registration::State::Registered
+        (
+          registration.options.scheme == "*" ||
+          registration.options.scheme == request.scheme
+        ) &&
+        (
+          registration.state == Registration::State::Registering ||
+          registration.state == Registration::State::Registered
+        )
       ) {
         this->core->dispatchEventLoop([this, request, callback, &registration]() {
           const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
