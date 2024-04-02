@@ -1,7 +1,6 @@
 import { DEFAULT_PACKAGE_PREFIX, Package } from './package.js'
 import { getBuiltin, isBuiltin } from './builtins.js'
 import { ModuleNotFoundError } from '../errors.js'
-import { Loader } from './loader.js'
 import location from '../location.js'
 
 /**
@@ -93,7 +92,7 @@ export class Meta {
  * @return {RequireFunction}
  */
 export function createRequire (options) {
-  const { builtins, module } = options
+  const { builtins, headers, module, prefix } = options
   const { cache, loaders, main } = module
 
   // non-standard 'require.meta' object
@@ -183,10 +182,6 @@ export function createRequire (options) {
       return getBuiltin(input, { builtins: options?.builtins ?? builtins })
     }
 
-    if (cache[input]) {
-      return getDefaultExports(cache[input].exports)
-    }
-
     const resolved = resolve(input, {
       type: module.package.type,
       ...options
@@ -196,22 +191,31 @@ export function createRequire (options) {
       return getDefaultExports(cache[resolved].exports)
     }
 
-    const child = module.createModule(resolved, {
-      ...options,
-      package: input.startsWith('.') || input.startsWith('/')
-        ? module.package
-        : new Package(resolved, {
-          loader: new Loader(module.loader),
+    let child = null
+
+    if (input.startsWith('.') || input.startsWith('/')) {
+      child = module.createModule(resolved, {
+        ...options,
+        loader: { headers, origin: module.package.loader.origin },
+        package: module.package
+      })
+    } else {
+      const origin = new URL('..', module.package.loader.origin)
+      child = module.createModule(resolved, {
+        loader: { headers, origin },
+        ...options,
+        package: Package.load(input, {
+          loader: { headers, origin },
+          prefix,
           ...options
         })
-    })
+      })
+    }
 
     if (options?.cache === false) {
       delete cache[resolved]
-      delete cache[input]
     } else {
       cache[resolved] = child
-      cache[input] = child
     }
 
     if (child.load(options)) {
@@ -273,12 +277,12 @@ export function createRequire (options) {
       } else { // named module
         const moduleName = Package.Name.from(input)
         const pathname = moduleName.pathname.replace(moduleName.name, '.')
-        const manifest = new Package(moduleName.name, {
-          loader: new Loader(origin)
+        const pkg = new Package(moduleName.name, {
+          loader: { headers, origin }
         })
 
         try {
-          return manifest.resolve(pathname, {
+          return pkg.resolve(pathname, {
             type: module.package.type,
             ...options
           })
@@ -330,9 +334,9 @@ export function createRequire (options) {
 
     const results = Array
       .from(origins)
-      .map((origin) => origin.endsWith(options.prefix)
+      .map((origin) => origin.endsWith(prefix)
         ? new URL(origin)
-        : new URL(options.prefix, origin)
+        : new URL(prefix, origin)
       )
       .map((url) => url.href)
 
