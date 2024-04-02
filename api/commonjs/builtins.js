@@ -17,12 +17,12 @@ import * as assert from '../assert.js'
 import * as buffer from '../buffer.js'
 // eslint-disable-next-line
 import * as child_process from '../child_process.js'
-import * as console from '../console.js'
+import console from '../console.js'
 import * as constants from '../constants.js'
 import * as crypto from '../crypto.js'
 import * as dgram from '../dgram.js'
 import * as dns from '../dns.js'
-import * as events from '../events.js'
+import events from '../events.js'
 import * as extension from '../extension.js'
 import * as fs from '../fs.js'
 import * as gc from '../gc.js'
@@ -63,8 +63,12 @@ export const builtins = {}
  * @param {object} exports
  */
 export function define (name, exports, copy = true) {
-  if (copy) {
-    builtins[name] = { ...exports }
+  if (exports && typeof exports === 'object') {
+    if (copy) {
+      builtins[name] = { ...exports }
+    } else {
+      builtins[name] = exports
+    }
   } else {
     builtins[name] = exports
   }
@@ -89,7 +93,7 @@ define('async_hooks', {
 define('application', application)
 define('assert', assert, false)
 define('buffer', buffer, false)
-define('console', console)
+define('console', console, false)
 define('constants', constants)
 // eslint-disable-next-line
 define('child_process', child_process)
