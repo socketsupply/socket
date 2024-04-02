@@ -430,7 +430,10 @@ export function patchGlobalConsole (globalConsole, options = {}) {
   return globalConsole
 }
 
-export default new Console({
+export default Object.assign(new Console({
   postMessage,
   console: patchGlobalConsole(globalConsole)
+}), {
+  Console,
+  globalConsole
 })
