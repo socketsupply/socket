@@ -103,7 +103,14 @@ async function onMessage (event) {
     })
 
     try {
+      globalThis.RUNTIME_WORKER_LOCATION = scriptURL
+      state.serviceWorker.state = 'registering'
+      await state.notify('serviceWorker')
+
+      // import module, which could be ESM, CommonJS,
+      // or a simple ServiceWorker
       const result = await import(scriptURL)
+
       if (typeof module.exports === 'function') {
         module.exports = {
           default: module.exports
@@ -111,6 +118,9 @@ async function onMessage (event) {
       } else {
         Object.assign(module.exports, result)
       }
+
+      state.serviceWorker.state = 'registered'
+      await state.notify('serviceWorker')
     } catch (err) {
       console.error(err)
       globalThis.reportError(err)
