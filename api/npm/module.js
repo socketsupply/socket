@@ -5,7 +5,7 @@ import location from '../location.js'
  * @typedef {{
  * package: Package
  * origin: string,
- * type: 'commonjs' | 'module',,
+ * type: 'commonjs' | 'module',
  * url: string
  * }} ModuleResolution
  */
@@ -14,7 +14,7 @@ import location from '../location.js'
  * Resolves an NPM module for a given `specifier` and an optional `origin`.
  * @param {string|URL} specifier
  * @param {string|URL=} [origin]
- * @param {{ prefix?: string }} [options]
+ * @param {{ prefix?: string, type?: 'commonjs' | 'module' }} [options]
  * @return {ModuleResolution|null}
  */
 export async function resolve (specifier, origin = null, options = null) {
@@ -39,6 +39,7 @@ export async function resolve (specifier, origin = null, options = null) {
 
   const prefix = options?.prefix ?? DEFAULT_PACKAGE_PREFIX
   const name = Package.Name.from(specifier, { origin })
+  const type = options?.type ?? 'module' // prefer 'module' in this context
   const pkg = new Package(name.value, {
     loader: { origin }
   })
@@ -46,11 +47,14 @@ export async function resolve (specifier, origin = null, options = null) {
   const pathname = name.pathname.replace(name.value, '.') || '.'
 
   try {
+    // will call `pkg.load()` internally
+    // can throw `ModuleNotFoundError`
+    const url = pkg.resolve(pathname, { prefix, type })
     return {
       package: pkg,
       origin: pkg.origin,
       type: pkg.type,
-      url: pkg.resolve(pathname, { prefix })
+      url
     }
   } catch (err) {
     if (err?.code === 'MODULE_NOT_FOUND') {
