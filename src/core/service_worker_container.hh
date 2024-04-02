@@ -33,6 +33,7 @@ namespace SSC {
         enum class State {
           None,
           Error,
+          Registering,
           Registered,
           Installing,
           Installed,
