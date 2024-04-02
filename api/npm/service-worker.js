@@ -10,11 +10,23 @@ export async function onRequest (request, env, ctx) {
 
   const url = new URL(request.url)
   const origin = url.origin.replace('npm://', 'socket://')
+  const referer = request.headers.get('referer')
   const specifier = url.pathname.replace('/socket/npm/', '')
   const importOrigins = url.searchParams.getAll('origin').concat(url.searchParams.getAll('origin[]'))
 
   let resolved = null
   let origins = []
+
+  if (referer && !referer.startsWith('blob:')) {
+    if (URL.canParse(referer, origin)) {
+      const refererURL = new URL(referer, origin)
+      if (refererURL.href.endsWith('/')) {
+        importOrigins.push(refererURL.href)
+      } else {
+        importOrigins.push(new URL('./', refererURL).href)
+      }
+    }
+  }
 
   for (const value of importOrigins) {
     if (value.startsWith('npm:')) {
@@ -92,8 +104,13 @@ export async function onRequest (request, env, ctx) {
 
   if (resolved.type === 'commonjs') {
     const proxy = `
-      import { Module } from 'socket:module'
-      const exports = Module.main.require('${resolved.url}')
+      import { createRequire } from 'socket:module'
+      const require = createRequire('${resolved.origin}', {
+        headers: {
+          'Runtime-ServiceWorker-Fetch-Mode': 'ignore'
+        }
+      })
+      const exports = require('${resolved.url}')
       export default exports?.default ?? exports ?? null
     `
 
