@@ -427,7 +427,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: ssc_artifacts_linux
+        name: ssc_artifacts_windows
         path: /Users/runner/.local/share/socket/
         retention-days: 1
 
