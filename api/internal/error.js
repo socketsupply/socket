@@ -6,7 +6,7 @@ import { CallSite, createCallSites } from './callsite.js'
  */
 export const DEFAULT_ERROR_STACK_TRACE_LIMIT = 10
 
-const DefaultPlatformError = globalThis.Error
+export const DefaultPlatformError = globalThis.Error
 
 /**
  * @ignore
