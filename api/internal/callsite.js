@@ -310,7 +310,7 @@ export class StackFrame {
 }
 
 // private symbol for `CallSiteList` previous reference
-const $previous = Symbol('previos')
+const $previous = Symbol('previous')
 
 /**
  * A v8 compatible interface and container for call site information.
@@ -900,7 +900,7 @@ export class CallSiteList extends Array {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     return this.toString()
   }
 }
