@@ -1,5 +1,5 @@
 /**
- * @module AsyncContext
+ * @module Async.AsyncContext
  *
  * Async Context for JavaScript based on the TC39 proposal.
  *
@@ -67,6 +67,8 @@ export class FrozenRevert {
    * @return {Mapping}
    */
   restore (unused = null) {
+    // eslint-disable-next-line
+    void unused;
     return this.#mapping
   }
 }
@@ -289,7 +291,6 @@ export class Storage {
    * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
    * or `Revert` which can restore the storage state to the state at
    * the time of the snapshot.
-   * @template T
    * @return {FrozenRevert}
    */
   static snapshot () {
