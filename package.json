@@ -21,6 +21,7 @@
     "standard": "^17.1.0",
     "typescript": "5.3.2",
     "urlpattern-polyfill": "^9.0.0",
+    "web-streams-polyfill": "^4.0.0",
     "whatwg-fetch": "^3.6.17",
     "whatwg-url": "^13.0.0"
   },
@@ -35,12 +36,12 @@
       "/api/url/urlpattern/urlpattern.js",
       "/api/url/url/url.js",
       "/api/fetch/fetch.js",
+      "/api/internal/streams/web.js",
       "/npm/packages/@socketsupply/socket-node/index.cjs"
     ]
   },
   "workspaces": [
     "npm/packages/@socketsupply/socket-node"
   ],
-  "version": "0.0.0",
-  "dependencies": {}
+  "version": "0.0.0"
 }
