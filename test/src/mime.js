@@ -99,7 +99,7 @@ test('mime.lookup', async (t) => {
     const results = await mime.lookup(ext)
     const mimes = results.map((result) => result.mime)
     const i = intersection(mimes, expect)
-    t.ok(i.length > 0, `mime.lookup returns resuls for ${ext}`)
+    t.ok(i.length > 0, `mime.lookup returns results for ${ext}`)
     for (const result of results) {
       expect.includes(result)
     }
@@ -113,6 +113,9 @@ test('verify internal database content type prefix', async (t) => {
 
     for (const entry of database.entries()) {
       allContentTypesStartWithDatabaseName = entry[1].startsWith(database.name + '/')
+      if (!allContentTypesStartWithDatabaseName) {
+        break
+      }
     }
 
     t.ok(
