@@ -1,8 +1,11 @@
 import { Deferred } from '../async.js'
 import { Context } from './context.js'
 import application from '../application.js'
+import location from '../location.js'
 import state from './state.js'
 import ipc from '../ipc.js'
+
+export const textEncoder = new TextEncoderStream()
 
 export const FETCH_EVENT_TIMEOUT = (
   // TODO(@jwerle): document this
@@ -263,8 +266,21 @@ export class FetchEvent extends ExtendableEvent {
           return
         }
 
-        const arrayBuffer = await response.arrayBuffer()
+        let arrayBuffer = null
+
         const statusCode = response.status ?? 200
+
+        if (statusCode >= 300 && statusCode < 400 && response.headers.has('location')) {
+          const redirectURL = new URL(response.headers.get('location'), location.origin)
+          const redirectSource = (
+            `<meta http-equiv="refresh" content="0; url='${redirectURL.href}'" />`
+          )
+
+          arrayBuffer = textEncoder.encode(redirectSource).buffer
+        } else {
+          arrayBuffer = await response.arrayBuffer()
+        }
+
         const headers = Array.from(response.headers.entries())
           .map((entry) => entry.join(':'))
           .concat('Runtime-Response-Source:serviceworker')

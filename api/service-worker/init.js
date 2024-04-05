@@ -50,14 +50,32 @@ export async function onRegister (event) {
   })
 
   workers.set(info.hash, worker)
-  worker.addEventListener('message', onHandShakeMessage)
+  worker.addEventListener('message', onMessage)
 
-  async function onHandShakeMessage (event) {
+  async function onMessage (event) {
     if (event.data.__service_worker_ready === true) {
       worker.postMessage({ register: info })
     } else if (event.data.__service_worker_registered?.id === info.id) {
       worker.postMessage({ install: info })
-      worker.removeEventListener('message', onHandShakeMessage)
+    } else if (Array.isArray(event.data.__service_worker_debug)) {
+      const log = document.querySelector('#log')
+      if (log) {
+        for (const entry of event.data.__service_worker_debug) {
+          const lines = entry.split('\n')
+          const span = document.createElement('span')
+          for (const line of lines) {
+            if (!line) continue
+            const item = document.createElement('code')
+            item.innerHTML = line
+              .replace(/\s/g, '&nbsp;')
+              .replace(/(Error|TypeError|SyntaxError|ReferenceError|RangeError)/g, '<span class="red">$1</span>')
+            span.appendChild(item)
+          }
+          log.appendChild(span)
+        }
+
+        log.scrollTop = log.scrollHeight
+      }
     }
   }
 }

@@ -332,16 +332,16 @@ export class ServiceWorkerContainer extends EventTarget {
     let scope = clientURL
     let currentScope = null
 
-    if (scope) {
-      try {
-        scope = new URL(scope, globalThis.location.href).pathname
-      } catch {}
+    if (scope && URL.canParse(scope, globalThis.location.href)) {
+      scope = new URL(scope, globalThis.location.href).pathname
     }
 
-    if (globalThis.location.protocol === 'blob:') {
+    if (globalThis.isWorkerScope) {
+      currentScope = new URL('.', globalThis.RUNTIME_WORKER_LOCATION).pathname
+    } else if (globalThis.location.protocol === 'blob:') {
       currentScope = new URL('.', globalThis.location.pathname).pathname
     } else {
-      currentScope = new URL('.', globalThis.location.href).pathname
+      currentScope = globalThis.location.pathname
     }
 
     if (!scope) {
@@ -435,12 +435,16 @@ export class ServiceWorkerContainer extends EventTarget {
     internal.get(this).isRegistered = true
 
     const info = result.data
-    const url = new URL(scriptURL)
-    const container = this
 
-    if (!info) {
+    if (!info?.registration) {
       return // registration likely never completed
     }
+
+    const url = 'blob:'.startsWith(globalThis.location.origin)
+      ? new URL(info.registration.scope, new URL(globalThis.location.origin).pathname)
+      : new URL(info.registration.scope, globalThis.location.origin)
+
+    const container = this
 
     if (info?.registration && url.pathname.startsWith(options.scope)) {
       state.serviceWorker.state = info.registration.state.replace('registered', 'installing')
