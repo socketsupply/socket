@@ -2666,7 +2666,7 @@ static void initRouterTable (Router *router) {
 
     for (const auto& entry : router->core->serviceWorker.registrations) {
       const auto& registration = entry.second;
-      if (registration.options.scope.starts_with(scope)) {
+      if (scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
           JSON::Object::Entries {
             {"registration", registration.json()},
