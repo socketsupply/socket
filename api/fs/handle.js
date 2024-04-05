@@ -439,9 +439,13 @@ export class FileHandle extends EventEmitter {
       return this[kOpening].reject(result.err)
     }
 
-    this.fd = result.data.fd
-
-    fds.set(this.id, this.fd, 'file')
+    if (result.data?.fd) {
+      this.fd = result.data.fd
+      fds.set(this.id, this.fd, 'file')
+    } else {
+      this.fd = id
+      fds.set(this.id, this.id, 'file')
+    }
 
     this[kOpening].resolve(true)
 

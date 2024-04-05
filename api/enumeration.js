@@ -117,7 +117,7 @@ export class Enumeration extends Set {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     return this.inspect()
   }
 
