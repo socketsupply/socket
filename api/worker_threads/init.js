@@ -2,7 +2,7 @@ import vm, { getTransferables } from '../vm.js'
 import { Writable, Readable } from '../stream.js'
 import process, { env } from '../process.js'
 
-export const SHARE_ENV = Symbol.for('socket.worker_threads.SHARE_ENV')
+export const SHARE_ENV = Symbol.for('socket.runtime.worker_threads.SHARE_ENV')
 export const isMainThread = Boolean(
   globalThis.window &&
   globalThis.top === globalThis.window &&
