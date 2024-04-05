@@ -6,13 +6,8 @@
  * import { Path } from 'socket:path'
  * ```
  */
+import { resolve as resolveURL, URL, URLPattern } from '../url.js'
 import location from '../location.js'
-import {
-  resolve as resolveURL,
-  parse as parseURL,
-  URL,
-  URLPattern
-} from '../url.js'
 
 const windowsDriveRegex = /^[a-z]:/i
 const windowsDriveAndSlashesRegex = /^([a-z]:(\\|\/\/))/i
@@ -170,32 +165,28 @@ export function join (options, ...components) {
   const { sep } = options
   const queries = []
   const resolved = []
-  const isAbsolute = components[0].trim().startsWith(sep)
+  const isAbsolute = (
+    URL.canParse(components[0]) ||
+    components[0].trim().startsWith(sep)
+  )
 
-  let protocol = null
-  let origin = null
+  let url = null
 
   while (components.length) {
-    let component = String(components.shift() || '')
-    const url = parseURL(component, { strict: true }) || component
+    const component = components.shift()
 
-    if (url.protocol) {
-      if (!protocol) {
-        protocol = url.protocol
-        origin = url.origin
-      }
-
-      component = url.pathname
-    }
-
-    const parts = component.split(sep).filter(Boolean)
-    while (parts.length) {
-      queries.push(parts.shift())
+    if (!url && URL.canParse(component)) {
+      url = new URL(component)
+      queries.push(...url.pathname.split('/'))
+    } else {
+      queries.push(...String(component).split('/'))
     }
   }
 
   for (const query of queries) {
-    if (query === '..' && resolved.length > 1 && resolved[0] !== '..') {
+    if (!query) {
+      continue
+    } else if (query === '..' && resolved.length > 1 && resolved[0] !== '..') {
       resolved.pop()
     } else if (query !== '.') {
       if (query.startsWith(sep)) {
@@ -210,13 +201,15 @@ export function join (options, ...components) {
 
   const joined = resolved.join(sep)
 
-  if (origin) {
-    return new URL(joined, origin).href
+  if (url) {
+    return new URL(joined, url.origin).href
   }
 
-  return isAbsolute
-    ? sep + joined
-    : joined
+  if (isAbsolute) {
+    return sep + joined
+  }
+
+  return joined
 }
 
 /**
