@@ -13,7 +13,7 @@ import _async, {
 
 // eslint-disable-next-line
 import * as application from '../application.js'
-import * as assert from '../assert.js'
+import assert from '../assert.js'
 import * as buffer from '../buffer.js'
 // eslint-disable-next-line
 import * as child_process from '../child_process.js'
@@ -21,6 +21,7 @@ import console from '../console.js'
 import * as constants from '../constants.js'
 import * as crypto from '../crypto.js'
 import * as dgram from '../dgram.js'
+import * as diagnostics from '../diagnostics.js'
 import * as dns from '../dns.js'
 import events from '../events.js'
 import * as extension from '../extension.js'
@@ -37,14 +38,14 @@ import * as os from '../os.js'
 import { posix as path } from '../path.js'
 import process from '../process.js'
 import * as querystring from '../querystring.js'
-import * as stream from '../stream.js'
+import stream from '../stream.js'
 // eslint-disable-next-line
 import * as string_decoder from '../string_decoder.js'
 import * as test from '../test.js'
 import * as timers from '../timers.js'
 import * as tty from '../tty.js'
 import * as url from '../url.js'
-import * as util from '../util.js'
+import util from '../util.js'
 import * as vm from '../vm.js'
 import * as window from '../window.js'
 // eslint-disable-next-line
@@ -66,6 +67,7 @@ export function define (name, exports, copy = true) {
   if (exports && typeof exports === 'object') {
     if (copy) {
       builtins[name] = { ...exports }
+      delete builtins[name].default
     } else {
       builtins[name] = exports
     }
@@ -99,9 +101,10 @@ define('constants', constants)
 define('child_process', child_process)
 define('crypto', crypto)
 define('dgram', dgram)
+define('diagnostics_channel', diagnostics)
 define('dns', dns)
 define('dns/promises', dns.promises)
-define('events', events)
+define('events', events, false)
 define('extension', extension)
 define('fs', fs)
 define('fs/promises', fs.promises)
@@ -119,7 +122,7 @@ define('path', path)
 define('perf_hooks', { performance: globalThis.performance })
 define('process', process, false)
 define('querystring', querystring)
-define('stream', stream)
+define('stream', stream, false)
 define('stream/web', stream.web)
 // eslint-disable-next-line
 define('string_decoder', string_decoder)
@@ -129,12 +132,16 @@ define('timers', timers)
 define('timers/promises', timers.promises)
 define('tty', tty)
 define('util', util)
+define('util/types', util.types)
 define('url', url)
-define('v8', {})
 define('vm', vm)
 define('window', window)
 // eslint-disable-next-line
 define('worker_threads', worker_threads)
+
+// unsupported, but stubbed as entries
+define('v8', {})
+define('zlib', {})
 
 /**
  * Known runtime specific builtin modules.
