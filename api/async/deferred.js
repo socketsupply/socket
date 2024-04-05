@@ -1,6 +1,6 @@
 /* global ErrorEvent */
 /**
- * @module AsyncDeferred
+ * @module Async.Deferred
  *
  * Manage deferred promise resolution.
  */
@@ -47,6 +47,9 @@ export class DeferredRejectEvent extends ErrorEvent {
  * A utility class for creating deferred promises.
  */
 export class Deferred extends EventTarget {
+  /**
+   * @type {Promise?}
+   */
   #promise = null
 
   /**
@@ -63,11 +66,9 @@ export class Deferred extends EventTarget {
 
   /**
    * `Deferred` class constructor.
-   * Creates a new Deferred instance.
    */
   constructor () {
     super()
-
     this.#promise = new Promise((resolve, reject) => {
       this.resolve = (value) => {
         try {
