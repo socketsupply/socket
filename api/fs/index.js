@@ -130,7 +130,7 @@ export function access (path, mode, callback) {
  * @param {string | Buffer | URL} path
  * @param {string?} [mode = F_OK(0)]
  */
-export function accessSync (path, mode) {
+export function accessSync (path, mode = constants.F_OK) {
   path = normalizePath(path)
   const result = ipc.sendSync('fs.access', { path, mode })
 
@@ -1292,6 +1292,6 @@ for (const key in exports) {
   const value = exports[key]
   if (key in promises && isFunction(value) && isFunction(promises[key])) {
     value[Symbol.for('nodejs.util.promisify.custom')] = promises[key]
-    value[Symbol.for('socket.util.promisify.custom')] = promises[key]
+    value[Symbol.for('socket.runtime.util.promisify.custom')] = promises[key]
   }
 }

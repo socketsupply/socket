@@ -359,7 +359,7 @@ export const TIMEOUT = 32 * 1000
  * Symbol for the `ipc.debug.enabled` property
  * @ignore
  */
-export const kDebugEnabled = Symbol.for('ipc.debug.enabled')
+export const kDebugEnabled = Symbol.for('socket.runtime.ipc.debug.enabled')
 
 /**
  * Parses `seq` as integer value

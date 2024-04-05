@@ -26,11 +26,9 @@
  * @module Stream
  */
 import { EventEmitter } from './events.js'
-import * as exports from './stream.js'
 import web from './stream/web.js'
 
 export { web }
-export default exports
 
 const STREAM_DESTROYED = new Error('Stream was destroyed')
 const PREMATURE_CLOSE = new Error('Premature close')
@@ -1195,6 +1193,19 @@ export function getStreamError (stream) {
 export function isReadStreamx (stream) {
   return isStreamx(stream) && stream.readable
 }
+
+export default Object.assign(Stream, {
+  web,
+  Readable,
+  Writable,
+  Duplex,
+  Transform,
+  PassThrough,
+  pipeline: Object.assign(pipeline, {
+    [Symbol.for('nodejs.util.promisify.custom')]: pipelinePromise,
+    [Symbol.for('socket.runtime.util.promisify.custom')]: pipelinePromise
+  })
+})
 
 function isTypedArray (data) {
   return typeof data === 'object' && data !== null && typeof data.byteLength === 'number'
