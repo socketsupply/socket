@@ -60,13 +60,13 @@ sleep.sync = function (timeout) {
 }
 
 setTimeout[Symbol.for('nodejs.util.promisify.custom')] = promises.setTimeout
-setTimeout[Symbol.for('socket.util.promisify.custom')] = promises.setTimeout
+setTimeout[Symbol.for('socket.runtime.util.promisify.custom')] = promises.setTimeout
 
 setInterval[Symbol.for('nodejs.util.promisify.custom')] = promises.setInterval
-setInterval[Symbol.for('socket.util.promisify.custom')] = promises.setInterval
+setInterval[Symbol.for('socket.runtime.util.promisify.custom')] = promises.setInterval
 
 setImmediate[Symbol.for('nodejs.util.promisify.custom')] = promises.setImmediate
-setImmediate[Symbol.for('socket.util.promisify.custom')] = promises.setImmediate
+setImmediate[Symbol.for('socket.runtime.util.promisify.custom')] = promises.setImmediate
 
 export default {
   platform,

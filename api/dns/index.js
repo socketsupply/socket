@@ -111,6 +111,6 @@ for (const key in exports) {
   const value = exports[key]
   if (key in promises && isFunction(value) && isFunction(promises[key])) {
     value[Symbol.for('nodejs.util.promisify.custom')] = promises[key]
-    value[Symbol.for('socket.util.promisify.custom')] = promises[key]
+    value[Symbol.for('socket.runtime.util.promisify.custom')] = promises[key]
   }
 }

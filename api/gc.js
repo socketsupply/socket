@@ -131,7 +131,7 @@ export class Finalizer {
 }
 
 /**
- * Track `object` ref to call `Symbol.for('gc.finalize')` method when
+ * Track `object` ref to call `Symbol.for('socket.gc.finalize')` method when
  * environment garbage collects object.
  * @param {object} object
  * @return {boolean}
@@ -161,7 +161,7 @@ export async function ref (object, ...args) {
 }
 
 /**
- * Stop tracking `object` ref to call `Symbol.for('gc.finalize')` method when
+ * Stop tracking `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
  * environment garbage collects object.
  * @param {object} object
  * @return {boolean}

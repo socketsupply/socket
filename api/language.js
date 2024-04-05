@@ -886,7 +886,7 @@ export class LanguageQueryResult {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     return this.inspect()
   }
 
@@ -968,7 +968,7 @@ export class LanguageDescription {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     return this.inspect()
   }
 
