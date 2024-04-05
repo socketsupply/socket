@@ -5,8 +5,10 @@ import { STATUS_CODES } from '../http.js'
 import { Environment } from './env.js'
 import { Deferred } from '../async.js'
 import { Buffer } from '../buffer.js'
+import globals from '../internal/globals.js'
 import process from '../process.js'
 import clients from './clients.js'
+import debug from './debug.js'
 import hooks from '../hooks.js'
 import state from './state.js'
 import path from '../path.js'
@@ -25,6 +27,9 @@ const events = new Set()
 hooks.onReady(onReady)
 globalThis.addEventListener('message', onMessage)
 
+globals.register('ServiceWorker.state', state)
+globals.register('ServiceWorker.events', events)
+
 function onReady () {
   globalThis.postMessage(SERVICE_WORKER_READY_TOKEN)
 }
@@ -40,10 +45,11 @@ async function onMessage (event) {
     state.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
+    globals.register('ServiceWorker.module', module)
 
     Module.main.addEventListener('error', (event) => {
       if (event.error) {
-        globalThis.reportError(event.error)
+        debug(event.error)
       }
     })
 
@@ -122,7 +128,7 @@ async function onMessage (event) {
       state.serviceWorker.state = 'registered'
       await state.notify('serviceWorker')
     } catch (err) {
-      globalThis.reportError(err)
+      debug(err)
       state.serviceWorker.state = 'error'
       await state.notify('serviceWorker')
       return
@@ -169,7 +175,7 @@ async function onMessage (event) {
         try {
           await state.activate(event.context.env, event.ontext)
         } catch (err) {
-          state.reportError(err)
+          debug(err)
         }
       })
     }
@@ -179,7 +185,7 @@ async function onMessage (event) {
         try {
           await state.install(event.context.env, event.context)
         } catch (err) {
-          state.reportError(err)
+          debug(err)
         }
       })
     }
@@ -210,7 +216,7 @@ async function onMessage (event) {
             event.context
           )
         } catch (err) {
-          state.reportError(err)
+          debug(err)
           response = new Response(util.inspect(err), {
             statusText: err.message || STATUS_CODES[500],
             status: 500

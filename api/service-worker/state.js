@@ -1,5 +1,6 @@
 /* global reportError */
 import application from '../application.js'
+import debug from './debug.js'
 import ipc from '../ipc.js'
 
 export const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
@@ -25,6 +26,13 @@ const descriptors = {
       channel.postMessage({ [type]: this[type] })
 
       if (this.id && type === 'serviceWorker') {
+        debug(
+          '[%s]: ServiceWorker (%s) updated state to "%s"',
+          this.serviceWorker.scriptURL,
+          this.id,
+          this.serviceWorker.state
+        )
+
         await ipc.request('serviceWorker.updateState', {
           id: this.id,
           scope: this.serviceWorker.scope,
