@@ -1,5 +1,6 @@
 import { Deferred } from '../async.js'
 import { Buffer } from '../buffer.js'
+import process from '../process.js'
 import assert from '../assert.js'
 
 /**
@@ -96,24 +97,31 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
   }
 
   /**
+   * Handles the 'install' service worker event.
    * @ignore
-   * @param {import('../service-worker/events.js').ExtendableEvent}
+   * @param {import('../service-worker/events.js').ExtendableEvent} event
    */
   async onInstall (event) {
+    // eslint-disable-next-line
+    void event;
     globalThis.skipWaiting()
     this.dispatchEvent(new Event('install'))
   }
 
   /**
+   * Handles the 'activate' service worker event.
    * @ignore
-   * @param {import('../service-worker/events.js').ExtendableEvent}
+   * @param {import('../service-worker/events.js').ExtendableEvent} event
    */
   async onActivate (event) {
+    // eslint-disable-next-line
+    void event;
     globalThis.clients.claim()
     this.dispatchEvent(new Event('activate'))
   }
 
   /**
+   * Handles the 'fetch' service worker event.
    * @ignore
    * @param {import('../service-worker/events.js').FetchEvent}
    */
@@ -124,12 +132,21 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
 
     const url = new URL(event.request.url)
 
-    if (this.server.port !== 0 && url.port !== this.server.port) {
-      return
+    // allow port to be ignored in request
+    // this could be dangerous as it would lead to a race in request responses
+    // if there are multiple HTTP server instances in a single service worker
+    if (!process.env.SOCKET_RUNTIME_HTTP_ADAPTER_SERVICE_WORKER_IGNORE_PORT_CHECK) {
+      if (this.server.port !== 0 && url.port !== this.server.port) {
+        return
+      }
     }
 
-    if (this.server.host && url.hostname !== this.server.host) {
-      return
+    if (this.server.host !== '0.0.0.0' && this.server.host !== '*') {
+      // the host MUST be checked and validated if not configured for
+      // ALL interfaces or uses a special wildcard token ('*')
+      if (this.server.host && url.hostname !== this.server.host) {
+        return
+      }
     }
 
     if (this.server.connections.length >= this.server.maxConnections) {
