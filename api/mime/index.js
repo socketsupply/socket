@@ -1,3 +1,4 @@
+/* global XMLHttpRequest */
 /**
  * A container for a database lookup query.
  */
@@ -90,14 +91,60 @@ export class Database {
   }
 
   /**
+   * Loads database MIME entries synchronously into internal map.
+   */
+  loadSync () {
+    if (this.map.size === 0) {
+      const request = new XMLHttpRequest()
+
+      request.open('GET', this.url, false)
+      request.send(null)
+
+      let responseText = null
+
+      try {
+        // @ts-ignore
+        responseText = request.responseText // can throw `InvalidStateError` error
+      } catch {
+        responseText = request.response
+      }
+
+      const json = JSON.parse(responseText)
+
+      for (const [key, value] of Object.entries(json)) {
+        this.map.set(key, value)
+        this.index.set(value.toLowerCase(), key.toLowerCase())
+      }
+    }
+  }
+
+  /**
    * Lookup MIME type by name or content type
    * @param {string} query
-   * @return {Promise<DatabaseQueryResult>}
+   * @return {Promise<DatabaseQueryResult[]>}
    */
   async lookup (query) {
-    query = query.toLowerCase()
-
     await this.load()
+    return this.query(query)
+  }
+
+  /**
+   * Lookup MIME type by name or content type synchronously.
+   * @param {string} query
+   * @return {Promise<DatabaseQueryResult[]>}
+   */
+  lookupSync (query) {
+    this.loadSync()
+    return this.query(query)
+  }
+
+  /**
+   * Queries database map and returns an array of results
+   * @param {string} query
+   * @return {DatabaseQueryResult[]}
+   */
+  query (query) {
+    query = query.toLowerCase()
 
     const queryParts = query.split('+')
     const results = []
@@ -215,11 +262,27 @@ export const databases = [
 export async function lookup (query) {
   const results = []
 
-  // preload all databasees
+  // preload all databases
   await Promise.all(databases.map((db) => db.load()))
 
   for (const database of databases) {
     const result = await database.lookup(query)
+    results.push(...result)
+  }
+
+  return results
+}
+
+/**
+ * Look up a MIME type in various MIME databases synchronously.
+ * @param {string} query
+ * @return {DatabaseQueryResult[]}
+ */
+export async function lookupSync (query) {
+  const results = []
+
+  for (const database of databases) {
+    const result = database.lookupSync(query)
     results.push(...result)
   }
 
@@ -306,6 +369,7 @@ export default {
   Database,
   databases,
   lookup,
+  lookupSync,
   MIMEParams,
   MIMEType,
 
