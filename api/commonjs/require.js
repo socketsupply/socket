@@ -172,7 +172,7 @@ export function createRequire (options) {
       return resolvedInput
     }
 
-    if (resolvedInput.includes('\n') || resolvedInput.length > 256) {
+    if (resolvedInput.includes('\n') || resolvedInput.length > 1024) {
       return resolvedInput
     }
 
@@ -188,12 +188,28 @@ export function createRequire (options) {
     })
 
     if (cache[resolved]) {
+      if (cache[resolved].error) {
+        throw cache[resolved].error
+      }
+
       return getDefaultExports(cache[resolved].exports)
     }
 
     let child = null
 
-    if (input.startsWith('.') || input.startsWith('/')) {
+    if (URL.canParse(input)) {
+      const url = new URL(input)
+      const origin = url.origin
+      child = module.createModule(resolved, {
+        loader: { headers, origin },
+        ...options,
+        package: Package.load(resolved, {
+          loader: { headers, origin },
+          prefix,
+          ...options
+        })
+      })
+    } else if (input.startsWith('.') || input.startsWith('/')) {
       child = module.createModule(resolved, {
         ...options,
         loader: { headers, origin: module.package.loader.origin },

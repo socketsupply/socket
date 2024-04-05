@@ -409,14 +409,14 @@ export class Name {
       pathname = path.slice(1)
     }
 
-    if (this.#organization) {
+    if (organization) {
       if (pathname) {
-        return `@${this.organization}/${this.name}/${pathname}`
+        return `@${organization}/${name}/${pathname}`
       }
 
-      return `@${this.organization}/${this.name}`
+      return `@${organization}/${name}`
     } else if (this.isRelative) {
-      return `./${this.#pathname}`
+      return `./${pathname}`
     } else if (pathname) {
       return `${name}/${pathname}`
     }
@@ -472,11 +472,16 @@ export class Dependencies {
       }))
     }
 
-    this.#map.get(name).load({ force: true })
+    this.#map.get(name)
   }
 
-  get (name) {
-    return this.#map.get(name)
+  get (name, options = null) {
+    const dependency = this.#map.get(name)
+    if (dependency) {
+      // try to load
+      dependency.load(options)
+      return dependency
+    }
   }
 
   entries () {
@@ -525,8 +530,11 @@ export class Package {
    * @return {Package}
    */
   static load (name, options = null) {
+    const manifest = options?.manifest ?? DEFAULT_PACKAGE_MANIFEST_FILE_NAME
     const pkg = new this(name, options)
-    pkg.load(options)
+    if (name.endsWith(manifest) || !path.extname(name)) {
+      pkg.load(options)
+    }
     return pkg
   }
 
@@ -1147,7 +1155,7 @@ export class Package {
         }
       }
 
-      if (!extname || !this.loader.extensions.has(extname)) {
+      if (extension && (!extname || !this.loader.extensions.has(extname))) {
         let response = this.loader.load(pathname + extension, origin, options)
         if (response.ok) {
           return interpolateBrowserResolution(response.id)
@@ -1209,7 +1217,7 @@ export class Package {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     if (this.name && this.version) {
       return `Package '(${this.name}@${this.version}') { }`
     } else if (this.name) {
