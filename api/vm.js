@@ -59,6 +59,8 @@ const scripts = new WeakMap()
 
 // A weak mapping of created contexts
 const contexts = new WeakMap()
+// a weak mapping of created global objects
+const globalObjects = new WeakMap()
 
 // a shared context when one is not given
 const sharedContext = createContext({})
@@ -490,7 +492,7 @@ export function wrapFunctionSource (source, options = null) {
   ) {
     source = `(${source})`
   } else if (source.includes('return') || source.includes(';') || source.includes('throw')) {
-    source = `{ ${source} }`
+    source = `{\n${source}\n}`
   } else if (source.includes('\n')) {
     const parts = source.trim().split('\n')
     const last = parts.pop()
@@ -504,11 +506,11 @@ export function wrapFunctionSource (source, options = null) {
       source = parts.concat(`return ${last}`).join('\n')
     }
 
-    source = `{ ${source} }`
+    source = `{\n${source}\n}`
   }
 
   return `
-    with (this) { return ((${options?.async ? 'async' : ''} () => ${source})()) }
+    with (this) { return (${options?.async ? 'async' : ''} (arguments) => ${source})(typeof arguments !== 'undefined' ? arguments : []); }
     //# sourceURL=${options?.filename || 'wrapped-function-source.js'}
   `.trim()
 }
@@ -586,13 +588,10 @@ export const RESERVED_GLOBAL_INTRINSICS = [
   'self',
   'this',
   'window',
-  'globalThis',
-  'globalObject',
   'webkit',
   'chrome',
   'external',
   'postMessage',
-  'globalThis',
   'Infinity',
   'NaN',
   'undefined',
@@ -1511,6 +1510,12 @@ export function getIntrinsicTypeString (value) {
  * @return {Proxy}
  */
 export function createGlobalObject (context, options) {
+  const existing = context && globals.get(context)
+
+  if (existing) {
+    return existing
+  }
+
   const prototype = Object.getPrototypeOf(globalThis)
   const intrinsics = createIntrinsics(options)
   const descriptors = Object.getOwnPropertyDescriptors(intrinsics)
@@ -1686,7 +1691,13 @@ export function createGlobalObject (context, options) {
     }
   }
 
-  return new Proxy(target, handler)
+  const proxy = new Proxy(target, handler)
+
+  if (context) {
+    globalObjects.set(context, proxy)
+  }
+
+  return proxy
 }
 
 /**
@@ -1695,7 +1706,11 @@ export function createGlobalObject (context, options) {
  * @return {boolean}
  */
 export function detectFunctionSourceType (source) {
-  return /^\s*(import|export)\s.*$/gm.test(source) ? 'module' : 'classic'
+  if (/(import\s|export[{|\s]|export\sdefault|(from\s['|"]))\s/.test(source)) {
+    return 'module'
+  }
+
+  return 'classic'
 }
 
 /**
@@ -1748,18 +1763,23 @@ export function compileFunction (source, options = null) {
       wrap: false
     })
   } else {
-    const globalObject = createGlobalObject(options?.context)
+    const globalObject = (
+      globalObjects.get(options?.context) ??
+      createGlobalObject(options?.context)
+    )
+
     const wrappedSource = options?.wrap === false
       ? source
       : wrapFunctionSource(source, options)
 
+    const args = Array.from(options?.scope || []).concat(wrappedSource)
     const compiled = options?.async === true
       // eslint-disable-next-line
-      ? new AsyncFunction(wrappedSource)
+      ? new AsyncFunction(...args)
       // eslint-disable-next-line
-      : new Function(wrappedSource)
+      : new Function(...args)
 
-    return compiled.bind(globalObject)
+    return compiled.bind(globalObject, globalObject)
   }
 }
 
