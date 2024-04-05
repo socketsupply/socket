@@ -254,6 +254,12 @@ class RuntimeWorker extends GlobalWorker {
     globalThis.__args.client.type = 'worker'
     globalThis.__args.client.frameType = 'none'
 
+    Object.defineProperty(globalThis, 'isWorkerScope', {
+      configurable: false,
+      enumerable: false,
+      value: true
+    })
+
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
       configurable: false,
       enumerable: false,
@@ -663,6 +669,13 @@ hooks.onLoad(async () => {
         if (!URL.canParse(scriptURL, globalThis.location.href)) {
           scriptURL = `./${scriptURL}`
         }
+      }
+
+      const url = new URL(scriptURL, globalThis.location.origin)
+      const scope = options.scope ?? new URL('.', url).pathname
+
+      if (!globalThis.location.pathname.startsWith(scope)) {
+        continue
       }
 
       if (registeredServiceWorkers.has(scriptURL)) {
