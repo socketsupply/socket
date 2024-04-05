@@ -488,6 +488,13 @@ export class OutgoingMessage extends Writable {
 
     return this
   }
+
+  /**
+   * @ignore
+   */
+  _implicitHeader () {
+    throw new TypeError('_implicitHeader is not implemented')
+  }
 }
 
 /**
@@ -503,7 +510,7 @@ export class IncomingMessage extends Readable {
   #statusMessage = null
   #statusCode = 0
   #complete = false
-  #headers = new Headers()
+  #headers = {}
   #timeout = null
   #method = 'GET'
   #server = null
@@ -519,8 +526,43 @@ export class IncomingMessage extends Readable {
 
     this.#server = options?.server ?? null
 
-    if (options?.headers) {
-      this.#headers = new Headers(options.headers)
+    if (options?.headers && typeof options?.headers === 'object') {
+      const { headers } = options
+      if (Array.isArray(headers)) {
+        for (const entry of headers) {
+          if (typeof entry === 'string') {
+            const index = entry.indexOf(':')
+            if (index >= 0) {
+              const [key, value] = [
+                entry.slice(0, index + 1),
+                entry.slice(index + 1)
+              ]
+
+              if (key && value) {
+                this.#headers[key.toLowerCase()] = value
+              }
+            }
+          } else if (Array.isArray(entry) && entry.length === 2) {
+            const [key, value] = entry
+            if (
+              (key && typeof key === 'string') &&
+              (value && typeof value === 'string')
+            ) {
+              this.#headers[key.toLowerCase()] = value
+            }
+          }
+        }
+      } else {
+        const entries = typeof headers.entries === 'function'
+          ? headers.entries()
+          : Object.entries(headers)
+
+        for (const [key, value] of entries) {
+          if (key && value && typeof value === 'string') {
+            this.#headers[key.toLowerCase()] = value
+          }
+        }
+      }
     }
 
     // let construction decide this
@@ -528,7 +570,7 @@ export class IncomingMessage extends Readable {
       this.#complete = true
     } else {
       this.once('complete', () => {
-        this.complete = true
+        this.#complete = true
         clearTimeout(this.#timeout)
       })
     }
@@ -568,7 +610,7 @@ export class IncomingMessage extends Readable {
    * @type {object}
    */
   get headers () {
-    return Object.fromEntries(this.#headers.entries())
+    return this.#headers
   }
 
   /**
@@ -588,7 +630,7 @@ export class IncomingMessage extends Readable {
     if (url instanceof URL) {
       const { hostname, pathname, search } = url
       this.#url = `${pathname}${search}`
-      this.#headers.set('host', hostname)
+      this.#headers.host = hostname
     } else if (typeof url === 'string') {
       if (!url.startsWith('/')) {
         url = `/${url}`
@@ -606,9 +648,9 @@ export class IncomingMessage extends Readable {
    * @type {object}
    */
   get headersDistinct () {
-    const { headers } = this
-    for (const key in headers) {
-      headers[key] = headers[key].split(',')
+    const headers = {}
+    for (const key in this.#headers) {
+      headers[key] = this.#headers[key].split(',')
     }
     return headers
   }
@@ -651,7 +693,7 @@ export class IncomingMessage extends Readable {
    * @type {string[]}
    */
   get rawHeaders () {
-    return Array.from(this.#headers.entries()).reduce((h, e) => h.concat(e), [])
+    return Array.from(Object.entries(this.#headers)).reduce((h, e) => h.concat(e), [])
   }
 
   /**
@@ -728,7 +770,7 @@ export class IncomingMessage extends Readable {
    */
   getHeader (name) {
     if (name && typeof name === 'string') {
-      return this.#headers.get(name.toLowerCase()) ?? undefined
+      return this.#headers[name.toLowerCase()] ?? undefined
     }
 
     return undefined
@@ -740,7 +782,7 @@ export class IncomingMessage extends Readable {
    * @return {string[]}
    */
   getHeaderNames () {
-    return Array.from(this.#headers.keys())
+    return Array.from(Object.keys(this.#headers))
   }
 
   /**
@@ -756,7 +798,7 @@ export class IncomingMessage extends Readable {
    * @return {object}
    */
   getHeaders () {
-    return Object.fromEntries(this.#headers.entries())
+    return Array.from(Object.entries(this.#headers))
   }
 
   /**
@@ -767,7 +809,8 @@ export class IncomingMessage extends Readable {
    */
   hasHeader (name) {
     if (name && typeof name === 'string') {
-      return this.#headers.has(name.toLowerCase())
+      const value = this.#headers[name.toLowerCase()]
+      return value && typeof value === 'string'
     }
 
     return false
@@ -1110,6 +1153,13 @@ export class ServerResponse extends OutgoingMessage {
     super.end(chunk, encoding, callback)
     return this
   }
+
+  /**
+   * @ignore
+   */
+  _implicitHeader () {
+    this.writeHead(this.statusCode)
+  }
 }
 
 /**
@@ -1255,6 +1305,7 @@ export class Agent extends EventEmitter {
 
     function makeRequest (req) {
       const request = fetch(url, {
+        // @ts-ignore
         headers: Object.fromEntries(
           Array.from(Object.entries(
             options.headers?.entries?.() ?? options.headers ?? {}
@@ -1324,9 +1375,14 @@ export class Agent extends EventEmitter {
     // not supported
   }
 
+  /**
+   * @ignore
+   */
   destroy () {
     for (const request of this.requests) {
+      // @ts-ignore
       if (typeof request?.destroy === 'function') {
+        // @ts-ignore
         request.destroy()
       }
     }
@@ -1525,6 +1581,16 @@ export class Server extends EventEmitter {
   }
 
   /**
+   * Gets the HTTP server address and port that it this server is
+   * listening (emulated) on in the runtime with respect to the
+   * adapter internal being used by the server.
+   * @return {{ family: string, address: string, port: number}}
+   */
+  address () {
+    return { family: 'IPv4', address: this.#host, port: this.#port }
+  }
+
+  /**
    * Closes the server.
    * @param {function=} [close]
    */
@@ -1598,14 +1664,14 @@ export class Server extends EventEmitter {
     }
 
     if (port && typeof port === 'object') {
-      const options = port
+      const options = /** @type {{ hostname?: string, port?: number }} */ (port)
 
       if (typeof host === 'function') {
         callback = host
       }
 
-      port = options.port ?? 0
-      host = options.host ?? location?.hostname ?? null
+      port = options?.port ?? 0
+      host = options?.host ?? location?.hostname ?? null
     }
 
     if (typeof callback === 'function') {
