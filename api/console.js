@@ -3,7 +3,7 @@ import { postMessage } from './ipc.js'
 import os from './os.js'
 
 function isPatched (console) {
-  return console?.[Symbol.for('socket.console.patched')] === true
+  return console?.[Symbol.for('socket.runtime.console.patched')] === true
 }
 
 function table (data, columns, formatValues = true) {
@@ -412,7 +412,7 @@ export function patchGlobalConsole (globalConsole, options = {}) {
       ...options
     })
 
-    globalConsole[Symbol.for('socket.console.patched')] = true
+    globalConsole[Symbol.for('socket.runtime.console.patched')] = true
 
     for (const key in globalConsole) {
       if (typeof Console.prototype[key] === 'function') {
