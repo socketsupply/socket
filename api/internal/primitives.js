@@ -5,7 +5,6 @@ import './error.js'
 
 import { fetch, Headers, Request, Response } from '../fetch.js'
 import { URL, URLPattern, URLSearchParams } from '../url.js'
-import { ReadableStream } from './streams.js'
 import { ServiceWorker } from '../service-worker/instance.js'
 import serviceWorker from './service-worker.js'
 import SharedWorker from './shared-worker.js'
@@ -16,6 +15,25 @@ import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
 import scheduler from './scheduler.js'
 import symbols from './symbols.js'
+
+import {
+  ReadableStream,
+  ReadableStreamBYOBReader,
+  ReadableByteStreamController,
+  ReadableStreamBYOBRequest,
+  ReadableStreamDefaultController,
+  ReadableStreamDefaultReader,
+
+  WritableStream,
+  WritableStreamDefaultController,
+  WritableStreamDefaultWriter,
+
+  TransformStream,
+  TransformStreamDefaultController,
+
+  ByteLengthQueuingStrategy,
+  CountQueuingStrategy
+} from './streams.js'
 
 import {
   AsyncContext,
@@ -236,6 +254,18 @@ export function init () {
 
     // streams
     ReadableStream,
+    ReadableStreamBYOBReader,
+    ReadableByteStreamController,
+    ReadableStreamBYOBRequest,
+    ReadableStreamDefaultController,
+    ReadableStreamDefaultReader,
+    WritableStream,
+    WritableStreamDefaultController,
+    WritableStreamDefaultWriter,
+    TransformStream,
+    TransformStreamDefaultController,
+    ByteLengthQueuingStrategy,
+    CountQueuingStrategy,
 
     // async
     AsyncContext,
