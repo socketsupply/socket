@@ -154,12 +154,12 @@ export class State {
  * accessor the 'exports' field.
  * @ignore
  */
-export class Scope {
+export class ModuleScope {
   #module = null
   #exports = Object.create(null)
 
   /**
-   * `Scope` class constructor.
+   * `ModuleScope` class constructor.
    * @param {Module} module
    */
   constructor (module) {
@@ -234,6 +234,10 @@ export class ModuleLoader {
    * @return {boolean}
    */
   load (module, options = null) {
+    // eslint-disable-next-line
+    void module
+    // eslint-disable-next-line
+    void options
     return false
   }
 }
@@ -288,13 +292,15 @@ export class JSONModuleLoader extends ModuleLoader {
    */
   load (module, options = null) {
     const response = module.loader.load(module.id, options)
-    module.scope.exports = JSON.parse(response.text)
+    if (response.text) {
+      module.scope.exports = JSON.parse(response.text)
+    }
     return true
   }
 }
-
 /**
  * A WASM module loader
+
  */
 export class WASMModuleLoader extends ModuleLoader {
   /**
@@ -478,11 +484,14 @@ export class Module extends EventTarget {
    * ): any}
    */
   static compile (source, options = null) {
+    const wrapped = Module.wrap(source)
+      .replace('function CommonJSModuleScope', `"Module (${options?.url ?? '<anonymous>'})"`)
     // eslint-disable-next-line
-    const compiled = new Function(
-      `return ${Module.wrap(source)}\n` +
-      `// # sourceURL=${options?.url ?? ''}`
-    )()
+    const compiled = new Function(`
+    const __commonjs_module_scope_container__ = {${wrapped}};
+    return __commonjs_module_scope_container__[Object.keys(__commonjs_module_scope_container__)[0]];
+    // # sourceURL=${options?.url ?? ''}
+    `)()
 
     return compiled
   }
@@ -523,7 +532,7 @@ export class Module extends EventTarget {
    * @param {ModuleOptions=} [options]
    */
   static createRequire (url, options = null) {
-    const module = this.from(url, {
+    const module = Module.from(url, {
       package: { info: Module.main.package.info },
       ...options
     })
@@ -532,7 +541,7 @@ export class Module extends EventTarget {
   }
 
   #id = null
-  #scope = new Scope()
+  #scope = new ModuleScope()
   #state = new State()
   #cache = Object.create(null)
   #loader = null
@@ -736,7 +745,7 @@ export class Module extends EventTarget {
 
   /**
    * The scope of the module given to parsed modules.
-   * @type {Scope}
+   * @type {ModuleScope}
    */
   get scope () {
     return this.#scope

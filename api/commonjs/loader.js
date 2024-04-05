@@ -868,7 +868,7 @@ export class Loader {
   /**
    * @ignore
    */
-  [Symbol.for('socket.util.inspect.custom')] () {
+  [Symbol.for('socket.runtime.util.inspect.custom')] () {
     return `Loader ('${this.origin}') { }`
   }
 }
