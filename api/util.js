@@ -1,20 +1,17 @@
 import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 import { URL } from './url.js'
+import types from './util/types.js'
 import mime from './mime.js'
 
 import * as exports from './util.js'
 
+export { types }
+
+const TypedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype)
 const ObjectPrototype = Object.prototype
-const Uint8ArrayPrototype = Uint8Array.prototype
-const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 
-const AsyncFunction = (async () => {}).constructor
-const TypedArray = TypedArrayPrototype.constructor
-
-const kSocketCustomInspect = inspect.custom = Symbol.for('socket.util.inspect.custom')
-const kNodeCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
-const kIgnoreInspect = inspect.ignore = Symbol.for('socket.util.inspect.ignore')
+const kIgnoreInspect = inspect.ignore = Symbol.for('socket.runtime.util.inspect.ignore')
 
 function maybeURL (...args) {
   try {
@@ -27,6 +24,13 @@ function maybeURL (...args) {
 export const TextDecoder = globalThis.TextDecoder
 export const TextEncoder = globalThis.TextEncoder
 export const isArray = Array.isArray.bind(Array)
+
+export const inspectSymbols = [
+  Symbol.for('socket.runtime.util.inspect.custom'),
+  Symbol.for('nodejs.util.inspect.custom')
+]
+
+inspect.custom = inspectSymbols[0]
 
 export function debug (section) {
   let enabled = false
@@ -67,23 +71,23 @@ export function hasOwnProperty (object, property) {
 }
 
 export function isDate (object) {
-  return object instanceof Date
+  return types.isDate(object)
 }
 
 export function isTypedArray (object) {
-  return object instanceof TypedArray
+  return types.isTypedArray(object)
 }
 
-export function isArrayLike (object) {
+export function isArrayLike (input) {
   return (
-    (Array.isArray(object) || isTypedArray(object)) &&
-    object !== TypedArrayPrototype &&
-    object !== Buffer.prototype
+    (Array.isArray(input) || isTypedArray(input)) &&
+    input !== TypedArrayPrototype &&
+    input !== Buffer.prototype
   )
 }
 
 export function isError (object) {
-  return object && object instanceof Error
+  return types.isNativeError(object) || object instanceof globalThis.Error
 }
 
 export function isSymbol (value) {
@@ -110,15 +114,11 @@ export function isArrayBufferView (buf) {
 }
 
 export function isAsyncFunction (object) {
-  return object && object instanceof AsyncFunction
+  return types.isAsyncFunction(object)
 }
 
 export function isArgumentsObject (object) {
-  return (
-    !Array.isArray(object) &&
-    isPlainObject(object) &&
-    Number.isFinite(object.length)
-  )
+  return types.isArgumentsObject(object)
 }
 
 export function isEmptyObject (object) {
@@ -163,11 +163,7 @@ export function isRegExp (value) {
 }
 
 export function isPlainObject (object) {
-  return (
-    object !== null &&
-    typeof object === 'object' &&
-    Object.getPrototypeOf(object) === Object.prototype
-  )
+  return types.isPlainObject(object)
 }
 
 export function isArrayBuffer (object) {
@@ -421,28 +417,22 @@ export function inspect (value, options) {
         }
 
         return formatted
-      } else if (
-        (
-          isFunction(value?.[kNodeCustomInspect]) &&
-          value?.[kNodeCustomInspect] !== inspect
-        ) ||
-        (
-          isFunction(value?.[kSocketCustomInspect]) &&
-          value?.[kSocketCustomInspect] !== inspect
-        )
-      ) {
-        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect]).call(
-          value,
-          depth,
-          ctx.options,
-          inspect
-        )
+      } else if (value) {
+        for (const inspectSymbol of inspectSymbols) {
+          if (isFunction(value[inspectSymbol]) && value[inspectSymbol] !== inspect) {
+            const formatted = value[inspectSymbol](
+              depth,
+              ctx.options,
+              inspect
+            )
 
-        if (typeof formatted !== 'string') {
-          return formatValue(ctx, formatted, depth)
+            if (typeof formatted !== 'string') {
+              return formatValue(ctx, formatted, depth)
+            }
+
+            return formatted
+          }
         }
-
-        return formatted
       }
     }
 
@@ -556,6 +546,26 @@ export function inspect (value, options) {
       }
     }
 
+    if (isArgumentsObject(value)) {
+      typename = 'Arguments'
+      braces[0] = '{'
+      braces[1] = '}'
+    } else if (types.isSetIterator(value)) {
+      typename = 'Set Iterator'
+    } else if (types.isMapIterator(value)) {
+      typename = 'Map Iterator'
+    } else if (types.isIterator(value)) {
+      typename = 'Iterator'
+    } else if (types.isAsyncIterator(value)) {
+      typename = 'AsyncIterator'
+    } else if (types.isGeneratorFunction(value)) {
+      typename = 'GeneratorFunction'
+    } else if (types.isGeneratorObject(value)) {
+      typename = 'Generator'
+    } else if (types.isAsyncGeneratorFunction(value)) {
+      typename = 'AsyncGeneratorFunction'
+    }
+
     if (!(value instanceof Map || value instanceof Set)) {
       if (
         typeof value === 'object' &&
@@ -598,7 +608,7 @@ export function inspect (value, options) {
 
     const output = []
 
-    if (isArrayLikeValue || value instanceof Set) {
+    if (!isArgumentsObject(value) && (isArrayLikeValue || value instanceof Set)) {
       // const items = isArrayLikeValue ? value : Array.from(value.values())
       const size = isArrayLikeValue ? value.length : value.size
       for (let i = 0; i < size; ++i) {
@@ -670,8 +680,13 @@ export function inspect (value, options) {
       }
 
       const formatWebkitErrorStackLine = (line) => {
-        const [symbol = '', location = ''] = line.split('@')
-        const output = []
+        const [symbol = '', location = ''] = line.endsWith('@')
+          ? [line.slice(0, -1)]
+          : line.startsWith('@')
+            ? ['', line.slice(1)]
+            : line.split('@')
+
+        let output = []
         const root = new URL('../', import.meta.url || globalThis.location.href).pathname
 
         let [context, lineno, colno] = (
@@ -700,6 +715,8 @@ export function inspect (value, options) {
         } else if (!symbol) {
           output.push('<anonymous>')
         }
+
+        output = output.filter(Boolean)
 
         if (output.length) {
           output.unshift('    at')
@@ -985,7 +1002,7 @@ export function inherits (Constructor, Super) {
     __proto__: null
   })
 
-  Object.setPrototypeO(Constructor.prototype, Super.prototype)
+  Object.setPrototypeOf(Constructor.prototype, Super.prototype)
 }
 
 export function deprecate (...args) {
