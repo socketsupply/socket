@@ -33,6 +33,20 @@ Object.defineProperties(URLPatternDescriptors, {
   search: { ...URLPatternDescriptors.search, enumerable: true }
 })
 
+URL.prototype[Symbol.for('socket.runtime.util.inspect.custom')] = function () {
+  return [
+    'URL {',
+    `  protocol: ${this.protocol || null},`,
+    `  username: ${this.username || null},`,
+    `  password: ${this.password || null},`,
+    `  hostname: ${this.hostname || null},`,
+    `  pathname: ${this.pathname || null},`,
+    `  search: ${this.search || null},`,
+    `  hash: ${this.hash || null}`,
+    '}'
+  ].join('\n')
+}
+
 export const protocols = new Set([
   'socket:',
   'node:',
@@ -105,15 +119,68 @@ if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
 }
 
 export function parse (input, options = null) {
+  let parsed = null
   if (URL.canParse(input)) {
-    return new URL(input)
+    parsed = new URL(input)
   }
 
-  if (options?.strict !== true && URL.canParse(input, 'socket://')) {
-    return new URL(input, 'socket://')
+  if (options?.strict === true && !URL.canParse(input)) {
+    return null
   }
 
-  return null
+  if (URL.canParse(input, 'socket://')) {
+    parsed = new URL(input, globalThis.location.origin)
+  }
+
+  if (!parsed) {
+    return null
+  }
+
+  parsed = {
+    hash: parsed.hash || null,
+    host: parsed.hostname || null,
+    hostname: parsed.hostname || null,
+    origin: parsed.origin || null,
+    auth: [parsed.username, parsed.password].filter(Boolean).join(':') || null,
+    password: parsed.password || null,
+    pathname: parsed.pathname || null,
+    path: parsed.pathname || null,
+    port: parsed.port || null,
+    protocol: parsed.protocol || null,
+    search: parsed.search || null,
+    searchParams: parsed.searchParams,
+    username: parsed.username || null,
+    [Symbol.toStringTag]: 'URL (Parsed)'
+  }
+
+  if (options === true) {
+    // for nodejs compat
+    parsed.query = Object.fromEntries(parsed.searchParams.entries())
+  } else if (parsed.search) {
+    parsed.query = parsed.search.slice(1) ?? null
+  }
+
+  if (!input.startsWith(parsed.protocol)) {
+    parsed.protocol = null
+    parsed.hostname = null
+    parsed.origin = null
+    parsed.host = null
+    parsed.href = `${parsed.pathname || ''}${parsed.search || ''}${parsed.hash || ''}`
+  } else {
+    parsed.href = `${parsed.protocol}//`
+
+    if (parsed.username) {
+      parsed.href += [parsed.username, parsed.password].filter(Boolean).join(':')
+
+      if (parsed.hostname) {
+        parsed.href += '@'
+      }
+    }
+
+    parsed.href += `${parsed.hostname || ''}${parsed.pathname || ''}${parsed.search || ''}${parsed.hash || ''}`
+  }
+
+  return parsed
 }
 
 // lifted from node
