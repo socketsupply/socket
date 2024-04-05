@@ -411,7 +411,7 @@ export class ApplicationWindow {
    * @returns {Promise<ipc.Result>}
    */
   async openExternal (options) {
-    return await ipc.send('platform.openExternal', options)
+    return await ipc.request('platform.openExternal', options)
   }
 
   /**
