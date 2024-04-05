@@ -375,13 +375,15 @@ namespace SSC {
 
       String contentType = "";
 
+      // find content type
       for (const auto& entry : headers) {
         auto pair = split(trim(entry), ':');
         auto key = trim(pair[0]);
         auto value = trim(pair[1]);
 
-        if (key == "content-type") {
+        if (key == "content-type" || key == "Content-Type") {
           contentType = value;
+          break;
         }
       }
 
@@ -390,17 +392,26 @@ namespace SSC {
       // XXX(@jwerle): we handle this in the android runtime
     #if !SSC_PLATFORM_ANDROID
       const auto extname = Path(request.pathname).extension().string();
+      auto html = (message.buffer.bytes != nullptr && message.buffer.size > 0)
+        ? String(response.buffer.bytes, response.buffer.size)
+        : String("");
+
       if (
-        statusCode < 400 &&
-        (message.buffer.bytes != nullptr && message.buffer.size > 0) &&
-        (extname.ends_with("html") || contentType == "text/html")
+        html.size() > 0 &&
+        (
+          (extname.ends_with("html") || contentType == "text/html") ||
+          (html.find("<!doctype html") != String::npos || html.find("<!DOCTYPE HTML") != String::npos) ||
+          (html.find("<html") != String::npos || html.find("<HTML") != String::npos) ||
+          (html.find("<body") != String::npos || html.find("<BODY") != String::npos) ||
+          (html.find("<head") != String::npos || html.find("<HEAD") != String::npos) ||
+          (html.find("<script") != String::npos || html.find("<SCRIPT") != String::npos)
+        )
       ) {
         const auto preload = (
           String("<meta name=\"runtime-frame-source\" content=\"serviceworker\" />\n") +
           request.client.preload
         );
 
-        auto html = String(response.buffer.bytes, response.buffer.size);
         auto begin = String("<meta name=\"begin-runtime-preload\">");
         auto end = String("<meta name=\"end-runtime-preload\">");
         auto x = html.find(begin);
