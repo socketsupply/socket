@@ -683,7 +683,7 @@ export function execSync (command, options) {
 export const execFile = exec
 
 exec[Symbol.for('nodejs.util.promisify.custom')] =
-exec[Symbol.for('socket.util.promisify.custom')] =
+exec[Symbol.for('socket.runtime.util.promisify.custom')] =
   async function execPromisify (command, options) {
     return await new Promise((resolve, reject) => {
       exec(command, options, (err, stdout, stderr) => {
