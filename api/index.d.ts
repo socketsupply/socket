@@ -241,7 +241,7 @@ declare module "socket:events" {
 
 declare module "socket:async/context" {
     /**
-     * @module AsyncContext
+     * @module Async.AsyncContext
      *
      * Async Context for JavaScript based on the TC39 proposal.
      *
@@ -431,17 +431,16 @@ declare module "socket:async/context" {
          * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
          * or `Revert` which can restore the storage state to the state at
          * the time of the snapshot.
-         * @template T
          * @return {FrozenRevert}
          */
-        static snapshot<T_3>(): FrozenRevert;
+        static snapshot(): FrozenRevert;
         /**
          * Restores the storage `Mapping` state to state at the time the
          * "revert" (`FrozenRevert` or `Revert`) was created.
          * @template T
          * @param {Revert<T>|FrozenRevert} revert
          */
-        static restore<T_4>(revert: FrozenRevert | Revert<T_4>): void;
+        static restore<T_3>(revert: FrozenRevert | Revert<T_3>): void;
         /**
          * Switches storage `Mapping` state to the state at the time of a
          * "snapshot".
@@ -566,9 +565,32 @@ declare module "socket:async/context" {
 }
 
 declare module "socket:async/wrap" {
-    export function isTagged(fn: any): boolean;
-    export function tag(fn: any): any;
-    export function wrap(fn: any): any;
+    /**
+     * Returns `true` if a given function `fn` has the "async" wrapped tag,
+     * meaning it was "tagged" in a `wrap(fn)` call before, otherwise this
+     * function will return `false`.
+     * @ignore
+     * @param {function} fn
+     * @param {boolean}
+     */
+    export function isTagged(fn: Function): boolean;
+    /**
+     * Tags a function `fn` as being "async wrapped" so subsequent calls to
+     * `wrap(fn)` do not wrap an already wrapped function.
+     * @ignore
+     * @param {function} fn
+     * @return {function}
+     */
+    export function tag(fn: Function): Function;
+    /**
+     * Wraps a function `fn` that captures a snapshot of the current async
+     * context. This function is idempotent and will not wrap a function more
+     * than once.
+     * @ignore
+     * @param {function} fn
+     * @return {function}
+     */
+    export function wrap(fn: Function): Function;
     export const symbol: unique symbol;
     export default wrap;
 }
@@ -911,14 +933,14 @@ declare module "socket:internal/symbols" {
 
 declare module "socket:gc" {
     /**
-     * Track `object` ref to call `Symbol.for('gc.finalize')` method when
+     * Track `object` ref to call `Symbol.for('socket.gc.finalize')` method when
      * environment garbage collects object.
      * @param {object} object
      * @return {boolean}
      */
     export function ref(object: object, ...args: any[]): boolean;
     /**
-     * Stop tracking `object` ref to call `Symbol.for('gc.finalize')` method when
+     * Stop tracking `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
      * environment garbage collects object.
      * @param {object} object
      * @return {boolean}
@@ -1923,48 +1945,152 @@ declare module "socket:signal" {
     import { signal as constants } from "socket:os/constants";
 }
 
+declare module "socket:internal/streams/web" {
+    export class ByteLengthQueuingStrategy {
+        constructor(e: any);
+        _byteLengthQueuingStrategyHighWaterMark: any;
+        get highWaterMark(): any;
+        get size(): (e: any) => any;
+    }
+    export class CountQueuingStrategy {
+        constructor(e: any);
+        _countQueuingStrategyHighWaterMark: any;
+        get highWaterMark(): any;
+        get size(): () => number;
+    }
+    export class ReadableByteStreamController {
+        get byobRequest(): any;
+        get desiredSize(): number;
+        close(): void;
+        enqueue(e: any): void;
+        error(e?: any): void;
+        _pendingPullIntos: v;
+        [T](e: any): any;
+        [C](e: any): any;
+        [P](): void;
+    }
+    export class ReadableStream {
+        static from(e: any): any;
+        constructor(e?: {}, t?: {});
+        get locked(): boolean;
+        cancel(e?: any): any;
+        getReader(e?: any): ReadableStreamDefaultReader | ReadableStreamBYOBReader;
+        pipeThrough(e: any, t?: {}): any;
+        pipeTo(e: any, t?: {}): any;
+        tee(): any;
+        values(e?: any): any;
+    }
+    export class ReadableStreamBYOBReader {
+        constructor(e: any);
+        _readIntoRequests: v;
+        get closed(): any;
+        cancel(e?: any): any;
+        read(e: any, t?: {}): any;
+        releaseLock(): void;
+    }
+    export class ReadableStreamBYOBRequest {
+        get view(): any;
+        respond(e: any): void;
+        respondWithNewView(e: any): void;
+    }
+    export class ReadableStreamDefaultController {
+        get desiredSize(): number;
+        close(): void;
+        enqueue(e?: any): void;
+        error(e?: any): void;
+        [T](e: any): any;
+        [C](e: any): void;
+        [P](): void;
+    }
+    export class ReadableStreamDefaultReader {
+        constructor(e: any);
+        _readRequests: v;
+        get closed(): any;
+        cancel(e?: any): any;
+        read(): any;
+        releaseLock(): void;
+    }
+    export class TransformStream {
+        constructor(e?: {}, t?: {}, r?: {});
+        get readable(): any;
+        get writable(): any;
+    }
+    export class TransformStreamDefaultController {
+        get desiredSize(): number;
+        enqueue(e?: any): void;
+        error(e?: any): void;
+        terminate(): void;
+    }
+    export class WritableStream {
+        constructor(e?: {}, t?: {});
+        get locked(): boolean;
+        abort(e?: any): any;
+        close(): any;
+        getWriter(): WritableStreamDefaultWriter;
+    }
+    export class WritableStreamDefaultController {
+        get abortReason(): any;
+        get signal(): any;
+        error(e?: any): void;
+        [w](e: any): any;
+        [R](): void;
+    }
+    export class WritableStreamDefaultWriter {
+        constructor(e: any);
+        _ownerWritableStream: any;
+        get closed(): any;
+        get desiredSize(): number;
+        get ready(): any;
+        abort(e?: any): any;
+        close(): any;
+        releaseLock(): void;
+        write(e?: any): any;
+    }
+    class v {
+        _cursor: number;
+        _size: number;
+        _front: {
+            _elements: any[];
+            _next: any;
+        };
+        _back: {
+            _elements: any[];
+            _next: any;
+        };
+        get length(): number;
+        push(e: any): void;
+        shift(): any;
+        forEach(e: any): void;
+        peek(): any;
+    }
+    const T: unique symbol;
+    const C: unique symbol;
+    const P: unique symbol;
+    const w: unique symbol;
+    const R: unique symbol;
+    export {};
+}
+
+declare module "socket:internal/streams" {
+    const _default: any;
+    export default _default;
+    import { ReadableStream } from "socket:internal/streams/web";
+    import { ReadableStreamBYOBReader } from "socket:internal/streams/web";
+    import { ReadableByteStreamController } from "socket:internal/streams/web";
+    import { ReadableStreamBYOBRequest } from "socket:internal/streams/web";
+    import { ReadableStreamDefaultController } from "socket:internal/streams/web";
+    import { ReadableStreamDefaultReader } from "socket:internal/streams/web";
+    import { WritableStream } from "socket:internal/streams/web";
+    import { WritableStreamDefaultController } from "socket:internal/streams/web";
+    import { WritableStreamDefaultWriter } from "socket:internal/streams/web";
+    import { TransformStream } from "socket:internal/streams/web";
+    import { TransformStreamDefaultController } from "socket:internal/streams/web";
+    import { ByteLengthQueuingStrategy } from "socket:internal/streams/web";
+    import { CountQueuingStrategy } from "socket:internal/streams/web";
+    export { ReadableStream, ReadableStreamBYOBReader, ReadableByteStreamController, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, TransformStream, TransformStreamDefaultController, ByteLengthQueuingStrategy, CountQueuingStrategy };
+}
+
 declare module "socket:stream/web" {
-    export const ReadableStream: {
-        new (underlyingSource: UnderlyingByteSource, strategy?: {
-            highWaterMark?: number;
-        }): ReadableStream<Uint8Array>;
-        new <R = any>(underlyingSource: UnderlyingDefaultSource<R>, strategy?: QueuingStrategy<R>): ReadableStream<R>;
-        new <R_1 = any>(underlyingSource?: UnderlyingSource<R_1>, strategy?: QueuingStrategy<R_1>): ReadableStream<R_1>;
-        prototype: ReadableStream<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamDefaultReader: {
-        new <R = any>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
-        prototype: ReadableStreamDefaultReader<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamBYOBReader: {
-        new (stream: ReadableStream<any>): ReadableStreamBYOBReader;
-        prototype: ReadableStreamBYOBReader;
-    } | typeof UnsupportedStreamInterface;
-    export const ReadableStreamBYOBRequest: typeof UnsupportedStreamInterface;
-    export const ReadableByteStreamController: typeof UnsupportedStreamInterface;
-    export const ReadableStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const TransformStream: {
-        new <I = any, O = any>(transformer?: Transformer<I, O>, writableStrategy?: QueuingStrategy<I>, readableStrategy?: QueuingStrategy<O>): TransformStream<I, O>;
-        prototype: TransformStream<any, any>;
-    } | typeof UnsupportedStreamInterface;
-    export const TransformStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const WritableStream: {
-        new <W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
-        prototype: WritableStream<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const WritableStreamDefaultWriter: {
-        new <W = any>(stream: WritableStream<W>): WritableStreamDefaultWriter<W>;
-        prototype: WritableStreamDefaultWriter<any>;
-    } | typeof UnsupportedStreamInterface;
-    export const WritableStreamDefaultController: typeof UnsupportedStreamInterface;
-    export const ByteLengthQueuingStrategy: {
-        new (init: QueuingStrategyInit): ByteLengthQueuingStrategy;
-        prototype: ByteLengthQueuingStrategy;
-    } | typeof UnsupportedStreamInterface;
-    export const CountQueuingStrategy: {
-        new (init: QueuingStrategyInit): CountQueuingStrategy;
-        prototype: CountQueuingStrategy;
-    } | typeof UnsupportedStreamInterface;
     export const TextEncoderStream: typeof UnsupportedStreamInterface;
     export const TextDecoderStream: {
         new (label?: string, options?: TextDecoderOptions): TextDecoderStream;
@@ -1979,10 +2105,24 @@ declare module "socket:stream/web" {
         prototype: DecompressionStream;
     } | typeof UnsupportedStreamInterface;
     export default exports;
+    import { ReadableStream } from "socket:internal/streams";
+    import { ReadableStreamBYOBReader } from "socket:internal/streams";
+    import { ReadableByteStreamController } from "socket:internal/streams";
+    import { ReadableStreamBYOBRequest } from "socket:internal/streams";
+    import { ReadableStreamDefaultController } from "socket:internal/streams";
+    import { ReadableStreamDefaultReader } from "socket:internal/streams";
+    import { WritableStream } from "socket:internal/streams";
+    import { WritableStreamDefaultController } from "socket:internal/streams";
+    import { WritableStreamDefaultWriter } from "socket:internal/streams";
+    import { TransformStream } from "socket:internal/streams";
+    import { TransformStreamDefaultController } from "socket:internal/streams";
+    import { ByteLengthQueuingStrategy } from "socket:internal/streams";
+    import { CountQueuingStrategy } from "socket:internal/streams";
     class UnsupportedStreamInterface {
     }
     import * as exports from "socket:stream/web";
     
+    export { ReadableStream, ReadableStreamBYOBReader, ReadableByteStreamController, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, TransformStream, TransformStreamDefaultController, ByteLengthQueuingStrategy, CountQueuingStrategy };
 }
 
 declare module "socket:stream" {
@@ -1993,7 +2133,6 @@ declare module "socket:stream" {
     export function getStreamError(stream: any): any;
     export function isReadStreamx(stream: any): any;
     export { web };
-    export default exports;
     export class FixedFIFO {
         constructor(hwm: any);
         buffer: any[];
@@ -2010,8 +2149,8 @@ declare module "socket:stream" {
     export class FIFO {
         constructor(hwm: any);
         hwm: any;
-        head: exports.FixedFIFO;
-        tail: exports.FixedFIFO;
+        head: FixedFIFO;
+        tail: FixedFIFO;
         length: number;
         clear(): void;
         push(val: any): void;
@@ -2028,7 +2167,7 @@ declare module "socket:stream" {
             byteLengthWritable: any;
         });
         stream: any;
-        queue: exports.FIFO;
+        queue: FIFO;
         highWaterMark: number;
         buffered: number;
         error: any;
@@ -2058,12 +2197,12 @@ declare module "socket:stream" {
             byteLengthReadable: any;
         });
         stream: any;
-        queue: exports.FIFO;
+        queue: FIFO;
         highWaterMark: number;
         buffered: number;
         readAhead: boolean;
         error: any;
-        pipeline: exports.Pipeline;
+        pipeline: Pipeline;
         byteLength: any;
         map: any;
         pipeTo: any;
@@ -2112,12 +2251,12 @@ declare module "socket:stream" {
         get destroying(): boolean;
         destroy(err: any): void;
     }
-    export class Readable extends exports.Stream {
-        static _fromAsyncIterator(ite: any, opts: any): exports.Readable;
+    export class Readable extends Stream {
+        static _fromAsyncIterator(ite: any, opts: any): Readable;
         static from(data: any, opts: any): any;
         static isBackpressured(rs: any): boolean;
         static isPaused(rs: any): boolean;
-        _readableState: exports.ReadableState;
+        _readableState: ReadableState;
         _read(cb: any): void;
         pipe(dest: any, cb: any): any;
         read(): any;
@@ -2126,35 +2265,45 @@ declare module "socket:stream" {
         resume(): this;
         pause(): this;
     }
-    export class Writable extends exports.Stream {
+    export class Writable extends Stream {
         static isBackpressured(ws: any): boolean;
         static drained(ws: any): Promise<any>;
-        _writableState: exports.WritableState;
+        _writableState: WritableState;
         _writev(batch: any, cb: any): void;
         _write(data: any, cb: any): void;
         _final(cb: any): void;
         write(data: any): boolean;
         end(data: any): this;
     }
-    export class Duplex extends exports.Readable {
-        _writableState: exports.WritableState;
+    export class Duplex extends Readable {
+        _writableState: WritableState;
         _writev(batch: any, cb: any): void;
         _write(data: any, cb: any): void;
         _final(cb: any): void;
         write(data: any): boolean;
         end(data: any): this;
     }
-    export class Transform extends exports.Duplex {
-        _transformState: exports.TransformState;
+    export class Transform extends Duplex {
+        _transformState: TransformState;
         _transform(data: any, cb: any): void;
         _flush(cb: any): void;
     }
-    export class PassThrough extends exports.Transform {
+    export class PassThrough extends Transform {
     }
+    const _default: typeof Stream & {
+        web: typeof web;
+        Readable: typeof Readable;
+        Writable: typeof Writable;
+        Duplex: typeof Duplex;
+        Transform: typeof Transform;
+        PassThrough: typeof PassThrough;
+        pipeline: typeof pipeline & {
+            [x: symbol]: typeof pipelinePromise;
+        };
+    };
+    export default _default;
     import web from "socket:stream/web";
-    import * as exports from "socket:stream";
     import { EventEmitter } from "socket:events";
-    
 }
 
 declare module "socket:tty" {
@@ -2208,36 +2357,6 @@ declare module "socket:process" {
     const process: any;
 }
 
-declare module "socket:location" {
-    export function toString(): string;
-    export const globalLocation: Location | {
-        origin: string;
-        host: string;
-        hostname: string;
-        pathname: string;
-        href: string;
-    };
-    export const href: string;
-    export const protocol: "socket:";
-    export const hostname: string;
-    export const host: string;
-    export const search: string;
-    export const hash: string;
-    export const pathname: string;
-    export const origin: string;
-    namespace _default {
-        export { origin };
-        export { href };
-        export { protocol };
-        export { hostname };
-        export { host };
-        export { search };
-        export { pathname };
-        export { toString };
-    }
-    export default _default;
-}
-
 declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
@@ -2289,7 +2408,22 @@ declare module "socket:querystring" {
 }
 
 declare module "socket:url/index" {
-    export function parse(input: any, options?: any): any;
+    export function parse(input: any, options?: any): {
+        hash: any;
+        host: any;
+        hostname: any;
+        origin: any;
+        auth: string;
+        password: any;
+        pathname: any;
+        path: any;
+        port: any;
+        protocol: any;
+        search: any;
+        searchParams: any;
+        username: any;
+        [Symbol.toStringTag]: string;
+    };
     export function resolve(from: any, to: any): any;
     export function format(input: any): any;
     const URLPattern_base: {
@@ -2318,7 +2452,9 @@ declare module "socket:url/index" {
     }
     export const protocols: Set<string>;
     export default URL;
-    export const URL: any;
+    export class URL {
+        private constructor();
+    }
     export const URLSearchParams: any;
     export const parseURL: any;
 }
@@ -2327,6 +2463,36 @@ declare module "socket:url" {
     export * from "socket:url/index";
     export default URL;
     import URL from "socket:url/index";
+}
+
+declare module "socket:location" {
+    export function toString(): string;
+    export const globalLocation: Location | {
+        origin: string;
+        host: string;
+        hostname: string;
+        pathname: string;
+        href: string;
+    };
+    export const href: string;
+    export const protocol: "socket:";
+    export const hostname: string;
+    export const host: string;
+    export const search: string;
+    export const hash: string;
+    export const pathname: string;
+    export const origin: string;
+    namespace _default {
+        export { origin };
+        export { href };
+        export { protocol };
+        export { hostname };
+        export { host };
+        export { search };
+        export { pathname };
+        export { toString };
+    }
+    export default _default;
 }
 
 declare module "socket:path/path" {
@@ -5268,6 +5434,314 @@ declare module "socket:errors" {
     
 }
 
+declare module "socket:util/types" {
+    /**
+     * Returns `true` if input is a plan `Object` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isPlainObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncFunction`
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Function`
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncFunction` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncFunctionObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Function` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFunctionObject(input: any): boolean;
+    /**
+     * Always returns `false`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isExternal(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Date` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isDate(input: any): boolean;
+    /**
+     * Returns `true` if input is an `arguments` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArgumentsObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `BigInt` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigIntObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Boolean` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBooleanObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Number` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isNumberObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `String` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isStringObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Symbol` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSymbolObject(input: any): boolean;
+    /**
+     * Returns `true` if input is native `Error` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isNativeError(input: any): boolean;
+    /**
+     * Returns `true` if input is a `RegExp` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isRegExp(input: any): boolean;
+    /**
+     * Returns `true` if input is a `GeneratorFunction`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isGeneratorFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncGeneratorFunction`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncGeneratorFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `Generator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isGeneratorObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Promise` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isPromise(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Map` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isMap(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Set` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSet(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of an `Iterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of an `AsyncIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `MapIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isMapIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `SetIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSetIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is a `WeakMap` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isWeakMap(input: any): boolean;
+    /**
+     * Returns `true` if input is a `WeakSet` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isWeakSet(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArrayBuffer(input: any): boolean;
+    /**
+     * Returns `true` if input is an `DataView` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isDataView(input: any): boolean;
+    /**
+     * Returns `true` if input is a `SharedArrayBuffer`.
+     * This will always return `false` if a `SharedArrayBuffer`
+     * type is not available.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSharedArrayBuffer(input: any): boolean;
+    /**
+     * Not supported. This function will return `false` always.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isProxy(input: any): boolean;
+    /**
+     * Returns `true` if input looks like a module namespace object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isModuleNamespaceObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` of `SharedArrayBuffer`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAnyArrayBuffer(input: any): boolean;
+    /**
+     * Returns `true` if input is a "boxed" primitive.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBoxedPrimitive(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` view.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArrayBufferView(input: any): boolean;
+    /**
+     * Returns `true` if input is a `TypedArray` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isTypedArray(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint8Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint8Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint8ClampedArray` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint8ClampedArray(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint16Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint16Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an Int8Array`` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt8Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Int16Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt16Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Int32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Float32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFloat32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Float64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFloat64Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `BigInt64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigInt64Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `BigUint64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigUint64Array(input: any): boolean;
+    /**
+     * @ignore
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isKeyObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `CryptoKey` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isCryptoKey(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Array`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export const isArray: any;
+    export default exports;
+    import * as exports from "socket:util/types";
+    
+}
+
 declare module "socket:mime/index" {
     /**
      * Look up a MIME type in various MIME databases.
@@ -5275,6 +5749,12 @@ declare module "socket:mime/index" {
      * @return {Promise<DatabaseQueryResult[]>}
      */
     export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * Look up a MIME type in various MIME databases synchronously.
+     * @param {string} query
+     * @return {DatabaseQueryResult[]}
+     */
+    export function lookupSync(query: string): DatabaseQueryResult[];
     /**
      * A container for a database lookup query.
      */
@@ -5338,11 +5818,27 @@ declare module "socket:mime/index" {
          */
         load(): Promise<any>;
         /**
+         * Loads database MIME entries synchronously into internal map.
+         */
+        loadSync(): void;
+        /**
          * Lookup MIME type by name or content type
          * @param {string} query
-         * @return {Promise<DatabaseQueryResult>}
+         * @return {Promise<DatabaseQueryResult[]>}
          */
-        lookup(query: string): Promise<DatabaseQueryResult>;
+        lookup(query: string): Promise<DatabaseQueryResult[]>;
+        /**
+         * Lookup MIME type by name or content type synchronously.
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult[]>}
+         */
+        lookupSync(query: string): Promise<DatabaseQueryResult[]>;
+        /**
+         * Queries database map and returns an array of results
+         * @param {string} query
+         * @return {DatabaseQueryResult[]}
+         */
+        query(query: string): DatabaseQueryResult[];
     }
     /**
      * A database of MIME types for 'application/' content types
@@ -5419,6 +5915,7 @@ declare module "socket:mime/index" {
         export { Database };
         export { databases };
         export { lookup };
+        export { lookupSync };
         export { MIMEParams };
         export { MIMEType };
         export { application };
@@ -5447,7 +5944,7 @@ declare module "socket:util" {
     export function hasOwnProperty(object: any, property: any): any;
     export function isDate(object: any): boolean;
     export function isTypedArray(object: any): boolean;
-    export function isArrayLike(object: any): boolean;
+    export function isArrayLike(input: any): boolean;
     export function isError(object: any): boolean;
     export function isSymbol(value: any): boolean;
     export function isNumber(value: any): boolean;
@@ -5479,8 +5976,8 @@ declare module "socket:util" {
     export function promisify(original: any): any;
     export function inspect(value: any, options: any): any;
     export namespace inspect {
-        let custom: symbol;
         let ignore: symbol;
+        let custom: symbol;
     }
     export function format(format: any, ...args: any[]): string;
     export function parseJSON(string: any): any;
@@ -5490,6 +5987,7 @@ declare module "socket:util" {
     export function compareBuffers(a: any, b: any): any;
     export function inherits(Constructor: any, Super: any): void;
     export function deprecate(...args: any[]): void;
+    export { types };
     export const TextDecoder: {
         new (label?: string, options?: TextDecoderOptions): TextDecoder;
         prototype: TextDecoder;
@@ -5499,11 +5997,13 @@ declare module "socket:util" {
         prototype: TextEncoder;
     };
     export const isArray: any;
+    export const inspectSymbols: symbol[];
     export class IllegalConstructor {
     }
     export const MIMEType: typeof mime.MIMEType;
     export const MIMEParams: typeof mime.MIMEParams;
     export default exports;
+    import types from "socket:util/types";
     import mime from "socket:mime";
     import * as exports from "socket:util";
     
@@ -8660,6 +9160,11 @@ declare module "socket:service-worker/env" {
     };
 }
 
+declare module "socket:service-worker/debug" {
+    export function debug(...args: any[]): void;
+    export default debug;
+}
+
 declare module "socket:service-worker/state" {
     export const channel: BroadcastChannel;
     export const state: any;
@@ -8778,6 +9283,7 @@ declare module "socket:service-worker/context" {
 }
 
 declare module "socket:service-worker/events" {
+    export const textEncoder: TextEncoderStream;
     export const FETCH_EVENT_TIMEOUT: number;
     /**
      * The `ExtendableEvent` interface extends the lifetime of the "install" and
@@ -8943,16 +9449,19 @@ declare module "socket:http/adapters" {
      */
     export class ServiceWorkerServerAdapter extends ServerAdapter {
         /**
+         * Handles the 'install' service worker event.
          * @ignore
-         * @param {import('../service-worker/events.js').ExtendableEvent}
+         * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onInstall(event: any): Promise<void>;
+        onInstall(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
         /**
+         * Handles the 'activate' service worker event.
          * @ignore
-         * @param {import('../service-worker/events.js').ExtendableEvent}
+         * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onActivate(event: any): Promise<void>;
+        onActivate(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
         /**
+         * Handles the 'fetch' service worker event.
          * @ignore
          * @param {import('../service-worker/events.js').FetchEvent}
          */
@@ -9217,6 +9726,10 @@ declare module "socket:http" {
          * @return {OutgoingMessage}
          */
         setTimeout(timeout: number, callback?: Function | undefined): OutgoingMessage;
+        /**
+         * @ignore
+         */
+        _implicitHeader(): void;
         #private;
     }
     /**
@@ -9233,12 +9746,6 @@ declare module "socket:http" {
          * @param {object} options
          */
         constructor(options: object);
-        /**
-         * This property will be `true` if a complete HTTP message has been received
-         * and successfully parsed.
-         * @type {boolean}
-         */
-        get complete(): boolean;
         set url(url: string);
         /**
          * The URL for this incoming message. This value is not absolute with
@@ -9247,6 +9754,12 @@ declare module "socket:http" {
          * @type {string}
          */
         get url(): string;
+        /**
+         * This property will be `true` if a complete HTTP message has been received
+         * and successfully parsed.
+         * @type {boolean}
+         */
+        get complete(): boolean;
         /**
          * An object of the incoming message headers.
          * @type {object}
@@ -9567,6 +10080,9 @@ declare module "socket:http" {
          * @ignore
          */
         reuseSocket(): void;
+        /**
+         * @ignore
+         */
         destroy(): void;
     }
     /**
@@ -9657,6 +10173,17 @@ declare module "socket:http" {
          * @type {number}
          */
         get maxConnections(): number;
+        /**
+         * Gets the HTTP server address and port that it this server is
+         * listening (emulated) on in the runtime with respect to the
+         * adapter internal being used by the server.
+         * @return {{ family: string, address: string, port: number}}
+         */
+        address(): {
+            family: string;
+            address: string;
+            port: number;
+        };
         /**
          * Closes the server.
          * @param {function=} [close]
@@ -11963,7 +12490,7 @@ declare module "socket:commonjs/package" {
         get map(): Map<any, any>;
         get origin(): any;
         add(name: any, info?: any): void;
-        get(name: any): any;
+        get(name: any, options?: any): any;
         entries(): IterableIterator<[any, any]>;
         keys(): IterableIterator<any>;
         values(): IterableIterator<any>;
@@ -13214,9 +13741,9 @@ declare module "socket:commonjs/module" {
      * accessor the 'exports' field.
      * @ignore
      */
-    export class Scope {
+    export class ModuleScope {
         /**
-         * `Scope` class constructor.
+         * `ModuleScope` class constructor.
          * @param {Module} module
          */
         constructor(module: Module);
@@ -13273,6 +13800,7 @@ declare module "socket:commonjs/module" {
     }
     /**
      * A WASM module loader
+    
      */
     export class WASMModuleLoader extends ModuleLoader {
     }
@@ -13436,9 +13964,9 @@ declare module "socket:commonjs/module" {
         get exports(): any;
         /**
          * The scope of the module given to parsed modules.
-         * @type {Scope}
+         * @type {ModuleScope}
          */
-        get scope(): Scope;
+        get scope(): ModuleScope;
         /**
          * The origin of the loaded module.
          * @type {string}
@@ -14505,6 +15033,7 @@ declare module "socket:internal/error" {
      * @type {number}
      */
     export const DEFAULT_ERROR_STACK_TRACE_LIMIT: number;
+    export const DefaultPlatformError: ErrorConstructor;
     export const Error: ErrorConstructor;
     export const URIError: ErrorConstructor;
     export const EvalError: ErrorConstructor;
@@ -14599,53 +15128,6 @@ declare module "socket:internal/promise" {
         catch<TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult>;
         finally(onfinally?: () => void): Promise<T>;
         readonly [Symbol.toStringTag]: string;
-    }
-}
-
-declare module "socket:internal/streams" {
-    export class ReadableStream extends globalThis.ReadableStream<Uint8Array> {
-        constructor(options: any);
-        getReader(options: any): any;
-    }
-    export const ReadableStreamBYOBReader: {
-        new (stream: globalThis.ReadableStream<any>): ReadableStreamBYOBReader;
-        prototype: ReadableStreamBYOBReader;
-    } | {
-        new (): {
-            "__#91@#closed": Deferred;
-            "__#91@#cancellation": ReadableStreamBYOBReaderCancellation;
-            readonly closed: Promise<any>;
-            cancel(reason?: any): Promise<any>;
-            read(view: any): ReadableStreamBYOBReadResult;
-        };
-    };
-    export const ReadableStreamBYOBRequest: {
-        new (): ReadableStreamBYOBRequest;
-        prototype: ReadableStreamBYOBRequest;
-    } | {
-        new (): {
-            "__#92@#view": any;
-            readonly view: any;
-            respond(bytesWritten: any): void;
-            respondWithNewView(view: any): void;
-        };
-    };
-    export const ReadableByteStreamController: {
-        new (): {};
-    };
-    namespace _default {
-        export { ReadableStream };
-    }
-    export default _default;
-    import { Deferred } from "socket:async/deferred";
-    class ReadableStreamBYOBReaderCancellation {
-        reason: any;
-        state: boolean;
-    }
-    class ReadableStreamBYOBReadResult {
-        constructor(value?: any, done?: boolean);
-        value: any;
-        done: boolean;
     }
 }
 
