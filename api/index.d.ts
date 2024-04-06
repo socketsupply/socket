@@ -2712,10 +2712,10 @@ declare module "socket:path/win32" {
     /**
      * Computes base name of path.
      * @param {PathComponent} path
-     * @param {string} suffix
+     * @param {string=} [suffix]
      * @return {string}
      */
-    export function basename(path: PathComponent, suffix: string): string;
+    export function basename(path: PathComponent, suffix?: string | undefined): string;
     /**
      * Computes extension name of path.
      * @param {PathComponent} path
@@ -2806,10 +2806,10 @@ declare module "socket:path/posix" {
     /**
      * Computes base name of path.
      * @param {PathComponent} path
-     * @param {string} suffix
+     * @param {string=} [suffix]
      * @return {string}
      */
-    export function basename(path: PathComponent, suffix: string): string;
+    export function basename(path: PathComponent, suffix?: string | undefined): string;
     /**
      * Computes extension name of path.
      * @param {PathComponent} path
@@ -5907,6 +5907,7 @@ declare module "socket:mime/index" {
         set subtype(value: any);
         get subtype(): any;
         get essence(): string;
+        get params(): any;
         toString(): string;
         toJSON(): string;
         #private;
@@ -9437,6 +9438,11 @@ declare module "socket:http/adapters" {
          */
         get httpInterface(): HTTPModuleInterface;
         /**
+         * A readonly reference to the `AsyncContext.Variable` associated with this
+         * `ServerAdapter` instance.
+         */
+        get context(): import("socket:async/context").Variable<any>;
+        /**
          * Called when the adapter should destroy itself.
          * @abstract
          */
@@ -9755,6 +9761,14 @@ declare module "socket:http" {
          */
         get url(): string;
         /**
+         * @type {Server}
+         */
+        get server(): exports.Server;
+        /**
+         * @type {AsyncContext.Variable}
+         */
+        get context(): typeof import("socket:async/context").Variable;
+        /**
          * This property will be `true` if a complete HTTP message has been received
          * and successfully parsed.
          * @type {boolean}
@@ -9949,6 +9963,10 @@ declare module "socket:http" {
          */
         constructor(options: object);
         /**
+         * @type {Server}
+         */
+        get server(): exports.Server;
+        /**
          * A reference to the original HTTP request object.
          * @type {IncomingMessage}
          */
@@ -10126,6 +10144,11 @@ declare module "socket:http" {
         keepAliveTimeout: number;
         headersTimeout: number;
         /**
+         * @ignore
+         * @type {AsyncResource}
+         */
+        get resource(): AsyncResource;
+        /**
          * The adapter interface for this `Server` instance.
          * @ignore
          */
@@ -10217,6 +10240,7 @@ declare module "socket:http" {
     import { Readable } from "socket:stream";
     import { EventEmitter } from "socket:events";
     import { Duplex } from "socket:stream";
+    import { AsyncResource } from "socket:async/resource";
     import * as exports from "socket:http";
     
 }
@@ -13573,7 +13597,8 @@ declare module "socket:commonjs/require" {
      *   module: import('./module.js').Module,
      *   prefix?: string,
      *   request?: import('./loader.js').RequestOptions,
-     *   builtins?: object
+     *   builtins?: object,
+     *   resolvers?: RequireFunction[]
      * }} CreateRequireOptions
      */
     /**
@@ -13633,6 +13658,7 @@ declare module "socket:commonjs/require" {
         prefix?: string;
         request?: import("socket:commonjs/loader").RequestOptions;
         builtins?: object;
+        resolvers?: RequireFunction[];
     };
     export type RequireFunction = (arg0: string) => any;
     export type PackageOptions = import("socket:commonjs/package").PackageOptions;
@@ -13665,7 +13691,7 @@ declare module "socket:commonjs/module" {
      */
     export function createRequire(url: string | URL, options?: ModuleOptions | undefined): RequireFunction;
     /**
-     * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
+     * @typedef {function(string, Module, function(string): any): any} ModuleResolver
      */
     /**
      * @typedef {import('./require.js').RequireFunction} RequireFunction
@@ -14031,7 +14057,7 @@ declare module "socket:commonjs/module" {
         #private;
     }
     export default Module;
-    export type ModuleResolver = import("socket:commonjs/require").RequireResolver[];
+    export type ModuleResolver = (arg0: string, arg1: Module, arg2: (arg0: string) => any) => any;
     export type RequireFunction = import("socket:commonjs/require").RequireFunction;
     export type PackageOptions = import("socket:commonjs/package").PackageOptions;
     export type CreateRequireOptions = {
@@ -14040,7 +14066,7 @@ declare module "socket:commonjs/module" {
         builtins?: object;
     };
     export type ModuleOptions = {
-        resolvers?: import("socket:commonjs/require").RequireResolver[][];
+        resolvers?: ModuleResolver[];
         importmap?: ImportMap;
         loader?: Loader | object;
         loaders?: object;
