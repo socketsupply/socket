@@ -1,4 +1,6 @@
 import { Writable, Readable, Duplex } from './stream.js'
+import { AsyncResource } from './async/resource.js'
+import { AsyncContext } from './async/context.js'
 import { EventEmitter } from './events.js'
 import { toProperCase } from './util.js'
 import { Buffer } from './buffer.js'
@@ -510,6 +512,7 @@ export class IncomingMessage extends Readable {
   #statusMessage = null
   #statusCode = 0
   #complete = false
+  #context = new AsyncContext.Variable()
   #headers = {}
   #timeout = null
   #method = 'GET'
@@ -594,6 +597,20 @@ export class IncomingMessage extends Readable {
     if (options?.url) {
       this.url = options.url
     }
+  }
+
+  /**
+   * @type {Server}
+   */
+  get server () {
+    return this.#server
+  }
+
+  /**
+   * @type {AsyncContext.Variable}
+   */
+  get context () {
+    return this.#context
   }
 
   /**
@@ -1001,6 +1018,13 @@ export class ServerResponse extends OutgoingMessage {
     super()
     this.#request = options?.request ?? null
     this.#server = options?.server ?? null
+  }
+
+  /**
+   * @type {Server}
+   */
+  get server () {
+    return this.#server
   }
 
   /**
@@ -1498,6 +1522,7 @@ export class Server extends EventEmitter {
   #listening = false
   #adapter = null
   #closed = false
+  #resource = new AsyncResource('HTTPServer')
   #port = 0
   #host = null
 
@@ -1508,6 +1533,14 @@ export class Server extends EventEmitter {
   maxRequestsPerSocket = 0
   keepAliveTimeout = 0
   headersTimeout = 60000
+
+  /**
+   * @ignore
+   * @type {AsyncResource}
+   */
+  get resource () {
+    return this.#resource
+  }
 
   /**
    * The adapter interface for this `Server` instance.
