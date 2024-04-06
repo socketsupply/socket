@@ -260,6 +260,12 @@ class RuntimeWorker extends GlobalWorker {
       value: true
     })
 
+    Object.defineProperty(globalThis, 'isSocketRuntime', {
+      configurable: false,
+      enumerable: false,
+      value: true
+    })
+
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
       configurable: false,
       enumerable: false,
