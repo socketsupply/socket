@@ -404,7 +404,7 @@ static void initRouterTable (Router *router) {
 
     if (args.size() == 0 || args.at(0).size() == 0) {
       auto json = JSON::Object::Entries {
-        {"source", "child_process.spawn"},
+        {"source", "child_process.exec"},
         {"err", JSON::Object::Entries {
           {"message", "Spawn requires at least one argument with a length greater than zero"},
         }}

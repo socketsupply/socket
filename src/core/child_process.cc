@@ -73,8 +73,8 @@ namespace SSC {
       const auto command = args.size() > 0 ? args.at(0) : String("");
       const auto argv = join(args.size() > 1 ? Vector<String>{ args.begin() + 1, args.end() } : Vector<String>{}, " ");
 
-      auto stdoutBuffer = new JSON::Array{};
-      auto stderrBuffer = new JSON::Array{};
+      StringStream* stdoutBuffer = new StringStream;
+      StringStream* stderrBuffer = new StringStream;
 
       const auto onStdout = [=](const String& output) mutable {
         if (!options.allowStdout || output.size() == 0) {
@@ -82,7 +82,7 @@ namespace SSC {
         }
 
         if (stdoutBuffer != nullptr) {
-          stdoutBuffer->push(output);
+          *stdoutBuffer << String(output);
         }
       };
 
@@ -92,7 +92,7 @@ namespace SSC {
         }
 
         if (stderrBuffer != nullptr) {
-          stderrBuffer->push(output);
+          *stderrBuffer << String(output);
         }
       };
 
@@ -112,8 +112,8 @@ namespace SSC {
               {"data", JSON::Object::Entries {
                 {"id", std::to_string(id)},
                 {"pid", std::to_string(pid)},
-                {"stdout", *stdoutBuffer},
-                {"stderr", *stderrBuffer},
+                {"stdout", encodeURIComponent(stdoutBuffer->str())},
+                {"stderr", encodeURIComponent(stderrBuffer->str())},
                 {"code", code}
               }}
             };
@@ -156,8 +156,8 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(id)},
               {"pid", std::to_string(pid)},
-              {"stdout", *stdoutBuffer},
-              {"stderr", *stderrBuffer},
+              {"stdout", encodeURIComponent(stdoutBuffer->str())},
+              {"stderr", encodeURIComponent(stderrBuffer->str())},
               {"code", "ETIMEDOUT"}
             }}
           };
