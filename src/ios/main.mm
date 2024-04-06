@@ -345,6 +345,36 @@ static dispatch_queue_t queue = dispatch_queue_create(
            forURLScheme: @"socket"
   ];
 
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"node"
+  ];
+
+  [config
+    setURLSchemeHandler: bridge->router.schemeHandler
+           forURLScheme: @"npm"
+  ];
+
+  for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
+    const auto scheme = replace(trim(entry), ":", "");
+    if (core->protocolHandlers.registerHandler(scheme)) {
+      [config setURLSchemeHandler: bridge->router.schemeHandler
+                    forURLScheme: @(replace(trim(scheme), ":", "").c_str())];
+    }
+  }
+
+  for (const auto& entry : opts.userConfig) {
+    const auto& key = entry.first;
+    if (key.starts_with("webview_protocol-handlers_")) {
+      const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+      const auto data = entry.second;
+      if (core->protocolHandlers.registerHandler(scheme, { data })) {
+        [config setURLSchemeHandler: bridge->router.schemeHandler
+                       forURLScheme: @(scheme.c_str())];
+      }
+    }
+  }
+
   self.content = config.userContentController;
 
   [self.content
