@@ -39,7 +39,10 @@ function map (object, callback) {
   } else if (object && typeof object === 'object') {
     object = callback(object)
     for (const key in object) {
-      object[key] = map(object[key], callback)
+      const descriptor = Object.getOwnPropertyDescriptor(object, key)
+      if (descriptor && descriptor.writable) {
+        object[key] = map(object[key], callback)
+      }
     }
   }
 
