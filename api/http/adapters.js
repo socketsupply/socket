@@ -1,4 +1,4 @@
-import { Deferred } from '../async.js'
+import { Deferred, AsyncContext } from '../async.js'
 import { Buffer } from '../buffer.js'
 import process from '../process.js'
 import assert from '../assert.js'
@@ -19,6 +19,7 @@ import assert from '../assert.js'
  */
 export class ServerAdapter extends EventTarget {
   #server = null
+  #context = new AsyncContext.Variable()
   #httpInterface = null
 
   /**
@@ -50,6 +51,14 @@ export class ServerAdapter extends EventTarget {
    */
   get httpInterface () {
     return this.#httpInterface
+  }
+
+  /**
+   * A readonly reference to the `AsyncContext.Variable` associated with this
+   * `ServerAdapter` instance.
+   */
+  get context () {
+    return this.#context
   }
 
   /**
@@ -156,6 +165,8 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
 
     const deferred = new Deferred()
 
+    event.respondWith(deferred.promise)
+
     const incomingMessage = new this.httpInterface.IncomingMessage({
       complete: !/post|put/i.test(event.request.method),
       headers: event.request.headers,
@@ -175,10 +186,14 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
       serverResponse
     )
 
-    this.server.emit('connection', connection)
-    event.respondWith(deferred.promise)
-
-    this.server.emit('request', incomingMessage, serverResponse)
+    this.server.resource.runInAsyncScope(() => {
+      this.context.run({ connection, incomingMessage, serverResponse, event }, () => {
+        incomingMessage.context.run({ event }, () => {
+          this.server.emit('connection', connection)
+          this.server.emit('request', incomingMessage, serverResponse)
+        })
+      })
+    })
 
     if (/post|put/i.test(event.request.method)) {
       const { highWaterMark } = incomingMessage._readableState
