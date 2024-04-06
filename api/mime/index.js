@@ -349,6 +349,10 @@ export class MIMEType {
     return `${this.type}/${this.subtype}`
   }
 
+  get params () {
+    return this.#params
+  }
+
   toString () {
     const params = this.params.toString()
 
