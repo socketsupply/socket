@@ -10,7 +10,7 @@ import process from '../process.js'
 import path from '../path.js'
 
 /**
- * @typedef {import('./require.js').RequireResolver[]} ModuleResolver
+ * @typedef {function(string, Module, function(string): any): any} ModuleResolver
  */
 
 /**
