@@ -46,7 +46,7 @@ import * as timers from '../timers.js'
 import * as tty from '../tty.js'
 import * as url from '../url.js'
 import util from '../util.js'
-import * as vm from '../vm.js'
+import vm from '../vm.js'
 import * as window from '../window.js'
 // eslint-disable-next-line
 import * as worker_threads from '../worker_threads.js'

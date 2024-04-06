@@ -1,6 +1,7 @@
 import { DEFAULT_PACKAGE_PREFIX, Package } from './package.js'
 import { getBuiltin, isBuiltin } from './builtins.js'
 import { ModuleNotFoundError } from '../errors.js'
+import { isFunction } from '../util/types.js'
 import location from '../location.js'
 
 /**
@@ -12,7 +13,8 @@ import location from '../location.js'
  *   module: import('./module.js').Module,
  *   prefix?: string,
  *   request?: import('./loader.js').RequestOptions,
- *   builtins?: object
+ *   builtins?: object,
+ *   resolvers?: RequireFunction[]
  * }} CreateRequireOptions
  */
 
@@ -92,7 +94,7 @@ export class Meta {
  * @return {RequireFunction}
  */
 export function createRequire (options) {
-  const { builtins, headers, module, prefix } = options
+  const { builtins, headers, resolvers, module, prefix } = options
   const { cache, loaders, main } = module
 
   // non-standard 'require.meta' object
@@ -104,8 +106,10 @@ export function createRequire (options) {
 
   return Object.assign(require, {
     extensions: loaders,
+    resolvers: module.resolvers.concat(resolvers).filter(isFunction),
     resolve,
     loaders,
+    module,
     cache,
     meta,
     main
@@ -141,8 +145,10 @@ export function createRequire (options) {
    */
   function applyResolvers (input, options = null) {
     const resolvers = Array
-      .from(module.resolvers)
+      .from([])
       .concat(options?.resolvers)
+      .concat(require.resolvers)
+      .concat(module.resolvers)
       .filter(Boolean)
 
     return next(input)
@@ -166,6 +172,10 @@ export function createRequire (options) {
    * @return {any}
    */
   function require (input, options = null) {
+    if (input instanceof URL) {
+      input = input.href
+    }
+
     const resolvedInput = applyResolvers(input, options)
 
     if (resolvedInput && typeof resolvedInput !== 'string') {
@@ -253,7 +263,7 @@ export function createRequire (options) {
    */
   function resolve (input, options = null) {
     if (input instanceof URL) {
-      input = String(input)
+      input = input.href
     }
 
     const resolvedInput = applyResolvers(input, options)
