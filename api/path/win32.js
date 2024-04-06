@@ -84,10 +84,10 @@ export function dirname (path) {
 /**
  * Computes base name of path.
  * @param {PathComponent} path
- * @param {string} suffix
+ * @param {string=} [suffix]
  * @return {string}
  */
-export function basename (path, suffix) {
+export function basename (path, suffix = null) {
   return Path.basename({ sep }, path).replace(suffix || '', '')
 }
 
