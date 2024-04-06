@@ -659,7 +659,7 @@ export function execSync (command, options) {
       code: typeof code === 'string' ? code : null,
       signal: errorSignal || null,
       status: Number.isFinite(code) ? code : null,
-      output: [null, stdout.join('\n'), stderr.join('\n')]
+      output: [null, stdout, stderr]
     })
 
     // @ts-ignore
@@ -673,9 +673,9 @@ export function execSync (command, options) {
     throw error
   }
 
-  const output = options?.encoding === 'utf8'
-    ? stdout.join('\n')
-    : Buffer.from(stdout.join('\n'))
+  const output = stdout && options?.encoding === 'utf8'
+    ? stdout
+    : Buffer.from(stdout)
 
   return output
 }
