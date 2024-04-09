@@ -2,9 +2,9 @@
 /**
  * @module CommonJS.Loader
  */
+import { CacheCollection, Cache } from './cache.js'
 import InternalSymbols from '../internal/symbols.js'
 import { Headers } from '../ipc.js'
-import { Cache } from './cache.js'
 import location from '../location.js'
 import path from '../path.js'
 
@@ -63,8 +63,10 @@ export class RequestStatus {
    * @param {object} json
    * @return {RequestStatus}
    */
-  static from (json) {
-    return new this(null, json)
+  static from (json, options) {
+    const status = new this(null, json)
+    status.request = Request.from({ url: json.id }, { ...options, status })
+    return status
   }
 
   #status = undefined
@@ -99,7 +101,7 @@ export class RequestStatus {
   set request (request) {
     this.#request = request
 
-    if (request.loader) {
+    if (!this.#status && request.loader?.cache?.status) {
       this.#status = request.loader.cache.status.get(request.id)?.value
     }
   }
@@ -222,6 +224,10 @@ export class RequestStatus {
     this.#status = request.status
 
     const contentLocation = this.#headers.get('content-location')
+
+    if (this.#request) {
+      this.#request.loader.cache.status.set(this.id, this)
+    }
 
     // verify 'Content-Location' header if given in response
     // @ts-ignore
@@ -495,8 +501,8 @@ export class Response {
    */
   static from (json, options) {
     return new this({
-      request: Request.from({ url: json.id }, options),
-      ...json
+      ...json,
+      request: Request.from({ url: json.id }, options)
     }, options)
   }
 
@@ -605,7 +611,7 @@ export class Response {
    * @type {boolean}
    */
   get ok () {
-    return this.status >= 200 && this.status < 400
+    return this.id && this.status >= 200 && this.status < 400
   }
 
   /**
@@ -699,17 +705,7 @@ export class Loader {
     '.wasm'
   ])
 
-  #cache = {
-    /**
-     * @type {Cache?}
-     */
-    response: null,
-
-    /**
-     * @type {Cache?}
-     */
-    status: null
-  }
+  #cache = new CacheCollection()
 
   #origin = null
   #headers = new Headers()
@@ -744,14 +740,6 @@ export class Loader {
       }
     }
 
-    this.#cache.response = options?.cache?.response instanceof Cache
-      ? options.cache.response
-      : new Cache('loader.response', { loader: this, types: { Response } })
-
-    this.#cache.status = options?.cache?.status instanceof Cache
-      ? options.cache.status
-      : new Cache('loader.status', { loader: this, types: { RequestStatus } })
-
     if (options?.extensions && typeof options.extensions === 'object') {
       if (Array.isArray(options.extensions) || options instanceof Set) {
         for (const value of options.extensions) {
@@ -760,6 +748,22 @@ export class Loader {
         }
       }
     }
+
+    this.#cache.add(
+      'status',
+      options?.cache?.status instanceof Cache
+        ? options.cache.status
+        : new Cache('loader.status', { loader: this, types: { RequestStatus } })
+    )
+
+    this.#cache.add(
+      'response',
+      options?.cache?.response instanceof Cache
+        ? options.cache.response
+        : new Cache('loader.response', { loader: this, types: { Response } })
+    )
+
+    this.#cache.restore()
   }
 
   /**
