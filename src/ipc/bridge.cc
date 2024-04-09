@@ -2740,6 +2740,168 @@ static void initRouterTable (Router *router) {
     reply(Result::Data { message, JSON::Object {}});
   });
 
+  /**
+   * Sets storage for a service worker.
+   * @param id
+   * @param key
+   * @param value
+   */
+  router->map("serviceWorker.storage.set", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "key", "value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    for (auto& entry : router->core->serviceWorker.registrations) {
+      if (entry.second.id == id) {
+        auto& registration = entry.second;
+        registration.storage.set(message.get("key"), message.get("value"));
+        return reply(Result::Data { message, JSON::Object {}});
+      }
+    }
+
+    return reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"}
+      }
+    });
+  });
+
+  /**
+   * Gets a storage value for a service worker.
+   * @param id
+   * @param key
+   */
+  router->map("serviceWorker.storage.get", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "key"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    for (auto& entry : router->core->serviceWorker.registrations) {
+      if (entry.second.id == id) {
+        auto& registration = entry.second;
+        return reply(Result::Data {
+          message,
+          JSON::Object::Entries {
+            {"value", registration.storage.get(message.get("key"))}
+          }
+        });
+      }
+    }
+
+    return reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"}
+      }
+    });
+  });
+
+  /**
+   * Remoes a storage value for a service worker.
+   * @param id
+   * @param key
+   */
+  router->map("serviceWorker.storage.remove", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "key"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    for (auto& entry : router->core->serviceWorker.registrations) {
+      if (entry.second.id == id) {
+        auto& registration = entry.second;
+        registration.storage.remove(message.get("key"));
+        return reply(Result::Data {message, JSON::Object {}});
+      }
+    }
+
+    return reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"}
+      }
+    });
+  });
+
+  /**
+   * Clears all storage values for a service worker.
+   * @param id
+   */
+  router->map("serviceWorker.storage.clear", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    for (auto& entry : router->core->serviceWorker.registrations) {
+      if (entry.second.id == id) {
+        auto& registration = entry.second;
+        registration.storage.clear();
+        return reply(Result::Data { message, JSON::Object {} });
+      }
+    }
+
+    return reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"}
+      }
+    });
+  });
+
+  /**
+   * Gets all storage values for a service worker.
+   * @param id
+   */
+  router->map("serviceWorker.storage", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+    for (auto& entry : router->core->serviceWorker.registrations) {
+      if (entry.second.id == id) {
+        auto& registration = entry.second;
+        return reply(Result::Data { message, registration.storage.json() });
+      }
+    }
+
+    return reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"}
+      }
+    });
+  });
+
   router->map("timers.setTimeout", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"timeout"});
 
