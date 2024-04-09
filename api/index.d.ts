@@ -4006,7 +4006,7 @@ declare module "socket:fs/promises" {
      * @param {number} flags - Modifiers for copy operation.
      * @return {Promise}
      */
-    export function copyFile(src: string, dest: string, flags: number): Promise<any>;
+    export function copyFile(src: string, dest: string, flags?: number): Promise<any>;
     /**
      * Chages ownership of link at `path` with `uid` and `gid.
      * @param {string} path
@@ -4247,7 +4247,7 @@ declare module "socket:fs/index" {
      * @param {function(Error=)=} [callback] - The function to call after completion.
      * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
-    export function copyFile(src: string, dest: string, flags: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
+    export function copyFile(src: string, dest: string, flags?: number, callback?: ((arg0: Error | undefined) => any) | undefined): void;
     /**
      * Synchronously copies `src` to `dest` calling `callback` upon success or error.
      * @param {string} src - The source file path.
@@ -4255,7 +4255,7 @@ declare module "socket:fs/index" {
      * @param {number} flags - Modifiers for copy operation.
      * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
      */
-    export function copyFileSync(src: string, dest: string, flags: number): void;
+    export function copyFileSync(src: string, dest: string, flags?: number): void;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fscreatewritestreampath-options}
      * @param {string | Buffer | URL} path
