@@ -19,11 +19,11 @@
     "acorn": "8.10.0",
     "acorn-walk": "8.2.0",
     "standard": "^17.1.0",
-    "typescript": "5.3.2",
-    "urlpattern-polyfill": "^9.0.0",
+    "typescript": "5.4.4",
+    "urlpattern-polyfill": "^10.0.0",
     "web-streams-polyfill": "^4.0.0",
-    "whatwg-fetch": "^3.6.17",
-    "whatwg-url": "^13.0.0"
+    "whatwg-fetch": "^3.6.20",
+    "whatwg-url": "^14.0.0"
   },
   "optionalDependencies": {
     "@socketsupply/stream-relay": "^1.0.23-0"
