@@ -162,83 +162,6 @@ declare module "socket:buffer" {
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
 
-declare module "socket:events" {
-    export const Event: {
-        new (type: string, eventInitDict?: EventInit): Event;
-        prototype: Event;
-        readonly NONE: 0;
-        readonly CAPTURING_PHASE: 1;
-        readonly AT_TARGET: 2;
-        readonly BUBBLING_PHASE: 3;
-    } | {
-        new (): {};
-    };
-    export const EventTarget: {
-        new (): {};
-    };
-    export const CustomEvent: {
-        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
-        prototype: CustomEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#1@#detail": any;
-            readonly detail: any;
-        };
-    };
-    export const MessageEvent: {
-        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
-        prototype: MessageEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#2@#detail": any;
-            "__#2@#data": any;
-            readonly detail: any;
-            readonly data: any;
-        };
-    };
-    export const ErrorEvent: {
-        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
-        prototype: ErrorEvent;
-    } | {
-        new (type: any, options: any): {
-            "__#3@#detail": any;
-            "__#3@#error": any;
-            readonly detail: any;
-            readonly error: any;
-        };
-    };
-    export default EventEmitter;
-    export function EventEmitter(): void;
-    export class EventEmitter {
-        _events: any;
-        _eventsCount: number;
-        _maxListeners: number;
-        setMaxListeners(n: any): this;
-        getMaxListeners(): any;
-        emit(type: any, ...args: any[]): boolean;
-        addListener(type: any, listener: any): any;
-        on(arg0: any, arg1: any): any;
-        prependListener(type: any, listener: any): any;
-        once(type: any, listener: any): this;
-        prependOnceListener(type: any, listener: any): this;
-        removeListener(type: any, listener: any): this;
-        off(type: any, listener: any): this;
-        removeAllListeners(type: any, ...args: any[]): this;
-        listeners(type: any): any[];
-        rawListeners(type: any): any[];
-        listenerCount(type: any): any;
-        eventNames(): any;
-    }
-    export namespace EventEmitter {
-        export { EventEmitter };
-        export let defaultMaxListeners: number;
-        export function init(): void;
-        export function listenerCount(emitter: any, type: any): any;
-        export { once };
-    }
-    export function once(emitter: any, name: any): Promise<any>;
-}
-
 declare module "socket:async/context" {
     /**
      * @module Async.AsyncContext
@@ -400,7 +323,7 @@ declare module "socket:async/context" {
          * The current `Mapping` for this `AsyncContext`.
          * @type {Mapping}
          */
-        static "__#7@#current": Mapping;
+        static "__#4@#current": Mapping;
         /**
          * Returns `true` if the current `Mapping` has a
          * `AsyncContext.Variable` at `key`,
@@ -562,6 +485,84 @@ declare module "socket:async/context" {
         defaultValue?: T;
     };
     export type AnyFunc = () => any;
+}
+
+declare module "socket:events" {
+    export const Event: {
+        new (type: string, eventInitDict?: EventInit): Event;
+        prototype: Event;
+        readonly NONE: 0;
+        readonly CAPTURING_PHASE: 1;
+        readonly AT_TARGET: 2;
+        readonly BUBBLING_PHASE: 3;
+    } | {
+        new (): {};
+    };
+    export const EventTarget: {
+        new (): {};
+    };
+    export const CustomEvent: {
+        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
+        prototype: CustomEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#7@#detail": any;
+            readonly detail: any;
+        };
+    };
+    export const MessageEvent: {
+        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
+        prototype: MessageEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#8@#detail": any;
+            "__#8@#data": any;
+            readonly detail: any;
+            readonly data: any;
+        };
+    };
+    export const ErrorEvent: {
+        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
+        prototype: ErrorEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#9@#detail": any;
+            "__#9@#error": any;
+            readonly detail: any;
+            readonly error: any;
+        };
+    };
+    export default EventEmitter;
+    export function EventEmitter(): void;
+    export class EventEmitter {
+        _events: any;
+        _contexts: any;
+        _eventsCount: number;
+        _maxListeners: number;
+        setMaxListeners(n: any): this;
+        getMaxListeners(): any;
+        emit(type: any, ...args: any[]): boolean;
+        addListener(type: any, listener: any): any;
+        on(arg0: any, arg1: any): any;
+        prependListener(type: any, listener: any): any;
+        once(type: any, listener: any): this;
+        prependOnceListener(type: any, listener: any): this;
+        removeListener(type: any, listener: any): this;
+        off(type: any, listener: any): this;
+        removeAllListeners(type: any, ...args: any[]): this;
+        listeners(type: any): any[];
+        rawListeners(type: any): any[];
+        listenerCount(type: any): any;
+        eventNames(): (string | symbol)[];
+    }
+    export namespace EventEmitter {
+        export { EventEmitter };
+        export let defaultMaxListeners: number;
+        export function init(): void;
+        export function listenerCount(emitter: any, type: any): any;
+        export { once };
+    }
+    export function once(emitter: any, name: any): Promise<any>;
 }
 
 declare module "socket:async/wrap" {
@@ -2366,6 +2367,7 @@ declare module "socket:url/urlpattern/urlpattern" {
             "__#21@#t": {};
             "__#21@#e": {};
             "__#21@#s": {};
+            "__#21@#l": boolean;
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -2378,6 +2380,7 @@ declare module "socket:url/urlpattern/urlpattern" {
             readonly pathname: any;
             readonly search: any;
             readonly hash: any;
+            readonly hasRegExpGroups: boolean;
         };
         compareComponent(t: any, r: any, n: any): number;
     };
@@ -2433,6 +2436,7 @@ declare module "socket:url/index" {
             "__#21@#t": {};
             "__#21@#e": {};
             "__#21@#s": {};
+            "__#21@#l": boolean;
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -2445,6 +2449,7 @@ declare module "socket:url/index" {
             readonly pathname: any;
             readonly search: any;
             readonly hash: any;
+            readonly hasRegExpGroups: boolean;
         };
         compareComponent(t: any, r: any, n: any): number;
     };
@@ -4316,8 +4321,10 @@ declare module "socket:fs/index" {
     export function mkdir(path: any, options: any, callback: any): void;
     /**
      * @ignore
+     * @param {string|URL} path
+     * @param {object=} [options]
      */
-    export function mkdirSync(path: any, options: any): void;
+    export function mkdirSync(path: string | URL, options?: object | undefined): void;
     /**
      * Asynchronously open a file calling `callback` upon success or error.
      * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
@@ -7435,7 +7442,6 @@ declare module "socket:vm" {
         filename?: string;
         context?: object;
     };
-    import { SharedWorker } from "socket:internal/shared-worker";
 }
 
 declare module "socket:worker_threads/init" {
@@ -7474,7 +7480,7 @@ declare module "socket:worker_threads" {
      * A pool of known worker threads.
      * @type {<Map<string, Worker>}
      */
-    export const workers: <Map_1>() => <string, Worker_1>() => any;
+    export const workers: <Map>() => <string, Worker>() => any;
     /**
      * `true` if this is the "main" thread, otherwise `false`
      * The "main" thread is the top level webview window.
@@ -7631,7 +7637,6 @@ declare module "socket:worker_threads" {
     import { Readable } from "socket:stream";
     import { SHARE_ENV } from "socket:worker_threads/init";
     import init from "socket:worker_threads/init";
-    import { env } from "socket:process";
     export { SHARE_ENV, init };
 }
 
@@ -7819,7 +7824,6 @@ declare module "socket:child_process" {
     import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
-    import signal from "socket:signal";
 }
 
 declare module "socket:constants" {
@@ -8334,7 +8338,7 @@ declare module "socket:fs/web" {
     export function createFile(filename: string, options?: {
         fd: fs.FileHandle;
         highWaterMark?: number;
-    }): File;
+    } | undefined): File;
     /**
      * Creates a `FileSystemWritableFileStream` instance backed
      * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
@@ -8630,13 +8634,9 @@ declare module "socket:extension" {
      * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
-    import path from "socket:path";
 }
 
 declare module "socket:fetch/fetch" {
-    export class DOMException {
-        private constructor();
-    }
     export function Headers(headers: any): void;
     export class Headers {
         constructor(headers: any);
@@ -8694,12 +8694,19 @@ declare module "socket:fetch/fetch" {
         function redirect(url: any, status: any): Response;
     }
     export function fetch(input: any, init: any): Promise<any>;
-    export namespace fetch {
-        let polyfill: boolean;
+    export class DOMException {
+        private constructor();
     }
+    namespace _default {
+        export { fetch };
+        export { Headers };
+        export { Request };
+        export { Response };
+    }
+    export default _default;
 }
 
-declare module "socket:service-worker/database" {
+declare module "socket:internal/database" {
     /**
      * A typed container for optional options given to the `Database`
      * class constructor.
@@ -8768,16 +8775,16 @@ declare module "socket:service-worker/database" {
     /**
      * Creates an opens a named `Database` instance.
      * @param {string} name
-     * @param {?DatabaseOptions | undefiend} [options]
+     * @param {?DatabaseOptions | undefined} [options]
      * @return {Promise<Database>}
      */
-    export function open(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<Database>;
+    export function open(name: string, options?: (DatabaseOptions | undefined) | null): Promise<Database>;
     /**
      * Complete deletes a named `Database` instance.
      * @param {string} name
-     * @param {?DatabaseOptions | undefiend} [options]
+     * @param {?DatabaseOptions|undefined} [options]
      */
-    export function drop(name: string, options?: (DatabaseOptions | undefiend) | null): Promise<void>;
+    export function drop(name: string, options?: (DatabaseOptions | undefined) | null): Promise<void>;
     /**
      * A mapping of named `Database` instances that are currently opened
      * @type {Map<string, WeakRef<Database>>}
@@ -8898,9 +8905,9 @@ declare module "socket:service-worker/database" {
         /**
          * `Database` class constructor.
          * @param {string} name
-         * @param {?DatabaseOptions | undefiend} [options]
+         * @param {?DatabaseOptions | undefined} [options]
          */
-        constructor(name: string, options?: (DatabaseOptions | undefiend) | null);
+        constructor(name: string, options?: (DatabaseOptions | undefined) | null);
         /**
          * `true` if the `Database` is currently opening, otherwise `false`.
          * A `Database` instance should not attempt to be opened if this property value
@@ -8968,56 +8975,57 @@ declare module "socket:service-worker/database" {
         /**
          * Gets a "readonly" value by `key` in the `Database` object storage.
          * @param {string} key
-         * @param {?DatabaseGetOptions|undefiend} [options]
+         * @param {?DatabaseGetOptions|undefined} [options]
          * @return {Promise<object|object[]|null>}
          */
-        get(key: string, options?: (DatabaseGetOptions | undefiend) | null): Promise<object | object[] | null>;
+        get(key: string, options?: (DatabaseGetOptions | undefined) | null): Promise<object | object[] | null>;
         /**
          * Put a `value` at `key`, updating if it already exists, otherwise
          * "inserting" it into the `Database` instance.
          * @param {string} key
          * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
+         * @param {?DatabasePutOptions|undefined} [options]
          * @return {Promise}
          */
-        put(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        put(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
         /**
          * Inserts a new `value` at `key`. This function throws if a value at `key`
          * already exists.
          * @param {string} key
          * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
+         * @param {?DatabasePutOptions|undefined} [options]
          * @return {Promise}
          */
-        insert(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        insert(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
         /**
          * Update a `value` at `key`, updating if it already exists, otherwise
          * "inserting" it into the `Database` instance.
          * @param {string} key
          * @param {any} value
-         * @param {?DatabasePutOptions|undefiend} [options]
+         * @param {?DatabasePutOptions|undefined} [options]
          * @return {Promise}
          */
-        update(key: string, value: any, options?: (DatabasePutOptions | undefiend) | null): Promise<any>;
+        update(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
         /**
          * Delete a value at `key`.
          * @param {string} key
-         * @param {?DatabaseDeleteOptions|undefiend} [options]
+         * @param {?DatabaseDeleteOptions|undefined} [options]
          * @return {Promise}
          */
-        delete(key: string, options?: (DatabaseDeleteOptions | undefiend) | null): Promise<any>;
+        delete(key: string, options?: (DatabaseDeleteOptions | undefined) | null): Promise<any>;
         /**
          * Gets a "readonly" value by `key` in the `Database` object storage.
          * @param {string} key
-         * @param {?DatabaseEntriesOptions|undefiend} [options]
+         * @param {?DatabaseEntriesOptions|undefined} [options]
          * @return {Promise<object|object[]|null>}
          */
-        entries(options?: (DatabaseEntriesOptions | undefiend) | null): Promise<object | object[] | null>;
+        entries(options?: (DatabaseEntriesOptions | undefined) | null): Promise<object | object[] | null>;
         #private;
     }
     namespace _default {
         export { Database };
         export { open };
+        export { drop };
     }
     export default _default;
     /**
@@ -9093,10 +9101,33 @@ declare module "socket:service-worker/env" {
      */
     export function reset(): Promise<boolean>;
     /**
+     * @typedef {{
+     *   scope: string
+     * }} EnvironmentOptions
+     */
+    /**
+     * An event dispatched when a environment value is updated (set, delete)
+     */
+    export class EnvironmentEvent extends Event {
+        /**
+         * `EnvironmentEvent` class constructor.
+         * @param {'set'|'delete'} type
+         * @param {object=} [entry]
+         */
+        constructor(type: 'set' | 'delete', entry?: object | undefined);
+        entry: any;
+    }
+    /**
      * An environment context object with persistence and durability
      * for service worker environments.
      */
     export class Environment extends EventTarget {
+        /**
+         * Maximum entries that will be restored from storage into the environment
+         * context object.
+         * @type {number}
+         */
+        static MAX_CONTEXT_ENTRIES: number;
         /**
          * Opens an environment for a particular scope.
          * @param {EnvironmentOptions} options
@@ -9116,9 +9147,9 @@ declare module "socket:service-worker/env" {
         constructor(options: EnvironmentOptions);
         /**
          * A reference to the currently opened environment database.
-         * @type {import('./database.js').Database}
+         * @type {import('../internal/database.js').Database}
          */
-        get database(): import("socket:service-worker/database").Database;
+        get database(): import("socket:internal/database").Database;
         /**
          * A proxied object for reading and writing environment state.
          * Values written to this object must be cloneable with respect to the
@@ -11817,7 +11848,32 @@ declare module "socket:index" {
     export { network, Cache, sha256, Encryption, Packet, NAT };
 }
 
+declare module "socket:internal/serialize" {
+    export default function serialize(value: any): any;
+}
+
 declare module "socket:commonjs/cache" {
+    /**
+     * Computes a commonjs session storage cache key.
+     * @ignore
+     * @param {Cache=} [cache]
+     * @param {string=} [key]
+     * @return {string}
+     */
+    export function sessionStorageCacheKey(cache?: Cache | undefined, key?: string | undefined): string;
+    /**
+     * Restores values in a session storage into the cache.
+     * @ignore
+     * @param {Cache} cache
+     */
+    export function restoreFromSessionStorage(cache: Cache): void;
+    /**
+     * Computes a commonjs session storage cache key.
+     * @ignore
+     * @param {Cache} cache
+     * @param {string} key
+     */
+    export function updateSessionStorage(cache: Cache, key: string): void;
     /**
      * @typedef {{
      *   types?: object,
@@ -11827,13 +11883,203 @@ declare module "socket:commonjs/cache" {
     export const CACHE_CHANNEL_MESSAGE_ID: "id";
     export const CACHE_CHANNEL_MESSAGE_REPLICATE: "replicate";
     /**
+     * @typedef {{
+     *   name: string
+     * }} StorageOptions
+     */
+    /**
+     * An storage context object with persistence and durability
+     * for service worker storages.
+     */
+    export class Storage extends EventTarget {
+        /**
+         * Maximum entries that will be restored from storage into the context object.
+         * @type {number}
+         */
+        static MAX_CONTEXT_ENTRIES: number;
+        /**
+         * A mapping of known `Storage` instances.
+         * @type {Map<string, Storage>}
+         */
+        static instances: Map<string, Storage>;
+        /**
+         * Opens an storage for a particular name.
+         * @param {StorageOptions} options
+         * @return {Promise<Storage>}
+         */
+        static open(options: StorageOptions): Promise<Storage>;
+        /**
+         * `Storage` class constructor
+         * @ignore
+         * @param {StorageOptions} options
+         */
+        constructor(options: StorageOptions);
+        /**
+         * A reference to the currently opened storage database.
+         * @type {import('../internal/database.js').Database}
+         */
+        get database(): import("socket:internal/database").Database;
+        /**
+         * `true` if the storage is opened, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * A proxied object for reading and writing storage state.
+         * Values written to this object must be cloneable with respect to the
+         * structured clone algorithm.
+         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
+         * @type {Proxy<object>}
+         */
+        get context(): ProxyConstructor;
+        /**
+         * The current storage name. This value is also used as the
+         * internal database name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * A promise that resolves when the storage is opened.
+         * @type {Promise?}
+         */
+        get ready(): Promise<any>;
+        /**
+         * @ignore
+         * @param {Promise} promise
+         */
+        forwardRequest(promise: Promise<any>): Promise<any>;
+        /**
+         * Resets the current storage to an empty state.
+         */
+        reset(): Promise<void>;
+        /**
+         * Synchronizes database entries into the storage context.
+         */
+        sync(): Promise<void>;
+        /**
+         * Opens the storage.
+         * @ignore
+         */
+        open(): Promise<any>;
+        /**
+         * Closes the storage database, purging existing state.
+         * @ignore
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    /**
+     * A container for `Snapshot` data storage.
+     */
+    export class SnapshotData {
+        /**
+         * `SnapshotData` class constructor.
+         * @param {object=} [data]
+         */
+        constructor(data?: object | undefined);
+        toJSON: () => this;
+        [Symbol.toStringTag]: string;
+    }
+    /**
+     * A container for storing a snapshot of the cache data.
+     */
+    export class Snapshot {
+        /**
+         * @type {typeof SnapshotData}
+         */
+        static Data: typeof SnapshotData;
+        /**
+         * A reference to the snapshot data.
+         * @type {Snapshot.Data}
+         */
+        get data(): typeof SnapshotData;
+        /**
+         * @ignore
+         * @return {object}
+         */
+        toJSON(): object;
+        #private;
+    }
+    /**
+     * An interface for managing and performing operations on a collection
+     * of `Cache` objects.
+     */
+    export class CacheCollection {
+        /**
+         * `CacheCollection` class constructor.
+         * @ignore
+         * @param {Cache[]|Record<string, Cache>} collection
+         */
+        constructor(collection: Cache[] | Record<string, Cache>);
+        /**
+         * Adds a `Cache` instance to the collection.
+         * @param {string|Cache} name
+         * @param {Cache=} [cache]
+         * @param {boolean}
+         */
+        add(name: string | Cache, cache?: Cache | undefined): any;
+        /**
+         * Calls a method on each `Cache` object in the collection.
+         * @param {string} method
+         * @param {...any} args
+         * @return {Promise<Record<string,any>>}
+         */
+        call(method: string, ...args: any[]): Promise<Record<string, any>>;
+        restore(): Promise<Record<string, any>>;
+        reset(): Promise<Record<string, any>>;
+        snapshot(): Promise<Record<string, any>>;
+        get(key: any): Promise<Record<string, any>>;
+        delete(key: any): Promise<Record<string, any>>;
+        keys(key: any): Promise<Record<string, any>>;
+        values(key: any): Promise<Record<string, any>>;
+        clear(key: any): Promise<Record<string, any>>;
+    }
+    /**
      * A container for a shared cache that lives for the life time of
      * application execution. Updates to this storage are replicated to other
      * instances in the application context, including windows and workers.
      */
     export class Cache {
-        static types: Map<any, any>;
-        static shared: any;
+        /**
+         * A globally shared type mapping for the cache to use when
+         * derserializing a value.
+         * @type {Map<string, function>}
+         */
+        static types: Map<string, Function>;
+        /**
+         * A globally shared cache store keyed by cache name. This is useful so
+         * when multiple instances of a `Cache` are created, they can share the
+         * same data store, reducing duplications.
+         * @type {Record<string, Map<string, object>}
+         */
+        static shared: Record<string, Map<string, object>>;
+        /**
+         * A mapping of opened `Storage` instances.
+         * @type {Map<string, Storage>}
+         */
+        static storages: Map<string, Storage>;
+        /**
+         * The `Cache.Snapshot` class.
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
+        /**
+         * The `Cache.Storage` class
+         * @type {typeof Storage}
+         */
+        static Storage: typeof Storage;
+        /**
+         * Creates a snapshot of the current cache which can be serialized and
+         * stored in persistent storage.
+         * @return {Snapshot}
+         */
+        static snapshot(): Snapshot;
+        /**
+         * Restore caches from persistent storage.
+         * @param {string[]} names
+         * @return {Promise}
+         */
+        static restore(names: string[]): Promise<any>;
         /**
          * `Cache` class constructor.
          * @param {string} name
@@ -11850,6 +12096,11 @@ declare module "socket:commonjs/cache" {
          * @type {import('./loader.js').Loader}
          */
         get loader(): import("socket:commonjs/loader").Loader;
+        /**
+         * A reference to the persisted storage.
+         * @type {Storage}
+         */
+        get storage(): Storage;
         /**
          * The cache name
          * @type {string}
@@ -11870,6 +12121,24 @@ declare module "socket:commonjs/cache" {
          * @type {number}
          */
         get size(): number;
+        /**
+         * @type {Map}
+         */
+        get types(): Map<any, any>;
+        /**
+         * Resets the cache map, persisted storage, and session storage.
+         */
+        reset(): Promise<void>;
+        /**
+         * Restores cache data from session storage.
+         */
+        restore(): Promise<void>;
+        /**
+         * Creates a snapshot of the current cache which can be serialized and
+         * stored in persistent storage.
+         * @return {Snapshot.Data}
+         */
+        snapshot(): typeof SnapshotData;
         /**
          * Get a value at `key`.
          * @param {string} key
@@ -11893,9 +12162,9 @@ declare module "socket:commonjs/cache" {
          * Delete a value at `key`.
          * This does not replicate to shared caches.
          * @param {string} key
-         * @return {object|undefined}
+         * @return {boolean}
          */
-        delete(key: string): object | undefined;
+        delete(key: string): boolean;
         /**
          * Returns an iterator for all cache keys.
          * @return {object}
@@ -11941,6 +12210,9 @@ declare module "socket:commonjs/cache" {
     export type CacheOptions = {
         types?: object;
         loader?: import("socket:commonjs/loader").Loader;
+    };
+    export type StorageOptions = {
+        name: string;
     };
 }
 
@@ -11991,7 +12263,7 @@ declare module "socket:commonjs/loader" {
          * @param {object} json
          * @return {RequestStatus}
          */
-        static from(json: object): RequestStatus;
+        static from(json: object, options: any): RequestStatus;
         /**
          * `RequestStatus` class constructor.
          * @param {Request} request
@@ -12415,7 +12687,7 @@ declare module "socket:commonjs/package" {
         static parse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        }): ParsedPackageName | null;
+        } | undefined): ParsedPackageName | null;
         /**
          * Returns `true` if the given `input` can be parsed by `Name.parse` or given
          * as input to the `Name` class constructor.
@@ -12426,7 +12698,7 @@ declare module "socket:commonjs/package" {
         static canParse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        }): boolean;
+        } | undefined): boolean;
         /**
          * Creates a new `Name` from input.
          * @param {string|URL} input
@@ -14080,12 +14352,16 @@ declare module "socket:commonjs/module" {
     import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
-    import builtins from "socket:commonjs/builtins";
 }
 
 declare module "socket:module" {
     export const builtinModules: any;
     export default Module;
+    export type ModuleOptions = import("socket:commonjs/module").ModuleOptions;
+    export type ModuleResolver = import("socket:commonjs/module").ModuleResolver;
+    export type ModuleLoadOptions = import("socket:commonjs/module").ModuleLoadOptions;
+    export type RequireFunction = import("socket:commonjs/module").RequireFunction;
+    export type CreateRequireOptions = import("socket:commonjs/module").CreateRequireOptions;
     import { createRequire } from "socket:commonjs/module";
     import { Module } from "socket:commonjs/module";
     import builtins from "socket:commonjs/builtins";
@@ -14560,16 +14836,14 @@ declare module "socket:service-worker" {
         export { ExtendableEvent };
         export { FetchEvent };
         export { Environment };
-        export { Database };
         export { Context };
     }
     export default _default;
     import { ExtendableEvent } from "socket:service-worker/events";
     import { FetchEvent } from "socket:service-worker/events";
     import { Environment } from "socket:service-worker/env";
-    import { Database } from "socket:service-worker/database";
     import { Context } from "socket:service-worker/context";
-    export { ExtendableEvent, FetchEvent, Environment, Database, Context };
+    export { ExtendableEvent, FetchEvent, Environment, Context };
 }
 
 declare module "socket:stream-relay" {
@@ -15136,27 +15410,6 @@ declare module "socket:internal/post-message" {
     export default _default;
 }
 
-declare module "socket:internal/promise" {
-    export const NativePromise: PromiseConstructor;
-    export namespace NativePromisePrototype {
-        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => Promise<TResult1 | TResult2>;
-        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => Promise<any>;
-        export { _catch as catch };
-        let _finally: (onfinally?: () => void) => Promise<any>;
-        export { _finally as finally };
-    }
-    export const NativePromiseAll: any;
-    export const NativePromiseAny: any;
-    export default Promise;
-    var Promise: PromiseConstructor;
-    interface Promise<T> {
-        then<TResult1 = T, TResult2 = never>(onfulfilled?: (value: T) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>): Promise<TResult1 | TResult2>;
-        catch<TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult>;
-        finally(onfinally?: () => void): Promise<T>;
-        readonly [Symbol.toStringTag]: string;
-    }
-}
-
 declare module "socket:service-worker/registration" {
     export class ServiceWorkerRegistration {
         constructor(info: any, serviceWorker: any);
@@ -15200,9 +15453,8 @@ declare module "socket:service-worker/container" {
          * contains private implementation properties relevant to the runtime
          * `ServiceWorkerContainer` internal state implementations.
          * @ignore
-         * @private
          */
-        private init;
+        init(): Promise<any>;
         register(scriptURL: any, options?: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
         getRegistration(clientURL: any): Promise<globalThis.ServiceWorkerRegistration | ServiceWorkerRegistration>;
         getRegistrations(): Promise<readonly globalThis.ServiceWorkerRegistration[] | ServiceWorkerRegistration[]>;
@@ -15246,6 +15498,43 @@ declare module "socket:internal/scheduler" {
     export * from "socket:timers/scheduler";
     export default scheduler;
     import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:internal/promise" {
+    export const NativePromise: PromiseConstructor;
+    export namespace NativePromisePrototype {
+        export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => globalThis.Promise<TResult1 | TResult2>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => globalThis.Promise<any>;
+        export { _catch as catch };
+        let _finally: (onfinally?: () => void) => globalThis.Promise<any>;
+        export { _finally as finally };
+    }
+    export const NativePromiseAll: any;
+    export const NativePromiseAny: any;
+    export class Promise extends globalThis.Promise<any> {
+        constructor(...args: any[]);
+        [resourceSymbol]: {
+            "__#11@#type": any;
+            "__#11@#destroyed": boolean;
+            "__#11@#asyncId": number;
+            "__#11@#triggerAsyncId": any;
+            "__#11@#requireManualDestroy": boolean;
+            readonly type: string;
+            readonly destroyed: boolean;
+            asyncId(): number;
+            triggerAsyncId(): number;
+            emitDestroy(): asyncHooks.CoreAsyncResource;
+            bind(fn: Function, thisArg?: any): Function;
+            runInAsyncScope(fn: Function, thisArg?: any, ...args?: any[]): any;
+        };
+    }
+    export namespace Promise {
+        function all(iterable: any): any;
+        function any(iterable: any): any;
+    }
+    export default Promise;
+    const resourceSymbol: unique symbol;
+    import * as asyncHooks from "socket:internal/async/hooks";
 }
 
 declare module "socket:internal/timers" {
@@ -15358,7 +15647,6 @@ declare module "socket:internal/pickers" {
             [keyof];
         }>;
     };
-    import { FileSystemHandle } from "socket:fs/web";
 }
 
 declare module "socket:internal/primitives" {
@@ -15532,6 +15820,334 @@ declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;
 declare const TypedArray: any;
 declare const ports: any[];
+
+declare module "socket:service-worker/storage" {
+    /**
+     * A factory for creating storage interfaces.
+     * @param {'memoryStorage'|'localStorage'|'sessionStorage'} type
+     * @return {Promise<Storage>}
+     */
+    export function createStorageInterface(type: 'memoryStorage' | 'localStorage' | 'sessionStorage'): Promise<Storage>;
+    /**
+     * @typedef {{ done: boolean, value: string | undefined }} IndexIteratorResult
+     */
+    /**
+     * An iterator interface for an `Index` instance.
+     */
+    export class IndexIterator {
+        /**
+         * `IndexIterator` class constructor.
+         * @ignore
+         * @param {Index} index
+         */
+        constructor(index: Index);
+        /**
+         * `true` if the iterator is "done", otherwise `false`.
+         * @type {boolean}
+         */
+        get done(): boolean;
+        /**
+         * Returns the next `IndexIteratorResult`.
+         * @return {IndexIteratorResult}
+         */
+        next(): IndexIteratorResult;
+        /**
+         * Mark `IndexIterator` as "done"
+         * @return {IndexIteratorResult}
+         */
+        return(): IndexIteratorResult;
+        #private;
+    }
+    /**
+     * A container used by the `Provider` to index keys and values
+     */
+    export class Index {
+        /**
+         * A reference to the keys in this index.
+         * @type {string[]}
+         */
+        get keys(): string[];
+        /**
+         * A reference to the values in this index.
+         * @type {string[]}
+         */
+        get values(): string[];
+        /**
+         * The number of entries in this index.
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Returns the key at a given `index`, if it exists otherwise `null`.
+         * @param {number} index}
+         * @return {string?}
+         */
+        key(index: number): string | null;
+        /**
+         * Returns the value at a given `index`, if it exists otherwise `null`.
+         * @param {number} index}
+         * @return {string?}
+         */
+        value(index: number): string | null;
+        /**
+         * Inserts a value in the index.
+         * @param {string} key
+         * @param {string} value
+         */
+        insert(key: string, value: string): void;
+        /**
+         * Computes the index of a key in this index.
+         * @param {string} key
+         * @return {number}
+         */
+        indexOf(key: string): number;
+        /**
+         * Clears all keys and values in the index.
+         */
+        clear(): void;
+        /**
+         * Returns an entry at `index` if it exists, otherwise `null`.
+         * @param {number} index
+         * @return {string[]|null}
+         */
+        entry(index: number): string[] | null;
+        /**
+         * Removes entries at a given `index`.
+         * @param {number} index
+         * @return {boolean}
+         */
+        remove(index: number): boolean;
+        /**
+         * Returns an array of computed entries in this index.
+         * @return {IndexIterator}
+         */
+        entries(): IndexIterator;
+        /**
+         * @ignore
+         * @return {IndexIterator}
+         */
+        [Symbol.iterator](): IndexIterator;
+        #private;
+    }
+    /**
+     * A base class for a storage provider.
+     */
+    export class Provider {
+        /**
+         * An error currently associated with the provider, likely from an
+         * async operation.
+         * @type {Error?}
+         */
+        get error(): Error;
+        /**
+         * A promise that resolves when the provider is ready.
+         * @type {Promise}
+         */
+        get ready(): Promise<any>;
+        /**
+         * A reference the service worker storage ID, which is the service worker
+         * registration ID.
+         * @type {string}
+         * @throws DOMException
+         */
+        get id(): string;
+        /**
+         * A reference to the provider `Index`
+         * @type {Index}
+         * @throws DOMException
+         */
+        get index(): Index;
+        /**
+         * The number of entries in the provider.
+         * @type {number}
+         * @throws DOMException
+         */
+        get length(): number;
+        /**
+         * Returns `true` if the provider has a value for a given `key`.
+         * @param {string} key}
+         * @return {boolean}
+         * @throws DOMException
+         */
+        has(key: string): boolean;
+        /**
+         * Get a value by `key`.
+         * @param {string} key
+         * @return {string?}
+         * @throws DOMException
+         */
+        get(key: string): string | null;
+        /**
+         * Sets a `value` by `key`
+         * @param {string} key
+         * @param {string} value
+         * @throws DOMException
+         */
+        set(key: string, value: string): void;
+        /**
+         * Removes a value by `key`.
+         * @param {string} key
+         * @return {boolean}
+         * @throws DOMException
+         */
+        remove(key: string): boolean;
+        /**
+         * Clear all keys and values.
+         * @throws DOMException
+         */
+        clear(): void;
+        /**
+         * The keys in the provider index.
+         * @return {string[]}
+         * @throws DOMException
+         */
+        keys(): string[];
+        /**
+         * The values in the provider index.
+         * @return {string[]}
+         * @throws DOMException
+         */
+        values(): string[];
+        /**
+         * Returns the key at a given `index`
+         * @param {number} index
+         * @return {string|null}
+         * @throws DOMException
+         */
+        key(index: number): string | null;
+        /**
+         * Loads the internal index with keys and values.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        #private;
+    }
+    /**
+     * An in-memory storage provider. It just used the built-in provider `Index`
+     * for storing key-value entries.
+     */
+    export class MemoryStorageProvider extends Provider {
+    }
+    /**
+     * A session storage provider that persists for the runtime of the
+     * application and through service worker restarts.
+     */
+    export class SessionStorageProvider extends Provider {
+        /**
+         * Remove a value by `key`.
+         * @param {string} key
+         * @return {string?}
+         * @throws DOMException
+         * @throws NotFoundError
+         */
+        remove(key: string): string | null;
+    }
+    /**
+     * A local storage provider that persists until the data is cleared.
+     */
+    export class LocalStorageProvider extends Provider {
+    }
+    /**
+     * A generic interface for storage implementations
+     */
+    export class Storage {
+        /**
+         * A factory for creating a `Storage` instance that is backed
+         * by a storage provider. Extending classes should define a `Provider`
+         * class that is statically available on the extended `Storage` class.
+         * @param {symbol} token
+         * @return {Promise<Proxy<Storage>>}
+         */
+        static create(token: symbol): Promise<ProxyConstructor>;
+        /**
+         * `Storage` class constructor.
+         * @ignore
+         * @param {symbol} token
+         * @param {Provider} provider
+         */
+        constructor(token: symbol, provider: Provider);
+        /**
+         * A readonly reference to the storage provider.
+         * @type {Provider}
+         */
+        get provider(): Provider;
+        /**
+         * The number of entries in the storage.
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Returns `true` if the storage has a value for a given `key`.
+         * @param {string} key
+         * @return {boolean}
+         * @throws TypeError
+         */
+        hasItem(key: string, ...args: any[]): boolean;
+        /**
+         * Clears the storage of all entries
+         */
+        clear(): void;
+        /**
+         * Returns the key at a given `index`
+         * @param {number} index
+         * @return {string|null}
+         */
+        key(index: number, ...args: any[]): string | null;
+        /**
+         * Get a storage value item for a given `key`.
+         * @param {string} key
+         * @return {string|null}
+         */
+        getItem(key: string, ...args: any[]): string | null;
+        /**
+         * Removes a storage value entry for a given `key`.
+         * @param {string}
+         * @return {boolean}
+         */
+        removeItem(key: any, ...args: any[]): boolean;
+        /**
+         * Sets a storage item `value` for a given `key`.
+         * @param {string} key
+         * @param {string} value
+         */
+        setItem(key: string, value: string, ...args: any[]): void;
+        /**
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An in-memory `Storage` interface.
+     */
+    export class MemoryStorage extends Storage {
+        static Provider: typeof MemoryStorageProvider;
+    }
+    /**
+     * A locally persisted `Storage` interface.
+     */
+    export class LocalStorage extends Storage {
+        static Provider: typeof LocalStorageProvider;
+    }
+    /**
+     * A session `Storage` interface.
+     */
+    export class SessionStorage extends Storage {
+        static Provider: typeof SessionStorageProvider;
+    }
+    namespace _default {
+        export { Storage };
+        export { LocalStorage };
+        export { MemoryStorage };
+        export { SessionStorage };
+        export { createStorageInterface };
+    }
+    export default _default;
+    export type IndexIteratorResult = {
+        done: boolean;
+        value: string | undefined;
+    };
+}
 
 declare module "socket:service-worker/worker" {
     export {};
