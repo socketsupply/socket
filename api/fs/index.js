@@ -602,8 +602,9 @@ export function link (src, dest, callback) {
 export function mkdir (path, options, callback) {
   path = normalizePath(path)
 
-  if ((typeof options === 'undefined') || (typeof options === 'function')) {
-    throw new TypeError('options must be an object.')
+  if (typeof options === 'function') {
+    callback = options
+    options = null
   }
 
   if (typeof callback !== 'function') {
@@ -629,16 +630,14 @@ export function mkdir (path, options, callback) {
 
 /**
  * @ignore
+ * @param {string|URL} path
+ * @param {object=} [options]
  */
-export function mkdirSync (path, options) {
+export function mkdirSync (path, options = null) {
   path = normalizePath(path)
 
-  if ((typeof options === 'undefined') || (typeof options === 'function')) {
-    throw new TypeError('options must be an object.')
-  }
-
-  const mode = options.mode || 0o777
-  const recursive = Boolean(options.recursive) // default to false
+  const mode = options?.mode || 0o777
+  const recursive = Boolean(options?.recursive) // default to false
 
   if (typeof mode !== 'number') {
     throw new TypeError('mode must be a number.')
