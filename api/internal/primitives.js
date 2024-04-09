@@ -1,6 +1,5 @@
 /* global MutationObserver */
 import './post-message.js'
-import './promise.js'
 import './error.js'
 
 import { fetch, Headers, Request, Response } from '../fetch.js'
@@ -14,6 +13,7 @@ import permissions from './permissions.js'
 import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
 import scheduler from './scheduler.js'
+import Promise from './promise.js'
 import symbols from './symbols.js'
 
 import {
@@ -136,7 +136,11 @@ export function init () {
           ) {
             const nativeDescriptors = Object.getOwnPropertyDescriptors(nativeImplementation.prototype)
             const descriptors = Object.getOwnPropertyDescriptors(implementation.prototype)
-            implementation[Symbol.species] = nativeImplementation
+
+            try {
+              implementation[Symbol.species] = nativeImplementation
+            } catch {}
+
             for (const key in nativeDescriptors) {
               const nativeDescriptor = nativeDescriptors[key]
               const descriptor = descriptors[key]
@@ -209,6 +213,9 @@ export function init () {
     URL,
     URLPattern,
     URLSearchParams,
+
+    // Promise
+    Promise,
 
     // fetch
     fetch,
