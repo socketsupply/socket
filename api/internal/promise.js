@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as asyncHooks from './async/hooks.js'
 
 const resourceSymbol = Symbol('PromiseResource')
@@ -12,7 +13,8 @@ export const NativePromisePrototype = {
 export const NativePromiseAll = globalThis.Promise.all.bind(globalThis.Promise)
 export const NativePromiseAny = globalThis.Promise.any.bind(globalThis.Promise)
 
-globalThis.Promise = class Promise extends NativePromise {
+// @ts-ignore
+export class Promise extends NativePromise {
   constructor (...args) {
     super(...args)
     // eslint-disable-next-line
@@ -24,7 +26,7 @@ globalThis.Promise = class Promise extends NativePromise {
   }
 }
 
-globalThis.Promise.all = function (iterable) {
+Promise.all = function (iterable) {
   return NativePromiseAll.call(NativePromise, Array.from(iterable).map((promise, index) => {
     if (!promise || typeof promise.catch !== 'function') {
       return promise
@@ -50,7 +52,7 @@ globalThis.Promise.all = function (iterable) {
   }))
 }
 
-globalThis.Promise.any = function (iterable) {
+Promise.any = function (iterable) {
   return NativePromiseAny.call(NativePromise, Array.from(iterable).map((promise, index) => {
     if (!promise || typeof promise.catch !== 'function') {
       return promise
@@ -77,7 +79,7 @@ globalThis.Promise.any = function (iterable) {
 }
 
 function wrapNativePromiseFunction (name) {
-  const prototype = globalThis.Promise.prototype
+  const prototype = Promise.prototype
   if (prototype[name].__async_wrapped__) {
     return
   }
