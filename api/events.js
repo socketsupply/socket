@@ -1,3 +1,5 @@
+import { AsyncContext } from './async/context.js'
+
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -54,6 +56,7 @@ function EventEmitter () {
 EventEmitter.EventEmitter = EventEmitter
 
 EventEmitter.prototype._events = undefined
+EventEmitter.prototype._contexts = undefined
 EventEmitter.prototype._eventsCount = 0
 EventEmitter.prototype._maxListeners = undefined
 
@@ -85,6 +88,13 @@ EventEmitter.init = function () {
       this._events === Object.getPrototypeOf(this)._events) {
     this._events = Object.create(null)
     this._eventsCount = 0
+  }
+
+  if (
+    this._contexts === undefined ||
+    this._contexts === Object.getPrototypeOf(this)._contexts
+  ) {
+    this._contexts = new Map()
   }
 
   this._maxListeners = this._maxListeners || undefined
@@ -137,11 +147,27 @@ EventEmitter.prototype.emit = function emit (type) {
   if (handler === undefined) { return false }
 
   if (typeof handler === 'function') {
-    ReflectApply(handler, this, args)
+    const context = this._contexts.get(handler)
+    if (context) {
+      context.run(() => {
+        ReflectApply(handler, this, args)
+      })
+    } else {
+      ReflectApply(handler, this, args)
+    }
   } else {
     const len = handler.length
     const listeners = arrayClone(handler, len)
-    for (let i = 0; i < len; ++i) { ReflectApply(listeners[i], this, args) }
+    for (let i = 0; i < len; ++i) {
+      const context = this._contexts.get(listeners[i])
+      if (context) {
+        context.run(() => {
+          ReflectApply(listeners[i], this, args)
+        })
+      } else {
+        ReflectApply(listeners[i], this, args)
+      }
+    }
   }
 
   return true
@@ -205,6 +231,8 @@ function _addListener (target, type, listener, prepend) {
       ProcessEmitWarning(w)
     }
   }
+
+  target._contexts.set(listener, new AsyncContext.Snapshot())
 
   return target
 }
@@ -298,6 +326,8 @@ EventEmitter.prototype.removeListener =
         if (events.removeListener !== undefined) { this.emit('removeListener', type, originalListener || listener) }
       }
 
+      this._contexts.delete(listener)
+
       return this
     }
 
@@ -334,6 +364,7 @@ EventEmitter.prototype.removeAllListeners =
         }
         this.removeAllListeners('removeListener')
         this._events = Object.create(null)
+        this._contexts.clear()
         this._eventsCount = 0
         return this
       }
