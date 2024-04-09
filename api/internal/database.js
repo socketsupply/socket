@@ -453,7 +453,7 @@ export class Database extends EventTarget {
   /**
    * `Database` class constructor.
    * @param {string} name
-   * @param {?DatabaseOptions | undefiend} [options]
+   * @param {?DatabaseOptions | undefined} [options]
    */
   constructor (name, options = null) {
     if (!name || typeof name !== 'string') {
@@ -574,9 +574,11 @@ export class Database extends EventTarget {
     })
 
     this.#opening = false
-    this.dispatchEvent(new DatabaseEvent('open', this))
-
     gc.ref(this)
+
+    queueMicrotask(() => {
+      this.dispatchEvent(new DatabaseEvent('open', this))
+    })
   }
 
   /**
@@ -622,7 +624,7 @@ export class Database extends EventTarget {
   /**
    * Gets a "readonly" value by `key` in the `Database` object storage.
    * @param {string} key
-   * @param {?DatabaseGetOptions|undefiend} [options]
+   * @param {?DatabaseGetOptions|undefined} [options]
    * @return {Promise<object|object[]|null>}
    */
   async get (key, options = null) {
@@ -661,7 +663,7 @@ export class Database extends EventTarget {
 
     for (const store of stores) {
       if (count > 1) {
-        pending.push(this.#queue.push(store.getAll(key, { count })))
+        pending.push(this.#queue.push(store.getAll(key, count)))
       } else {
         pending.push(this.#queue.push(store.get(key)))
       }
@@ -676,8 +678,14 @@ export class Database extends EventTarget {
     }
 
     return results
-      .filter((result) => result !== null)
-      .map((result) => result?.value ?? null)
+      .map(function map (result) {
+        return Array.isArray(result) ? result.flatMap(map) : result
+      })
+      .reduce((a, b) => a.concat(b), [])
+      .filter((value) => value)
+      .map((entry) => {
+        return [entry.key, entry.value]
+      })
   }
 
   /**
@@ -685,7 +693,7 @@ export class Database extends EventTarget {
    * "inserting" it into the `Database` instance.
    * @param {string} key
    * @param {any} value
-   * @param {?DatabasePutOptions|undefiend} [options]
+   * @param {?DatabasePutOptions|undefined} [options]
    * @return {Promise}
    */
   async put (key, value, options = null) {
@@ -733,7 +741,7 @@ export class Database extends EventTarget {
    * already exists.
    * @param {string} key
    * @param {any} value
-   * @param {?DatabasePutOptions|undefiend} [options]
+   * @param {?DatabasePutOptions|undefined} [options]
    * @return {Promise}
    */
   async insert (key, value, options = null) {
@@ -781,7 +789,7 @@ export class Database extends EventTarget {
    * "inserting" it into the `Database` instance.
    * @param {string} key
    * @param {any} value
-   * @param {?DatabasePutOptions|undefiend} [options]
+   * @param {?DatabasePutOptions|undefined} [options]
    * @return {Promise}
    */
   async update (key, value, options = null) {
@@ -841,7 +849,7 @@ export class Database extends EventTarget {
   /**
    * Delete a value at `key`.
    * @param {string} key
-   * @param {?DatabaseDeleteOptions|undefiend} [options]
+   * @param {?DatabaseDeleteOptions|undefined} [options]
    * @return {Promise}
    */
   async delete (key, options = null) {
@@ -887,7 +895,7 @@ export class Database extends EventTarget {
   /**
    * Gets a "readonly" value by `key` in the `Database` object storage.
    * @param {string} key
-   * @param {?DatabaseEntriesOptions|undefiend} [options]
+   * @param {?DatabaseEntriesOptions|undefined} [options]
    * @return {Promise<object|object[]|null>}
    */
   async entries (options = null) {
@@ -921,15 +929,25 @@ export class Database extends EventTarget {
     }
 
     for (const store of stores) {
-      pending.push(this.#queue.push(store.openCursor()))
+      const request = store.openCursor()
+      let cursor = await this.#queue.push(request)
+
+      while (cursor) {
+        if (!cursor.value) {
+          break
+        }
+        pending.push(Promise.resolve(cursor.value))
+        cursor.continue()
+        cursor = await this.#queue.push(request)
+      }
     }
 
     await this.#queue.push(transaction)
     const results = await Promise.all(pending)
 
     return results
-      .filter((result) => result?.value)
-      .map((result) => [result.key, result.value.value])
+      .filter((value) => value)
+      .map((entry) => [entry.key, entry.value])
   }
 
   /**
@@ -950,7 +968,7 @@ export class Database extends EventTarget {
 /**
  * Creates an opens a named `Database` instance.
  * @param {string} name
- * @param {?DatabaseOptions | undefiend} [options]
+ * @param {?DatabaseOptions | undefined} [options]
  * @return {Promise<Database>}
  */
 export async function open (name, options) {
@@ -958,16 +976,21 @@ export async function open (name, options) {
 
   // return already opened instance if still referenced somehow
   if (ref && ref.deref()) {
-    return ref.deref()
+    const database = ref.deref()
+    if (database.opened) {
+      return database
+    }
+
+    return new Promise((resolve) => {
+      database.addEventListener('open', () => {
+        resolve(database)
+      }, { once: true })
+    })
   }
 
   const database = new Database(name, options)
 
   opened.set(name, new WeakRef(database))
-
-  database.addEventListener('open', () => {
-    opened.set(name, new WeakRef(database))
-  }, { once: true })
 
   database.addEventListener('close', () => {
     opened.delete(name)
@@ -986,7 +1009,7 @@ export async function open (name, options) {
 /**
  * Complete deletes a named `Database` instance.
  * @param {string} name
- * @param {?DatabaseOptions | undefiend} [options]
+ * @param {?DatabaseOptions|undefined} [options]
  */
 export async function drop (name, options) {
   const ref = opened.get(name)
@@ -997,5 +1020,6 @@ export async function drop (name, options) {
 
 export default {
   Database,
-  open
+  open,
+  drop
 }
