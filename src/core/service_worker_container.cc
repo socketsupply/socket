@@ -131,6 +131,32 @@ namespace SSC {
     return stateString;
   };
 
+  const JSON::Object ServiceWorkerContainer::Registration::Storage::json () const {
+    return JSON::Object { this->data };
+  }
+
+  void ServiceWorkerContainer::Registration::Storage::set (const String& key, const String& value) {
+    this->data.insert_or_assign(key, value);
+  }
+
+  const String ServiceWorkerContainer::Registration::Storage::get (const String& key) const {
+    if (this->data.contains(key)) {
+      return this->data.at(key);
+    }
+
+    return key;
+  }
+
+  void ServiceWorkerContainer::Registration::Storage::remove (const String& key) {
+    if (this->data.contains(key)) {
+      this->data.erase(key);
+    }
+  }
+
+  void ServiceWorkerContainer::Registration::Storage::clear () {
+    this->data.clear();
+  }
+
   ServiceWorkerContainer::ServiceWorkerContainer (Core* core) {
     this->core = core;
   }
