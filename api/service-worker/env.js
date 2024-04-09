@@ -1,11 +1,26 @@
 /* global ErrorEvent, EventTarget */
-import database from './database.js'
+import database from '../internal/database.js'
 
 /**
  * @typedef {{
  *   scope: string
  * }} EnvironmentOptions
  */
+
+/**
+ * An event dispatched when a environment value is updated (set, delete)
+ */
+export class EnvironmentEvent extends Event {
+  /**
+   * `EnvironmentEvent` class constructor.
+   * @param {'set'|'delete'} type
+   * @param {object=} [entry]
+   */
+  constructor (type, entry = null) {
+    super(type)
+    this.entry = entry
+  }
+}
 
 /**
  * Awaits a promise forwarding errors to the `Environment` instance.
@@ -26,6 +41,13 @@ async function forward (env, promise) {
  * for service worker environments.
  */
 export class Environment extends EventTarget {
+  /**
+   * Maximum entries that will be restored from storage into the environment
+   * context object.
+   * @type {number}
+   */
+  static MAX_CONTEXT_ENTRIES = 16 * 1024
+
   /**
    * Opens an environment for a particular scope.
    * @param {EnvironmentOptions} options
@@ -67,15 +89,25 @@ export class Environment extends EventTarget {
       set: (target, property, value) => {
         target[property] = value
         if (this.database && this.database.opened) {
-          forward(this.database.put(property, value))
+          forward(this, this.database.put(property, value))
         }
+
+        this.dispatchEvent(new EnvironmentEvent('set', {
+          key: property,
+          value
+        }))
         return true
       },
 
       deleteProperty: (target, property) => {
         if (this.database && this.database.opened) {
-          forward(this.database.delete(property))
+          forward(this, this.database.delete(property))
         }
+
+        this.dispatchEvent(new EnvironmentEvent('delete', {
+          key: property
+        }))
+
         return Reflect.deleteProperty(target, property)
       },
 
@@ -87,7 +119,7 @@ export class Environment extends EventTarget {
 
   /**
    * A reference to the currently opened environment database.
-   * @type {import('./database.js').Database}
+   * @type {import('../internal/database.js').Database}
    */
   get database () {
     return this.#database
@@ -127,11 +159,15 @@ export class Environment extends EventTarget {
    * @ignore
    */
   async open () {
-    this.#database = await database.open(this.name)
-    const entries = await this.#database.entries()
+    if (!this.#database) {
+      this.#database = await database.open(this.name)
+      const entries = await this.#database.get(undefined, {
+        count: Environment.MAX_CONTEXT_ENTRIES
+      })
 
-    for (const [key, value] of entries) {
-      this.#context[key] = value
+      for (const [key, value] of entries) {
+        this.#context[key] = value
+      }
     }
   }
 

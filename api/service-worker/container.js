@@ -195,7 +195,6 @@ export class ServiceWorkerContainer extends EventTarget {
    * contains private implementation properties relevant to the runtime
    * `ServiceWorkerContainer` internal state implementations.
    * @ignore
-   * @private
    */
   async init () {
     if (internal.get(this)) {
@@ -332,6 +331,7 @@ export class ServiceWorkerContainer extends EventTarget {
     let scope = clientURL
     let currentScope = null
 
+    // @ts-ignore
     if (scope && URL.canParse(scope, globalThis.location.href)) {
       scope = new URL(scope, globalThis.location.href).pathname
     }
@@ -367,7 +367,7 @@ export class ServiceWorkerContainer extends EventTarget {
     }
 
     const serviceWorker = createServiceWorker(state.serviceWorker.state, {
-      subscribe: scope === currentScope,
+      subscribe: clientURL || scope === currentScope,
       scriptURL: info.registration.scriptURL
     })
 

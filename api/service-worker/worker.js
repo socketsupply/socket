@@ -1,10 +1,12 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerGlobalScope } from './global.js'
+import { createStorageInterface } from './storage.js'
 import { Module, createRequire } from '../module.js'
 import { STATUS_CODES } from '../http.js'
 import { Environment } from './env.js'
 import { Deferred } from '../async.js'
 import { Buffer } from '../buffer.js'
+import { Cache } from '../commonjs/cache.js'
 import globals from '../internal/globals.js'
 import process from '../process.js'
 import clients from './clients.js'
@@ -22,13 +24,17 @@ Object.defineProperties(
   Object.getOwnPropertyDescriptors(ServiceWorkerGlobalScope.prototype)
 )
 
+const module = { exports: {} }
 const events = new Set()
 
+// event listeners
 hooks.onReady(onReady)
 globalThis.addEventListener('message', onMessage)
 
+// service worker  globals
 globals.register('ServiceWorker.state', state)
 globals.register('ServiceWorker.events', events)
+globals.register('ServiceWorker.module', module)
 
 function onReady () {
   globalThis.postMessage(SERVICE_WORKER_READY_TOKEN)
@@ -38,14 +44,15 @@ async function onMessage (event) {
   const { data } = event
 
   if (data?.register) {
+    // preload commonjs cache
+    await Cache.restore(['loader.status', 'loader.response'])
+
     const { id, scope, scriptURL } = data.register
     const url = new URL(scriptURL)
-    const module = { exports: {} }
 
     state.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
-    globals.register('ServiceWorker.module', module)
 
     Module.main.addEventListener('error', (event) => {
       if (event.error) {
@@ -109,9 +116,39 @@ async function onMessage (event) {
     })
 
     try {
+      // define the actual location of the worker. not `blob:...`
       globalThis.RUNTIME_WORKER_LOCATION = scriptURL
+
+      // update and notify initial state change
       state.serviceWorker.state = 'registering'
       await state.notify('serviceWorker')
+
+      // open envirnoment
+      await Environment.open({ id, scope })
+
+      // install storage interfaces
+      Object.defineProperties(globalThis, {
+        localStorage: {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: createStorageInterface('localStorage')
+        },
+
+        sessionStorage: {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: createStorageInterface('sessionStorage')
+        },
+
+        memoryStorage: {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: createStorageInterface('memoryStorage')
+        }
+      })
 
       // import module, which could be ESM, CommonJS,
       // or a simple ServiceWorker
@@ -133,8 +170,6 @@ async function onMessage (event) {
       await state.notify('serviceWorker')
       return
     }
-
-    await Environment.open({ id, scope })
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.fetch === 'function') {
