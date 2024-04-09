@@ -41,8 +41,18 @@ namespace SSC {
           Activated
         };
 
+        struct Storage {
+          Map data;
+          const JSON::Object json () const;
+          void set (const String& key, const String& value);
+          const String get (const String& key) const;
+          void remove (const String& key);
+          void clear ();
+        };
+
         ID id = 0;
         String scriptURL;
+        Storage storage;
         Atomic<State> state = State::None;
         RegistrationOptions options;
 
