@@ -167,7 +167,7 @@ export async function chown (path, uid, gid) {
  * @param {number} flags - Modifiers for copy operation.
  * @return {Promise}
  */
-export async function copyFile (src, dest, flags) {
+export async function copyFile (src, dest, flags = 0) {
   src = normalizePath(src)
   dest = normalizePath(dest)
 

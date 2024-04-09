@@ -314,7 +314,7 @@ export function close (fd, callback) {
  * @param {function(Error=)=} [callback] - The function to call after completion.
  * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
  */
-export function copyFile (src, dest, flags, callback) {
+export function copyFile (src, dest, flags = 0, callback) {
   src = normalizePath(src)
   dest = normalizePath(dest)
 
@@ -326,7 +326,7 @@ export function copyFile (src, dest, flags, callback) {
     throw new TypeError('The argument \'dest\' must be a string')
   }
 
-  if (!Number.isInteger(flags)) {
+  if (flags && !Number.isInteger(flags)) {
     throw new TypeError('The argument \'flags\' must be an integer')
   }
 
@@ -346,7 +346,7 @@ export function copyFile (src, dest, flags, callback) {
  * @param {number} flags - Modifiers for copy operation.
  * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
  */
-export function copyFileSync (src, dest, flags) {
+export function copyFileSync (src, dest, flags = 0) {
   src = normalizePath(src)
   dest = normalizePath(dest)
 
