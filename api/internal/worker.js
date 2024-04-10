@@ -1,5 +1,6 @@
 /* global reportError, EventTarget, CustomEvent, MessageEvent */
 import { rand64 } from '../crypto.js'
+import { Loader } from '../commonjs/loader.js'
 import globals from './globals.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
@@ -172,6 +173,12 @@ Object.defineProperties(WorkerGlobalScopePrototype, {
     configurable: false,
     enumerable: false,
     value: postMessage
+  },
+
+  importScripts: {
+    configurable: false,
+    enumerable: false,
+    value: importScripts
   }
 })
 
@@ -262,10 +269,22 @@ export function close () {
   return worker.close()
 }
 
+export function importScripts (...scripts) {
+  const loader = new Loader(source)
+  for (const script of scripts) {
+    const response = loader.load(script)
+    if (response.ok && response.text) {
+      // eslint-disable-next-line
+      eval(response.text)
+    }
+  }
+}
+
 export default {
   RUNTIME_WORKER_ID,
   removeEventListener,
   addEventListener,
+  importScripts,
   dispatchEvent,
   postMessage,
   source,
