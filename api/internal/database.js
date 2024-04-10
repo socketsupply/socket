@@ -27,7 +27,8 @@ import gc from '../gc.js'
  *
  * @typedef {{
  *   store?: string | undefined,
- *   stores?: string[] | undefined
+ *   stores?: string[] | undefined,
+ *   durability?: 'strict' | 'relaxed' | undefined
  * }} DatabasePutOptions
  */
 
@@ -714,7 +715,7 @@ export class Database extends EventTarget {
     const transaction = this.#storage.transaction(
       options?.store ?? options?.stores ?? this.name,
       'readwrite',
-      { durability: 'strict' }
+      { durability: optinos?.durability ?? 'strict' }
     )
 
     if (options?.store) {
@@ -762,7 +763,7 @@ export class Database extends EventTarget {
     const transaction = this.#storage.transaction(
       options?.store ?? options?.stores ?? this.name,
       'readwrite',
-      { durability: 'strict' }
+      { durability: optinos?.durability ?? 'strict' }
     )
 
     if (options?.store) {
