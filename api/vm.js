@@ -1227,7 +1227,7 @@ export async function getContextWindow () {
         globalThis.top.document
       )
 
-      target.appendChild(frame)
+      target.prepend(frame)
       contextWindow.frame = frame
       contextWindow.ready = new Promise((resolve, reject) => {
         frame.onload = resolve
