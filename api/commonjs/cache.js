@@ -5,17 +5,6 @@ import database from '../internal/database.js'
 import gc from '../gc.js'
 
 /**
- * @ignore
- * @param {string?}
- * @return {object|null}
- */
-function parseJSON (source) {
-  try {
-    return JSON.parse(source)
-  } catch { return null }
-}
-
-/**
  * @typedef {{
  *   types?: object,
  *   loader?: import('./loader.js').Loader
@@ -650,9 +639,7 @@ export class Cache {
    * Resets the cache map and persisted storage.
    */
   async reset () {
-    const keys = this.keys()
     this.#data.clear()
-
     await this.#storage.reset()
   }
 
