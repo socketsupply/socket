@@ -8731,7 +8731,8 @@ declare module "socket:internal/database" {
      *
      * @typedef {{
      *   store?: string | undefined,
-     *   stores?: string[] | undefined
+     *   stores?: string[] | undefined,
+     *   durability?: 'strict' | 'relaxed' | undefined
      * }} DatabasePutOptions
      */
     /**
@@ -9051,6 +9052,7 @@ declare module "socket:internal/database" {
     export type DatabasePutOptions = {
         store?: string | undefined;
         stores?: string[] | undefined;
+        durability?: 'strict' | 'relaxed' | undefined;
     };
     /**
      * A typed container for various optional options made to a `delete()` function
@@ -11925,6 +11927,11 @@ declare module "socket:commonjs/cache" {
          */
         get opened(): boolean;
         /**
+         * `true` if the storage is opening, otherwise `false`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
          * A proxied object for reading and writing storage state.
          * Values written to this object must be cloneable with respect to the
          * structured clone algorithm.
@@ -11955,12 +11962,12 @@ declare module "socket:commonjs/cache" {
         /**
          * Synchronizes database entries into the storage context.
          */
-        sync(): Promise<void>;
+        sync(options?: any): Promise<void>;
         /**
          * Opens the storage.
          * @ignore
          */
-        open(): Promise<any>;
+        open(options?: any): Promise<any>;
         /**
          * Closes the storage database, purging existing state.
          * @ignore
@@ -15678,6 +15685,7 @@ declare module "socket:internal/worker" {
     export function dispatchEvent(event: any): any;
     export function postMessage(message: any, ...args: any[]): any;
     export function close(): any;
+    export function importScripts(...scripts: any[]): void;
     export const WorkerGlobalScopePrototype: any;
     /**
      * The absolute `URL` of the internal worker initialization entry.
@@ -15712,6 +15720,7 @@ declare module "socket:internal/worker" {
         export { RUNTIME_WORKER_ID };
         export { removeEventListener };
         export { addEventListener };
+        export { importScripts };
         export { dispatchEvent };
         export { postMessage };
         export { source };
