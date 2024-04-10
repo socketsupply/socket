@@ -196,7 +196,7 @@ export class ModuleScope {
       id: this.id,
       filename: this.filename,
       children: this.children,
-      exports: this.#exports
+      exports: this.exports
     }
   }
 }
@@ -541,7 +541,7 @@ export class Module extends EventTarget {
   }
 
   #id = null
-  #scope = new ModuleScope()
+  #scope = null
   #state = new State()
   #cache = Object.create(null)
   #loader = null
@@ -579,8 +579,8 @@ export class Module extends EventTarget {
       this.#state = options.state
     }
 
+    this.#scope  new ModuleScope(this)
     this.#loader = new Loader(this.#id, options?.loader)
-
     this.#package = options.package instanceof Package
       ? options.package
       : this.#parent?.package ?? new Package(options.name ?? this.#id, options.package)

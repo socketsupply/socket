@@ -256,77 +256,6 @@ export class Storage extends EventTarget {
 }
 
 /**
- * Computes a commonjs session storage cache key.
- * @ignore
- * @param {Cache=} [cache]
- * @param {string=} [key]
- * @return {string}
- */
-export function sessionStorageCacheKey (cache = null, key = null) {
-  if (cache && key) {
-    return `commonjs:cache:${cache.name}:${key}`
-  } else if (cache) {
-    return `commonjs:cache:${cache.name}`
-  } else {
-    return 'commonjs:cache'
-  }
-}
-
-/**
- * Restores values in a session storage into the cache.
- * @ignore
- * @param {Cache} cache
- */
-export function restoreFromSessionStorage (cache) {
-  if (
-    globalThis.sessionStorage &&
-    typeof globalThis.sessionStorage === 'object'
-  ) {
-    const prefix = `${sessionStorageCacheKey(cache)}:`
-    for (const cacheKey in globalThis.sessionStorage) {
-      if (cacheKey.startsWith(prefix)) {
-        const value = parseJSON(globalThis.sessionStorage[cacheKey])
-        const key = cacheKey.replace(prefix, '')
-        if (value && !cache.has(key)) {
-          if (value?.__type__) {
-            cache.data.set(key, cache.types.get(value.__type__).from(value, {
-              loader: cache.loader
-            }))
-          } else {
-            cache.data.set(key, value)
-          }
-        }
-      }
-    }
-  }
-}
-
-/**
- * Computes a commonjs session storage cache key.
- * @ignore
- * @param {Cache} cache
- * @param {string} key
- */
-export function updateSessionStorage (cache, key) {
-  if (
-    globalThis.sessionStorage &&
-    typeof globalThis.sessionStorage === 'object'
-  ) {
-    const cacheKey = sessionStorageCacheKey(cache, key)
-    if (cache.has(key)) {
-      const value = cache.get(key)
-      try {
-        globalThis.sessionStorage[cacheKey] = (
-          JSON.stringify(serialize(value))
-        )
-      } catch {}
-    } else {
-      delete globalThis.sessionStorage[cacheKey]
-    }
-  }
-}
-
-/**
  * A container for `Snapshot` data storage.
  */
 export class SnapshotData {
@@ -718,26 +647,19 @@ export class Cache {
   }
 
   /**
-   * Resets the cache map, persisted storage, and session storage.
+   * Resets the cache map and persisted storage.
    */
   async reset () {
     const keys = this.keys()
     this.#data.clear()
 
-    for (const key of keys) {
-      // will call `delete`
-      updateSessionStorage(this, key)
-    }
-
     await this.#storage.reset()
   }
 
   /**
-   * Restores cache data from session storage.
+   * Restores cache data from storage.
    */
   async restore () {
-    restoreFromSessionStorage(this)
-
     if (!this.#storage.opened) {
       await this.#storage.open()
     }
@@ -819,7 +741,6 @@ export class Cache {
   set (key, value) {
     this.#data.set(key, value)
     this.#storage.context[key] = serialize(value)
-    updateSessionStorage(this, key)
     return this
   }
 
@@ -841,7 +762,6 @@ export class Cache {
   delete (key) {
     delete this.#storage.context[key]
     if (this.#data.delete(key)) {
-      updateSessionStorage(this, key)
       return true
     }
 
