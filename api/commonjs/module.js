@@ -579,7 +579,7 @@ export class Module extends EventTarget {
       this.#state = options.state
     }
 
-    this.#scope  new ModuleScope(this)
+    this.#scope = new ModuleScope(this)
     this.#loader = new Loader(this.#id, options?.loader)
     this.#package = options.package instanceof Package
       ? options.package
