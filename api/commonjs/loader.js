@@ -442,7 +442,9 @@ export class Request {
       // @ts-ignore
       responseText = request.responseText // can throw `InvalidStateError` error
     } catch {
-      responseText = request.response
+      if (typeof request.response === 'string') {
+        responseText = request.response
+      }
     }
 
     return new Response(this, {
