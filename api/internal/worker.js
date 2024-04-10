@@ -272,10 +272,10 @@ export function close () {
 export function importScripts (...scripts) {
   const loader = new Loader(source)
   for (const script of scripts) {
-    const response = loader.load(script)
-    if (response.ok && response.text) {
+    const { text, ok } = loader.load(script)
+    if (ok && text) {
       // eslint-disable-next-line
-      eval(response.text)
+      eval(text)
     }
   }
 }
