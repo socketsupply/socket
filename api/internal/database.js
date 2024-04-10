@@ -715,7 +715,7 @@ export class Database extends EventTarget {
     const transaction = this.#storage.transaction(
       options?.store ?? options?.stores ?? this.name,
       'readwrite',
-      { durability: optinos?.durability ?? 'strict' }
+      { durability: options?.durability ?? 'strict' }
     )
 
     if (options?.store) {
@@ -763,7 +763,7 @@ export class Database extends EventTarget {
     const transaction = this.#storage.transaction(
       options?.store ?? options?.stores ?? this.name,
       'readwrite',
-      { durability: optinos?.durability ?? 'strict' }
+      { durability: options?.durability ?? 'strict' }
     )
 
     if (options?.store) {
