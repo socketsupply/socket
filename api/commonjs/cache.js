@@ -67,6 +67,7 @@ export class Storage extends EventTarget {
   }
 
   #database = null
+  #opening = false
   #context = {}
   #proxy = null
   #ready = null
@@ -89,7 +90,7 @@ export class Storage extends EventTarget {
       set: (_, property, value) => {
         this.#context[property] = value
         if (this.database && this.database.opened) {
-          this.forwardRequest(this.database.put(property, value))
+          this.forwardRequest(this.database.put(property, value, { durability: 'relaxed' }))
         }
         return true
       },
@@ -136,7 +137,15 @@ export class Storage extends EventTarget {
    * @type {boolean}
    */
   get opened () {
-    return this.#database !== null
+    return this.#database?.opened === true
+  }
+
+  /**
+   * `true` if the storage is opening, otherwise `false`.
+   * @type {boolean}
+   */
+  get opening () {
+    return this.#opening
   }
 
   /**
@@ -192,8 +201,8 @@ export class Storage extends EventTarget {
   /**
    * Synchronizes database entries into the storage context.
    */
-  async sync () {
-    const entries = await this.#database.get(undefined, {
+  async sync (options = null) {
+    const entries = await this.#database.get(options?.query ?? undefined, {
       count: Storage.MAX_CONTEXT_ENTRIES
     })
 
@@ -211,7 +220,7 @@ export class Storage extends EventTarget {
 
     for (const key of delta) {
       const value = this.#context[key]
-      promises.push(this.forwardRequest(this.database.put(key, value)))
+      promises.push(this.forwardRequest(this.database.put(key, value, { durability: 'relaxed' })))
     }
 
     await Promise.all(promises)
@@ -221,11 +230,13 @@ export class Storage extends EventTarget {
    * Opens the storage.
    * @ignore
    */
-  async open () {
-    if (!this.#database) {
+  async open (options = null) {
+    if (!this.opening && !this.#database) {
+      this.#opening = true
       this.#ready = new Deferred()
       this.#database = await database.open(this.name)
-      await this.sync()
+      await this.sync(options?.sync ?? null)
+      this.#opening = false
       this.#ready.resolve()
     }
 
