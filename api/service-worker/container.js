@@ -47,7 +47,7 @@ class ServiceWorkerContainerRealm {
     return await realm.init(container)
   }
 
-  async init (container) {
+  async init () {
     if (ServiceWorkerContainerRealm.instance) {
       return
     }
@@ -58,7 +58,7 @@ class ServiceWorkerContainerRealm {
       return
     }
 
-    const frameId = `__${os.platform()}-service-worker-frame__`
+    const frameId = '__service-worker-frame__'
     const existingFrame = globalThis.top.document.querySelector(
       `iframe[id="${frameId}"]`
     )
@@ -82,6 +82,7 @@ class ServiceWorkerContainerRealm {
     }))
 
     this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
+    this.frame.setAttribute('loading', 'eager')
     this.frame.src = SERVICE_WINDOW_PATH
     this.frame.id = frameId
 
@@ -97,7 +98,7 @@ class ServiceWorkerContainerRealm {
       globalThis.top.document
     )
 
-    target.appendChild(this.frame)
+    target.prepend(this.frame)
 
     await Promise.all(pending)
   }

@@ -1,6 +1,6 @@
 import { ExtendableEvent, FetchEvent } from './events.js'
 import { ServiceWorkerRegistration } from './registration.js'
-import serviceWorker from './instance.js'
+import { createServiceWorker } from './instance.js'
 import clients from './clients.js'
 import state from './state.js'
 import ipc from '../ipc.js'
@@ -13,6 +13,8 @@ let onfetch = null
 
 // this is set one time
 let registration = null
+
+const serviceWorker = createServiceWorker(state.serviceWorker.state)
 
 export class ServiceWorkerGlobalScope {
   get isServiceWorkerScope () {

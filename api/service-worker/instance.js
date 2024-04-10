@@ -1,4 +1,3 @@
-import { SharedWorker } from '../internal/shared-worker.js'
 import state from './state.js'
 
 export const SHARED_WORKER_URL = `${globalThis.origin}/socket/service-worker/shared-worker.js`
@@ -20,7 +19,7 @@ export function createServiceWorker (
   options = null
 ) {
   // client message bus worker
-  const sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+  const sharedWorker = new globalThis.SharedWorker(SHARED_WORKER_URL)
 
   // events
   const eventTarget = new EventTarget()
@@ -134,4 +133,4 @@ export function createServiceWorker (
   return serviceWorker
 }
 
-export default createServiceWorker(state.serviceWorker.state)
+export default createServiceWorker

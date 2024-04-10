@@ -44,11 +44,13 @@ async function onMessage (event) {
   const { data } = event
 
   if (data?.register) {
-    // preload commonjs cache
-    await Cache.restore(['loader.status', 'loader.response'])
-
     const { id, scope, scriptURL } = data.register
     const url = new URL(scriptURL)
+
+    if (!url.pathname.startsWith('/socket/')) {
+      // preload commonjs cache for user space server workers
+      Cache.restore(['loader.status', 'loader.response'])
+    }
 
     state.id = id
     state.serviceWorker.scope = scope
@@ -132,21 +134,21 @@ async function onMessage (event) {
           configurable: false,
           enumerable: false,
           writable: false,
-          value: createStorageInterface('localStorage')
+          value: await createStorageInterface('localStorage')
         },
 
         sessionStorage: {
           configurable: false,
           enumerable: false,
           writable: false,
-          value: createStorageInterface('sessionStorage')
+          value: await createStorageInterface('sessionStorage')
         },
 
         memoryStorage: {
           configurable: false,
           enumerable: false,
           writable: false,
-          value: createStorageInterface('memoryStorage')
+          value: await createStorageInterface('memoryStorage')
         }
       })
 
