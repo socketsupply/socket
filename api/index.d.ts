@@ -9224,8 +9224,7 @@ declare module "socket:service-worker/instance" {
             removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
         };
     };
-    const _default: any;
-    export default _default;
+    export default createServiceWorker;
 }
 
 declare module "socket:service-worker/clients" {
@@ -11856,27 +11855,6 @@ declare module "socket:internal/serialize" {
 
 declare module "socket:commonjs/cache" {
     /**
-     * Computes a commonjs session storage cache key.
-     * @ignore
-     * @param {Cache=} [cache]
-     * @param {string=} [key]
-     * @return {string}
-     */
-    export function sessionStorageCacheKey(cache?: Cache | undefined, key?: string | undefined): string;
-    /**
-     * Restores values in a session storage into the cache.
-     * @ignore
-     * @param {Cache} cache
-     */
-    export function restoreFromSessionStorage(cache: Cache): void;
-    /**
-     * Computes a commonjs session storage cache key.
-     * @ignore
-     * @param {Cache} cache
-     * @param {string} key
-     */
-    export function updateSessionStorage(cache: Cache, key: string): void;
-    /**
      * @typedef {{
      *   types?: object,
      *   loader?: import('./loader.js').Loader
@@ -12133,11 +12111,11 @@ declare module "socket:commonjs/cache" {
          */
         get types(): Map<any, any>;
         /**
-         * Resets the cache map, persisted storage, and session storage.
+         * Resets the cache map and persisted storage.
          */
         reset(): Promise<void>;
         /**
-         * Restores cache data from session storage.
+         * Restores cache data from storage.
          */
         restore(): Promise<void>;
         /**
