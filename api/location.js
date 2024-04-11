@@ -1,42 +1,49 @@
-export const globalLocation = globalThis.location ?? {
-  origin: 'socket:///',
-  host: '',
-  hostname: '',
-  pathname: '/',
-  href: ''
+export class Location {
+  get url () {
+    return globalThis.location.href.startsWith('blob:')
+      ? new URL(globalThis.RUNTIME_WORKER_LOCATION || globalThis.location.pathname)
+      : new URL(globalThis.location.href)
+  }
+
+  get protocol () {
+    return 'socket:'
+  }
+
+  get host () {
+    return this.url.host
+  }
+
+  get hostname () {
+    return this.url.hostname
+  }
+
+  get port () {
+    return this.url.port
+  }
+
+  get pathname () {
+    return this.url.pathname
+  }
+
+  get search () {
+    return this.url.search
+  }
+
+  get origin () {
+    return this.url.origin
+  }
+
+  get href () {
+    return this.url.hlref
+  }
+
+  get hash () {
+    return this.url.hash
+  }
+
+  toString () {
+    return this.href
+  }
 }
 
-export const href = globalLocation.href
-  .replace(/https?:/, 'socket:')
-  .replace(/^blob:/, '')
-  .replace(/socket:\/\/?/, 'socket://')
-
-export const protocol = 'socket:'
-export const hostname = (
-  // eslint-disable-next-line
-  href.match(/^[a-zA-Z]+:[\/]{2}?(.*)(\/.*)$/) ?? []
-)[1] ?? ''
-
-export const host = hostname
-export const search = href.split('?')[1] ?? ''
-export const hash = href.split('#')[1] ?? ''
-export const pathname = globalLocation.protocol === 'blob:'
-  ? '/'
-  : href.slice(href.indexOf(hostname) + hostname.length)
-
-export const origin = `${protocol}//${(host + pathname).replace(/\/\//g, '/')}`
-
-export function toString () {
-  return href
-}
-
-export default {
-  origin,
-  href,
-  protocol,
-  hostname,
-  host,
-  search,
-  pathname,
-  toString
-}
+export default new Location()
