@@ -434,8 +434,12 @@ namespace SSC {
         const auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
         const auto req = webkit_navigation_action_get_request(action);
         const auto uri = String(webkit_uri_request_get_uri(req));
+        const auto applicationProtocol = window->opts.userConfig["meta_application_protocol"];
 
-        if (uri.starts_with(window->opts.userConfig["meta_application_protocol"])) {
+        if (
+          applicationProtocol.size() > 0 &&
+          uri.starts_with(window->opts.userConfig["meta_application_protocol"])
+        ) {
           webkit_policy_decision_ignore(decision);
 
           if (window != nullptr && window->bridge != nullptr) {
