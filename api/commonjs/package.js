@@ -149,6 +149,12 @@ export class Name {
 
     let pathname = url.pathname.replace(new URL(origin).pathname, '')
 
+    if (isRelative && pathname.startsWith('/') && input.startsWith('.')) {
+      pathname = `./${pathname.slice(1)}`
+    } else if (pathname.startsWith('/')) {
+      pathname = pathname.slice(1)
+    }
+
     // manifest was given in name, just use the directory name
     if (pathname.endsWith(`/${manifest}`)) {
       hasManifest = true
@@ -245,7 +251,7 @@ export class Name {
 
     return {
       organization: null,
-      name: name ?? pathname,
+      name: name || pathname,
       version,
       pathname: name && pathname ? pathname : null,
       url,
