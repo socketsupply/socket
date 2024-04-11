@@ -240,7 +240,7 @@ class RuntimeWorker extends GlobalWorker {
     options = { ...options }
 
     const workerType = options[Symbol.for('socket.runtime.internal.worker.type')] ?? 'worker'
-    const url = encodeURIComponent(new URL(filename, location.href || '/').toString())
+    const url = encodeURIComponent(new URL(filename, globalThis.location.href).toString())
     const id = String(rand64())
 
     const preload = `
@@ -298,14 +298,14 @@ class RuntimeWorker extends GlobalWorker {
     }
 
     try {
-      await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/init.js')
-      const hooks = await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/hooks.js')
+      await import('${location.origin}/socket/internal/init.js')
+      const hooks = await import('${location.origin}/socket/hooks.js')
 
       hooks.onReady(() => {
         globalThis.removeEventListener('message', onInitialWorkerMessages)
       })
 
-      await import('${globalThis.location.protocol}//${globalThis.location.hostname}/socket/internal/worker.js?source=${url}')
+      await import('${location.origin}/socket/internal/worker.js?source=${url}')
     } catch (err) {
       globalThis.reportError(err)
     }
