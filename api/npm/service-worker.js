@@ -1,7 +1,10 @@
 import { resolve } from './module.js'
 import process from '../process.js'
+import debug from '../service-worker/debug.js'
 import http from '../http.js'
 import util from '../util.js'
+
+const DEBUG_LABEL = '  <span\\sstyle="color:\\s#fb8817;"><b>npm</b></span>'
 
 export async function onRequest (request, env, ctx) {
   if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
@@ -13,6 +16,8 @@ export async function onRequest (request, env, ctx) {
   const referer = request.headers.get('referer')
   const specifier = url.pathname.replace('/socket/npm/', '')
   const importOrigins = url.searchParams.getAll('origin').concat(url.searchParams.getAll('origin[]'))
+
+  debug(`${DEBUG_LABEL}: fetch: %s`, specifier)
 
   let resolved = null
   let origins = []
@@ -75,10 +80,12 @@ export async function onRequest (request, env, ctx) {
   // not found
   if (!resolved) {
     if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
-      console.debug('not found: npm:%s', specifier)
+      console.debug('not found: npm: %s', specifier)
     }
     return
   }
+
+  debug(`${DEBUG_LABEL}: resolve: %s (%s): %s`, specifier, resolved.type, resolved.url)
 
   if (resolved.type === 'module') {
     const response = await fetch(resolved.url)
