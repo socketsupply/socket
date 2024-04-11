@@ -2713,7 +2713,6 @@ int main (const int argc, const char* argv[]) {
           log("Please use reverse DNS notation (https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion)");
           exit(1);
       }
-
     }
 
     String argvForward = "";
@@ -2736,6 +2735,11 @@ int main (const int argc, const char* argv[]) {
 
     if (optionsWithValue["--package-format"].size() > 0) {
       flagShouldPackage = true;
+    }
+
+    if (flagShouldRun && flagShouldPackage) {
+      log("ERROR: use the 'run' command after packaging.");
+      exit(1);
     }
 
     if (flagBuildTest && testFile.size() == 0) {
