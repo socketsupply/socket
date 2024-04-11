@@ -12,6 +12,7 @@
 
 #include "../extension/extension.hh"
 #include "../window/window.hh"
+#include "../core/protocol_handlers.hh"
 #include "ipc.hh"
 
 #define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
@@ -3277,11 +3278,11 @@ static void registerSchemeHandler (Router *router) {
       auto body = webkit_uri_scheme_request_get_http_body(request);
       if (body) {
         GError* error = nullptr;
-        message.buffer.bytes = bytes;
+        message.buffer.bytes = new char[MAX_BODY_BYTES]{0};
 
         const auto success = g_input_stream_read_all(
           body,
-          bytes,
+          message.buffer.bytes,
           MAX_BODY_BYTES,
           &message.buffer.size,
           nullptr,
@@ -3289,6 +3290,7 @@ static void registerSchemeHandler (Router *router) {
         );
 
         if (!success) {
+          delete message.buffer.bytes;
           webkit_uri_scheme_request_finish_error(
             request,
             error
@@ -3541,11 +3543,11 @@ static void registerSchemeHandler (Router *router) {
             auto body = webkit_uri_scheme_request_get_http_body(request);
             if (body) {
               GError* error = nullptr;
-              fetchRequest.buffer.bytes = bytes;
+              fetchRequest.buffer.bytes = new char[MAX_BODY_BYTES]{0};
 
               const auto success = g_input_stream_read_all(
                 body,
-                bytes,
+                fetchRequest.buffer.bytes,
                 MAX_BODY_BYTES,
                 &fetchRequest.buffer.size,
                 nullptr,
@@ -3553,6 +3555,7 @@ static void registerSchemeHandler (Router *router) {
               );
 
               if (!success) {
+                delete fetchRequest.buffer.bytes;
                 webkit_uri_scheme_request_finish_error(
                   request,
                   error
@@ -3622,6 +3625,10 @@ static void registerSchemeHandler (Router *router) {
 
           if (fetched) {
             return;
+          } else {
+            if (fetchRequest.buffer.bytes != nullptr) {
+              delete fetchRequest.buffer.bytes;
+            }
           }
         }
       }
@@ -4032,7 +4039,7 @@ static void registerSchemeHandler (Router *router) {
 
   const bool hasHandler = self.router->core->protocolHandlers.hasHandler(scheme);
 
-  // handle 'npm:' and custom protocol schemes - POST/PUT bodies are ignored
+  // handle 'npm:' and custom protocol schemes
   if (scheme == "npm" || hasHandler) {
     auto absoluteURL = String(request.URL.absoluteString.UTF8String);
     auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
@@ -5952,22 +5959,26 @@ namespace SSC::IPC {
     registerSchemeHandler(this);
 
   #if SSC_PLATFORM_LINUX
-    ProtocolHandlers::Mapping protocolHandlerMappings;
+    ProtocolHandlers::Mapping protocolHandlerMappings = {
+      {"npm", ProtocolHandlers::Protocol { "npm" }}
+    };
 
-    for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
+    static Set<String> registeredProtocolHandlerMappings;
+
+    for (const auto& entry : split(bridge->userConfig["webview_protocol-handlers"], " ")) {
       const auto scheme = replace(trim(entry), ":", "");
-      protocolHandlerMappings.insert_or_assign(scheme, { scheme });
+      protocolHandlerMappings.insert_or_assign(scheme, ProtocolHandlers::Protocol { scheme });
     }
 
-    for (const auto& entry : opts.userConfig) {
+    for (const auto& entry : bridge->userConfig) {
       const auto& key = entry.first;
       if (key.starts_with("webview_protocol-handlers_")) {
         const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
         const auto data = entry.second;
         if (data.starts_with(".") || data.starts_with("/")) {
-          protocolHandlerMappings.insert_or_assign(scheme, { scheme });
+          protocolHandlerMappings.insert_or_assign(scheme, ProtocolHandlers::Protocol { scheme });
         } else {
-          protocolHandlerMappings.insert_or_assign(scheme, { scheme, { data } });
+          protocolHandlerMappings.insert_or_assign(scheme, ProtocolHandlers::Protocol { scheme, { data } });
         }
       }
     }
@@ -5975,20 +5986,229 @@ namespace SSC::IPC {
     for (const auto& entry : protocolHandlerMappings) {
       const auto& scheme = entry.first;
       const auto& data = entry.second.data;
+
+      if (registeredProtocolHandlerMappings.contains(scheme)) {
+        continue;
+      }
+
       // manually handle NPM here
-      if (scheme == "npm" || app.core->protocolHandlers.registerHandler(scheme, data)) {
+      if (scheme == "npm" || bridge->core->protocolHandlers.registerHandler(scheme, data)) {
+        auto ctx = webkit_web_context_get_default();
+        auto security = webkit_web_context_get_security_manager(ctx);
+        registeredProtocolHandlerMappings.insert(scheme);
         webkit_security_manager_register_uri_scheme_as_display_isolated(security, scheme.c_str());
         webkit_security_manager_register_uri_scheme_as_cors_enabled(security, scheme.c_str());
         webkit_security_manager_register_uri_scheme_as_secure(security, scheme.c_str());
         webkit_security_manager_register_uri_scheme_as_local(security, scheme.c_str());
         webkit_web_context_register_uri_scheme(ctx, scheme.c_str(), [](auto request, auto ptr) {
-            // auto protocol = ...
+          static const auto MAX_BODY_BYTES = 4 * 1024 * 1024;
+          IPC::Router* router = nullptr;
+          String protocol;
+          String pathname;
+
+          auto webview = webkit_uri_scheme_request_get_web_view(request);
+
+          for (auto& window : App::instance()->getWindowManager()->windows) {
+            if (
+              window != nullptr &&
+              window->bridge != nullptr &&
+              WEBKIT_WEB_VIEW(window->webview) == webview
+            ) {
+              router = &window->bridge->router;
+              break;
+            }
+          }
+
+          if (!router) {
+            auto userConfig = SSC::getUserConfig();
+            webkit_uri_scheme_request_finish_error(
+              request,
+              g_error_new(
+                g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                1,
+                "Missing router in request"
+              )
+            );
+          }
+
+          auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
+          auto userConfig = router->bridge->userConfig;
+          auto headers = webkit_uri_scheme_request_get_http_headers(request);
+          auto method = String(webkit_uri_scheme_request_get_http_method(request));
+          auto uri = String(webkit_uri_scheme_request_get_uri(request));
+          auto cwd = getcwd();
+
+          if (uri.find_first_of(":") != String::npos) {
+            protocol = uri.substr(0, uri.find_first_of(":"));
+          }
+
+          fetchRequest.client.id = router->bridge->id;
+          fetchRequest.client.preload = router->bridge->preload;
+          fetchRequest.method = method;
+          fetchRequest.scheme = protocol;
+
+          pathname = uri.substr(protocol.size() + 1, uri.size());
+
+          if (pathname.starts_with("//")) {
+            pathname = pathname.substr(2, pathname.size());
+            if (pathname.find_first_of("/") != String::npos) {
+              fetchRequest.host = pathname.substr(0, pathname.find_first_of("/"));
+              pathname = pathname.substr(pathname.find_first_of("/"), pathname.size());
+            } else {
+              fetchRequest.host = pathname;
+              pathname = "/";
+            }
+          } else {
+            fetchRequest.host = userConfig["meta_bundle_identifier"];
+          }
+
+          if (!pathname.starts_with("/")) {
+            pathname = String("/") + pathname;
+          }
+
+          // handle internal `npm:` protocol scheme
+          if (protocol == "npm") {
+            pathname = String("/socket/npm") + pathname;
+          }
+
+          const auto scope = router->core->protocolHandlers.getServiceWorkerScope(protocol);
+          const auto parsed = Router::parseURL(pathname);
+
+          fetchRequest.query = parsed.queryString;
+
+          if (scope.size() > 0) {
+            fetchRequest.pathname = scope + parsed.path;
+          } else {
+            fetchRequest.pathname = parsed.path;
+          }
+
+          soup_message_headers_foreach(
+            headers,
+            [](auto name, auto value, auto userData) {
+              auto fetchRequest = reinterpret_cast<ServiceWorkerContainer::FetchRequest*>(userData);
+              const auto entry = String(name) + ": " + String(value);
+              fetchRequest->headers.push_back(entry);
+            },
+            &fetchRequest
+          );
+
+          if (method == "POST" || method == "PUT") {
+            auto body = webkit_uri_scheme_request_get_http_body(request);
+            if (body) {
+              GError* error = nullptr;
+              fetchRequest.buffer.bytes = new char[MAX_BODY_BYTES]{0};
+
+              const auto success = g_input_stream_read_all(
+                body,
+                fetchRequest.buffer.bytes,
+                MAX_BODY_BYTES,
+                &fetchRequest.buffer.size,
+                nullptr,
+                &error
+              );
+
+              if (!success) {
+                delete fetchRequest.buffer.bytes;
+                webkit_uri_scheme_request_finish_error(
+                  request,
+                  error
+                );
+                return;
+              }
+            }
+          }
+
+          const auto fetched = router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
+            if (res.statusCode == 0) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "%.*s",
+                  (int) res.buffer.size,
+                  res.buffer.bytes
+                )
+              );
+              return;
+            }
+
+            const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+            auto stream = g_memory_input_stream_new_from_data(res.buffer.bytes, res.buffer.size, 0);
+
+            if (!stream) {
+              webkit_uri_scheme_request_finish_error(
+                request,
+                g_error_new(
+                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                  1,
+                  "Failed to create response stream"
+                )
+              );
+              return;
+            }
+
+            auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+            auto response = webkit_uri_scheme_response_new(stream, (gint64) res.buffer.size);
+
+            for (const auto& line : webviewHeaders) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            for (const auto& line : res.headers) {
+              auto pair = split(trim(line), ':');
+              auto key = trim(pair[0]);
+              auto value = trim(pair[1]);
+
+              if (key == "content-type" || key == "Content-Type") {
+                webkit_uri_scheme_response_set_content_type(response, value.c_str());
+              }
+
+              soup_message_headers_append(headers, key.c_str(), value.c_str());
+            }
+
+            webkit_uri_scheme_response_set_http_headers(response, headers);
+            webkit_uri_scheme_request_finish_with_response(request, response);
+
+            g_object_unref(stream);
+          });
+
+          if (fetched) {
+            return;
+          } else {
+            if (fetchRequest.buffer.bytes != nullptr) {
+              delete fetchRequest.buffer.bytes;
+            }
+          }
+
+          auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
+
+          if (!stream) {
+            webkit_uri_scheme_request_finish_error(
+              request,
+              g_error_new(
+                g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
+                1,
+                "Failed to create response stream"
+              )
+            );
+            return;
+          }
+
+          auto response = webkit_uri_scheme_response_new(stream, 0);
+
+          webkit_uri_scheme_response_set_status(response, 404, "Not found");
+          webkit_uri_scheme_request_finish_with_response(request, response);
+          g_object_unref(stream);
         },
         nullptr,
         0);
       }
     }
-#endif
+  #endif
 
     this->preserveCurrentTable();
 
