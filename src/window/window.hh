@@ -560,6 +560,7 @@ namespace SSC {
       void destroyWindow (Window* window) {
         Lock lock(this->mutex);
         if (destroyed) return;
+
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<ManagedWindow*>(window);
           inits[window->index] = false;
@@ -573,7 +574,9 @@ namespace SSC {
             window->kill();
           }
 
-          delete window;
+          if (!window->opts.canExit) {
+            delete window;
+          }
         }
       }
 

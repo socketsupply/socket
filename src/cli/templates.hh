@@ -1888,8 +1888,8 @@ icon_sizes = "512@1x"
 ; signing guide: https://socketsupply.co/guides/#ios-1
 codesign_identity = ""
 
-; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
-distribution_method = "ad-hoc"
+; Describes how Xcode should export the archive. Available options: app-store, package, release-testing, enterprise, development, and developer-id.
+distribution_method = "release-testing"
 
 ; A path to the provisioning profile used for signing iOS app.
 provisioning_profile = ""
