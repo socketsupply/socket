@@ -35,7 +35,7 @@ platform = ios ; override the `ssc build --platform` CLI option
 [settings.ios] ; override the `[ios]` section in `socket.ini`
 
 codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
-distribution_method = "ad-hoc"
+distribution_method = "release-testing"
 provisioning_profile = "johndoe.mobileprovision"
 simulator_device = "iPhone 15"
 ```
@@ -155,7 +155,7 @@ icon_sizes |  |  The various sizes and scales of the icons to create, required m
 Key | Default Value | Description
 :--- | :--- | :---
 codesign_identity |  |  signing guide: https://socketsupply.co/guides/#ios-1
-distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
+distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, release-testing, enterprise, development, and developer-id.
 provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
 simulator_device |  |  which device to target when building for the simulator.
 nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.

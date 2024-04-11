@@ -3964,10 +3964,19 @@ static void registerSchemeHandler (Router *router) {
 
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
   static auto fileManager = [[NSFileManager alloc] init];
+
+  if (!self.router) return;
+  if (!self.router->core) return;
+  if (!self.router->bridge) return;
+
   auto userConfig = self.router->bridge->userConfig;
+
+  if (!userConfig.count("meta_bundle_identifier")) return;
+
   const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
-  const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
+  auto rawHeaders = userConfig.count("webview_headers") ? userConfig["webview_headers"] : "";
+  const auto webviewHeaders = split(rawHeaders, '\n');
   const auto request = task.request;
   const auto scheme = String(request.URL.scheme.UTF8String);
   const auto url = String(request.URL.absoluteString.UTF8String);
@@ -4021,8 +4030,10 @@ static void registerSchemeHandler (Router *router) {
     return;
   }
 
+  const bool hasHandler = self.router->core->protocolHandlers.hasHandler(scheme);
+
   // handle 'npm:' and custom protocol schemes - POST/PUT bodies are ignored
-  if (scheme == "npm" || self.router->core->protocolHandlers.hasHandler(scheme)) {
+  if (scheme == "npm" || hasHandler) {
     auto absoluteURL = String(request.URL.absoluteString.UTF8String);
     auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
 
@@ -4034,12 +4045,12 @@ static void registerSchemeHandler (Router *router) {
 
     if (request.URL.path != nullptr) {
       fetchRequest.pathname = String(request.URL.path.UTF8String);
-      fetchRequest.host = userConfig["meta_bundle_identifier"];
+      fetchRequest.host = bundleIdentifier;
     } else if (request.URL.host != nullptr) {
       fetchRequest.pathname = String("/") + String(request.URL.host.UTF8String);
-      fetchRequest.host = userConfig["meta_bundle_identifier"];
+      fetchRequest.host = bundleIdentifier;
     } else {
-      fetchRequest.host = userConfig["meta_bundle_identifier"];
+      fetchRequest.host = bundleIdentifier;
       if (absoluteURL.starts_with(scheme + "://")) {
         fetchRequest.pathname = String("/") + replace(absoluteURL, scheme + "://", "");
       } else if (absoluteURL.starts_with(scheme + ":/")) {
@@ -4052,7 +4063,7 @@ static void registerSchemeHandler (Router *router) {
     if (request.URL.host != nullptr && request.URL.path != nullptr) {
       fetchRequest.host = String(request.URL.host.UTF8String);
     } else {
-      fetchRequest.host = userConfig["meta_bundle_identifier"];
+      fetchRequest.host = bundleIdentifier;
     }
 
     if (scheme == "npm") {
@@ -4136,7 +4147,7 @@ static void registerSchemeHandler (Router *router) {
       if (res.statusCode == 0) {
         @try {
           [task didFailWithError: [NSError
-              errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+              errorWithDomain: @(bundleIdentifier.c_str())
                          code: 1
                      userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
             ]];
@@ -4388,7 +4399,7 @@ static void registerSchemeHandler (Router *router) {
             const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
             auto script = self.router->bridge->preload;
 
-            if (userConfig["webview_importmap"].size() > 0) {
+            if (userConfig.count("webview_importmap") > 0 && userConfig["webview_importmap"].size() > 0) {
               const auto filename = userConfig["webview_importmap"];
               const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
                 stringByAppendingPathComponent: [NSString
@@ -4525,7 +4536,7 @@ static void registerSchemeHandler (Router *router) {
               if (res.statusCode == 0) {
                 @try {
                   [task didFailWithError: [NSError
-                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                      errorWithDomain: @(bundleIdentifier.c_str())
                                  code: 1
                              userInfo: @{NSLocalizedDescriptionKey: @(res.buffer.bytes)}
                     ]];
@@ -4608,7 +4619,7 @@ static void registerSchemeHandler (Router *router) {
                   @try {
                     [self finalizeTask: task];
                     [task didFailWithError: [NSError
-                      errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
+                      errorWithDomain: @(bundleIdentifier.c_str())
                                  code: 1
                              userInfo: @{NSLocalizedDescriptionKey: @"ServiceWorker request timed out."}
                     ]];
@@ -4801,7 +4812,7 @@ static void registerSchemeHandler (Router *router) {
 
     components.scheme = @("socket");
     headers[@"content-location"] = components.URL.path;
-    const auto socketModulePrefix = "socket://" + userConfig["meta_bundle_identifier"] + "/socket/";
+    const auto socketModulePrefix = "socket://" + bundleIdentifier + "/socket/";
 
     const auto absoluteURL = String(components.URL.absoluteString.UTF8String);
     const auto absoluteURLPathExtension = components.URL.pathExtension != nullptr
@@ -4817,7 +4828,7 @@ static void registerSchemeHandler (Router *router) {
       const auto string = [NSString.alloc initWithData: data encoding: NSUTF8StringEncoding];
       auto script = self.router->bridge->preload;
 
-      if (userConfig["webview_importmap"].size() > 0) {
+      if (userConfig.count("webview_importmap") > 0 && userConfig["webview_importmap"].size() > 0) {
         const auto filename = Path(userConfig["webview_importmap"]).filename();
         const auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
           stringByAppendingPathComponent: [NSString
@@ -5062,10 +5073,10 @@ static void registerSchemeHandler (Router *router) {
       ];
 
       if (![self waitingForTask: task]) {
-      #if !__has_feature(objc_arc)
-        [response release];
-      #endif
-        return;
+        #if !__has_feature(objc_arc)
+          [response release];
+        #endif
+          return;
       }
 
       [task didReceiveResponse: response];
@@ -5090,7 +5101,7 @@ static void registerSchemeHandler (Router *router) {
       }
 
     #if !__has_feature(objc_arc)
-      [response release];
+      if (response != nullptr) [response release];
     #endif
     } @catch (::id e) {}
   });

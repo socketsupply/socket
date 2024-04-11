@@ -71,7 +71,7 @@ platform = ios ; override the \`ssc build --platform\` CLI option
 [settings.ios] ; override the \`[ios]\` section in \`socket.ini\`
 
 codesign_identity = "iPhone Developer: John Doe (XXXXXXXXXX)"
-distribution_method = "ad-hoc"
+distribution_method = "release-testing"
 provisioning_profile = "johndoe.mobileprovision"
 simulator_device = "iPhone 15"
 \`\`\`
