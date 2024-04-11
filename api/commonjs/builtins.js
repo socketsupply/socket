@@ -201,7 +201,7 @@ export function getBuiltin (name, options = null) {
     !originalName.startsWith('socket:')
   ) {
     throw new ModuleNotFoundError(
-      `Cannnot find builtin module '${originalName}`
+      `Cannot find builtin module '${originalName}`
     )
   }
 
@@ -210,7 +210,7 @@ export function getBuiltin (name, options = null) {
   }
 
   throw new ModuleNotFoundError(
-    `Cannnot find builtin module '${originalName}`
+    `Cannot find builtin module '${originalName}`
   )
 }
 
