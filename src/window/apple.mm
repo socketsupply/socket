@@ -1035,24 +1035,6 @@ namespace SSC {
       }
     }
 
-/*
-TODO(@jwerle): figure out if this is even needed anymore?
-    [config.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"socket"
-    ];
-
-    [config.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"ipc"
-    ];
-
-    [config.processPool
-      performSelector: @selector(_registerURLSchemeAsSecure:)
-      withObject: @"node"
-    ];
-*/
-
     static const auto devHost = SSC::getDevHost();
     if (devHost.starts_with("http:")) {
       [config.processPool
