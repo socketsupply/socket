@@ -716,7 +716,7 @@ export function inspect (value, options) {
           output.push('<anonymous>')
         }
 
-        output = output.filter(Boolean)
+        output = output.map((entry) => entry.trim()).filter(Boolean)
 
         if (output.length) {
           output.unshift('    at')
