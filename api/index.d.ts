@@ -2471,32 +2471,20 @@ declare module "socket:url" {
 }
 
 declare module "socket:location" {
-    export function toString(): string;
-    export const globalLocation: Location | {
-        origin: string;
-        host: string;
-        hostname: string;
-        pathname: string;
-        href: string;
-    };
-    export const href: string;
-    export const protocol: "socket:";
-    export const hostname: string;
-    export const host: string;
-    export const search: string;
-    export const hash: string;
-    export const pathname: string;
-    export const origin: string;
-    namespace _default {
-        export { origin };
-        export { href };
-        export { protocol };
-        export { hostname };
-        export { host };
-        export { search };
-        export { pathname };
-        export { toString };
+    export class Location {
+        get url(): URL;
+        get protocol(): string;
+        get host(): string;
+        get hostname(): string;
+        get port(): string;
+        get pathname(): string;
+        get search(): string;
+        get origin(): string;
+        get href(): any;
+        get hash(): string;
+        toString(): any;
     }
+    const _default: Location;
     export default _default;
 }
 
@@ -2900,7 +2888,7 @@ declare module "socket:path/index" {
 }
 
 declare module "socket:path" {
-    export const sep: "/" | "\\";
+    export const sep: "\\" | "/";
     export const delimiter: ":" | ";";
     export const resolve: typeof posix.win32.resolve;
     export const join: typeof posix.win32.join;
