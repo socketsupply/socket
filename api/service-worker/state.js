@@ -28,7 +28,7 @@ const descriptors = {
       if (this.id && type === 'serviceWorker') {
         debug(
           '[%s]: ServiceWorker (%s) updated state to "%s"',
-          this.serviceWorker.scriptURL,
+          new URL(this.serviceWorker.scriptURL).pathname.replace(/^\/socket\//, 'socket:'),
           this.id,
           this.serviceWorker.state
         )

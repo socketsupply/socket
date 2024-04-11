@@ -62,6 +62,10 @@
         }
       }
 
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
       nav {
         -webkit-touch-callout: none;
         -webkit-user-select: none;
@@ -193,6 +197,23 @@
               &.red {
                 color: red;
               }
+            }
+          }
+
+          & details {
+            &[open] span {
+              opacity: 1;
+              transition: all 0.05s ease;
+              & code {
+                color: rgb(225, 225, 225);
+                opacity: 1;
+                transition: all 0.025s ease;
+              }
+            }
+
+            & > summary {
+              cursor: pointer;
+              list-style: none;
             }
           }
         }

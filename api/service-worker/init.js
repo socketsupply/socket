@@ -63,14 +63,28 @@ export async function onRegister (event) {
         for (const entry of event.data.__service_worker_debug) {
           const lines = entry.split('\n')
           const span = document.createElement('span')
+          let target = span
+
           for (const line of lines) {
             if (!line) continue
             const item = document.createElement('code')
             item.innerHTML = line
               .replace(/\s/g, '&nbsp;')
-              .replace(/(Error|TypeError|SyntaxError|ReferenceError|RangeError)/g, '<span class="red">$1</span>')
-            span.appendChild(item)
+              .replace(/\\s/g, ' ')
+              .replace(/<anonymous>/g, '&lt;anonymous&gt;')
+              .replace(/([a-z|A-Z|_|0-9]+(Error|Exception)):/g, '<span class="red"><b>$1</b>:</span>')
+
+            if (target === span && lines.length > 1) {
+              target = document.createElement('details')
+              const summary = document.createElement('summary')
+              summary.appendChild(item)
+              target.appendChild(summary)
+              span.appendChild(target)
+            } else {
+              target.appendChild(item)
+            }
           }
+
           log.appendChild(span)
         }
 
