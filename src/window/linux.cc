@@ -1116,6 +1116,10 @@ namespace SSC {
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
   }
 
+  void Window::setBackgroundColor (const String& rgba) {
+
+  }
+
   void Window::setBackgroundColor (int r, int g, int b, float a) {
     GdkRGBA color;
     color.red = r / 255.0;

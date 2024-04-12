@@ -129,6 +129,19 @@
 
       [super sendEvent:event];
     }
+
+    /* - (void)viewDidChangeEffectiveAppearance {
+      [super viewDidChangeEffectiveAppearance];
+
+      NSAppearance *currentAppearance = [self effectiveAppearance];
+      SSC::Window *w = (SSCW::Window*) self.window;
+
+      if ([[currentAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua]) {
+        if (w->opts.backgroundColorDark.size()) w->setBackgroundColor(w->opts.backgroundColorDark);
+      } else {
+        if (w->opts.backgroundColorLight.size()) w->setBackgroundColor(w->opts.backgroundColorLight);
+      }
+    } */
   @end
   @implementation SSCWindowDelegate
     - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
@@ -1082,45 +1095,13 @@ namespace SSC {
     //
     // Initial setup of the window background color
     //
-    NSTextCheckingResult *rgbaMatch = nil;
 
-    if (@available(macOS 10.14, *) && (opts.backgroundColorDark.size() || opts.backgroundColorLight.size())) {
-      NSString *rgba;
-      NSRegularExpression *regex =
-        [NSRegularExpression regularExpressionWithPattern: @"rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)"
-                                                  options: NSRegularExpressionCaseInsensitive
-                                                    error: nil];
+    NSAppearance *appearance = [NSAppearance currentAppearance];
 
-      NSAppearance *appearance = [NSAppearance currentAppearance];
-
-      if ([appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]]) {
-        if (opts.backgroundColorDark.size()) rgba = @(opts.backgroundColorDark.c_str());
-      } else {
-        if (opts.backgroundColorLight.size()) rgba = @(opts.backgroundColorLight.c_str());
-      }
-
-      if (rgba) {
-        NSTextCheckingResult *rgbaMatch =
-          [regex firstMatchInString: rgba
-                            options: 0
-                              range: NSMakeRange(0, [rgba length])];
-
-        if (rgbaMatch) {
-          int r = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:1]] intValue];
-          int g = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:2]] intValue];
-          int b = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:3]] intValue];
-          float a = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:4]] floatValue];
-
-          this->setBackgroundColor(r, g, b, a);
-        } else {
-          debug("invalid arguments for window background color");
-        }
-      }
-    }
-
-    if (rgbaMatch == nil) {
-      webview.layer.backgroundColor = [NSColor clearColor].CGColor;
-      [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
+    if ([appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]]) {
+      if (opts.backgroundColorDark.size()) this->setBackgroundColor(opts.backgroundColorDark);
+    } else {
+      if (opts.backgroundColorLight.size()) this->setBackgroundColor(opts.backgroundColorLight);
     }
 
     // [webview registerForDraggedTypes:
@@ -1579,6 +1560,32 @@ namespace SSC {
       // the pragma keyword to suppress the access warning.
       #pragma clang diagnostic ignored "-Wobjc-method-access"
       [[this->webview _inspector] show];
+    }
+  }
+
+  void Window::setBackgroundColor (const String& rgbaString) {
+    NSString *rgba = @(rgbaString.c_str());
+    NSRegularExpression *regex =
+      [NSRegularExpression regularExpressionWithPattern: @"rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)"
+                                                options: NSRegularExpressionCaseInsensitive
+                                                  error: nil];
+
+    NSTextCheckingResult *rgbaMatch =
+      [regex firstMatchInString: rgba
+                        options: 0
+                          range: NSMakeRange(0, [rgba length])];
+
+    if (rgbaMatch) {
+      int r = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:1]] intValue];
+      int g = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:2]] intValue];
+      int b = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:3]] intValue];
+      float a = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:4]] floatValue];
+
+      this->setBackgroundColor(r, g, b, a);
+    } else {
+      debug("invalid arguments for window background color");
+      webview.layer.backgroundColor = [NSColor clearColor].CGColor;
+      [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
     }
   }
 

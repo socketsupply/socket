@@ -862,6 +862,7 @@ namespace SSC {
       Atomic<bool> didTimersStart = false;
       Atomic<bool> isLoopRunning = false;
       Atomic<bool> shuttingDown = false;
+      Atomic<bool> domReady = false;
 
       uv_loop_t eventLoop;
       uv_async_t eventLoopAsync;

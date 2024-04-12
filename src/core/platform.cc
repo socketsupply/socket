@@ -91,6 +91,8 @@ namespace SSC {
       if (event == "domcontentloaded") {
         Lock lock(this->core->fs.mutex);
 
+        this->core->domReady = true;
+
         for (auto const &tuple : this->core->fs.descriptors) {
           auto desc = tuple.second;
           if (desc != nullptr) {

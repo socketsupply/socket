@@ -1985,6 +1985,10 @@ namespace SSC {
     this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
   }
 
+  void Window::setBackgroundColor (const String& rgba) {
+
+  }
+
   void Window::setBackgroundColor (int r, int g, int b, float a) {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
