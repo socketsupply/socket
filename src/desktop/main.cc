@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <ostream>
+#include <chrono>
 #include <regex>
 #include <span>
 
@@ -1621,10 +1622,18 @@ MAIN {
 
     if (isReadingStdin) {
       String value;
-      Thread t([&] () {
+      std::getline(std::cin, value);
+
+      Thread t([&](String value) {
+        auto app = App::instance();
+
+        while (!app->core->domReady) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(128));
+        }
+
         do {
           if (value.size() == 0) {
-            std::cin >> value;
+            std::getline(std::cin, value);
           }
 
           if (value.size() > 0) {
@@ -1632,9 +1641,8 @@ MAIN {
             value.clear();
           }
         } while (true);
-      });
+      }, value);
 
-      std::cin >> value;
       t.detach();
     }
 
