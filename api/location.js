@@ -34,7 +34,7 @@ export class Location {
   }
 
   get href () {
-    return this.url.hlref
+    return this.url.href
   }
 
   get hash () {
