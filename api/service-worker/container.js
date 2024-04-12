@@ -1,7 +1,6 @@
 /* global EventTarget */
-import { createServiceWorker, SHARED_WORKER_URL } from './instance.js'
 import { ServiceWorkerRegistration } from './registration.js'
-import { SharedWorker } from '../internal/shared-worker.js'
+import { createServiceWorker } from './instance.js'
 import { Deferred } from '../async.js'
 import application from '../application.js'
 import state from './state.js'
@@ -22,7 +21,6 @@ class ServiceWorkerContainerInternalStateMap extends Map {
 
 class ServiceWorkerContainerInternalState {
   currentWindow = null
-  sharedWorker = null
   controller = null
   channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new Deferred()
@@ -293,7 +291,6 @@ export class ServiceWorkerContainer extends EventTarget {
     internal.get(this).ready.then(async (registration) => {
       if (registration) {
         internal.get(this).controller = registration.active
-        internal.get(this).sharedWorker = new SharedWorker(SHARED_WORKER_URL)
         internal.get(this).currentWindow = await application.getCurrentWindow()
       }
     })
@@ -482,12 +479,7 @@ export class ServiceWorkerContainer extends EventTarget {
       return globalThis.top.navigator.serviceWorker.startMessages()
     }
 
-    internal.get(this).ready.then(() => {
-      internal.get(this).sharedWorker.port.start()
-      internal.get(this).sharedWorker.port.addEventListener('message', (event) => {
-        this.dispatchEvent(new MessageEvent(event.type, event))
-      })
-    })
+    // FIXME(@jwerle)
   }
 }
 
