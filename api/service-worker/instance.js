@@ -18,9 +18,6 @@ export function createServiceWorker (
   currentState = state.serviceWorker.state,
   options = null
 ) {
-  // client message bus worker
-  const sharedWorker = new globalThis.SharedWorker(SHARED_WORKER_URL)
-
   // events
   const eventTarget = new EventTarget()
   let onstatechange = null
@@ -29,17 +26,12 @@ export function createServiceWorker (
   // state
   let scriptURL = options?.scriptURL ?? null
 
-  sharedWorker.port.start()
-  sharedWorker.port.addEventListener('message', (event) => {
-    eventTarget.dispatchEvent(new MessageEvent('message', event.data))
-  })
-
   const serviceWorker = Object.create(ServiceWorker.prototype, {
     postMessage: {
       enumerable: false,
       configurable: false,
       value (message, ...args) {
-        sharedWorker.postMessage(message, ...args)
+        // FIXME(@jwerle)
       }
     },
 

@@ -1,5 +1,3 @@
-import { SHARED_WORKER_URL } from './instance.js'
-import { SharedWorker } from '../internal/shared-worker.js'
 import application from '../application.js'
 import state from './state.js'
 
@@ -32,15 +30,12 @@ export class Client {
   #url = null
   #type = null
   #frameType = null
-  #sharedWorker = null
 
   constructor (options) {
     this.#id = options?.id ?? null
     this.#url = options?.url ?? null
     this.#type = options?.type ?? null
     this.#frameType = options?.frameType ?? null
-    this.#sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-    this.#sharedWorker.port.start()
   }
 
   get id () {
@@ -60,8 +55,7 @@ export class Client {
   }
 
   postMessage (message, optionsOrTransferables = null) {
-    // TODO(@jwerle)
-    // return this.#sharedWorker.port.postMessage(message, optionsOrTransferables)
+    // FIXME(@jwerle)
   }
 }
 
