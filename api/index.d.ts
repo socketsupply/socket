@@ -2480,9 +2480,9 @@ declare module "socket:location" {
         get pathname(): string;
         get search(): string;
         get origin(): string;
-        get href(): any;
+        get href(): string;
         get hash(): string;
-        toString(): any;
+        toString(): string;
     }
     const _default: Location;
     export default _default;
@@ -9193,28 +9193,6 @@ declare module "socket:service-worker/state" {
     export default state;
 }
 
-declare module "socket:service-worker/instance" {
-    export function createServiceWorker(currentState?: any, options?: any): any;
-    export const SHARED_WORKER_URL: string;
-    export const ServiceWorker: {
-        new (): ServiceWorker;
-        prototype: ServiceWorker;
-    } | {
-        new (): {
-            onmessage: any;
-            onerror: any;
-            onstatechange: any;
-            readonly state: any;
-            readonly scriptURL: any;
-            postMessage(): void;
-            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-            dispatchEvent(event: Event): boolean;
-            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-        };
-    };
-    export default createServiceWorker;
-}
-
 declare module "socket:service-worker/clients" {
     export class Client {
         constructor(options: any);
@@ -14823,6 +14801,28 @@ declare module "socket:stream-relay" {
     export * from "socket:stream-relay/index";
     export default def;
     import def from "socket:stream-relay/index";
+}
+
+declare module "socket:service-worker/instance" {
+    export function createServiceWorker(currentState?: any, options?: any): any;
+    export const SHARED_WORKER_URL: string;
+    export const ServiceWorker: {
+        new (): ServiceWorker;
+        prototype: ServiceWorker;
+    } | {
+        new (): {
+            onmessage: any;
+            onerror: any;
+            onstatechange: any;
+            readonly state: any;
+            readonly scriptURL: any;
+            postMessage(): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+            dispatchEvent(event: Event): boolean;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+        };
+    };
+    export default createServiceWorker;
 }
 
 declare module "socket:worker" {
