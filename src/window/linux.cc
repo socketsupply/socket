@@ -1,4 +1,5 @@
 #include "window.hh"
+#include <fstream>
 
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
@@ -930,17 +931,59 @@ namespace SSC {
     bool hasLightValue = this->opts.backgroundColorLight.size();
     bool isDarkMode = false;
 
+    auto is_kde_dark_mode = []() -> bool {
+      std::string home = std::getenv("HOME") ? std::getenv("HOME") : "";
+      std::string filepath = home + "/.config/kdeglobals";
+      std::ifstream file(filepath);
+
+      if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filepath << std::endl;
+        return false;
+      }
+
+      std::string line;
+
+      while (getline(file, line)) {
+        std::string lower_line;
+
+        std::transform(
+          line.begin(),
+          line.end(),
+          std::back_inserter(lower_line),
+          [](unsigned char c) { return std::tolower(c); }
+        );
+
+        if (lower_line.find("dark") != std::string::npos) {
+          std::cout << "Found dark setting in line: " << line << std::endl;
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    auto is_gnome_dark_mode = [&]() -> bool {
+     GtkStyleContext *context = gtk_widget_get_style_context(window);
+
+      GdkRGBA background_color;
+      gtk_style_context_get_background_color(context, GTK_STATE_FLAG_NORMAL, &background_color);
+
+      bool is_dark_theme = (0.299 * background_color.red +
+                            0.587 * background_color.green +
+                            0.114 * background_color.blue) < 0.5;
+
+      return FALSE;
+    };
+
     if (hasDarkValue || hasLightValue) {
       GdkRGBA color = {0};
 
-      if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL) {
-        GSettings *settings = g_settings_new("org.gnome.desktop.interface");
-        isDarkMode = g_settings_get_boolean(settings, "gtk-application-prefer-dark-theme");
-      } else if (getenv("KDE_SESSION_VERSION") != NULL) {
-        //
-        // TODO(@heapwolf): KDE doesnt have a dark or light mode, it just has dark and light themes.
-        // the only reliable option to determine how to report this is to read the ini file ~/.config/kdeglobals
-        //
+      const gchar *desktop_env = getenv("XDG_CURRENT_DESKTOP");
+
+      if (desktop_env != NULL && g_str_has_prefix(desktop_env, "GNOME")) {
+        isDarkMode = is_gnome_dark_mode();
+      } else {
+        isDarkMode = is_kde_dark_mode();
       }
 
       if (isDarkMode && hasDarkValue) {
