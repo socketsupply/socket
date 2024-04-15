@@ -1315,7 +1315,7 @@ namespace SSC {
     }
 
     //
-    // We don't support hiddenInset because the same thing can be accomplished by specifying windowControlOffsets
+    // results in a hidden titlebar with inset/offset window controls
     //
     else if (opts.titlebarStyle == "hiddenInset") {
       style |= NSWindowStyleMaskFullSizeContentView;
