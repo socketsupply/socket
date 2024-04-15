@@ -58,6 +58,8 @@ export default gc
  * @param {Finalizer} finalizer
  */
 async function finalizationRegistryCallback (finalizer) {
+  if (!finalizer) return // potentially called when finalizer is already gone
+
   dc.channel('finalizer.start').publish({ finalizer })
 
   if (typeof finalizer.handle === 'function') {

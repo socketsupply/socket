@@ -219,6 +219,7 @@ constexpr auto gHelloWorld = R"HTML(
         overflow: hidden;
       }
     </style>
+    <
   </head>
   <body>
     <h1>Hello, World.</h1>
@@ -1940,8 +1941,8 @@ codesign_paths = ""
 ; default value: "13.0.0"
 ; minimum_supported_version = "13.0.0"
 
-; If titleBarStyle is "hiddenInset", this will determine the x and y offsets of the traffic lights.
-; trafficLightPosition = "10x24"
+; If titlebar_style is "hiddenInset", this will determine the x and y offsets of the window controls (traffic lights).
+; window_control_offsets = "10x24"
 
 ; The icon to use for identifying your app on MacOS.
 icon = "src/icon.png"
@@ -1998,7 +1999,7 @@ width = 50%
 
 ; Determine if the titlebar style (hidden, hiddenInset)
 ; default value: ""
-; titleBarStyle = "hiddenInset"
+; titlebar_style = "hiddenInset"
 
 ; Maximum height of the window in pixels or as a percentage of the screen.
 ; default value: 100%

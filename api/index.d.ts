@@ -553,7 +553,7 @@ declare module "socket:events" {
         listeners(type: any): any[];
         rawListeners(type: any): any[];
         listenerCount(type: any): any;
-        eventNames(): (string | symbol)[];
+        eventNames(): any;
     }
     export namespace EventEmitter {
         export { EventEmitter };
@@ -6578,8 +6578,8 @@ declare module "socket:application" {
      * @param {number} opts.index - the index of the window.
      * @param {string} opts.path - the path to the HTML file to load into the window.
      * @param {string=} opts.title - the title of the window.
-     * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
-     * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
+     * @param {string=} opts.titlebarStyle - determines the style of the titlebar (MacOS only).
+     * @param {string=} opts.windowControlOffsets - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
      * @param {string=} opts.backgroundColorDark - determines the background color of the window in dark mode.
      * @param {string=} opts.backgroundColorLight - determines the background color of the window in light mode.
      * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
@@ -6607,8 +6607,8 @@ declare module "socket:application" {
         index: number;
         path: string;
         title?: string | undefined;
-        titleBarStyle?: string | undefined;
-        trafficLightPosition?: string | undefined;
+        titlebarStyle?: string | undefined;
+        windowControlOffsets?: string | undefined;
         backgroundColorDark?: string | undefined;
         backgroundColorLight?: string | undefined;
         width?: (number | string) | undefined;
@@ -7430,6 +7430,7 @@ declare module "socket:vm" {
         filename?: string;
         context?: object;
     };
+    import { SharedWorker } from "socket:internal/shared-worker";
 }
 
 declare module "socket:worker_threads/init" {
@@ -7468,7 +7469,7 @@ declare module "socket:worker_threads" {
      * A pool of known worker threads.
      * @type {<Map<string, Worker>}
      */
-    export const workers: <Map>() => <string, Worker>() => any;
+    export const workers: <Map_1>() => <string, Worker_1>() => any;
     /**
      * `true` if this is the "main" thread, otherwise `false`
      * The "main" thread is the top level webview window.
@@ -7625,6 +7626,7 @@ declare module "socket:worker_threads" {
     import { Readable } from "socket:stream";
     import { SHARE_ENV } from "socket:worker_threads/init";
     import init from "socket:worker_threads/init";
+    import { env } from "socket:process";
     export { SHARE_ENV, init };
 }
 
@@ -7812,6 +7814,7 @@ declare module "socket:child_process" {
     import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
+    import signal from "socket:signal";
 }
 
 declare module "socket:constants" {
@@ -8326,7 +8329,7 @@ declare module "socket:fs/web" {
     export function createFile(filename: string, options?: {
         fd: fs.FileHandle;
         highWaterMark?: number;
-    } | undefined): File;
+    }): File;
     /**
      * Creates a `FileSystemWritableFileStream` instance backed
      * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
@@ -8622,6 +8625,7 @@ declare module "socket:extension" {
      * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
+    import path from "socket:path";
 }
 
 declare module "socket:fetch/fetch" {
@@ -12670,7 +12674,7 @@ declare module "socket:commonjs/package" {
         static parse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        } | undefined): ParsedPackageName | null;
+        }): ParsedPackageName | null;
         /**
          * Returns `true` if the given `input` can be parsed by `Name.parse` or given
          * as input to the `Name` class constructor.
@@ -12681,7 +12685,7 @@ declare module "socket:commonjs/package" {
         static canParse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        } | undefined): boolean;
+        }): boolean;
         /**
          * Creates a new `Name` from input.
          * @param {string|URL} input
@@ -14335,6 +14339,7 @@ declare module "socket:commonjs/module" {
     import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
+    import builtins from "socket:commonjs/builtins";
 }
 
 declare module "socket:module" {
@@ -15676,6 +15681,7 @@ declare module "socket:internal/pickers" {
             [keyof];
         }>;
     };
+    import { FileSystemHandle } from "socket:fs/web";
 }
 
 declare module "socket:internal/primitives" {

@@ -27,8 +27,8 @@ namespace SSC {
     bool isTest = false;
     bool headless = false;
     String aspectRatio = "";
-    String titleBarStyle = "";
-    String trafficLightPosition = "";
+    String titlebarStyle = "";
+    String windowControlOffsets = "";
     String backgroundColorLight = "";
     String backgroundColorDark = "";
     String cwd = "";

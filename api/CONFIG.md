@@ -180,7 +180,7 @@ cmd |  |  The command to execute to spawn the "back-end" process.
 codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 codesign_paths |  |  Additional paths to codesign
 minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
-trafficLightPosition |  |  If titleBarStyle is "hiddenInset", this will determine the x and y offsets of the traffic lights.
+window_control_offsets |  |  If titlebar_style is "hiddenInset", this will determine the x and y offsets of the window controls (traffic lights).
 icon |  |  The icon to use for identifying your app on MacOS.
 icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
 
@@ -209,7 +209,7 @@ height |  |  The initial height of the first window in pixels or as a percentage
 width |  |  The initial width of the first window in pixels or as a percentage of the screen.
 backgroundColorDark | "" |  The initial color of the window in dark mode. If not provided, matches the current theme.
 backgroundColorLight | "" |  The initial color of the window in light mode. If not provided, matches the current theme.
-titleBarStyle | "" |  Determine if the titlebar style (hidden, hiddenInset)
+titlebar_style | "" |  Determine if the titlebar style (hidden, hiddenInset)
 max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
 max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
 min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen.

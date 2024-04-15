@@ -77,7 +77,7 @@ namespace SSC {
 @interface SSCWindow : NSWindow
 @property (nonatomic, assign) SSCBridgedWebView *webview;
 @property (nonatomic, retain) NSView *titleBarView;
-@property (nonatomic) NSPoint trafficLightPosition;
+@property (nonatomic) NSPoint windowControlOffsets;
 @end
 
 @interface SSCBridgedWebView : WKWebView<
@@ -662,8 +662,8 @@ namespace SSC {
           .isTest = this->options.isTest,
           .headless = opts.headless,
           .aspectRatio = opts.aspectRatio,
-          .titleBarStyle = opts.titleBarStyle,
-          .trafficLightPosition = opts.trafficLightPosition,
+          .titlebarStyle = opts.titlebarStyle,
+          .windowControlOffsets = opts.windowControlOffsets,
           .backgroundColorLight = opts.backgroundColorLight,
           .backgroundColorDark = opts.backgroundColorDark,
           .cwd = this->options.cwd,
@@ -714,8 +714,8 @@ namespace SSC {
           .port = PORT,
         #endif
           .headless = opts.userConfig["build_headless"] == "true",
-          .titleBarStyle = opts.titleBarStyle,
-          .trafficLightPosition = opts.trafficLightPosition,
+          .titlebarStyle = opts.titlebarStyle,
+          .windowControlOffsets = opts.windowControlOffsets,
           .backgroundColorLight = opts.backgroundColorLight,
           .backgroundColorDark = opts.backgroundColorDark,
           .userConfig = opts.userConfig
