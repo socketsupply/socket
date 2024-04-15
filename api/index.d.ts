@@ -968,7 +968,10 @@ declare module "socket:gc" {
     export const finalizers: WeakMap<object, any>;
     export const kFinalizer: unique symbol;
     export const finalizer: symbol;
-    export const pool: Set<any>;
+    /**
+     * @type {Set<WeakRef>}
+     */
+    export const pool: Set<WeakRef<any>>;
     /**
      * Static registry for objects to clean up underlying resources when they
      * are gc'd by the environment. There is no guarantee that the `finalizer()`
