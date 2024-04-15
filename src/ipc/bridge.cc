@@ -3754,6 +3754,12 @@ static void registerSchemeHandler (Router *router) {
             {"protocol_handlers", join(protocolHandlers, " ")}
           });
 
+          if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
+            script = "";
+          } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
+            script = "";
+          }
+
           if (html.find("<head>") != String::npos) {
             html = replace(html, "<head>", String("<head>" + script));
           } else if (html.find("<body>") != String::npos) {
@@ -4446,6 +4452,12 @@ static void registerSchemeHandler (Router *router) {
               {"protocol_handlers", join(protocolHandlers, " ")}
             });
 
+            if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
+              script = "";
+            } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
+              script = "";
+            }
+
             if (html.find("<head>") != String::npos) {
               html = replace(html, "<head>", String("<head>" + script));
             } else if (html.find("<body>") != String::npos) {
@@ -4874,6 +4886,12 @@ static void registerSchemeHandler (Router *router) {
       auto html = tmpl(String(string.UTF8String), Map {
         {"protocol_handlers", join(protocolHandlers, " ")}
       });
+
+      if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
+        script = "";
+      } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
+        script = "";
+      }
 
       if (html.find("<head>") != String::npos) {
         html = replace(html, "<head>", String("<head>" + script));
