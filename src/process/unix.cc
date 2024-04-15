@@ -121,11 +121,12 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
     return pid;
   }
 
-  setpgid(pid, 0);
   closed = false;
   id = pid;
 
   if (pid > 0) {
+    setpgid(pid, getpgid(0));
+
     auto thread = std::thread([this] {
       int code = 0;
       waitpid(this->id, &code, 0);

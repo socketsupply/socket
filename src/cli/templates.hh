@@ -1067,7 +1067,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         PRODUCT_NAME = "$(TARGET_NAME)";
         PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
         SWIFT_EMIT_LOC_STRINGS = YES;
-        TARGETED_DEVICE_FAMILY = 1;
+        TARGETED_DEVICE_FAMILY = "1,2";
         WARNING_CFLAGS = (
           "$(inherited)",
           "-Wno-nullability-completeness",
@@ -1113,7 +1113,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         PRODUCT_NAME = "$(TARGET_NAME)";
         PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
         SWIFT_EMIT_LOC_STRINGS = YES;
-        TARGETED_DEVICE_FAMILY = 1;
+        TARGETED_DEVICE_FAMILY = "1,2";
         WARNING_CFLAGS = (
           "$(inherited)",
           "-Wno-nullability-completeness",

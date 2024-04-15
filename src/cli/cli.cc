@@ -1094,125 +1094,129 @@ int runApp (const Path& path, const String& args) {
 
 void runIOSSimulator (const Path& path, Map& settings) {
   #ifndef _WIN32
-  checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
-
-  String deviceType;
-  StringStream listDeviceTypesCommand;
-  listDeviceTypesCommand
-    << "xcrun"
-    << " simctl"
-    << " list devicetypes";
-
-  auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
-  if (rListDeviceTypes.exitCode != 0) {
-    log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
-    if (rListDeviceTypes.output.size() > 0) {
-      log(rListDeviceTypes.output);
-    }
-    exit(rListDeviceTypes.exitCode);
-  }
-
-  std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
-  std::smatch match;
-
-  if (std::regex_search(rListDeviceTypes.output, match, reDeviceType)) {
-    deviceType = match.str(1);
-    log("simulator device type: " + deviceType);
-  } else {
-    auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
-    log(
-      "failed to find device type: " + settings["ios_simulator_device"] + ". "
-      "Please provide correct device name for the \"ios_simulator_device\". "
-      "The list of available devices:\n" + rListDevices.output
-    );
-    if (rListDevices.output.size() > 0) {
-      log(rListDevices.output);
-    }
-    exit(rListDevices.exitCode);
-  }
-
-  StringStream listDevicesCommand;
-  listDevicesCommand
-    << "xcrun"
-    << " simctl"
-    << " list devices available";
-  auto rListDevices = exec(listDevicesCommand.str().c_str());
-  if (rListDevices.exitCode != 0) {
-    log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
-    if (rListDevices.output.size() > 0) {
-      log(rListDevices.output);
-    }
-    exit(rListDevices.exitCode);
-  }
-
-  auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
-  std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
-  std::regex reSocketSDKDevice("SocketSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
-
   String uuid;
   bool booted = false;
 
-  if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
-    uuid = match.str(1);
-    booted = match.str(2).find("Booted") != String::npos;
-
-    log("found Socket simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
-    if (booted) {
-      log("Socket simulator VM is booted");
-    } else {
-      log("Socket simulator VM is not booted");
-    }
+  if (settings.count("ios_simulator_uuid") > 0) {
+    uuid = settings["ios_simulator_uuid"];
   } else {
-    log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
+    checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
 
-    StringStream listRuntimesCommand;
-    listRuntimesCommand
+    String deviceType;
+    StringStream listDeviceTypesCommand;
+    listDeviceTypesCommand
       << "xcrun"
       << " simctl"
-      << " list runtimes available";
-    auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
-    if (rListRuntimes.exitCode != 0) {
-      log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
-      if (rListRuntimes.output.size() > 0) {
-        log(rListRuntimes.output);
+      << " list devicetypes";
+
+    auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
+    if (rListDeviceTypes.exitCode != 0) {
+      log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
+      if (rListDeviceTypes.output.size() > 0) {
+        log(rListDeviceTypes.output);
       }
-      exit(rListRuntimes.exitCode);
+      exit(rListDeviceTypes.exitCode);
     }
-    auto const runtimes = split(rListRuntimes.output, '\n');
-    String runtime;
-    // TODO: improve iOS version detection
-    for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
-      if (it->find("iOS") != String::npos) {
-        runtime = trim(*it);
-        log("found runtime: " + runtime);
-        break;
+
+    std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
+    std::smatch match;
+
+    if (std::regex_search(rListDeviceTypes.output, match, reDeviceType)) {
+      deviceType = match.str(1);
+      log("simulator device type: " + deviceType);
+    } else {
+      auto rListDevices = exec("xcrun simctl list devicetypes");
+      log(
+        "failed to find device type: " + settings["ios_simulator_device"] + ". "
+        "Please provide correct device name for the \"ios_simulator_device\". "
+        "The list of available devices:\n" + rListDevices.output
+      );
+      if (rListDevices.output.size() > 0) {
+        log(rListDevices.output);
       }
+      exit(rListDevices.exitCode);
     }
 
-    std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
-    std::smatch matchRuntime;
-    String runtimeId;
-
-    if (std::regex_search(runtime, matchRuntime, reRuntime)) {
-      runtimeId = matchRuntime.str(0);
-    }
-
-    StringStream createSimulatorCommand;
-    createSimulatorCommand
-      << "xcrun simctl"
-      << " create SocketSimulator_" + iosSimulatorDeviceSuffix
-      << " " << deviceType
-      << " " << runtimeId;
-
-    auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
-    if (rCreateSimulator.exitCode != 0) {
-      log("unable to create simulator VM");
-      if (rCreateSimulator.output.size() > 0) {
-        log(rCreateSimulator.output);
+    StringStream listDevicesCommand;
+    listDevicesCommand
+      << "xcrun"
+      << " simctl"
+      << " list devices available";
+    auto rListDevices = exec(listDevicesCommand.str().c_str());
+    if (rListDevices.exitCode != 0) {
+      log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
+      if (rListDevices.output.size() > 0) {
+        log(rListDevices.output);
       }
-      exit(rCreateSimulator.exitCode);
+      exit(rListDevices.exitCode);
     }
-    uuid = rCreateSimulator.output;
+
+    auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
+    std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
+    std::regex reSocketSDKDevice("SocketSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
+
+    if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
+      uuid = match.str(1);
+      booted = match.str(2).find("Booted") != String::npos;
+
+      log("found Socket simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
+      if (booted) {
+        log("Socket simulator VM is booted");
+      } else {
+        log("Socket simulator VM is not booted");
+      }
+    } else {
+      log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
+
+      StringStream listRuntimesCommand;
+      listRuntimesCommand
+        << "xcrun"
+        << " simctl"
+        << " list runtimes available";
+      auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
+      if (rListRuntimes.exitCode != 0) {
+        log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
+        if (rListRuntimes.output.size() > 0) {
+          log(rListRuntimes.output);
+        }
+        exit(rListRuntimes.exitCode);
+      }
+      auto const runtimes = split(rListRuntimes.output, '\n');
+      String runtime;
+      // TODO: improve iOS version detection
+      for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
+        if (it->find("iOS") != String::npos) {
+          runtime = trim(*it);
+          log("found runtime: " + runtime);
+          break;
+        }
+      }
+
+      std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
+      std::smatch matchRuntime;
+      String runtimeId;
+
+      if (std::regex_search(runtime, matchRuntime, reRuntime)) {
+        runtimeId = matchRuntime.str(0);
+      }
+
+      StringStream createSimulatorCommand;
+      createSimulatorCommand
+        << "xcrun simctl"
+        << " create SocketSimulator_" + iosSimulatorDeviceSuffix
+        << " " << deviceType
+        << " " << runtimeId;
+
+      auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
+      if (rCreateSimulator.exitCode != 0) {
+        log("unable to create simulator VM");
+        if (rCreateSimulator.output.size() > 0) {
+          log(rCreateSimulator.output);
+        }
+        exit(rCreateSimulator.exitCode);
+      }
+      uuid = rCreateSimulator.output;
+    }
   }
 
   if (!booted) {
@@ -5085,7 +5089,9 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForIOS) {
       if (flagBuildForSimulator) {
-        checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
+        if (settings.count("ios_simulator_uuid") < 0) {
+          checkIosSimulatorDeviceAvailability(settings["ios_simulator_device"]);
+        }
         log("building for iOS Simulator");
       }  else {
         log("building for iOS");
@@ -5166,9 +5172,14 @@ int main (const int argc, const char* argv[]) {
       // building, signing, bundling, archiving, noterizing, and uploading.
       //
       StringStream archiveCommand;
+      String deviceIdentity = settings.count("ios_simulator_uuid") > 0
+        ? "id=" + settings["ios_simulator_uuid"]
+        : "name=" + settings["ios_simulator_device"];
+
       String destination = flagBuildForSimulator
-        ? "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"]
+        ? "platform=iOS Simulator,OS=latest," + deviceIdentity
         : "generic/platform=iOS";
+
       String deviceType;
 
       // TODO: should be "iPhone Distribution: <name/provisioning specifier>"?

@@ -1,9 +1,13 @@
+import Buffer from '../buffer.js'
+
 export default function serialize (value) {
   if (!value || typeof value !== 'object') {
     return value
   }
 
   return map(value, (value) => {
+    if (Buffer.isBuffer(value)) return value
+
     if (typeof value[Symbol.serialize] === 'function') {
       return value[Symbol.serialize]()
     }
