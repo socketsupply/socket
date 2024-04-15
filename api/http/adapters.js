@@ -175,6 +175,8 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
       url: event.request.url
     })
 
+    incomingMessage.event = event
+
     const serverResponse = new this.httpInterface.ServerResponse({
       request: incomingMessage,
       server: this.server
@@ -190,7 +192,7 @@ export class ServiceWorkerServerAdapter extends ServerAdapter {
       this.context.run({ connection, incomingMessage, serverResponse, event }, () => {
         incomingMessage.context.run({ event }, () => {
           this.server.emit('connection', connection)
-          this.server.emit('request', incomingMessage, serverResponse)
+          this.server.emit('request', incomingMessage, serverResponse, event)
         })
       })
     })
