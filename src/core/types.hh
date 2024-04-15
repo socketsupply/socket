@@ -38,6 +38,7 @@ namespace SSC {
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
   template <typename T> using Function = std::function<T>;
+  template <typename X, typename Y> using Tuple = std::tuple<X, Y>;
   template <typename T> using Set = std::set<T>;
 
   using ExitCallback = Function<void(int code)>;

@@ -424,7 +424,9 @@ namespace SSC {
 
       if (
         html.size() > 0 &&
+        message.get("runtime-preload-injection") != "disabled" &&
         (
+          message.get("runtime-preload-injection") == "always" ||
           (extname.ends_with("html") || contentType == "text/html") ||
           (html.find("<!doctype html") != String::npos || html.find("<!DOCTYPE HTML") != String::npos) ||
           (html.find("<html") != String::npos || html.find("<HTML") != String::npos) ||
