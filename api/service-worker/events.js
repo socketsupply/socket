@@ -242,8 +242,9 @@ export class FetchEvent extends ExtendableEvent {
 
         if (response.type === 'error') {
           const statusCode = 0
-          const headers = Array.from(response.headers.entries())
-            .concat(FetchEvent.defaultHeaders.entries())
+          const headers = []
+            .concat(Array.from(response.headers.entries()))
+            .concat(Array.from(FetchEvent.defaultHeaders.entries()))
             .map((entry) => entry.join(':'))
             .concat('Runtime-Response-Source:serviceworker')
             .concat('Access-Control-Allow-Credentials:true')
