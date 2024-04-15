@@ -18,8 +18,8 @@ const isWorkerScope = globalThis.self === globalThis && !globalThis.window
  * @param {string} source
  * @return {boolean}
  */
-function detectESM (source) {
-  if (/(import\s|export[{|\s]|export\sdefault|(from\s['|"]))\s/.test(source)) {
+export function detectESMSource (source) {
+  if (/(import\s|export[{|\s]|export\sdefault|export\s?\*\s?from|(from\s['|"]))\s/.test(source)) {
     return true
   }
 
@@ -838,7 +838,7 @@ export class Package {
           module: entry
         }
 
-        if (detectESM(response.text)) {
+        if (detectESMSource(response.text)) {
           this.#info.type = 'module'
         } else {
           this.#info.type = 'commonjs'
@@ -1014,7 +1014,7 @@ export class Package {
     if (this.#type === 'module') {
       if (this.#info.type !== 'module' && this.entry) {
         const source = this.loader.load(this.entry, origin, options).text
-        if (!detectESM(source)) {
+        if (!detectESMSource(source)) {
           this.#type = 'commonjs'
         }
       }
