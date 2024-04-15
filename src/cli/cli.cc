@@ -2942,35 +2942,33 @@ int main (const int argc, const char* argv[]) {
     // Apple requires you to compile XCAssets/AppIcon.appiconset with a catalog for iOS and MacOS.
     //
     auto compileIconAssets = [&]() {
-      auto src = isForDesktop
-        ? paths.platformSpecificOutputPath / fs::path(std::string(settings["build_name"] + ".app"))
-        : paths.platformSpecificOutputPath;
+      auto src = paths.platformSpecificOutputPath;
 
-      std::vector<std::tuple<int, int>> iconTypes = {};
-
-      const std::string prefix = isForDesktop ? "mac" : "ios";
-      const std::string key = std::string(prefix + "_icon_sizes");
-      const auto sizeTypes = split(settings[key], " ");
-
+      Vector<Tuple<int, int>> types = {};
       JSON::Array images;
 
-      for (const auto& type : sizeTypes) {
-        auto pair = split(type, '@');
+      const String prefix = isForDesktop ? "mac" : "ios";
+      const String key = prefix + "_icon_sizes";
+      const auto sizes = split(settings[key], " ");
 
-        if (pair.size() != 2 || pair.size() == 0) return log("icon size requires <size>@<scale>");
+      for (const auto& type : sizes) {
+        const auto pair = split(type, '@');
 
-        const std::string size = pair[0];
-        const std::string scale = pair[1];
-        const std::string scaled = std::to_string(std::stoi(scale) * std::stoi(size));
+        if (pair.size() != 2 || pair.size() == 0) {
+          return log("icon size requires <size>@<scale>");
+        }
+
+        const String size = pair[0];
+        const String scale = pair[1];
 
         images.push(JSON::Object::Entries {
+          { "size", size + "x" + size },
           { "idiom", isForDesktop ? "mac" : "iphone" },
-          { "size", scaled + "x" + scaled },
-          { "scale", scale },
-          { "filename", "Icon-" + size + "@" + scale + ".png" }
+          { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
+          { "scale", scale }
         });
 
-        iconTypes.push_back(std::make_tuple(stoi(pair[0]), stoi(pair[1])));
+        types.push_back(std::make_tuple(stoi(pair[0]), stoi(pair[1])));
       }
 
       auto assetsPath = fs::path { src / "Assets.xcassets" };
@@ -2987,51 +2985,61 @@ int main (const int argc, const char* argv[]) {
       };
 
       writeFile(iconsPath / "Contents.json", json.str());
-      if (Env::get("DEBUG") == "1") log(json.str());
+      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+        log(json.str());
+      }
 
-      for (auto& iconType : iconTypes) {
+      for (const auto& type : types) {
+        const auto size = std::get<0>(type);
+        const auto scale = std::get<1>(type);
+        const auto scaled = std::to_string(size * scale);
+        const auto destFileName = "Icon-" + std::to_string(size) + "x" + std::to_string(size) + "@" + std::to_string(scale) + "x.png";
+        const auto destFilePath = Path { iconsPath / destFileName };
+
+        const auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
+
         StringStream sipsCommand;
-
-        auto size = std::get<0>(iconType);
-        auto scale = std::get<1>(iconType);
-        auto scaled = std::to_string(size * scale);
-        auto destFileName = "Icon-" + scaled + "@" + std::to_string(scale) + "x.png";
-        auto destFilePath = fs::path { iconsPath / destFileName };
-
-        auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
-
         sipsCommand
           << "sips"
           << " -z " << size << " " << size
           << " " << src
           << " --out " << destFilePath;
 
-        if (Env::get("DEBUG") == "1") log(sipsCommand.str());
-        auto rSip = exec(sipsCommand.str().c_str());
+        if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+          log(sipsCommand.str());
+        }
 
-        if (rSip.exitCode != 0) {
+        const auto r = exec(sipsCommand.str().c_str());
+
+        if (r.exitCode != 0) {
           log("ERROR: failed to create project icons");
-          log(rSip.output);
+          log(r.output);
           exit(1);
         }
       }
 
-      auto dest = paths.pathResourcesRelativeToUserBuild;
-      if (!isForDesktop) dest = src;
+      const auto dest = isForDesktop
+        ? paths.pathResourcesRelativeToUserBuild
+        : paths.platformSpecificOutputPath;
 
       StringStream compileAssetsCommand;
-
       compileAssetsCommand
         << "xcrun "
-          << "actool \"" << assetsPath.string() << "\" "
-          << "--compile \"" << dest.string() << "\" "
-          << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
-          << "--minimum-deployment-target 10.15 "
-          << "--app-icon AppIcon "
-          << "--output-partial-info-plist /tmp/partial-dev.plist"
+        << "actool \"" << assetsPath.string() << "\" "
+        << "--compile \"" << dest.string() << "\" "
+        << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
+        << "--minimum-deployment-target 10.15 "
+        << "--app-icon AppIcon "
+        << "--output-partial-info-plist "
+          << "\""
+          << (paths.platformSpecificOutputPath / "assets-partial-info.plist").string()
+          << "\""
       ;
 
-      if (Env::get("DEBUG") == "1") log(compileAssetsCommand.str());
+      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+        log(compileAssetsCommand.str());
+      }
+
       auto r = exec(compileAssetsCommand.str().c_str());
 
       if (r.exitCode != 0) {
