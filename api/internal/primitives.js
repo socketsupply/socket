@@ -207,6 +207,86 @@ export function init () {
     globalThis.SpeechRecognition = globalThis.webkitSpeechRecognition
   }
 
+  if (globalThis.RUNTIME_WORKER_TYPE !== 'sharedWorker') {
+    // globals
+    install({
+      // url
+      URL,
+      URLPattern,
+      URLSearchParams,
+
+      // Promise
+      Promise,
+
+      // fetch
+      fetch,
+      Headers,
+      Request,
+      Response,
+
+      // notifications
+      Notification,
+
+      // pickers
+      showDirectoryPicker,
+      showOpenFilePicker,
+      showSaveFilePicker,
+
+      // events
+      ApplicationURLEvent,
+      MenuItemEvent,
+      SignalEvent,
+      HotKeyEvent,
+
+      // file
+      File,
+      FileSystemHandle,
+      FileSystemFileHandle,
+      FileSystemDirectoryHandle,
+      FileSystemWritableFileStream,
+
+      // buffer
+      Buffer,
+
+      // workers
+      SharedWorker,
+      ServiceWorker,
+
+      // timers
+      setTimeout,
+      setInterval,
+      setImmediate,
+      clearTimeout,
+      clearInterval,
+      clearImmediate,
+
+      // streams
+      ReadableStream,
+      ReadableStreamBYOBReader,
+      ReadableByteStreamController,
+      ReadableStreamBYOBRequest,
+      ReadableStreamDefaultController,
+      ReadableStreamDefaultReader,
+      WritableStream,
+      WritableStreamDefaultController,
+      WritableStreamDefaultWriter,
+      TransformStream,
+      TransformStreamDefaultController,
+      ByteLengthQueuingStrategy,
+      CountQueuingStrategy,
+
+      // async
+      AsyncContext,
+      AsyncResource,
+      AsyncHook,
+      AsyncLocalStorage,
+      Deferred,
+
+      // platform detection
+      isSocketRuntime: true
+    })
+  }
+
   // globals
   install({
     // url
@@ -290,12 +370,11 @@ export function init () {
   }
 
   if (globalThis.navigator) {
-    // environment navigator
-    install({
-      geolocation,
-      permissions,
-      serviceWorker
-    }, globalThis.navigator, 'navigator')
+    if (globalThis.window) {
+      install({ geolocation }, globalThis.navigator, 'geolocation')
+    }
+
+    install({ permissions, serviceWorker }, globalThis.navigator, 'navigator')
 
     // manually install 'navigator.serviceWorker' accessors from prototype
     Object.defineProperties(
