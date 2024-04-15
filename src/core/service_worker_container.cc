@@ -435,7 +435,7 @@ namespace SSC {
           (html.find("<script") != String::npos || html.find("<SCRIPT") != String::npos)
         )
       ) {
-        const auto preload = (
+        auto preload = (
           String("<meta name=\"runtime-frame-source\" content=\"serviceworker\" />\n") +
           request.client.preload
         );
@@ -457,6 +457,12 @@ namespace SSC {
         html = tmpl(html, Map {
           {"protocol_handlers", join(protocolHandlers, " ")}
         });
+
+        if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
+          preload = "";
+        } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
+          preload = "";
+        }
 
         if (html.find("<head>") != String::npos) {
           html = replace(html, "<head>", String("<head>" + preload));
