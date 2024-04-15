@@ -1231,6 +1231,20 @@ MAIN {
         return;
       }
 
+      if (targetWindow == nullptr) {
+        JSON::Object json = JSON::Object::Entries {
+          { "err", "Target window is not available" }
+        };
+
+        currentWindow->resolvePromise(
+          message.seq,
+          ERROR_STATE,
+          json.str()
+        );
+
+        return;
+      }
+
       targetWindow->navigate(seq, url);
 
       JSON::Object json = JSON::Object::Entries {
