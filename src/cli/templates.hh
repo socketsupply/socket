@@ -227,9 +227,11 @@ constexpr auto gHelloWorld = R"HTML(
 </html>
 )HTML";
 
-constexpr auto gHelloWorldScript = R"JavaScript(
+constexpr auto gHelloWorldScript = R"JavaScript(//
+// Your JavaScript goes here!
+//
 import process from 'socket:process'
-console.log(process.platform)
+console.log(`Hello, ${process.platform}!`)
 )JavaScript";
 
 //
