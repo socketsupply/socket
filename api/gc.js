@@ -235,7 +235,7 @@ export async function finalize (object, ...args) {
  * and still strongly held (retained) somewhere.
  */
 export async function release () {
-  for (const weakRef of pool ?? []) {
+  for (const weakRef of pool) {
     await finalizationRegistryCallback(weakRef?.deref?.())
     pool.delete(weakRef)
   }

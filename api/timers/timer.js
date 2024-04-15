@@ -74,7 +74,9 @@ export class Timer extends AsyncResource {
       args: [this.id, this.#destroy],
       handle (id, destroy) {
         destroy(id)
-        finalizer.handle(...finalizer.args)
+        if (finalizer.args) {
+          finalizer.handle(...finalizer.args)
+        }
       }
     }
   }
