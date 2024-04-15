@@ -159,7 +159,10 @@ export class SharedHybridWorker extends EventTarget {
     // id is based on current origin and worker path name
     this.#id = murmur3(globalThis.origin + this.#url.pathname)
 
-    this.#worker = workers.get(this.#id) ?? new Worker(this.#url.toString())
+    this.#worker = workers.get(this.#id) ?? new Worker(this.#url.toString(), {
+      [Symbol.for('socket.runtime.internal.worker.type')]: 'sharedWorker'
+    })
+
     this.#channel = new MessageChannel()
 
     workers.set(this.#id, this.#worker)
