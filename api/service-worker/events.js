@@ -1,3 +1,4 @@
+/* global MessagePort */
 import { Deferred } from '../async.js'
 import { Context } from './context.js'
 import application from '../application.js'
@@ -133,7 +134,7 @@ export class FetchEvent extends ExtendableEvent {
   /**
    * `FetchEvent` class constructor.
    * @ignore
-   * @param {stirng=} [type = 'fetch']
+   * @param {string=} [type = 'fetch']
    * @param {object=} [options]
    */
   constructor (type = 'fetch', options = null) {
@@ -251,12 +252,19 @@ export class FetchEvent extends ExtendableEvent {
             .concat('Access-Control-Allow-Headers:*')
             .join('\n')
 
-          const result = await ipc.request('serviceWorker.fetch.response', {
+          const params = {
             statusCode,
             clientId,
             headers,
             id
-          })
+          }
+
+          params['runtime-preload-injection'] = (
+            response.headers.get('runtime-preload-injection') ||
+            'auto'
+          )
+
+          const result = await ipc.request('serviceWorker.fetch.response', params)
 
           if (result.err) {
             state.reportError(result.err)
@@ -312,7 +320,89 @@ export class FetchEvent extends ExtendableEvent {
   }
 }
 
+export class ExtendableMessageEvent extends ExtendableEvent {
+  #data = null
+  #ports = []
+  #origin = null
+  #source = null
+  #lastEventId = ''
+
+  /**
+   * `ExtendableMessageEvent` class constructor.
+   * @param {string=} [type = 'message']
+   * @param {object=} [options]
+   */
+  constructor (type = 'message', options = null) {
+    super(type, options)
+    this.#data = options?.data ?? null
+
+    if (Array.isArray(options?.ports)) {
+      for (const port of options.ports) {
+        if (port instanceof MessagePort) {
+          this.#ports.push(port)
+        }
+      }
+    }
+
+    if (options?.source) {
+      this.#source = options.source
+    }
+  }
+
+  /**
+   * @type {any}
+   */
+  get data () {
+    return this.#data
+  }
+
+  /**
+   * @type {MessagePort[]}
+   */
+  get ports () {
+    return this.#ports
+  }
+
+  /**
+   * @type {import('./clients.js').Client?}
+   */
+  get source () {
+    return this.#source
+  }
+
+  /**
+   * @type {string}
+   */
+  get lastEventId () {
+    return this.#lastEventId
+  }
+}
+
+export class NotificationEvent extends ExtendableEvent {
+  #action = ''
+  #notification = null
+
+  constructor (type, options) {
+    super(type, options)
+
+    if (typeof options?.action === 'string') {
+      this.#action = options.action
+    }
+
+    this.#notification = options.notification
+  }
+
+  get action () {
+    return this.#action
+  }
+
+  get notification () {
+    return this.#notification
+  }
+}
+
 export default {
+  ExtendableMessageEvent,
   ExtendableEvent,
   FetchEvent
 }

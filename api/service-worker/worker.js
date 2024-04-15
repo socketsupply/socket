@@ -1,8 +1,11 @@
-import { ExtendableEvent, FetchEvent } from './events.js'
+/* eslint-disable import/first */
+globalThis.isServiceWorkerScope = true
+
 import { ServiceWorkerGlobalScope } from './global.js'
 import { createStorageInterface } from './storage.js'
 import { Module, createRequire } from '../module.js'
 import { STATUS_CODES } from '../http.js'
+import { Notification } from '../notification.js'
 import { Environment } from './env.js'
 import { Deferred } from '../async.js'
 import { Buffer } from '../buffer.js'
@@ -16,6 +19,15 @@ import state from './state.js'
 import path from '../path.js'
 import util from '../util.js'
 import ipc from '../ipc.js'
+
+import {
+  ExtendableMessageEvent,
+  NotificationEvent,
+  ExtendableEvent,
+  FetchEvent
+} from './events.js'
+
+import '../console.js'
 
 const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
 
@@ -41,9 +53,15 @@ function onReady () {
 }
 
 async function onMessage (event) {
+  if (event instanceof ExtendableMessageEvent) {
+    return
+  }
+
   const { data } = event
 
   if (data?.register) {
+    event.stopImmediatePropagation()
+
     const { id, scope, scriptURL } = data.register
     const url = new URL(scriptURL)
 
@@ -53,6 +71,7 @@ async function onMessage (event) {
     }
 
     state.id = id
+    state.serviceWorker.id = id
     state.serviceWorker.scope = scope
     state.serviceWorker.scriptURL = scriptURL
 
@@ -117,6 +136,9 @@ async function onMessage (event) {
       }
     })
 
+    // create global registration from construct
+    globalThis.registration = data.register
+
     try {
       // define the actual location of the worker. not `blob:...`
       globalThis.RUNTIME_WORKER_LOCATION = scriptURL
@@ -175,36 +197,36 @@ async function onMessage (event) {
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.fetch === 'function') {
-        state.fetch = module.exports.default.fetch
+        state.fetch = module.exports.default.fetch.bind(module.exports.default)
       }
     } else if (typeof module.exports.default === 'function') {
       state.fetch = module.exports.default
     } else if (typeof module.exports.fetch === 'function') {
-      state.fetch = module.exports.fetch
+      state.fetch = module.exports.fetch.bind(module.exports)
     }
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.install === 'function') {
-        state.install = module.exports.default.install
+        state.install = module.exports.default.install.bind(module.exports.default)
       }
     } else if (typeof module.exports.install === 'function') {
-      state.install = module.exports.install
+      state.install = module.exports.install.bind(module.exports)
     }
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.activate === 'function') {
-        state.activate = module.exports.default.activate
+        state.activate = module.exports.default.activate.bind(module.exports.default)
       }
     } else if (typeof module.exports.activate === 'function') {
-      state.activate = module.exports.activate
+      state.activate = module.exports.activate.bind(module.exports)
     }
 
     if (module.exports.default && typeof module.exports.default === 'object') {
       if (typeof module.exports.default.reportError === 'function') {
-        state.reportError = module.exports.default.reportError
+        state.reportError = module.exports.default.reportError.bind(module.exports.default)
       }
     } else if (typeof module.exports.reportError === 'function') {
-      state.reportError = module.reportError
+      state.reportError = module.reportError.bind(module.exports)
     }
 
     if (typeof state.activate === 'function') {
@@ -275,42 +297,48 @@ async function onMessage (event) {
       })
     }
 
-    globalThis.registration = data.register
     globalThis.postMessage({ __service_worker_registered: { id } })
     return
   }
 
   if (data?.unregister) {
+    event.stopImmediatePropagation()
+    state.serviceWorker.state = 'none'
+    await state.notify('serviceWorker')
     globalThis.close()
     return
   }
 
   if (data?.install?.id === state.id) {
-    const event = new ExtendableEvent('install')
+    event.stopImmediatePropagation()
+    const installEvent = new ExtendableEvent('install')
+    events.add(installEvent)
     state.serviceWorker.state = 'installing'
     await state.notify('serviceWorker')
-    globalThis.dispatchEvent(event)
-    await event.waitsFor()
+    globalThis.dispatchEvent(installEvent)
+    await installEvent.waitsFor()
     state.serviceWorker.state = 'installed'
     await state.notify('serviceWorker')
-    events.delete(event)
+    events.delete(installEvent)
     return
   }
 
   if (data?.activate?.id === state.id) {
-    const event = new ExtendableEvent('activate')
+    event.stopImmediatePropagation()
+    const activateEvent = new ExtendableEvent('activate')
+    events.add(activateEvent)
     state.serviceWorker.state = 'activating'
     await state.notify('serviceWorker')
-    events.add(event)
-    globalThis.dispatchEvent(event)
-    await event.waitsFor()
+    globalThis.dispatchEvent(activateEvent)
+    await activateEvent.waitsFor()
     state.serviceWorker.state = 'activated'
     await state.notify('serviceWorker')
-    events.delete(event)
+    events.delete(activateEvent)
     return
   }
 
   if (data?.fetch?.request) {
+    event.stopImmediatePropagation()
     if (/post|put/i.test(data.fetch.request.method)) {
       const result = await ipc.request('serviceWorker.fetch.request.body', {
         id: data.fetch.request.id
@@ -336,7 +364,7 @@ async function onMessage (event) {
     }
 
     const url = new URL(data.fetch.request.url)
-    const event = new FetchEvent('fetch', {
+    const fetchEvent = new FetchEvent('fetch', {
       clientId: data.fetch.client.id,
       fetchId: data.fetch.request.id,
       request: new Request(data.fetch.request.url, {
@@ -346,6 +374,7 @@ async function onMessage (event) {
       })
     })
 
+    events.add(fetchEvent)
     if (url.protocol !== 'socket:') {
       const result = await ipc.request('protocol.getData', {
         scheme: url.protocol.replace(':', '')
@@ -353,22 +382,58 @@ async function onMessage (event) {
 
       if (result.data !== null && result.data !== undefined) {
         try {
-          event.context.data = JSON.parse(result.data)
+          fetchEvent.context.data = JSON.parse(result.data)
         } catch {
-          event.context.data = result.data
+          fetchEvent.context.data = result.data
         }
       }
     }
 
-    globalThis.dispatchEvent(event)
+    globalThis.dispatchEvent(fetchEvent)
+    await fetchEvent.waitsFor()
+    events.delete(fetchEvent)
     return
   }
 
   if (event.data?.notificationclick) {
-    // TODO(@jwerle)
+    event.stopImmediatePropagation()
+    globalThis.dispatchEvent(new NotificationEvent('notificationclick', {
+      action: event.data.notificationclick.action,
+      notification: new Notification(
+        event.data.notificationclick.title,
+        event.data.notificationclick.options,
+        event.data.notificationclick.data
+      )
+    }))
+    return
   }
 
-  if (event.data?.notificationshow) {
-    // TODO(@jwerle)
+  if (event.data?.notificationclose) {
+    event.stopImmediatePropagation()
+    globalThis.dispatchEvent(new NotificationEvent('notificationclose', {
+      action: event.data.notificationclose.action,
+      notification: new Notification(
+        event.data.notificationclose.title,
+        event.data.notificationclose.options,
+        event.data.notificationclose.data
+      )
+    }))
+    return
+  }
+
+  if (
+    typeof event.data?.from === 'string' &&
+    event.data.message &&
+    event.data.client
+  ) {
+    event.stopImmediatePropagation()
+    globalThis.dispatchEvent(new ExtendableMessageEvent('message', {
+      source: await clients.get(event.data.client.id),
+      origin: event.data.client.origin,
+      ports: event.ports,
+      data: event.data.message
+    }))
+    // eslint-disable-next-line
+    return
   }
 }
