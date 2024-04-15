@@ -238,7 +238,13 @@ export async function query (descriptor, options) {
     }
   }
 
-  const result = await ipc.request('permissions.query', { name, signal: options?.signal })
+  const { signal } = options || {}
+
+  if (options?.signal) {
+    delete options.signal
+  }
+
+  const result = await ipc.request('permissions.query', { name }, { signal })
 
   if (result.err) {
     throw result.err
@@ -316,7 +322,11 @@ export async function request (descriptor, options) {
     delete options.signal
   }
 
-  const result = await ipc.request('permissions.request', { ...options, name, signal })
+  const result = await ipc.request(
+    'permissions.request',
+    { ...options, name },
+    { signal }
+  )
 
   if (result.err) {
     throw result.err
