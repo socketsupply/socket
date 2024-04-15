@@ -44,9 +44,7 @@ export async function showNotification (registration, title, options) {
     throw new TypeError('ServiceWorkerRegistration is not active')
   }
 
-  console.log('before query')
   const query = await permissions.query({ name: 'notifications' })
-  console.log('after query')
 
   if (query.state !== 'granted') {
     throw new NotAllowedError('Operation not permitted')
