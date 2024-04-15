@@ -27,6 +27,7 @@
 /* global ErrorEvent, EventTarget, MessagePort */
 import { maybeMakeError } from './ipc.js'
 import { SharedWorker } from './internal/shared-worker.js'
+import { detectESMSource } from './commonjs/package.js'
 import application from './application.js'
 import globals from './internal/globals.js'
 import process from './process.js'
@@ -1706,7 +1707,7 @@ export function createGlobalObject (context, options) {
  * @return {boolean}
  */
 export function detectFunctionSourceType (source) {
-  if (/(import\s|export[{|\s]|export\sdefault|(from\s['|"]))\s/.test(source)) {
+  if (detectESMSource(source)) {
     return 'module'
   }
 
