@@ -1,4 +1,9 @@
+import { SharedWorker } from '../internal/shared-worker.js'
+import location from '../location.js'
 import state from './state.js'
+
+const serviceWorkers = new Map()
+let sharedWorker = null
 
 export const SHARED_WORKER_URL = `${globalThis.origin}/socket/service-worker/shared-worker.js`
 
@@ -18,27 +23,60 @@ export function createServiceWorker (
   currentState = state.serviceWorker.state,
   options = null
 ) {
+  const id = options?.id ?? state.id ?? null
+
+  if (!globalThis.isServiceWorkerScope) {
+    if (id && serviceWorkers.has(id)) {
+      return serviceWorkers.get(id)
+    }
+  }
+
+  const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
+
   // events
   const eventTarget = new EventTarget()
   let onstatechange = null
   let onerror = null
 
   // state
+  let serviceWorker = null
   let scriptURL = options?.scriptURL ?? null
 
-  const serviceWorker = Object.create(ServiceWorker.prototype, {
+  if (
+    globalThis.RUNTIME_WORKER_LOCATION !== SHARED_WORKER_URL &&
+    globalThis.location.pathname !== '/socket/service-worker/index.html'
+  ) {
+    sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+    sharedWorker.port.start()
+  }
+
+  serviceWorker = Object.create(ServiceWorker.prototype, {
     postMessage: {
       enumerable: false,
       configurable: false,
       value (message, ...args) {
-        // FIXME(@jwerle)
+        if (sharedWorker && globalThis.__args?.client) {
+          sharedWorker.port.postMessage({
+            message,
+            from: 'instance',
+            registration: { id },
+            client: {
+              id: globalThis.__args.client.id,
+              url: location.pathname + location.search,
+              type: globalThis.__args.client.type,
+              index: globalThis.__args.index,
+              origin: location.origin,
+              frameType: globalThis.__args.client.frameType
+            }
+          }, ...args)
+        }
       }
     },
 
     state: {
       configurable: true,
       enumerable: false,
-      get: () => currentState
+      get: () => currentState === null ? state.serviceWorker.state : currentState
     },
 
     scriptURL: {
@@ -101,25 +139,34 @@ export function createServiceWorker (
   })
 
   if (options?.subscribe !== false) {
-    state.channel.addEventListener('message', (event) => {
+    channel.addEventListener('message', (event) => {
       const { data } = event
-      if (data?.serviceWorker) {
+      if (data?.serviceWorker?.id === id) {
         if (data.serviceWorker.state && data.serviceWorker.state !== currentState) {
-          const scope = new URL(globalThis.location.href).pathname
+          const scope = new URL(location.href).pathname
           if (scope.startsWith(data.serviceWorker.scope)) {
-            currentState = data.serviceWorker.state
-            scriptURL = data.serviceWorker.scriptURL
-            const event = new Event('statechange')
+            if (data.serviceWorker.scriptURL) {
+              scriptURL = data.serviceWorker.scriptURL
+            }
 
-            Object.defineProperties(event, {
-              target: { value: serviceWorker }
-            })
+            if (data.serviceWorker.state !== currentState) {
+              currentState = data.serviceWorker.state
+              const event = new Event('statechange')
 
-            eventTarget.dispatchEvent(event)
+              Object.defineProperties(event, {
+                target: { value: serviceWorker }
+              })
+
+              eventTarget.dispatchEvent(event)
+            }
           }
         }
       }
     })
+  }
+
+  if (!globalThis.isServiceWorkerScope && id) {
+    serviceWorkers.set(id, serviceWorker)
   }
 
   return serviceWorker

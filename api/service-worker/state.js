@@ -69,12 +69,19 @@ const descriptors = {
         enumerable: true,
         writable: true,
         value: 'parsed'
+      },
+
+      id: {
+        configurable: false,
+        enumerable: true,
+        writable: true,
+        value: null
       }
     })
   }
 }
 
-if (!globalThis.window) {
+if (globalThis.isServiceWorkerScope) {
   Object.assign(descriptors, {
     id: {
       configurable: false,

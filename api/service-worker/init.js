@@ -1,4 +1,7 @@
 /* global Worker */
+import { SHARED_WORKER_URL } from './instance.js'
+import { SharedWorker } from '../internal/shared-worker.js'
+import { Notification } from '../notification.js'
 import { sleep } from '../timers.js'
 import globals from '../internal/globals.js'
 import crypto from '../crypto.js'
@@ -10,53 +13,57 @@ export const workers = new Map()
 globals.register('ServiceWorkerContext.workers', workers)
 globals.register('ServiceWorkerContext.info', new Map())
 
-export class ServiceWorkerInfo {
-  id = null
-  url = null
-  hash = null
-  scope = null
-  scriptURL = null
-
-  constructor (data) {
-    for (const key in data) {
-      const value = data[key]
-      if (key in this) {
-        this[key] = value
+const sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+sharedWorker.port.start()
+sharedWorker.port.onmessage = (event) => {
+  if (event.data?.from === 'instance' && event.data.registration?.id) {
+    for (const worker of workers.values()) {
+      if (worker.info.id === event.data.registration.id) {
+        worker.postMessage(event.data)
+        break
       }
     }
-
-    const url = new URL(this.scriptURL)
-    this.url = url.toString()
-    this.hash = crypto.murmur3(url.pathname + (this.scope || ''))
-
-    globals.get('ServiceWorkerContext.info').set(this.hash, this)
-  }
-
-  get pathname () {
-    return new URL(this.url).pathname
+  } else if (event.data?.showNotification && event.data.registration?.id) {
+    onNotificationShow(event, sharedWorker.port)
+  } else if (event.data?.getNotifications && event.data.registration?.id) {
+    onGetNotifications(event, sharedWorker.port)
   }
 }
 
-export async function onRegister (event) {
-  const info = new ServiceWorkerInfo(event.detail)
+export class ServiceWorkerInstance extends Worker {
+  #info = null
+  #notifications = []
 
-  if (!info.id || workers.has(info.hash)) {
-    return
+  constructor (filename, options) {
+    super(filename, {
+      name: `ServiceWorker (${options?.info?.pathname ?? filename})`,
+      ...options,
+      [Symbol.for('socket.runtime.internal.worker.type')]: 'serviceWorker'
+    })
+
+    this.#info = options?.info ?? null
+    this.addEventListener('message', this.onMessage.bind(this))
   }
 
-  const worker = new Worker('./worker.js', {
-    name: `ServiceWorker (${info.pathname})`,
-    [Symbol.for('socket.runtime.internal.worker.type')]: 'serviceWorker'
-  })
+  get info () {
+    return this.#info
+  }
 
-  workers.set(info.hash, worker)
-  worker.addEventListener('message', onMessage)
+  get notifications () {
+    return this.#notifications
+  }
 
-  async function onMessage (event) {
+  async onMessage (event) {
+    const { info } = this
     if (event.data.__service_worker_ready === true) {
-      worker.postMessage({ register: info })
+      this.postMessage({ register: info })
     } else if (event.data.__service_worker_registered?.id === info.id) {
-      worker.postMessage({ install: info })
+      this.postMessage({ install: info })
+    } else if (event.data?.message && event?.data.client?.id) {
+      sharedWorker.port.postMessage({
+        ...event.data,
+        from: 'realm'
+      })
     } else if (Array.isArray(event.data.__service_worker_debug)) {
       const log = document.querySelector('#log')
       if (log) {
@@ -90,8 +97,54 @@ export async function onRegister (event) {
 
         log.scrollTop = log.scrollHeight
       }
+    } else if (event.data?.showNotification && event.data.registration?.id) {
+      onNotificationShow(event, this)
+    } else if (event.data?.getNotifications && event.data.registration?.id) {
+      onGetNotifications(event, this)
+    } else if (event.data?.notificationclose?.id) {
+      onNotificationClose(event, this)
     }
   }
+}
+
+export class ServiceWorkerInfo {
+  id = null
+  url = null
+  hash = null
+  scope = null
+  scriptURL = null
+
+  constructor (data) {
+    for (const key in data) {
+      const value = data[key]
+      if (key in this) {
+        this[key] = value
+      }
+    }
+
+    const url = new URL(this.scriptURL)
+    this.url = url.toString()
+    this.hash = crypto.murmur3(url.pathname + (this.scope || ''))
+  }
+
+  get pathname () {
+    return new URL(this.url).pathname
+  }
+}
+
+export async function onRegister (event) {
+  const info = new ServiceWorkerInfo(event.detail)
+
+  if (!info.id || workers.has(info.hash)) {
+    return
+  }
+
+  const worker = new ServiceWorkerInstance('./worker.js', {
+    info
+  })
+
+  workers.set(info.hash, worker)
+  globals.get('ServiceWorkerContext.info').set(info.hash, info)
 }
 
 export async function onUnregister (event) {
@@ -184,6 +237,107 @@ export async function onFetch (event) {
   const worker = workers.get(info.hash)
 
   worker.postMessage({ fetch: { ...info, client, request } })
+}
+
+export function onNotificationShow (event, target) {
+  for (const worker of workers.values()) {
+    if (worker.info.id === event.data.registration.id) {
+      let notification = null
+
+      try {
+        notification = new Notification(
+          event.data.showNotification.title,
+          event.data.showNotification
+        )
+      } catch (error) {
+        return target.postMessage({
+          nonce: event.data.nonce,
+          notification: {
+            error: { message: error.message }
+          }
+        })
+      }
+
+      worker.notifications.push(notification)
+      notification.onshow = () => {
+        notification.onshow = null
+        return target.postMessage({
+          nonce: event.data.nonce,
+          notification: {
+            id: notification.id
+          }
+        })
+      }
+
+      notification.onclick = (event) => {
+        worker.postMessage({
+          notificationclick: {
+            title: notification.title,
+            options: notification.options.toJSON(),
+            data: {
+              id: notification.id,
+              timestamp: notification.timestamp
+            }
+          }
+        })
+      }
+
+      notification.onclose = (event) => {
+        notification.onclose = null
+        notification.onclick = null
+        worker.postMessage({
+          notificationclose: {
+            title: notification.title,
+            options: notification.options.toJSON(),
+            data: {
+              id: notification.id,
+              timestamp: notification.timestamp
+            }
+          }
+        })
+
+        const index = worker.notifications.indexOf(notification)
+        if (index >= 0) {
+          worker.notifications.splice(index, 1)
+        }
+      }
+      break
+    }
+  }
+}
+
+export function onNotificationClose (event, target) {
+  for (const worker of workers.values()) {
+    for (const notification of worker.notifications) {
+      if (event.data.notificationclose.id === notification.id) {
+        notification.close()
+        return
+      }
+    }
+  }
+}
+
+export function onGetNotifications (event, target) {
+  for (const worker of workers.values()) {
+    if (worker.info.id === event.data.registration.id) {
+      return target.postMessage({
+        nonce: event.data.nonce,
+        notifications: worker.notifications
+          .filter((notification) =>
+            !event.data.getNotifications?.tag ||
+            event.data.getNotifications.tag === notification.tag
+          )
+          .map((notification) => ({
+            title: notification.title,
+            options: notification.options.toJSON(),
+            data: {
+              id: notification.id,
+              timestamp: notification.timestamp
+            }
+          }))
+      })
+    }
+  }
 }
 
 export default null

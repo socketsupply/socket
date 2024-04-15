@@ -55,7 +55,16 @@ export class Client {
   }
 
   postMessage (message, optionsOrTransferables = null) {
-    // FIXME(@jwerle)
+    globalThis.postMessage({
+      from: 'serviceWorker',
+      registration: { id: state.id },
+      client: {
+        id: this.#id,
+        type: this.#type,
+        frameType: this.#frameType
+      },
+      message
+    }, optionsOrTransferables)
   }
 }
 
@@ -147,7 +156,7 @@ export class Clients {
         if (event.data?.clients?.get?.result?.client?.id === id) {
           clearTimeout(timeout)
           state.channel.removeEventListener('message', onMessage)
-          resolve(event.data.client)
+          resolve(event.data.clients.get.result.client)
         }
       }
 

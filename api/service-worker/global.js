@@ -13,8 +13,7 @@ let onfetch = null
 
 // this is set one time
 let registration = null
-
-const serviceWorker = createServiceWorker(state.serviceWorker.state)
+let serviceWorker = null
 
 export class ServiceWorkerGlobalScope {
   get isServiceWorkerScope () {
@@ -40,6 +39,8 @@ export class ServiceWorkerGlobalScope {
   set registration (value) {
     if (!registration) {
       const info = { registration: value }
+
+      serviceWorker = createServiceWorker(state.serviceWorker.state, info.registration)
       registration = new ServiceWorkerRegistration(info, serviceWorker)
     }
   }

@@ -1,8 +1,10 @@
 /* global EventTarget */
 import { ServiceWorkerRegistration } from './registration.js'
-import { createServiceWorker } from './instance.js'
+import { createServiceWorker, SHARED_WORKER_URL } from './instance.js'
+import { SharedWorker } from '../internal/shared-worker.js'
 import { Deferred } from '../async.js'
 import application from '../application.js'
+import location from '../location.js'
 import state from './state.js'
 import ipc from '../ipc.js'
 import os from '../os.js'
@@ -22,6 +24,7 @@ class ServiceWorkerContainerInternalStateMap extends Map {
 class ServiceWorkerContainerInternalState {
   currentWindow = null
   controller = null
+  sharedWorker = null
   channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new Deferred()
   init = new Deferred()
@@ -39,12 +42,12 @@ class ServiceWorkerContainerInternalState {
 class ServiceWorkerContainerRealm {
   static instance = null
 
-  frame = null
   static async init (container) {
     const realm = new ServiceWorkerContainerRealm()
     return await realm.init(container)
   }
 
+  frame = null
   async init () {
     if (ServiceWorkerContainerRealm.instance) {
       return
@@ -67,8 +70,11 @@ class ServiceWorkerContainerRealm {
     }
 
     const pending = []
-
-    this.frame = globalThis.top.document.createElement('iframe')
+    const target = (
+      globalThis.top.document.head ??
+      globalThis.top.document.body ??
+      globalThis.top.document
+    )
 
     pending.push(new Promise((resolve) => {
       globalThis.top.addEventListener('message', function onMessage (event) {
@@ -79,22 +85,17 @@ class ServiceWorkerContainerRealm {
       })
     }))
 
-    this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
-    this.frame.setAttribute('loading', 'eager')
-    this.frame.src = SERVICE_WINDOW_PATH
+    this.frame = globalThis.top.document.createElement('iframe')
     this.frame.id = frameId
+    this.frame.src = SERVICE_WINDOW_PATH
+    this.frame.setAttribute('loading', 'eager')
+    this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
 
     Object.assign(this.frame.style, {
       display: 'none',
       height: 0,
       width: 0
     })
-
-    const target = (
-      globalThis.top.document.head ??
-      globalThis.top.document.body ??
-      globalThis.top.document
-    )
 
     target.prepend(this.frame)
 
@@ -265,6 +266,7 @@ export class ServiceWorkerContainer extends EventTarget {
         if (typeof onmessage === 'function') {
           this.addEventListener('message', onmessage)
           internal.get(this).onmessage = onmessage
+          this.startMessages()
         }
       }
     })
@@ -295,7 +297,7 @@ export class ServiceWorkerContainer extends EventTarget {
       }
     })
 
-    if (isServiceWorkerAllowed()) {
+    if (!globalThis.isServiceWorkerScope && isServiceWorkerAllowed()) {
       state.channel.addEventListener('message', (event) => {
         if (event.data?.clients?.claim?.scope) {
           const { scope } = event.data.clients.claim
@@ -366,7 +368,8 @@ export class ServiceWorkerContainer extends EventTarget {
 
     const serviceWorker = createServiceWorker(state.serviceWorker.state, {
       subscribe: clientURL || scope === currentScope,
-      scriptURL: info.registration.scriptURL
+      scriptURL: info.registration.scriptURL,
+      id: info.registration.id
     })
 
     return new ServiceWorkerRegistration(info, serviceWorker)
@@ -390,7 +393,8 @@ export class ServiceWorkerContainer extends EventTarget {
         const info = { registration }
         info.registration.state = info.registration.state.replace('registered', 'installing')
         const serviceWorker = createServiceWorker(registration.state, {
-          scriptURL: info.registration.scriptURL
+          scriptURL: info.registration.scriptURL,
+          id: info.registration.id
         })
         registrations.push(new ServiceWorkerRegistration(info, serviceWorker))
       }
@@ -449,7 +453,8 @@ export class ServiceWorkerContainer extends EventTarget {
       state.serviceWorker.scriptURL = info.registration.scriptURL
 
       const serviceWorker = createServiceWorker(state.serviceWorker.state, {
-        scriptURL: info.registration.scriptURL
+        scriptURL: info.registration.scriptURL,
+        id: info.registration.id
       })
 
       const registration = new ServiceWorkerRegistration(info, serviceWorker)
@@ -479,7 +484,46 @@ export class ServiceWorkerContainer extends EventTarget {
       return globalThis.top.navigator.serviceWorker.startMessages()
     }
 
-    // FIXME(@jwerle)
+    if (!internal.get(this).sharedWorker && globalThis.RUNTIME_WORKER_LOCATION !== SHARED_WORKER_URL) {
+      internal.get(this).sharedWorker = new SharedWorker(SHARED_WORKER_URL)
+      internal.get(this).sharedWorker.port.start()
+      internal.get(this).sharedWorker.port.onmessage = async (event) => {
+        if (
+          event.data?.from === 'realm' &&
+          event.data?.registration?.id &&
+          event.data?.client?.id === globalThis.__args.client.id &&
+          event.data?.client?.type === globalThis.__args.client.type &&
+          event.data?.client?.frameType === globalThis.__args.client.frameType
+        ) {
+          const registrations = await this.getRegistrations()
+          for (const registration of registrations) {
+            const info = registration[Symbol.for('socket.runtime.ServiceWorkerRegistration.info')]
+            if (info?.id === event.data.registration.id) {
+              const serviceWorker = createServiceWorker(state.serviceWorker.state, {
+                subscribe: false,
+                scriptURL: info.scriptURL,
+                id: info.id
+              })
+
+              const messageEvent = new MessageEvent('message', {
+                origin: new URL(info.scriptURL, location.origin).origin,
+                data: event.data.message
+              })
+
+              Object.defineProperty(messageEvent, 'source', {
+                configurable: false,
+                enumerable: false,
+                writable: false,
+                value: serviceWorker
+              })
+
+              this.dispatchEvent(messageEvent)
+              break
+            }
+          }
+        }
+      }
+    }
   }
 }
 

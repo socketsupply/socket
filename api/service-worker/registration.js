@@ -1,3 +1,4 @@
+import { showNotification, getNotifications } from './notification.js'
 import ipc from '../ipc.js'
 
 export class ServiceWorkerRegistration {
@@ -42,6 +43,10 @@ export class ServiceWorkerRegistration {
     })
   }
 
+  get [Symbol.for('socket.runtime.ServiceWorkerRegistration.info')] () {
+    return this.#info?.registration ?? null
+  }
+
   get scope () {
     return this.#info.registration.scope
   }
@@ -84,10 +89,11 @@ export class ServiceWorkerRegistration {
   }
 
   async getNotifications () {
-    return []
+    return await getNotifications(this)
   }
 
-  async showNotification () {
+  async showNotification (title, options) {
+    return await showNotification(this, title, options)
   }
 
   async unregister () {
