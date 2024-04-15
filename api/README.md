@@ -45,8 +45,8 @@ Creates a new window and returns an instance of ApplicationWindow.
 | opts.index | number |  | false | the index of the window. |
 | opts.path | string |  | false | the path to the HTML file to load into the window. |
 | opts.title | string |  | true | the title of the window. |
-| opts.titleBarStyle | string |  | true | determines the style of the titlebar (MacOS only). |
-| opts.trafficLightPosition | string |  | true | a string (split on 'x') provides the x and y position of the traffic lights (MacOS only). |
+| opts.titlebarStyle | string |  | true | determines the style of the titlebar (MacOS only). |
+| opts.windowControlOffsets | string |  | true | a string (split on 'x') provides the x and y position of the traffic lights (MacOS only). |
 | opts.backgroundColorDark | string |  | true | determines the background color of the window in dark mode. |
 | opts.backgroundColorLight | string |  | true | determines the background color of the window in light mode. |
 | opts.width | number \| string |  | true | the width of the window. If undefined, the window will have the main window width. |

@@ -646,7 +646,7 @@ namespace SSC {
       if (!opts.frameless) {
         style |= WS_OVERLAPPED;
 
-        if (opts.titleBarStyle == "hidden" || opts.titleBarStyle == "hiddenInset") {
+        if (opts.titlebarStyle == "hidden" || opts.titlebarStyle == "hiddenInset") {
           // Windows does not have the ability to reposition the decorations
           // In this case, we can assume that the user will draw their own controls.
         } else if (opts.closable) {

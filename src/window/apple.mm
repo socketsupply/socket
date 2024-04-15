@@ -129,19 +129,6 @@
 
       [super sendEvent:event];
     }
-
-    /* - (void)viewDidChangeEffectiveAppearance {
-      [super viewDidChangeEffectiveAppearance];
-
-      NSAppearance *currentAppearance = [self effectiveAppearance];
-      SSC::Window *w = (SSCW::Window*) self.window;
-
-      if ([[currentAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua]) {
-        if (w->opts.backgroundColorDark.size()) w->setBackgroundColor(w->opts.backgroundColorDark);
-      } else {
-        if (w->opts.backgroundColorLight.size()) w->setBackgroundColor(w->opts.backgroundColorLight);
-      }
-    } */
   @end
   @implementation SSCWindowDelegate
     - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
@@ -156,6 +143,20 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
 
+- (void)viewDidChangeEffectiveAppearance {
+  [super viewDidChangeEffectiveAppearance];
+
+  SSCWindow *window = (SSCWindow*) self.window;
+
+  if (@available(macOS 10.14, *)) {
+    if ([window.effectiveAppearance.name containsString:@"Dark"]) {
+      [window setBackgroundColor:[NSColor colorWithCalibratedWhite:0.1 alpha:1.0]]; // Dark mode color
+    } else {
+      [window setBackgroundColor:[NSColor colorWithCalibratedWhite:1.0 alpha:1.0]]; // Light mode color
+    }
+  }
+}
+
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
   [super resizeSubviewsWithOldSize:oldSize];
 
@@ -164,7 +165,7 @@ int lastY = 0;
 
   CGFloat viewWidth = w.titleBarView.frame.size.width;
   CGFloat viewHeight = w.titleBarView.frame.size.height;
-  CGFloat newX = w.trafficLightPosition.x;
+  CGFloat newX = w.windowControlOffsets.x;
   CGFloat newY = 0.f;
 
   NSButton *closeButton = [w standardWindowButton:NSWindowCloseButton];
@@ -1097,12 +1098,26 @@ namespace SSC {
     //
 
     NSAppearance *appearance = [NSAppearance currentAppearance];
+    bool didSetBackgroundColor = false;
 
     if ([appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]]) {
-      if (opts.backgroundColorDark.size()) this->setBackgroundColor(opts.backgroundColorDark);
+      if (opts.backgroundColorDark.size()) {
+        this->setBackgroundColor(opts.backgroundColorDark);
+        didSetBackgroundColor = true;
+      }
     } else {
-      if (opts.backgroundColorLight.size()) this->setBackgroundColor(opts.backgroundColorLight);
+      if (opts.backgroundColorLight.size()) {
+        this->setBackgroundColor(opts.backgroundColorLight);
+        didSetBackgroundColor = true;
+      }
     }
+
+    if (!didSetBackgroundColor) {
+      [window setBackgroundColor: [NSColor windowBackgroundColor]];
+    }
+
+    webview.layer.backgroundColor = [NSColor clearColor].CGColor;
+    [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -1270,7 +1285,6 @@ namespace SSC {
 
     // Minimum window size
     [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    // [window setBackgroundColor: [NSColor controlBackgroundColor]];
     [window registerForDraggedTypes: draggableTypes];
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
 
@@ -1292,7 +1306,7 @@ namespace SSC {
     //
     // results in a hidden title bar and a full-size content window.
     //
-    if (opts.titleBarStyle == "hidden") {
+    if (opts.titlebarStyle == "hidden") {
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskResizable;
       [window setStyleMask: style];
@@ -1300,9 +1314,9 @@ namespace SSC {
     }
 
     //
-    // We don't support hiddenInset because the same thing can be accomplished by specifying trafficLightPosition
+    // We don't support hiddenInset because the same thing can be accomplished by specifying windowControlOffsets
     //
-    else if (opts.titleBarStyle == "hiddenInset") {
+    else if (opts.titlebarStyle == "hiddenInset") {
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskTitled;
       style |= NSWindowStyleMaskResizable;
@@ -1313,13 +1327,13 @@ namespace SSC {
       CGFloat x = 16.f;
       CGFloat y = 42.f;
 
-      if (opts.trafficLightPosition.size() > 0) {
-        auto parts = split(opts.trafficLightPosition, 'x');
+      if (opts.windowControlOffsets.size() > 0) {
+        auto parts = split(opts.windowControlOffsets, 'x');
         try {
           x = std::stof(parts[0]);
           y = std::stof(parts[1]);
         } catch (...) {
-          debug("invalid arguments for trafficLightPosition");
+          debug("invalid arguments for windowControlOffsets");
         }
       }
 
@@ -1345,7 +1359,7 @@ namespace SSC {
 
         titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
 
-        window.trafficLightPosition = NSMakePoint(x, y);
+        window.windowControlOffsets = NSMakePoint(x, y);
         window.titleBarView = titleBarView;
 
         [window.contentView addSubview:titleBarView];
@@ -1584,8 +1598,6 @@ namespace SSC {
       this->setBackgroundColor(r, g, b, a);
     } else {
       debug("invalid arguments for window background color");
-      webview.layer.backgroundColor = [NSColor clearColor].CGColor;
-      [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
     }
   }
 
