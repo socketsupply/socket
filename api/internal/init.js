@@ -257,24 +257,28 @@ class RuntimeWorker extends GlobalWorker {
     Object.defineProperty(globalThis, 'isWorkerScope', {
       configurable: false,
       enumerable: false,
+      writable: false,
       value: true
     })
 
     Object.defineProperty(globalThis, 'isSocketRuntime', {
       configurable: false,
       enumerable: false,
+      writable: false,
       value: true
     })
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_ID', {
       configurable: false,
       enumerable: false,
+      writable: false,
       value: '${id}'
     })
 
     Object.defineProperty(globalThis, 'RUNTIME_WORKER_TYPE', {
       configurable: false,
       enumerable: false,
+      writable: false,
       value: '${workerType}'
     })
 
@@ -412,7 +416,13 @@ class RuntimeWorker extends GlobalWorker {
                 const transfer = []
                 const message = ipc.Message.from(request.message, request.bytes)
                 const options = { bytes: message.bytes }
-                const result = await ipc.send(message.name, message.rawParams, options)
+                const promise = ipc.send(message.name, message.rawParams, options)
+
+                if (message.get('resolve') === false) {
+                  return
+                }
+
+                const result = await promise
 
                 ipc.findMessageTransfers(transfer, result)
 
