@@ -20,6 +20,9 @@ const dc = diagnostics.channels.group('gc', [
 export const finalizers = new WeakMap()
 export const kFinalizer = Symbol.for('socket.runtime.gc.finalizer')
 export const finalizer = kFinalizer
+/**
+ * @type {Set<WeakRef>}
+ */
 export const pool = new Set()
 
 /**
@@ -70,7 +73,9 @@ async function finalizationRegistryCallback (finalizer) {
         cause: e
       })
 
+      // @ts-ignore
       if (typeof Error.captureStackTrace === 'function') {
+        // @ts-ignore
         Error.captureStackTrace(err, finalizationRegistryCallback)
       }
 
@@ -99,6 +104,9 @@ async function finalizationRegistryCallback (finalizer) {
  * garbage collected.
  */
 export class Finalizer {
+  args = []
+  handle = null
+
   /**
    * Creates a `Finalizer` from input.
    */
@@ -236,6 +244,7 @@ export async function finalize (object, ...args) {
  */
 export async function release () {
   for (const weakRef of pool) {
+    // @ts-ignore
     await finalizationRegistryCallback(weakRef?.deref?.())
     pool.delete(weakRef)
   }
