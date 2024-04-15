@@ -184,7 +184,7 @@ export class Console {
           const output = pending.shift()
           try {
             const value = encodeURIComponent(output)
-            const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+            const uri = `ipc://${destination}?value=${value}&${extra ? extra + '&' : ''}resolve=false`
             this.postMessage?.(uri)
           } catch (err) {
             this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
