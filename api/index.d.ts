@@ -9340,10 +9340,10 @@ declare module "socket:service-worker/events" {
         /**
          * `FetchEvent` class constructor.
          * @ignore
-         * @param {stirng=} [type = 'fetch']
+         * @param {string=} [type = 'fetch']
          * @param {object=} [options]
          */
-        constructor(type?: stirng, options?: object | undefined);
+        constructor(type?: string | undefined, options?: object | undefined);
         /**
          * The handled property of the `FetchEvent` interface returns a promise
          * indicating if the event has been handled by the fetch algorithm or not.
@@ -9393,7 +9393,39 @@ declare module "socket:service-worker/events" {
         respondWith(response: Response | Promise<Response>): void;
         #private;
     }
+    export class ExtendableMessageEvent extends ExtendableEvent {
+        /**
+         * `ExtendableMessageEvent` class constructor.
+         * @param {string=} [type = 'message']
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * @type {any}
+         */
+        get data(): any;
+        /**
+         * @type {MessagePort[]}
+         */
+        get ports(): MessagePort[];
+        /**
+         * @type {import('./clients.js').Client?}
+         */
+        get source(): import("socket:service-worker/clients").Client;
+        /**
+         * @type {string}
+         */
+        get lastEventId(): string;
+        #private;
+    }
+    export class NotificationEvent extends ExtendableEvent {
+        constructor(type: any, options: any);
+        get action(): string;
+        get notification(): any;
+        #private;
+    }
     namespace _default {
+        export { ExtendableMessageEvent };
         export { ExtendableEvent };
         export { FetchEvent };
     }
@@ -14525,7 +14557,7 @@ declare module "socket:notification" {
             requireInteraction?: boolean | undefined;
             silent?: boolean | undefined;
             vibrate?: number[] | undefined;
-        });
+        }, allowServiceWorkerGlobalScope?: boolean);
         /**
          * An array of actions to display in the notification.
          * @type {NotificationAction[]}
@@ -14559,7 +14591,7 @@ declare module "socket:notification" {
          */
         get dir(): "auto" | "ltr" | "rtl";
         /**
-         * A string containing the URL of an icon to be displayed in the notification.
+          A string containing the URL of an icon to be displayed in the notification.
          * @type {string}
          */
         get icon(): string;
@@ -14610,6 +14642,11 @@ declare module "socket:notification" {
          * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
          */
         get vibrate(): number[];
+        /**
+         * @ignore
+         * @return {object}
+         */
+        toJSON(): object;
         #private;
     }
     /**
@@ -14643,12 +14680,21 @@ declare module "socket:notification" {
          * @param {string} title
          * @param {NotificationOptions=} [options]
          */
-        constructor(title: string, options?: NotificationOptions | undefined, ...args: any[]);
+        constructor(title: string, options?: NotificationOptions | undefined, existingState?: any, ...args: any[]);
+        /**
+         * @ignore
+         */
+        get options(): any;
         /**
          * A unique identifier for this notification.
          * @type {string}
          */
         get id(): string;
+        /**
+         * `true` if the notification was closed, otherwise `false`.
+         * @type {boolea}
+         */
+        get closed(): boolea;
         set onclick(onclick: Function);
         /**
          * The click event is dispatched when the user clicks on
@@ -15383,6 +15429,16 @@ declare module "socket:internal/post-message" {
     export default _default;
 }
 
+declare module "socket:service-worker/notification" {
+    export function showNotification(registration: any, title: any, options: any): Promise<void>;
+    export function getNotifications(registration: any, options?: any): Promise<any>;
+    namespace _default {
+        export { showNotification };
+        export { getNotifications };
+    }
+    export default _default;
+}
+
 declare module "socket:service-worker/registration" {
     export class ServiceWorkerRegistration {
         constructor(info: any, serviceWorker: any);
@@ -15394,8 +15450,8 @@ declare module "socket:service-worker/registration" {
         set onupdatefound(onupdatefound: any);
         get onupdatefound(): any;
         get navigationPreload(): any;
-        getNotifications(): Promise<any[]>;
-        showNotification(): Promise<void>;
+        getNotifications(): Promise<any>;
+        showNotification(title: any, options: any): Promise<void>;
         unregister(): Promise<void>;
         update(): Promise<void>;
         #private;
@@ -15772,7 +15828,17 @@ declare module "socket:service-worker/init" {
     export function onSkipWaiting(event: any): Promise<void>;
     export function onActivate(event: any): Promise<void>;
     export function onFetch(event: any): Promise<void>;
+    export function onNotificationShow(event: any, target: any): any;
+    export function onNotificationClose(event: any, target: any): void;
+    export function onGetNotifications(event: any, target: any): any;
     export const workers: Map<any, any>;
+    export class ServiceWorkerInstance extends Worker {
+        constructor(filename: any, options: any);
+        get info(): any;
+        get notifications(): any[];
+        onMessage(event: any): Promise<void>;
+        #private;
+    }
     export class ServiceWorkerInfo {
         constructor(data: any);
         id: any;
