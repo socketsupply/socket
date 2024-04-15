@@ -2289,6 +2289,9 @@ int main (const int argc, const char* argv[]) {
         writeFile(targetPath / "src" / "index.html", gHelloWorld);
         log("src/index.html created in " + targetPath.string());
 
+        writeFile(targetPath / "src" / "index.js", gHelloWorldScript);
+        log("src/index.js created in " + targetPath.string());
+
         // copy icon.png
         fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
         log("icon.png created in " + targetPath.string() + "/src");

@@ -1117,7 +1117,8 @@ namespace SSC {
     }
 
     webview.layer.backgroundColor = [NSColor clearColor].CGColor;
-    [webview setValue: [NSNumber numberWithBool: YES] forKey: @"drawsTransparentBackground"];
+    webview.layer.opaque = NO;
+    [webview setValue: [NSNumber numberWithBool: NO] forKey: @"drawsBackground"];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];

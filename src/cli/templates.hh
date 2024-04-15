@@ -219,13 +219,18 @@ constexpr auto gHelloWorld = R"HTML(
         overflow: hidden;
       }
     </style>
-    <
+    <script src="index.js" type="module"></script>
   </head>
   <body>
     <h1>Hello, World.</h1>
   </body>
 </html>
 )HTML";
+
+constexpr auto gHelloWorldScript = R"JavaScript(
+import process from 'socket:process'
+console.log(process.platform)
+)JavaScript";
 
 //
 // macOS 'Info.plist' file
