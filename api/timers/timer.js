@@ -4,7 +4,6 @@ import gc from '../gc.js'
 
 export class Timer extends AsyncResource {
   #id = 0
-  #closed = false
   #create = null
   #destroy = null
   #destroyed = false
@@ -56,7 +55,6 @@ export class Timer extends AsyncResource {
   close () {
     if (this.#id) {
       this.#destroy(this.#id)
-      this.#closed = true
       this.#id = 0
       return true
     }
@@ -69,13 +67,15 @@ export class Timer extends AsyncResource {
   }
 
   [gc.finalizer] () {
-    const finalizer = super[gc.finalizer]
+    const finalizer = super[gc.finalizer] ? super[gc.finalizer]() : null
     return {
       args: [this.id, this.#destroy],
       handle (id, destroy) {
         destroy(id)
-        if (finalizer.args) {
+        if (finalizer?.handle && finalizer?.args) {
           finalizer.handle(...finalizer.args)
+        } else if (finalizer?.handle) {
+          finalizer.handle()
         }
       }
     }
@@ -112,7 +112,7 @@ export class Immediate extends Timer {
   constructor () {
     super(
       'Immediate',
-      (callback, delay, ...args) => {
+      (callback, _, ...args) => {
         return platform.setImmediate(
           (...args) => {
             this.close()
