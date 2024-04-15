@@ -22,12 +22,6 @@ const NativeNotification = (
 )
 
 /**
- * Used to determine if notification beign created in a `ServiceWorker`.
- * @ignore
- */
-const isServiceWorkerGlobalScope = typeof globalThis.registration?.active === 'string'
-
-/**
  * Default number of max actions a notification can perform.
  * @ignore
  * @type {number}
@@ -263,7 +257,7 @@ export class NotificationOptions {
    * @param {boolean=} [options.silent = false]
    * @param {number[]=} [options.vibrate = []]
    */
-  constructor (options = {}) {
+  constructor (options = {}, allowServiceWorkerGlobalScope = false) {
     if ('dir' in options) {
       // @ts-ignore
       if (!(options.dir in NotificationDirection)) {
@@ -305,19 +299,21 @@ export class NotificationOptions {
       }
     }
 
-    if (this.#actions.length && !isServiceWorkerGlobalScope) {
-      throw new TypeError(
-        'Failed to construct \'Notification\': Actions are only supported ' +
-        'for persistent notifications shown using ' +
-        'ServiceWorkerRegistration.showNotification().'
-      )
+    if (allowServiceWorkerGlobalScope !== true) {
+      if (this.#actions.length && globalThis.isServiceWorkerScope) {
+        throw new TypeError(
+          'Failed to construct \'Notification\': Actions are only supported ' +
+          'for persistent notifications shown using ' +
+          'ServiceWorkerRegistration.showNotification().'
+        )
+      }
     }
 
-    if ('badge' in options && options.badge !== undefined) {
+    if ('badge' in options && options.badge) {
       this.#badge = String(new URL(String(options.badge), location.href))
     }
 
-    if ('body' in options && options.body !== undefined) {
+    if ('body' in options && options.body) {
       this.#body = String(options.body)
     }
 
@@ -325,11 +321,11 @@ export class NotificationOptions {
       this.#data = options.data
     }
 
-    if ('icon' in options && options.icon !== undefined) {
+    if ('icon' in options && options.icon) {
       this.#icon = String(new URL(String(options.icon), location.href))
     }
 
-    if ('image' in options && options.image !== undefined) {
+    if ('image' in options && options.image) {
       this.#image = String(new URL(String(options.image), location.href))
     }
 
@@ -421,7 +417,7 @@ export class NotificationOptions {
   get dir () { return this.#dir }
 
   /**
-   * A string containing the URL of an icon to be displayed in the notification.
+    A string containing the URL of an icon to be displayed in the notification.
    * @type {string}
    */
   get icon () { return this.#icon }
@@ -479,6 +475,28 @@ export class NotificationOptions {
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API#vibration_patterns}
    */
   get vibrate () { return this.#vibrate }
+
+  /**
+   * @ignore
+   * @return {object}
+   */
+  toJSON () {
+    return {
+      actions: this.#actions,
+      badge: this.#badge,
+      body: this.#body,
+      data: this.#data,
+      dir: this.#dir,
+      icon: this.#icon,
+      image: this.#image,
+      lang: this.#lang,
+      renotify: this.#renotify,
+      requireInteraction: this.#requireInteraction,
+      silent: this.#silent,
+      tag: this.#tag,
+      vibrate: this.#vibrate
+    }
+  }
 }
 
 /**
@@ -558,9 +576,8 @@ export class Notification extends EventTarget {
     // any result state changes further updates
     const controller = new AbortController()
     // query for 'granted' status and return early
-    const query = await permissions.query({
-      signal: controller.signal,
-      name: 'notifications'
+    const query = await permissions.query({ name: 'notifications' }, {
+      signal: controller.signal
     })
 
     // if already granted, return early
@@ -573,9 +590,8 @@ export class Notification extends EventTarget {
 
     // request permission and resolve the normalized `state.permission` value
     // when the query status changes
-    const request = await permissions.request({
+    const request = await permissions.request({ name: 'notifications' }, {
       signal: controller.signal,
-      name: 'notifications',
 
       // macOS/iOS only options
       alert: Boolean(options?.alert !== false), // (defaults to `true`)
@@ -611,6 +627,7 @@ export class Notification extends EventTarget {
   #title = null
   #id = null
 
+  #closed = false
   #proxy = null
 
   /**
@@ -618,7 +635,7 @@ export class Notification extends EventTarget {
    * @param {string} title
    * @param {NotificationOptions=} [options]
    */
-  constructor (title, options = {}) {
+  constructor (title, options = {}, existingState = null) {
     super()
 
     if (arguments.length === 0) {
@@ -642,7 +659,7 @@ export class Notification extends EventTarget {
     }
 
     try {
-      this.#options = new NotificationOptions(options)
+      this.#options = new NotificationOptions(options, existingState !== null)
     } catch (err) {
       throw new TypeError(
         `Failed to construct 'Notification': ${err.message}`
@@ -650,67 +667,120 @@ export class Notification extends EventTarget {
     }
 
     // @ts-ignore
-    this.#id = (rand64() & 0xFFFFn).toString()
+    this.#id = existingState?.id ?? (rand64() & 0xFFFFn).toString()
+    this.#timestamp = existingState?.timestamp ?? this.#timestamp
 
-    if (isLinux) {
-      const proxy = new NativeNotificationProxy(this)
-      const request = new Promise((resolve) => {
-        // @ts-ignore
-        proxy.addEventListener('show', () => resolve({}))
-        // @ts-ignore
-        proxy.addEventListener('error', (e) => resolve({ err: e.error }))
-      })
+    const channel = new BroadcastChannel('socket.runtime.notification')
 
-      this.#proxy = proxy
-      this[Symbol.for('Notification.request')] = request
-    } else {
-      const request = ipc.request('notification.show', {
-        body: this.body,
-        icon: this.icon,
-        id: this.#id,
-        image: this.image,
-        lang: this.lang,
-        tag: this.tag || '',
-        title: this.title,
-        silent: this.silent
-      })
+    // if internal `existingState` is present, then this is just a view over the instance
+    if (existingState) {
+      channel.addEventListener('message', async (event) => {
+        if (event.data?.id === this.#id) {
+          if (!this.#closed) {
+            if (event.data.action === 'close') {
+              this.#closed = true
+            }
 
-      this[Symbol.for('Notification.request')] = request
-    }
-
-    state.pending.set(this.id, this)
-
-    const removeNotificationPresentedListener = hooks.onNotificationPresented((event) => {
-      if (event.detail.id === this.id) {
-        removeNotificationPresentedListener()
-        return this.dispatchEvent(new Event('show'))
-      }
-    })
-
-    const removeNotificationResponseListener = hooks.onNotificationResponse((event) => {
-      if (event.detail.id === this.id) {
-        const eventName = event.detail.action === 'dismiss' ? 'close' : 'click'
-        removeNotificationResponseListener()
-        this.dispatchEvent(new Event(eventName))
-        if (eventName === 'click') {
-          queueMicrotask(() => this.dispatchEvent(new Event('close')))
+            this.dispatchEvent(new Event(event.data.action))
+          }
         }
+      })
+    } else {
+      if (globalThis.isServiceWorkerScope) {
+        throw new TypeError(
+          'Failed to construct \'Notification\': Illegal constructor. ' +
+          'Use ServiceWorkerRegistration.showNotification() instead.'
+        )
       }
-    })
 
-    // propagate error to caller
-    this[Symbol.for('Notification.request')].then((result) => {
-      if (result?.err) {
-        // @ts-ignore
-        state.pending.delete(this.id, this)
-        removeNotificationPresentedListener()
-        removeNotificationResponseListener()
-        return this.dispatchEvent(new ErrorEvent('error', {
-          message: result.err.message,
-          error: result.err
-        }))
+      if (isLinux) {
+        const proxy = new NativeNotificationProxy(this)
+        const request = new Promise((resolve) => {
+          // @ts-ignore
+          proxy.addEventListener('show', () => resolve({}))
+          // @ts-ignore
+          proxy.addEventListener('error', (e) => resolve({ err: e.error }))
+        })
+
+        this.#proxy = proxy
+        this[Symbol.for('Notification.request')] = request
+      } else {
+        const request = ipc.request('notification.show', {
+          body: this.body,
+          icon: this.icon,
+          id: this.#id,
+          image: this.image,
+          lang: this.lang,
+          tag: this.tag || '',
+          title: this.title,
+          silent: this.silent
+        })
+
+        this[Symbol.for('Notification.request')] = request
       }
-    })
+
+      state.pending.set(this.id, this)
+
+      const removeNotificationPresentedListener = hooks.onNotificationPresented((event) => {
+        if (event.detail.id === this.id) {
+          removeNotificationPresentedListener()
+          return this.dispatchEvent(new Event('show'))
+        }
+      })
+
+      const removeNotificationResponseListener = hooks.onNotificationResponse((event) => {
+        if (event.detail.id === this.id) {
+          this.#closed = true
+          const eventName = event.detail.action === 'dismiss' ? 'close' : 'click'
+          removeNotificationResponseListener()
+          this.dispatchEvent(new Event(eventName))
+
+          if (eventName === 'click') {
+            queueMicrotask(() => {
+              this.dispatchEvent(new Event('close'))
+              channel.postMessage({ id: this.id, action: 'close' })
+            })
+          }
+
+          channel.postMessage({ id: this.id, action: eventName })
+        }
+      })
+
+      // propagate error to caller
+      this[Symbol.for('Notification.request')].then((result) => {
+        if (result?.err) {
+          // @ts-ignore
+          state.pending.delete(this.id, this)
+          removeNotificationPresentedListener()
+          removeNotificationResponseListener()
+          return this.dispatchEvent(new ErrorEvent('error', {
+            message: result.err.message,
+            error: result.err
+          }))
+        }
+      })
+
+      channel.addEventListener('message', async (event) => {
+        if (event.data?.id === this.#id) {
+          if (!this.#closed) {
+            if (event.data.action === 'close') {
+              removeNotificationPresentedListener()
+              removeNotificationResponseListener()
+              await this.close()
+            }
+
+            this.dispatchEvent(new Event(event.data.action))
+          }
+        }
+      })
+    }
+  }
+
+  /**
+   * @ignore
+   */
+  get options () {
+    return this.#options
   }
 
   /**
@@ -719,6 +789,14 @@ export class Notification extends EventTarget {
    */
   get id () {
     return this.#id
+  }
+
+  /**
+   * `true` if the notification was closed, otherwise `false`.
+   * @type {boolea}
+   */
+  get closed () {
+    return this.#closed
   }
 
   /**
@@ -922,6 +1000,20 @@ export class Notification extends EventTarget {
    * Closes the notification programmatically.
    */
   async close () {
+    if (this.#closed) {
+      return
+    }
+
+    this.#closed = true
+
+    if (globalThis.isServiceWorkerScope) {
+      return globalThis.postMessage({
+        notificationclose: {
+          id: this.id
+        }
+      })
+    }
+
     if (isLinux) {
       if (this.#proxy) {
         return this.#proxy.close()
