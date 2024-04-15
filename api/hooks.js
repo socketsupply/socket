@@ -107,13 +107,16 @@ function dispatchReadyEvent (target) {
 
 function proxyGlobalEvents (global, target) {
   for (const type of GLOBAL_EVENTS) {
-    addEventListener(global, type, (event) => {
+    const globalObject = GLOBAL_TOP_LEVEL_EVENTS.includes(type)
+      ? global.top ?? global
+      : global
+
+    addEventListener(globalObject, type, (event) => {
       const { type, data, detail = null, error } = event
       const { origin } = location
 
       if (type === 'applicationurl') {
         dispatchEvent(target, new ApplicationURLEvent(type, {
-          ...event,
           origin,
           data: event.data,
           url: event.url.toString()
@@ -121,7 +124,6 @@ function proxyGlobalEvents (global, target) {
       } else if (type === 'error' || error) {
         const { message, filename = import.meta.url || globalThis.location.href } = error || {}
         dispatchEvent(target, new ErrorEvent(type, {
-          ...event,
           message,
           filename,
           error,
@@ -129,11 +131,11 @@ function proxyGlobalEvents (global, target) {
           origin
         }))
       } else if (data || type === 'message') {
-        dispatchEvent(target, new MessageEvent(type, { ...event, origin }))
+        dispatchEvent(target, new MessageEvent(type, event))
       } else if (detail) {
-        dispatchEvent(target, new CustomEvent(type, { ...event, origin }))
+        dispatchEvent(target, new CustomEvent(type, event))
       } else {
-        dispatchEvent(target, new Event(type, { ...event, origin }))
+        dispatchEvent(target, new Event(type, event))
       }
     })
   }
@@ -154,6 +156,18 @@ export const GLOBAL_EVENTS = [
   'load',
   'message',
   'messageerror',
+  'notificationpresented',
+  'notificationresponse',
+  'offline',
+  'online',
+  'permissionchange',
+  'unhandledrejection'
+]
+
+const GLOBAL_TOP_LEVEL_EVENTS = [
+  'applicationurl',
+  'data',
+  'languagechange',
   'notificationpresented',
   'notificationresponse',
   'offline',
@@ -242,7 +256,7 @@ export class Hooks extends EventTarget {
    * @type {object}
    */
   get global () {
-    return globalThis || new EventTarget()
+    return globalThis
   }
 
   /**
