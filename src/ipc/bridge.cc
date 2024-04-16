@@ -6560,8 +6560,27 @@ namespace SSC::IPC {
   }
 
   bool Router::isNavigationAllowed (const String& url) const {
+    static const auto devHost = SSC::getDevHost();
     auto userConfig = this->bridge->userConfig;
     const auto allowed = SSC::split(SSC::trim(userConfig["webview_navigator_policies_allowed"]), ' ');
+
+    for (const auto& entry : split(userConfig["webview_protocol-handlers"], " ")) {
+      const auto scheme = replace(trim(entry), ":", "");
+      if (url.starts_with(scheme + ":")) {
+        return true;
+      }
+    }
+
+    for (const auto& entry : userConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        if (url.starts_with(scheme + ":")) {
+          return true;
+        }
+      }
+    }
+
     for (const auto& entry : allowed) {
       SSC::String pattern = entry;
       pattern = SSC::replace(pattern, "\\.", "\\.");
@@ -6577,6 +6596,10 @@ namespace SSC::IPC {
           return true;
         }
       } catch (...) {}
+    }
+
+    if (url.starts_with("socket:") || url.starts_with("npm:") || url.starts_with(devHost)) {
+      return true;
     }
 
     return false;
