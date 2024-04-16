@@ -10387,6 +10387,7 @@ declare module "socket:service-worker/context" {
 declare module "socket:service-worker/events" {
     export const textEncoder: TextEncoderStream;
     export const FETCH_EVENT_TIMEOUT: number;
+    export const FETCH_EVENT_MAX_RESPONSE_REDIRECTS: number;
     /**
      * The `ExtendableEvent` interface extends the lifetime of the "install" and
      * "activate" events dispatched on the global scope as part of the service
