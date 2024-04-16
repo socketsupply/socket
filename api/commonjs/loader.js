@@ -745,8 +745,10 @@ export class Loader {
     if (options?.extensions && typeof options.extensions === 'object') {
       if (Array.isArray(options.extensions) || options instanceof Set) {
         for (const value of options.extensions) {
-          const extension = !value.startsWith('.') ? `.${value}` : value
-          this.#extensions.add(extension.trim())
+          const extension = (!value.startsWith('.') ? `.${value}` : value).trim()
+          if (extension) {
+            this.#extensions.add(extension.trim())
+          }
         }
       }
     }
