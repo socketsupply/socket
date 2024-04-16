@@ -14,6 +14,12 @@ export const FETCH_EVENT_TIMEOUT = (
   30000
 )
 
+export const FETCH_EVENT_MAX_RESPONSE_REDIRECTS = (
+  // TODO(@jwerle): document this
+  parseInt(application.config.webview_service_worker_fetch_event_max_response_redirects) ||
+  16 // this aligns with WebKit
+)
+
 /**
  * The `ExtendableEvent` interface extends the lifetime of the "install" and
  * "activate" events dispatched on the global scope as part of the service
@@ -260,10 +266,7 @@ export class FetchEvent extends ExtendableEvent {
             id
           }
 
-          params['runtime-preload-injection'] = (
-            response.headers.get('runtime-preload-injection') ||
-            'auto'
-          )
+          params['runtime-preload-injection'] = 'disabled'
 
           const result = await ipc.request('serviceWorker.fetch.response', params)
 
@@ -276,21 +279,42 @@ export class FetchEvent extends ExtendableEvent {
         }
 
         let arrayBuffer = null
+        let statusCode = response.status ?? 200
 
-        const statusCode = response.status ?? 200
-
+        // just follow the redirect here now
         if (statusCode >= 300 && statusCode < 400 && response.headers.has('location')) {
-          const redirectURL = new URL(response.headers.get('location'), location.origin)
-          const redirectSource = (
-            `<meta http-equiv="refresh" content="0; url='${redirectURL.href}'" />`
-          )
+          let previousResponse = response
+          let remainingRedirects = FETCH_EVENT_MAX_RESPONSE_REDIRECTS
 
-          arrayBuffer = textEncoder.encode(redirectSource).buffer
+          while (remainingRedirects-- > 0) {
+            const redirectLocation = previousResponse.headers.get('location')
+
+            if (!redirectLocation) {
+              statusCode = 404
+              break
+            }
+
+            const url = new URL(redirectLocation, location.origin)
+            previousResponse = await fetch(url.href)
+
+            if (previousResponse.status >= 200 && previousResponse.status < 300) {
+              arrayBuffer = await previousResponse.arrayBuffer()
+              break
+            } else if (previousResponse.status >= 300 && statusCode < 400) {
+              continue
+            } else {
+              statusCode = previousResponse.statusCode
+              arrayBuffer = await previousResponse.arrayBuffer()
+              break
+            }
+          }
         } else {
           arrayBuffer = await response.arrayBuffer()
         }
 
-        const headers = Array.from(response.headers.entries())
+        const headers = []
+          .concat(Array.from(response.headers.entries()))
+          .concat(Array.from(FetchEvent.defaultHeaders.entries()))
           .map((entry) => entry.join(':'))
           .concat('Runtime-Response-Source:serviceworker')
           .concat('Access-Control-Allow-Credentials:true')
@@ -300,10 +324,21 @@ export class FetchEvent extends ExtendableEvent {
           .concat(`Content-Length:${arrayBuffer.byteLength}`)
           .join('\n')
 
-        const options = { statusCode, clientId, headers, id }
+        const params = {
+          statusCode,
+          clientId,
+          headers,
+          id
+        }
+
+        params['runtime-preload-injection'] = (
+          response.headers.get('runtime-preload-injection') ||
+          'auto'
+        )
+
         const result = await ipc.write(
           'serviceWorker.fetch.response',
-          options,
+          params,
           new Uint8Array(arrayBuffer)
         )
 

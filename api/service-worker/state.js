@@ -1,4 +1,3 @@
-/* global reportError */
 import application from '../application.js'
 import debug from './debug.js'
 import ipc from '../ipc.js'
@@ -78,46 +77,42 @@ const descriptors = {
         value: null
       }
     })
+  },
+
+  id: {
+    configurable: false,
+    enumerable: false,
+    writable: true,
+    value: null
+  },
+
+  fetch: {
+    configurable: false,
+    enumerable: false,
+    writable: true,
+    value: null
+  },
+
+  install: {
+    configurable: false,
+    enumerable: false,
+    writable: true,
+    value: null
+  },
+
+  activate: {
+    configurable: false,
+    enumerable: false,
+    writable: true,
+    value: null
+  },
+
+  reportError: {
+    configurable: false,
+    enumerable: false,
+    writable: true,
+    value: globalThis.reportError.bind(globalThis)
   }
-}
-
-if (globalThis.isServiceWorkerScope) {
-  Object.assign(descriptors, {
-    id: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    fetch: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    install: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    activate: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: null
-    },
-
-    reportError: {
-      configurable: false,
-      enumerable: false,
-      writable: true,
-      value: reportError.bind(globalThis)
-    }
-  })
 }
 
 export const state = Object.create(null, descriptors)
