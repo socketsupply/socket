@@ -15,6 +15,8 @@
 #include "process.hh"
 #include "../core/core.hh"
 
+extern char **environ;
+
 namespace SSC {
 
 static StringStream initial;
@@ -23,6 +25,7 @@ Process::Data::Data() noexcept : id(-1) {}
 Process::Process(
   const String &command,
   const String &argv,
+  const Vector<String> &env,
   const String &path,
   MessageCallback read_stdout,
   MessageCallback read_stderr,
@@ -36,6 +39,7 @@ Process::Process(
   on_exit(std::move(on_exit))
 {
   this->command = command;
+  this->env = env;
   this->argv = argv;
   this->path = path;
 }
@@ -124,9 +128,13 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
   closed = false;
   id = pid;
 
+  // this is the parent.
   if (pid > 0) {
+
+    // set the group on the pid to this pid's group
     setpgid(pid, getpgid(0));
 
+    // wait for the pid to exit
     auto thread = std::thread([this] {
       int code = 0;
       waitpid(this->id, &code, 0);
@@ -207,6 +215,18 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
 
 Process::id_type Process::open(const SSC::String &command, const SSC::String &path) noexcept {
   return open([&command, &path, this] {
+    std::vector<char*> newEnv;
+
+    for (char** env = environ; *env != nullptr; ++env) {
+      newEnv.push_back(strdup(*env));
+    }
+
+    for (const auto& str : this->env) {
+      newEnv.push_back(const_cast<char*>(str.c_str()));
+    }
+
+    newEnv.push_back(nullptr);
+
     auto command_c_str = command.c_str();
     SSC::String cd_path_and_command;
 
@@ -224,11 +244,14 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       command_c_str = cd_path_and_command.c_str();
     }
 
-    setpgid(0, 0);
+    // if (this->detached) {
+    //  setpgid(0, 0);
+    // }
+
     if (this->shell.size() > 0) {
-      return execl(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, nullptr);
+      return execle(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, (char*)nullptr, newEnv.data());
     } else {
-      return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
+      return execle("/bin/sh", "/bin/sh", "-c", command_c_str, (char*)nullptr, newEnv.data());
     }
   });
 }

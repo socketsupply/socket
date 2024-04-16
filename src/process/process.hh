@@ -107,29 +107,31 @@ namespace SSC {
   public:
     static constexpr auto PROCESS_WAIT_TIMEOUT = 256;
 
-  #ifdef _WIN32
-    typedef unsigned long id_type; // Process id type
-    typedef void *fd_type;         // File descriptor type
-  #else
-    typedef pid_t id_type;
-    typedef int fd_type;
-    typedef SSC::String string_type;
-  #endif
+    #ifdef _WIN32
+      typedef unsigned long id_type; // Process id type
+      typedef void *fd_type;         // File descriptor type
+    #else
+      typedef pid_t id_type;
+      typedef int fd_type;
+      typedef SSC::String string_type;
+    #endif
 
     String command;
     String argv;
     String path;
+    Vector<String> env;
     Atomic<bool> closed = true;
     Atomic<int> status = -1;
     Atomic<int> lastWriteStatus = 0;
+    bool detached = false;
     bool open_stdin;
     id_type id = 0;
 
-  #ifdef _WIN32
-    String shell = "";
-  #else
-    String shell = "/bin/sh";
-  #endif
+    #ifdef _WIN32
+      String shell = "";
+    #else
+      String shell = "/bin/sh";
+    #endif
 
   private:
 
@@ -137,13 +139,24 @@ namespace SSC {
     public:
       Data() noexcept;
       id_type id;
-  #ifdef _WIN32
-      void *handle{nullptr};
-  #endif
+      #ifdef _WIN32
+        void *handle{nullptr};
+      #endif
       int exit_status{-1};
     };
 
   public:
+    Process(
+      const SSC::String &command,
+      const SSC::String &argv,
+      const SSC::Vector<SSC::String> &env,
+      const SSC::String &path = SSC::String(""),
+      MessageCallback read_stdout = nullptr,
+      MessageCallback read_stderr = nullptr,
+      MessageCallback on_exit = nullptr,
+      bool open_stdin = true,
+      const ProcessConfig &config = {}) noexcept;
+
     Process(
       const SSC::String &command,
       const SSC::String &argv,
@@ -152,19 +165,30 @@ namespace SSC {
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
       bool open_stdin = true,
-      const ProcessConfig &config = {}) noexcept;
+      const ProcessConfig &config = {}
+    ) noexcept : Process(
+      command,
+      argv,
+      SSC::Vector<SSC::String>{},
+      path,
+      read_stdout,
+      read_stderr,
+      on_exit,
+      open_stdin,
+      config
+    ) {};
 
-#ifndef _WIN32
-    // Starts a process with the environment of the calling process.
-    // Supported on Unix-like systems only.
-    Process(
-      const std::function<int()> &function,
-      MessageCallback read_stdout = nullptr,
-      MessageCallback read_stderr = nullptr,
-      MessageCallback on_exit = nullptr,
-      bool open_stdin = true,
-      const ProcessConfig &config = {}) noexcept;
-#endif
+    #ifndef _WIN32
+      // Starts a process with the environment of the calling process.
+      // Supported on Unix-like systems only.
+      Process(
+        const std::function<int()> &function,
+        MessageCallback read_stdout = nullptr,
+        MessageCallback read_stderr = nullptr,
+        MessageCallback on_exit = nullptr,
+        bool open_stdin = true,
+        const ProcessConfig &config = {}) noexcept;
+    #endif
 
     ~Process() noexcept {
       close_fds();
@@ -184,10 +208,11 @@ namespace SSC {
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
+
     id_type open() noexcept {
       if (this->command.size() == 0) return 0;
       auto str = SSC::trim(this->command + " " + this->argv);
-      auto pid = open(str, this->path);
+      auto pid = this->open(str, this->path);
       read();
       return pid;
     }
@@ -207,11 +232,11 @@ namespace SSC {
     MessageCallback read_stdout;
     MessageCallback read_stderr;
     MessageCallback on_exit;
-#ifndef _WIN32
-    std::thread stdout_stderr_thread;
-#else
-    std::thread stdout_thread, stderr_thread;
-#endif
+    #ifndef _WIN32
+      std::thread stdout_stderr_thread;
+    #else
+      std::thread stdout_thread, stderr_thread;
+    #endif
     std::mutex stdin_mutex;
     std::mutex stdout_mutex;
     std::mutex stderr_mutex;
@@ -220,10 +245,14 @@ namespace SSC {
 
     std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
 
-    id_type open(const SSC::String &command, const SSC::String &path) noexcept;
-#ifndef _WIN32
-    id_type open(const std::function<int()> &function) noexcept;
-#endif
+    id_type open(
+      const SSC::String &command,
+      const SSC::String &path
+    ) noexcept;
+
+    #ifndef _WIN32
+      id_type open(const std::function<int()> &function) noexcept;
+    #endif
     void read() noexcept;
     void close_fds() noexcept;
   };

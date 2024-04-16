@@ -613,13 +613,7 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
 #if defined(__APPLE__)
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-      "socket.runtime.mobile"
-#else
-      "socket.runtime.desktop"
-#endif
-      );
+  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime");
   os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", output.c_str());
 #endif
 }

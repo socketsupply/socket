@@ -135,6 +135,7 @@ namespace SSC {
       process = new Process(
         command,
         argv,
+        options.env,
         options.cwd,
         onStdout,
         onStderr,
@@ -313,6 +314,7 @@ namespace SSC {
       process = new Process(
         command,
         argv,
+        options.env,
         options.cwd,
         onStdout,
         onStderr,

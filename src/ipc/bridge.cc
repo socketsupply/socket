@@ -167,13 +167,7 @@ static void initRouterTable (Router *router) {
   auto userConfig = router->bridge->userConfig;
 #if defined(__APPLE__)
   auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-    "socket.runtime.mobile"
-  #else
-    "socket.runtime.desktop"
-  #endif
-  );
+  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime");
 #endif
 
   /**
@@ -337,115 +331,129 @@ static void initRouterTable (Router *router) {
    * @param args (command, ...args)
    */
   router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
-
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"args", "id"});
-
-    if (err.type != JSON::Type::Null) {
-      return reply(Result::Err { message, err });
-    }
-
-    auto args = split(message.get("args"), 0x0001);
-
-    if (args.size() == 0 || args.at(0).size() == 0) {
-      auto json = JSON::Object::Entries {
-        {"source", "child_process.spawn"},
-        {"err", JSON::Object::Entries {
-          {"message", "Spawn requires at least one argument with a length greater than zero"},
-        }}
+    #if SSC_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
       };
 
-      return reply(Result { message.seq, message, json });
-    }
+      return reply(Result::Err { message, err });
+    #else
+      auto err = validateMessageParameters(message, {"args", "id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-
-    const auto options = Core::ChildProcess::SpawnOptions {
-      .cwd = message.get("cwd", getcwd()),
-      .allowStdin = message.get("stdin") != "false",
-      .allowStdout = message.get("stdout") != "false",
-      .allowStderr = message.get("stderr") != "false"
-    };
-
-    router->core->childProcess.spawn(
-      message.seq,
-      id,
-      args,
-      options,
-      [message, reply](auto seq, auto json, auto post) {
-        reply(Result { seq, message, json, post });
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
       }
-    );
-  #endif
+
+      auto args = split(message.get("args"), 0x0001);
+
+      if (args.size() == 0 || args.at(0).size() == 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "child_process.spawn"},
+          {"err", JSON::Object::Entries {
+            {"message", "Spawn requires at least one argument with a length greater than zero"},
+          }}
+        };
+
+        return reply(Result { message.seq, message, json });
+      }
+
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      SSC::Vector<SSC::String> env{};
+
+      if (message.has("env")) {
+        env = split(message.get("env"), 0x0001);
+      }
+
+      const auto options = Core::ChildProcess::SpawnOptions {
+        .cwd = message.get("cwd", getcwd()),
+        .env = env,
+        .allowStdin = message.get("stdin") != "false",
+        .allowStdout = message.get("stdout") != "false",
+        .allowStderr = message.get("stderr") != "false"
+      };
+
+      router->core->childProcess.spawn(
+        message.seq,
+        id,
+        args,
+        options,
+        [message, reply](auto seq, auto json, auto post) {
+          reply(Result { seq, message, json, post });
+        }
+      );
+    #endif
   });
 
   router->map("child_process.exec", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
-
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"args", "id"});
-
-    if (err.type != JSON::Type::Null) {
-      return reply(Result::Err { message, err });
-    }
-
-    auto args = split(message.get("args"), 0x0001);
-
-    if (args.size() == 0 || args.at(0).size() == 0) {
-      auto json = JSON::Object::Entries {
-        {"source", "child_process.exec"},
-        {"err", JSON::Object::Entries {
-          {"message", "Spawn requires at least one argument with a length greater than zero"},
-        }}
+    #if SSC_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
       };
 
-      return reply(Result { message.seq, message, json });
-    }
+      return reply(Result::Err { message, err });
+    #else
+      auto err = validateMessageParameters(message, {"args", "id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-
-    uint64_t timeout = 0;
-    int killSignal = 0;
-
-    if (message.has("timeout")) {
-      REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
-    }
-
-    if (message.has("killSignal")) {
-      REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
-    }
-
-    const auto options = Core::ChildProcess::ExecOptions {
-      .cwd = message.get("cwd", getcwd()),
-      .allowStdout = message.get("stdout") != "false",
-      .allowStderr = message.get("stderr") != "false",
-      .timeout = timeout,
-      .killSignal = killSignal
-    };
-
-    router->core->childProcess.exec(
-      message.seq,
-      id,
-      args,
-      options,
-      [message, reply](auto seq, auto json, auto post) {
-        reply(Result { seq, message, json, post });
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
       }
-    );
-  #endif
+
+      auto args = split(message.get("args"), 0x0001);
+
+      if (args.size() == 0 || args.at(0).size() == 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "child_process.exec"},
+          {"err", JSON::Object::Entries {
+            {"message", "Spawn requires at least one argument with a length greater than zero"},
+          }}
+        };
+
+        return reply(Result { message.seq, message, json });
+      }
+
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      uint64_t timeout = 0;
+      int killSignal = 0;
+
+      if (message.has("timeout")) {
+        REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
+      }
+
+      if (message.has("killSignal")) {
+        REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
+      }
+
+      SSC::Vector<SSC::String> env{};
+
+      if (message.has("env")) {
+        env = split(message.get("env"), 0x0001);
+      }
+
+      const auto options = Core::ChildProcess::ExecOptions {
+        .cwd = message.get("cwd", getcwd()),
+        .env = env,
+        .allowStdout = message.get("stdout") != "false",
+        .allowStderr = message.get("stderr") != "false",
+        .timeout = timeout,
+        .killSignal = killSignal
+      };
+
+      router->core->childProcess.exec(
+        message.seq,
+        id,
+        args,
+        options,
+        [message, reply](auto seq, auto json, auto post) {
+          reply(Result { seq, message, json, post });
+        }
+      );
+    #endif
   });
 
   /**
@@ -454,31 +462,31 @@ static void initRouterTable (Router *router) {
    * @param id
    */
   router->map("child_process.write", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
+    #if SSC_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
+      };
 
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"id"});
-
-    if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
-    }
+    #else
+      auto err = validateMessageParameters(message, {"id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
+      }
 
-    router->core->childProcess.write(
-      message.seq,
-      id,
-      message.buffer.bytes,
-      message.buffer.size,
-      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
-    );
-  #endif
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      router->core->childProcess.write(
+        message.seq,
+        id,
+        message.buffer.bytes,
+        message.buffer.size,
+        RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+      );
+    #endif
   });
 
   /**

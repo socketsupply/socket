@@ -35,6 +35,7 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
 
     const params = {
       args: [command, ...Array.from(argv ?? [])].join('\u0001'),
+      env: Object.entries(opts.env).map(pair => pair.join('=')).join('\u0001'),
       id,
       cwd: opts?.cwd ?? '',
       stdin: opts?.stdin !== false,

@@ -679,11 +679,7 @@ MAIN {
   #if defined(__APPLE__)
   static auto SSC_OS_LOG_BUNDLE = os_log_create(
     bundleIdentifier.c_str(),
-    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-      "socket.runtime.mobile"
-    #else
-      "socket.runtime.desktop"
-    #endif
+    "socket.runtime"
   );
   #endif
 

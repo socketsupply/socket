@@ -308,7 +308,8 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 #if defined(__APPLE__)
-void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIdentifier) {
+/* void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIdentifier) {
+  if (Env::get("SSC_NO_OSLOG_POLLING").size() > 0) return;
   // It appears there is a bug with `:predicateWithFormat:` as the
   // following does not appear to work:
   //
@@ -319,22 +320,22 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
   // ];
   //
   // We can build the predicate query string manually, instead.
-  auto queryStream = StringStream {};
   auto pid = std::to_string(processIdentifier);
   auto bid = bundleIdentifier.c_str();
-  queryStream
-    << "("
-    << (isForDesktop
-        ? "category == 'socket.runtime.desktop'"
-        : "category == 'socket.runtime.mobile'")
-    << " OR category == 'socket.runtime.debug'"
-    << ") AND ";
+
+  StringStream queryStream;
+  queryStream << "(category == 'socket.runtime')";
+
+  if (settings.count("logs_root") == 0) {
+    queryStream << " AND ";
 
     if (processIdentifier > 0) {
       queryStream << "processIdentifier == " << pid << " AND ";
     }
 
-  queryStream << "subsystem == '" << bid << "'";
+    queryStream << "subsystem == '" << bid << "'";
+  }
+
   // log store query and predicate for filtering logs based on the currently
   // running application that was just launched and those of a subsystem
   // directly related to the application's bundle identifier which allows us
@@ -410,7 +411,7 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
     }
 
     // this is may be set to `true` from a `SIGUSR1` signal
-    checkLogStore = false;
+    checkLogStore = settings.count("logs_root") > 0;
     @autoreleasepool {
       // We need a new `OSLogStore` in each so we can keep enumeratoring
       // the logs until the application terminates. This is required because
@@ -496,7 +497,12 @@ void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIde
   }
 
   appMutex.unlock();
+} */
+
+void pollOSLogStream(bool isDesktop, const std::string &bid, int pid) {
+
 }
+
 #endif
 
 void handleBuildPhaseForUser (
@@ -537,10 +543,13 @@ void handleBuildPhaseForUser (
       buildScript = "cmd.exe";
     }
 
+    auto scriptPath = (cwd / targetPath).string();
+    log("running build script (cmd='" + buildScript + "', args='" + scriptArgs + "', pwd='" + scriptPath + "')");
+
     auto process = new SSC::Process(
       buildScript,
       scriptArgs,
-      (cwd / targetPath).string(),
+      scriptPath,
       [](SSC::String const &out) { IO::write(out, false); },
       [](SSC::String const &out) { IO::write(out, true); }
     );
@@ -986,6 +995,9 @@ int runApp (const Path& path, const String& args, bool headless) {
 
     for (auto const &envKey : parseStringList(settings["build_env"])) {
       auto cleanKey = trim(envKey);
+      // TODO(@heapwolf): this is wrong, ',' should be cleared from lists like this
+      cleanKey.erase(0, cleanKey.find_first_not_of(","));
+      cleanKey.erase(cleanKey.find_last_not_of(",") + 1);
       auto envValue = Env::get(cleanKey.c_str());
       auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
       auto value = [NSString stringWithUTF8String: envValue.c_str()];

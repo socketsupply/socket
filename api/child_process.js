@@ -605,6 +605,7 @@ export function execSync (command, options) {
     id: rand64(),
     args: command,
     cwd: options?.cwd ?? '',
+    env: Object.entries(options.env).map(pair => pair.join('=')).join('\u0001'),
     stdin: options?.stdin !== false,
     stdout: options?.stdout !== false,
     stderr: options?.stderr !== false,
