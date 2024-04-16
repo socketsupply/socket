@@ -1767,6 +1767,9 @@ service_worker_reload_timeout = 500
 ; $HOST_CONTAINER/directory-app-container/ = /mount/path/in/navigator
 ; $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ = /mount/path/in/navigator
 
+; Specify allowed navigator navigation policy patterns
+[webview.navigator.policies]
+; allowed[] = "https://*.example.com/*"
 
 [permissions]
 
