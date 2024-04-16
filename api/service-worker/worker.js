@@ -278,7 +278,10 @@ async function onMessage (event) {
           debug(err)
           response = new Response(util.inspect(err), {
             statusText: err.message || STATUS_CODES[500],
-            status: 500
+            status: 500,
+            headers: {
+              'Runtime-Preload-Injection': 'disabled'
+            }
           })
         }
 
@@ -291,7 +294,10 @@ async function onMessage (event) {
         } else {
           deferred.resolve(new Response('Not Found', {
             statusText: STATUS_CODES[404],
-            status: 404
+            status: 404,
+            headers: {
+              'Runtime-Preload-Injection': 'disabled'
+            }
           }))
         }
       })
