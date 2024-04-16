@@ -454,11 +454,7 @@ namespace SSC {
           return false;
         }
 
-        if (window->bridge->router.isNavigationAllowed(uri)) {
-          return true;
-        }
-
-        if (uri.find("socket:") != 0 && uri.find(devHost) != 0) {
+        if (!window->bridge->router.isNavigationAllowed(uri)) {
           debug("Navigation was ignored for: %s", uri.c_str());
           webkit_policy_decision_ignore(decision);
           return false;
