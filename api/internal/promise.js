@@ -13,10 +13,53 @@ export const NativePromisePrototype = {
 export const NativePromiseAll = globalThis.Promise.all.bind(globalThis.Promise)
 export const NativePromiseAny = globalThis.Promise.any.bind(globalThis.Promise)
 
+/**
+ * @typedef {function(any): void} ResolveFunction
+ */
+
+/**
+ * @typedef {function(Error|string|null): void} RejectFunction
+ */
+
+/**
+ * @typedef {function(ResolveFunction, RejectFunction): void} ResolverFunction
+ */
+
+/**
+ * @typedef {{
+ *   promise: Promise,
+ *   resolve: ResolveFunction,
+ *   reject: RejectFunction
+ * }} PromiseResolvers
+ */
+
 // @ts-ignore
 export class Promise extends NativePromise {
-  constructor (...args) {
-    super(...args)
+  /**
+   * Creates a new `Promise` with resolver functions.
+   * @see {https://github.com/tc39/proposal-promise-with-resolvers}
+   * @return {PromiseResolvers}
+   */
+  static withResolvers () {
+    if (typeof super.withResolvers === 'function') {
+      return super.withResolvers()
+    }
+
+    const resolvers = { promise: null, resolve: null, reject: null }
+    resolvers.promise = new Promise((resolve, reject) => {
+      resolvers.resolve = resolve
+      resolvers.reject = reject
+    })
+    return resolvers
+  }
+
+  /**
+   * `Promise` class constructor.
+   * @ignore
+   * @param {ResolverFunction} resolver
+   */
+  constructor (resolver) {
+    super(resolver)
     // eslint-disable-next-line
     this[resourceSymbol] = new class Promise extends asyncHooks.CoreAsyncResource {
       constructor () {
