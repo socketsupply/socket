@@ -328,6 +328,8 @@ namespace SSC::IPC {
         size_t size,
         ResultCallback callback
       );
+
+      bool isNavigationAllowed (const String& url) const;
   };
 
   class Bridge {
