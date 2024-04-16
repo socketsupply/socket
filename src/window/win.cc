@@ -865,17 +865,22 @@ namespace SSC {
                         PWSTR uri;
                         e->get_Uri(&uri);
                         SSC::String url(SSC::convertWStringToString(uri));
+                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
 
                         if (url.starts_with(userConfig["meta_application_protocol"])) {
                           e->put_Cancel(true);
-                          Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                           if (w != nullptr) {
                             SSC::JSON::Object json = SSC::JSON::Object::Entries {{
                               "url", url
                             }};
                             w->bridge->router.emit("applicationurl", json.str());
                           }
-                        } else if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find(devHost) != 0) {
+                        } else if (
+                          !w->bridge->router.isNavigationAllowed(url) &&
+                          url.find("socket:") != 0 &&
+                          url.find(devHost) != 0
+                        ) {
+                          debug("Navigation was ignored for: %s", url.c_str());
                           e->put_Cancel(true);
                         }
 

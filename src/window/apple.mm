@@ -76,7 +76,13 @@
       }
     }
 
+    if (self.bridge->router.isNavigationAllowed(request)) {
+      decisionHandler(WKNavigationActionPolicyAllow);
+      return;
+    }
+
     if (!request.starts_with("socket:") && !request.starts_with(devHost)) {
+      debug("Navigation was ignored for: %s", request.c_str());
       decisionHandler(WKNavigationActionPolicyCancel);
       return;
     }
