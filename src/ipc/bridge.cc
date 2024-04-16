@@ -6558,6 +6558,29 @@ namespace SSC::IPC {
 
     return false;
   }
+
+  bool Router::isNavigationAllowed (const String& url) const {
+    auto userConfig = this->bridge->userConfig;
+    const auto allowed = SSC::split(SSC::trim(userConfig["webview_navigator_policies_allowed"]), ' ');
+    for (const auto& entry : allowed) {
+      SSC::String pattern = entry;
+      pattern = SSC::replace(pattern, "\\.", "\\.");
+      pattern = SSC::replace(pattern, "\\*", "(.*)");
+      pattern = SSC::replace(pattern, "\\.\\.\\*", "(.*)");
+      pattern = SSC::replace(pattern, "\\/", "\\/");
+
+      try {
+        std::regex regex(pattern);
+        std::smatch match;
+
+        if (std::regex_match(url, match, regex, std::regex_constants::match_any)) {
+          return true;
+        }
+      } catch (...) {}
+    }
+
+    return false;
+  }
 }
 
 #if defined(__APPLE__)
