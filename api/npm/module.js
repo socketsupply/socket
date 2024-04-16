@@ -1,5 +1,7 @@
 import { DEFAULT_PACKAGE_PREFIX, Package } from '../commonjs/package.js'
+import { Loader } from '../commonjs/loader.js'
 import location from '../location.js'
+import path from '../path.js'
 
 /**
  * @typedef {{
@@ -58,6 +60,19 @@ export async function resolve (specifier, origin = null, options = null) {
     }
   } catch (err) {
     if (err?.code === 'MODULE_NOT_FOUND') {
+      const url = new URL(pathname, new URL(prefix + name.value + '/', origin))
+      const loader = new Loader({ extensions: [path.extname(url.href)] })
+      const status = loader.status(url)
+      // check for regular file
+      if (status.ok) {
+        return {
+          package: pkg,
+          origin: origin + prefix,
+          type: 'file',
+          url: url.href
+        }
+      }
+
       return null
     }
 
