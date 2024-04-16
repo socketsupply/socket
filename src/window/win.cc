@@ -749,7 +749,7 @@ namespace SSC {
       // UNREACHABLE - cannot continue
     }
 
-    const int MAX_ALLOWED_SCHEME_ORIGINS = 5;
+    const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
     int allowedSchemeOriginsCount = 4;
     const WCHAR* allowedSchemeOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {
       L"about://*",
@@ -875,11 +875,7 @@ namespace SSC {
                             }};
                             w->bridge->router.emit("applicationurl", json.str());
                           }
-                        } else if (
-                          !w->bridge->router.isNavigationAllowed(url) &&
-                          url.find("socket:") != 0 &&
-                          url.find(devHost) != 0
-                        ) {
+                        } else if (!w->bridge->router.isNavigationAllowed(url)) {
                           debug("Navigation was ignored for: %s", url.c_str());
                           e->put_Cancel(true);
                         }
