@@ -1,6 +1,8 @@
 import { resolve } from './module.js'
 import process from '../process.js'
 import debug from '../service-worker/debug.js'
+import mime from '../mime.js'
+import path from '../path.js'
 import http from '../http.js'
 import util from '../util.js'
 
@@ -79,10 +81,26 @@ export async function onRequest (request, env, ctx) {
 
   // not found
   if (!resolved) {
-    if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
-      console.debug('not found: npm: %s', specifier)
-    }
+    debug(`${DEBUG_LABEL}: not found: %s`, specifier)
     return
+  }
+
+  const extname = path.extname(resolved.url)
+  const types = extname ? await mime.lookup(extname.slice(1)) : []
+
+  if (types.length || resolved.type === 'file') {
+    let redirect = true
+    for (const type of types) {
+      if (type.mime === 'text/javascript' || type.mime.endsWith('json')) {
+        redirect = false
+        break
+      }
+    }
+
+    if (redirect) {
+      debug(`${DEBUG_LABEL}: resolve: %s (file): %s`, specifier, resolved.url)
+      return Response.redirect(resolved.url, 301)
+    }
   }
 
   debug(`${DEBUG_LABEL}: resolve: %s (%s): %s`, specifier, resolved.type, resolved.url)
