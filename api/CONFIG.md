@@ -96,6 +96,12 @@ $HOST_HOME/directory-in-home-folder/ |  |
 $HOST_CONTAINER/directory-app-container/ |  | 
 $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  | 
 
+### `webview.navigator.policies`
+
+Key | Default Value | Description
+:--- | :--- | :---
+allowed[] |  | 
+
 ### `permissions`
 
 Key | Default Value | Description
