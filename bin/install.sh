@@ -353,7 +353,7 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2365.46 --output "$tmp/webview2.zip"
+  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2420.47 --output "$tmp/webview2.zip"
   cd "$tmp" || exit 1
   unzip -q "$tmp/webview2.zip"
   mkdir -p "$BUILD_DIR/include"
