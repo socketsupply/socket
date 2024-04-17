@@ -743,7 +743,7 @@ namespace SSC {
     this->modulePath = fs::path(modulefile);
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files --enable-features=msWebView2EnableDraggableRegions");
+    options->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
 
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
     HRESULT oeResult = options.As(&options4);
@@ -794,7 +794,7 @@ namespace SSC {
     };
 
     static const auto devHost = SSC::getDevHost();
-    const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {}
+    const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {};
     int allowedOriginsCount = 0;
     int registrationsCount = 0;
 
@@ -816,6 +816,7 @@ namespace SSC {
       allowedOrigins[allowedOriginsCount++] = convertStringToWString(origin).c_str();
     }
 
+    Set<ComPtr<CoreWebView2CustomSchemeRegistration>> customSchemeRegistrations;
     for (const auto& schemeRegistration : schemeRegistrations) {
       auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
         convertStringToWString(schemeRegistration.scheme).c_str()
@@ -825,7 +826,11 @@ namespace SSC {
       registration->put_TreatAsSecure(TRUE);
       registration->SetAllowedOrigins(origins.size(), allowedOrigins);
 
-      registrations[registrationsCount++] = registrations.Get();
+      customSchemeRegistrations.insert(registration);
+    }
+
+    for (const auto& registration : customSchemeRegistrations) {
+      registrations[registrationsCount++] = registration.Get();
     }
 
     options4->SetCustomSchemeRegistrations(
@@ -836,7 +841,7 @@ namespace SSC {
     auto init = [&, opts]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
         EDGE_RUNTIME_DIRECTORY.size() > 0 ? EDGE_RUNTIME_DIRECTORY.c_str() : nullptr,
-        (path + L"/" + filename).c_str(),
+        (path + L"\\" + filename).c_str(),
         options.Get(),
         Microsoft::WRL::Callback<IEnvHandler>(
           [&, opts](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
@@ -940,8 +945,6 @@ namespace SSC {
 
                   EventRegistrationToken tokenSchemaFilter;
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-                  webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-                  webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
 
                   ICoreWebView2_22* webview22 = nullptr;
                   webview->QueryInterface(IID_PPV_ARGS(&webview22));
@@ -1396,17 +1399,6 @@ namespace SSC {
                     .wrap = true,
                     .userScript = opts.userScript
                   });
-
-                  webview->AddScriptToExecuteOnDocumentCreated(
-                    // Note that this may not do anything as preload goes out of scope before event fires
-                    // Consider using w->preloadJavascript, but apps work without this
-                    SSC::convertStringToWString(this->bridge->preload).c_str(),
-                    Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
-                      [&](HRESULT error, PCWSTR id) -> HRESULT {
-                        return S_OK;
-                      }
-                    ).Get()
-                  );
 
                   EventRegistrationToken tokenMessage;
 
