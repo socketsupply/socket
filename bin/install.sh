@@ -959,6 +959,7 @@ if [[ -n "$BUILD_ANDROID" ]]; then
 fi
 
 mkdir -p  "$SOCKET_HOME"/uv/{src/unix,include}
+cp -fr "$BUILD_DIR"/uv/LICENSE "$SOCKET_HOME"/uv/LICENSE
 cp -fr "$BUILD_DIR"/uv/src/*.{c,h} "$SOCKET_HOME"/uv/src
 cp -fr "$BUILD_DIR"/uv/src/unix/*.{c,h} "$SOCKET_HOME"/uv/src/unix
 die $? "not ok - could not copy headers"
