@@ -5976,7 +5976,7 @@ namespace SSC::IPC {
     initRouterTable(this);
     registerSchemeHandler(this);
 
-  #if SSC_PLATFORM_LINUX
+  #if SSC_PLATFORM_LINUX && !SSC_PLATFORM_ANDROID
     ProtocolHandlers::Mapping protocolHandlerMappings = {
       {"npm", ProtocolHandlers::Protocol { "npm" }}
     };
