@@ -165,10 +165,11 @@ static String getcwd () {
 
 static void initRouterTable (Router *router) {
   auto userConfig = router->bridge->userConfig;
-#if defined(__APPLE__)
-  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime");
-#endif
+
+  #if defined(__APPLE__)
+    auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+    auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime");
+  #endif
 
   /**
    * Starts a bluetooth service
@@ -2575,9 +2576,19 @@ static void initRouterTable (Router *router) {
    */
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
-    #if defined(__APPLE__)
-      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
-    #endif
+      #if defined(__APPLE__)
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
+
+        if (Env::get("SSC_LOG_SOCKET").size() > 0) {
+          Core::UDP::SendOptions options;
+          options.size = 2;
+          options.bytes = (char*)"+N";
+          options.address = "0.0.0.0";
+          options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+          options.ephemeral = true;
+          router->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+        }
+      #endif
       IO::write(message.value, false);
     } else if (message.buffer.size > 0) {
       IO::write(String(message.buffer.bytes, message.buffer.size), false);
@@ -2596,9 +2607,19 @@ static void initRouterTable (Router *router) {
         debug("%s", message.value.c_str());
       }
     } else if (message.value.size() > 0) {
-    #if defined(__APPLE__)
-      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
-    #endif
+      #if defined(__APPLE__)
+        os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+
+        if (Env::get("SSC_LOG_SOCKET").size() > 0) {
+          Core::UDP::SendOptions options;
+          options.size = 2;
+          options.bytes = (char*)"+N";
+          options.address = "0.0.0.0";
+          options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+          options.ephemeral = true;
+          router->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+        }
+      #endif
       IO::write(message.value, true);
     } else if (message.buffer.size > 0) {
       IO::write(String(message.buffer.bytes, message.buffer.size), true);

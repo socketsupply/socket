@@ -5,19 +5,17 @@
 #include "config.hh"
 
 namespace SSC {
-  String createPreload (
-    const WindowOptions opts,
-    const PreloadOptions preloadOptions
-  ) {
+  String createPreload (const WindowOptions opts, const PreloadOptions preloadOptions) {
     auto argv = opts.argv;
-  #ifdef _WIN32
-    // Escape backslashes in paths.
-    size_t last_pos = 0;
-    while ((last_pos = argv.find('\\', last_pos)) != std::string::npos) {
-      argv.replace(last_pos, 1, "\\\\");
-      last_pos += 2;
-    }
-  #endif
+
+    #ifdef _WIN32
+      // Escape backslashes in paths.
+      size_t last_pos = 0;
+      while ((last_pos = argv.find('\\', last_pos)) != std::string::npos) {
+        argv.replace(last_pos, 1, "\\\\");
+        last_pos += 2;
+      }
+    #endif
 
     String preload = "";
 

@@ -234,7 +234,6 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       auto path_escaped = path;
       size_t pos = 0;
 
-      // Based on https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxsxyb7
       while ((pos = path_escaped.find('\'', pos)) != SSC::String::npos) {
         path_escaped.replace(pos, 1, "'\\''");
         pos += 4;
@@ -244,9 +243,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       command_c_str = cd_path_and_command.c_str();
     }
 
-    // if (this->detached) {
-    //  setpgid(0, 0);
-    // }
+    setpgid(0, 0);
 
     if (this->shell.size() > 0) {
       return execle(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, (char*)nullptr, newEnv.data());
