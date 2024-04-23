@@ -14,7 +14,6 @@
          object-src 'none';
       "
     >
-    <title>Socket Runtime Service Worker Context</title>
     <script charset="utf-8" type="text/javascript">
       Object.defineProperty(globalThis, '__RUNTIME_SERVICE_WORKER_CONTEXT__', {
         configurable: false,
@@ -34,9 +33,7 @@
         }
       })
 
-      const footer = document.querySelector('footer')
-      const version = footer.querySelector('.version')
-      version.querySelector('.value').textContent = process.version
+      document.title = `Service Worker Debugger - v${process.version}`
     </script>
     <script type="module" src="./init.js"></script>
     <style type="text/css" media="all">
@@ -50,6 +47,7 @@
         font-family: 'Inter-Light', sans-serif;
         font-size: 14px;
         margin: 0;
+        position: absolute; top: 0px; left: 0; right:0; bottom: 0px;
       }
 
       a {
@@ -60,81 +58,6 @@
         &.with-hover:hover {
           border-bottom: 2px solid rgba(255, 255, 255, 1);
         }
-      }
-
-      summary::-webkit-details-marker {
-        display: none;
-      }
-
-      nav {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        user-select: none;
-        height: 32px;
-        font: 12px 'Fira-Mono', monospace;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 10;
-        transition: background 0.2s ease;
-        overflow: hidden;
-
-        & > .background {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(14, 85, 152, 1);
-        }
-
-        & > .links-left {
-          display: grid;
-          gap: 12px;
-          grid-template-columns: auto auto auto auto;
-          left: 20px;
-          position: absolute;
-          text-transform: uppercase;
-          top: 8px;
-        }
-
-        & a {
-          -webkit-user-drag: none;
-          border-bottom: 2px solid transparent;
-          color: rgba(255, 255, 255, 1);
-          height: 20px;
-          transition: border-bottom .2s ease;
-
-          &.logo {
-            display: grid;
-            left: 50%;
-            position: absolute;
-            top: 50%;
-            transform: translate(-50%, -40%);
-
-            & > svg {
-              height: 16px;
-            }
-          }
-        }
-      }
-
-      section {
-        align-items: center;
-        justify-items: center;
-        margin: 0;
-        padding: 50px 10% 0;
-        position: relative;
-        scroll-margin-top: 150px;
-        width: 100%;
-      }
-
-      h2 {
-        font: 28px / 38px 'Inter-Black', sans-serif;
-        margin: 30px auto 6px auto;
-        text-align: center;
-        text-transform: uppercase;
       }
 
       p {
@@ -159,14 +82,10 @@
 
       pre#log {
         background: rgba(0, 0, 0, 1);
-        border-radius: 2px;
-        margin: 0;
-        margin-top: 16px;
-        height: calc(100vh - 160px);
         overflow-y: scroll;
         padding: 16px;
-        padding-bottom: 4px;
-        width: 100%;
+        margin: 0;
+        position: absolute; top: 0px; left: 0; right:0; bottom: 0px;
 
         & span {
           opacity: 0.8;
@@ -218,125 +137,9 @@
           }
         }
       }
-
-      footer {
-        background-color: rgba(24, 24, 24, 1);
-        bottom: 0px;
-        color: rgba(195, 195, 195, 1);
-        position: fixed;
-        width: 100%;
-        padding: 8px 0;
-
-        & p {
-          background-color: inherit;
-        }
-
-        & * {
-          font-family: 'Fira-Mono', monospace;
-          font-size: 14px;
-        }
-
-        & .copy {
-          color: rgba(110, 110, 110, 1);
-          text-align: center;
-        }
-
-        & .version {
-          border-bottom: none;
-          color: rgba(110, 110, 110, 1);
-        }
-      }
     </style>
   </head>
   <body>
-    <nav style="box-shadow: rgba(0, 0, 0, 0.35) 0px -4px 18px 0px;" class="scrolling">
-      <div class="background" style="opacity: 1;"></div>
-      <div class="links-left">
-        <a href="#" title="Github" onclick="openExternalLink('https://github.com/socketsupply/socket')">
-          <svg class="social tw" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fill="rgba(255, 255, 255, 1)" d="M8 0a8.1 8.1 0 0 0-8 8.2c0 3.63 2.3 6.7 5.47 7.79l.14.01c.3 0 .4-.22.4-.4v-1.4c-.3.06-.57.1-.81.1-1.54 0-1.89-1.2-1.89-1.2-.36-.95-.89-1.2-.89-1.2-.7-.5 0-.5.05-.5.8.06 1.23.84 1.23.84.4.7.94.9 1.41.9.38 0 .72-.12.92-.21.07-.53.28-.9.5-1.1-1.77-.2-3.64-.91-3.64-4.05 0-.9.31-1.63.82-2.2-.08-.21-.35-1.05.08-2.18l.18-.01c.3 0 .94.1 2.02.86a7.5 7.5 0 0 1 4.01 0c1.08-.75 1.73-.86 2.02-.86l.18.01c.44 1.13.16 1.97.08 2.18.5.57.82 1.3.82 2.2 0 3.15-1.87 3.84-3.65 4.04.28.25.54.75.54 1.52l-.01 2.25c0 .2.1.41.4.41l.15-.01A8.19 8.19 0 0 0 16 8.2 8.1 8.1 0 0 0 8 0Z"></path>
-          </svg>
-        </a>
-
-        <a href="#" class="with-hover" title="APIs" onclick="openExternalLink('https://socketsupply.co/apis/')">
-          APIs
-        </a>
-
-        <a href="#" class="with-hover" title="Config" onclick="openExternalLink('https://socketsupply.co/config/')">
-          Config
-        </a>
-      </div>
-      <a href="#" onclick="openExternalLink('https://github.com/socketsupply/socket')" class="logo" alt="Socket Suntime">
-        <svg version="1.1" id="logo-mark" xmlns="http://www.w3.org/2000/svg" height="80px" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 353.3 93.4" xml:space="preserve">
-          <g id="Layer_1-2">
-            <g>
-              <path fill="currentColor" d="M42.2,26.4l0-12.5c0-0.4-0.1-0.8-0.5-1c-0.3-0.2-0.7-0.1-1.1,0.1L13,29.1c-0.4,0.2-0.6,0.4-0.8,0.7
-                S12,30.4,12,30.9L12,63c0,0.4,0.1,0.8,0.4,1c0.4,0.2,0.7,0.1,1.1-0.1l10.8-6.2V39.3c0-1,0-1.7,0.4-2.3c0.4-0.6,0.9-1,1.8-1.5
-                L42.2,26.4L42.2,26.4z"></path>
-              <path fill="currentColor" d="M79.4,22l-36.3-21c-1.4-0.8-3.1-0.8-4.5,0L2.3,22C0.9,22.8,0,24.3,0,26v41.9c0,1.6,0.9,3.1,2.3,3.9l36.3,20.9
-                c1.4,0.8,3.1,0.8,4.5,0l36.3-20.9c1.4-0.8,2.3-2.3,2.3-3.9V26C81.7,24.3,80.8,22.8,79.4,22z M73.1,62.5c0,1-0.1,1.7-0.4,2.3
-                c-0.4,0.6-0.9,1-1.8,1.5L43.4,82.2c-1.3,0.8-2.2,1-3.2,0.5c-1-0.6-1.2-1.5-1.2-3V67.7l-10.3,6c-1.3,0.7-2.2,1-3.2,0.5
-                c-1-0.6-1.2-1.5-1.2-3V59.8l-9.9,5.7c-1.3,0.8-2.2,1-3.2,0.5c-0.9-0.6-1.2-1.5-1.2-3V31.1c0-1,0.1-1.6,0.4-2.3
-                c0.4-0.6,0.9-1,1.8-1.5l27.6-15.9c1.3-0.8,2.2-1,3.2-0.5c1,0.6,1.2,1.5,1.2,3v11.4l9.8-5.7c1.3-0.8,2.2-1,3.2-0.5
-                c1,0.6,1.2,1.5,1.2,3v11.9l10.3-6c1.3-0.8,2.2-1,3.2-0.5c1,0.6,1.2,1.5,1.2,3L73.1,62.5L73.1,62.5z"></path>
-              <path fill="currentColor" d="M56.5,35.2V22.1c0-0.4-0.1-0.8-0.4-1c-0.3-0.2-0.7-0.1-1.1,0.1L27.3,37.3c-0.4,0.2-0.6,0.4-0.8,0.7
-                c-0.2,0.3-0.2,0.6-0.2,1.1l0,32.1c0,0.4,0.1,0.8,0.4,1c0.4,0.2,0.7,0.1,1.1-0.1L39,65.5V47.8c0-1,0.1-1.7,0.4-2.3
-                c0.3-0.6,0.9-1,1.8-1.5C41.2,44,56.5,35.2,56.5,35.2z"></path>
-              <path fill="currentColor" d="M70.8,29.6c-0.3-0.2-0.7-0.1-1.1,0.1L41.9,45.8c-0.4,0.2-0.6,0.4-0.8,0.7s-0.2,0.6-0.2,1.1l0,32.1
-                c0,0.4,0.1,0.8,0.4,1c0.4,0.2,0.7,0.1,1.1-0.1l27.8-16.1c0.4-0.2,0.6-0.4,0.8-0.7c0.2-0.3,0.2-0.6,0.2-1l0.1-32.1
-                C71.2,30.2,71.2,29.8,70.8,29.6z M54.2,62.5c0,0.4-0.3,0.7-0.8,0.7s-0.7-0.3-0.7-0.8l0.4-10.4c0-0.4,0.3-0.7,0.8-0.7
-                s0.7,0.3,0.7,0.8L54.2,62.5z M62.3,58.1c0,0.4-0.3,0.7-0.8,0.7s-0.7-0.3-0.7-0.8l0.4-10.3c0-0.4,0.3-0.7,0.8-0.7s0.7,0.3,0.7,0.8
-                L62.3,58.1z"></path>
-            </g>
-            <g>
-              <path fill="currentColor" d="M121.3,13.2c-0.1-1.3-0.6-2.4-1.5-3.1c-0.9-0.7-2.2-1.1-4-1.1c-1.1,0-2.1,0.1-2.8,0.4
-                c-0.7,0.3-1.2,0.6-1.6,1.1c-0.3,0.5-0.5,1-0.5,1.6c0,0.5,0.1,0.9,0.3,1.3s0.5,0.7,1,1.1c0.4,0.3,1,0.6,1.7,0.8
-                c0.7,0.2,1.5,0.5,2.5,0.7l3.3,0.7c2.2,0.5,4.2,1.1,5.8,1.9c1.6,0.8,2.9,1.7,3.9,2.8s1.8,2.2,2.2,3.5s0.7,2.7,0.7,4.3
-                c0,2.7-0.7,4.9-2,6.8s-3.2,3.3-5.7,4.2c-2.4,1-5.4,1.5-8.8,1.5s-6.6-0.5-9.2-1.6c-2.6-1-4.7-2.7-6.1-4.8s-2.2-5-2.2-8.4h10.5
-                c0.1,1.2,0.4,2.3,0.9,3.1c0.6,0.9,1.3,1.5,2.3,1.9c1,0.4,2.2,0.6,3.6,0.6c1.2,0,2.2-0.2,3-0.4c0.8-0.3,1.4-0.7,1.8-1.2
-                c0.4-0.5,0.6-1.1,0.6-1.8c0-0.6-0.2-1.2-0.6-1.6c-0.4-0.5-1-0.9-1.9-1.3c-0.9-0.4-2.1-0.7-3.6-1.1l-4.1-0.9
-                c-3.6-0.8-6.4-2.1-8.5-3.9s-3.1-4.3-3.1-7.5c0-2.6,0.7-4.8,2.1-6.8c1.4-1.9,3.3-3.5,5.8-4.5c2.5-1.1,5.3-1.6,8.5-1.6
-                s6.1,0.6,8.5,1.6s4.2,2.6,5.5,4.6c1.3,2,2,4.3,2,7L121.3,13.2L121.3,13.2z"></path>
-              <path fill="currentColor" d="M175.9,20.9c0,4.5-0.9,8.3-2.6,11.4c-1.8,3.1-4.1,5.5-7.1,7c-3,1.6-6.3,2.4-10,2.4s-7.1-0.8-10-2.4
-                s-5.4-4-7.1-7.1s-2.6-6.9-2.6-11.4s0.9-8.3,2.6-11.4c1.8-3.1,4.1-5.4,7.1-7c3-1.6,6.3-2.4,10-2.4s7,0.8,10,2.4s5.4,3.9,7.1,7
-                S175.9,16.3,175.9,20.9z M164.6,20.9c0-2.4-0.3-4.5-1-6.2s-1.6-2.9-2.8-3.8c-1.2-0.9-2.8-1.3-4.6-1.3s-3.4,0.4-4.6,1.3
-                s-2.2,2.1-2.8,3.8s-1,3.7-1,6.2s0.3,4.5,1,6.2s1.6,2.9,2.8,3.8s2.8,1.3,4.6,1.3s3.4-0.4,4.6-1.3s2.2-2.1,2.8-3.8
-                S164.6,23.3,164.6,20.9z"></path>
-              <path fill="currentColor" d="M218.9,15.8h-11.2c-0.1-0.9-0.3-1.8-0.6-2.5s-0.8-1.4-1.4-1.9s-1.3-1-2.1-1.3c-0.8-0.3-1.8-0.4-2.8-0.4
-                c-1.9,0-3.4,0.4-4.7,1.4s-2.2,2.2-2.9,3.9c-0.7,1.7-1,3.7-1,6.1c0,2.5,0.3,4.6,1,6.2s1.6,2.9,2.9,3.8s2.8,1.3,4.6,1.3
-                c1,0,1.9-0.1,2.7-0.4c0.8-0.3,1.5-0.6,2.1-1.1c0.6-0.5,1.1-1.1,1.5-1.8s0.6-1.5,0.8-2.4l11.2,0.1c-0.1,1.7-0.6,3.5-1.4,5.2
-                c-0.8,1.8-2,3.4-3.5,4.9s-3.4,2.7-5.7,3.6s-4.9,1.4-7.8,1.4c-3.7,0-7.1-0.8-10-2.4s-5.3-4-7-7.1s-2.6-6.9-2.6-11.4
-                s0.9-8.3,2.6-11.4c1.8-3.1,4.1-5.4,7.1-7c3-1.6,6.3-2.4,9.9-2.4c2.6,0,4.9,0.3,7.1,1c2.2,0.7,4.1,1.7,5.7,3.1s2.9,3,3.9,5
-                C218.1,11,218.7,13.3,218.9,15.8L218.9,15.8z"></path>
-              <path fill="currentColor" d="M223.9,41.2V0.6h11V17h0.6l12.2-16.4h12.9l-13.7,18.1l14,22.5h-13.2L238.6,26l-3.6,4.8v10.5L223.9,41.2
-                L223.9,41.2z"></path>
-              <path fill="currentColor" d="M263.9,41.2V0.6h29.3v8.9h-18.2v7h16.7v8.9h-16.7v7h18.2v8.9H263.9z"></path>
-              <path fill="currentColor" d="M297.5,9.4V0.6h35.3v8.9h-12.2v31.7h-10.9V9.4H297.5z"></path>
-              <path fill="currentColor" d="M99.4,92.2V51.6h17.5c3,0,5.7,0.5,7.9,1.7c2.3,1.1,4,2.7,5.3,4.7c1.3,2.1,1.9,4.5,1.9,7.4s-0.6,5.4-1.9,7.4
-                c-1.3,2-3.1,3.5-5.4,4.5c-2.3,1-5,1.5-8.1,1.5h-10.5v-8.6h8.2c1.3,0,2.4-0.2,3.3-0.5c0.9-0.3,1.6-0.8,2.1-1.6
-                c0.5-0.7,0.7-1.7,0.7-2.8s-0.2-2.1-0.7-2.8c-0.5-0.7-1.2-1.3-2.1-1.6c-0.9-0.3-2-0.5-3.3-0.5h-3.9v31.8L99.4,92.2L99.4,92.2z
-                 M123.2,73.5l10.2,18.7h-12l-9.9-18.7C111.4,73.5,123.2,73.5,123.2,73.5z"></path>
-              <path fill="currentColor" d="M160.7,51.6h11v26c0,3.1-0.7,5.8-2.2,8c-1.5,2.2-3.5,4-6.2,5.2c-2.6,1.2-5.7,1.8-9.2,1.8s-6.6-0.6-9.2-1.8
-                c-2.6-1.2-4.7-3-6.1-5.2c-1.5-2.2-2.2-4.9-2.2-8v-26h11v25.1c0,1.3,0.3,2.4,0.8,3.4s1.3,1.8,2.3,2.3c1,0.6,2.1,0.8,3.4,0.8
-                s2.4-0.3,3.4-0.8c1-0.6,1.8-1.3,2.3-2.3s0.8-2.1,0.8-3.4L160.7,51.6L160.7,51.6z"></path>
-              <path fill="currentColor" d="M212.1,51.6v40.6h-9.2l-14.7-21.3H188v21.3h-11V51.6h9.4l14.4,21.3h0.3V51.6L212.1,51.6L212.1,51.6z"></path>
-              <path fill="currentColor" d="M216.2,60.5v-8.9h35.3v8.9h-12.2v31.7h-10.9V60.5H216.2z"></path>
-              <path fill="currentColor" d="M266.7,51.6v40.6h-11V51.6H266.7z"></path>
-              <path fill="currentColor" d="M272,51.6h13.7l9.4,23h0.5l9.4-23h13.7v40.6H308V68.7h-0.3l-9,23.2h-6.5l-9-23.3h-0.3v23.7h-10.8L272,51.6
-                L272,51.6z"></path>
-              <path fill="currentColor" d="M324,92.2V51.6h29.3v8.9H335v7h16.7v8.9H335v7h18.2v8.9C353.2,92.2,324,92.2,324,92.2z"></path>
-            </g>
-          </g>
-        </svg>
-      </a>
-    </nav>
-    <section>
-      <div><p class="message">You are seeing this window because you are likely debugging a Service Worker</p></div>
-      <pre id="log"></pre>
-    </section>
-
-    <footer>
-      <p class="copy"><span class="version">Socket Runtime (<span class="value"></span>)</span></p>
-    </footer>
+    <pre id="log"></pre>
   </body>
 </html>

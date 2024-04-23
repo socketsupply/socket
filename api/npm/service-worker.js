@@ -53,9 +53,9 @@ export async function onRequest (request, env, ctx) {
   origins = Array.from(new Set(origins))
 
   if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
-    console.debug('resolving: npm:%s', specifier)
+    console.debug('resolving: npm:%s (%o)', specifier, origins)
   }
-
+  
   while (origins.length && resolved === null) {
     const potentialOrigins = []
     const origin = origins.shift()
