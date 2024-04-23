@@ -1,10 +1,11 @@
 import path from 'node:path'
 import os from 'node:os'
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
 const dirname = path
-  .dirname(import.meta.url)
+  .dirname(fileURLToPath(import.meta.url))
   .replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
 export const SOCKET_HOME = path.dirname(dirname)
