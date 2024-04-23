@@ -883,6 +883,10 @@ export class Package {
       }
     }
 
+    if (info.main && !info.module) {
+      this.#type = 'commonjs'
+    }
+
     if (info.main) {
       this.#exports['.'].require = info.main
       if (info.type === 'module') {
@@ -890,12 +894,13 @@ export class Package {
       }
     }
 
-    if (info.module) {
+    if (info.module && !info.main) {
       this.#exports['.'].import = info.module
+      this.#type = 'module'
     }
 
     if (typeof info.exports === 'string') {
-      if (type === 'commonjs') {
+      if (this.#type === 'commonjs') {
         this.#exports['.'].require = info.exports
       } else if (type === 'module') {
         this.#exports['.'].import = info.exports
