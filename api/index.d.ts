@@ -15831,7 +15831,14 @@ declare module "socket:npm/module" {
 }
 
 declare module "socket:npm/service-worker" {
-    export function onRequest(request: any, env: any, ctx: any): Promise<Response>;
+    /**
+     * @ignore
+     * @param {Request}
+     * @param {object} env
+     * @param {import('../service-worker/context.js').Context} ctx
+     * @return {Promise<Response|null>}
+     */
+    export function onRequest(request: any, env: object, ctx: import("socket:service-worker/context").Context): Promise<Response | null>;
     /**
      * Handles incoming 'npm://<module_name>/<pathspec...>' requests.
      * @param {Request} request
