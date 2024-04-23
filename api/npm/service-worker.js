@@ -8,7 +8,16 @@ import util from '../util.js'
 
 const DEBUG_LABEL = '  <span\\sstyle="color:\\s#fb8817;"><b>npm</b></span>'
 
+/**
+ * @ignore
+ * @param {Request}
+ * @param {object} env
+ * @param {import('../service-worker/context.js').Context} ctx
+ * @return {Promise<Response|null>}
+ */
 export async function onRequest (request, env, ctx) {
+  // eslint-disable-next-line
+  void env, ctx;
   if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
     console.debug(request.url)
   }
@@ -25,6 +34,7 @@ export async function onRequest (request, env, ctx) {
   let origins = []
 
   if (referer && !referer.startsWith('blob:')) {
+    // @ts-ignore
     if (URL.canParse(referer, origin)) {
       const refererURL = new URL(referer, origin)
       if (refererURL.href.endsWith('/')) {
@@ -42,8 +52,10 @@ export async function onRequest (request, env, ctx) {
       origins.push(new URL(value, `socket://${url.host}${url.pathname}`).href.replace(/\/$/, ''))
     } else if (value.startsWith('/')) {
       origins.push(new URL(value, origin).href)
+      // @ts-ignore
     } else if (URL.canParse(value)) {
       origins.push(value)
+      // @ts-ignore
     } else if (URL.canParse(`socket://${value}`)) {
       origins.push(`socket://${value}`)
     }
@@ -55,7 +67,7 @@ export async function onRequest (request, env, ctx) {
   if (process.env.SOCKET_RUNTIME_NPM_DEBUG) {
     console.debug('resolving: npm:%s (%o)', specifier, origins)
   }
-  
+
   while (origins.length && resolved === null) {
     const potentialOrigins = []
     const origin = origins.shift()
