@@ -558,11 +558,7 @@ export class Package {
   #imports = {}
 
   #exports = {
-    '.': {
-      require: './index.js',
-      import: './index.js',
-      default: './index.js'
-    }
+    '.': {}
   }
 
   /**
@@ -883,7 +879,7 @@ export class Package {
       }
     }
 
-    if (info.main && !info.module) {
+    if (info.main && !info.module && !info.type) {
       this.#type = 'commonjs'
     }
 
