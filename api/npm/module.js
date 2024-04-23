@@ -50,8 +50,6 @@ export async function resolve (specifier, origin = null, options = null) {
 
   try {
     pkg.load()
-    // will call `pkg.load()` internally
-    // can throw `ModuleNotFoundError`
     const url = pkg.type === type
       ? pkg.resolve(pathname, { prefix, type })
       : pkg.resolve(pathname, { prefix })
