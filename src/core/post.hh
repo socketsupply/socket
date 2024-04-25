@@ -1,0 +1,32 @@
+#ifndef SSC_CORE_POST_H
+#define SSC_CORE_POST_H
+
+#include "types.hh"
+
+namespace SSC {
+  struct Post {
+    using EventStreamCallback = Function<bool(
+      const char*,
+      const char*,
+      bool
+    )>;
+
+    using ChunkStreamCallback = Function<bool(
+      const char*,
+      size_t,
+      bool
+    )>;
+
+    uint64_t id = 0;
+    uint64_t ttl = 0;
+    SharedPointer<char*> body = nullptr;
+    size_t length = 0;
+    String headers = "";
+    String workerId = "";
+    SharedPointer<EventStreamCallback> eventStream;
+    SharedPointer<ChunkStreamCallback> chunkStream;
+  };
+
+  using Posts = std::map<uint64_t, Post>;
+}
+#endif

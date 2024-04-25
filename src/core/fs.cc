@@ -1,6 +1,7 @@
 #include "core.hh"
-namespace SSC {
+#include "resource.hh"
 
+namespace SSC {
   #define SET_CONSTANT(c) constants[#c] = (c);
   static std::map<String, int32_t> getFSConstantsMap () {
     std::map<String, int32_t> constants;
@@ -224,7 +225,8 @@ namespace SSC {
     return this->buf.len;
   }
 
-  Core::FS::Descriptor::Descriptor (Core *core, uint64_t id) {
+  Core::FS::Descriptor::Descriptor (Core *core, uint64_t id, const String& filename) {
+    this->resource.reset(new FileResource(filename));
     this->core = core;
     this->id = id;
   }
@@ -585,7 +587,7 @@ namespace SSC {
   ) {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
-      auto desc = new Descriptor(this->core, id);
+      auto desc = new Descriptor(this->core, id, filename);
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
@@ -649,7 +651,7 @@ namespace SSC {
   ) {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
-      auto desc =  new Descriptor(this->core, id);
+      auto desc =  new Descriptor(this->core, id, filename);
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
@@ -1025,8 +1027,8 @@ namespace SSC {
             {"content-length", req->result}
           }};
 
-          post.id = SSC::rand64();
-          post.body = ctx->getBuffer();
+          post.id = rand64();
+          post.body = std::make_shared<char*>(ctx->getBuffer());
           post.length = (int) req->result;
           post.headers = headers.str();
         }

@@ -113,6 +113,7 @@
 # define SSC_PLATFORM_NAME "win32"
 # define SSC_PLATFORM_OS "win32"
 # define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_APPLE 0
 # define SSC_PLATFORM_IOS 0
 # define SSC_PLATFORM_IOS_SIMULATOR 0
 # define SSC_PLATFORM_LINUX 0
@@ -121,6 +122,7 @@
 # define SSC_PLATFORM_WINDOWS 1
 #elif defined(__APPLE__)
 # include <TargetConditionals.h>
+# define SSC_PLATFORM_APPLE 1
 # define SSC_PLATFORM_NAME "darwin"
 # define SSC_PLATFORM_ANDROID 0
 # define SSC_PLATFORM_IOS_SIMULATOR 0
@@ -145,7 +147,7 @@
 #endif
 
 #if defined(__unix__) || defined(unix) || defined(__unix)
-# define SSC_PLATFORM_UXIX 0
+# define SSC_PLATFORM_UXIX 1
 #else
 # define SSC_PLATFORM_UXIX 0
 #endif
@@ -153,18 +155,20 @@
 #elif defined(__linux__)
 # undef linux
 # define SSC_PLATFORM_NAME "linux"
+# define SSC_PLATFORM_APPLE 0
 # define SSC_PLATFORM_IOS 0
 # define SSC_PLATFORM_IOS_SIMULATOR 0
-# define SSC_PLATFORM_LINUX 1
 # define SSC_PLATFORM_MACOS 0
 # define SSC_PLATFORM_WINDOWS 0
 
 #ifdef __ANDROID__
 # define SSC_PLATFORM_OS "android"
 # define SSC_PLATFORM_ANDROID 1
+# define SSC_PLATFORM_LINUX 0
 #else
 # define SSC_PLATFORM_OS "linux"
 # define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_LINUX 1
 #endif
 
 #if defined(__unix__) || defined(unix) || defined(__unix)
@@ -193,6 +197,7 @@
 # define SSC_PLATFORM_NAME "openbsd"
 # define SSC_PLATFORM_OS "openbsd"
 # define SSC_PLATFORM_ANDROID 0
+# define SSC_PLATFORM_APPLE 0
 # define SSC_PLATFORM_IOS 0
 # define SSC_PLATFORM_IOS_SIMULATOR 0
 # define SSC_PLATFORM_LINUX 0
@@ -212,6 +217,10 @@
 #else
 #define SSC_PLATFORM_MOBILE 0
 #define SSC_PLATFORM_DESKTOP 1
+#endif
+
+#if !defined(SSC_PLATFORM_SANDBOXED)
+#define SSC_PLATFORM_SANDBOXED 0
 #endif
 
 namespace SSC {

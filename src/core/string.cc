@@ -17,9 +17,9 @@ namespace SSC {
   }
 
   String tmpl (const String& source, const Map& variables) {
-    String output = source;
+    String output(source);
 
-    for (const auto tuple : variables) {
+    for (const auto& tuple : variables) {
       auto key = String("[{]+(" + tuple.first + ")[}]+");
       auto value = tuple.second;
       output = std::regex_replace(output, std::regex(key), value);
@@ -93,6 +93,28 @@ namespace SSC {
     return source;
   }
 
+  String toLowerCase (const String& source) {
+    String output = source;
+    std::transform(
+      output.begin(),
+      output.end(),
+      output.begin(),
+      [](auto ch) { return std::tolower(ch); }
+    );
+    return output;
+  }
+
+  String toUpperCase (const String& source) {
+    String output = source;
+    std::transform(
+      output.begin(),
+      output.end(),
+      output.begin(),
+      [](auto ch) { return std::toupper(ch); }
+    );
+    return output;
+  }
+
   WString convertStringToWString (const String& source) {
     WString result(source.length(), L' ');
     std::copy(source.begin(), source.end(), result.begin());
@@ -151,4 +173,32 @@ namespace SSC {
   Vector<String> parseStringList (const String& string) {
     return parseStringList(string, { ' ', ',' });
   }
+
+#if SSC_PLATFORM_WINDOWS
+  String formatWindowsError (DWORD error, const String& source) {
+    StringStream message;
+    LPVOID errorMessage;
+
+    // format
+    FormatMessage(
+      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+      nullptr,
+      error,
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      (LPTSTR) &errorMessage,
+      0,
+      nullptr
+    );
+
+    // create output string
+    message
+      << "Error " << error
+      << " in " << source
+      << ": " <<  (LPTSTR) errorMessage;
+
+    LocalFree(lpMsgBuf);
+
+    return message.str();
+  }
+#endif
 }

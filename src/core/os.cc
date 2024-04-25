@@ -572,7 +572,7 @@ namespace SSC {
     auto post = Post {};
     auto body = new char[size]{0};
     auto json = JSON::Object {};
-    post.body = body;
+    post.body = std::make_shared<char*>(body);
     post.length = size;
     memcpy(body, bytes.data(), size);
     cb(seq, json, post);
@@ -588,7 +588,7 @@ namespace SSC {
     auto post = Post {};
     auto body = new char[size]{0};
     auto json = JSON::Object {};
-    post.body = body;
+    post.body = std::make_shared<char*>(body);
     post.length = size;
     memcpy(body, bytes.data(), size);
     cb(seq, json, post);

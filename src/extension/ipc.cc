@@ -234,12 +234,15 @@ bool sapi_ipc_send_bytes (
   auto post = SSC::Post {
     .id = 0,
     .ttl = 0,
-    .body = new char[size]{0},
+    .body = nullptr,
     .length = size,
     .headers = headers ? headers : ""
   };
 
-  memcpy(post.body, bytes, size);
+  if (bytes != nullptr && size > 0) {
+    post.body = std::make_shared<char*>(new char[size]{0});
+    memcpy(*post.body, bytes, size);
+  }
 
   if (message) {
     auto result = SSC::IPC::Result(
@@ -270,12 +273,15 @@ bool sapi_ipc_send_bytes_with_result (
   auto post = SSC::Post {
     .id = 0,
     .ttl = 0,
-    .body = new char[size]{0},
+    .body = nullptr,
     .length = size,
-    .headers =headers ? headers : ""
+    .headers = headers ? headers : ""
   };
 
-  memcpy(post.body, bytes, size);
+  if (bytes != nullptr && size > 0) {
+    post.body = std::make_shared<char*>(new char[size]{0});
+    memcpy(*post.body, bytes, size);
+  }
 
   return ctx->router->send(result->seq, result->str(), post);
 }
@@ -487,7 +493,7 @@ const unsigned char* sapi_ipc_message_get_bytes (
   const sapi_ipc_message_t* message
 ) {
   if (!message) return nullptr;
-  return reinterpret_cast<const unsigned char*>(message->buffer.bytes);
+  return reinterpret_cast<const unsigned char*>(*message->buffer.bytes);
 }
 
 unsigned int sapi_ipc_message_get_bytes_size (
@@ -652,9 +658,9 @@ void sapi_ipc_result_set_bytes (
   unsigned char* bytes
 ) {
   if (result && size && bytes) {
-    auto pointer = const_cast<char*>(reinterpret_cast<const char*>(bytes));
     result->post.length = size;
-    result->post.body = pointer;
+    result->post.body = std::make_shared<char*>(new char[size]{0});
+    memcpy(*result->post.body, bytes, size);
   }
 }
 
@@ -662,7 +668,7 @@ unsigned char* sapi_ipc_result_get_bytes (
   const sapi_ipc_result_t* result
 ) {
   return result
-    ? reinterpret_cast<unsigned char*>(result->post.body)
+    ? reinterpret_cast<unsigned char*>(*result->post.body)
     : nullptr;
 }
 

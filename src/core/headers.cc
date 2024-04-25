@@ -2,13 +2,29 @@
 
 namespace SSC {
   Headers::Header::Header (const Header& header) {
-    this->key = header.key;
+    this->name = toLowerCase(header.name);
     this->value = header.value;
   }
 
-  Headers::Header::Header (const String& key, const Value& value) {
-    this->key = trim(key);
+  Headers::Header::Header (const String& name, const Value& value) {
+    this->name = toLowerCase(trim(name));
     this->value = trim(value.str());
+  }
+
+  bool Headers::Header::operator == (const Header& header) const {
+    return this->value == header.value;
+  }
+
+  bool Headers::Header::operator != (const Header& header) const {
+    return this->value != header.value;
+  }
+
+  bool Headers::Header::operator == (const String& string) const {
+    return this->value.string == string;
+  }
+
+  bool Headers::Header::operator != (const String& string) const {
+    return this->value.string != string;
   }
 
   Headers::Headers (const String& source) {
@@ -38,13 +54,13 @@ namespace SSC {
     }
   }
 
-  void Headers::set (const String& key, const String& value) {
-    set(Header{ key, value });
+  void Headers::set (const String& name, const String& value) noexcept {
+    set(Header { name, value });
   }
 
-  void Headers::set (const Header& header) {
+  void Headers::set (const Header& header) noexcept {
     for (auto& entry : entries) {
-      if (header.key == entry.key) {
+      if (header.name == entry.name) {
         entry.value = header.value;
         return;
       }
@@ -53,9 +69,10 @@ namespace SSC {
     entries.push_back(header);
   }
 
-  bool Headers::has (const String& name) const {
+  bool Headers::has (const String& name) const noexcept {
+    const auto normalizedName = toLowerCase(name);
     for (const auto& header : entries) {
-      if (header.key == name) {
+      if (header.name == normalizedName) {
         return true;
       }
     }
@@ -63,16 +80,26 @@ namespace SSC {
     return false;
   }
 
-  const Headers::Header& Headers::get (const String& name) const {
-    static const auto empty = Header();
-
+  const Headers::Header Headers::get (const String& name) const noexcept {
+    const auto normalizedName = toLowerCase(name);
     for (const auto& header : entries) {
-      if (header.key == name) {
+      if (header.name == normalizedName) {
         return header;
       }
     }
 
-    return empty;
+    return Header {};
+  }
+
+  Headers::Header& Headers::at (const String& name) {
+    const auto normalizedName = toLowerCase(name);
+    for (auto& header : entries) {
+      if (header.name == normalizedName) {
+        return header;
+      }
+    }
+
+    throw std::out_of_range("Header does not exist");
   }
 
   size_t Headers::size () const {
@@ -83,12 +110,59 @@ namespace SSC {
     StringStream headers;
     auto count = this->size();
     for (const auto& entry : this->entries) {
-      headers << entry.key << ": " << entry.value.str();;
+      headers << entry.name << ": " << entry.value.str();;
       if (--count > 0) {
         headers << "\n";
       }
     }
     return headers.str();
+  }
+
+  const Headers::Iterator Headers::begin () const noexcept {
+    return this->entries.begin();
+  }
+
+  const Headers::Iterator Headers::end () const noexcept {
+    return this->entries.end();
+  }
+
+  bool Headers::erase (const String& name) noexcept {
+    for (int i = 0; i < this->entries.size(); ++i) {
+      const auto& entry = this->entries[i];
+      if (entry.name == name) {
+        this->entries.erase(this->entries.begin() + i);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const bool Headers::clear () noexcept {
+    if (this->entries.size() == 0) {
+      return false;
+    }
+    this->entries.clear();
+    return true;
+  }
+
+  String& Headers::operator [] (const String& name) {
+    if (!this->has(name)) {
+      this->set(name, "");
+    }
+
+    return this->at(name).value.string;
+  }
+
+  const String Headers::operator [] (const String& name) const noexcept {
+    return this->get(name).value.string;
+  }
+
+  JSON::Object Headers::json () const noexcept {
+    JSON::Object::Entries entries;
+    for (const auto& entry : this->entries) {
+      entries[entry.name] = entry.value.string;
+    }
+    return entries;
   }
 
   Headers::Value::Value (const String& value) {
@@ -132,6 +206,22 @@ namespace SSC {
     this->string = std::to_string(value);
   }
 #endif
+
+  bool Headers::Value::operator == (const Value& value) const {
+    return this->string == value.string;
+  }
+
+  bool Headers::Value::operator != (const Value& value) const {
+    return this->string != value.string;
+  }
+
+  bool Headers::Value::operator == (const String& string) const {
+    return this->string == string;
+  }
+
+  bool Headers::Value::operator != (const String& string) const {
+    return this->string != string;
+  }
 
   const String& Headers::Value::str () const {
     return this->string;

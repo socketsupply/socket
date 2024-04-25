@@ -9,27 +9,6 @@
 
 namespace SSC {
 
-#if defined(SSC_CLI)
-SSC::String FormatError(DWORD error, SSC::String source) {
-  SSC::StringStream message;
-  LPVOID lpMsgBuf;
-  FormatMessage(
-  FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-  FORMAT_MESSAGE_FROM_SYSTEM |
-  FORMAT_MESSAGE_IGNORE_INSERTS,
-  NULL,
-  error,
-  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-  (LPTSTR) &lpMsgBuf,
-  0, NULL );
-
-  message << "Error " << error << " in " << source << ": " <<  (LPTSTR)lpMsgBuf;
-  LocalFree(lpMsgBuf);
-
-  return message.str();
-}
-#endif
-
 const static SSC::StringStream initial;
 
 Process::Data::Data() noexcept : id(0) {}
@@ -229,7 +208,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       WaitForSingleObject(_processHandle, INFINITE);
 
       if (GetExitCodeProcess(_processHandle, &exitCode) == 0) {
-        std::cerr << FormatError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
+        std::cerr << formatWindowsError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
         exitCode = -1;
       }
 

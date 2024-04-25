@@ -1,4 +1,5 @@
 #include "core.hh"
+#include "bluetooth.hh"
 #include "../ipc/ipc.hh"
 
 using namespace SSC;
@@ -369,9 +370,13 @@ using namespace SSC;
 
   Post post = {0};
   post.id = rand64();
-  post.body = bytes;
-  post.length = length;
   post.headers = headers.str();
+
+  if (bytes != nullptr && length > 0) {
+    post.body = std::make_shared<char*>(new char[length]{0});
+    post.length = length;
+    memcpy(*post.body, bytes, length);
+  }
 
   auto json = JSON::Object::Entries {
     {"data", JSON::Object::Entries {

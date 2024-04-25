@@ -1,13 +1,14 @@
 #include "core.hh"
+#include "module.hh"
 
 namespace SSC {
   void Core::DNS::lookup (
     const String seq,
     LookupOptions options,
-    Core::Module::Callback cb
+    Module::Callback cb
   ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto ctx = new Core::Module::RequestContext(seq, cb);
+      auto ctx = new Module::RequestContext(seq, cb);
       auto loop = this->core->getEventLoop();
 
       struct addrinfo hints = {0};
@@ -27,7 +28,7 @@ namespace SSC {
       resolver->data = ctx;
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-        auto ctx = (Core::DNS::RequestContext*) resolver->data;
+        auto ctx = (RequestContext*) resolver->data;
 
         if (status < 0) {
           auto result = JSON::Object::Entries {

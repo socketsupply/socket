@@ -1,4 +1,5 @@
 #include "core.hh"
+#include "../process/process.hh"
 
 #if !SSC_PLATFORM_IOS
 namespace SSC {
@@ -227,7 +228,7 @@ namespace SSC {
 
         Post post;
         post.id = rand64();
-        post.body = bytes;
+        post.body = std::make_shared<char*>(bytes);
         post.length = (int) output.size();
         post.headers = headers.str();
 
@@ -257,7 +258,7 @@ namespace SSC {
 
         Post post;
         post.id = rand64();
-        post.body = bytes;
+        post.body = std::make_shared<char*>(bytes);
         post.length = (int) output.size();
         post.headers = headers.str();
 

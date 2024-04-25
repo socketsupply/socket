@@ -1,42 +1,31 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
+#include "bluetooth.hh"
 #include "codec.hh"
 #include "config.hh"
 #include "debug.hh"
 #include "env.hh"
 #include "file_system_watcher.hh"
+#include "geolocation.hh"
+#include "headers.hh"
 #include "ini.hh"
 #include "io.hh"
+#include "ip.hh"
 #include "json.hh"
+#include "module.hh"
+#include "network_status.hh"
+#include "notifications.hh"
+#include "peer.hh"
 #include "platform.hh"
+#include "post.hh"
 #include "preload.hh"
 #include "protocol_handlers.hh"
+#include "resource.hh"
 #include "service_worker_container.hh"
 #include "string.hh"
 #include "types.hh"
 #include "version.hh"
-
-#include "../process/process.hh"
-
-#if defined(__APPLE__)
-@interface SSCBluetoothController : NSObject<
-  CBCentralManagerDelegate,
-  CBPeripheralManagerDelegate,
-  CBPeripheralDelegate
->
-@property (strong, nonatomic) CBCentralManager* centralManager;
-@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
-@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray* peripherals;
-@property (strong, nonatomic) NSMutableDictionary* services;
-@property (strong, nonatomic) NSMutableDictionary* characteristics;
-@property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) startAdvertising;
-- (void) startScanning;
-- (id) init;
-@end
-#endif
 
 namespace SSC {
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
@@ -44,90 +33,10 @@ namespace SSC {
   uint64_t rand64 ();
   void msleep (uint64_t ms);
 
-#if defined(_WIN32)
-  String FormatError (DWORD error, String source);
-#endif
-
-
   // forward
   class Core;
+  class Process;
 
-  class Headers {
-    public:
-      class Value {
-        public:
-          String string;
-          Value () = default;
-          Value (const String& value);
-          Value (const char* value);
-          Value (const Value& value);
-          Value (bool value);
-          Value (int value);
-          Value (float value);
-          Value (int64_t value);
-          Value (uint64_t value);
-          Value (double_t value);
-        #if defined(__APPLE__)
-          Value (ssize_t value);
-        #endif
-          const String& str () const;
-          const char * c_str() const;
-
-          template <typename T> void set (T value) {
-            auto v = Value(value);
-            this->string = v.string;
-          }
-      };
-
-      class Header {
-        public:
-          String key;
-          Value value;
-          Header () = default;
-          Header (const Header& header);
-          Header (const String& key, const Value& value);
-      };
-
-      using Entries = Vector<Header>;
-      Entries entries;
-      Headers () = default;
-      Headers (const Headers& headers);
-      Headers (const String& source);
-      Headers (const Vector<std::map<String, Value>>& entries);
-      Headers (const Entries& entries);
-      size_t size () const;
-      String str () const;
-
-      void set (const String& key, const String& value);
-      void set (const Header& header);
-      bool has (const String& name) const;
-      const Header& get (const String& name) const;
-  };
-
-  struct Post {
-    using EventStreamCallback = Function<bool(
-      const char*,
-      const char*,
-      bool
-    )>;
-
-    using ChunkStreamCallback = Function<bool(
-      const char*,
-      size_t,
-      bool
-    )>;
-
-    uint64_t id = 0;
-    uint64_t ttl = 0;
-    char* body = nullptr;
-    size_t length = 0;
-    String headers = "";
-    String workerId = "";
-    std::shared_ptr<EventStreamCallback> eventStream;
-    std::shared_ptr<ChunkStreamCallback> chunkStream;
-  };
-
-  using Posts = std::map<uint64_t, Post>;
   using EventLoopDispatchCallback = Function<void()>;
 
   struct Timer {
@@ -139,237 +48,8 @@ namespace SSC {
     uv_timer_cb invoke;
   };
 
-  typedef enum {
-    PEER_TYPE_NONE = 0,
-    PEER_TYPE_TCP = 1 << 1,
-    PEER_TYPE_UDP = 1 << 2,
-    PEER_TYPE_MAX = 0xF
-  } peer_type_t;
-
-  typedef enum {
-    PEER_FLAG_NONE = 0,
-    PEER_FLAG_EPHEMERAL = 1 << 1
-  } peer_flag_t;
-
-  typedef enum {
-    PEER_STATE_NONE = 0,
-    // general states
-    PEER_STATE_CLOSED = 1 << 1,
-    // udp states (10)
-    PEER_STATE_UDP_BOUND = 1 << 10,
-    PEER_STATE_UDP_CONNECTED = 1 << 11,
-    PEER_STATE_UDP_RECV_STARTED = 1 << 12,
-    PEER_STATE_UDP_PAUSED = 1 << 13,
-    // tcp states (20)
-    PEER_STATE_TCP_BOUND = 1 << 20,
-    PEER_STATE_TCP_CONNECTED = 1 << 21,
-    PEER_STATE_TCP_PAUSED = 1 << 13,
-    PEER_STATE_MAX = 1 << 0xF
-  } peer_state_t;
-
-  struct LocalPeerInfo {
-    struct sockaddr_storage addr;
-    String address = "";
-    String family = "";
-    int port = 0;
-    int err = 0;
-
-    int getsockname (uv_udp_t *socket, struct sockaddr *addr);
-    int getsockname (uv_tcp_t *socket, struct sockaddr *addr);
-    void init (uv_udp_t *socket);
-    void init (uv_tcp_t *socket);
-    void init (const struct sockaddr_storage *addr);
-  };
-
-  struct RemotePeerInfo {
-    struct sockaddr_storage addr;
-    String address = "";
-    String family = "";
-    int port = 0;
-    int err = 0;
-
-    int getpeername (uv_udp_t *socket, struct sockaddr *addr);
-    int getpeername (uv_tcp_t *socket, struct sockaddr *addr);
-    void init (uv_udp_t *socket);
-    void init (uv_tcp_t *socket);
-    void init (const struct sockaddr_storage *addr);
-  };
-
-  /**
-   * A generic structure for a bound or connected peer.
-   */
-  class Peer {
-    public:
-      struct RequestContext {
-        using Callback = Function<void(int, Post)>;
-        Callback cb;
-        Peer *peer = nullptr;
-        RequestContext (Callback cb) { this->cb = cb; }
-      };
-
-      using UDPReceiveCallback = Function<void(
-        ssize_t,
-        const uv_buf_t*,
-        const struct sockaddr*
-      )>;
-
-      // uv handles
-      union {
-        uv_udp_t udp;
-        uv_tcp_t tcp; // XXX: FIXME
-      } handle;
-
-      // sockaddr
-      struct sockaddr_in addr;
-
-      // callbacks
-      UDPReceiveCallback receiveCallback;
-      std::vector<Function<void()>> onclose;
-
-      // instance state
-      uint64_t id = 0;
-      std::recursive_mutex mutex;
-      Core *core;
-
-      struct {
-        struct {
-          bool reuseAddr = false;
-          bool ipv6Only = false; // @TODO
-        } udp;
-      } options;
-
-      // peer state
-      LocalPeerInfo local;
-      RemotePeerInfo remote;
-      peer_type_t type = PEER_TYPE_NONE;
-      peer_flag_t flags = PEER_FLAG_NONE;
-      peer_state_t state = PEER_STATE_NONE;
-
-      /**
-      * Private `Peer` class constructor
-      */
-      Peer (Core *core, peer_type_t peerType, uint64_t peerId, bool isEphemeral);
-      ~Peer ();
-
-      int init ();
-      int initRemotePeerInfo ();
-      int initLocalPeerInfo ();
-      void addState (peer_state_t value);
-      void removeState (peer_state_t value);
-      bool hasState (peer_state_t value);
-      const RemotePeerInfo* getRemotePeerInfo ();
-      const LocalPeerInfo* getLocalPeerInfo ();
-      bool isUDP ();
-      bool isTCP ();
-      bool isEphemeral ();
-      bool isBound ();
-      bool isActive ();
-      bool isClosing ();
-      bool isClosed ();
-      bool isConnected ();
-      bool isPaused ();
-      int bind ();
-      int bind (String address, int port);
-      int bind (String address, int port, bool reuseAddr);
-      int rebind ();
-      int connect (String address, int port);
-      int disconnect ();
-      void send (
-        char *buf,
-        size_t size,
-        int port,
-        const String address,
-        Peer::RequestContext::Callback cb
-      );
-      int recvstart ();
-      int recvstart (UDPReceiveCallback onrecv);
-      int recvstop ();
-      int resume ();
-      int pause ();
-      void close ();
-      void close (Function<void()> onclose);
-  };
-
-  static inline String addrToIPv4 (struct sockaddr_in* sin) {
-    char buf[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
-    return String(buf);
-  }
-
-  static inline String addrToIPv6 (struct sockaddr_in6* sin) {
-    char buf[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &sin->sin6_addr, buf, INET6_ADDRSTRLEN);
-    return String(buf);
-  }
-
-  static inline void parseAddress (struct sockaddr *name, int* port, char* address) {
-    struct sockaddr_in *name_in = (struct sockaddr_in *) name;
-    *port = ntohs(name_in->sin_port);
-    uv_ip4_name(name_in, address, 17);
-  }
-
-  class Bluetooth {
-    public:
-      using SendFunction = Function<void(const String, JSON::Any, Post)>;
-      using EmitFunction = Function<void(const String, JSON::Any)>;
-      using Callback = Function<void(String, JSON::Any)>;
-
-      Core *core = nullptr;
-      #if defined(__APPLE__)
-      SSCBluetoothController* controller= nullptr;
-      #endif
-
-      SendFunction sendFunction;
-      EmitFunction emitFunction;
-
-      Bluetooth ();
-      ~Bluetooth ();
-      bool send (const String& seq, JSON::Any json, Post post);
-      bool send (const String& seq, JSON::Any json);
-      bool emit (const String& seq, JSON::Any json);
-      void startScanning ();
-      void publishCharacteristic (
-        const String& seq,
-        char* bytes,
-        size_t size,
-        const String& serviceId,
-        const String& characteristicId,
-        Callback callback
-      );
-      void subscribeCharacteristic (
-        const String& seq,
-        const String& serviceId,
-        const String& characteristicId,
-        Callback callback
-      );
-      void startService (
-        const String& seq,
-        const String& serviceId,
-        Callback callback
-      );
-  };
-
   class Core {
     public:
-      class Module {
-        public:
-          using Callback = Function<void(String, JSON::Any, Post)>;
-          struct RequestContext {
-            String seq;
-            Module::Callback cb;
-            RequestContext () = default;
-            RequestContext (String seq, Module::Callback cb) {
-              this->seq = seq;
-              this->cb = cb;
-            }
-          };
-
-          Core *core = nullptr;
-          Module (Core* core) {
-            this->core = core;
-          }
-      };
-
       class Diagnostics : public Module {
         public:
           Diagnostics (auto core) : Module(core) {}
@@ -399,14 +79,15 @@ namespace SSC {
 
           struct Descriptor {
             uint64_t id;
-            std::atomic<bool> retained = false;
-            std::atomic<bool> stale = false;
+            Atomic<bool> retained = false;
+            Atomic<bool> stale = false;
+            UniquePointer<FileResource> resource = nullptr;
             Mutex mutex;
             uv_dir_t *dir = nullptr;
             uv_file fd = 0;
             Core *core;
 
-            Descriptor (Core *core, uint64_t id);
+            Descriptor (Core *core, uint64_t id, const String& filename);
             bool isDirectory ();
             bool isFile ();
             bool isRetained ();
@@ -448,7 +129,7 @@ namespace SSC {
             uint32_t getBufferSize ();
           };
 
-        #if !defined(__ANDROID__)
+        #if !SSC_PLATFORM_ANDROID
           std::map<uint64_t, FileSystemWatcher*> watchers;
         #endif
 
@@ -842,6 +523,9 @@ namespace SSC {
       Diagnostics diagnostics;
       DNS dns;
       FS fs;
+      Geolocation geolocation;
+      NetworkStatus networkStatus;
+      Notifications notifications;
       OS os;
       Platform platform;
       ProtocolHandlers protocolHandlers;
@@ -849,7 +533,7 @@ namespace SSC {
       Timers timers;
       UDP udp;
 
-      std::shared_ptr<Posts> posts;
+      Posts posts;
       std::map<uint64_t, Peer*> peers;
 
       Mutex loopMutex;
@@ -866,9 +550,9 @@ namespace SSC {
 
       uv_loop_t eventLoop;
       uv_async_t eventLoopAsync;
-      std::queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
+      Queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
 
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
         DISPATCH_QUEUE_SERIAL,
         QOS_CLASS_DEFAULT,
@@ -890,6 +574,9 @@ namespace SSC {
         diagnostics(this),
         dns(this),
         fs(this),
+        geolocation(this),
+        networkStatus(this),
+        notifications(this),
         os(this),
         platform(this),
         protocolHandlers(this),
@@ -897,7 +584,6 @@ namespace SSC {
         udp(this),
         serviceWorker(this)
       {
-        this->posts = std::shared_ptr<Posts>(new Posts());
         initEventLoop();
       }
 
@@ -971,6 +657,10 @@ namespace SSC {
     const String& state,
     const String& value
   );
+
+  void setcwd (const String& cwd);
+  const String getcwd ();
+  const String getcwd_state_value ();
 } // SSC
 
 #endif // SSC_CORE_CORE_H

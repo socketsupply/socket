@@ -118,7 +118,7 @@ extern "C" {
 
       if (!attachment.hasException()) {
         auto size = result.post.length;
-        auto body = result.post.body;
+        auto body = *result.post.body;
         auto bytes = body ? env->NewByteArray(size) : nullptr;
 
         if (bytes != nullptr) {

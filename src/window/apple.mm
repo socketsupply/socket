@@ -1,140 +1,50 @@
 #include "window.hh"
 #include "../ipc/ipc.hh"
 
-@implementation SSCNavigationDelegate
--    (void) webView: (WKWebView*) webView
-  didFailNavigation: (WKNavigation*) navigation
-          withError: (NSError*) error
-{
-  // TODO(@jwerle)
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@implementation SSCWindowDelegate
+@end
+@implementation SSCWindow : NSObject
+@end
+#else
+@implementation SSCWindow
+- (void) layoutIfNeeded {
+  [super layoutIfNeeded];
+
+  if (self.titleBarView == nullptr || self.titleBarView.subviews.count > 0) return;
+
+  NSButton *closeButton = [self standardWindowButton:NSWindowCloseButton];
+  NSButton *minimizeButton = [self standardWindowButton:NSWindowMiniaturizeButton];
+  NSButton *zoomButton = [self standardWindowButton:NSWindowZoomButton];
+
+  if (closeButton && minimizeButton && zoomButton) {
+    [self.titleBarView addSubview: closeButton];
+    [self.titleBarView addSubview: minimizeButton];
+    [self.titleBarView addSubview: zoomButton];
+  }
 }
 
--               (void) webView: (WKWebView*) webView
-  didFailProvisionalNavigation: (WKNavigation*) navigation
-                     withError: (NSError*) error {
-  // TODO(@jwerle)
-}
-
--                    (void) webView: (WKWebView*) webview
-    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-                    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler
-{
-  if (
-    webview != nullptr &&
-    webview.URL != nullptr &&
-    webview.URL.absoluteString.UTF8String != nullptr &&
-    navigationAction != nullptr &&
-    navigationAction.request.URL.absoluteString.UTF8String != nullptr
-  ) {
-    auto userConfig = self.bridge->userConfig;
-    static const auto devHost = SSC::getDevHost();
-    static const auto links = SSC::parseStringList(userConfig["meta_application_links"], ' ');
-
-    auto base = SSC::String(webview.URL.absoluteString.UTF8String);
-    auto request = SSC::String(navigationAction.request.URL.absoluteString.UTF8String);
-
-    const auto applinks = SSC::parseStringList(userConfig["meta_application_links"], ' ');
-    bool hasAppLink = false;
-
-    if (applinks.size() > 0 && navigationAction.request.URL.host != nullptr) {
-      auto host = SSC::String(navigationAction.request.URL.host.UTF8String);
-      for (const auto& applink : applinks) {
-        const auto parts = SSC::split(applink, '?');
-        if (host == parts[0]) {
-          hasAppLink = true;
-          break;
-        }
-      }
+- (void)sendEvent:(NSEvent *)event {
+  if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
+    if (event.type == NSEventTypeLeftMouseDown) {
+      [self.webview mouseDown:event];
     }
 
-    if (hasAppLink) {
-      if (self.bridge != nullptr) {
-        decisionHandler(WKNavigationActionPolicyCancel);
-        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-          "url", request
-        }};
-
-        self.bridge->router.emit("applicationurl", json.str());
-        return;
-      }
-    }
-
-    if (
-      userConfig["meta_application_protocol"].size() > 0 &&
-      request.starts_with(userConfig["meta_application_protocol"]) &&
-      !request.starts_with("socket://" + userConfig["meta_bundle_identifier"])
-    ) {
-      if (self.bridge != nullptr) {
-        decisionHandler(WKNavigationActionPolicyCancel);
-
-        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-          "url", request
-        }};
-
-        self.bridge->router.emit("applicationurl", json.str());
-        return;
-      }
-    }
-
-    if (!self.bridge->router.isNavigationAllowed(request)) {
-      debug("Navigation was ignored for: %s", request.c_str());
-      decisionHandler(WKNavigationActionPolicyCancel);
+    if (event.type == NSEventTypeLeftMouseDragged) {
+      [self.webview mouseDragged:event];
       return;
     }
   }
 
-  decisionHandler(WKNavigationActionPolicyAllow);
-}
-
--                    (void) webView: (WKWebView*) webView
-  decidePolicyForNavigationResponse: (WKNavigationResponse*) navigationResponse
-                    decisionHandler: (void (^)(WKNavigationResponsePolicy)) decisionHandler {
-  decisionHandler(WKNavigationResponsePolicyAllow);
+  [super sendEvent:event];
 }
 @end
-
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-  @implementation SSCWindowDelegate
-  @end
-  @implementation SSCWindow : NSObject
-  @end
-#else
-  @implementation SSCWindow
-    - (void)layoutIfNeeded {
-      [super layoutIfNeeded];
-
-      if (self.titleBarView == nullptr || self.titleBarView.subviews.count > 0) return;
-
-      NSButton *closeButton = [self standardWindowButton:NSWindowCloseButton];
-      NSButton *minimizeButton = [self standardWindowButton:NSWindowMiniaturizeButton];
-      NSButton *zoomButton = [self standardWindowButton:NSWindowZoomButton];
-
-      if (closeButton && minimizeButton && zoomButton) {
-        [self.titleBarView addSubview: closeButton];
-        [self.titleBarView addSubview: minimizeButton];
-        [self.titleBarView addSubview: zoomButton];
-      }
-    }
-
-    - (void)sendEvent:(NSEvent *)event {
-      if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
-        if (event.type == NSEventTypeLeftMouseDown) {
-          [self.webview mouseDown:event];
-        }
-
-        if (event.type == NSEventTypeLeftMouseDragged) {
-          [self.webview mouseDragged:event];
-          return;
-        }
-      }
-
-      [super sendEvent:event];
-    }
-  @end
-  @implementation SSCWindowDelegate
-    - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
-    }
-  @end
+@implementation SSCWindowDelegate
+- (void) userContentController: (WKUserContentController*) userContentController
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage
+{
+}
+@end
 #endif
 
 @implementation SSCBridgedWebView
@@ -144,21 +54,21 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
 
-- (void)viewDidChangeEffectiveAppearance {
+- (void) viewDidChangeEffectiveAppearance {
   [super viewDidChangeEffectiveAppearance];
 
   SSCWindow *window = (SSCWindow*) self.window;
 
   if (@available(macOS 10.14, *)) {
     if ([window.effectiveAppearance.name containsString:@"Dark"]) {
-      [window setBackgroundColor:[NSColor colorWithCalibratedWhite:0.1 alpha:1.0]]; // Dark mode color
+      [window setBackgroundColor: [NSColor colorWithCalibratedWhite:0.1 alpha:1.0]]; // Dark mode color
     } else {
-      [window setBackgroundColor:[NSColor colorWithCalibratedWhite:1.0 alpha:1.0]]; // Light mode color
+      [window setBackgroundColor: [NSColor colorWithCalibratedWhite:1.0 alpha:1.0]]; // Light mode color
     }
   }
 }
 
-- (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
+- (void) resizeSubviewsWithOldSize:(NSSize)oldSize {
   [super resizeSubviewsWithOldSize:oldSize];
 
   SSCWindow *w = (SSCWindow*) self.window;
@@ -182,7 +92,11 @@ int lastY = 0;
   w.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
 }
 
-- (instancetype)initWithFrame:(NSRect)frameRect configuration:(WKWebViewConfiguration *)configuration radius:(CGFloat)radius margin:(CGFloat)margin {
+- (instancetype) initWithFrame: (NSRect) frameRect
+                 configuration: (WKWebViewConfiguration*) configuration
+                        radius: (CGFloat) radius
+                        margin: (CGFloat) margin
+{
   self = [super initWithFrame:frameRect configuration: configuration];
 
   if (self && radius > 0.0) {
@@ -195,9 +109,9 @@ int lastY = 0;
   return self;
 }
 
-- (void)layout {
+- (void) layout {
   [super layout];
-  
+
   NSRect bounds = self.superview.bounds;
 
   if (self.radius > 0.0) {
@@ -878,8 +792,11 @@ namespace SSC {
       });
     });
 
-    // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
+    this->bridge->router.configureHandlers({
+      .webview = config
+    });
+
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     config.limitsNavigationsToAppBoundDomains = YES;
@@ -1008,48 +925,6 @@ namespace SSC {
       completionHandler: ^(){}
     ];
 
-    [config
-      setValue: @YES
-        forKey: @"allowUniversalAccessFromFileURLs"
-    ];
-
-    [config.preferences
-      setValue: @YES
-        forKey: @"allowFileAccessFromFileURLs"
-    ];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"npm"];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"ipc"];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"socket"];
-
-    [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"node"];
-
-    for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
-      const auto scheme = replace(trim(entry), ":", "");
-      if (app.core->protocolHandlers.registerHandler(scheme)) {
-        [config setURLSchemeHandler: bridge->router.schemeHandler
-                      forURLScheme: @(replace(trim(scheme), ":", "").c_str())];
-      }
-    }
-
-    for (const auto& entry : opts.userConfig) {
-      const auto& key = entry.first;
-      if (key.starts_with("webview_protocol-handlers_")) {
-        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
-        const auto data = entry.second;
-        if (app.core->protocolHandlers.registerHandler(scheme, { data })) {
-          [config setURLSchemeHandler: bridge->router.schemeHandler
-                         forURLScheme: @(scheme.c_str())];
-        }
-      }
-    }
-
     static const auto devHost = SSC::getDevHost();
     if (devHost.starts_with("http:")) {
       [config.processPool
@@ -1126,14 +1001,12 @@ namespace SSC {
     //
 
     windowDelegate = [SSCWindowDelegate new];
-    navigationDelegate = [SSCNavigationDelegate new];
-    navigationDelegate.bridge = this->bridge;
     [controller addScriptMessageHandler: windowDelegate name: @"external"];
 
     // set delegates
     window.delegate = windowDelegate;
     webview.UIDelegate = webview;
-    webview.navigationDelegate = navigationDelegate;
+    webview.navigationDelegate = this->bridge->navigator.navigationDelegate;
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -1437,10 +1310,6 @@ namespace SSC {
     if (this->windowDelegate != nullptr) {
       objc_removeAssociatedObjects(this->windowDelegate);
       this->windowDelegate = nullptr;
-    }
-
-    if (this->navigationDelegate != nullptr) {
-      this->navigationDelegate = nullptr;
     }
   }
 
