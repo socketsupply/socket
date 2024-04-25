@@ -17,8 +17,8 @@
 #endif
 
 // TODO(@jwerle): use a better name
-#if !defined(WAS_CODESIGNED)
-#define WAS_CODESIGNED 0
+#if !defined(SSC_PLATFORM_SANDBOXED)
+#define SSC_PLATFORM_SANDBOXED 0
 #endif
 
 // TODO(@jwerle): stop using this and prefer a namespaced macro

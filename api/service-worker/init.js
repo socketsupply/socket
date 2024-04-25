@@ -230,8 +230,6 @@ export async function onFetch (event) {
 
     method: event.detail.fetch.method,
     headers: event.detail.fetch.headers
-      .map((entry) => entry.split(':'))
-      .reduce((object, entry) => Object.assign(object, { [entry[0]]: entry.slice(1).join(':').trim() }), {})
   }
 
   const worker = workers.get(info.hash)

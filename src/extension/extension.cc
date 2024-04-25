@@ -5,40 +5,6 @@ namespace SSC {
   static Vector<String> initializedExtensions;
   static Mutex mutex;
 
-  static String getcwd () {
-    String cwd;
-  #if defined(__linux__) && !defined(__ANDROID__)
-    try {
-      auto canonical = fs::canonical("/proc/self/exe");
-      cwd = fs::path(canonical).parent_path().string();
-    } catch (...) {}
-  #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-    auto fileManager = [NSFileManager defaultManager];
-    auto currentDirectory = [fileManager currentDirectoryPath];
-    cwd = String([currentDirectory UTF8String]);
-  #elif defined(__APPLE__)
-    NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
-    cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
-
-  #elif defined(_WIN32)
-    wchar_t filename[MAX_PATH];
-    GetModuleFileNameW(NULL, filename, MAX_PATH);
-    auto path = fs::path { filename }.remove_filename();
-    cwd = path.string();
-    size_t last_pos = 0;
-    while ((last_pos = cwd.find('\\', last_pos)) != std::string::npos) {
-      cwd.replace(last_pos, 1, "\\\\");
-      last_pos += 2;
-    }
-  #endif
-
-  #ifndef _WIN32
-    std::replace(cwd.begin(), cwd.end(), '\\', '/');
-  #endif
-
-    return cwd;
-  }
-
   // explicit template instantiations
   template char* SSC::Extension::Context::Memory::alloc<char> (size_t);
   template sapi_context_t*

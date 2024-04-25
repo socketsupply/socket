@@ -3,6 +3,7 @@
 #include "preload.hh"
 #include "string.hh"
 #include "config.hh"
+#include "resource.hh"
 
 namespace SSC {
   String createPreload (
@@ -350,5 +351,82 @@ namespace SSC {
     }
 
     return preload;
+  }
+
+  String injectHTMLPreload (
+    const Core* core,
+    const Map userConfig,
+    String html,
+    String preload
+  ) {
+    if (html.size() == 0) {
+      return "";
+    }
+
+    if (userConfig.contains("webview_importmap") && userConfig.at("webview_importmap").size() > 0) {
+      auto resource = FileResource(Path(userConfig.at("webview_importmap")));
+
+      if (resource.exists()) {
+        const auto bytes = resource.read();
+
+        if (bytes != nullptr) {
+          const auto string = String(bytes, resource.size());
+
+          preload = (
+            String("<script type=\"importmap\">\n") +
+            string +
+            String("\n</script>\n") +
+            preload
+          );
+        }
+      }
+    }
+
+    auto protocolHandlers = Vector<String> { "npm:", "node:" };
+    for (const auto& entry : core->protocolHandlers.mapping) {
+      if (entry.first != "npm" && entry.first != "node") {
+        protocolHandlers.push_back(String(entry.first) + ":");
+      }
+    }
+
+    html = tmpl(html, Map {
+      {"protocol_handlers", join(protocolHandlers, " ")}
+    });
+
+    if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
+      preload = "";
+    } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
+      preload = "";
+    }
+
+    const auto existingImportMapCursor = html.find("<script type=\"importmap\">");
+    bool preloadWasInjected = false;
+
+    if (existingImportMapCursor != String::npos) {
+      const auto closingScriptTag = html.find("</script>", existingImportMapCursor);
+      if (closingScriptTag != String::npos) {
+        html = (
+          html.substr(0, closingScriptTag + 9) +
+          preload +
+          html.substr(closingScriptTag + 9)
+        );
+
+        preloadWasInjected = true;
+      }
+    }
+
+    if (!preloadWasInjected) {
+      if (html.find("<head>") != String::npos) {
+        html = replace(html, "<head>", String("<head>" + preload));
+      } else if (html.find("<body>") != String::npos) {
+        html = replace(html, "<body>", String("<body>" + preload));
+      } else if (html.find("<html>") != String::npos) {
+        html = replace(html, "<html>", String("<html>" + preload));
+      } else {
+        html = preload + html;
+      }
+    }
+
+    return html;
   }
 }

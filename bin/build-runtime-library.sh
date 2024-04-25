@@ -110,6 +110,7 @@ declare cflags
 
 if [[ "$platform" = "desktop" ]]; then
   sources+=("$root/src/window/hotkey.cc")
+  sources+=("$root/src/window/manager.cc")
 fi
 
 if [[ "$platform" = "android" ]]; then

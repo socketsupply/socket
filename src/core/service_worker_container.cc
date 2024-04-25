@@ -3,11 +3,6 @@
 
 #include "../ipc/ipc.hh"
 
-// TODO(@jwerle): create a better platform macro to drop this garbage below
-#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__)) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
-#include "../app/app.hh"
-#endif
-
 namespace SSC {
   static IPC::Bridge* serviceWorkerBridge = nullptr;
   static const String normalizeScope (const String& scope) {
@@ -25,7 +20,7 @@ namespace SSC {
   }
 
   const String ServiceWorkerContainer::FetchRequest::str () const {
-    auto string = this->scheme + "://" + this->host + this->pathname;
+    auto string = this->scheme + "://" + this->hostname + this->pathname;
 
     if (this->query.size() > 0) {
       string += String("?") + this->query;
@@ -331,7 +326,13 @@ namespace SSC {
         request = this->fetchRequests.at(id);
       } while (0);
 
-      const auto post = Post { 0, 0, request.buffer.bytes, request.buffer.size };
+      const auto post = Post {
+        0,
+        0,
+        request.buffer.bytes,
+        request.buffer.size
+      };
+
       reply(IPC::Result { message.seq, message, JSON::Object {}, post });
     });
 
@@ -390,7 +391,7 @@ namespace SSC {
         }});
       }
 
-      const auto headers = split(message.get("headers"), '\n');
+      const auto headers = Headers(message.get("headers"));
       auto response = FetchResponse {
         id,
         statusCode,
@@ -399,27 +400,11 @@ namespace SSC {
         { clientId }
       };
 
-      String contentType = "";
-
-      // find content type
-      for (const auto& entry : headers) {
-        auto pair = split(trim(entry), ':');
-        auto key = trim(pair[0]);
-        auto value = trim(pair[1]);
-
-        if (key == "content-type" || key == "Content-Type") {
-          contentType = value;
-          break;
-        }
-      }
-
-      bool freeResponseBody = false;
-
-      // XXX(@jwerle): we handle this in the android runtime
+    // XXX(@jwerle): we handle this in the android runtime
     #if !SSC_PLATFORM_ANDROID
       const auto extname = Path(request.pathname).extension().string();
       auto html = (message.buffer.bytes != nullptr && message.buffer.size > 0)
-        ? String(response.buffer.bytes, response.buffer.size)
+        ? String(*response.buffer.bytes, response.buffer.size)
         : String("");
 
       if (
@@ -427,7 +412,7 @@ namespace SSC {
         message.get("runtime-preload-injection") != "disabled" &&
         (
           message.get("runtime-preload-injection") == "always" ||
-          (extname.ends_with("html") || contentType == "text/html") ||
+          (extname.ends_with("html") || headers.get("content-type").value.string == "text/html") ||
           (html.find("<!doctype html") != String::npos || html.find("<!DOCTYPE HTML") != String::npos) ||
           (html.find("<html") != String::npos || html.find("<HTML") != String::npos) ||
           (html.find("<body") != String::npos || html.find("<BODY") != String::npos) ||
@@ -474,11 +459,10 @@ namespace SSC {
           html = preload + html;
         }
 
-        response.buffer.bytes = new char[html.size()]{0};
+        response.buffer.bytes = std::make_shared<char*>(new char[html.size()]{0});
         response.buffer.size = html.size();
-        freeResponseBody = true;
 
-        memcpy(response.buffer.bytes, html.c_str(), html.size());
+        memcpy(*response.buffer.bytes, html.c_str(), html.size());
       }
     #endif
 
@@ -486,10 +470,6 @@ namespace SSC {
       callback(response);
 
       reply(IPC::Result { message.seq, message });
-
-      if (freeResponseBody) {
-        delete response.buffer.bytes;
-      }
 
       do {
         Lock lock(this->mutex);
@@ -670,26 +650,13 @@ namespace SSC {
       return false;
     }
 
-    for (const auto& entry : request.headers) {
-      const auto parts = split(trim(entry), ':');
-      if (parts.size() == 2) {
-        const auto key = trim(parts[0]);
-        const auto value = trim(parts[1]);
+    if (request.headers.get("runtime-serviceworker-fetch-mode") == "ignore") {
+      return false;
+    }
 
-        if (
-          (key == "Runtime-ServiceWorker-Fetch-Mode" && value == "ignore") ||
-          (key == "runtime-serviceworker-fetch-mode" && value == "ignore")
-        ) {
-          return false;
-        }
-
-        if (
-          (key == "Runtime-Worker-Type" && value == "serviceworker") ||
-          (key == "runtime-worker-type" && value == "serviceworker")
-        ) {
-          return false;
-        }
-      }
+    // TODO(@jwerle): this prevents nested service worker fetches - do we want to prevent this?
+    if (request.headers.get("runtime-worker-type") == "serviceworker") {
+      return false;
     }
 
     for (const auto& entry : this->registrations) {
@@ -748,12 +715,6 @@ namespace SSC {
         return true;
       }
 
-      auto headers = JSON::Array {};
-
-      for (const auto& header : request.headers) {
-        headers.push(header);
-      }
-
       const auto id = rand64();
       const auto client = JSON::Object::Entries {
         {"id", std::to_string(request.client.id)}
@@ -766,11 +727,11 @@ namespace SSC {
       const auto fetch = JSON::Object::Entries {
         {"id", std::to_string(id)},
         {"method", request.method},
+        {"host", request.hostname},
         {"scheme", request.scheme},
-        {"host", request.host},
         {"pathname", pathname},
         {"query", request.query},
-        {"headers", headers},
+        {"headers", request.headers.json()},
         {"client", client}
       };
 

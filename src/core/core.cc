@@ -20,15 +20,13 @@ namespace SSC {
     return r;
   }
 
-  void msleep (uint64_t ms) {
-    std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-  }
-
   Post Core::getPost (uint64_t id) {
-    Lock lock(postsMutex);
-    if (posts->find(id) == posts->end()) return Post{};
-    return posts->at(id);
+    Lock lock(this->postsMutex);
+    if (this->posts.find(id) == this->posts.end()) {
+      return Post{};
+    }
+
+    return posts.at(id);
   }
 
 
@@ -39,28 +37,28 @@ namespace SSC {
   }
 
   bool Core::hasPost (uint64_t id) {
-    Lock lock(postsMutex);
-    return posts->find(id) != posts->end();
+    Lock lock(this->postsMutex);
+    return posts.find(id) != posts.end();
   }
 
   bool Core::hasPostBody (const char* body) {
     Lock lock(postsMutex);
     if (body == nullptr) return false;
-    for (auto const &tuple : *posts) {
+    for (const auto& tuple : posts) {
       auto post = tuple.second;
-      if (post.body == body) return true;
+      if (*post.body == body) return true;
     }
     return false;
   }
 
   void Core::expirePosts () {
-    Lock lock(postsMutex);
-    std::vector<uint64_t> ids;
-    auto now = std::chrono::system_clock::now()
+    Lock lock(this->postsMutex);
+    const auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
 
-    for (auto const &tuple : *posts) {
+    Vector<uint64_t> ids;
+    for (auto const &tuple : posts) {
       auto id = tuple.first;
       auto post = tuple.second;
 
@@ -82,19 +80,17 @@ namespace SSC {
     )
       .time_since_epoch()
       .count();
-    posts->insert_or_assign(id, p);
+
+    this->posts.insert_or_assign(id, p);
   }
 
   void Core::removePost (uint64_t id) {
-    Lock lock(postsMutex);
-    if (posts->find(id) == posts->end()) return;
-    auto post = getPost(id);
+    Lock lock(this->postsMutex);
 
-    if (post.body) {
-      delete [] post.body;
+    if (this->posts.find(id) == this->posts.end()) {
+      return;
     }
-
-    posts->erase(id);
+    posts.erase(id);
   }
 
   String Core::createPost (String seq, String params, Post post) {
@@ -141,7 +137,7 @@ namespace SSC {
     Lock lock(postsMutex);
     std::vector<uint64_t> ids;
 
-    for (auto const &tuple : *posts) {
+    for (auto const &tuple : posts) {
       auto id = tuple.first;
       ids.push_back(id);
     }
@@ -211,7 +207,7 @@ namespace SSC {
       }
     });
 
-#if defined(__linux__) && !defined(__ANDROID__)
+  #if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
     uvSource->core = this;
@@ -222,7 +218,7 @@ namespace SSC {
     );
 
     g_source_attach(source, nullptr);
-#endif
+  #endif
   }
 
   uv_loop_t* Core::getEventLoop () {
@@ -309,10 +305,10 @@ namespace SSC {
       startTimers();
     });
 
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
     Lock lock(loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-#elif defined(__ANDROID__) || !defined(__linux__)
+  #elif defined(__ANDROID__) || !defined(__linux__)
     Lock lock(loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
@@ -325,7 +321,7 @@ namespace SSC {
     }
 
     eventLoopThread = new std::thread(&pollEventLoop, this);
-#endif
+  #endif
   }
 
   static Timer releaseWeakDescriptors = {

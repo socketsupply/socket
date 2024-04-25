@@ -447,7 +447,7 @@ namespace SSC {
         }};
 
         post.id = rand64();
-        post.body = buf->base;
+        post.body = std::make_shared<char*>(buf->base);
         post.length = (int) nread;
         post.headers = headers.str();
 

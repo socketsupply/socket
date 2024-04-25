@@ -17,6 +17,8 @@ namespace SSC {
   String replace (const String& source, const std::regex& regex, const String& value);
   String tmpl (const String& source, const Map& variables);
   String trim (String source);
+  String toLowerCase (const String& source);
+  String toUpperCase (const String& source);
 
   // conversion
   WString convertStringToWString (const String& source);
@@ -33,6 +35,10 @@ namespace SSC {
   Vector<String> parseStringList (const String& string, const Vector<char>& separators);
   Vector<String> parseStringList (const String& string, const char separator);
   Vector<String> parseStringList (const String& string);
+
+#if SSC_PLATFORM_WINDOWS
+  String formatWindowsError (DWORD error, const String& source);
+#endif
 }
 
 #endif

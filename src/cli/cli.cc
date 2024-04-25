@@ -3078,9 +3078,9 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework OSLog";
       flags += " -DMACOS=1";
       if (flagCodeSign) {
-        flags += " -DWAS_CODESIGNED=1";
+        flags += " -DSSC_PLATFORM_SANDBOXED=1";
       } else {
-        flags += " -DWAS_CODESIGNED=0";
+        flags += " -DSSC_PLATFORM_SANDBOXED=0";
       }
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
@@ -4291,7 +4291,7 @@ int main (const int argc, const char* argv[]) {
         {"SSC_SETTINGS", _settings},
         {"SSC_VERSION", VERSION_STRING},
         {"SSC_VERSION_HASH", VERSION_HASH_STRING},
-        {"WAS_CODESIGNED", flagCodeSign ? "1" : "0"},
+        {"SSC_PLATFORM_SANDBOXED", flagCodeSign ? "1" : "0"},
         {"__ios_native_extensions_build_ids", ""},
         {"__ios_native_extensions_build_refs", ""},
         {"__ios_native_extensions_build_context_refs", ""},
@@ -6424,7 +6424,7 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (key.starts_with("$HOST_HOME") || key.starts_with("~")) {
-              const auto path = replace(replace(key, "$HOST_HOME", ""), "~", "");
+              const auto path = replace(replace(key, "^(\\$HOST_HOME)", ""), "^(~)", "");
               entitlementSettings["configured_entitlements"] += (
                 "    <string>" + (path.ends_with("/") ? path : path + "/") + "</string>\n"
               );

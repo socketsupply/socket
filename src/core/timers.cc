@@ -1,6 +1,11 @@
 #include "core.hh"
 
 namespace SSC {
+  void msleep (uint64_t ms) {
+    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  }
+
   const Core::Timers::ID Core::Timers::createTimer (uint64_t timeout, uint64_t interval, const Callback callback) {
     Lock lock(this->mutex);
 

@@ -4,6 +4,7 @@
 #include "../window/options.hh"
 
 namespace SSC {
+  class Core;
   struct PreloadOptions {
     bool module = false;
     bool wrap = false;
@@ -18,5 +19,12 @@ namespace SSC {
   inline SSC::String createPreload (WindowOptions opts) {
     return createPreload(opts, PreloadOptions {});
   }
+
+  String injectHTMLPreload (
+    const Core* core,
+    const Map userConfig,
+    String html,
+    String preload
+  );
 }
 #endif

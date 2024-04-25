@@ -2,6 +2,7 @@
 #define SSC_SERVICE_WORKER_CONTAINER_H
 
 #include "platform.hh"
+#include "headers.hh"
 #include "types.hh"
 #include "json.hh"
 
@@ -63,7 +64,6 @@ namespace SSC {
           const RegistrationOptions& options
         );
 
-        // les 5
         Registration (const Registration&);
         Registration (Registration&&);
         ~Registration () = default;
@@ -79,16 +79,16 @@ namespace SSC {
 
       struct FetchBuffer {
         size_t size = 0;
-        char* bytes = nullptr;
+        SharedPointer<char*> bytes = nullptr;
       };
 
       struct FetchRequest {
         String method;
         String scheme = "*";
-        String host = "";
+        String hostname = "";
         String pathname;
         String query;
-        Vector<String> headers;
+        Headers headers;
         FetchBuffer buffer;
         Client client;
 
@@ -98,7 +98,7 @@ namespace SSC {
       struct FetchResponse {
         uint64_t id = 0;
         int statusCode = 200;
-        Vector<String> headers;
+        Headers headers;
         FetchBuffer buffer;
         Client client;
       };
