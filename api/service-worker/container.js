@@ -320,7 +320,7 @@ export class ServiceWorkerContainer extends EventTarget {
       await preloadExistingRegistration(this)
     }
 
-    internal.get(this).init.resolve()
+    setTimeout(() => internal.get(this).init.resolve(), 250)
   }
 
   async getRegistration (clientURL) {
