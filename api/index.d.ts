@@ -1688,6 +1688,11 @@ declare module "socket:path/well-known" {
      */
     export const LOG: string | null;
     /**
+     * Well known path to the application's "tmp" folder.
+     * @type {?string}
+     */
+    export const TMP: string | null;
+    /**
      * Well known path to the application's "home" folder.
      * This may be the user's HOME directory or the application container sandbox.
      * @type {?string}
@@ -1705,6 +1710,7 @@ declare module "socket:path/well-known" {
         export { HOME };
         export { DATA };
         export { LOG };
+        export { TMP };
     }
     export default _default;
 }
@@ -2769,9 +2775,10 @@ declare module "socket:path/win32" {
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
     import { LOG } from "socket:path/well-known";
+    import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path/posix" {
@@ -2863,9 +2870,10 @@ declare module "socket:path/posix" {
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
     import { LOG } from "socket:path/well-known";
+    import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path/index" {
@@ -2885,9 +2893,10 @@ declare module "socket:path/index" {
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
     import { LOG } from "socket:path/well-known";
+    import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/index";
     
-    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path" {
@@ -2921,7 +2930,8 @@ declare module "socket:path" {
     import { HOME } from "socket:path/index";
     import { DATA } from "socket:path/index";
     import { LOG } from "socket:path/index";
-    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG };
+    import { TMP } from "socket:path/index";
+    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:fs/stream" {
@@ -4463,6 +4473,18 @@ declare module "socket:fs/index" {
      */
     export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
     /**
+     * Writes data to a file synchronously.
+     * @param {string | Buffer | URL | number } path - filename or file descriptor
+     * @param {string | Buffer | TypedArray | DataView | object } data
+     * @param {object?} options
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {string?} [options.mode ? 0o666]
+     * @param {string?} [options.flag ? 'w']
+     * @param {AbortSignal?} [options.signal]
+     * @see {@link https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options}
+     */
+    export function writeFileSync(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null): void;
+    /**
      * Watch for changes at `path` calling `callback`
      * @param {string}
      * @param {function|object=} [options]
@@ -4620,7 +4642,7 @@ declare module "socket:ipc" {
      * @return {Result}
      * @ignore
      */
-    export function sendSync(command: string, value?: any | null, options?: object | null): Result;
+    export function sendSync(command: string, value?: any | null, options?: object | null, buffer: any): Result;
     /**
      * Emit event to be dispatched on `window` object.
      * @param {string} name

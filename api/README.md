@@ -1213,7 +1213,22 @@ Unlinks (removes) file at `path`.
 | options.signal | AbortSignal? |  | true |  |
 | callback | function(Error?) |  | false |  |
 
-## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1262)
+## [`writeFileSync(path, data, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1265)
+
+External docs: https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options
+Writes data to a file synchronously.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
+| data | string \| Buffer \| TypedArray \| DataView \| object  |  | false |  |
+| options | object? |  | false |  |
+| options.encoding ? utf8 | string? |  | true |  |
+| options.mode ? 0o666 | string? |  | true |  |
+| options.flag ? w | string? |  | true |  |
+| options.signal | AbortSignal? |  | true |  |
+
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L1300)
 
 Watch for changes at `path` calling `callback`
 
@@ -1594,7 +1609,7 @@ Watch for changes at `path` calling `callback`
 This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1135)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1141)
 
 Emit event to be dispatched on `window` object.
 
@@ -1605,7 +1620,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1194)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1200)
 
 Sends an async IPC command request with parameters.
 
@@ -2003,12 +2018,12 @@ Converts this `Path` instance to a string.
 This is a `ClassDeclaration` named ``ProcessEnvironmentEvent` (extends `Event`)` in `api/process.js`, it's exported but undocumented.
 
 
-## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L26)
+## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L29)
 
 This is a `VariableDeclaration` named `env` in `api/process.js`, it's exported but undocumented.
 
 
-## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L170)
+## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L190)
 
 Adds callback to the 'nextTick' queue.
 
@@ -2016,7 +2031,7 @@ Adds callback to the 'nextTick' queue.
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | Function |  | false |  |
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L201)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L221)
 
 Computed high resolution time as a `BigInt`.
 
@@ -2028,7 +2043,7 @@ Computed high resolution time as a `BigInt`.
 | :---         | :--- | :---        |
 | Not specified | bigint |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L227)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L247)
 
 
 
@@ -2036,7 +2051,7 @@ Computed high resolution time as a `BigInt`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | code | number | 0 | true | The exit code. Default: 0. |
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L239)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L259)
 
 Returns an object describing the memory usage of the Node.js process measured in bytes.
 
