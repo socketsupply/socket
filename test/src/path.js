@@ -275,4 +275,5 @@ test('path - well known', (t) => {
   t.ok(path.HOME && typeof path.HOME === 'string', 'path.HOME')
   t.ok(path.DATA && typeof path.DATA === 'string', 'path.DATA')
   t.ok(path.LOG && typeof path.LOG === 'string', 'path.LOG')
+  t.ok(path.TMP && typeof path.TMP === 'string', 'path.TMP')
 })
