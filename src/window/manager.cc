@@ -3,7 +3,6 @@
 namespace SSC {
   WindowManager::WindowManager (App &app)
     : app(app),
-      inits(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED),
       windows(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED)
   {
     if (isDebugEnabled()) {
@@ -20,16 +19,11 @@ namespace SSC {
       return;
     }
 
-    for (auto window : windows) {
-      destroyWindow(window);
-    }
-
-    this->destroyed = true;
     this->windows.clear();
-    this->inits.clear();
+    this->destroyed = true;
   }
 
-  void WindowManager::WindowManager::configure (WindowManagerOptions configuration) {
+  void WindowManager::WindowManager::configure (const WindowManagerOptions& configuration) {
     if (this->destroyed) {
       return;
     }
@@ -50,7 +44,10 @@ namespace SSC {
     this->options.userConfig = getUserConfig();
   }
 
-  WindowManager::ManagedWindow* WindowManager::WindowManager::getWindow (int index, WindowStatus status) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getWindow (
+    int index,
+    WindowStatus status
+  ) {
     Lock lock(this->mutex);
     if (this->destroyed) {
       return nullptr;
@@ -66,23 +63,24 @@ namespace SSC {
     return nullptr;
   }
 
-  WindowManager::ManagedWindow* WindowManager::WindowManager::getWindow (int index) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getWindow (int index) {
     return this->getWindow(index, WindowStatus::WINDOW_EXITING);
   }
 
-  WindowManager::ManagedWindow* WindowManager::WindowManager::getOrCreateWindow (int index) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (int index) {
     return this->getOrCreateWindow(index, WindowOptions {});
   }
 
-  WindowManager::ManagedWindow* WindowManager::WindowManager::getOrCreateWindow (
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (
     int index,
-    WindowOptions opts
+    const WindowOptions& options
   ) {
     if (this->destroyed || index < 0) {
       return nullptr;
     }
 
     if (this->getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
+      WindowOptions opts = options;
       opts.index = index;
       return this->createWindow(opts);
     }
@@ -92,12 +90,14 @@ namespace SSC {
 
   WindowManager::WindowStatus WindowManager::getWindowStatus (int index) {
     Lock lock(this->mutex);
+
     if (this->destroyed) {
       return WindowStatus::WINDOW_NONE;
     }
 
-    if (index >= 0 && this->inits[index] && this->windows[index] != nullptr) {
-      return this->windows[index]->status;
+    const auto window = this->windows[index];
+    if (window != nullptr) {
+      return window->status;
     }
 
     return WindowStatus::WINDOW_NONE;
@@ -106,65 +106,50 @@ namespace SSC {
   void WindowManager::destroyWindow (int index) {
     Lock lock(this->mutex);
 
-    if (!this->destroyed && index >= 0 && this->inits[index] && this->windows[index] != nullptr) {
-      return this->destroyWindow(windows[index]);
-    }
-  }
-
-  void WindowManager::destroyWindow (ManagedWindow* window) {
-    if (!this->destroyed && window != nullptr) {
-      return this->destroyWindow(reinterpret_cast<Window*>(window));
-    }
-  }
-
-  void WindowManager::destroyWindow (Window* window) {
-    Lock lock(this->mutex);
-
-    if (!this->destroyed && window != nullptr && this->windows[window->index] != nullptr) {
-      auto metadata = reinterpret_cast<ManagedWindow*>(window);
-      this->inits[window->index] = false;
-      this->windows[window->index] = nullptr;
-
-      if (metadata->status < WINDOW_CLOSING) {
+    auto window = this->windows[index];
+    if (window != nullptr) {
+      if (window->status < WINDOW_CLOSING) {
         window->close(0);
       }
 
-      if (metadata->status < WINDOW_KILLING) {
+      if (window->status < WINDOW_KILLING) {
         window->kill();
       }
 
       if (!window->opts.canExit) {
-        delete window;
+        this->windows[index] = nullptr;
       }
     }
   }
 
-  WindowManager::ManagedWindow* WindowManager::createWindow (WindowOptions opts) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {
     Lock lock(this->mutex);
 
     if (this->destroyed) {
       return nullptr;
     }
 
-    StringStream env;
-
-    if (this->inits[opts.index] && this->windows[opts.index] != nullptr) {
-      return this->windows[opts.index];
+    if (this->windows.size() > options.index && this->windows[options.index] != nullptr) {
+      return this->windows[options.index];
     }
 
-    if (opts.userConfig.size() > 0) {
-      for (auto const &envKey : parseStringList(opts.userConfig["build_env"])) {
-        auto cleanKey = trim(envKey);
+    StringStream env;
 
-        if (!Env::has(cleanKey)) {
-          continue;
+    if (options.userConfig.size() > 0) {
+      if (options.userConfig.contains("build_env")) {
+        for (auto const &envKey : parseStringList(options.userConfig.at("build_env"))) {
+          auto cleanKey = trim(envKey);
+
+          if (!Env::has(cleanKey)) {
+            continue;
+          }
+
+          auto envValue = Env::get(cleanKey.c_str());
+
+          env << String(
+              cleanKey + "=" + encodeURIComponent(envValue) + "&"
+              );
         }
-
-        auto envValue = Env::get(cleanKey.c_str());
-
-        env << String(
-          cleanKey + "=" + encodeURIComponent(envValue) + "&"
-        );
       }
     } else {
       for (auto const &envKey : parseStringList(this->options.userConfig["build_env"])) {
@@ -184,68 +169,68 @@ namespace SSC {
 
     auto screen = Window::getScreenSize();
 
-    float width = opts.width <= 0
+    float width = options.width <= 0
       ? Window::getSizeInPixels(this->options.defaultWidth, screen.width)
-      : opts.width;
-    float height = opts.height <= 0
+      : options.width;
+    float height = options.height <= 0
       ? Window::getSizeInPixels(this->options.defaultHeight, screen.height)
-      : opts.height;
-    float minWidth = opts.minWidth <= 0
+      : options.height;
+    float minWidth = options.minWidth <= 0
       ? Window::getSizeInPixels(this->options.defaultMinWidth, screen.width)
-      : opts.minWidth;
-    float minHeight = opts.minHeight <= 0
+      : options.minWidth;
+    float minHeight = options.minHeight <= 0
       ? Window::getSizeInPixels(this->options.defaultMinHeight, screen.height)
-      : opts.minHeight;
-    float maxWidth = opts.maxWidth <= 0
+      : options.minHeight;
+    float maxWidth = options.maxWidth <= 0
       ? Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width)
-      : opts.maxWidth;
-    float maxHeight = opts.maxHeight <= 0
+      : options.maxWidth;
+    float maxHeight = options.maxHeight <= 0
       ? Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height)
-      : opts.maxHeight;
+      : options.maxHeight;
 
     WindowOptions windowOptions = {
-      .resizable = opts.resizable,
-      .minimizable = opts.minimizable,
-      .maximizable = opts.maximizable,
-      .closable = opts.closable,
-      .frameless = opts.frameless,
-      .utility = opts.utility,
-      .canExit = opts.canExit,
+      .resizable = options.resizable,
+      .minimizable = options.minimizable,
+      .maximizable = options.maximizable,
+      .closable = options.closable,
+      .frameless = options.frameless,
+      .utility = options.utility,
+      .canExit = options.canExit,
       .width = width,
       .height = height,
       .minWidth = minWidth,
       .minHeight = minHeight,
       .maxWidth = maxWidth,
       .maxHeight = maxHeight,
-      .radius = opts.radius,
-      .margin = opts.margin,
-      .index = opts.index,
-      .debug = isDebugEnabled() || opts.debug,
+      .radius = options.radius,
+      .margin = options.margin,
+      .index = options.index,
+      .debug = isDebugEnabled() || options.debug,
       .isTest = this->options.isTest,
-      .headless = opts.headless,
-      .aspectRatio = opts.aspectRatio,
-      .titlebarStyle = opts.titlebarStyle,
-      .windowControlOffsets = opts.windowControlOffsets,
-      .backgroundColorLight = opts.backgroundColorLight,
-      .backgroundColorDark = opts.backgroundColorDark,
+      .headless = options.headless,
+      .aspectRatio = options.aspectRatio,
+      .titlebarStyle = options.titlebarStyle,
+      .windowControlOffsets = options.windowControlOffsets,
+      .backgroundColorLight = options.backgroundColorLight,
+      .backgroundColorDark = options.backgroundColorDark,
       .cwd = this->options.cwd,
-      .title = opts.title.size() > 0 ? opts.title : "",
-      .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
+      .title = options.title.size() > 0 ? options.title : "",
+      .url = options.url.size() > 0 ? options.url : "data:text/html,<html>",
       .argv = this->options.argv,
-      .preload = opts.preload.size() > 0 ? opts.preload : "",
+      .preload = options.preload.size() > 0 ? options.preload : "",
       .env = env.str(),
       .userConfig = this->options.userConfig,
-      .userScript = opts.userScript,
-      .runtimePrimordialOverrides = opts.runtimePrimordialOverrides,
-      .preloadCommonJS = opts.preloadCommonJS != false
+      .userScript = options.userScript,
+      .runtimePrimordialOverrides = options.runtimePrimordialOverrides,
+      .preloadCommonJS = options.preloadCommonJS != false
     };
 
-    for (const auto& tuple : opts.userConfig) {
+    for (const auto& tuple : options.userConfig) {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }
 
     if (isDebugEnabled()) {
-      this->log("Creating Window#" + std::to_string(opts.index));
+      this->log("Creating Window#" + std::to_string(options.index));
     }
 
     auto window = new ManagedWindow(*this, app, windowOptions);
@@ -254,37 +239,39 @@ namespace SSC {
     window->onExit = this->options.onExit;
     window->onMessage = this->options.onMessage;
 
-    this->windows[opts.index] = window;
-    this->inits[opts.index] = true;
+    this->windows[options.index].reset(window);
 
-    return window;
+    return this->windows.at(options.index);
   }
 
-  WindowManager::ManagedWindow* WindowManager::createDefaultWindow (WindowOptions opts) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::createDefaultWindow (const WindowOptions& options) {
     return this->createWindow(WindowOptions {
-      .resizable = opts.resizable,
-      .minimizable = opts.minimizable,
-      .maximizable = opts.maximizable,
-      .closable = opts.closable,
-      .frameless = opts.frameless,
-      .utility = opts.utility,
+      .resizable = options.resizable,
+      .minimizable = options.minimizable,
+      .maximizable = options.maximizable,
+      .closable = options.closable,
+      .frameless = options.frameless,
+      .utility = options.utility,
       .canExit = true,
-      .width = opts.width,
-      .height = opts.height,
+      .width = options.width,
+      .height = options.height,
       .index = 0,
     #ifdef PORT
       .port = PORT,
     #endif
-      .headless = opts.userConfig["build_headless"] == "true",
-      .titlebarStyle = opts.titlebarStyle,
-      .windowControlOffsets = opts.windowControlOffsets,
-      .backgroundColorLight = opts.backgroundColorLight,
-      .backgroundColorDark = opts.backgroundColorDark,
-      .userConfig = opts.userConfig
+      .headless = (
+        options.userConfig.contains("build_headless") &&
+        options.userConfig.at("build_headless") == "true"
+      ),
+      .titlebarStyle = options.titlebarStyle,
+      .windowControlOffsets = options.windowControlOffsets,
+      .backgroundColorLight = options.backgroundColorLight,
+      .backgroundColorDark = options.backgroundColorDark,
+      .userConfig = options.userConfig
     });
   }
 
-  JSON::Array WindowManager::json (Vector<int> indices) {
+  JSON::Array WindowManager::json (const Vector<int>& indices) {
     auto i = 0;
     JSON::Array result;
     for (auto index : indices) {
@@ -358,17 +345,11 @@ namespace SSC {
       status = WindowStatus::WINDOW_KILLING;
       Window::kill();
       status = WindowStatus::WINDOW_KILLED;
-      gc();
+      manager.destroyWindow(this->opts.index);
     }
   }
 
-  void WindowManager::ManagedWindow::gc () {
-    if (App::instance() != nullptr) {
-      manager.destroyWindow(reinterpret_cast<Window*>(this));
-    }
-  }
-
-  JSON::Object WindowManager::ManagedWindow::json () {
+  JSON::Object WindowManager::ManagedWindow::json () const {
     auto index = this->opts.index;
     auto size = this->getSize();
     uint64_t id = 0;

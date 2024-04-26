@@ -751,92 +751,9 @@ namespace SSC {
       // UNREACHABLE - cannot continue
     }
 
-    static const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
-    static const int MAX_CUSTOM_SCHEME_REGISTRATIONS = 64;
-
-    struct SchemeRegistration {
-      String scheme;
-    };
-
-    ICoreWebView2CustomSchemeRegistration* registrations[MAX_CUSTOM_SCHEME_REGISTRATIONS] = {};
-    Vector<SchemeRegistration> schemeRegistrations;
-
-    schemeRegistrations.push_back({ "ipc" });
-    schemeRegistrations.push_back({ "socket" });
-    schemeRegistrations.push_back({ "node" });
-    schemeRegistrations.push_back({ "npm" });
-
-    for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
-      const auto scheme = replace(trim(entry), ":", "");
-      if (app.core->protocolHandlers.registerHandler(scheme)) {
-        schemeRegistrations.push_back({ scheme });
-      }
-    }
-
-    for (const auto& entry : opts.userConfig) {
-      const auto& key = entry.first;
-      if (key.starts_with("webview_protocol-handlers_")) {
-        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
-        const auto data = entry.second;
-        if (app.core->protocolHandlers.registerHandler(scheme, { data })) {
-          schemeRegistrations.push_back({ scheme });
-        }
-      }
-    }
-
-    Set<String> origins;
-    Set<String> protocols = {
-      "about",
-      "https",
-      "socket",
-      "npm",
-      "node"
-    };
-
-    static const auto devHost = SSC::getDevHost();
-    const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {};
-    int allowedOriginsCount = 0;
-    int registrationsCount = 0;
-
-    if (devHost.starts_with("http:")) {
-      allowedOrigins[allowedOriginsCount] = convertStringToWString(devHost).c_str();
-    }
-
-    for (const auto& schemeRegistration : schemeRegistrations) {
-      protocols.insert(schemeRegistration.scheme);
-    }
-
-    for (const auto& protocol : protocols) {
-      if (origins.size() == MAX_ALLOWED_SCHEME_ORIGINS) {
-        break;
-      }
-
-      const auto origin = protocol + "://*";
-      origins.insert(origin);
-      allowedOrigins[allowedOriginsCount++] = convertStringToWString(origin).c_str();
-    }
-
-    Set<ComPtr<CoreWebView2CustomSchemeRegistration>> customSchemeRegistrations;
-    for (const auto& schemeRegistration : schemeRegistrations) {
-      auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
-        convertStringToWString(schemeRegistration.scheme).c_str()
-      );
-
-      registration->put_HasAuthorityComponent(TRUE);
-      registration->put_TreatAsSecure(TRUE);
-      registration->SetAllowedOrigins(origins.size(), allowedOrigins);
-
-      customSchemeRegistrations.insert(registration);
-    }
-
-    for (const auto& registration : customSchemeRegistrations) {
-      registrations[registrationsCount++] = registration.Get();
-    }
-
-    options4->SetCustomSchemeRegistrations(
-      registrationsCount,
-      static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations)
-    );
+    this->bridge->router.configureHandlers({
+      options
+    });
 
     auto init = [&, opts]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
@@ -911,38 +828,6 @@ namespace SSC {
                     COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
                   );
 
-                  EventRegistrationToken tokenNavigation;
-
-                  webview->add_NavigationStarting(
-                    Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
-                      [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
-                        static const auto devHost = SSC::getDevHost();
-
-                        PWSTR uri;
-                        e->get_Uri(&uri);
-                        SSC::String url(SSC::convertWStringToString(uri));
-                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-
-                        if (url.starts_with(userConfig["meta_application_protocol"])) {
-                          e->put_Cancel(true);
-                          if (w != nullptr) {
-                            SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-                              "url", url
-                            }};
-                            w->bridge->router.emit("applicationurl", json.str());
-                          }
-                        } else if (!w->bridge->router.isNavigationAllowed(url)) {
-                          debug("Navigation was ignored for: %s", url.c_str());
-                          e->put_Cancel(true);
-                        }
-
-                        CoTaskMemFree(uri);
-                        return S_OK;
-                      }
-                    ).Get(),
-                    &tokenNavigation
-                  );
-
                   EventRegistrationToken tokenSchemaFilter;
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
 
@@ -961,18 +846,42 @@ namespace SSC {
 
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                      [&, opts](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
-                        static auto userConfig = SSC::getUserConfig();
-                        static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-
-                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-
-                        ICoreWebView2WebResourceRequest* req = nullptr;
+                      [&, opts](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* event) {
+                        ICoreWebView2WebResourceRequest* platformRequest  = nullptr;
+                        ICoreWebView2HttpRequestHeaders* headers = nullptr;
                         ICoreWebView2Environment* env = nullptr;
                         ICoreWebView2_2* webview2 = nullptr;
 
-                        LPWSTR req_uri;
-                        LPWSTR req_method;
+
+                        LPWSTR method;
+                        LPWSTR uri;
+
+                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
+                        webview2->get_Environment(&env);
+                        event->get_Request(&platformRequest);
+
+                        platformRequest->get_Headers(&headers);
+                        platformRequest->get_Method(&method);
+                        platformRequest->get_Uri(&uri);
+
+                        auto request = IPC::SchemeHandlers::Request::Builder(this->bridge->router->schemeHandlers, platformRequest);
+
+                        request.setMethod(convertWStringToString(method));
+
+                        do {
+                          ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
+                          BOOL hasCurrent = FALSE;
+                          CHECK_FAILURE(headers->GetIterator(&iterator));
+                          while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
+                            LPWSTR name;
+                            LPWSTR value;
+
+                            if (iterator->GetCurrentHeader(&name, &value) == S_OK) {
+                              request.setHeader(convertWStringToString(name), convertWStringToString(value));
+                            }
+                          }
+                        } while (0);
+
 
                         String method;
                         String uri;
@@ -1738,13 +1647,19 @@ namespace SSC {
     });
   }
 
-  SSC::String Window::getTitle () {
-    int len = GetWindowTextLength(window) + 1;
-    LPTSTR title = new TCHAR[len];
-    GetWindowText(window, title, len);
-    String title_s = convertWStringToString(title);
-    delete[] title;
-    return title_s;
+  const String Window::getTitle () const {
+    if (window != nullptr) {
+      const auto size = GetWindowTextLength(window) + 1;
+      LPTSTR text = new TCHAR[size]{0};
+      if (text != nullptr) {
+        GetWindowText(window, text, size);
+        const auto title = convertWStringToString(text);
+        delete [] text;
+        return title;
+      }
+    }
+
+    return "";
   }
 
   void Window::setTitle (const SSC::String& title) {
@@ -1760,11 +1675,15 @@ namespace SSC {
 
     // Make sure controller exists, and the call to get window bounds succeeds.
     if (controller != nullptr && controller->get_Bounds(&rect) >= 0) {
-      height = rect.bottom - rect.top;
-      width = rect.right - rect.left;
+      this->height = rect.bottom - rect.top;
+      this->width = rect.right - rect.left;
     }
 
-    return { static_cast<int>(height), static_cast<int>(width) };
+    return { static_cast<int>(this->height), static_cast<int>(this->width) };
+  }
+
+  ScreenSize Window::getSize () const {
+    return { static_cast<int>(this->height), static_cast<int>(this->width) };
   }
 
   void Window::setSize (int width, int height, int hints) {
@@ -1779,11 +1698,11 @@ namespace SSC {
     SetWindowLong(window, GWL_STYLE, style);
 
     if (hints == WINDOW_HINT_MAX) {
-      m_maxsz.x = width;
-      m_maxsz.y = height;
+      maximumSize.x = width;
+      maximumSize.y = height;
     } else if (hints == WINDOW_HINT_MIN) {
-      m_minsz.x = width;
-      m_minsz.y = height;
+      minimumSize.x = width;
+      minimumSize.y = height;
     } else {
       RECT r;
       r.left = r.top = 0;
