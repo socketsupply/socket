@@ -1088,7 +1088,7 @@ class IPCSearchParams extends URLSearchParams {
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, value, options = {}) {
+export function sendSync (command, value, options = {}, buffer) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1107,8 +1107,14 @@ export function sendSync (command, value, options = {}) {
   }
 
   request.responseType = options?.responseType ?? ''
-  request.open('GET', uri, false)
-  request.send()
+
+  if (buffer) {
+    request.open('POST', uri, false)
+    request.send(buffer)
+  } else {
+    request.open('GET', uri, false)
+    request.send()
+  }
 
   const response = getRequestResponse(request, options)
   const headers = request.getAllResponseHeaders()
