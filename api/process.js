@@ -16,6 +16,9 @@ let didEmitExitEvent = false
 let cwd = primordials.cwd
 
 export class ProcessEnvironmentEvent extends Event {
+  key
+  value
+
   constructor (type, key, value) {
     super(type)
     this.key = key
@@ -29,7 +32,7 @@ export const env = Object.defineProperties(new EventTarget(), {
     enumerable: false,
     writable: false,
     value: new Proxy({}, {
-      get (_, property, receiver) {
+      get (_, property) {
         if (Reflect.has(env, property)) {
           return Reflect.get(env, property)
         }
@@ -46,9 +49,21 @@ export const env = Object.defineProperties(new EventTarget(), {
 
       deleteProperty (_, property) {
         if (Reflect.has(env, property)) {
+          // @ts-ignore
           env.dispatchEvent(new ProcessEnvironmentEvent('delete', property))
         }
         return Reflect.deleteProperty(env, property)
+      },
+
+      getOwnPropertyDescriptor (_, property) {
+        if (Reflect.has(globalThis.__args.env, property)) {
+          return {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: globalThis.__args.env[property]
+          }
+        }
       },
 
       has (_, property) {
@@ -69,8 +84,11 @@ export const env = Object.defineProperties(new EventTarget(), {
 })
 
 class Process extends EventEmitter {
+  // @ts-ignore
   stdin = new tty.ReadStream(0)
+  // @ts-ignore
   stdout = new tty.WriteStream(1)
+  // @ts-ignore
   stderr = new tty.WriteStream(2)
 
   get version () {
@@ -152,7 +170,9 @@ if (!isNode) {
   })
 
   globalThis.addEventListener('signal', (event) => {
+    // @ts-ignore
     if (event.detail.signal) {
+      // @ts-ignore
       const code = event.detail.signal
       const name = signal.getName(code)
       const message = signal.getMessage(code)
