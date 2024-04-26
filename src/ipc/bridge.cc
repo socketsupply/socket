@@ -22,6 +22,18 @@
 extern const SSC::Map SSC::getUserConfig ();
 extern bool SSC::isDebugEnabled ();
 
+// create a proxy module so imports of the module of concern are imported
+// exactly once at the canonical URL (file:///...) in contrast to module
+// URLs (socket:...)
+
+static constexpr auto moduleTemplate =
+R"S(
+import module from '{{url}}'
+export * from '{{url}}'
+export default module
+)S";
+
+
 using namespace SSC;
 using namespace SSC::IPC;
 
@@ -38,12 +50,18 @@ static const Vector<String> allowedNodeCoreModules = {
   "dns/promises",
   "events",
   "fs",
+  "fs/constants",
   "fs/promises",
   "http",
   "https",
+  "ip",
+  "module",
   "net",
   "os",
+  "os/constants",
   "path",
+  "path/posix",
+  "path/win32",
   "perf_hooks",
   "process",
   "querystring",
@@ -55,717 +73,13 @@ static const Vector<String> allowedNodeCoreModules = {
   "timers",
   "timers/promises",
   "tty",
-  "util",
   "url",
+  "util",
   "vm",
   "worker_threads"
 };
 
-static void registerSchemeHandler (Router *router) {
-  static const auto MAX_BODY_BYTES = 4 * 1024 * 1024;
-  static const auto devHost = SSC::getDevHost();
-  static Atomic<bool> isInitialized = false;
-
-  if (isInitialized) {
-    return;
-  }
-
-  isInitialized = true;
-
-#if defined(__linux__) && !defined(__ANDROID__)
-  auto ctx = webkit_web_context_get_default();
-  auto security = webkit_web_context_get_security_manager(ctx);
-
-  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
-    IPC::Router* router = nullptr;
-
-    auto webview = webkit_uri_scheme_request_get_web_view(request);
-    auto windowManager = App::instance()->getWindowManager();
-
-    for (auto& window : windowManager->windows) {
-      if (
-        window != nullptr &&
-        window->bridge != nullptr &&
-        WEBKIT_WEB_VIEW(window->webview) == webview
-      ) {
-        router = &window->bridge->router;
-        break;
-      }
-    }
-
-    auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto method = String(webkit_uri_scheme_request_get_http_method(request));
-    auto message = IPC::Message{ uri };
-    char bytes[MAX_BODY_BYTES]{0};
-
-    if ((method == "POST" || method == "PUT")) {
-      auto body = webkit_uri_scheme_request_get_http_body(request);
-      if (body) {
-        GError* error = nullptr;
-        message.buffer.bytes = new char[MAX_BODY_BYTES]{0};
-
-        const auto success = g_input_stream_read_all(
-          body,
-          message.buffer.bytes,
-          MAX_BODY_BYTES,
-          &message.buffer.size,
-          nullptr,
-          &error
-        );
-
-        if (!success) {
-          delete message.buffer.bytes;
-          webkit_uri_scheme_request_finish_error(
-            request,
-            error
-          );
-          return;
-        }
-      }
-    }
-
-    auto invoked = router->invoke(message, message.buffer.bytes, message.buffer.size, [=](auto result) {
-      auto json = result.str();
-      auto size = result.post.body != nullptr ? result.post.length : json.size();
-      auto body = result.post.body != nullptr ? result.post.body : json.c_str();
-
-      char* data = nullptr;
-
-      if (size > 0) {
-        data = new char[size]{0};
-        memcpy(data, body, size);
-      }
-
-      auto stream = g_memory_input_stream_new_from_data(data, size, nullptr);
-      auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-      auto response = webkit_uri_scheme_response_new(stream, size);
-
-      soup_message_headers_append(headers, "cache-control", "no-cache");
-      for (const auto& header : result.headers.entries) {
-        soup_message_headers_append(headers, header.key.c_str(), header.value.c_str());
-      }
-
-      if (result.post.body) {
-        webkit_uri_scheme_response_set_content_type(response, IPC_BINARY_CONTENT_TYPE);
-      } else {
-        webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
-      }
-
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_input_stream_close_async(stream, 0, nullptr, +[](
-        GObject* object,
-        GAsyncResult* asyncResult,
-        gpointer userData
-      ) {
-        auto stream = (GInputStream*) object;
-        g_input_stream_close_finish(stream, asyncResult, nullptr);
-        g_object_unref(stream);
-        g_idle_add_full(
-          G_PRIORITY_DEFAULT_IDLE,
-          (GSourceFunc) [](gpointer userData) {
-            return G_SOURCE_REMOVE;
-          },
-          userData,
-           [](gpointer userData) {
-            delete [] static_cast<char *>(userData);
-          }
-        );
-      }, data);
-    });
-
-    if (!invoked) {
-      auto err = JSON::Object::Entries {
-        {"source", uri},
-        {"err", JSON::Object::Entries {
-          {"message", "Not found"},
-          {"type", "NotFoundError"},
-          {"url", uri}
-        }}
-      };
-
-      auto msg = JSON::Object(err).str();
-      auto size = msg.size();
-      auto bytes = msg.c_str();
-      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-      auto response = webkit_uri_scheme_response_new(stream, msg.size());
-
-      webkit_uri_scheme_response_set_status(response, 404, "Not found");
-      webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
-    }
-  },
-  router,
-  0);
-
-  webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
-    IPC::Router* router = nullptr;
-
-    auto webview = webkit_uri_scheme_request_get_web_view(request);
-    auto windowManager = App::instance()->getWindowManager();
-
-    for (auto& window : windowManager->windows) {
-      if (
-        window != nullptr &&
-        window->bridge != nullptr &&
-        WEBKIT_WEB_VIEW(window->webview) == webview
-      ) {
-        router = &window->bridge->router;
-        break;
-      }
-    }
-
-    auto userConfig = router->bridge->userConfig;
-    bool isModule = false;
-    auto method = String(webkit_uri_scheme_request_get_http_method(request));
-    auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto cwd = getcwd();
-    uint64_t clientId = router->bridge->id;
-
-    if (uri.starts_with("socket:///")) {
-      uri = uri.substr(10);
-    } else if (uri.starts_with("socket://")) {
-      uri = uri.substr(9);
-    } else if (uri.starts_with("socket:")) {
-      uri = uri.substr(7);
-    }
-
-    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-    auto path = String(
-      uri.starts_with(bundleIdentifier)
-        ? uri.substr(bundleIdentifier.size())
-        : "socket/" + uri
-    );
-
-    auto parsedPath = Router::parseURLComponents(path);
-    auto ext = fs::path(parsedPath.path).extension().string();
-
-    if (ext.size() > 0 && !ext.starts_with(".")) {
-      ext = "." + ext;
-    }
-
-    if (!uri.starts_with(bundleIdentifier)) {
-      path = parsedPath.path;
-      if (ext.size() == 0 && !path.ends_with(".js")) {
-        path += ".js";
-        ext = ".js";
-      }
-
-      if (parsedPath.queryString.size() > 0) {
-        path += String("?") + parsedPath.queryString;
-      }
-
-      if (parsedPath.fragment.size() > 0) {
-        path += String("#") + parsedPath.fragment;
-      }
-
-      uri = "socket://" + bundleIdentifier + "/" + path;
-      auto moduleSource = trim(tmpl(
-        moduleTemplate,
-        Map { {"url", String(uri)} }
-      ));
-
-      auto size = moduleSource.size();
-      auto bytes = moduleSource.data();
-      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-
-      if (stream) {
-        auto response = webkit_uri_scheme_response_new(stream, size);
-        webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
-        webkit_uri_scheme_request_finish_with_response(request, response);
-        g_object_unref(stream);
-      } else {
-        webkit_uri_scheme_request_finish_error(
-          request,
-          g_error_new(
-            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-            1,
-            "Failed to create response stream"
-          )
-        );
-      }
-      return;
-    }
-
-    auto resolved = Router::resolveURLPathForWebView(parsedPath.path, cwd);
-    auto mount = Router::resolveNavigatorMountForWebView(parsedPath.path);
-    path = resolved.path;
-
-    if (mount.path.size() > 0) {
-      if (mount.resolution.redirect) {
-        auto redirectURL = resolved.path;
-        if (parsedPath.queryString.size() > 0) {
-          redirectURL += "?" + parsedPath.queryString;
-        }
-
-        if (parsedPath.fragment.size() > 0) {
-          redirectURL += "#" + parsedPath.fragment;
-        }
-
-        auto redirectSource = String(
-          "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
-        );
-
-        auto size = redirectSource.size();
-        auto bytes = redirectSource.data();
-        auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-
-        if (stream) {
-          auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-          auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
-          auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
-
-          soup_message_headers_append(headers, "location", redirectURL.c_str());
-          soup_message_headers_append(headers, "content-location", contentLocation.c_str());
-
-          webkit_uri_scheme_response_set_http_headers(response, headers);
-          webkit_uri_scheme_response_set_content_type(response, "text/html");
-          webkit_uri_scheme_request_finish_with_response(request, response);
-
-          g_object_unref(stream);
-        } else {
-          webkit_uri_scheme_request_finish_error(
-            request,
-            g_error_new(
-              g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-              1,
-              "Failed to create response stream"
-            )
-          );
-        }
-
-        return;
-      }
-    } else if (path.size() == 0) {
-      if (userConfig.contains("webview_default_index")) {
-        path = userConfig["webview_default_index"];
-      } else {
-        if (router->core->serviceWorker.registrations.size() > 0) {
-          auto requestHeaders = webkit_uri_scheme_request_get_http_headers(request);
-          auto fetchRequest = ServiceWorkerContainer::FetchRequest {};
-
-          fetchRequest.client.id = clientId;
-          fetchRequest.client.preload = router->bridge->preload;
-
-          fetchRequest.method = method;
-          fetchRequest.scheme = "socket";
-          fetchRequest.host = userConfig["meta_bundle_identifier"];
-          fetchRequest.pathname = parsedPath.path;
-          fetchRequest.query = parsedPath.queryString;
-
-          soup_message_headers_foreach(
-            requestHeaders,
-            [](auto name, auto value, auto userData) {
-              auto fetchRequest = reinterpret_cast<ServiceWorkerContainer::FetchRequest*>(userData);
-              const auto entry = String(name) + ": " + String(value);
-              fetchRequest->headers.push_back(entry);
-            },
-            &fetchRequest
-          );
-
-          if ((method == "POST" || method == "PUT")) {
-            auto body = webkit_uri_scheme_request_get_http_body(request);
-            if (body) {
-              GError* error = nullptr;
-              fetchRequest.buffer.bytes = new char[MAX_BODY_BYTES]{0};
-
-              const auto success = g_input_stream_read_all(
-                body,
-                fetchRequest.buffer.bytes,
-                MAX_BODY_BYTES,
-                &fetchRequest.buffer.size,
-                nullptr,
-                &error
-              );
-
-              if (!success) {
-                delete fetchRequest.buffer.bytes;
-                webkit_uri_scheme_request_finish_error(
-                  request,
-                  error
-                );
-                return;
-              }
-            }
-          }
-
-          const auto fetched = router->core->serviceWorker.fetch(fetchRequest, [=] (auto res) mutable {
-            if (res.statusCode == 0) {
-              webkit_uri_scheme_request_finish_error(
-                request,
-                g_error_new(
-                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-                  1,
-                  "%.*s",
-                  (int) res.buffer.size,
-                  res.buffer.bytes
-                )
-              );
-              return;
-            }
-
-            const auto webviewHeaders = split(userConfig["webview_headers"], '\n');
-            auto stream = g_memory_input_stream_new_from_data(res.buffer.bytes, res.buffer.size, 0);
-
-            if (!stream) {
-              webkit_uri_scheme_request_finish_error(
-                request,
-                g_error_new(
-                  g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-                  1,
-                  "Failed to create response stream"
-                )
-              );
-              return;
-            }
-
-            auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-            auto response = webkit_uri_scheme_response_new(stream, (gint64) res.buffer.size);
-
-            for (const auto& line : webviewHeaders) {
-              auto pair = split(trim(line), ':');
-              auto key = trim(pair[0]);
-              auto value = trim(pair[1]);
-              soup_message_headers_append(headers, key.c_str(), value.c_str());
-            }
-
-            for (const auto& line : res.headers) {
-              auto pair = split(trim(line), ':');
-              auto key = trim(pair[0]);
-              auto value = trim(pair[1]);
-
-              if (key == "content-type" || key == "Content-Type") {
-                webkit_uri_scheme_response_set_content_type(response, value.c_str());
-              }
-
-              soup_message_headers_append(headers, key.c_str(), value.c_str());
-            }
-
-            webkit_uri_scheme_response_set_http_headers(response, headers);
-            webkit_uri_scheme_request_finish_with_response(request, response);
-
-            g_object_unref(stream);
-          });
-
-          if (fetched) {
-            return;
-          } else {
-            if (fetchRequest.buffer.bytes != nullptr) {
-              delete fetchRequest.buffer.bytes;
-            }
-          }
-        }
-      }
-    } else if (resolved.redirect) {
-      auto redirectURL = resolved.path;
-      if (parsedPath.queryString.size() > 0) {
-        redirectURL += "?" + parsedPath.queryString;
-      }
-
-      if (parsedPath.fragment.size() > 0) {
-        redirectURL += "#" + parsedPath.fragment;
-      }
-
-      auto redirectSource = String(
-        "<meta http-equiv=\"refresh\" content=\"0; url='" + redirectURL + "'\" />"
-      );
-
-      auto size = redirectSource.size();
-      auto bytes = redirectSource.data();
-      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-
-      if (!stream) {
-        webkit_uri_scheme_request_finish_error(
-          request,
-          g_error_new(
-            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-            1,
-            "Failed to create response stream"
-          )
-        );
-        return;
-      }
-
-      auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-      auto response = webkit_uri_scheme_response_new(stream, (gint64) size);
-      auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
-
-      soup_message_headers_append(headers, "location", redirectURL.c_str());
-      soup_message_headers_append(headers, "content-location", contentLocation.c_str());
-
-      webkit_uri_scheme_response_set_http_headers(response, headers);
-      webkit_uri_scheme_response_set_content_type(response, "text/html");
-      webkit_uri_scheme_request_finish_with_response(request, response);
-
-      g_object_unref(stream);
-      return;
-    }
-
-    if (mount.path.size() > 0) {
-      path = mount.path;
-    } else if (path.size() > 0) {
-      path = fs::absolute(fs::path(cwd) / path.substr(1)).string();
-    }
-
-    if (path.size() == 0 || !fs::exists(path)) {
-      auto stream = g_memory_input_stream_new_from_data(nullptr, 0, 0);
-
-      if (!stream) {
-        webkit_uri_scheme_request_finish_error(
-          request,
-          g_error_new(
-            g_quark_from_string(userConfig["meta_bundle_identifier"].c_str()),
-            1,
-            "Failed to create response stream"
-          )
-        );
-        return;
-      }
-
-      auto response = webkit_uri_scheme_response_new(stream, 0);
-
-      webkit_uri_scheme_response_set_status(response, 404, "Not found");
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
-      return;
-    }
-
-    WebKitURISchemeResponse* response = nullptr;
-    GInputStream* stream = nullptr;
-    gchar* mimeType = nullptr;
-    GError* error = nullptr;
-    char* data = nullptr;
-
-    auto webviewHeaders = split(userConfig["webview_headers"], '\n');
-    auto headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-
-    if (path.ends_with(".html")) {
-      auto script = router->bridge->preload;
-
-      if (userConfig["webview_importmap"].size() > 0) {
-        const auto file = Path(userConfig["webview_importmap"]);
-
-        if (fs::exists(file)) {
-          String string;
-          std::ifstream stream(file.string().c_str());
-          auto buffer = std::istreambuf_iterator<char>(stream);
-          auto end = std::istreambuf_iterator<char>();
-          string.assign(buffer, end);
-          stream.close();
-
-          script = (
-            String("<script type=\"importmap\">\n") +
-            string +
-            String("\n</script>\n") +
-            script
-          );
-        }
-      }
-
-      const auto file = Path(path);
-
-      if (fs::exists(file)) {
-        char* contents = nullptr;
-        gsize size = 0;
-        if (g_file_get_contents(file.c_str(), &contents, &size, &error)) {
-          String html = contents;
-          Vector<String> protocolHandlers = { "npm:", "node:" };
-          for (const auto& entry : router->core->protocolHandlers.mapping) {
-            protocolHandlers.push_back(String(entry.first) + ":");
-          }
-
-          html = tmpl(html, Map {
-            {"protocol_handlers", join(protocolHandlers, " ")}
-          });
-
-          if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
-            script = "";
-          } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
-            script = "";
-          }
-
-          if (html.find("<head>") != String::npos) {
-            html = replace(html, "<head>", String("<head>" + script));
-          } else if (html.find("<body>") != String::npos) {
-            html = replace(html, "<body>", String("<body>" + script));
-          } else if (html.find("<html>") != String::npos) {
-            html = replace(html, "<html>", String("<html>" + script));
-          } else {
-            html = script + html;
-          }
-
-          data = new char[html.size()]{0};
-          memcpy(data, html.data(), html.size());
-          g_free(contents);
-
-          stream = g_memory_input_stream_new_from_data(data, (gint64) html.size(), nullptr);
-
-          if (stream) {
-            response = webkit_uri_scheme_response_new(stream, -1);
-          } else {
-            delete [] data;
-            data = nullptr;
-          }
-        }
-      }
-    } else {
-      auto file = g_file_new_for_path(path.c_str());
-      auto size = fs::file_size(path);
-
-      if (file) {
-        stream = (GInputStream*) g_file_read(file, nullptr, &error);
-        g_object_unref(file);
-      }
-
-      if (stream) {
-        response = webkit_uri_scheme_response_new(stream, (gint64) size);
-        g_object_unref(stream);
-      }
-    }
-
-    if (!stream) {
-      webkit_uri_scheme_request_finish_error(request, error);
-      g_error_free(error);
-      return;
-    }
-
-    soup_message_headers_append(headers, "cache-control", "no-cache");
-    soup_message_headers_append(headers, "access-control-allow-origin", "*");
-    soup_message_headers_append(headers, "access-control-allow-methods", "*");
-    soup_message_headers_append(headers, "access-control-allow-headers", "*");
-    soup_message_headers_append(headers, "access-control-allow-credentials", "true");
-
-    for (const auto& line : webviewHeaders) {
-      auto pair = split(trim(line), ':');
-      auto key = trim(pair[0]);
-      auto value = trim(pair[1]);
-      soup_message_headers_append(headers, key.c_str(), value.c_str());
-    }
-
-    webkit_uri_scheme_response_set_http_headers(response, headers);
-
-    if (path.ends_with(".wasm")) {
-      webkit_uri_scheme_response_set_content_type(response, "application/wasm");
-    } else if (path.ends_with(".cjs") || path.ends_with(".mjs")) {
-      webkit_uri_scheme_response_set_content_type(response, "text/javascript");
-    } else if (path.ends_with(".ts")) {
-      webkit_uri_scheme_response_set_content_type(response, "application/typescript");
-    } else {
-      mimeType = g_content_type_guess(path.c_str(), nullptr, 0, nullptr);
-      if (mimeType) {
-        webkit_uri_scheme_response_set_content_type(response, mimeType);
-      } else {
-        webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
-      }
-    }
-
-    webkit_uri_scheme_request_finish_with_response(request, response);
-
-    if (data) {
-      g_input_stream_close_async(stream, 0, nullptr, +[](
-        GObject* object,
-        GAsyncResult* asyncResult,
-        gpointer userData
-      ) {
-        auto stream = (GInputStream*) object;
-        g_input_stream_close_finish(stream, asyncResult, nullptr);
-        g_object_unref(stream);
-        g_idle_add_full(
-          G_PRIORITY_DEFAULT_IDLE,
-          (GSourceFunc) [](gpointer userData) {
-            return G_SOURCE_REMOVE;
-          },
-          userData,
-           [](gpointer userData) {
-            delete [] static_cast<char *>(userData);
-          }
-        );
-      }, data);
-    } else {
-      g_object_unref(stream);
-    }
-
-    if (mimeType) {
-      g_free(mimeType);
-    }
-  },
-  router,
-  0);
-
-  webkit_web_context_register_uri_scheme(ctx, "node", [](auto request, auto ptr) {
-    auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto router = reinterpret_cast<IPC::Router*>(ptr);
-    auto userConfig = router->bridge->userConfig;
-
-    const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-
-    if (uri.starts_with("node:///")) {
-      uri = uri.substr(10);
-    } else if (uri.starts_with("node://")) {
-      uri = uri.substr(9);
-    } else if (uri.starts_with("node:")) {
-      uri = uri.substr(7);
-    }
-
-    auto path = String("socket/" + uri);
-    auto ext = fs::path(path).extension().string();
-
-    if (ext.size() > 0 && !ext.starts_with(".")) {
-      ext = "." + ext;
-    }
-
-    if (ext.size() == 0 && !path.ends_with(".js")) {
-      path += ".js";
-      ext = ".js";
-    }
-
-    uri = "socket://" + bundleIdentifier + "/" + path;
-
-    auto moduleSource = trim(tmpl(
-      moduleTemplate,
-      Map { {"url", String(uri)} }
-    ));
-
-    auto size = moduleSource.size();
-    auto bytes = moduleSource.data();
-    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-    auto response = webkit_uri_scheme_response_new(stream, size);
-
-    webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
-    webkit_uri_scheme_request_finish_with_response(request, response);
-    g_object_unref(stream);
-  },
-  router,
-  0);
-
-  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "ipc");
-  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "ipc");
-  webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
-  webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
-
-  if (devHost.starts_with("http:")) {
-    webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
-    webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
-    webkit_security_manager_register_uri_scheme_as_secure(security, "http");
-    webkit_security_manager_register_uri_scheme_as_local(security, "http");
-  }
-
-  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "socket");
-  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
-  webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
-  webkit_security_manager_register_uri_scheme_as_local(security, "socket");
-
-  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "node");
-  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "node");
-  webkit_security_manager_register_uri_scheme_as_secure(security, "node");
-  webkit_security_manager_register_uri_scheme_as_local(security, "node");
-#endif
-}
-
 namespace SSC::IPC {
-  Mutex Router::notificationMapMutex;
-  std::map<String, Router*> Router::notificationMap;
-
   static Vector<Bridge*> instances;
   static Mutex mutex;
 
@@ -775,8 +89,8 @@ namespace SSC::IPC {
 
   Bridge::Bridge (Core *core, Map userConfig)
     : userConfig(userConfig),
-      router(),
-      navigator(this)
+      navigator(this),
+      schemeHandlers(&this->router)
   {
     Lock lock(SSC::IPC::mutex);
     instances.push_back(this);
@@ -814,6 +128,10 @@ namespace SSC::IPC {
       this->router.emit("permissionchange", event.str());
     });
 
+    // on Linux, much of the Notification API is supported so these observers
+    // below are not needed as those events already occur in the webview
+    // we are patching for the other platforms
+  #if !SSC_PLATFORM_LINUX
     core->notifications.addPermissionChangeObserver(this->notificationsPermissionChangeObserver, [this](auto json) {
       JSON::Object event = JSON::Object::Entries {
         {"name", "notifications"},
@@ -831,6 +149,7 @@ namespace SSC::IPC {
         this->router.emit("notificationpresented", json.str());
       });
     }
+  #endif
 
   #if SSC_PLATFORM_DESKTOP
     auto defaultUserConfig = SSC::getUserConfig();
@@ -922,8 +241,11 @@ namespace SSC::IPC {
     Lock lock(SSC::IPC::mutex);
 
     // remove observers
-    core->networkStatus.removeObserver(this->networkStatusObserver);
     core->geolocation.removePermissionChangeObserver(this->geolocationPermissionChangeObserver);
+    core->networkStatus.removeObserver(this->networkStatusObserver);
+    core->notifications.removePermissionChangeObserver(this->notificationsPermissionChangeObserver);
+    core->notifications.removeNotificationResponseObserver(this->notificationResponseObserver);
+    core->notifications.removeNotificationPresentedObserver(this->notificationPresentedObserver);
 
     const auto cursor = std::find(instances.begin(), instances.end(), this);
     if (cursor != instances.end()) {
@@ -959,5 +281,593 @@ namespace SSC::IPC {
 
   const Vector<String>& Bridge::getAllowedNodeCoreModules () const {
     return allowedNodeCoreModules;
+  }
+
+  void Bridge::configureHandlers (const SchemeHandlers::Configuration& configuration) {
+    this->schemeHandlers.configure(configuration);
+    this->schemeHandlers.registerSchemeHandler("ipc", [this](
+      const auto& request,
+      const auto router,
+      auto& callbacks,
+      auto callback
+    ) {
+      auto message = Message(request.url(), true);
+
+      // handle special 'ipc://post' case
+      if (message.name == "post") {
+        uint64_t id = 0;
+
+        try {
+          id = std::stoull(message.get("id"));
+        } catch (...) {
+          auto response = SchemeHandlers::Response(request, 400);
+          response.send(JSON::Object::Entries {
+            {"err", JSON::Object::Entries {
+              {"message", "Invalid 'id' given in parameters"}
+            }}
+          });
+
+          callback(response);
+          return;
+        }
+
+        if (!this->core->hasPost(id)) {
+          auto response = SchemeHandlers::Response(request, 404);
+          response.send(JSON::Object::Entries {
+            {"err", JSON::Object::Entries {
+              {"message", "A 'Post' was not found for the given 'id' in parameters"},
+              {"type", "NotFoundError"}
+            }}
+          });
+
+          callback(response);
+          return;
+        }
+
+        auto response = SchemeHandlers::Response(request, 200);
+        const auto post = this->core->getPost(id);
+
+        // handle raw headers in 'Post' object
+        if (post.headers.size() > 0) {
+          const auto lines = split(trim(post.headers), '\n');
+          for (const auto& line : lines) {
+            const auto pair = split(trim(line), ':');
+            const auto key = trim(pair[0]);
+            const auto value = trim(pair[1]);
+            response.setHeader(key, value);
+          }
+        }
+
+        response.write(post.length, post.body);
+        callback(response);
+        this->core->removePost(id);
+        return;
+      }
+
+      message.isHTTP = true;
+      message.cancel = std::make_shared<MessageCancellation>();
+
+      callbacks.cancel = [message] () {
+        if (message.cancel->handler != nullptr) {
+          message.cancel->handler(message.cancel->data);
+        }
+      };
+
+      const auto size = request.body.size;
+      const auto bytes = request.body.bytes != nullptr ? *request.body.bytes : nullptr;
+      const auto invoked = this->router.invoke(message, bytes, size, [request, message, callback](Result result) {
+        if (!request.isActive()) {
+          return;
+        }
+
+        auto response = SchemeHandlers::Response(request);
+
+        response.setHeaders(result.headers);
+        response.setHeader("access-control-allow-origin", "*");
+        response.setHeader("access-control-allow-methods", "GET, POST, PUT, DELETE");
+        response.setHeader("access-control-allow-headers", "*");
+        response.setHeader("access-control-allow-credentials", "true");
+
+        // handle event source streams
+        if (result.post.eventStream != nullptr) {
+          response.setHeader("content-type", "text/event-stream");
+          response.setHeader("cache-control", "no-store");
+          *result.post.eventStream = [request, response, message, callback](
+            const char* name,
+            const char* data,
+            bool finished
+          ) mutable {
+            if (request.isCancelled()) {
+              if (message.cancel->handler != nullptr) {
+                message.cancel->handler(message.cancel->data);
+              }
+              return false;
+            }
+
+            response.writeHead(200);
+
+            const auto event = SchemeHandlers::Response::Event { name, data };
+
+            if (event.count() > 0) {
+              response.write(event.str());
+            }
+
+            if (finished) {
+              callback(response);
+            }
+
+            return true;
+          };
+          return;
+        }
+
+        // handle chunk streams
+        if (result.post.chunkStream != nullptr) {
+          response.setHeader("transfer-encoding", "chunked");
+          *result.post.chunkStream = [request, response, message, callback](
+            const char* chunk,
+            size_t size,
+            bool finished
+          ) mutable {
+            if (request.isCancelled()) {
+              if (message.cancel->handler != nullptr) {
+                message.cancel->handler(message.cancel->data);
+              }
+              return false;
+            }
+
+            response.writeHead(200);
+            response.write(size, chunk);
+
+            if (finished) {
+              callback(response);
+            }
+
+            return true;
+          };
+          return;
+        }
+
+        if (result.post.body != nullptr) {
+          response.write(result.post.length, result.post.body);
+        } else {
+          response.write(result.json());
+        }
+
+        callback(response);
+      });
+
+      if (!invoked) {
+        auto response = SchemeHandlers::Response(request, 404);
+        response.send(JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"message", "Not found"},
+            {"type", "NotFoundError"},
+            {"url", request.url()}
+          }}
+        });
+
+        callback(response);
+      }
+    });
+
+    this->schemeHandlers.registerSchemeHandler("socket", [this](
+      const auto& request,
+      const auto router,
+      auto& callbacks,
+      auto callback
+    ) {
+      auto userConfig = this->userConfig;
+      auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+      // the location of static application resources
+      const auto applicationResources = FileResource::getResourcesPath().string();
+      // default response is 404
+      auto response = SchemeHandlers::Response(request, 404);
+
+      // the resouce path that may be request
+      String resourcePath;
+
+      // the content location relative to the request origin
+      String contentLocation;
+
+      // application resource or service worker request at `socket://<bundle_identifier>/*`
+      if (request.hostname == bundleIdentifier) {
+        const auto resolved = Router::resolveURLPathForWebView(request.pathname, applicationResources);
+        const auto mount = Router::resolveNavigatorMountForWebView(request.pathname);
+
+        if (mount.resolution.redirect || resolved.redirect) {
+          auto pathname = mount.resolution.redirect
+            ? mount.resolution.pathname
+            : resolved.pathname;
+
+          if (request.method == "GET") {
+            auto location = mount.resolution.pathname;
+            if (request.query.size() > 0) {
+              location += "?" + request.query;
+            }
+
+            if (request.fragment.size() > 0) {
+              location += "#" + request.fragment;
+            }
+
+            response.redirect(location);
+            return callback(response);
+          }
+        } else if (mount.path.size() > 0) {
+          resourcePath = mount.path;
+        } else if (request.pathname == "" || request.pathname == "/") {
+          if (userConfig.contains("webview_default_index")) {
+            resourcePath = userConfig["webview_default_index"];
+            if (resourcePath.starts_with("./")) {
+              resourcePath = applicationResources + resourcePath.substr(1);
+            } else if (resourcePath.starts_with("/")) {
+              resourcePath = applicationResources + resourcePath;
+            } else {
+              resourcePath = applicationResources + + "/" + resourcePath;
+            }
+          }
+        }
+
+        if (resourcePath.size() == 0 && resolved.pathname.size() > 0) {
+          resourcePath = applicationResources + resolved.pathname;
+        }
+
+        // handle HEAD and GET requests for a file resource
+        if (resourcePath.size() > 0) {
+          contentLocation = replace(resourcePath, applicationResources, "");
+
+          auto resource = FileResource(resourcePath);
+
+          if (!resource.exists()) {
+            response.writeHead(404);
+          } else {
+            if (contentLocation.size() > 0) {
+              response.setHeader("content-location", contentLocation);
+            }
+
+            if (request.method == "OPTIONS") {
+              response.setHeader("access-control-allow-origin", "*");
+              response.setHeader("access-control-allow-methods", "GET, HEAD");
+              response.setHeader("access-control-allow-headers", "*");
+              response.setHeader("access-control-allow-credentials", "true");
+              response.writeHead(200);
+            }
+
+            if (request.method == "HEAD") {
+              const auto contentType = resource.mimeType();
+              const auto contentLength = resource.size();
+
+              if (contentType.size() > 0) {
+                response.setHeader("content-type", contentType);
+              }
+
+              if (contentLength > 0) {
+                response.setHeader("content-length", contentLength);
+              }
+
+              response.writeHead(200);
+            }
+
+            if (request.method == "GET") {
+              if (resource.mimeType() != "text/html") {
+                response.send(resource);
+              } else {
+                const auto html = injectHTMLPreload(
+                  this->core,
+                  userConfig,
+                  resource.str(),
+                  this->preload
+                );
+
+                response.setHeader("content-type", "text/html");
+                response.setHeader("content-length", html.size());
+                response.writeHead(200);
+                response.write(html);
+              }
+            }
+          }
+
+          return callback(response);
+        }
+
+        if (router->core->serviceWorker.registrations.size() > 0) {
+          const auto fetch = ServiceWorkerContainer::FetchRequest {
+            request.method,
+            request.scheme,
+            request.hostname,
+            request.pathname,
+            request.query,
+            request.headers,
+            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
+            ServiceWorkerContainer::Client { request.client.id, router->bridge->preload }
+          };
+
+          const auto fetched = router->core->serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
+            if (!request.isActive()) {
+              return;
+            }
+
+            response.writeHead(res.statusCode, res.headers);
+            response.write(res.buffer.size, res.buffer.bytes);
+            callback(response);
+          });
+
+          if (fetched) {
+            router->bridge->core->setTimeout(32000, [request] () mutable {
+              if (request.isActive()) {
+                auto response = SchemeHandlers::Response(request, 408);
+                response.fail("ServiceWorker request timed out.");
+              }
+            });
+            return;
+          }
+        }
+
+        response.writeHead(404);
+        return callback(response);
+      }
+
+      // module or stdlib import/fetch `socket:<module>/<path>` which will just
+      // proxy an import into a normal resource request above
+      if (request.hostname.size() == 0) {
+        auto pathname = request.pathname;
+
+        if (!pathname.ends_with(".js")) {
+          pathname += ".js";
+        }
+
+        if (!pathname.starts_with("/")) {
+          pathname = "/" + pathname;
+        }
+
+        resourcePath = applicationResources + "/socket" + pathname;
+        contentLocation = "/socket" + pathname;
+
+        auto resource = FileResource(resourcePath);
+
+        if (resource.exists()) {
+          const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
+          const auto module = tmpl(moduleTemplate, Map {{"url", url}});
+          const auto contentType = resource.mimeType();
+
+          if (contentType.size() > 0) {
+            response.setHeader("content-type", contentType);
+          }
+
+          response.setHeader("content-length", module.size());
+
+          if (contentLocation.size() > 0) {
+            response.setHeader("content-location", contentLocation);
+          }
+
+          response.writeHead(200);
+          response.write(trim(module));
+        }
+
+        return callback(response);
+      }
+
+      response.writeHead(404);
+      callback(response);
+    });
+
+    this->schemeHandlers.registerSchemeHandler("node", [this](
+      const auto& request,
+      const auto router,
+      auto& callbacks,
+      auto callback
+    ) {
+      auto userConfig = this->userConfig;
+      auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+      // the location of static application resources
+      const auto applicationResources = FileResource::getResourcesPath().string();
+      // default response is 404
+      auto response = SchemeHandlers::Response(request, 404);
+
+      // the resouce path that may be request
+      String resourcePath;
+
+      // the content location relative to the request origin
+      String contentLocation;
+
+      // module or stdlib import/fetch `socket:<module>/<path>` which will just
+      // proxy an import into a normal resource request above
+      if (request.hostname.size() == 0) {
+        static const auto allowedNodeCoreModules = this->getAllowedNodeCoreModules();
+        const auto isAllowedNodeCoreModule = allowedNodeCoreModules.end() != std::find(
+          allowedNodeCoreModules.begin(),
+          allowedNodeCoreModules.end(),
+          request.pathname.substr(1)
+        );
+
+        if (!isAllowedNodeCoreModule) {
+          response.writeHead(404);
+          return callback(response);
+        }
+
+        auto pathname = request.pathname;
+
+        if (!pathname.ends_with(".js")) {
+          pathname += ".js";
+        }
+
+        if (!pathname.starts_with("/")) {
+          pathname = "/" + pathname;
+        }
+
+        contentLocation = "/socket" + pathname;
+        resourcePath = applicationResources + contentLocation;
+
+        auto resource = FileResource(resourcePath);
+
+        if (!resource.exists()) {
+          if (!pathname.ends_with(".js")) {
+            pathname = request.pathname;
+
+            if (!pathname.starts_with("/")) {
+              pathname = "/" + pathname;
+            }
+
+            if (pathname.ends_with("/")) {
+              pathname = pathname.substr(0, pathname.size() - 1);
+            }
+
+            contentLocation = "/socket" + pathname + "/index.js";
+            resourcePath = applicationResources + contentLocation;
+          }
+
+          resource = FileResource(resourcePath);
+        }
+
+        if (resource.exists()) {
+          const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
+          const auto module = tmpl(moduleTemplate, Map {{"url", url}});
+          const auto contentType = resource.mimeType();
+
+          if (contentType.size() > 0) {
+            response.setHeader("content-type", contentType);
+          }
+
+          response.setHeader("content-length", module.size());
+
+          if (contentLocation.size() > 0) {
+            response.setHeader("content-location", contentLocation);
+          }
+
+          response.writeHead(200);
+          response.write(trim(module));
+        }
+
+        return callback(response);
+      }
+
+      response.writeHead(404);
+      callback(response);
+    });
+
+    Map protocolHandlers = {
+      {"npm", "/socket/npm/service-worker.js"}
+    };
+
+    for (const auto& entry : split(this->userConfig["webview_protocol-handlers"], " ")) {
+      const auto scheme = replace(trim(entry), ":", "");
+      if (this->core->protocolHandlers.registerHandler(scheme)) {
+        protocolHandlers.insert_or_assign(scheme, "");
+      }
+    }
+
+    for (const auto& entry : this->userConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        const auto data = entry.second;
+        if (this->core->protocolHandlers.registerHandler(scheme, { data })) {
+          protocolHandlers.insert_or_assign(scheme, data);
+        }
+      }
+    }
+
+    for (const auto& entry : protocolHandlers) {
+      const auto& scheme = entry.first;
+      const auto id = rand64();
+
+      auto scriptURL = trim(entry.second);
+
+      if (scriptURL.size() == 0) {
+        continue;
+      }
+
+      if (!scriptURL.starts_with(".") && !scriptURL.starts_with("/")) {
+        continue;
+      }
+
+      if (scriptURL.starts_with(".")) {
+        scriptURL = scriptURL.substr(1, scriptURL.size());
+      }
+
+      String scope = "/";
+
+      auto scopeParts = split(scriptURL, "/");
+      if (scopeParts.size() > 0) {
+        scopeParts = Vector<String>(scopeParts.begin(), scopeParts.end() - 1);
+        scope = join(scopeParts, "/");
+      }
+
+      scriptURL = (
+    #if SSC_PLATFORM_ANDROID
+        "https://" +
+    #else
+        "socket://" +
+    #endif
+        this->userConfig["meta_bundle_identifier"] +
+        scriptURL
+      );
+
+      this->core->serviceWorker.registerServiceWorker({
+        .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
+        .scope = scope,
+        .scriptURL = scriptURL,
+        .scheme = scheme,
+        .id = id
+      });
+
+      this->schemeHandlers.registerSchemeHandler(scheme, [this](
+        const auto& request,
+        const auto router,
+        auto& callbacks,
+        auto callback
+      ) {
+        if (this->core->serviceWorker.registrations.size() > 0) {
+          auto hostname = request.hostname;
+          auto pathname = request.pathname;
+
+          if (request.scheme == "npm") {
+            hostname = this->userConfig["meta_bundle_identifier"];
+          }
+
+          const auto scope = this->core->protocolHandlers.getServiceWorkerScope(request.scheme);
+
+          if (scope.size() > 0) {
+            pathname = scope + pathname;
+          }
+
+          const auto fetch = ServiceWorkerContainer::FetchRequest {
+            request.method,
+            request.scheme,
+            hostname,
+            pathname,
+            request.query,
+            request.headers,
+            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
+            ServiceWorkerContainer::Client { request.client.id, router->bridge->preload }
+          };
+
+          const auto fetched = this->core->serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
+            if (!request.isActive()) {
+              return;
+            }
+
+            auto response = SchemeHandlers::Response(request);
+            response.writeHead(res.statusCode, res.headers);
+            response.write(res.buffer.size, res.buffer.bytes);
+            callback(response);
+          });
+
+          if (fetched) {
+            this->core->setTimeout(32000, [request] () mutable {
+              if (request.isActive()) {
+                auto response = SchemeHandlers::Response(request, 408);
+                response.fail("Protocol handler ServiceWorker request timed out.");
+              }
+            });
+            return;
+          }
+        }
+
+        auto response = SchemeHandlers::Response(request);
+        response.writeHead(404);
+        callback(response);
+      });
+    }
   }
 }

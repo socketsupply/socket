@@ -4,6 +4,15 @@
 #include "../core/core.hh"
 #include "../core/platform.hh"
 
+#if SSC_PLATFORM_WINDOWS
+#include "WebView2.h"
+#include "WebView2EnvironmentOptions.h"
+#endif
+
+#if SSC_PLATFORM_APPLE
+@class SSCBridgeWebView;
+#endif
+
 namespace SSC::IPC {
   class Router;
   class SchemeHandlers;
@@ -159,6 +168,9 @@ namespace SSC::IPC {
         Atomic<bool> finished = false;
         SchemeHandlers* handlers = nullptr;
         PlatformResponse platformResponse = nullptr;
+      #if SSC_PLATFORM_LINUX
+        GInputStream* platformResponseStream = nullptr
+      #endif
 
         Response (
           const Request& request,
@@ -206,23 +218,24 @@ namespace SSC::IPC {
         RequestCallbacks& callbacks,
         HandlerCallback
       )>;
+
       using HandlerMap = std::map<String, Handler>;
       using RequestMap = std::map<uint64_t, Request>;
 
       struct Configuration {
       #if SSC_PLATFORM_APPLE
         WKWebViewConfiguration* webview = nullptr;
+      #elif
+        ComPtr<CoreWebView2EnvironmentOptions> webview = nullptr;
       #endif
       };
 
       Configuration configuration;
       Router* router = nullptr;
       HandlerMap handlers;
-      RequestMap requests;
-      Mutex mutex;
 
-    #if SSC_PLATFORM_LINUX
-      GInputStream* platformResponseStream = nullptr
+    #if SSC_PLATFORM_WINDOWS
+      Set<ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
     #endif
 
       SchemeHandlers (Router* router);
@@ -234,6 +247,14 @@ namespace SSC::IPC {
       bool handleRequest (const Request& request, const HandlerCallback calllback = nullptr);
       bool isRequestActive (uint64_t id);
       bool isRequestCancelled (uint64_t id);
+
+    #if SSC_PLATFORM_APPLE
+      void configureWebView (SSCBridgeWebView* webview);
+    #elif SSC_PLATFORM_LINUX
+      void configureWebView (WebKitWebView* webview);
+    #elif SSC_PLATFORM_WINDOWS
+      void configureWebView (ICoreWebView2* webview);
+    #endif
   };
 }
 

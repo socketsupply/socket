@@ -2,7 +2,6 @@
 #define SSC_IPC_ROUTER_H
 
 #include "../core/core.hh"
-#include "scheme_handlers.hh"
 #include "message.hh"
 #include "result.hh"
 
@@ -48,23 +47,8 @@ namespace SSC::IPC {
         String route; // root path in webview navigator
       };
 
-      struct WebViewURLComponents {
-        String originalURL;
-        String scheme = "";
-        String authority = "";
-        String pathname;
-        String query;
-        String fragment;
-      };
-
-      static WebViewURLComponents parseURLComponents (const String& url);
       static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
       static WebViewNavigatorMount resolveNavigatorMountForWebView (const String& path);
-
-    #if defined(__APPLE__)
-      static Mutex notificationMapMutex;
-      static std::map<String, Router*> notificationMap;
-    #endif
 
     private:
       Table preserved;
@@ -79,18 +63,17 @@ namespace SSC::IPC {
       Table table;
 
       Location location;
-      SchemeHandlers schemeHandlers;
 
       Core *core = nullptr;
       Bridge *bridge = nullptr;
 
-      Router ();
-      Router (const Router &) = delete;
-      ~Router ();
+      Router () = default;
+      Router (const Router&) = delete;
+      Router (const Router&&) = delete;
+      Router (Router&&) = delete;
 
       void init ();
       void init (Bridge* bridge);
-      void configureHandlers (const SchemeHandlers::Configuration& configuration);
 
       MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
       bool hasMappedBuffer (int index, const Message::Seq seq);

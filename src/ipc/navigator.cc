@@ -68,6 +68,75 @@ namespace SSC::IPC {
   #endif
   }
 
+  #if SSC_PLATFORM_LINUX
+  void Navigator::configureWebView (WebKitWebView* webview) {
+    g_signal_connect(
+      G_OBJECT(webview),
+      "decide-policy",
+      G_CALLBACK((+[](
+        WebKitWebView* webview,
+        WebKitPolicyDecision* decision,
+        WebKitPolicyDecisionType decisionType,
+        gpointer userData
+      ) {
+        auto navigator = reinterpret_cast<Navigator*>(userData);
+
+        if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+          webkit_policy_decision_use(decision);
+          return true;
+        }
+
+        const auto navigation = WEBKIT_NAVIGATION_POLICY_DECISION(decision);
+        const auto action = webkit_navigation_policy_decision_get_navigation_action(navigation);
+        const auto request = webkit_navigation_action_get_request(action);
+        const auto currentURL = String(webkit_web_view_get_uri(webview));
+        const auto requestedURL = String(webkit_uri_request_get_uri(request)
+
+        if (!navigator->handleNavigationRequest(currentURL, requestedURL)) {
+          webkit_policy_decision_ignore(decision);
+          return false;
+        }
+
+        return true;
+      })),
+      this
+    );
+  }
+  #elif SSC_PLATFORM_WINDOWS
+  void Navigator::configureWebView (ICoreWebView2* webview) {
+    EventRegistrationToken tokenNavigation;
+    webview->add_NavigationStarting(
+      Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
+        [this, &](ICoreWebView2* webview, ICoreWebView2NavigationStartingEventArgs *event) {
+          PWSTR source;
+          PWSTR uri;
+
+          event->get_Uri(&uri);
+          webview->get_Source(&source);
+
+          if (uri == nullptr || source == nullptr) {
+            if (uri) CoTaskMemFree(uri);
+            if (source) CoTaskMemFree(source);
+            return E_POIINTER;
+          }
+
+          const auto requestedURL = convertWStringToString(uri);
+          const auto currentURL = convertWStringToString(source);
+
+          if (!this->handleNavigationRequest(currentURL, requestedURL)) {
+            event->put_Cancel(true);
+          }
+
+          CoTaskMemFree(uri);
+          CoTaskMemFree(source);
+          return S_OK;
+        }
+      ).Get(),
+      &tokenNavigation
+    );
+  }
+#endif
+
   bool Navigator::handleNavigationRequest (
     const String& currentURL,
     const String& requestedURL
@@ -75,7 +144,7 @@ namespace SSC::IPC {
     auto userConfig = this->bridge->userConfig;
     const auto links = parseStringList(userConfig["meta_application_links"], ' ');
     const auto applinks = parseStringList(userConfig["meta_application_links"], ' ');
-    const auto currentURLComponents = Router::parseURLComponents(currentURL);
+    const auto currentURLComponents = URL::Components::parse(currentURL);
 
     bool hasAppLink = false;
     if (applinks.size() > 0 && currentURLComponents.authority.size() > 0) {

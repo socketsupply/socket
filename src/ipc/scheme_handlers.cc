@@ -2,6 +2,14 @@
 #include "ipc.hh"
 
 using namespace SSC;
+using namespace SSC::IPC;
+
+namespace SSC::IPC {
+  static struct {
+    SchemeHandlers::RequestMap map;
+    Mutex mutex;
+  } requests;
+}
 
 #if SSC_PLATFORM_APPLE
 using Task = id<WKURLSchemeTask>;
@@ -47,12 +55,11 @@ using Task = id<WKURLSchemeTask>;
 -    (void) webView: (SSCBridgedWebView*) webview
   stopURLSchemeTask: (Task) task
 {
-  Lock lock(mutex);
-
+  Lock lock(requests.mutex);
   if (tasks.contains(task)) {
     const auto id = tasks[task];
-    if (self.handlers->requests.contains(id)) {
-      auto& request = self.handlers->requests.at(id);
+    if (requests.map.contains(id)) {
+      auto& request = requests.map.at(id);
       request.cancelled = true;
       if (request.callbacks.cancel != nullptr) {
         request.callbacks.cancel();
@@ -66,6 +73,20 @@ using Task = id<WKURLSchemeTask>;
 -     (void) webView: (SSCBridgedWebView*) webview
   startURLSchemeTask: (Task) task
 {
+  if (self.handlers == nullptr) {
+    static auto userConfig = SSC::getUserConfig();
+    const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
+      ? userConfig.at("meta_bundle_identifier")
+      : "";
+
+    [task didFailWithError: [NSError
+         errorWithDomain: @(bundleIdentifier.c_str())
+                    code: 1
+                userInfo: @{NSLocalizedDescriptionKey: @("Request is invalid state")}
+    ]];
+    return;
+  }
+
   auto request = IPC::SchemeHandlers::Request::Builder(self.handlers, task)
     .setMethod(toUpperCase(task.request.HTTPMethod.UTF8String))
     // copies all headers
@@ -161,6 +182,7 @@ namespace SSC::IPC {
       ~SchemeHandlersInternals () {
       #if SSC_PLATFORM_APPLE
         if (this->schemeHandler != nullptr) {
+          this->schemeHandler.handlers = nullptr;
         #if !__has_feature(objc_arc)
           [this->schemeHandler release];
         #endif
@@ -175,6 +197,7 @@ namespace SSC::IPC {
 #if SSC_PLATFORM_LINUX
   static Set<String> globallyRegisteredSchemesForLinux;
 #endif
+
   static const std::map<int, String> STATUS_CODES = {
     {100, "Continue"},
     {101, "Switching Protocols"},
@@ -254,17 +277,33 @@ namespace SSC::IPC {
   }
 
   void SchemeHandlers::configure (const Configuration& configuration) {
+    static const auto devHost = SSC::getDevHost();
     this->configuration = configuration;
+  #if SSC_PLATFORM_APPLE
+    if (SSC::isDebugEnabled() && devHost.starts_with("http:")) {
+      [configuration.webview.processPool
+        performSelector: @selector(_registerURLSchemeAsSecure:)
+        withObject: @"http"
+      ];
+    }
+  #elif SSC_PLATFORM_LINUX
+    if (SSC::isDebugEnabled() && devHost.starts_with("http:")) {
+      auto webContext = webkit_web_context_get_default();
+      auto security = webkit_web_context_get_security_manager(webContext);
+
+      webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
+      webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
+      webkit_security_manager_register_uri_scheme_as_secure(security, "http");
+      webkit_security_manager_register_uri_scheme_as_local(security, "http");
+    }
+  #endif
   }
 
   bool SchemeHandlers::hasHandlerForScheme (const String& scheme) {
-    Lock lock(this->mutex);
     return this->handlers.contains(scheme);
   }
 
   bool SchemeHandlers::registerSchemeHandler (const String& scheme, const Handler& handler) {
-    Lock lock(this->mutex);
-
     if (scheme.size() == 0 || this->hasHandlerForScheme(scheme)) {
       return false;
     }
@@ -304,6 +343,40 @@ namespace SSC::IPC {
       );
     }
   #elif SSC_PLATFORM_WINDOWS
+    static const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
+    static const int MAX_CUSTOM_SCHEME_REGISTRATIONS = 64;
+
+    auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
+      convertStringToWString(scheme).c_str()
+    );
+
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options;
+    ICoreWebView2CustomSchemeRegistration* registrations[MAX_CUSTOM_SCHEME_REGISTRATIONS] = {};
+    const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {};
+    int i = 0;
+
+    for (const auto& entry : this->handlers) {
+      allowedOrigins[i++] = convertStringToWString(entry.first + "://*").c_str();
+    }
+
+    registration->put_HasAuthorityComponent(TRUE);
+    registration->SetAllowedOrigins(this->handlers.size(), allowedOrigins);
+
+    this->coreWebView2CustomSchemeRegistrations.insert(registration);
+
+    if (this->configuration.webview.As(&options) != S_OK) {
+      return false;
+    }
+
+    for (const auto& registration : this->coreWebView2CustomSchemeRegistrations) {
+      registrations[registrationsCount++] = registration.Get();
+    }
+
+    options->SetCustomSchemeRegistrations(
+      registrationsCount,
+      static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations)
+    );
+
   #endif
 
     this->handlers.insert_or_assign(scheme, handler);
@@ -314,13 +387,13 @@ namespace SSC::IPC {
     const Request& request,
     const HandlerCallback callback
   ) {
+    Lock lock(requests.mutex);
     // request was not finalized, likely not from a `Request::Builder`
     if (!request.finalized) {
       return false;
     }
 
-    // already an active request
-    if (this->requests.contains(request.id)) {
+    if (requests.map.contains(request.id)) {
       return false;
     }
 
@@ -357,7 +430,7 @@ namespace SSC::IPC {
       return true;
     }
 
-    const auto result = this->requests.insert_or_assign(request.id, std::move(request));
+    const auto result = requests.map.insert_or_assign(request.id, std::move(request));
     const auto id = request.id;
 
     // stored request reference
@@ -377,25 +450,37 @@ namespace SSC::IPC {
         callback(response);
       }
 
-      this->requests.erase(id);
+      Lock lock(requests.mutex);
+      requests.map.erase(id);
     });
 
     return true;
   }
 
   bool SchemeHandlers::isRequestActive (uint64_t id) {
-    Lock lock(this->mutex);
-    return this->requests.contains(id);
+    Lock lock(requests.mutex);
+    return requests.map.contains(id);
   }
 
   bool SchemeHandlers::isRequestCancelled (uint64_t id) {
-    Lock lock(this->mutex);
+    Lock lock(requests.mutex);
     return (
       id > 0 &&
-      this->requests.contains(id) &&
-      this->requests.at(id).cancelled
+      requests.map.contains(id) &&
+      requests.map.at(id).cancelled
     );
   }
+
+  #if SSC_PLATFORM_APPLE
+    void SchemeHandlers::configureWebView (SSCBridgeWebView* webview) {
+    }
+  #elif SSC_PLATFORM_LINUX
+    void SchemeHandlers::configureWebView (WebKitWebView* webview) {
+    }
+  #elif SSC_PLATFORM_WINDOWS
+    void SchemeHandlers::configureWebView (ICoreWebView2* webview) {
+    }
+  #endif
 
   SchemeHandlers::Request::Builder::Builder (
     SchemeHandlers* handlers,
@@ -413,7 +498,7 @@ namespace SSC::IPC {
   #endif
 
     const auto userConfig = handlers->router->bridge->userConfig;
-    const auto components = IPC::Router::parseURLComponents(this->absoluteURL);
+    const auto url = URL::Components::parse(this->absoluteURL);
     const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
       ? userConfig.at("meta_bundle_identifier")
       : "";
@@ -422,7 +507,7 @@ namespace SSC::IPC {
       handlers,
       platformRequest,
       Request::Options {
-        .scheme = components.scheme
+        .scheme = url.scheme
       }
     ));
 
@@ -430,11 +515,11 @@ namespace SSC::IPC {
     this->request->client.id = handlers->router->bridge->id;
 
     // build request URL components from parsed URL components
-    this->request->originalURL = components.originalURL;
-    this->request->hostname = components.authority;
-    this->request->pathname = components.pathname;
-    this->request->query = components.query;
-    this->request->fragment = components.fragment;
+    this->request->originalURL = this->absoluteURL;
+    this->request->hostname = url.authority;
+    this->request->pathname = url.pathname;
+    this->request->query = url.query;
+    this->request->fragment = url.fragment;
   }
 
   SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setScheme (const String& scheme) {
@@ -607,8 +692,7 @@ namespace SSC::IPC {
     this->platformRequest = platformRequest;
   }
 
-  SchemeHandlers::Request::~Request () {
-  }
+  SchemeHandlers::Request::~Request () {}
 
   static void copyRequest (
     SchemeHandlers::Request* destination,
