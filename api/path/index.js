@@ -14,7 +14,8 @@ import {
   MUSIC,
   HOME,
   DATA,
-  LOG
+  LOG,
+  TMP
 } from './well-known.js'
 
 export {
@@ -34,7 +35,8 @@ export {
   MUSIC,
   HOME,
   DATA,
-  LOG
+  LOG,
+  TMP
 }
 
 export default exports

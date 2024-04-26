@@ -63,6 +63,12 @@ export const DATA = paths.data || null
 export const LOG = paths.log || null
 
 /**
+ * Well known path to the application's "tmp" folder.
+ * @type {?string}
+ */
+export const TMP = paths.tmp || null
+
+/**
  * Well known path to the application's "home" folder.
  * This may be the user's HOME directory or the application container sandbox.
  * @type {?string}
@@ -80,5 +86,6 @@ export default {
   MUSIC,
   HOME,
   DATA,
-  LOG
+  LOG,
+  TMP
 }

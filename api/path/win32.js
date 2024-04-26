@@ -14,7 +14,8 @@ import {
   MUSIC,
   HOME,
   DATA,
-  LOG
+  LOG,
+  TMP
 } from './well-known.js'
 
 import * as exports from './win32.js'
@@ -37,7 +38,8 @@ export {
   MUSIC,
   HOME,
   DATA,
-  LOG
+  LOG,
+  TMP
 }
 
 export default exports
