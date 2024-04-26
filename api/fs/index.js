@@ -1264,9 +1264,8 @@ export function writeFile (path, data, options, callback) {
  */
 export function writeFileSync (path, data, options) {
   const id = String(options?.id || rand64())
-  const stats = statSync(path)
 
-  result = ipc.sendSync('fs.open', {
+  let result = ipc.sendSync('fs.open', {
     id,
     mode: options?.mode || 0o666,
     path,
