@@ -77,6 +77,27 @@ namespace SSC {
     return Path(value);
   }
 
+  Path FileResource::getResourcePath (const Path& resourcePath) {
+    return FileResource::getResourcePath(resourcePath.string());
+  }
+
+  Path FileResource::getResourcePath (const String& resourcePath) {
+    const auto resourcesPath = FileResource::getResourcesPath();
+  #if SSC_PLATFORM_WINDOWS
+    if (resourcePath.starts_with("\\")) {
+      return Path(resourcesPath.string() + resourcePath);
+    }
+
+    return Path(resourcesPath.string() + "\\" + resourcePath);
+  #else
+    if (resourcePath.starts_with("/")) {
+      return Path(resourcesPath.string() + resourcePath);
+    }
+
+    return Path(resourcesPath.string() + "/" + resourcePath);
+  #endif
+  }
+
   FileResource::FileResource (const String& resourcePath) {
     this->path = fs::absolute(Path(resourcePath));
 
@@ -159,7 +180,6 @@ namespace SSC {
 
     if (!this->path.string().starts_with(resourcesPath.string())) {
       if (![this->url startAccessingSecurityScopedResource]) {
-        debug("FAILED FOR %s", this->path.string().c_str());
         return false;
       }
     }
@@ -298,7 +318,7 @@ namespace SSC {
     }
 
     if (!this->accessing) {
-      return -EPERM;
+      return -1;
     }
 
   #if SSC_PLATFORM_APPLE
@@ -328,13 +348,13 @@ namespace SSC {
       nullptr // templte file (unused)
     );
 
-    auto result = GetFileSizeEx(handle, &fileSize);
-
     if (handle) {
+      auto result = GetFileSizeEx(handle, &fileSize);
       CloseHandle(handle);
+      this->cache.size = fileSize.QuadPart;
+    } else {
+      return -2;
     }
-
-    this->cache.size = fileSize.QuadPart;
   #else
     this->cache.size = fs::file_size(this->path);
   #endif
@@ -344,7 +364,6 @@ namespace SSC {
 
   // caller takes ownership of returned pointer
   const char* FileResource::read (bool cached) {
-    Lock lock(this->mutex);
     if (!this->accessing || !this->exists()) {
       return nullptr;
     }
@@ -416,7 +435,7 @@ namespace SSC {
     return *this->cache.bytes;
   }
 
-  const String FileResource::string (bool cached) {
+  const String FileResource::str (bool cached) {
     if (!this->accessing || !this->exists()) {
       return "";
     }

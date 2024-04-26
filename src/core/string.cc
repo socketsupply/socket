@@ -115,6 +115,19 @@ namespace SSC {
     return output;
   }
 
+  String toProperCase (const String& source) {
+    String output = "";
+    if (source.size() > 0) {
+      output += toupper(source[0]);
+    }
+
+    if (source.size() > 1) {
+      output += source.substr(1);
+    }
+
+    return output;
+  }
+
   WString convertStringToWString (const String& source) {
     WString result(source.length(), L' ');
     std::copy(source.begin(), source.end(), result.begin());

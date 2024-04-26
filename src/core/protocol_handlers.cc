@@ -10,7 +10,7 @@ namespace SSC {
   };
 
   ProtocolHandlers::ProtocolHandlers (Core* core)
-    : core(core)
+    : Module(core)
   {}
 
   ProtocolHandlers::~ProtocolHandlers () {}

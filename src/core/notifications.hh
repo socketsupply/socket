@@ -31,11 +31,37 @@ namespace SSC {
       using NotificationPresentedObserver = Module::Observer<JSON::Object>;
       using NotificationPresentedObservers = Module::Observers<NotificationPresentedObserver>;
 
+      struct Notification {
+        String identifier;
+        const JSON::Object json () const;
+      };
+
+      struct ShowOptions {
+        String id;
+        String title;
+        String tag;
+        String lang;
+        bool silent = false;
+        String icon;
+        String image;
+        String body;
+      };
+
+      struct ShowResult {
+        String error = "";
+        Notification notification;
+      };
+
+      using ShowCallback = Function<void(const ShowResult&)>;
+      using ListCallback = Function<void(const Vector<Notification>&)>;
+
     #if SSC_PLATFORM_APPLE
       SSCUserNotificationCenterDelegate* userNotificationCenterDelegate = nullptr;
       NSTimer* userNotificationCenterPollTimer = nullptr;
       UNAuthorizationStatus __block currentUserNotificationAuthorizationStatus;
     #endif
+
+      Mutex mutex;
 
       PermissionChangeObservers permissionChangeObservers;
       NotificationResponseObservers notificationResponseObservers;
@@ -61,6 +87,16 @@ namespace SSC {
         const NotificationPresentedObserver& observer,
         const NotificationPresentedObserver::Callback callback
       );
+
+      bool show (const ShowOptions& options, const ShowCallback callback);
+      bool close (const Notification& notification);
+      void list (const ListCallback callback) const;
+
+    #if SSC_PLATFORM_LINUX
+      void configureWebView (WebKitWebView* webview);
+    #elif SSC_PLATFORM_WINDOWS
+      void configureWebView (ICoreWebView2 *webviev);
+    #endif
   };
 }
 #endif

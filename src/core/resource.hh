@@ -15,18 +15,20 @@ namespace SSC {
 
   class FileResource : public Resource {
     struct Cache {
-      std::shared_ptr<char*> bytes = nullptr;
+      SharedPointer<char*> bytes = nullptr;
       size_t size = 0;
     };
 
     Cache cache;
-    std::shared_ptr<char*> bytes = nullptr;
+    SharedPointer<char*> bytes = nullptr;
     public:
       static std::map<String, Set<String>> mimeTypes;
       static Path getResourcesPath ();
+      static Path getResourcePath (const Path& resourcePath);
+      static Path getResourcePath (const String& resourcePath);
 
       Path path;
-      Mutex mutex;
+
     #if SSC_PLATFORM_APPLE
       NSURL* url = nullptr;
     #endif
@@ -45,7 +47,7 @@ namespace SSC {
       const String mimeType () const noexcept;
       size_t size (bool cached = false) noexcept;
       const char* read (bool cached = false);
-      const String string (bool cached = false);
+      const String str (bool cached = false);
   };
 }
 

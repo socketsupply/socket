@@ -209,34 +209,6 @@ namespace SSC {
       "  Object.freeze(globalThis.__args.config);                            \n"
       "  Object.freeze(globalThis.__args.argv);                              \n"
       "  Object.freeze(globalThis.__args.env);                               \n"
-      "                                                                      \n"
-      "  const { addEventListener } = globalThis;                            \n"
-      "  globalThis.addEventListener = function (eventName, ...args) {       \n"
-      "    eventName = eventName.replace('load', '__runtime_init__');        \n"
-      "    return addEventListener.call(this, eventName, ...args);           \n"
-      "  };                                                                  \n"
-      "                                                                      \n"
-      "  try {                                                               \n"
-      "    const event = '__runtime_init__';                                 \n"
-      "    let onload = null                                                 \n"
-      "    Object.defineProperty(globalThis, 'onload', {                     \n"
-      "      get: () => onload,                                              \n"
-      "      set (value) {                                                   \n"
-      "        const opts = { once: true };                                  \n"
-      "        if (onload) {                                                 \n"
-      "          globalThis.removeEventListener(event, onload, opts);        \n"
-      "          onload = null;                                              \n"
-      "        }                                                             \n"
-      "                                                                      \n"
-      "        if (typeof value === 'function') {                            \n"
-      "          onload = value;                                             \n"
-      "          globalThis.addEventListener(event, onload, opts, {          \n"
-      "            once: true                                                \n"
-      "          });                                                         \n"
-      "        }                                                             \n"
-      "      }                                                               \n"
-      "    });                                                               \n"
-      "  } catch {}                                                          \n"
       "})();                                                                 \n"
     );
 
@@ -363,7 +335,11 @@ namespace SSC {
       return "";
     }
 
-    if (userConfig.contains("webview_importmap") && userConfig.at("webview_importmap").size() > 0) {
+    if (
+      html.find("<script type=\"importmap\">") == String::npos &&
+      userConfig.contains("webview_importmap") &&
+      userConfig.at("webview_importmap").size() > 0
+    ) {
       auto resource = FileResource(Path(userConfig.at("webview_importmap")));
 
       if (resource.exists()) {
