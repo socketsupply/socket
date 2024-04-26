@@ -4,6 +4,7 @@
 #include "../core/core.hh"
 #include "navigator.hh"
 #include "router.hh"
+#include "scheme_handlers.hh"
 
 namespace SSC::IPC {
   class Bridge {
@@ -18,6 +19,7 @@ namespace SSC::IPC {
 
       Bluetooth bluetooth;
       Navigator navigator;
+      SchemeHandlers schemeHandlers;
       Router router;
       Map userConfig = getUserConfig();
 
@@ -40,6 +42,7 @@ namespace SSC::IPC {
       );
 
       const Vector<String>& getAllowedNodeCoreModules () const;
+      void configureHandlers (const SchemeHandlers::Configuration& configuration);
   };
 }
 #endif

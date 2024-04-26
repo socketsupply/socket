@@ -1,17 +1,6 @@
 #include "bridge.hh"
 #include "router.hh"
 
-// create a proxy module so imports of the module of concern are imported
-// exactly once at the canonical URL (file:///...) in contrast to module
-// URLs (socket:...)
-
-static constexpr auto moduleTemplate =
-R"S(
-import module from '{{url}}'
-export * from '{{url}}'
-export default module
-)S";
-
 namespace SSC::IPC {
   /*
     .
@@ -80,88 +69,14 @@ namespace SSC::IPC {
     return Router::WebViewURLPathResolution{};
   };
 
-  Router::WebViewURLComponents Router::parseURLComponents (const SSC::String& url) {
-    Router::WebViewURLComponents components;
-    components.originalURL = url;
-    auto input = url;
-
-    if (input.starts_with("./")) {
-      input = input.substr(1);
-    }
-
-    if (!input.starts_with("/")) {
-      const auto colon = input.find(':');
-
-      if (colon != String::npos) {
-        components.scheme = input.substr(0, colon);
-        input = input.substr(colon + 1, input.size());
-
-        if (input.starts_with("//")) {
-          input = input.substr(2, input.size());
-
-          const auto slash = input.find("/");
-          if (slash != String::npos) {
-            components.authority = input.substr(0, slash);
-            input = input.substr(slash, input.size());
-          } else {
-            const auto questionMark = input.find("?");
-            const auto fragment = input.find("#");
-            if (questionMark != String::npos & fragment != String::npos) {
-              if (questionMark < fragment) {
-                components.authority = input.substr(0, questionMark);
-                input = input.substr(questionMark, input.size());
-              } else {
-                components.authority = input.substr(0, fragment);
-                input = input.substr(fragment, input.size());
-              }
-            } else if (questionMark != String::npos) {
-              components.authority = input.substr(0, questionMark);
-              input = input.substr(questionMark, input.size());
-            } else if (fragment != String::npos) {
-              components.authority = input.substr(0, fragment);
-              input = input.substr(fragment, input.size());
-            }
-          }
-        }
-      }
-    }
-
-    input = decodeURIComponent(input);
-
-    const auto questionMark = input.find("?");
-    const auto fragment = input.find("#");
-
-    if (questionMark != String::npos && fragment != String::npos) {
-      if (questionMark < fragment) {
-        components.pathname = input.substr(0, questionMark);
-        components.query = input.substr(questionMark + 1, fragment - questionMark - 1);
-        components.fragment = input.substr(fragment + 1, input.size());
-      } else {
-        components.pathname = input.substr(0, fragment);
-        components.fragment = input.substr(fragment + 1, input.size());
-      }
-    } else if (questionMark != String::npos) {
-      components.pathname = input.substr(0, questionMark);
-      components.query = input.substr(questionMark + 1, input.size());
-    } else if (fragment != String::npos) {
-      components.pathname = input.substr(0, fragment);
-      components.fragment = input.substr(fragment + 1, input.size());
-    } else {
-      components.pathname = input;
-    }
-
-    if (!components.pathname.starts_with("/")) {
-      components.pathname = "/" + components.pathname;
-    }
-
-    return components;
-  }
-
   static const Map getWebViewNavigatorMounts () {
     static const auto userConfig = getUserConfig();
-  #if defined(_WIN32)
+    static Map mounts;
+
+    // determine HOME
+  #if SSC_PLATFORM_WINDOWS
     static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
-  #elif defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+  #elif SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
     static const auto HOME = String(NSHomeDirectory().UTF8String);
   #else
     static const auto uid = getuid();
@@ -170,8 +85,6 @@ namespace SSC::IPC {
       ? String(pwuid->pw_dir)
       : Env::get("HOME", getcwd());
   #endif
-
-    static Map mounts;
 
     if (mounts.size() > 0) {
       return mounts;
@@ -269,8 +182,6 @@ namespace SSC::IPC {
     return WebViewNavigatorMount {};
   }
 
-  Router::Router () : schemeHandlers(this) {}
-
   void Router::init (Bridge* bridge) {
     this->bridge = bridge;
 
@@ -278,17 +189,11 @@ namespace SSC::IPC {
     this->preserveCurrentTable();
   }
 
-  Router::~Router () {
-  }
-
   void Router::preserveCurrentTable () {
-    Lock lock(mutex);
     this->preserved = this->table;
   }
 
   uint64_t Router::listen (const String& name, MessageCallback callback) {
-    Lock lock(mutex);
-
     if (!this->listeners.contains(name)) {
       this->listeners[name] = Vector<MessageCallbackListenerContext>();
     }
@@ -300,8 +205,6 @@ namespace SSC::IPC {
   }
 
   bool Router::unlisten (const String& name, uint64_t token) {
-    Lock lock(mutex);
-
     if (!this->listeners.contains(name)) {
       return false;
     }
@@ -323,8 +226,6 @@ namespace SSC::IPC {
   }
 
   void Router::map (const String& name, bool async, MessageCallback callback) {
-    Lock lock(mutex);
-
     String data = name;
     // URI hostnames are not case sensitive. Convert to lowercase.
     std::transform(data.begin(), data.end(), data.begin(),
@@ -335,8 +236,6 @@ namespace SSC::IPC {
   }
 
   void Router::unmap (const String& name) {
-    Lock lock(mutex);
-
     String data = name;
     // URI hostnames are not case sensitive. Convert to lowercase.
     std::transform(data.begin(), data.end(), data.begin(),
@@ -521,14 +420,12 @@ namespace SSC::IPC {
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
-    Lock lock(this->mutex);
     auto key = std::to_string(index) + seq;
     return this->buffers.find(key) != this->buffers.end();
   }
 
   MessageBuffer Router::getMappedBuffer (int index, const Message::Seq seq) {
     if (this->hasMappedBuffer(index, seq)) {
-      Lock lock(this->mutex);
       auto key = std::to_string(index) + seq;
       return this->buffers.at(key);
     }
@@ -541,506 +438,14 @@ namespace SSC::IPC {
     const Message::Seq seq,
     MessageBuffer buffer
   ) {
-    Lock lock(this->mutex);
     auto key = std::to_string(index) + seq;
     this->buffers.insert_or_assign(key, buffer);
   }
 
   void Router::removeMappedBuffer (int index, const Message::Seq seq) {
-    Lock lock(this->mutex);
     if (this->hasMappedBuffer(index, seq)) {
       auto key = std::to_string(index) + seq;
       this->buffers.erase(key);
-    }
-  }
-
-  void Router::configureHandlers (const SchemeHandlers::Configuration& configuration) {
-    this->schemeHandlers.configure(configuration);
-    this->schemeHandlers.registerSchemeHandler("ipc", [this](
-      const auto& request,
-      const auto router,
-      auto& callbacks,
-      auto callback
-    ) {
-      auto message = Message(request.url(), true);
-
-      // handle special 'ipc://post' case
-      if (message.name == "post") {
-        uint64_t id = 0;
-
-        try {
-          id = std::stoull(message.get("id"));
-        } catch (...) {
-          auto response = SchemeHandlers::Response(request, 400);
-          response.send(JSON::Object::Entries {
-            {"err", JSON::Object::Entries {
-              {"message", "Invalid 'id' given in parameters"}
-            }}
-          });
-
-          callback(response);
-          return;
-        }
-
-        if (!this->core->hasPost(id)) {
-          auto response = SchemeHandlers::Response(request, 404);
-          response.send(JSON::Object::Entries {
-            {"err", JSON::Object::Entries {
-              {"message", "A 'Post' was not found for the given 'id' in parameters"},
-              {"type", "NotFoundError"}
-            }}
-          });
-
-          callback(response);
-          return;
-        }
-
-        auto response = SchemeHandlers::Response(request, 200);
-        const auto post = this->core->getPost(id);
-
-        // handle raw headers in 'Post' object
-        if (post.headers.size() > 0) {
-          const auto lines = split(trim(post.headers), '\n');
-          for (const auto& line : lines) {
-            const auto pair = split(trim(line), ':');
-            const auto key = trim(pair[0]);
-            const auto value = trim(pair[1]);
-            response.setHeader(key, value);
-          }
-        }
-
-        response.write(post.length, post.body);
-        callback(response);
-        this->core->removePost(id);
-        return;
-      }
-
-      message.isHTTP = true;
-      message.cancel = std::make_shared<MessageCancellation>();
-
-      callbacks.cancel = [message] () {
-        if (message.cancel->handler != nullptr) {
-          message.cancel->handler(message.cancel->data);
-        }
-      };
-
-      const auto size = request.body.size;
-      const auto bytes = request.body.bytes != nullptr ? *request.body.bytes : nullptr;
-      const auto invoked = this->invoke(message, bytes, size, [request, message, callback](Result result) {
-        if (!request.isActive()) {
-          return;
-        }
-
-        auto response = SchemeHandlers::Response(request);
-
-        response.setHeaders(result.headers);
-
-        // handle event source streams
-        if (result.post.eventStream != nullptr) {
-          response.setHeader("content-type", "text/event-stream");
-          response.setHeader("cache-control", "no-store");
-          *result.post.eventStream = [request, response, message, callback](
-            const char* name,
-            const char* data,
-            bool finished
-          ) mutable {
-            if (request.isCancelled()) {
-              if (message.cancel->handler != nullptr) {
-                message.cancel->handler(message.cancel->data);
-              }
-              return false;
-            }
-
-            response.writeHead(200);
-
-            const auto event = SchemeHandlers::Response::Event { name, data };
-
-            if (event.count() > 0) {
-              response.write(event.str());
-            }
-
-            if (finished) {
-              callback(response);
-            }
-
-            return true;
-          };
-          return;
-        }
-
-        // handle chunk streams
-        if (result.post.chunkStream != nullptr) {
-          response.setHeader("transfer-encoding", "chunked");
-          *result.post.chunkStream = [request, response, message, callback](
-            const char* chunk,
-            size_t size,
-            bool finished
-          ) mutable {
-            if (request.isCancelled()) {
-              if (message.cancel->handler != nullptr) {
-                message.cancel->handler(message.cancel->data);
-              }
-              return false;
-            }
-
-            response.writeHead(200);
-            response.write(size, chunk);
-
-            if (finished) {
-              callback(response);
-            }
-
-            return true;
-          };
-          return;
-        }
-
-        if (result.post.body != nullptr) {
-          response.write(result.post.length, result.post.body);
-        } else {
-          response.write(result.json());
-        }
-
-        callback(response);
-      });
-
-      if (!invoked) {
-        auto response = SchemeHandlers::Response(request, 404);
-        response.send(JSON::Object::Entries {
-          {"err", JSON::Object::Entries {
-            {"message", "Not found"},
-            {"type", "NotFoundError"},
-            {"url", request.url()}
-          }}
-        });
-
-        callback(response);
-      }
-    });
-
-    this->schemeHandlers.registerSchemeHandler("socket", [this](
-      const auto& request,
-      const auto router,
-      auto& callbacks,
-      auto callback
-    ) {
-      auto userConfig = this->bridge->userConfig;
-      auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-      // the location of static application resources
-      const auto applicationResources = FileResource::getResourcesPath().string();
-      // default response is 404
-      auto response = SchemeHandlers::Response(request, 404);
-
-      // the resouce path that may be request
-      String resourcePath;
-
-      // the content location relative to the request origin
-      String contentLocation;
-
-      // application resource or service worker request at `socket://<bundle_identifier>/*`
-      if (request.hostname == bundleIdentifier) {
-        const auto resolved = Router::resolveURLPathForWebView(request.pathname, applicationResources);
-        const auto mount = Router::resolveNavigatorMountForWebView(request.pathname);
-
-        if (mount.resolution.redirect || resolved.redirect) {
-          auto pathname = mount.resolution.redirect
-            ? mount.resolution.pathname
-            : resolved.pathname;
-
-          if (request.method == "GET") {
-            auto location = mount.resolution.pathname;
-            if (request.query.size() > 0) {
-              location += "?" + request.query;
-            }
-
-            if (request.fragment.size() > 0) {
-              location += "#" + request.fragment;
-            }
-
-            response.redirect(location);
-            return callback(response);
-          }
-        } else if (mount.path.size() > 0) {
-          resourcePath = mount.path;
-        } else if (request.pathname == "" || request.pathname == "/") {
-          if (userConfig.contains("webview_default_index")) {
-            resourcePath = userConfig["webview_default_index"];
-            if (resourcePath.starts_with("./")) {
-              resourcePath = applicationResources + resourcePath.substr(1);
-            } else if (resourcePath.starts_with("/")) {
-              resourcePath = applicationResources + resourcePath;
-            } else {
-              resourcePath = applicationResources + + "/" + resourcePath;
-            }
-          }
-        }
-
-        if (resourcePath.size() == 0 && resolved.pathname.size() > 0) {
-          resourcePath = applicationResources + resolved.pathname;
-        }
-
-        // handle HEAD and GET requests for a file resource
-        if (resourcePath.size() > 0) {
-          contentLocation = replace(resourcePath, applicationResources, "");
-
-          auto resource = FileResource(resourcePath);
-
-          if (!resource.exists()) {
-            response.writeHead(404);
-          } else {
-            if (contentLocation.size() > 0) {
-              response.setHeader("content-location", contentLocation);
-            }
-
-            if (request.method == "OPTIONS") {
-              response.setHeader("access-control-allow-origin", "*");
-              response.setHeader("access-control-allow-methods", "GET, HEAD");
-              response.setHeader("access-control-allow-headers", "*");
-              response.setHeader("access-control-allow-credentials", "true");
-              response.writeHead(200);
-            }
-
-            if (request.method == "HEAD") {
-              const auto contentType = resource.mimeType();
-              const auto contentLength = resource.size();
-
-              if (contentType.size() > 0) {
-                response.setHeader("content-type", contentType);
-              }
-
-              if (contentLength > 0) {
-                response.setHeader("content-length", contentLength);
-              }
-
-              response.writeHead(200);
-            }
-
-            if (request.method == "GET") {
-              if (resource.mimeType() != "text/html") {
-                response.send(resource);
-              } else {
-                const auto html = injectHTMLPreload(
-                  this->core,
-                  userConfig,
-                  resource.string(),
-                  this->bridge->preload
-                );
-
-                response.setHeader("content-type", "text/html");
-                response.setHeader("content-length", html.size());
-                response.writeHead(200);
-                response.write(html);
-              }
-            }
-          }
-
-          return callback(response);
-        }
-
-        if (router->core->serviceWorker.registrations.size() > 0) {
-          const auto fetch = ServiceWorkerContainer::FetchRequest {
-            request.method,
-            request.scheme,
-            request.hostname,
-            request.pathname,
-            request.query,
-            request.headers,
-            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
-            ServiceWorkerContainer::Client { request.client.id }
-          };
-
-          const auto fetched = router->core->serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
-            if (!request.isActive()) {
-              return;
-            }
-
-            response.writeHead(res.statusCode, res.headers);
-            response.write(res.buffer.size, res.buffer.bytes);
-            callback(response);
-          });
-
-          if (fetched) {
-            router->bridge->core->setTimeout(32000, [request] () mutable {
-              if (request.isActive()) {
-                auto response = SchemeHandlers::Response(request, 408);
-                response.fail("ServiceWorker request timed out.");
-              }
-            });
-            return;
-          }
-        }
-
-        response.writeHead(404);
-        return callback(response);
-      }
-
-      // module or stdlib import/fetch `socket:<module>/<path>` which will just
-      // proxy an import into a normal resource request above
-      if (request.hostname.size() == 0) {
-        auto pathname = request.pathname;
-
-        if (!pathname.ends_with(".js")) {
-          pathname += ".js";
-        }
-
-        if (!pathname.starts_with("/")) {
-          pathname = "/" + pathname;
-        }
-
-        resourcePath = applicationResources + "/socket" + pathname;
-        contentLocation = "/socket" + pathname;
-
-        auto resource = FileResource(resourcePath);
-
-        if (resource.exists()) {
-          const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
-          const auto module = tmpl(moduleTemplate, Map {{"url", url}});
-          const auto contentType = resource.mimeType();
-
-          if (contentType.size() > 0) {
-            response.setHeader("content-type", contentType);
-          }
-
-          response.setHeader("content-length", module.size());
-
-          if (contentLocation.size() > 0) {
-            response.setHeader("content-location", contentLocation);
-          }
-
-          response.writeHead(200);
-          response.write(trim(module));
-        }
-
-        return callback(response);
-      }
-
-      response.writeHead(404);
-      callback(response);
-    });
-
-    Map protocolHandlers = {
-      {"npm", "/socket/npm/service-worker.js"}
-    };
-
-    for (const auto& entry : split(this->bridge->userConfig["webview_protocol-handlers"], " ")) {
-      const auto scheme = replace(trim(entry), ":", "");
-      if (this->bridge->core->protocolHandlers.registerHandler(scheme)) {
-        protocolHandlers.insert_or_assign(scheme, "");
-      }
-    }
-
-    for (const auto& entry : this->bridge->userConfig) {
-      const auto& key = entry.first;
-      if (key.starts_with("webview_protocol-handlers_")) {
-        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
-        const auto data = entry.second;
-        if (this->bridge->core->protocolHandlers.registerHandler(scheme, { data })) {
-          protocolHandlers.insert_or_assign(scheme, data);
-        }
-      }
-    }
-
-    for (const auto& entry : protocolHandlers) {
-      const auto& scheme = entry.first;
-      const auto id = rand64();
-
-      auto scriptURL = trim(entry.second);
-
-      if (scriptURL.size() == 0) {
-        continue;
-      }
-
-      if (!scriptURL.starts_with(".") && !scriptURL.starts_with("/")) {
-        continue;
-      }
-
-      if (scriptURL.starts_with(".")) {
-        scriptURL = scriptURL.substr(1, scriptURL.size());
-      }
-
-      String scope = "/";
-
-      auto scopeParts = split(scriptURL, "/");
-      if (scopeParts.size() > 0) {
-        scopeParts = Vector<String>(scopeParts.begin(), scopeParts.end() - 1);
-        scope = join(scopeParts, "/");
-      }
-
-      scriptURL = (
-    #if SSC_PLATFORM_ANDROID
-        "https://" +
-    #else
-        "socket://" +
-    #endif
-        bridge->userConfig["meta_bundle_identifier"] +
-        scriptURL
-      );
-
-      this->bridge->core->serviceWorker.registerServiceWorker({
-        .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
-        .scope = scope,
-        .scriptURL = scriptURL,
-        .scheme = scheme,
-        .id = id
-      });
-
-      this->schemeHandlers.registerSchemeHandler(scheme, [this](
-        const auto& request,
-        const auto router,
-        auto& callbacks,
-        auto callback
-      ) {
-        if (this->core->serviceWorker.registrations.size() > 0) {
-          auto hostname = request.hostname;
-          auto pathname = request.pathname;
-
-          if (request.scheme == "npm") {
-            hostname = this->bridge->userConfig["meta_bundle_identifier"];
-          }
-
-          const auto scope = this->core->protocolHandlers.getServiceWorkerScope(request.scheme);
-
-          if (scope.size() > 0) {
-            pathname = scope + pathname;
-          }
-
-          const auto fetch = ServiceWorkerContainer::FetchRequest {
-            request.method,
-            request.scheme,
-            hostname,
-            pathname,
-            request.query,
-            request.headers,
-            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
-            ServiceWorkerContainer::Client { request.client.id }
-          };
-
-          const auto fetched = this->core->serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
-            if (!request.isActive()) {
-              return;
-            }
-
-            auto response = SchemeHandlers::Response(request);
-            response.writeHead(res.statusCode, res.headers);
-            response.write(res.buffer.size, res.buffer.bytes);
-            callback(response);
-          });
-
-          if (fetched) {
-            this->bridge->core->setTimeout(32000, [request] () mutable {
-              if (request.isActive()) {
-                auto response = SchemeHandlers::Response(request, 408);
-                response.fail("Protocol handler ServiceWorker request timed out.");
-              }
-            });
-            return;
-          }
-        }
-
-        auto response = SchemeHandlers::Response(request);
-        response.writeHead(404);
-        callback(response);
-      });
     }
   }
 }

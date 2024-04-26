@@ -1374,7 +1374,6 @@ static void mapIPCRoutes (Router *router) {
   #endif
   });
 
-#if defined(__APPLE__)
   router->map("notification.show", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
@@ -1385,268 +1384,54 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-    auto attachments = [NSMutableArray new];
-    auto userInfo = [NSMutableDictionary new];
-    auto content = [UNMutableNotificationContent new];
-    auto __block id = message.get("id");
+    const auto options = Notifications::ShowOptions {
+      message.get("id"),
+      message.get("title"),
+      message.get("tag"),
+      message.get("lang"),
+      message.get("silent") == "true",
+      message.get("icon"),
+      message.get("image"),
+      message.get("body")
+    };
 
-    if (message.has("tag")) {
-      userInfo[@"tag"]  = @(message.get("tag").c_str());
-      content.threadIdentifier = @(message.get("tag").c_str());
-    }
-
-    if (message.has("lang")) {
-      userInfo[@"lang"]  = @(message.get("lang").c_str());
-    }
-
-    if (!message.has("silent") && message.get("silent") == "false") {
-      content.sound = [UNNotificationSound defaultSound];
-    }
-
-    if (message.has("icon")) {
-      NSError* error = nullptr;
-      auto url = [NSURL URLWithString: @(message.get("icon").c_str())];
-
-      if (message.get("icon").starts_with("socket://")) {
-        url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
-            stringByAppendingPathComponent: [NSString
-            #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-              stringWithFormat: @"/ui/%s", url.path.UTF8String
-            #else
-              stringWithFormat: @"/%s", url.path.UTF8String
-            #endif
-            ]
-        ]];
-
-        url = [NSURL fileURLWithPath: url.path];
-      }
-
-      auto types = [UTType
-            typesWithTag: url.pathExtension
-                tagClass: UTTagClassFilenameExtension
-        conformingToType: nullptr
-      ];
-
-      auto options = [NSMutableDictionary new];
-
-      if (types.count > 0) {
-        options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
-      };
-
-      auto attachment = [UNNotificationAttachment
-        attachmentWithIdentifier: @("")
-                             URL: url
-                         options: options
-                           error: &error
-      ];
-
-      if (error != nullptr) {
-        auto message = String(
-          error.localizedDescription.UTF8String != nullptr
-            ? error.localizedDescription.UTF8String
-            : "An unknown error occurred"
-        );
-
-        auto err = JSON::Object::Entries { { "message", message } };
+    router->bridge->core->notifications.show(options, [=] (const auto result) {
+      if (result.error.size() > 0) {
+        const auto err = JSON::Object::Entries {{ "message", result.error }};
         return reply(Result::Err { message, err });
       }
 
-      [attachments addObject: attachment];
-    } else {
-    // using an asset from the resources directory will require a code signed application
-    #if SSC_PLATFORM_SANDBOXED
-      NSError* error = nullptr;
-      auto url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
-        stringByAppendingPathComponent: [NSString
-        #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-          stringWithFormat: @"/ui/icon.png"
-        #else
-          stringWithFormat: @"/icon.png"
-        #endif
-        ]
-      ]];
-
-      url = [NSURL fileURLWithPath: url.path];
-
-      auto types = [UTType
-            typesWithTag: url.pathExtension
-                tagClass: UTTagClassFilenameExtension
-        conformingToType: nullptr
-      ];
-
-      auto options = [NSMutableDictionary new];
-
-      auto attachment = [UNNotificationAttachment
-        attachmentWithIdentifier: @("")
-                             URL: url
-                         options: options
-                           error: &error
-      ];
-
-      if (error != nullptr) {
-        auto message = String(
-          error.localizedDescription.UTF8String != nullptr
-            ? error.localizedDescription.UTF8String
-            : "An unknown error occurred"
-        );
-
-        auto err = JSON::Object::Entries { { "message", message } };
-
-        return reply(Result::Err { message, err });
-      }
-
-      [attachments addObject: attachment];
-    #endif
-    }
-
-    if (message.has("image")) {
-      NSError* error = nullptr;
-      auto url = [NSURL URLWithString: @(message.get("image").c_str())];
-
-      if (message.get("image").starts_with("socket://")) {
-        url = [NSURL URLWithString: [NSBundle.mainBundle.resourcePath
-            stringByAppendingPathComponent: [NSString
-            #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-              stringWithFormat: @"/ui/%s", url.path.UTF8String
-            #else
-              stringWithFormat: @"/%s", url.path.UTF8String
-            #endif
-            ]
-        ]];
-
-        url = [NSURL fileURLWithPath: url.path];
-      }
-
-      auto types = [UTType
-            typesWithTag: url.pathExtension
-                tagClass: UTTagClassFilenameExtension
-        conformingToType: nullptr
-      ];
-
-      auto options = [NSMutableDictionary new];
-
-      if (types.count > 0) {
-        options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
-      };
-
-      auto attachment = [UNNotificationAttachment
-        attachmentWithIdentifier: @("")
-                             URL: url
-                         options: options
-                           error: &error
-      ];
-
-      if (error != nullptr) {
-        auto message = String(
-           error.localizedDescription.UTF8String != nullptr
-             ? error.localizedDescription.UTF8String
-             : "An unknown error occurred"
-        );
-        auto err = JSON::Object::Entries {{ "message", message }};
-
-        return reply(Result::Err { message, err });
-      }
-
-      [attachments addObject: attachment];
-    }
-
-    content.attachments = attachments;
-    content.userInfo = userInfo;
-    content.title = @(message.get("title").c_str());
-    content.body = @(message.get("body", "").c_str());
-
-    auto request = [UNNotificationRequest
-      requestWithIdentifier: @(id.c_str())
-                    content: content
-                    trigger: nil
-    ];
-
-    {
-      Lock lock(Router::notificationMapMutex);
-      Router::notificationMap.insert_or_assign(id, router);
-    }
-
-    [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
-      if (error != nullptr) {
-        auto message = String(
-          error.localizedDescription.UTF8String != nullptr
-            ? error.localizedDescription.UTF8String
-            : "An unknown error occurred"
-        );
-
-        auto err = JSON::Object::Entries {
-          { "message", message }
-        };
-
-        reply(Result::Err { message, err });
-        Lock lock(Router::notificationMapMutex);
-        Router::notificationMap.erase(id);
-        return;
-      }
-
-      reply(Result { message.seq, message, JSON::Object::Entries {
-        {"id", request.identifier.UTF8String}
-      }});
-    }];
+      const auto data = JSON::Object::Entries {{"id", result.notification.identifier}};
+      reply(Result::Data { message, data });
+    });
   });
 
   router->map("notification.close", [=](auto message, auto router, auto reply) {
-    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     auto err = validateMessageParameters(message, { "id" });
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto id = message.get("id");
-    auto identifiers = @[@(id.c_str())];
 
-    [notificationCenter removePendingNotificationRequestsWithIdentifiers: identifiers];
-    [notificationCenter removeDeliveredNotificationsWithIdentifiers: identifiers];
+    const auto notification = Notifications::Notification(message.get("id"));
+    router->core->notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
-      {"id", id}
+      {"id", notification.identifier}
     }});
-
-    Lock lock(Router::notificationMapMutex);
-    if (Router::notificationMap.contains(id)) {
-      auto notificationRouter = Router::notificationMap.at(id);
-      JSON::Object json = JSON::Object::Entries {
-        {"id", id},
-        {"action",  "dismiss"}
-      };
-
-      notificationRouter->emit("notificationresponse", json.str());
-      Router::notificationMap.erase(id);
-    }
   });
 
   router->map("notification.list", [=](auto message, auto router, auto reply) {
-    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-    [notificationCenter getDeliveredNotificationsWithCompletionHandler: ^(NSArray<UNNotification*> *notifications) {
-      JSON::Array::Entries entries;
-
-      Lock lock(Router::notificationMapMutex);
-      for (UNNotification* notification in notifications) {
-        auto id = String(notification.request.identifier.UTF8String);
-
-        if (
-          !Router::notificationMap.contains(id) ||
-          Router::notificationMap.at(id) != router
-        ) {
-          continue;
-        }
-
-        entries.push_back(JSON::Object::Entries {
-          {"id", id}
-        });
+    router->core->notifications.list([=](const auto notifications) {
+      JSON::Array entries;
+      for (const auto& notification : notifications) {
+        entries.push(notification.json());
       }
 
-      reply(Result { message.seq, message, entries });
-    }];
+      reply(Result::Data { message.seq, entries, });
+    });
   });
-#endif
 
   /**
    * Read or modify the `SEND_BUFFER` or `RECV_BUFFER` for a peer socket.
@@ -1735,6 +1520,7 @@ static void mapIPCRoutes (Router *router) {
     String home;
     String data;
     String log;
+    String tmp = fs::temp_directory_path().string();
 
   #if defined(__APPLE__)
     static const auto uid = getuid();
@@ -1767,6 +1553,7 @@ static void mapIPCRoutes (Router *router) {
     home = String(NSHomeDirectory().UTF8String);
     data = HOME + "/Library/Application Support/" + bundleIdentifier;
     log = HOME + "/Library/Logs/" + bundleIdentifier;
+    tmp = String(NSTemporaryDirectory().UTF8String);
 
   #undef DIRECTORY_PATH_FROM_FILE_MANAGER
 
@@ -1857,6 +1644,7 @@ static void mapIPCRoutes (Router *router) {
     json["home"] = home;
     json["data"] = data;
     json["log"] = log;
+    json["tmp"] = tmp;
 
     return reply(Result::Data { message, json });
   });
@@ -2070,7 +1858,7 @@ static void mapIPCRoutes (Router *router) {
           tmp = replace(tmp, "socket://", "");
           tmp = replace(tmp, "https://", "");
           tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
-          auto parsed = Router::parseURLComponents(tmp);
+          const auto parsed = URL::Components::parse(tmp);
           router->location.pathname = parsed.pathname;
           router->location.query = parsed.query;
         }

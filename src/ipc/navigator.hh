@@ -45,6 +45,10 @@ namespace SSC::IPC {
 
       bool handleNavigationRequest (const String& currentURL, const String& requestedURL);
       bool isNavigationRequestAllowed (const String& location, const String& requestURL);
+
+    #if SSC_PLATFORM_LINUX
+      void configureWebView (WebKitWebView* object);
+    #endif
   };
 }
 
