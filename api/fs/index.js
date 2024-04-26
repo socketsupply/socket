@@ -1252,6 +1252,45 @@ export function writeFile (path, data, options, callback) {
 }
 
 /**
+ * Writes data to a file synchronously.
+ * @param {string | Buffer | URL | number } path - filename or file descriptor
+ * @param {string | Buffer | TypedArray | DataView | object } data
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.mode ? 0o666]
+ * @param {string?} [options.flag ? 'w']
+ * @param {AbortSignal?} [options.signal]
+ * @see {@link https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options}
+ */
+export function writeFileSync (path, data, options) {
+  const id = String(options?.id || rand64())
+  const stats = statSync(path)
+
+  result = ipc.sendSync('fs.open', {
+    id,
+    mode: options?.mode || 0o666,
+    path,
+    flags: options?.flags ? normalizeFlags(options.flags) : 'w'
+  }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  result = ipc.sendSync('fs.write', { id, offset: 0 }, null, data)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  result = ipc.sendSync('fs.close', { id }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Watch for changes at `path` calling `callback`
  * @param {string}
  * @param {function|object=} [options]
