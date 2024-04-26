@@ -743,6 +743,7 @@ namespace SSC {
     window.titlebarAppearsTransparent = true;
 
     auto userConfig = opts.userConfig;
+    WKWebViewConfiguration* config = [WKWebViewConfiguration new];
 
     this->index = opts.index;
     this->bridge = new IPC::Bridge(app.core, userConfig);
@@ -757,45 +758,6 @@ namespace SSC {
         this->eval(source);
       });
     };
-
-    this->bridge->router.map("window.eval", [=, this](auto message, auto router, auto reply) {
-      auto value = message.value;
-      auto seq = message.seq;
-      auto  script = [NSString stringWithUTF8String: value.c_str()];
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
-          if (result) {
-            auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
-            this->bridge->router.send(seq, msg, Post{});
-          } else if (error) {
-            auto exception = (NSString *) error.userInfo[@"WKJavaScriptExceptionMessage"];
-            auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
-            auto err = encodeURIComponent(String(message));
-
-            if (err == "(null)") {
-              this->bridge->router.send(seq, "null", Post{});
-              return;
-            }
-
-            auto json = JSON::Object::Entries {
-              {"err", JSON::Object::Entries {
-                {"message", String("Error: ") + err}
-              }}
-            };
-
-            this->bridge->router.send(seq, JSON::Object(json).str(), Post{});
-          } else {
-            this->bridge->router.send(seq, "undefined", Post{});
-          }
-        }];
-      });
-    });
-
-    WKWebViewConfiguration* config = [WKWebViewConfiguration new];
-    this->bridge->router.configureHandlers({
-      .webview = config
-    });
 
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
@@ -925,14 +887,6 @@ namespace SSC {
       completionHandler: ^(){}
     ];
 
-    static const auto devHost = SSC::getDevHost();
-    if (devHost.starts_with("http:")) {
-      [config.processPool
-        performSelector: @selector(_registerURLSchemeAsSecure:)
-        withObject: @"http"
-      ];
-    }
-
     @try {
       [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
     } @catch (NSException *error) {
@@ -947,6 +901,10 @@ namespace SSC {
       .module = true,
       .wrap = true,
       .userScript = opts.userScript
+    });
+
+    this->bridge->configureHandlers({
+      .webview = config
     });
 
     webview = [SSCBridgedWebView.alloc
@@ -1264,7 +1222,18 @@ namespace SSC {
 
   Window::~Window () {
     this->close(0);
+    debug("DELETE BRIDGE");
     delete this->bridge;
+
+    if (this->webview) {
+      #if !__has_feature(objc_arc)
+        [this->webview.configuration.processPool release];
+        [this->webview release];
+      #endif
+    }
+
+    this->bridge = nullptr;
+    this->webview = nullptr;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1296,15 +1265,14 @@ namespace SSC {
   }
 
   void Window::close (int code) {
+    this->webview.navigationDelegate = nullptr;
+    this->webview.UIDelegate = nullptr;
     if (this->window != nullptr) {
       [this->window performClose: nil];
       auto app = App::instance();
       app->windowManager->destroyWindow(this->index);
+      this->window.contentView = nullptr;
       this->window = nullptr;
-    }
-
-    if (this->webview) {
-      this->webview = nullptr;
     }
 
     if (this->windowDelegate != nullptr) {
@@ -1385,9 +1353,9 @@ namespace SSC {
     }
   }
 
-  SSC::String Window::getTitle () {
-    if (this->window) {
-      return SSC::String([this->window.title UTF8String]);
+  const String Window::getTitle () const {
+    if (this->window && this->window.title.UTF8String != nullptr) {
+      return this->window.title.UTF8String;
     }
 
     return "";
@@ -1405,14 +1373,27 @@ namespace SSC {
       return ScreenSize {0, 0};
     }
 
-    NSRect e = this->window.frame;
+    const auto frame = this->window.frame;
 
-    this->height = e.size.height;
-    this->width = e.size.width;
+    this->height = frame.size.height;
+    this->width = frame.size.width;
 
     return ScreenSize {
-      .height = (int) e.size.height,
-      .width = (int) e.size.width
+      .height = (int) frame.size.height,
+      .width = (int) frame.size.width
+    };
+  }
+
+  const ScreenSize Window::getSize () const {
+    if (this->window == nullptr) {
+      return ScreenSize {0, 0};
+    }
+
+    const auto frame = this->window.frame;
+
+    return ScreenSize {
+      .height = (int) frame.size.height,
+      .width = (int) frame.size.width
     };
   }
 

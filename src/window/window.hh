@@ -159,19 +159,14 @@ namespace SSC {
       int width = 0;
       int height = 0;
       bool exiting = false;
-      Mutex mutex;
 
-    #if !defined(__APPLE__) || (defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
-      fs::path modulePath;
-    #endif
-
-    #if defined(__APPLE__)
-    #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-      SSCWindow* window;
-    #endif
+    #if SSC_PLATFORM_APPLE
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
-    #elif defined(__linux__) && !defined(__ANDROID__)
+    #if SSC_PLATFORM_MACOS
+      SSCWindow* window;
+    #endif
+    #elif SSC_PLATFORM_LINUX
       GtkSelectionData *selectionData = nullptr;
       GtkAccelGroup *accelGroup = nullptr;
       GtkWidget *webview = nullptr;
@@ -187,7 +182,7 @@ namespace SSC {
       std::vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
       GdkPoint initialLocation;
-    #elif defined(_WIN32)
+    #elif SSC_PLATFORM_WINDOWS
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
@@ -195,17 +190,23 @@ namespace SSC {
       HMENU menubar;
       HMENU menutray;
       DWORD mainThread = GetCurrentThreadId();
+
       double dragLastX = 0;
       double dragLastY = 0;
       bool shouldDrag;
       DragDrop* drop;
-      POINT m_minsz = POINT {0, 0};
-      POINT m_maxsz = POINT {0, 0};
+
+      POINT minimumSize = POINT {0, 0};
+      POINT maximumSize = POINT {0, 0};
+
       POINT initialCursorPos = POINT {0, 0};
       RECT initialWindowPos = RECT {0, 0, 0, 0};
+
       HWND window;
-      std::map<int, std::string> menuMap;
-      std::map<int, std::string> menuTrayMap;
+      std::map<int, String> menuMap;
+      std::map<int, String> menuTrayMap;
+      fs::path modulePath;
+
       void resize (HWND window);
     #endif
 
@@ -225,9 +226,10 @@ namespace SSC {
       void maximize();
       void restore();
       void navigate (const String&, const String&);
-      String getTitle ();
+      const String getTitle () const;
       void setTitle (const String&);
       ScreenSize getSize ();
+      const ScreenSize getSize () const;
       void setSize (int, int, int);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
@@ -339,15 +341,14 @@ namespace SSC {
           void exit (int code);
           void kill ();
           void gc ();
-          JSON::Object json ();
+          JSON::Object json () const;
       };
 
       std::chrono::system_clock::time_point lastDebugLogLine;
 
       App &app;
       bool destroyed = false;
-      Vector<bool> inits;
-      Vector<ManagedWindow*> windows;
+      Vector<SharedPointer<ManagedWindow>> windows;
       Mutex mutex;
       WindowManagerOptions options;
 
@@ -369,22 +370,20 @@ namespace SSC {
       }
 
       void destroy ();
-      void configure (WindowManagerOptions configuration);
+      void configure (const WindowManagerOptions& configuration);
 
-      ManagedWindow* getWindow (int index, WindowStatus status);
-      ManagedWindow* getWindow (int index);
-      ManagedWindow* getOrCreateWindow (int index);
-      ManagedWindow* getOrCreateWindow (int index, WindowOptions opts);
+      SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
+      SharedPointer<ManagedWindow> getWindow (int index);
+      SharedPointer<ManagedWindow> getOrCreateWindow (int index);
+      SharedPointer<ManagedWindow> getOrCreateWindow (int index, const WindowOptions& options);
       WindowStatus getWindowStatus (int index);
 
       void destroyWindow (int index);
-      void destroyWindow (ManagedWindow* window);
-      void destroyWindow (Window* window);
 
-      ManagedWindow* createWindow (WindowOptions opts);
-      ManagedWindow* createDefaultWindow (WindowOptions opts);
+      SharedPointer<ManagedWindow> createWindow (const WindowOptions& options);
+      SharedPointer<ManagedWindow> createDefaultWindow (const WindowOptions& options);
 
-      JSON::Array json (Vector<int> indices);
+      JSON::Array json (const Vector<int>& indices);
   };
 
   class Dialog {

@@ -70,6 +70,7 @@ namespace SSC {
 
     this->index = this->opts.index;
     this->bridge = new IPC::Bridge(app.core, opts.userConfig);
+    this->bridge->router.configureHandlers({});
 
     this->hotkey.init(this->bridge);
 
@@ -80,97 +81,6 @@ namespace SSC {
     this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
       this->eval(js);
     };
-
-    this->bridge->router.map("window.eval", [=, &app](auto message, auto router, auto reply) {
-      WindowManager* windowManager = app.getWindowManager();
-      if (windowManager == nullptr) {
-        // @TODO(jwerle): print warning
-        return;
-      }
-
-      auto window = windowManager->getWindow(message.index);
-      static auto userConfig = SSC::getUserConfig();
-
-      if (userConfig["application_agent"] == "true") {
-        gtk_window_set_skip_taskbar_hint(GTK_WINDOW(window), TRUE);
-      }
-
-      if (window == nullptr) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"message", "Invalid window index given"}
-        }});
-      }
-
-      auto value = message.get("value");
-      auto ctx = new WebViewJavaScriptAsyncContext { reply, message, window };
-
-      webkit_web_view_evaluate_javascript(
-        WEBKIT_WEB_VIEW(window->webview),
-        value.c_str(),
-        -1,
-        nullptr,
-        nullptr,
-        nullptr,
-        [](GObject *object, GAsyncResult *res, gpointer data) {
-          GError *error = nullptr;
-          auto ctx = reinterpret_cast<WebViewJavaScriptAsyncContext*>(data);
-          auto value = webkit_web_view_evaluate_javascript_finish(
-            WEBKIT_WEB_VIEW(ctx->window->webview),
-            res,
-            &error
-          );
-
-          if (!value) {
-            ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
-              {"code", error->code},
-              {"message", String(error->message)}
-            }});
-
-            g_error_free(error);
-            return;
-          } else {
-            if (
-              jsc_value_is_null(value) ||
-              jsc_value_is_array(value) ||
-              jsc_value_is_object(value) ||
-              jsc_value_is_number(value) ||
-              jsc_value_is_string(value) ||
-              jsc_value_is_function(value) ||
-              jsc_value_is_undefined(value) ||
-              jsc_value_is_constructor(value)
-            ) {
-              auto context = jsc_value_get_context(value);
-              auto string = jsc_value_to_string(value);
-              auto exception = jsc_context_get_exception(context);
-              auto json = JSON::Any {};
-
-              if (exception) {
-                auto message = jsc_exception_get_message(exception);
-
-                if (message == nullptr) {
-                  message = "An unknown error occured";
-                }
-
-                ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
-                  {"message", String(message)}
-                }});
-              } else if (string) {
-                ctx->reply(IPC::Result { ctx->message.seq, ctx->message, String(string) });
-              }
-
-              if (string) {
-                g_free(string);
-              }
-            } else {
-              ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
-                {"message", "Error: An unknown JavaScript evaluation error has occurred"}
-              }});
-            }
-          }
-        },
-        ctx
-      );
-    });
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
@@ -225,71 +135,12 @@ namespace SSC {
       NULL
     )));
 
+    this->bridge->navigator.configureWebView(webview);
+    this->bridge->core->notifications.configureWebView(webview);
+
     gtk_widget_set_can_focus(GTK_WIDGET(webview), true);
 
     webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
-
-    g_signal_connect(
-      G_OBJECT(webContext),
-      "initialize-notification-permissions",
-      G_CALLBACK(+[](
-        WebKitWebContext* webContext,
-        gpointer userData
-      ) {
-        static auto userConfig = SSC::getUserConfig();
-        static const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-
-        auto uri = "socket://" + bundleIdentifier;
-        auto origin = webkit_security_origin_new_for_uri(uri.c_str());
-        GList* allowed = nullptr;
-        GList* disallowed = nullptr;
-
-        webkit_security_origin_ref(origin);
-
-        if (origin && allowed && disallowed) {
-          if (userConfig["permissions_allow_notifications"] == "false") {
-            disallowed = g_list_append(disallowed, (gpointer) origin);
-          } else {
-            allowed = g_list_append(allowed, (gpointer) origin);
-          }
-
-          if (allowed && disallowed) {
-            webkit_web_context_initialize_notification_permissions(
-              webContext,
-              allowed,
-              disallowed
-            );
-          }
-        }
-
-        if (allowed) {
-          g_list_free(allowed);
-        }
-
-        if (disallowed) {
-          g_list_free(disallowed);
-        }
-
-        if (origin) {
-          webkit_security_origin_unref(origin);
-        }
-      }),
-      this
-    );
-
-    g_signal_connect(
-      G_OBJECT(webview),
-      "show-notification",
-      G_CALLBACK(+[](
-        WebKitWebView* webview,
-        WebKitNotification* notification,
-        gpointer userData
-      ) -> bool {
-        static auto userConfig = SSC::getUserConfig();
-        return userConfig["permissions_allow_notifications"] == "false";
-      }),
-      this
-    );
 
     // handle `navigator.permissions.query()`
     g_signal_connect(
@@ -411,73 +262,6 @@ namespace SSC {
 
         return result;
       })),
-      this
-    );
-
-    g_signal_connect(
-      G_OBJECT(webview),
-      "decide-policy",
-      G_CALLBACK((+[](
-        WebKitWebView* webview,
-        WebKitPolicyDecision* decision,
-        WebKitPolicyDecisionType decisionType,
-        gpointer userData
-      ) {
-        static const auto devHost = SSC::getDevHost();
-        auto window = static_cast<Window*>(userData);
-
-        if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
-          webkit_policy_decision_use(decision);
-          return true;
-        }
-
-        const auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
-        const auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
-        const auto req = webkit_navigation_action_get_request(action);
-        const auto uri = String(webkit_uri_request_get_uri(req));
-        const auto applicationProtocol = window->opts.userConfig["meta_application_protocol"];
-
-        if (
-          applicationProtocol.size() > 0 &&
-          uri.starts_with(window->opts.userConfig["meta_application_protocol"])
-        ) {
-          webkit_policy_decision_ignore(decision);
-
-          if (window != nullptr && window->bridge != nullptr) {
-            SSC::JSON::Object json = SSC::JSON::Object::Entries {
-              {"url", uri }
-            };
-
-            window->bridge->router.emit("applicationurl", json.str());
-          }
-
-          return false;
-        }
-
-        if (!window->bridge->router.isNavigationAllowed(uri)) {
-          debug("Navigation was ignored for: %s", uri.c_str());
-          webkit_policy_decision_ignore(decision);
-          return false;
-        }
-
-        return true;
-      })),
-      this
-    );
-
-    g_signal_connect(
-      G_OBJECT(webview),
-      "load-changed",
-      G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
-        auto *window = static_cast<Window*>(arg);
-        if (event == WEBKIT_LOAD_STARTED) {
-          window->app.isReady = false;
-        }
-
-        if (event == WEBKIT_LOAD_FINISHED) {
-          window->app.isReady = true;
-        }
-      }),
       this
     );
 
@@ -1198,9 +982,15 @@ namespace SSC {
     }
   }
 
-  SSC::String Window::getTitle () {
-    auto title = gtk_window_get_title(GTK_WINDOW(window));
-    return String(title != nullptr ? title : "");
+  const String Window::getTitle () const {
+    if (this->window != nullptr) {
+      const auto title = gtk_window_get_title(GTK_WINDOW(this->window));
+      if (title != nullptr) {
+        return title;
+      }
+    }
+
+    return "";
   }
 
   void Window::setTitle (const String &s) {
@@ -1263,6 +1053,10 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
+    return ScreenSize { this->height, this->width };
+  }
+
+  const ScreenSize Window::getSize () const {
     return ScreenSize { this->height, this->width };
   }
 
