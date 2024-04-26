@@ -1,6 +1,12 @@
 #ifndef SSC_CORE_PEER_H
 #define SSC_CORE_PEER_H
+#include <uv.h>
+
+#include "types.hh"
+#include "post.hh"
+
 namespace SSC {
+  class Core;
   typedef enum {
     PEER_TYPE_NONE = 0,
     PEER_TYPE_TCP = 1 << 1,
@@ -86,11 +92,11 @@ namespace SSC {
 
       // callbacks
       UDPReceiveCallback receiveCallback;
-      std::vector<Function<void()>> onclose;
+      Vector<Function<void()>> onclose;
 
       // instance state
       uint64_t id = 0;
-      std::recursive_mutex mutex;
+      Mutex mutex;
       Core *core;
 
       struct {

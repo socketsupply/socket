@@ -108,13 +108,25 @@ namespace SSC {
 
   String Headers::str () const {
     StringStream headers;
-    auto count = this->size();
+    auto remaining = this->size();
     for (const auto& entry : this->entries) {
-      headers << entry.name << ": " << entry.value.str();;
-      if (--count > 0) {
+      auto parts = split(entry.name, '-');
+
+      std::transform(
+        parts.begin(),
+        parts.end(),
+        parts.begin(),
+        toProperCase
+      );
+
+      const auto name = join(parts, '-');
+
+      headers << name << ": " << entry.value.str();
+      if (--remaining > 0) {
         headers << "\n";
       }
     }
+
     return headers.str();
   }
 

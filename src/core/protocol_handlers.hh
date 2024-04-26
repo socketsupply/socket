@@ -1,6 +1,7 @@
 #ifndef SSC_PROTOCOL_HANDLERS_H
 #define SSC_PROTOCOL_HANDLERS_H
 
+#include "module.hh"
 #include "platform.hh"
 #include "types.hh"
 #include "json.hh"
@@ -10,7 +11,7 @@ namespace SSC {
   namespace IPC { class Bridge; }
   class Core;
 
-  class ProtocolHandlers {
+  class ProtocolHandlers : public Module {
     public:
       struct Data {
         String json = ""; // we store JSON as a string here
@@ -25,7 +26,6 @@ namespace SSC {
 
       Mapping mapping;
       Mutex mutex;
-      Core* core = nullptr;
 
       ProtocolHandlers (Core* core);
       ~ProtocolHandlers ();

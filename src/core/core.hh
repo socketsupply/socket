@@ -25,6 +25,7 @@
 #include "service_worker_container.hh"
 #include "string.hh"
 #include "types.hh"
+#include "url.hh"
 #include "version.hh"
 
 namespace SSC {

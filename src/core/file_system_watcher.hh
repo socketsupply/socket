@@ -66,9 +66,6 @@ namespace SSC {
       AtomicBool isRunning = false;
       Core* core = nullptr;
 
-      // thread state
-      Mutex mutex;
-
       static void handleEventCallback (
         EventHandle* handle,
         const char* filename,

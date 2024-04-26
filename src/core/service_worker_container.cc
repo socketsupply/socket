@@ -434,30 +434,12 @@ namespace SSC {
           html.erase(x, (y - x) + end.size());
         }
 
-        Vector<String> protocolHandlers = { "npm:", "node:" };
-        for (const auto& entry : router->core->protocolHandlers.mapping) {
-          protocolHandlers.push_back(String(entry.first) + ":");
-        }
-
-        html = tmpl(html, Map {
-          {"protocol_handlers", join(protocolHandlers, " ")}
-        });
-
-        if (html.find("<meta name=\"runtime-preload-injection\" content=\"disabled\"") != String::npos) {
-          preload = "";
-        } else if (html.find("<meta content=\"disabled\" name=\"runtime-preload-injection\"") != String::npos) {
-          preload = "";
-        }
-
-        if (html.find("<head>") != String::npos) {
-          html = replace(html, "<head>", String("<head>" + preload));
-        } else if (html.find("<body>") != String::npos) {
-          html = replace(html, "<body>", String("<body>" + preload));
-        } else if (html.find("<html>") != String::npos) {
-          html = replace(html, "<html>", String("<html>" + preload));
-        } else {
-          html = preload + html;
-        }
+        html = injectHTMLPreload(
+          this->core,
+          this->bridge->userConfig,
+          html,
+          preload
+        );
 
         response.buffer.bytes = std::make_shared<char*>(new char[html.size()]{0});
         response.buffer.size = html.size();

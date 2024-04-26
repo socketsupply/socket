@@ -121,7 +121,6 @@ namespace SSC {
       return false;
     }
 
-    Lock lock(this->mutex);
     this->callback = callback;
 
     // a loop may be configured for the instance already, perhaps here or
@@ -232,7 +231,6 @@ namespace SSC {
   }
 
   bool FileSystemWatcher::stop () {
-    Lock lock(this->mutex);
     if (!this->isRunning) {
       return false;
     }

@@ -19,6 +19,7 @@ namespace SSC {
   String trim (String source);
   String toLowerCase (const String& source);
   String toUpperCase (const String& source);
+  String toProperCase (const String& source);
 
   // conversion
   WString convertStringToWString (const String& source);
