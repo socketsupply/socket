@@ -934,7 +934,7 @@ declare module "socket:internal/symbols" {
 
 declare module "socket:gc" {
     /**
-     * Track `object` ref to call `Symbol.for('socket.gc.finalize')` method when
+     * Track `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
      * environment garbage collects object.
      * @param {object} object
      * @return {boolean}
@@ -2361,6 +2361,9 @@ declare module "socket:process" {
         constructor(type: any, key: any, value: any);
         key: any;
         value: any;
+    }
+    export class ProcessEnvironment extends EventTarget {
+        get [Symbol.toStringTag](): string;
     }
     export const env: any;
     export default process;
@@ -4734,11 +4737,13 @@ declare module "socket:ipc" {
             [k: string]: string;
         };
     }
+    const Message_base: any;
     /**
      * A container for a IPC message based on a `ipc://` URI scheme.
      * @ignore
      */
-    export class Message extends URL {
+    export class Message extends Message_base {
+        [x: string]: any;
         /**
          * The expected protocol for an IPC message.
          * @ignore
@@ -4844,7 +4849,7 @@ declare module "socket:ipc" {
          * @param {any} value
          * @ignore
          */
-        set(key: string, value: any): void;
+        set(key: string, value: any): any;
         /**
          * Get a parameter value by `key`.
          * @param {string} key
@@ -4975,6 +4980,7 @@ declare module "socket:ipc" {
     export const primordials: any;
     export default exports;
     import { Buffer } from "socket:buffer";
+    import { URL } from "socket:url/index";
     import * as exports from "socket:ipc";
     
 }
@@ -6518,17 +6524,20 @@ declare module "socket:window" {
          */
         postMessage(message: object): Promise<any>;
         /**
-         * Opens an URL in the default browser.
-         * @param {object} options
-         * @returns {Promise<ipc.Result>}
+         * Opens an URL in the default application associated with the URL protocol,
+         * such as 'https:' for the default web browser.
+         * @param {string} value
+         * @returns {Promise<{ url: string }>}
          */
-        openExternal(options: object): Promise<ipc.Result>;
+        openExternal(value: string): Promise<{
+            url: string;
+        }>;
         /**
          * Opens a file in the default file explorer.
-         * @param {object} options
-         * @returns {Promise<ipc.Result>}
+         * @param {string} value
+         * @returns {Promise}
          */
-        revealFile(options: object): Promise<ipc.Result>;
+        revealFile(value: string): Promise<any>;
         /**
          * Adds a listener to the window.
          * @param {string} event - the event to listen to
@@ -13199,6 +13208,28 @@ declare module "socket:test/index" {
     export namespace test {
         export { only };
         export { skip };
+        export function linux(name: any, fn: any): void;
+        export function windows(name: any, fn: any): void;
+        export function win32(name: any, fn: any): void;
+        export function unix(name: any, fn: any): void;
+        export function macosx(name: any, fn: any): void;
+        export function macos(name: any, fn: any): void;
+        export function mac(name: any, fn: any): void;
+        export function darwin(name: any, fn: any): void;
+        export function iphone(name: any, fn: any): void;
+        export namespace iphone {
+            function simulator(name: any, fn: any): void;
+        }
+        export function ios(name: any, fn: any): void;
+        export namespace ios {
+            function simulator(name: any, fn: any): void;
+        }
+        export function android(name: any, fn: any): void;
+        export namespace android {
+            function emulator(name: any, fn: any): void;
+        }
+        export function desktop(name: any, fn: any): void;
+        export function mobile(name: any, fn: any): void;
     }
     /**
      * @typedef {(t: Test) => (void | Promise<void>)} TestFn

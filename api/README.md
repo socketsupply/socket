@@ -1604,12 +1604,12 @@ Watch for changes at `path` calling `callback`
  import { send } from 'socket:ipc'
  ```
 
-## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L270)
+## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L271)
 
 This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1141)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1142)
 
 Emit event to be dispatched on `window` object.
 
@@ -1620,7 +1620,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1200)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1201)
 
 Sends an async IPC command request with parameters.
 
@@ -2018,12 +2018,17 @@ Converts this `Path` instance to a string.
 This is a `ClassDeclaration` named ``ProcessEnvironmentEvent` (extends `Event`)` in `api/process.js`, it's exported but undocumented.
 
 
-## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L29)
+## [`ProcessEnvironment` (extends `EventTarget`)](https://github.com/socketsupply/socket/blob/master/api/process.js#L29)
+
+This is a `ClassDeclaration` named ``ProcessEnvironment` (extends `EventTarget`)` in `api/process.js`, it's exported but undocumented.
+
+
+## [env](https://github.com/socketsupply/socket/blob/master/api/process.js#L34)
 
 This is a `VariableDeclaration` named `env` in `api/process.js`, it's exported but undocumented.
 
 
-## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L190)
+## [`nextTick(callback)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L197)
 
 Adds callback to the 'nextTick' queue.
 
@@ -2031,7 +2036,7 @@ Adds callback to the 'nextTick' queue.
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | Function |  | false |  |
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L221)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L228)
 
 Computed high resolution time as a `BigInt`.
 
@@ -2043,7 +2048,7 @@ Computed high resolution time as a `BigInt`.
 | :---         | :--- | :---        |
 | Not specified | bigint |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L247)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L254)
 
 
 
@@ -2051,7 +2056,7 @@ Computed high resolution time as a `BigInt`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | code | number | 0 | true | The exit code. Default: 0. |
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L259)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L266)
 
 Returns an object describing the memory usage of the Node.js process measured in bytes.
 
@@ -2868,31 +2873,32 @@ Post a message to a window
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L413)
+### [`openExternal(value)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L414)
 
-Opens an URL in the default browser.
+Opens an URL in the default application associated with the URL protocol,
+ such as 'https:' for the default web browser.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false |  |
+| value | string |  | false |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
+| Not specified | Promise<{ url: string  | >} |
 
-### [`revealFile(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L422)
+### [`revealFile(value)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L429)
 
 Opens a file in the default file explorer.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false |  |
+| value | string |  | false |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
+| Not specified | Promise |  |
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L433)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L444)
 
 Adds a listener to the window.
 
@@ -2901,7 +2907,7 @@ Adds a listener to the window.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L451)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L462)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -2910,7 +2916,7 @@ Adds a listener to the window. An alias for `addListener`.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L468)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L479)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -2919,7 +2925,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | event | string |  | false | the event to listen to |
 | cb | function(*): void |  | false | the callback to call |
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L484)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L495)
 
 Removes a listener from the window.
 
@@ -2928,7 +2934,7 @@ Removes a listener from the window.
 | event | string |  | false | the event to remove the listener from |
 | cb | function(*): void |  | false | the callback to remove |
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L497)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L508)
 
 Removes all listeners from the window.
 
@@ -2936,7 +2942,7 @@ Removes all listeners from the window.
 | :---     | :--- | :---:   | :---:    | :---        |
 | event | string |  | false | the event to remove the listeners from |
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L513)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L524)
 
 Removes a listener from the window. An alias for `removeListener`.
 
