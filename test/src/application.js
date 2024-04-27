@@ -70,7 +70,7 @@ test.desktop('application.config', async (t) => {
   }
   config.forEach(([key, value]) => {
     switch (key) {
-        // boolean values
+      // boolean values
       case 'build_headless':
       case 'window_max_width':
       case 'window_max_height':
