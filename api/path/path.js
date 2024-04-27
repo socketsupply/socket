@@ -179,7 +179,7 @@ export function join (options, ...components) {
       url = new URL(component)
       queries.push(...url.pathname.split('/'))
     } else {
-      queries.push(...String(component).split('/'))
+      queries.push(...String(component).split(sep))
     }
   }
 
