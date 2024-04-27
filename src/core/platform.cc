@@ -213,51 +213,44 @@ namespace SSC {
   }
 
   void Core::Platform::revealFile (const String seq, const String value, Module::Callback cb) {
-    auto json = JSON::Object {};
-    bool success;
+    String errorMessage = "Failed to open external file";
     String pathToFile = decodeURIComponent(value);
-    String message = "Failed to open external file";
+    bool success = false;
+    auto json = JSON::Object(JSON::Object::Entries {
+      {"source", "platform.revealFile"}
+    });
 
-    #if TARGET_OS_MAC && !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
-      NSString *directoryPath = @(pathToFile.c_str());
-      NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
-      NSLog(@"wtf %@", directoryPath);
-      success = [workspace selectFile:nil inFileViewerRootedAtPath:directoryPath];
-    #elif defined(__linux__) && !defined(__ANDROID__)
-      std::string command = "xdg-open " + pathToFile;
-      auto result = exec(command.c_str());
+    #if SSC_PLATFORM_MACOS
+      success = [NSWorkspace.sharedWorkspace
+                      selectFile: nil
+        inFileViewerRootedAtPath: @(pathToFile.c_str())
+      ];
+    #elif SSC_PLATFORM_LINUX
+      const auto result = exec("xdg-open " + pathToFile);
       success = result.exitCode == 0;
-      message = result.output;
-    #elif defined(_WIN32)
-      std::string command = "explorer.exe \"" + pathToFile + "\"";
-      auto result = exec(command.c_str());
+      errorMessage = result.output;
+    #elif SSC_PLATFORM_WINDOWS
+      const auto result = exec("explorer.exe \"" + pathToFile + "\"");
       success = result.exitCode == 0;
-      message = result.output;
+      errorMessage = result.output;
     #endif
 
     if (!success) {
-      json = JSON::Object::Entries {
-        {"source", "platform.revealFile"},
-        {"err", JSON::Object::Entries {
-          {"message", message}
-        }}
+      json["err"] = JSON::Object::Entries {
+        {"message", errorMessage}
       };
     } else {
-      json = JSON::Object::Entries {
-        {"source", "platform.revealFile"},
-        {"data", JSON::Object::Entries {}}
-      };
+      json["data"] = JSON::Object {};
     }
 
     cb(seq, json, Post{});
   }
 
   void Core::Platform::openExternal (const String seq, const String value, Module::Callback cb) {
-    #if defined(__APPLE__)
-      auto string = [NSString stringWithUTF8String: value.c_str()];
-      auto url = [NSURL URLWithString: string];
+    #if SSC_PLATFORM_APPLE
+      const auto url = [NSURL URLWithString: @(value.c_str())];
 
-      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+      #if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
         auto app = [UIApplication sharedApplication];
         [app openURL: url options: @{} completionHandler: ^(BOOL success) {
           auto json = JSON::Object {};
@@ -272,7 +265,7 @@ namespace SSC {
           } else {
             json = JSON::Object::Entries {
               {"source", "platform.openExternal"},
-              {"data", JSON::Object::Entries {}}
+              {"data", JSON::Object::Entries {{"url", value}}}
             };
           }
 
@@ -287,23 +280,27 @@ namespace SSC {
         {
            auto json = JSON::Object {};
            if (error) {
+             if (error.debugDescription.UTF8String) {
+               debug("%s", error.debugDescription.UTF8String);
+             }
+
              json = JSON::Object::Entries {
                {"source", "platform.openExternal"},
                {"err", JSON::Object::Entries {
-                 {"message", [error.debugDescription UTF8String]}
+                 {"message", error.localizedDescription.UTF8String}
                }}
              };
            } else {
             json = JSON::Object::Entries {
               {"source", "platform.openExternal"},
-              {"data", JSON::Object::Entries {}}
+              {"data", JSON::Object::Entries {{ "url", value}}}
             };
            }
 
           cb(seq, json, Post{});
         }];
       #endif
-    #elif defined(__linux__) && !defined(__ANDROID__)
+    #elif SSC_PLATFORM_LINUX
       auto list = gtk_window_list_toplevels();
       auto json = JSON::Object {};
 
@@ -356,11 +353,20 @@ namespace SSC {
       }
 
       cb(seq, json, Post{});
-    #elif defined(_WIN32)
+    #elif SSC_PLATFORM_WINDOWS
       auto uri = value.c_str();
       ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
       // TODO how to detect success here. do we care?
       cb(seq, JSON::Object{}, Post{});
+    #else
+      const auto json = JSON::Object::Entries {
+        {"source", "platform.openExternal"},
+        {"err", JSON::Object::Entries {
+          {"type", "NotSupportedError"},
+          {"message", "Operation not supported"}
+        }}
+      };
+      cb(seq, json, Post{});
     #endif
   }
 }
