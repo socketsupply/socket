@@ -155,7 +155,6 @@
   "vnd.nuera.ecelp9600": "audio/vnd.nuera.ecelp9600",
   "vnd.octel.sbc": "audio/vnd.octel.sbc",
   "vnd.presonus.multitrack": "audio/vnd.presonus.multitrack",
-  "vnd.qcelp": "-",
   "vnd.rhetorex.32kadpcm": "audio/vnd.rhetorex.32kadpcm",
   "vnd.rip": "audio/vnd.rip",
   "vnd.sealedmedia.softseal.mpeg": "audio/vnd.sealedmedia.softseal.mpeg",
