@@ -406,21 +406,32 @@ export class ApplicationWindow {
   }
 
   /**
-   * Opens an URL in the default browser.
-   * @param {object} options
-   * @returns {Promise<ipc.Result>}
+   * Opens an URL in the default application associated with the URL protocol,
+   * such as 'https:' for the default web browser.
+   * @param {string} value
+   * @returns {Promise<{ url: string }>}
    */
-  async openExternal (options) {
-    return await ipc.request('platform.openExternal', options)
+  async openExternal (value) {
+    const result = await ipc.request('platform.openExternal', value)
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data
   }
 
   /**
    * Opens a file in the default file explorer.
-   * @param {object} options
-   * @returns {Promise<ipc.Result>}
+   * @param {string} value
+   * @returns {Promise}
    */
-  async revealFile (options) {
-    return await ipc.send('platform.revealFile', options)
+  async revealFile (value) {
+    const result = await ipc.request('platform.revealFile', value)
+
+    if (result.err) {
+      throw result.err
+    }
   }
 
   // public EventEmitter methods
