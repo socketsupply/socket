@@ -122,8 +122,13 @@ namespace SSC {
         window->kill();
       }
 
-      this->windows[index] = nullptr;
+      if (window->opts.canExit) {
+        window->exit(0);
+      }
+
     }
+
+    this->windows[index] = nullptr;
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {

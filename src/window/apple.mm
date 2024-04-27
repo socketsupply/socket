@@ -1260,14 +1260,19 @@ namespace SSC {
 
   void Window::close (int code) {
     if (this->webview != nullptr) {
+      [this->webview stopLoading];
       this->webview.navigationDelegate = nullptr;
       this->webview.UIDelegate = nullptr;
     }
 
     if (this->window != nullptr) {
+      this->window.contentView = nullptr;
       objc_removeAssociatedObjects(this->window);
       [this->window performClose: nil];
-      this->window.contentView = nullptr;
+    #if !__has_feature(objc_arc)
+      [this->window release];
+      this->window = nullptr;
+    #endif
     }
 
     if (this->windowDelegate != nullptr) {
