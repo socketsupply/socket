@@ -49,8 +49,6 @@ namespace SSC {
       }
     }
 
-    input = decodeURIComponent(input);
-
     const auto questionMark = input.find("?");
     const auto fragment = input.find("#");
 
