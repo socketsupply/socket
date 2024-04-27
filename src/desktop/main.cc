@@ -1090,12 +1090,6 @@ MAIN {
       auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
 
       if (targetWindow) {
-        if (targetWindow->opts.canExit) {
-          targetWindow->exit(0);
-        } else {
-          targetWindow->close(0);
-        }
-
         JSON::Object json = JSON::Object::Entries {
           { "data", targetWindow->json()},
         };
@@ -1106,6 +1100,10 @@ MAIN {
           OK_STATE,
           result.json()
         );
+
+        App::instance()->core->setTimeout(16, [=] () {
+          windowManager.destroyWindow(targetWindowIndex);
+        });
       }
       return;
     }
