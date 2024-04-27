@@ -62,7 +62,7 @@ test('ipc constants', (t) => {
   t.equal(ipc.OK, 0)
   t.equal(ipc.ERROR, 1)
   t.equal(ipc.TIMEOUT, 32000)
-  t.equal(ipc.kDebugEnabled, Symbol.for('ipc.debug.enabled'))
+  t.equal(ipc.kDebugEnabled, Symbol.for('socket.runtime.ipc.debug.enabled'))
 })
 
 test('ipc.debug', (t) => {
@@ -111,12 +111,7 @@ if (process.platform !== 'ios' && process.platform !== 'android') {
     t.equal(err?.name, 'NotFoundError')
     // Make lower case to adjust for implementation differences.
     t.equal(err?.message.toLowerCase(), 'not found')
-    // win32 adds on the trailing slash in the URL.
-    if (process.platform === 'win32') {
-      t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))
-    } else {
-      t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
-    }
+    t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))
     t.equal(err?.code, 'NOT_FOUND_ERR')
   })
 }
