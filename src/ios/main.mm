@@ -27,7 +27,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   Core* core;
 }
 @property (strong, nonatomic) UIWindow* window;
-@property (strong, nonatomic) SSCNavigationDelegate* navDelegate;
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 
@@ -335,46 +334,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   [config setValue: @YES forKey: @"allowUniversalAccessFromFileURLs"];
 
-  [config
-    setURLSchemeHandler: bridge->router.schemeHandler
-           forURLScheme: @"ipc"
-  ];
-
-  [config
-    setURLSchemeHandler: bridge->router.schemeHandler
-           forURLScheme: @"socket"
-  ];
-
-  [config
-    setURLSchemeHandler: bridge->router.schemeHandler
-           forURLScheme: @"node"
-  ];
-
-  [config
-    setURLSchemeHandler: bridge->router.schemeHandler
-           forURLScheme: @"npm"
-  ];
-
-  for (const auto& entry : split(opts.userConfig["webview_protocol-handlers"], " ")) {
-    const auto scheme = replace(trim(entry), ":", "");
-    if (core->protocolHandlers.registerHandler(scheme)) {
-      [config setURLSchemeHandler: bridge->router.schemeHandler
-                    forURLScheme: @(replace(trim(scheme), ":", "").c_str())];
-    }
-  }
-
-  for (const auto& entry : opts.userConfig) {
-    const auto& key = entry.first;
-    if (key.starts_with("webview_protocol-handlers_")) {
-      const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
-      const auto data = entry.second;
-      if (core->protocolHandlers.registerHandler(scheme, { data })) {
-        [config setURLSchemeHandler: bridge->router.schemeHandler
-                       forURLScheme: @(scheme.c_str())];
-      }
-    }
-  }
-
   self.content = config.userContentController;
 
   [self.content
@@ -453,9 +412,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [ns addObserver: self selector: @selector(keyboardWillHide:) name: UIKeyboardWillHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
-  self.navDelegate = [SSCNavigationDelegate new];
-  self.navDelegate.bridge = bridge;
-  [self.webview setNavigationDelegate: self.navDelegate];
+  self.webview.navigationDelegate = bridge->navigator.navigationDelegate;
+  bridge->configureHandlers({ config });
 
   [viewController.view addSubview: self.webview];
 
