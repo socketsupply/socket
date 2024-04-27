@@ -1124,6 +1124,79 @@ test.skip = skip
 
 export default test
 
+// os types
+test.linux = function (name, fn) {
+  if (os.type() === 'Linux') {
+    return test(name, fn)
+  }
+}
+
+test.windows =
+test.win32 = function (name, fn) {
+  if (os.platform() === 'win32') {
+    return test(name, fn)
+  }
+}
+
+test.unix = function (name, fn) {
+  if (os.host() === 'unix') {
+    return test(name, fn)
+  }
+}
+
+test.macosx =
+test.macos =
+test.mac = function (name, fn) {
+  if (os.host() === 'macosx') {
+    return test(name, fn)
+  }
+}
+
+test.darwin = function (name, fn) {
+  if (os.type() === 'Darwin') {
+    return test(name, fn)
+  }
+}
+
+test.iphone =
+test.ios = function (name, fn) {
+  if (os.host() === 'iphoneos') {
+    return test(name, fn)
+  }
+}
+
+test.iphone.simulator =
+test.ios.simulator = function (name, fn) {
+  if (os.host() === 'iphone-simulator') {
+    return test(name, fn)
+  }
+}
+
+test.android = function (name, fn) {
+  if (os.host() === 'androidos') {
+    return test(name, fn)
+  }
+}
+
+test.android.emulator = function (name, fn) {
+  if (os.host() === 'android-emulator') {
+    return test(name, fn)
+  }
+}
+
+test.desktop = function (name, fn) {
+  if (/linux|macosx|unix|win32/.test(os.host())) {
+    return test(name, fn)
+  }
+}
+
+test.mobile = function (name, fn) {
+  if (/android|android-emulator|iphoneos|iphone-simulator/.test(os.host())) {
+    return test(name, fn)
+  }
+}
+
+
 /**
  * @param {Error} err
  * @returns {void}
