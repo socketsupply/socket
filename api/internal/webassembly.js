@@ -36,10 +36,19 @@ export async function instantiateStreaming (response, importObject = undefined) 
   }
 
   const stream = await (result.body || result._bodyInit)
-  const nativeResponse = new __native_Response(stream, {
-    statusText: response.statsText,
-    headers: response.headers,
-    status: response.status
+  const nativeStream = new __native_ReadableStream({
+    async start (controller) {
+      for await (const chunk of stream) {
+        controller.enqueue(new Uint8Array(chunk))
+      }
+      controller.close()
+    }
+  })
+
+  const nativeResponse = new __native_Response(nativeStream, {
+    statusText: result.statusText,
+    headers: result.headers,
+    status: result.status
   })
 
   return nativeInstantiateStreaming(nativeResponse, importObject)
