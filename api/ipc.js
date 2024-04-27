@@ -53,6 +53,7 @@ import {
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
+import { URL } from './url.js'
 
 let nextSeq = 1
 const cache = {}
