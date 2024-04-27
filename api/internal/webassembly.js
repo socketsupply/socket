@@ -1,4 +1,4 @@
-/* global __native_Response */
+/* global __native_Response, __native_ReadableStream */
 /**
  * The native platform `WebAssembly.instantiateStreaming()` function.
  * @ignore
