@@ -1939,7 +1939,7 @@ static void mapIPCRoutes (Router *router) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
-      return reply(Result { message.seq, message, err });
+      return reply(Result::Err { message, err });
     }
 
     if (applicationProtocol.size() > 0 && message.value.starts_with(applicationProtocol + ":")) {
