@@ -1207,7 +1207,11 @@ namespace SSC::IPC {
 
   bool SchemeHandlers::Response::fail (const String& reason) {
     const auto bundleIdentifier = this->request.router->bridge->userConfig["meta_bundle_identifier"];
-    if (this->platformResponse != nullptr) {
+    if (
+      this->finished ||
+      !this->handlers->isRequestActive(this->id) ||
+      this->handlers->isRequestCancelled(this->id)
+    ) {
       return false;
     }
 
