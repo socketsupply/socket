@@ -17,12 +17,12 @@ test('trigger from openExternal', async (t) => {
     }
   })
 
-  const result = await window.openExternal({ value: expected })
-
-  if (result.err) {
-    return t.fail(result.err)
+  try {
+    const result = await window.openExternal({ value: expected })
+    t.equal(result.url, expected, 'result.url === expected')
+  } catch (err) {
+    return t.fail(err)
   }
 
-  t.equal(result?.data.url, expected, 'result.data.url === expected')
   await pending
 })
