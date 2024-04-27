@@ -103,7 +103,7 @@ namespace SSC {
             "    globalThis.location.href                                      \n"
             "  ));                                                             \n"
             "                                                                  \n"
-            "  if (document.readyState === 'complete') {                       \n"
+            "  if (document.readyState === 'interactive') {                    \n"
             "    import(RUNTIME_TEST_FILENAME);                                \n"
             "  } else {                                                        \n"
             "    document.addEventListener('DOMContentLoaded', () => {         \n"
