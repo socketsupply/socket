@@ -481,7 +481,7 @@ namespace SSC::IPC {
             : resolved.pathname;
 
           if (request.method == "GET") {
-            auto location = mount.resolution.pathname;
+            auto location = pathname;
             if (request.query.size() > 0) {
               location += "?" + request.query;
             }
