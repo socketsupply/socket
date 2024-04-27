@@ -543,7 +543,7 @@ int lastY = 0;
     return;
   }
 
-  auto urls = [NSMutableArray new];
+  auto urls = [NSMutableArray array];
 
   for (const auto& result : results) {
     [urls addObject: [NSURL URLWithString: @(result.c_str())]];
@@ -704,6 +704,213 @@ namespace SSC {
       opts(opts),
       hotkey(this)
   {
+    auto userConfig = opts.userConfig;
+
+    this->index = opts.index;
+    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
+    this->processPool = [WKProcessPool new];
+    this->configuration = [WKWebViewConfiguration new];
+    this->windowDelegate = [SSCWindowDelegate new];
+
+    objc_setAssociatedObject(
+      this->windowDelegate,
+      "window",
+      (id) this,
+      OBJC_ASSOCIATION_ASSIGN
+    );
+
+    const auto processInfo = NSProcessInfo.processInfo;
+    auto preferences = this->configuration.preferences;
+
+    // inherit from `IPC::Bridge` if `clientId` was not given (default case)
+    if (opts.clientId == 0) {
+      opts.clientId = this->bridge->id;
+    }
+
+    this->bridge->router.dispatchFunction = [this] (auto callback) {
+      this->app.dispatch(callback);
+    };
+
+    this->bridge->router.evaluateJavaScriptFunction = [this](auto source) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        this->eval(source);
+      });
+    };
+
+    this->bridge->preload = createPreload(opts, {
+      .module = true,
+      .wrap = true,
+      .userScript = opts.userScript
+    });
+
+    this->bridge->configureHandlers({
+      .webview = this->configuration
+    });
+
+    // https://webkit.org/blog/10882/app-bound-domains/
+    // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
+    this->configuration.limitsNavigationsToAppBoundDomains = YES;
+    this->configuration.defaultWebpagePreferences.allowsContentJavaScript = YES;
+    this->configuration.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
+    this->configuration.websiteDataStore = WKWebsiteDataStore.defaultDataStore;
+    this->configuration.processPool = this->processPool;
+
+    this->hotkey.init(this->bridge);
+
+    [this->configuration.websiteDataStore.httpCookieStore
+        setCookiePolicy: WKCookiePolicyAllow
+      completionHandler: ^(){}
+    ];
+
+    [this->configuration.userContentController
+      addScriptMessageHandler: this->windowDelegate
+                         name: @"external"
+    ];
+
+    [this->configuration
+      setValue: @NO
+        forKey: @"crossOriginAccessControlCheckEnabled"
+    ];
+
+    preferences.javaScriptCanOpenWindowsAutomatically = YES;
+
+    @try {
+      if (userConfig["permissions_allow_fullscreen"] == "false") {
+        [preferences setValue: @NO forKey: @"fullScreenEnabled"];
+        [preferences setValue: @NO forKey: @"elementFullscreenEnabled"];
+      } else {
+        [preferences setValue: @YES forKey: @"fullScreenEnabled"];
+        [preferences setValue: @YES forKey: @"elementFullscreenEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'fullScreenEnabled': %@", error);
+    }
+
+    @try {
+      if (userConfig["permissions_allow_fullscreen"] == "false") {
+        [preferences setValue: @NO forKey: @"elementFullscreenEnabled"];
+      } else {
+        [preferences setValue: @YES forKey: @"elementFullscreenEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
+    }
+
+    if (opts.debug || SSC::isDebugEnabled()) {
+      [preferences setValue:@YES forKey:@"developerExtrasEnabled"];
+      if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
+        [webview setInspectable: YES];
+      }
+    }
+
+    @try {
+      if (userConfig["permissions_allow_clipboard"] == "false") {
+        [preferences setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
+      } else {
+        [preferences setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'javaScriptCanAccessClipboard': %@", error);
+    }
+
+    @try {
+      if (userConfig["permissions_allow_data_access"] == "false") {
+        [preferences setValue: @NO forKey: @"storageAPIEnabled"];
+      } else {
+        [preferences setValue: @YES forKey: @"storageAPIEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'storageAPIEnabled': %@", error);
+    }
+
+    @try {
+      if (userConfig["permissions_allow_device_orientation"] == "false") {
+        [preferences setValue: @NO forKey: @"deviceOrientationEventEnabled"];
+      } else {
+        [preferences setValue: @YES forKey: @"deviceOrientationEventEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
+    }
+
+    if (userConfig["permissions_allow_notifications"] == "false") {
+      @try {
+        [preferences setValue: @NO forKey: @"appBadgeEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
+      }
+
+      @try {
+        [preferences setValue: @NO forKey: @"notificationsEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'notificationsEnabled': %@", error);
+      }
+
+      @try {
+        [preferences setValue: @NO forKey: @"notificationEventEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'notificationEventEnabled': %@", error);
+      }
+    } else {
+      @try {
+        [preferences setValue: @YES forKey: @"appBadgeEnabled"];
+      } @catch (NSException *error) {
+        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
+      }
+    }
+
+  #if !SSC_PLATFORM_IOS && !SSC_PLATFORM_IOS_SIMULATOR
+    @try {
+      [preferences setValue: @YES forKey: @"cookieEnabled"];
+
+      if (userConfig["permissions_allow_user_media"] == "false") {
+        [preferences setValue: @NO forKey: @"mediaStreamEnabled"];
+      } else {
+        [preferences setValue: @YES forKey: @"mediaStreamEnabled"];
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'mediaStreamEnabled': %@", error);
+    }
+  #endif
+
+    @try {
+      if (userConfig["permissions_allow_airplay"] == "false") {
+        this->configuration.allowsAirPlayForMediaPlayback = NO;
+      } else {
+        this->configuration.allowsAirPlayForMediaPlayback = YES;
+      }
+    } @catch (NSException *error) {
+      debug("Failed to set preference 'allowsAirPlayForMediaPlayback': %@", error);
+    }
+
+    @try {
+      [preferences setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
+    } @catch (NSException *error) {
+      debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
+    }
+
+    this->webview = [SSCBridgedWebView.alloc
+      initWithFrame: NSZeroRect
+      configuration: this->configuration
+             radius: (CGFloat) opts.radius
+             margin: (CGFloat) opts.margin
+    ];
+
+    this->webview.customUserAgent = [NSString
+      stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
+      processInfo.operatingSystemVersion.majorVersion,
+      processInfo.operatingSystemVersion.minorVersion,
+      processInfo.operatingSystemVersion.patchVersion,
+      SSC::VERSION_STRING.c_str()
+    ];
+
+    this->webview.wantsLayer = YES;
+    this->webview.UIDelegate = webview;
+    this->webview.navigationDelegate = this->bridge->navigator.navigationDelegate;
+    this->webview.layer.backgroundColor = NSColor.clearColor.CGColor;
+    this->webview.layer.opaque = NO;
+    [this->webview setValue: @(0) forKey: @"drawsBackground"];
+
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
@@ -720,221 +927,132 @@ namespace SSC {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
-    window = [[SSCWindow alloc]
+    this->window = [[SSCWindow alloc]
         initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
 
     if (opts.maximizable == false) {
-      [window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenAuxiliary];
+      [this->window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenAuxiliary];
     }
 
-    NSArray* draggableTypes = [NSArray arrayWithObjects:
+    this->window.opaque = YES;
+    this->window.webview = this->webview;
+    this->window.delegate = this->windowDelegate;
+    // this->window.appearance = [NSAppearance appearanceNamed: NSAppearanceNameVibrantDark];
+    this->window.contentMinSize = NSMakeSize(opts.minWidth, opts.minHeight);
+    this->window.titleVisibility = NSWindowTitleVisible;
+    this->window.titlebarAppearsTransparent = true;
+    // this->window.movableByWindowBackground = true;
+
+    // Position window in center of screen
+    [this->window center];
+
+    [this->window registerForDraggedTypes: [NSArray arrayWithObjects:
       NSPasteboardTypeURL,
       NSPasteboardTypeFileURL,
       (NSString*) kPasteboardTypeFileURLPromise,
       NSPasteboardTypeString,
       NSPasteboardTypeHTML,
       nil
-		];
+		]];
 
-    // window.movableByWindowBackground = true;
-    window.titlebarAppearsTransparent = true;
+    if (opts.frameless) {
+      [this->window setTitlebarAppearsTransparent: YES];
+      [this->window setMovableByWindowBackground: YES];
+      style = NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskBorderless;
+      style |= NSWindowStyleMaskResizable;
+      this->window.styleMask = style;
+    } else if (opts.utility) {
+      style |= NSWindowStyleMaskBorderless;
+      style |= NSWindowStyleMaskUtilityWindow;
+      this->window.styleMask = style;
+    }
 
-    auto userConfig = opts.userConfig;
-    WKWebViewConfiguration* config = [WKWebViewConfiguration new];
+    if (opts.titlebarStyle == "hidden") {
+      // hidden title bar and a full-size content window.
+      style |= NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskResizable;
+      this->window.styleMask = style;
+      this->window.titleVisibility = NSWindowTitleHidden;
+    } else if (opts.titlebarStyle == "hiddenInset") {
+      // hidden titlebar with inset/offset window controls
+      style |= NSWindowStyleMaskFullSizeContentView;
+      style |= NSWindowStyleMaskTitled;
+      style |= NSWindowStyleMaskResizable;
 
-    this->index = opts.index;
-    this->bridge = new IPC::Bridge(app.core, userConfig);
-    this->hotkey.init(this->bridge);
+      this->window.styleMask = style;
+      this->window.titleVisibility = NSWindowTitleHidden;
 
-    this->bridge->router.dispatchFunction = [this] (auto callback) {
-      this->app.dispatch(callback);
-    };
+      CGFloat x = 16.f;
+      CGFloat y = 42.f;
 
-    this->bridge->router.evaluateJavaScriptFunction = [this](auto source) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        this->eval(source);
-      });
-    };
+      if (opts.windowControlOffsets.size() > 0) {
+        auto parts = split(opts.windowControlOffsets, 'x');
+        try {
+          x = std::stof(parts[0]);
+          y = std::stof(parts[1]);
+        } catch (...) {
+          debug("invalid arguments for windowControlOffsets");
+        }
+      }
 
-    // https://webkit.org/blog/10882/app-bound-domains/
-    // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
-    config.limitsNavigationsToAppBoundDomains = YES;
+      auto titleBarView = [[NSView alloc] initWithFrame: NSZeroRect];
 
-    [config setValue: @NO forKey: @"crossOriginAccessControlCheckEnabled"];
+      titleBarView.layer.backgroundColor = NSColor.clearColor.CGColor; // Set background color to clear
+      titleBarView.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+      titleBarView.wantsLayer = YES;
 
-    WKPreferences* prefs = [config preferences];
-    prefs.javaScriptCanOpenWindowsAutomatically = YES;
+      const auto closeButton = [this->window standardWindowButton: NSWindowCloseButton];
+      const auto minimizeButton = [this->window standardWindowButton: NSWindowMiniaturizeButton];
+      const auto zoomButton = [this->window standardWindowButton: NSWindowZoomButton];
 
-    @try {
-      if (userConfig["permissions_allow_fullscreen"] == "false") {
-        [prefs setValue: @NO forKey: @"fullScreenEnabled"];
-        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
+      if (closeButton && minimizeButton && zoomButton) {
+        [titleBarView addSubview: closeButton];
+        [titleBarView addSubview: minimizeButton];
+        [titleBarView addSubview: zoomButton];
+
+        CGFloat viewWidth = window.frame.size.width;
+        CGFloat viewHeight = y + MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
+        CGFloat newX = x;
+        CGFloat newY = 0.f;
+
+        titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
+
+        this->window.windowControlOffsets = NSMakePoint(x, y);
+        this->window.titleBarView = titleBarView;
+
+        [this->window.contentView addSubview: titleBarView];
       } else {
-        [prefs setValue: @YES forKey: @"fullScreenEnabled"];
-        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'fullScreenEnabled': %@", error);
-    }
-
-    @try {
-      if (userConfig["permissions_allow_fullscreen"] == "false") {
-        [prefs setValue: @NO forKey: @"elementFullscreenEnabled"];
-      } else {
-        [prefs setValue: @YES forKey: @"elementFullscreenEnabled"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'elementFullscreenEnabled': %@", error);
-    }
-
-    if (opts.debug || SSC::isDebugEnabled()) {
-      [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
-      if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
-        [webview setInspectable: YES];
+        NSLog(@"Failed to retrieve standard window buttons.");
       }
     }
 
-    @try {
-      if (userConfig["permissions_allow_clipboard"] == "false") {
-        [prefs setValue: @NO forKey: @"javaScriptCanAccessClipboard"];
-      } else {
-        [prefs setValue: @YES forKey: @"javaScriptCanAccessClipboard"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'javaScriptCanAccessClipboard': %@", error);
-    }
+    if (opts.aspectRatio.size() > 2) {
+      auto parts = split(opts.aspectRatio, ':');
+      if (parts.size() == 2) {
+        CGFloat aspectRatio;
 
-    @try {
-      if (userConfig["permissions_allow_data_access"] == "false") {
-        [prefs setValue: @NO forKey: @"storageAPIEnabled"];
-      } else {
-        [prefs setValue: @YES forKey: @"storageAPIEnabled"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'storageAPIEnabled': %@", error);
-    }
+        @try {
+          aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
+        } @catch (NSException *error) {
+          debug("Invalid aspect ratio: %@", error);
+        }
 
-    @try {
-      if (userConfig["permissions_allow_device_orientation"] == "false") {
-        [prefs setValue: @NO forKey: @"deviceOrientationEventEnabled"];
-      } else {
-        [prefs setValue: @YES forKey: @"deviceOrientationEventEnabled"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
-    }
-
-    if (userConfig["permissions_allow_notifications"] == "false") {
-      @try {
-        [prefs setValue: @NO forKey: @"appBadgeEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
-      }
-
-      @try {
-        [prefs setValue: @NO forKey: @"notificationsEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'notificationsEnabled': %@", error);
-      }
-
-      @try {
-        [prefs setValue: @NO forKey: @"notificationEventEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'notificationEventEnabled': %@", error);
-      }
-    } else {
-      @try {
-        [prefs setValue: @YES forKey: @"appBadgeEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
+        if (!std::isnan(aspectRatio)) {
+          NSRect frame = [window frame];
+          frame.size.height = frame.size.width / aspectRatio;
+          [window setContentAspectRatio: frame.size];
+        }
       }
     }
-
-  #if !TARGET_OS_IPHONE
-    @try {
-      [prefs setValue: @YES forKey: @"cookieEnabled"];
-
-      if (userConfig["permissions_allow_user_media"] == "false") {
-        [prefs setValue: @NO forKey: @"mediaStreamEnabled"];
-      } else {
-        [prefs setValue: @YES forKey: @"mediaStreamEnabled"];
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'mediaStreamEnabled': %@", error);
-    }
-  #endif
-
-    @try {
-      if (userConfig["permissions_allow_airplay"] == "false") {
-        config.allowsAirPlayForMediaPlayback = NO;
-      } else {
-        config.allowsAirPlayForMediaPlayback = YES;
-      }
-    } @catch (NSException *error) {
-      debug("Failed to set preference 'allowsAirPlayForMediaPlayback': %@", error);
-    }
-
-    config.defaultWebpagePreferences.allowsContentJavaScript = YES;
-    config.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
-    config.websiteDataStore = WKWebsiteDataStore.defaultDataStore;
-    config.processPool = [WKProcessPool new];
-
-    [config.websiteDataStore.httpCookieStore
-        setCookiePolicy: WKCookiePolicyAllow
-      completionHandler: ^(){}
-    ];
-
-    @try {
-      [prefs setValue: @YES forKey: @"offlineApplicationCacheIsEnabled"];
-    } @catch (NSException *error) {
-      debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
-    }
-
-    WKUserContentController* controller = config.userContentController;
-
-    opts.clientId = this->bridge->id;
-
-    this->bridge->preload = createPreload(opts, {
-      .module = true,
-      .wrap = true,
-      .userScript = opts.userScript
-    });
-
-    this->bridge->configureHandlers({
-      .webview = config
-    });
-
-    webview = [SSCBridgedWebView.alloc
-      initWithFrame: NSZeroRect
-      configuration: config
-             radius: (CGFloat) opts.radius
-             margin: (CGFloat) opts.margin
-    ];
-
-    window.webview = webview;
-
-    const auto processInfo = NSProcessInfo.processInfo;
-    webview.customUserAgent = [NSString
-      stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
-      processInfo.operatingSystemVersion.majorVersion,
-      processInfo.operatingSystemVersion.minorVersion,
-      processInfo.operatingSystemVersion.patchVersion,
-      SSC::VERSION_STRING.c_str()
-    ];
-
-    webview.wantsLayer = YES;
-
-    //
-    // Initial setup of the window background color
-    //
 
     NSAppearance *appearance = [NSAppearance currentAppearance];
     bool didSetBackgroundColor = false;
 
-    if ([appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]]) {
+    if ([appearance bestMatchFromAppearancesWithNames: @[NSAppearanceNameDarkAqua]]) {
       if (opts.backgroundColorDark.size()) {
         this->setBackgroundColor(opts.backgroundColorDark);
         didSetBackgroundColor = true;
@@ -947,24 +1065,8 @@ namespace SSC {
     }
 
     if (!didSetBackgroundColor) {
-      [window setBackgroundColor: [NSColor windowBackgroundColor]];
+      [this->window setBackgroundColor: NSColor.windowBackgroundColor];
     }
-
-    webview.layer.backgroundColor = [NSColor clearColor].CGColor;
-    webview.layer.opaque = NO;
-    [webview setValue: [NSNumber numberWithBool: NO] forKey: @"drawsBackground"];
-
-    // [webview registerForDraggedTypes:
-    //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
-    //
-
-    windowDelegate = [SSCWindowDelegate new];
-    [controller addScriptMessageHandler: windowDelegate name: @"external"];
-
-    // set delegates
-    window.delegate = windowDelegate;
-    webview.UIDelegate = webview;
-    webview.navigationDelegate = this->bridge->navigator.navigationDelegate;
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -1071,16 +1173,6 @@ namespace SSC {
       );
     }
 
-    objc_setAssociatedObject(
-      windowDelegate,
-      "window",
-      (id) this,
-      OBJC_ASSOCIATION_ASSIGN
-    );
-
-    // Initialize application
-    [NSApplication sharedApplication];
-
     if (userConfig["application_agent"] == "true") {
       [NSApp setActivationPolicy: NSApplicationActivationPolicyAccessory];
 
@@ -1096,6 +1188,7 @@ namespace SSC {
     }
 
     if (opts.headless) {
+      [NSApp setActivationPolicy: NSApplicationActivationPolicyAccessory];
       [NSApp activateIgnoringOtherApps: NO];
     } else {
       // Sets the app as the active app
@@ -1103,137 +1196,38 @@ namespace SSC {
     }
 
     // Add webview to window
-    [window setContentView: webview];
+    [this->window setContentView: webview];
 
-    navigate("0", opts.url);
-
-    // Position window in center of screen
-    [window center];
-    [window setOpaque: YES];
-    [window setTitleVisibility: NSWindowTitleVisible];
+    this->navigate("0", opts.url);
 
     if (opts.title.size() > 0) {
       this->setTitle(opts.title);
     }
-
-    // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
-    [window registerForDraggedTypes: draggableTypes];
-    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-
-    if (opts.frameless) {
-      [window setTitlebarAppearsTransparent: YES];
-      [window setMovableByWindowBackground: YES];
-      style = NSWindowStyleMaskFullSizeContentView;
-      style |= NSWindowStyleMaskBorderless;
-      style |= NSWindowStyleMaskResizable;
-      [window setStyleMask: style];
-    }
-
-    else if (opts.utility) {
-      style |= NSWindowStyleMaskBorderless;
-      style |= NSWindowStyleMaskUtilityWindow;
-      [window setStyleMask: style];
-    }
-
-    //
-    // results in a hidden title bar and a full-size content window.
-    //
-    if (opts.titlebarStyle == "hidden") {
-      style |= NSWindowStyleMaskFullSizeContentView;
-      style |= NSWindowStyleMaskResizable;
-      [window setStyleMask: style];
-      [window setTitleVisibility: NSWindowTitleHidden];
-    }
-
-    //
-    // results in a hidden titlebar with inset/offset window controls
-    //
-    else if (opts.titlebarStyle == "hiddenInset") {
-      style |= NSWindowStyleMaskFullSizeContentView;
-      style |= NSWindowStyleMaskTitled;
-      style |= NSWindowStyleMaskResizable;
-
-      [window setStyleMask: style];
-      [window setTitleVisibility: NSWindowTitleHidden];
-
-      CGFloat x = 16.f;
-      CGFloat y = 42.f;
-
-      if (opts.windowControlOffsets.size() > 0) {
-        auto parts = split(opts.windowControlOffsets, 'x');
-        try {
-          x = std::stof(parts[0]);
-          y = std::stof(parts[1]);
-        } catch (...) {
-          debug("invalid arguments for windowControlOffsets");
-        }
-      }
-
-      NSView *titleBarView = [[NSView alloc] initWithFrame:NSZeroRect];
-
-      [titleBarView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
-      [titleBarView setWantsLayer:YES];
-      [titleBarView.layer setBackgroundColor:[NSColor clearColor].CGColor]; // Set background color to clear
-
-      NSButton *closeButton = [window standardWindowButton: NSWindowCloseButton];
-      NSButton *minimizeButton = [window standardWindowButton: NSWindowMiniaturizeButton];
-      NSButton *zoomButton = [window standardWindowButton: NSWindowZoomButton];
-
-      if (closeButton && minimizeButton && zoomButton) {
-        [titleBarView addSubview:closeButton];
-        [titleBarView addSubview:minimizeButton];
-        [titleBarView addSubview:zoomButton];
-
-        CGFloat viewWidth = window.frame.size.width;
-        CGFloat viewHeight = y + MACOS_TRAFFIC_LIGHT_BUTTON_SIZE;
-        CGFloat newX = x;
-        CGFloat newY = 0.f;
-
-        titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
-
-        window.windowControlOffsets = NSMakePoint(x, y);
-        window.titleBarView = titleBarView;
-
-        [window.contentView addSubview:titleBarView];
-      } else {
-        NSLog(@"Failed to retrieve standard window buttons.");
-      }
-    }
-
-    if (opts.aspectRatio.size() > 2) {
-      auto parts = split(opts.aspectRatio, ':');
-      if (parts.size() != 2) return;
-      CGFloat aspectRatio;
-
-      @try {
-        aspectRatio = std::stof(trim(parts[0])) / std::stof(trim(parts[1]));
-      } @catch (NSException *error) {
-        debug("Invalid aspect ratio: %@", error);
-      }
-
-      if (!std::isnan(aspectRatio)) {
-        NSRect frame = [window frame];
-        frame.size.height = frame.size.width / aspectRatio;
-        [window setContentAspectRatio: frame.size];
-      }
-    }
   }
 
   Window::~Window () {
-    this->close(0);
-    debug("DELETE BRIDGE");
     delete this->bridge;
 
+  #if !__has_feature(objc_arc)
     if (this->webview) {
-      #if !__has_feature(objc_arc)
-        [this->webview.configuration.processPool release];
-        [this->webview release];
-      #endif
+      [this->webview release];
     }
 
+    if (this->window) {
+      [this->window release];
+    }
+
+    if (this->windowDelegate) {
+      [this->windowDelegate release];
+    }
+  #endif
+
     this->bridge = nullptr;
+    this->window = nullptr;
     this->webview = nullptr;
+    this->processPool = nullptr;
+    this->configuration = nullptr;
+    this->windowDelegate = nullptr;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1265,19 +1259,19 @@ namespace SSC {
   }
 
   void Window::close (int code) {
-    this->webview.navigationDelegate = nullptr;
-    this->webview.UIDelegate = nullptr;
+    if (this->webview != nullptr) {
+      this->webview.navigationDelegate = nullptr;
+      this->webview.UIDelegate = nullptr;
+    }
+
     if (this->window != nullptr) {
+      objc_removeAssociatedObjects(this->window);
       [this->window performClose: nil];
-      auto app = App::instance();
-      app->windowManager->destroyWindow(this->index);
       this->window.contentView = nullptr;
-      this->window = nullptr;
     }
 
     if (this->windowDelegate != nullptr) {
       objc_removeAssociatedObjects(this->windowDelegate);
-      this->windowDelegate = nullptr;
     }
   }
 
@@ -1361,10 +1355,9 @@ namespace SSC {
     return "";
   }
 
-  void Window::setTitle (const SSC::String& value) {
+  void Window::setTitle (const String& title) {
     if (this->window) {
-      auto title = [NSString stringWithUTF8String:value.c_str()];
-      [this->window setTitle: title];
+      [this->window setTitle: @(title.c_str())];
     }
   }
 
