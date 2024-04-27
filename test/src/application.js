@@ -9,6 +9,8 @@ import process from 'socket:process'
 // const DELTA = 28
 
 let title = 'Socket Runtime JavaScript Tests'
+// TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
+let counter = 1
 
 test('window.document.title', async (t) => {
   t.equal(window.document.title, title, 'window.document.title is correct')
@@ -44,66 +46,64 @@ if (!['android'].includes(process.platform)) {
 }
 
 // FIXME: make it work on iOS/Android
-if (!['android', 'ios'].includes(process.platform)) {
-  test('application.config', async (t) => {
-    const rawConfig = await readFile('socket.ini', 'utf8')
-    let prefix = ''
-    const lines = rawConfig.split('\n')
-    const config = []
-    for (let line of lines) {
-      line = line.trim()
-      let [key, value] = line.split('=')
+test.desktop('application.config', async (t) => {
+  const rawConfig = await readFile('socket.ini', 'utf8')
+  let prefix = ''
+  const lines = rawConfig.split('\n')
+  const config = []
+  for (let line of lines) {
+    line = line.trim()
+    let [key, value] = line.split('=')
 
-      if (line.length === 0 || line.startsWith(';') || line.startsWith('#')) {
-        continue
-      }
-
-      if (line.startsWith('[') && line.endsWith(']')) {
-        prefix = line.slice(1, -1)
-        continue
-      }
-
-      key = key.trim()
-      value = value.trim().replace(/^"/, '').replace(/"$/, '').replace('.')
-      config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
+    if (line.length === 0 || line.startsWith(';') || line.startsWith('#')) {
+      continue
     }
-    config.forEach(([key, value]) => {
-      switch (key) {
+
+    if (line.startsWith('[') && line.endsWith(']')) {
+      prefix = line.slice(1, -1)
+      continue
+    }
+
+    key = key.trim()
+    value = value.trim().replace(/^"/, '').replace(/"$/, '').replace('.')
+    config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
+  }
+  config.forEach(([key, value]) => {
+    switch (key) {
         // boolean values
-        case 'build_headless':
-        case 'window_max_width':
-        case 'window_max_height':
-        case 'window_min_width':
-        case 'window_min_height':
-        case 'window_resizable':
-        case 'window_frameless':
-        case 'window_utility':
-          t.equal(application.config[key].toString(), value, `application.config.${key} is correct`)
-          break
-        case 'build_name':
-          t.ok(application.config[key].startsWith(value), `application.config.${key} is correct`)
-          break
-        case 'test-section_array[]':
-          t.ok([1, 2, 3].map(String).includes(value), 'test-section_array values are correct')
-          break
-        case 'test-section_subsection_key':
-          t.equal(application.config[key], 'value', 'test-section_subsection_key values are correct')
-          break
-        case '.subsection_key': // FIXME(@jwerle): INI parser above
-          t.ok(value, 'value', 'test-section.subsection_key == value')
-          break
-        default:
-          // skip various values that we cannot test until we have a valid INI parser in stdlib
-      }
-      t.throws(
-        () => { application.config[key] = 0 },
-        // eslint-disable-next-line prefer-regex-literals
-        /(read\s?only property)|(not extensible)/,
-        `application.config.${key} is read-only`
-      )
-    })
+      case 'build_headless':
+      case 'window_max_width':
+      case 'window_max_height':
+      case 'window_min_width':
+      case 'window_min_height':
+      case 'window_resizable':
+      case 'window_frameless':
+      case 'window_utility':
+        t.equal(application.config[key].toString(), value, `application.config.${key} is correct`)
+        break
+      case 'build_name':
+        t.ok(application.config[key].startsWith(value), `application.config.${key} is correct`)
+        break
+      case 'test-section_array[]':
+        t.ok([1, 2, 3].map(String).includes(value), 'test-section_array values are correct')
+        break
+      case 'test-section_subsection_key':
+        t.equal(application.config[key], 'value', 'test-section_subsection_key values are correct')
+        break
+      case '.subsection_key': // FIXME(@jwerle): INI parser above
+        t.ok(value, 'value', 'test-section.subsection_key == value')
+        break
+      default:
+        // skip various values that we cannot test until we have a valid INI parser in stdlib
+    }
+    t.throws(
+      () => { application.config[key] = 0 },
+      // eslint-disable-next-line prefer-regex-literals
+      /(read\s?only property)|(not extensible)/,
+      `application.config.${key} is read-only`
+    )
   })
-}
+})
 
 // FIXME: make it work on iOS/Windows
 if (!['android', 'ios', 'win32'].includes(process.platform)) {
@@ -115,17 +115,15 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
 }
 
 // FIXME: make it work on iOS/Android
-if (!['android', 'ios'].includes(process.platform)) {
-  test('openExternal', async (t) => {
-    const currentWindow = await application.getCurrentWindow()
-    t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
-    if (process.platform !== 'linux') {
-      const result = await currentWindow.openExternal('https://1.1.1.1')
-      // can't test results without browser
-      t.ok(result?.data, 'succesfully completes')
-    }
-  })
-}
+test.desktop('openExternal', async (t) => {
+  const currentWindow = await application.getCurrentWindow()
+  t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
+  if (process.platform !== 'linux') {
+    const result = await currentWindow.openExternal('https://1.1.1.1')
+    // can't test results without browser
+    t.ok(result.url, 'succesfully completes')
+  }
+})
 
 test('apllication.exit', async (t) => {
   t.equal(typeof application.exit, 'function', 'exit is a function')
@@ -290,7 +288,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
     t.equal(windows[0].index, 0, 'window index is correct')
     t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
-    newWindow.close()
+    await newWindow.close()
   })
 
   test('application.getWindows without params', async (t) => {
@@ -303,7 +301,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
     t.equal(windows[0].index, 0, 'window index is correct')
     t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
-    newWindow.close()
+    await newWindow.close()
   })
 
   test('application.getCurrentWindow', async (t) => {
@@ -315,9 +313,6 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     const mainWindowStatus = mainWindow.getStatus()
     t.equal(mainWindowStatus, ApplicationWindow.constants.WINDOW_SHOWN, 'status is correct')
   })
-
-  // TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
-  let counter = 1
 
   test('window.close', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
@@ -413,7 +408,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     const { index, status } = await newWindow.navigate('frontend/index_no_js2.html')
     t.equal(index, newWindow.index, 'correct index is returned')
     t.equal(status, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned')
-    newWindow.close()
+    await newWindow.close()
   })
 
   test('window.setBackgroundColor', async (t) => {
@@ -421,7 +416,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     counter++
     const { index } = await newWindow.setBackgroundColor({ red: 0, green: 0, blue: 0, alpha: 0 })
     t.equal(index, newWindow.index, 'correct index is returned')
-    newWindow.close()
+    await newWindow.close()
   })
 
   test('window.setContextMenu', async (t) => {
