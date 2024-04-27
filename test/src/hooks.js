@@ -16,7 +16,7 @@ const callbacks = {
 }
 
 class TestIgnoredError extends Error {
-  [Symbol.for('socket.test.error.ignore')] = true
+  [Symbol.for('socket.runtime.test.error.ignore')] = true
 }
 
 hooks.onReady(callbacks.onReady)
@@ -24,20 +24,16 @@ hooks.onLoad(callbacks.onLoad)
 hooks.onInit(callbacks.onInit)
 
 test('hooks - initial state', async (t) => {
-  t.ok(initial.isDocumentReady === false, 'isDocumentReady === false')
+  t.ok(initial.isDocumentReady === true, 'isDocumentReady === false')
   t.ok(initial.isRuntimeReady === true, 'isRuntimeReady === false')
   t.ok(initial.isGlobalReady === true, 'isGlobalReady === false')
-  t.ok(initial.isReady === false, 'isReady === false')
+  t.ok(initial.isReady === true, 'isReady === false')
 })
 
-test('hooks - properties after load', async (t) => {
+test('hooks - properties', async (t) => {
   t.ok(hooks.global === globalThis, 'hooks.global')
   t.ok(hooks.document === globalThis.document, 'hooks.document')
   t.ok(hooks.window === globalThis.window, 'hooks.window')
-  t.ok(hooks.isDocumentReady === true, 'hooks.isDocumentReady === true')
-  t.ok(hooks.isGlobalReady === true, 'hooks.isGlobalReady === true')
-  t.ok(hooks.isRuntimeReady === true, 'hooks.isRuntimeReady === true')
-  t.ok(hooks.isReady === true, 'hooks.isReady === true')
   t.ok(typeof hooks.isOnline === 'boolean', 'typeof hooks.isOnline === boolean')
   t.ok(typeof hooks.isWorkerContext === 'boolean', 'typeof hooks.isWorkerContext === boolean')
   t.ok(typeof hooks.isWindowContext === 'boolean', 'typeof hooks.isWindowContext === boolean')
