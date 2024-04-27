@@ -1,5 +1,6 @@
 #include "notifications.hh"
 #include "resource.hh"
+#include "platform.hh"
 #include "module.hh"
 #include "debug.hh"
 #include "url.hh"
@@ -193,12 +194,12 @@ namespace SSC {
     }
 
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-      // XXX(@jwerle): release this?
-    auto attachments = [NSMutableArray new];
-      // XXX(@jwerle): release this?
-    auto userInfo = [NSMutableDictionary new];
-      // XXX(@jwerle): release this?
+    auto attachments = [NSMutableArray array];
+    auto userInfo = [NSMutableDictionary dictionary];
     auto content = [UNMutableNotificationContent new];
+
+    NSError* error = nullptr;
+
     auto __block id = options.id;
 
     if (options.tag.size() > 0) {
@@ -215,7 +216,6 @@ namespace SSC {
     }
 
     if (options.icon.size() > 0) {
-      NSError* error = nullptr;
       NSURL* iconURL = nullptr;
 
       const auto url = URL(options.icon);
@@ -228,13 +228,12 @@ namespace SSC {
       }
 
       const auto types = [UTType
-            typesWithTag: iconURL.pathExtension
-                tagClass: UTTagClassFilenameExtension
+        typesWithTag: iconURL.pathExtension
+        tagClass: UTTagClassFilenameExtension
         conformingToType: nullptr
       ];
 
-      // XXX(@jwerle): release this?
-      auto options = [NSMutableDictionary new];
+      auto options = [NSMutableDictionary dictionary];
 
       if (types.count > 0) {
         options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
@@ -242,43 +241,42 @@ namespace SSC {
 
       auto attachment = [UNNotificationAttachment
         attachmentWithIdentifier: @("")
-                             URL: iconURL
-                         options: options
-                           error: &error
+        URL: iconURL
+        options: options
+        error: &error
       ];
 
       if (error != nullptr) {
-        auto message = String(
+        const auto message = String(
           error.localizedDescription.UTF8String != nullptr
             ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
         callback(ShowResult { message });
+      #if !__has_feature(objc_arc)
+        [content release];
+      #endif
         return false;
       }
 
       [attachments addObject: attachment];
     } else {
-    // FIXME(): this define never is true
-    #if SSC_PLATFORM_SANDBOXED
-    // using an asset from the resources directory will require a code signed application
-      NSError* error = nullptr;
+      // using an asset from the resources directory will require a code signed application
       const auto path = FileResource::getResourcePath(String("icon.png"));
       const auto iconURL = [NSURL fileURLWithPath: @(path.string().c_str())];
       const auto types = [UTType
-            typesWithTag: iconURL.pathExtension
-                tagClass: UTTagClassFilenameExtension
+        typesWithTag: iconURL.pathExtension
+        tagClass: UTTagClassFilenameExtension
         conformingToType: nullptr
       ];
 
-      // XXX(@jwerle): release this?
-      auto options = [NSMutableDictionary new];
+      auto options = [NSMutableDictionary dictionary];
       auto attachment = [UNNotificationAttachment
         attachmentWithIdentifier: @("")
-                             URL: iconURL
-                         options: options
-                           error: &error
+        URL: iconURL
+        options: options
+        error: &error
       ];
 
       if (error != nullptr) {
@@ -289,11 +287,13 @@ namespace SSC {
         );
 
         callback(ShowResult { message });
+      #if !__has_feature(objc_arc)
+        [content release];
+      #endif
         return false;
       }
 
       [attachments addObject: attachment];
-    #endif
     }
 
     if (options.image.size() > 0) {
@@ -309,13 +309,13 @@ namespace SSC {
         imageURL = [NSURL fileURLWithPath: @(url.href.c_str())];
       }
 
-      auto types = [UTType
-            typesWithTag: imageURL.pathExtension
-                tagClass: UTTagClassFilenameExtension
+      const auto types = [UTType
+        typesWithTag: imageURL.pathExtension
+        tagClass: UTTagClassFilenameExtension
         conformingToType: nullptr
       ];
 
-      auto options = [NSMutableDictionary new];
+      auto options = [NSMutableDictionary dictionary];
 
       if (types.count > 0) {
         options[UNNotificationAttachmentOptionsTypeHintKey] = types.firstObject.preferredMIMEType;
@@ -323,19 +323,22 @@ namespace SSC {
 
       auto attachment = [UNNotificationAttachment
         attachmentWithIdentifier: @("")
-                             URL: imageURL
-                         options: options
-                           error: &error
+        URL: imageURL
+        options: options
+        error: &error
       ];
 
       if (error != nullptr) {
-        auto message = String(
-           error.localizedDescription.UTF8String != nullptr
-             ? error.localizedDescription.UTF8String
-             : "An unknown error occurred"
+        const auto message = String(
+          error.localizedDescription.UTF8String != nullptr
+            ? error.localizedDescription.UTF8String
+            : "An unknown error occurred"
         );
 
         callback(ShowResult { message });
+      #if !__has_feature(objc_arc)
+        [content release];
+      #endif
         return false;
       }
 
@@ -349,19 +352,22 @@ namespace SSC {
 
     auto request = [UNNotificationRequest
       requestWithIdentifier: @(id.c_str())
-                    content: content
-                    trigger: nil
+      content: content
+      trigger: nil
     ];
 
     [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
       if (error != nullptr) {
-        auto message = String(
+        const auto message = String(
           error.localizedDescription.UTF8String != nullptr
             ? error.localizedDescription.UTF8String
             : "An unknown error occurred"
         );
 
         callback(ShowResult { message });
+      #if !__has_feature(objc_arc)
+        [content release];
+      #endif
         return;
       }
 
