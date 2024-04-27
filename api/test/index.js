@@ -1196,7 +1196,6 @@ test.mobile = function (name, fn) {
   }
 }
 
-
 /**
  * @param {Error} err
  * @returns {void}
