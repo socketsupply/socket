@@ -990,7 +990,7 @@ MAIN {
         return;
       }
 
-      SSC::String error = getNavigationError(cwd, message.get("url"));
+      const auto error = getNavigationError(cwd, message.get("url"));
       if (error.size() > 0) {
         const JSON::Object json = SSC::JSON::Object::Entries {
           {"err", JSON::Object::Entries {
