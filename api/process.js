@@ -22,11 +22,16 @@ export class ProcessEnvironmentEvent extends Event {
   constructor (type, key, value) {
     super(type)
     this.key = key
-    this.value = value ?? undefined
+    this.value = value ?? process.env[key] ?? undefined
   }
 }
 
-export const env = Object.defineProperties(new EventTarget(), {
+export class ProcessEnvironment extends EventTarget {
+  get [Symbol.toStringTag] () {
+    return 'ProcessEnvironment'
+  }
+}
+export const env = Object.defineProperties(new ProcessEnvironment(), {
   proxy: {
     configurable: false,
     enumerable: false,
@@ -43,6 +48,7 @@ export const env = Object.defineProperties(new EventTarget(), {
       set (_, property, value) {
         if (Reflect.get(env, property) !== value) {
           env.dispatchEvent(new ProcessEnvironmentEvent('set', property, value))
+          env.dispatchEvent(new ProcessEnvironmentEvent('change', property, value))
         }
         return Reflect.set(env, property, value)
       },
@@ -51,6 +57,7 @@ export const env = Object.defineProperties(new EventTarget(), {
         if (Reflect.has(env, property)) {
           // @ts-ignore
           env.dispatchEvent(new ProcessEnvironmentEvent('delete', property))
+          env.dispatchEvent(new ProcessEnvironmentEvent('change', property))
         }
         return Reflect.deleteProperty(env, property)
       },
