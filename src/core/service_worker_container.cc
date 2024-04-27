@@ -677,15 +677,17 @@ namespace SSC {
           const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
             if (registration.state == Registration::State::Activated) {
               cancel();
-              if (!this->fetch(request, callback)) {
-                debug(
-                  "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
-                  request.method.c_str(),
-                  request.pathname.c_str(),
-                  (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
-                  request.client.id
-                );
-              }
+              this->core->setTimeout(24, [this, request, callback, &registration] {
+                if (!this->fetch(request, callback)) {
+                  debug(
+                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
+                    request.method.c_str(),
+                    request.pathname.c_str(),
+                    (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
+                    request.client.id
+                  );
+                }
+              });
             }
           });
 
