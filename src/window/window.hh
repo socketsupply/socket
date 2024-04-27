@@ -148,9 +148,9 @@ namespace SSC {
 
   class Window {
     public:
-      App& app;
-      WindowOptions opts;
       HotKeyContext hotkey;
+      WindowOptions opts;
+      App& app;
 
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
@@ -161,11 +161,13 @@ namespace SSC {
       bool exiting = false;
 
     #if SSC_PLATFORM_APPLE
+    #if SSC_PLATFORM_MACOS
+      SSCWindow* window = nullptr;
+    #endif
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
-    #if SSC_PLATFORM_MACOS
-      SSCWindow* window;
-    #endif
+      WKWebViewConfiguration* configuration = nullptr;
+      WKProcessPool* processPool = nullptr;
     #elif SSC_PLATFORM_LINUX
       GtkSelectionData *selectionData = nullptr;
       GtkAccelGroup *accelGroup = nullptr;
@@ -179,7 +181,7 @@ namespace SSC {
       double dragLastX = 0;
       double dragLastY = 0;
       bool shouldDrag;
-      std::vector<String> draggablePayload;
+      Vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
       GdkPoint initialLocation;
     #elif SSC_PLATFORM_WINDOWS
@@ -205,7 +207,7 @@ namespace SSC {
       HWND window;
       std::map<int, String> menuMap;
       std::map<int, String> menuTrayMap;
-      fs::path modulePath;
+      Path modulePath;
 
       void resize (HWND window);
     #endif

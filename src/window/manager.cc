@@ -49,13 +49,15 @@ namespace SSC {
     WindowStatus status
   ) {
     Lock lock(this->mutex);
-    if (this->destroyed) {
+
+    if (this->destroyed || index < 0 || index >= this->windows.size()) {
       return nullptr;
     }
 
     if (
       this->getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
-      this->getWindowStatus(index) < status
+      this->getWindowStatus(index) < status &&
+      this->windows[index] != nullptr
     ) {
       return this->windows[index];
     }
@@ -75,7 +77,7 @@ namespace SSC {
     int index,
     const WindowOptions& options
   ) {
-    if (this->destroyed || index < 0) {
+    if (this->destroyed || index < 0 || index >= this->windows.size()) {
       return nullptr;
     }
 
@@ -91,7 +93,7 @@ namespace SSC {
   WindowManager::WindowStatus WindowManager::getWindowStatus (int index) {
     Lock lock(this->mutex);
 
-    if (this->destroyed) {
+    if (this->destroyed || index < 0 || index >= this->windows.size()) {
       return WindowStatus::WINDOW_NONE;
     }
 
@@ -106,6 +108,10 @@ namespace SSC {
   void WindowManager::destroyWindow (int index) {
     Lock lock(this->mutex);
 
+    if (this->destroyed || index < 0 || index >= this->windows.size()) {
+      return;
+    }
+
     auto window = this->windows[index];
     if (window != nullptr) {
       if (window->status < WINDOW_CLOSING) {
@@ -116,20 +122,18 @@ namespace SSC {
         window->kill();
       }
 
-      if (!window->opts.canExit) {
-        this->windows[index] = nullptr;
-      }
+      this->windows[index] = nullptr;
     }
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {
     Lock lock(this->mutex);
 
-    if (this->destroyed) {
+    if (this->destroyed || options.index < 0 || options.index >= this->windows.size()) {
       return nullptr;
     }
 
-    if (this->windows.size() > options.index && this->windows[options.index] != nullptr) {
+    if (this->windows[options.index] != nullptr) {
       return this->windows[options.index];
     }
 
@@ -233,13 +237,13 @@ namespace SSC {
       this->log("Creating Window#" + std::to_string(options.index));
     }
 
-    auto window = new ManagedWindow(*this, app, windowOptions);
+    auto window = SharedPointer<ManagedWindow>(new ManagedWindow(*this, app, windowOptions));
 
     window->status = WindowStatus::WINDOW_CREATED;
     window->onExit = this->options.onExit;
     window->onMessage = this->options.onMessage;
 
-    this->windows[options.index].reset(window);
+    this->windows[options.index] = std::move(window);
 
     return this->windows.at(options.index);
   }
