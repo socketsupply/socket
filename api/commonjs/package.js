@@ -19,7 +19,7 @@ const isWorkerScope = globalThis.self === globalThis && !globalThis.window
  * @return {boolean}
  */
 export function detectESMSource (source) {
-  if (/(import\s|export[{|\s]|export\sdefault|export\s?\*\s?from|(from\s['|"]))\s/.test(source)) {
+  if (/(import\s|export[{|\s]|export\s(const|var|let|async|function|class)|export\sdefault|export\s?\*\s?from|(from\s['|"]))\s/.test(source)) {
     return true
   }
 

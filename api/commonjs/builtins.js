@@ -41,7 +41,7 @@ import * as querystring from '../querystring.js'
 import stream from '../stream.js'
 // eslint-disable-next-line
 import * as string_decoder from '../string_decoder.js'
-import * as test from '../test.js'
+import test from '../test.js'
 import * as timers from '../timers.js'
 import * as tty from '../tty.js'
 import * as url from '../url.js'
@@ -127,7 +127,7 @@ define('stream/web', stream.web)
 // eslint-disable-next-line
 define('string_decoder', string_decoder)
 define('sys', util)
-define('test', test)
+define('test', test, false)
 define('timers', timers)
 define('timers/promises', timers.promises)
 define('tty', tty)
