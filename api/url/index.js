@@ -85,6 +85,7 @@ export const protocols = new Set([
   'xmpp:'
 ])
 
+protocols.handlers = new Set()
 if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
   const protocolHandlers = String(globalThis.__args.config['webview_protocol-handlers'] || '')
     .split(' ')
@@ -98,6 +99,7 @@ if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
     const scheme = value.replace(':', '')
     if (scheme) {
       protocols.add(scheme + ':')
+      protocols.handlers.add(scheme)
     }
   }
 
@@ -105,6 +107,7 @@ if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
     const scheme = value.replace(':', '')
     if (scheme) {
       protocols.add(scheme + ':')
+      protocols.handlers.add(scheme)
     }
   }
 
@@ -113,6 +116,7 @@ if (globalThis.__args?.config && typeof globalThis.__args.config === 'object') {
       const scheme = key.replace('webview_protocol-handlers_', '').replace(':', '')
       if (scheme) {
         protocols.add(scheme + ':')
+        protocols.handlers.add(scheme)
       }
     }
   }
