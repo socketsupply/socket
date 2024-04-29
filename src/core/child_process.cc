@@ -342,7 +342,7 @@ namespace SSC {
   void Core::ChildProcess::write (
     const String seq,
     uint64_t id,
-    char* buffer,
+    SharedPointer<char*> buffer,
     size_t size,
     Module::Callback cb
   ) {
