@@ -61,9 +61,14 @@ namespace SSC::IPC {
 
   Navigator::~Navigator () {
   #if SSC_PLATFORM_APPLE
-  #if !__has_feature(objc_arc)
-    [this->navigationDelegate release];
-  #endif
+    if (this->navigationDelegate) {
+      this->navigationDelegate.navigator = nullptr;
+
+    #if !__has_feature(objc_arc)
+      [this->navigationDelegate release];
+    #endif
+    }
+
     this->navigationDelegate = nullptr;
   #endif
   }
@@ -135,7 +140,7 @@ namespace SSC::IPC {
       &tokenNavigation
     );
   }
-#endif
+  #endif
 
   bool Navigator::handleNavigationRequest (
     const String& currentURL,
