@@ -18,11 +18,11 @@ ipc.sendSync('platform.event', 'beforeruntimeinit')
 
 import { CustomEvent, ErrorEvent } from '../events.js'
 import { IllegalConstructor } from '../util.js'
+import { URL, protocols } from '../url.js'
 import * as asyncHooks from './async/hooks.js'
 import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
-import { URL } from '../url.js'
 import mime from '../mime.js'
 import path from '../path.js'
 import fs from '../fs/promises.js'
@@ -465,9 +465,43 @@ if (globalThis.Worker === GlobalWorker) {
 
 // patch `globalThis.XMLHttpRequest`
 if (typeof globalThis.XMLHttpRequest === 'function') {
-  const { open, send } = globalThis.XMLHttpRequest.prototype
+  const { open, send, setRequestHeader } = globalThis.XMLHttpRequest.prototype
+  const additionalHeaders = {}
+  const headerFilters = []
   const isAsync = Symbol('isAsync')
   let queue = null
+
+  if (
+    typeof globalThis.__args.config.webview_fetch_headers_filter === 'string' &&
+    globalThis.__args.config.webview_fetch_headers_filter.length > 0
+  ) {
+    const filters = globalThis.__args.config.webview_fetch_headers_filter.split(' ')
+    for (const filter of filters) {
+      headerFilters.push(new RegExp(filter.replace(/\*/g, '(.*)').replace(/\.\.\*/g, '.*'), 'i'))
+    }
+  }
+
+  for (const key in globalThis.__args.config) {
+    if (key.startsWith('webview_fetch_headers_')) {
+      const name = key.replace('webview_fetch_headers_', '')
+      additionalHeaders[name] = globalThis.__args.config[name]
+    }
+  }
+
+  globalThis.XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+    if (testHeaderFilters(name)) {
+      return setRequestHeader.call(this, name, value)
+    }
+
+    function testHeaderFilters (header) {
+      for (const filter of headerFilters) {
+        if (filter.test(header)) {
+          return false
+        }
+      }
+      return true
+    }
+  }
 
   globalThis.XMLHttpRequest.prototype.open = function (method, url, isAsyncRequest, ...args) {
     Object.defineProperty(this, isAsync, {
@@ -478,37 +512,47 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     })
 
     if (typeof url === 'string') {
-      if (url.startsWith('/') || url.startsWith('.')) {
-        try {
-          url = new URL(url, globalThis.location.origin).toString()
-        } catch {}
+      try {
+        url = new URL(url, location.origin)
+      } catch {}
+    }
+
+    const value = open.call(this, method, url.toString(), isAsyncRequest !== false, ...args)
+
+    if (
+      globalThis.__args?.config &&
+      globalThis.__args.config.webview_fetch_allow_runtime_headers === true ||
+      /(socket|ipc|node|npm):/.test(url.protocol) ||
+      protocols.handlers.has(url.protocol.slice(0, -1)) ||
+      url.hostname === globalThis.__args.config.meta_bundle_identifier
+    ) {
+      for (const key in additionalHeaders) {
+        this.setRequestHeader(key, additionalHeaders[key])
       }
-    }
 
-    const value = open.call(this, method, url, isAsyncRequest !== false, ...args)
+      if (globalThis.__args?.client) {
+        this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
+      }
 
-    if (globalThis.__args?.client) {
-      this.setRequestHeader('Runtime-Client-ID', globalThis.__args.client.id)
-    }
+      if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
+        this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
+      }
 
-    if (typeof globalThis.RUNTIME_WORKER_LOCATION === 'string') {
-      this.setRequestHeader('Runtime-Worker-Location', globalThis.RUNTIME_WORKER_LOCATION)
-    }
-
-    if (globalThis.top && globalThis.top !== globalThis) {
-      this.setRequestHeader('Runtime-Frame-Type', 'nested')
-    } else if (!globalThis.window && globalThis.self === globalThis) {
-      this.setRequestHeader('Runtime-Frame-Type', 'worker')
-      if (globalThis.clients && globalThis.FetchEvent) {
-        this.setRequestHeader('Runtime-Worker-Type', 'serviceworker')
+      if (globalThis.top && globalThis.top !== globalThis) {
+        this.setRequestHeader('Runtime-Frame-Type', 'nested')
+      } else if (!globalThis.window && globalThis.self === globalThis) {
+        this.setRequestHeader('Runtime-Frame-Type', 'worker')
+        if (globalThis.clients && globalThis.FetchEvent) {
+          this.setRequestHeader('Runtime-Worker-Type', 'serviceworker')
+        } else {
+          this.setRequestHeader('Runtime-Worker-Type', 'worker')
+        }
       } else {
-        this.setRequestHeader('Runtime-Worker-Type', 'worker')
+        this.setRequestHeader('Runtime-Frame-Type', 'top-level')
       }
-    } else {
-      this.setRequestHeader('Runtime-Frame-Type', 'top-level')
-    }
 
-    return value
+      return value
+    }
   }
 
   globalThis.XMLHttpRequest.prototype.send = async function (...args) {
