@@ -72,8 +72,8 @@ namespace SSC::INI {
         if (key.ends_with("[]")) {
           key = trim(key.substr(0, key.size() - 2));
 
-          // handle special configurations
-          if (key == "webview_headers") {
+          // handle special headers configurations
+          if (key.ends_with("_headers")) {
             // inject '\n' as headers should be stored with
             // new lines for each entry in the configuration
             value += "\n";
