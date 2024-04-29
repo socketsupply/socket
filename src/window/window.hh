@@ -21,7 +21,7 @@
 #define SSC_MAX_WINDOWS_RESERVED 16
 #endif
 
-#if defined(_WIN32)
+#if SSC_PLATFORM_WINDOWS
 #define WM_HANDLE_DEEP_LINK WM_APP + 1
 #define WM_SOCKET_TRAY WM_APP + 2
 #endif
@@ -32,15 +32,94 @@ namespace SSC {
   class Window;
 }
 
-#if defined(__APPLE__)
+#if SSC_PLATFORM_APPLE
 @class SSCBridgedWebView;
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@interface SSCWindowDelegate : NSObject
-@property (nonatomic) SSC::Window* window;
-@end
-@interface SSCWindow : NSObject
+@class SSCWindow;
+
+@interface SSCWindowDelegate :
+#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+  NSObject
+#else
+  NSObject <NSWindowDelegate, WKScriptMessageHandler>
+#endif
+- (void) userContentController: (WKUserContentController*) userContentController
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
 
+@interface SSCWindow :
+#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+  UIWindow
+#else
+  NSWindow
+#endif
+
+@property (nonatomic) SSC::Window* window;
+@property (nonatomic, assign) SSCBridgedWebView *webview;
+
+#if SSC_PLATFORM_MACOS
+@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic) NSPoint windowControlOffsets;
+#endif
+@end
+
+@interface WKOpenPanelParameters (WKPrivate)
+- (NSArray<NSString*>*) _acceptedMIMETypes;
+- (NSArray<NSString*>*) _acceptedFileExtensions;
+- (NSArray<NSString*>*) _allowedFileExtensions;
+@end
+
+@interface SSCBridgedWebView :
+#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+  WKWebView<WKUIDelegate>
+#else
+  WKWebView<
+    WKUIDelegate,
+    NSDraggingDestination,
+    NSFilePromiseProviderDelegate,
+    NSDraggingSource
+  >
+
+  @property (nonatomic) NSPoint initialWindowPos;
+  @property (nonatomic) CGFloat contentHeight;
+  @property (nonatomic) CGFloat radius;
+  @property (nonatomic) CGFloat margin;
+  @property (nonatomic) BOOL shouldDrag;
+
+  -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
+  sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
+
+  -             (void) webView: (WKWebView*) webView
+    runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
+              initiatedByFrame: (WKFrameInfo*) frame
+             completionHandler: (void (^)(NSArray<NSURL*>*)) completionHandler;
+#endif
+
+#if SSC_PLATFORM_MACOS || (SSC_PLATFORM_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
+
+  -                                      (void) webView: (WKWebView*) webView
+   requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
+                                       initiatedByFrame: (WKFrameInfo*) frame
+                                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+
+  -                        (void) webView: (WKWebView*) webView
+   requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
+                         initiatedByFrame: (WKFrameInfo*) frame
+                                     type: (WKMediaCaptureType) type
+                          decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
+#endif
+
+  -                     (void) webView: (WKWebView*) webView
+    runJavaScriptAlertPanelWithMessage: (NSString*) message
+                      initiatedByFrame: (WKFrameInfo*) frame
+                     completionHandler: (void (^)(void)) completionHandler;
+
+  -                       (void) webView: (WKWebView*) webView
+    runJavaScriptConfirmPanelWithMessage: (NSString*) message
+                        initiatedByFrame: (WKFrameInfo*) frame
+                       completionHandler: (void (^)(BOOL result)) completionHandler;
+@end
+
+#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
 @interface SSCUIPickerDelegate : NSObject<
   UIDocumentPickerDelegate,
 
@@ -48,89 +127,24 @@ namespace SSC {
   UIImagePickerControllerDelegate,
   UINavigationControllerDelegate
 >
-@property (nonatomic) SSC::Dialog* dialog;
-// UIDocumentPickerDelegate
--  (void) documentPicker: (UIDocumentPickerViewController*) controller
-  didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
-- (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller;
+  @property (nonatomic) SSC::Dialog* dialog;
 
-// UIImagePickerControllerDelegate
--  (void) imagePickerController: (UIImagePickerController*) picker
-  didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info;
-- (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
-@end
-#else
-@interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
-- (void) userContentController: (WKUserContentController*) userContentController
-       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
+  // UIDocumentPickerDelegate
+  -  (void) documentPicker: (UIDocumentPickerViewController*) controller
+    didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
+  - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller;
+
+  // UIImagePickerControllerDelegate
+  -  (void) imagePickerController: (UIImagePickerController*) picker
+    didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info;
+  - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
 @end
 #endif
 
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@interface SSCBridgedWebView : WKWebView<WKUIDelegate>
-#else
-@interface WKOpenPanelParameters (WKPrivate)
-- (NSArray<NSString*>*) _acceptedMIMETypes;
-- (NSArray<NSString*>*) _acceptedFileExtensions;
-- (NSArray<NSString*>*) _allowedFileExtensions;
-@end
-
-@interface SSCWindow : NSWindow
-@property (nonatomic, assign) SSCBridgedWebView *webview;
-@property (nonatomic, retain) NSView *titleBarView;
-@property (nonatomic) NSPoint windowControlOffsets;
-@end
-
-@interface SSCBridgedWebView : WKWebView<
-  WKUIDelegate,
-  NSDraggingDestination,
-  NSFilePromiseProviderDelegate,
-  NSDraggingSource
->
-
-@property (nonatomic) NSPoint initialWindowPos;
-@property (nonatomic) CGFloat contentHeight;
-@property (nonatomic) CGFloat radius;
-@property (nonatomic) CGFloat margin;
-@property (nonatomic) BOOL shouldDrag;
-
--   (NSDragOperation) draggingSession: (NSDraggingSession *) session
-sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
-
--             (void) webView: (WKWebView*) webView
-  runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
-            initiatedByFrame: (WKFrameInfo*) frame
-           completionHandler: (void (^)(NSArray<NSURL*>*)) completionHandler;
-#endif
-
-#if (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
-
--                                      (void) webView: (WKWebView*) webView
- requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
-                                     initiatedByFrame: (WKFrameInfo*) frame
-                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-
--                        (void) webView: (WKWebView*) webView
- requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                                   type: (WKMediaCaptureType) type
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-#endif
-
--                     (void) webView: (WKWebView*) webView
-  runJavaScriptAlertPanelWithMessage: (NSString*) message
-                    initiatedByFrame: (WKFrameInfo*) frame
-                   completionHandler: (void (^)(void)) completionHandler;
-
--                       (void) webView: (WKWebView*) webView
-  runJavaScriptConfirmPanelWithMessage: (NSString*) message
-                      initiatedByFrame: (WKFrameInfo*) frame
-                     completionHandler: (void (^)(BOOL result)) completionHandler;
-@end
 #endif
 
 namespace SSC {
-#if defined(_WIN32)
+#if SSC_PLATFORM_WINDOWS
   class DragDrop;
 #endif
 
@@ -166,7 +180,6 @@ namespace SSC {
     #endif
       SSCBridgedWebView* webview;
       SSCWindowDelegate* windowDelegate = nullptr;
-      WKWebViewConfiguration* configuration = nullptr;
       WKProcessPool* processPool = nullptr;
     #elif SSC_PLATFORM_LINUX
       GtkSelectionData *selectionData = nullptr;
@@ -236,7 +249,7 @@ namespace SSC {
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();
-    #if defined(__linux__) && !defined(__ANDROID__)
+    #if SSC_PLATFORM_LINUX
       void closeContextMenu (GtkWidget *, const String&);
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
@@ -402,7 +415,7 @@ namespace SSC {
         String title;
       };
 
-    #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    #if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
       SSCUIPickerDelegate* uiPickerDelegate = nullptr;
       Vector<String> delegatedResults;
       std::mutex delegateMutex;
@@ -428,7 +441,7 @@ namespace SSC {
       );
   };
 
-#if defined(_WIN32)
+#if SSC_PLATFORM_WINDOWS
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;

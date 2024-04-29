@@ -125,10 +125,12 @@ namespace SSC {
       if (window->opts.canExit) {
         window->exit(0);
       }
-
     }
 
-    this->windows[index] = nullptr;
+    App::instance()->dispatch([this, index]() {
+      Lock lock(this->mutex);
+      this->windows[index] = nullptr;
+    });
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {
