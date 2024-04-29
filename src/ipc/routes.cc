@@ -347,7 +347,7 @@ static void mapIPCRoutes (Router *router) {
     router->core->childProcess.write(
       message.seq,
       id,
-      *message.buffer.bytes,
+      message.buffer.bytes,
       message.buffer.size,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -1291,7 +1291,7 @@ static void mapIPCRoutes (Router *router) {
     router->core->fs.write(
       message.seq,
       id,
-      *message.buffer.bytes,
+      message.buffer.bytes,
       message.buffer.size,
       offset,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2746,9 +2746,9 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
     options.size = message.buffer.size;
-    options.bytes = *message.buffer.bytes;
-    options.address = message.get("address", "0.0.0.0");
     options.ephemeral = message.get("ephemeral") == "true";
+    options.address = message.get("address", "0.0.0.0");
+    options.bytes = message.buffer.bytes;
 
     router->core->udp.send(
       message.seq,
