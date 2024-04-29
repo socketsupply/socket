@@ -677,7 +677,7 @@ namespace SSC {
           const auto interval = this->core->setInterval(8, [this, request, callback, &registration] (auto cancel) {
             if (registration.state == Registration::State::Activated) {
               cancel();
-              this->core->setTimeout(24, [this, request, callback, &registration] {
+              this->core->setTimeout(8, [this, request, callback, &registration] {
                 if (!this->fetch(request, callback)) {
                   debug(
                     "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
