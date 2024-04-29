@@ -19,8 +19,8 @@ namespace SSC {
 
 static StringStream initial;
 
-Process::Data::Data() noexcept : id(-1) {}
-Process::Process(
+Process::Data::Data () noexcept : id(-1) {}
+Process::Process (
   const String &command,
   const String &argv,
   const String &path,
@@ -40,12 +40,13 @@ Process::Process(
   this->path = path;
 }
 
-Process::Process(
-  const std::function<int()> &function,
+Process::Process (
+  const Function<int()> &function,
   MessageCallback read_stdout,
   MessageCallback read_stderr,
   MessageCallback on_exit,
-  bool open_stdin, const ProcessConfig &config
+  bool open_stdin,
+  const ProcessConfig &config
 ) noexcept:
   read_stdout(std::move(read_stdout)),
   read_stderr(std::move(read_stderr)),
@@ -57,17 +58,17 @@ Process::Process(
   read();
 }
 
-Process::id_type Process::open(const std::function<int()> &function) noexcept {
+Process::PID Process::open (const Function<int()> &function) noexcept {
   if (open_stdin) {
-    stdin_fd = std::unique_ptr<fd_type>(new fd_type);
+    stdin_fd = UniquePointer<FD>(new FD);
   }
 
   if (read_stdout) {
-    stdout_fd = std::unique_ptr<fd_type>(new fd_type);
+    stdout_fd = UniquePointer<FD>(new FD);
   }
 
   if (read_stderr) {
-    stderr_fd = std::unique_ptr<fd_type>(new fd_type);
+    stderr_fd = UniquePointer<FD>(new FD);
   }
 
   int stdin_p[2];
@@ -100,7 +101,7 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
     return -1;
   }
 
-  id_type pid = fork();
+  PID pid = fork();
 
   if (pid < 0) {
     if (stdin_fd) {
@@ -127,7 +128,7 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
   if (pid > 0) {
     setpgid(pid, getpgid(0));
 
-    auto thread = std::thread([this] {
+    auto thread = Thread([this] {
       int code = 0;
       waitpid(this->id, &code, 0);
 
@@ -205,17 +206,17 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
   return pid;
 }
 
-Process::id_type Process::open(const SSC::String &command, const SSC::String &path) noexcept {
+Process::PID Process::open (const String &command, const String &path) noexcept {
   return open([&command, &path, this] {
     auto command_c_str = command.c_str();
-    SSC::String cd_path_and_command;
+    String cd_path_and_command;
 
     if (!path.empty()) {
       auto path_escaped = path;
       size_t pos = 0;
 
       // Based on https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxsxyb7
-      while ((pos = path_escaped.find('\'', pos)) != SSC::String::npos) {
+      while ((pos = path_escaped.find('\'', pos)) != String::npos) {
         path_escaped.replace(pos, 1, "'\\''");
         pos += 4;
       }
@@ -246,8 +247,8 @@ void Process::read() noexcept {
     return;
   }
 
-  stdout_stderr_thread = std::thread([this] {
-    std::vector<pollfd> pollfds;
+  stdout_stderr_thread = Thread([this] {
+    Vector<pollfd> pollfds;
     std::bitset<2> fd_is_stdout;
 
     if (stdout_fd) {
@@ -263,9 +264,9 @@ void Process::read() noexcept {
       pollfds.back().events = POLLIN;
     }
 
-    auto buffer = std::unique_ptr<char[]>(new char[config.buffer_size]);
+    auto buffer = UniquePointer<char[]>(new char[config.bufferSize]);
     bool any_open = !pollfds.empty();
-    SSC::StringStream ss;
+    StringStream ss;
 
     while (any_open && (poll(pollfds.data(), static_cast<nfds_t>(pollfds.size()), -1) > 0 || errno == EINTR)) {
       any_open = false;
@@ -274,23 +275,23 @@ void Process::read() noexcept {
         if (!(pollfds[i].fd >= 0)) continue;
 
         if (pollfds[i].revents & POLLIN) {
-          memset(buffer.get(), 0, config.buffer_size);
-          const ssize_t n = ::read(pollfds[i].fd, buffer.get(), config.buffer_size);
+          memset(buffer.get(), 0, config.bufferSize);
+          const ssize_t n = ::read(pollfds[i].fd, buffer.get(), config.bufferSize);
 
           if (n > 0) {
             if (fd_is_stdout[i]) {
-              std::lock_guard<std::mutex> lock(stdout_mutex);
-              auto b = SSC::String(buffer.get());
+              Lock lock(stdout_mutex);
+              auto b = String(buffer.get());
               auto parts = splitc(b, '\n');
 
               if (parts.size() > 1) {
                 for (int i = 0; i < parts.size() - 1; i++) {
                   ss << parts[i];
 
-                  SSC::String s(ss.str());
+                  String s(ss.str());
                   read_stdout(s);
 
-                  ss.str(SSC::String());
+                  ss.str(String());
                   ss.clear();
                   ss.copyfmt(initial);
                 }
@@ -299,8 +300,8 @@ void Process::read() noexcept {
                 ss << b;
               }
             } else {
-              std::lock_guard<std::mutex> lock(stderr_mutex);
-              read_stderr(SSC::String(buffer.get()));
+              Lock lock(stderr_mutex);
+              read_stderr(String(buffer.get()));
             }
           } else if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
             pollfds[i].fd = -1;
@@ -319,7 +320,7 @@ void Process::read() noexcept {
   });
 }
 
-void Process::close_fds() noexcept {
+void Process::close_fds () noexcept {
   if (stdout_stderr_thread.joinable()) {
     stdout_stderr_thread.join();
   }
@@ -345,13 +346,13 @@ void Process::close_fds() noexcept {
   }
 }
 
-bool Process::write(const char *bytes, size_t n) {
-  std::lock_guard<std::mutex> lock(stdin_mutex);
+bool Process::write (const char *bytes, size_t n) {
+  Lock lock(stdin_mutex);
 
   this->lastWriteStatus = 0;
 
   if (stdin_fd) {
-    SSC::String b(bytes);
+    String b(bytes);
 
     while (true && (b.size() > 0)) {
       int bytesWritten = ::write(*stdin_fd, b.c_str(), b.size());
@@ -380,8 +381,8 @@ bool Process::write(const char *bytes, size_t n) {
   return false;
 }
 
-void Process::close_stdin() noexcept {
-  std::lock_guard<std::mutex> lock(stdin_mutex);
+void Process::close_stdin () noexcept {
+  Lock lock(stdin_mutex);
 
   if (stdin_fd) {
     if (data.id > 0) {
@@ -392,7 +393,7 @@ void Process::close_stdin() noexcept {
   }
 }
 
-void Process::kill(id_type id) noexcept {
+void Process::kill (PID id) noexcept {
   if (id <= 0) {
     return;
   }
@@ -412,5 +413,4 @@ void Process::kill(id_type id) noexcept {
     }
   }
 }
-
-} // namespace SSC
+}
