@@ -270,6 +270,10 @@ namespace SSC::IPC {
   }
 
   SchemeHandlers::~SchemeHandlers () {
+  #if SSC_PLATFORM_APPLE
+    this->configuration.webview = nullptr;
+  #endif
+
     if (this->internals != nullptr) {
       delete this->internals;
       this->internals = nullptr;
