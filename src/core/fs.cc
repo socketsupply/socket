@@ -206,23 +206,10 @@ namespace SSC {
     };
   }
 
-	void Core::FS::RequestContext::setBuffer(char* base, uint32_t len) {
-		this->buf.base = base;
-		this->buf.len = len;
-  }
-
-  void Core::FS::RequestContext::freeBuffer() {
-    delete[] static_cast<char*>(this->buf.base);
-    this->buf.base = nullptr;
-    this->buf.len = 0;
-  }
-
-  char* Core::FS::RequestContext::getBuffer () {
-    return this->buf.base;
-  }
-
-  uint32_t Core::FS::RequestContext::getBufferSize () {
-    return this->buf.len;
+  void Core::FS::RequestContext::setBuffer (SharedPointer<char*> base, uint32_t len) {
+    this->buffer = base;
+    this->buf.base = *base;
+    this->buf.len = len;
   }
 
   Core::FS::Descriptor::Descriptor (Core *core, uint64_t id, const String& filename) {
@@ -997,7 +984,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
-      auto bytes = new char[size]{0};
+      auto bytes = std::make_shared<char*>(new char[size]{0});
 
       ctx->setBuffer(bytes, size);
 
@@ -1016,11 +1003,6 @@ namespace SSC {
               {"message", String(uv_strerror((int) req->result))}
             }}
           };
-
-          auto bytes = ctx->getBuffer();
-          if (bytes != nullptr) {
-            delete [] bytes;
-          }
         } else {
           auto headers = Headers {{
             {"content-type" ,"application/octet-stream"},
@@ -1028,7 +1010,7 @@ namespace SSC {
           }};
 
           post.id = rand64();
-          post.body = std::make_shared<char*>(ctx->getBuffer());
+          post.body = ctx->buffer;
           post.length = (int) req->result;
           post.headers = headers.str();
         }
@@ -1048,7 +1030,6 @@ namespace SSC {
         };
 
         ctx->cb(ctx->seq, json, Post{});
-        delete [] bytes;
         delete ctx;
       }
     });
@@ -1141,7 +1122,7 @@ namespace SSC {
   void Core::FS::write (
     const String seq,
     uint64_t id,
-    char *bytes,
+    SharedPointer<char*> bytes,
     size_t size,
     size_t offset,
     Module::Callback cb
