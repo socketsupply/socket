@@ -319,11 +319,11 @@ namespace SSC {
     return this->bind(info->address, info->port, this->options.udp.reuseAddr);
   }
 
-  int Peer::bind (const String address, int port) {
+  int Peer::bind (const String& address, int port) {
     return this->bind(address, port, false);
   }
 
-  int Peer::bind (const String address, int port, bool reuseAddr) {
+  int Peer::bind (const String& address, int port, bool reuseAddr) {
     Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int flags = 0;
@@ -380,7 +380,7 @@ namespace SSC {
     return err;
   }
 
-  int Peer::connect (const String address, int port) {
+  int Peer::connect (const String& address, int port) {
     Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int err = 0;
@@ -420,10 +420,10 @@ namespace SSC {
   }
 
   void Peer::send (
-    char *buf,
+    SharedPointer<char*> bytes,
     size_t size,
     int port,
-    const String address,
+    const String& address,
     Peer::RequestContext::Callback cb
   ) {
     Lock lock(this->mutex);
@@ -440,14 +440,13 @@ namespace SSC {
       }
     }
 
-    auto buffer = uv_buf_init(buf, (int) size);
-    auto ctx = new Peer::RequestContext(cb);
+    auto ctx = new Peer::RequestContext(size, bytes, cb);
     auto req = new uv_udp_send_t;
 
     req->data = (void *) ctx;
     ctx->peer = this;
 
-    err = uv_udp_send(req, (uv_udp_t *) &this->handle, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
+    err = uv_udp_send(req, (uv_udp_t *) &this->handle, &ctx->buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
       auto ctx = reinterpret_cast<Peer::RequestContext*>(req->data);
       auto peer = ctx->peer;
 
