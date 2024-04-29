@@ -98,6 +98,7 @@ namespace SSC {
           struct RequestContext : Module::RequestContext {
             uint64_t id;
             Descriptor *desc = nullptr;
+            SharedPointer<char*> buffer = nullptr;
             uv_fs_t req;
             uv_buf_t buf;
             // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
@@ -124,10 +125,7 @@ namespace SSC {
               uv_fs_req_cleanup(&this->req);
             }
 
-            void setBuffer (char* base, uint32_t len);
-            void freeBuffer ();
-            char* getBuffer ();
-            uint32_t getBufferSize ();
+            void setBuffer (SharedPointer<char*> base, uint32_t len);
           };
 
         #if !SSC_PLATFORM_ANDROID
@@ -295,7 +293,7 @@ namespace SSC {
           void write (
             const String seq,
             uint64_t id,
-            char *bytes,
+            SharedPointer<char*> bytes,
             size_t size,
             size_t offset,
             Module::Callback cb
@@ -426,7 +424,7 @@ namespace SSC {
           void write (
             const String seq,
             uint64_t id,
-            char* buffer,
+            SharedPointer<char*> buffer,
             size_t size,
             Module::Callback cb
           );
@@ -486,7 +484,7 @@ namespace SSC {
           struct SendOptions {
             String address = "";
             int port = 0;
-            char *bytes = nullptr;
+            SharedPointer<char*>bytes = nullptr;
             size_t size = 0;
             bool ephemeral = false;
           };
