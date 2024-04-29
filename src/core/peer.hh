@@ -70,9 +70,20 @@ namespace SSC {
     public:
       struct RequestContext {
         using Callback = Function<void(int, Post)>;
+        SharedPointer<char*> bytes = nullptr;
+        size_t size = 0;
+        uv_buf_t buffer;
         Callback cb;
         Peer *peer = nullptr;
         RequestContext (Callback cb) { this->cb = cb; }
+        RequestContext (size_t size, SharedPointer<char*> bytes, Callback cb) {
+          if (bytes != nullptr) {
+            this->buffer = uv_buf_init(*bytes, size);
+            this->bytes = bytes;
+          }
+          this->size = size;
+          this->cb = cb;
+        }
       };
 
       using UDPReceiveCallback = Function<void(
@@ -97,7 +108,7 @@ namespace SSC {
       // instance state
       uint64_t id = 0;
       Mutex mutex;
-      Core *core;
+      Core *core = nullptr;
 
       struct {
         struct {
@@ -137,16 +148,16 @@ namespace SSC {
       bool isConnected ();
       bool isPaused ();
       int bind ();
-      int bind (String address, int port);
-      int bind (String address, int port, bool reuseAddr);
+      int bind (const String& address, int port);
+      int bind (const String& address, int port, bool reuseAddr);
       int rebind ();
-      int connect (String address, int port);
+      int connect (const String& address, int port);
       int disconnect ();
       void send (
-        char *buf,
+        SharedPointer<char*> bytes,
         size_t size,
         int port,
-        const String address,
+        const String& address,
         Peer::RequestContext::Callback cb
       );
       int recvstart ();
