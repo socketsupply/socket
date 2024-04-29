@@ -9,7 +9,7 @@
 
 namespace SSC {
 
-const static SSC::StringStream initial;
+const static StringStream initial;
 
 Process::Data::Data() noexcept : id(0) {}
 
@@ -73,17 +73,17 @@ class Handle {
 std::mutex create_process_mutex;
 
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
-Process::id_type Process::open(const SSC::String &command, const SSC::String &path) noexcept {
+Process::PID Process::open (const String &command, const String &path) noexcept {
   if (open_stdin) {
-    stdin_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
+    stdin_fd = UniquePointer<Process::FD>(new Process::FD(nullptr));
   }
 
   if (read_stdout) {
-    stdout_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
+    stdout_fd = UniquePointer<Process::FD>(new Process::FD(nullptr));
   }
 
   if (read_stderr) {
-    stderr_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
+    stderr_fd = UniquePointer<Process::FD>(new Process::FD(nullptr));
   }
 
   Handle stdin_rd_p;
@@ -99,7 +99,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   security_attributes.bInheritHandle = TRUE;
   security_attributes.lpSecurityDescriptor = nullptr;
 
-  std::lock_guard<std::mutex> lock(create_process_mutex);
+  Lock lock(create_process_mutex);
 
   if (stdin_fd) {
     if (!CreatePipe(&stdin_rd_p, &stdin_wr_p, &security_attributes, 0) ||
@@ -173,7 +173,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
     const_cast<LPSTR>(cmd),
     nullptr,
     nullptr,
-    stdin_fd || stdout_fd || stderr_fd || config.inherit_file_descriptors, // Cannot be false when stdout, stderr or stdin is used
+    stdin_fd || stdout_fd || stderr_fd || config.inheritFDs, // Cannot be false when stdout, stderr or stdin is used
     stdin_fd || stdout_fd || stderr_fd ? CREATE_NO_WINDOW : 0,             // CREATE_NO_WINDOW cannot be used when stdout or stderr is redirected to parent process
     nullptr,
     path.empty() ? nullptr : path.c_str(),
@@ -182,7 +182,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   );
 
   if (!bSuccess) {
-    auto msg = SSC::String("Unable to execute: " + process_command);
+    auto msg = String("Unable to execute: " + process_command);
     MessageBoxA(nullptr, &msg[0], "Alert", MB_OK | MB_ICONSTOP);
     return 0;
   } else {
@@ -208,7 +208,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       WaitForSingleObject(_processHandle, INFINITE);
 
       if (GetExitCodeProcess(_processHandle, &exitCode) == 0) {
-        std::cerr << formatWindowsError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
+        std::cerr << formatWindowsError(GetLastError(), "Process::open() GetExitCodeProcess()") << std::endl;
         exitCode = -1;
       }
 
@@ -223,7 +223,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       if (this->on_exit != nullptr)
         this->on_exit(std::to_string(this->status));
     } catch (std::exception e) {
-      std::cerr << "SSC::Process thread exception: " << e.what() << std::endl;
+      std::cerr << "Process thread exception: " << e.what() << std::endl;
       this->closed = true;
     }
   }, processHandle);
@@ -248,28 +248,28 @@ void Process::read() noexcept {
     stdout_thread = std::thread([this]() {
       DWORD n;
 
-      std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
-      SSC::StringStream ss;
+      UniquePointer<char[]> buffer(new char[config.bufferSize]);
+      StringStream ss;
 
       for (;;) {
-        memset(buffer.get(), 0, config.buffer_size);
-        BOOL bSuccess = ReadFile(*stdout_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
+        memset(buffer.get(), 0, config.bufferSize);
+        BOOL bSuccess = ReadFile(*stdout_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.bufferSize), &n, nullptr);
 
         if (!bSuccess || n == 0) {
           break;
         }
 
-        auto b = SSC::String(buffer.get());
+        auto b = String(buffer.get());
         auto parts = splitc(b, '\n');
 
         if (parts.size() > 1) {
-          std::lock_guard<std::mutex> lock(stdout_mutex);
+          Lock lock(stdout_mutex);
 
           for (int i = 0; i < parts.size() - 1; i++) {
             ss << parts[i];
-            SSC::String s(ss.str());
+            String s(ss.str());
             read_stdout(s);
-            ss.str(SSC::String());
+            ss.str(String());
             ss.clear();
             ss.copyfmt(initial);
           }
@@ -284,13 +284,13 @@ void Process::read() noexcept {
   if (stderr_fd) {
     stderr_thread = std::thread([this]() {
       DWORD n;
-      std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
+      UniquePointer<char*> buffer(new char[config.bufferSize]);
 
       for (;;) {
-        BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
+        BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.bufferSize), &n, nullptr);
         if (!bSuccess || n == 0) break;
-        std::lock_guard<std::mutex> lock(stderr_mutex);
-        read_stderr(SSC::String(buffer.get()));
+        Lock lock(stderr_mutex);
+        read_stderr(String(buffer.get()));
       }
     });
   }
@@ -331,9 +331,9 @@ bool Process::write(const char *bytes, size_t n) {
     throw std::invalid_argument("Can't write to an unopened stdin pipe. Please set open_stdin=true when constructing the process.");
   }
 
-  std::lock_guard<std::mutex> lock(stdin_mutex);
+  Lock lock(stdin_mutex);
   if (stdin_fd) {
-    SSC::String b(bytes);
+    String b(bytes);
 
     while (true && (b.size() > 0)) {
       DWORD bytesWritten;
@@ -360,8 +360,8 @@ bool Process::write(const char *bytes, size_t n) {
   return false;
 }
 
-void Process::close_stdin() noexcept {
-  std::lock_guard<std::mutex> lock(stdin_mutex);
+void Process::close_stdin () noexcept {
+  Lock lock(stdin_mutex);
 
   if (stdin_fd) {
     if (*stdin_fd != nullptr) {
@@ -373,7 +373,7 @@ void Process::close_stdin() noexcept {
 }
 
 //Based on http://stackoverflow.com/a/1173396
-void Process::kill(id_type id) noexcept {
+void Process::kill (PID id) noexcept {
   if (id == 0) {
     return;
   }
