@@ -343,10 +343,6 @@ async function onMessage (event) {
     return
   }
 
-  if (!/activated|activating/.test(state.serviceWorker.state)) {
-    return
-  }
-
   if (data?.fetch?.request) {
     event.stopImmediatePropagation()
     if (/post|put/i.test(data.fetch.request.method)) {
