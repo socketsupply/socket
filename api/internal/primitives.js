@@ -427,7 +427,7 @@ export function init () {
       }
     })
 
-    const titleElement = document.querySelector('head > title')
+    const titleElement = globalThis.document.querySelector('head > title')
     if (titleElement) {
       observer.observe(titleElement, { childList: true })
     }

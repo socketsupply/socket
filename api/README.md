@@ -1604,12 +1604,12 @@ Watch for changes at `path` calling `callback`
  import { send } from 'socket:ipc'
  ```
 
-## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L271)
+## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L272)
 
 This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1142)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1143)
 
 Emit event to be dispatched on `window` object.
 
@@ -1620,7 +1620,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1201)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1202)
 
 Sends an async IPC command request with parameters.
 
@@ -2259,7 +2259,7 @@ Dispatch the `click`` method on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L376)
+### [`eventClick(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L380)
 
 Dispatch the click window.MouseEvent on an element specified by selector.
 
@@ -2277,7 +2277,7 @@ Dispatch the click window.MouseEvent on an element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L404)
+### [`dispatchEvent(event, target, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L408)
 
 Dispatch an event on the target.
 
@@ -2296,7 +2296,7 @@ Dispatch an event on the target.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L424)
+### [`focus(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L428)
 
 Call the focus method on element specified by selector.
 
@@ -2314,7 +2314,7 @@ Call the focus method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L445)
+### [`blur(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L452)
 
 Call the blur method on element specified by selector.
 
@@ -2332,7 +2332,7 @@ Call the blur method on element specified by selector.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L467)
+### [`type(selector, str, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L477)
 
 Consecutively set the str value of the element specified by selector to simulate typing.
 
@@ -2351,7 +2351,7 @@ Consecutively set the str value of the element specified by selector to simulate
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L499)
+### [`appendChild(parentSelector, el, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L509)
 
 appendChild an element el to a parent selector element.
 
@@ -2371,7 +2371,7 @@ appendChild an element el to a parent selector element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L519)
+### [`removeElement(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L529)
 
 Remove an element from the DOM.
 
@@ -2389,7 +2389,7 @@ Remove an element from the DOM.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L538)
+### [`elementVisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L548)
 
 Test if an element is visible
 
@@ -2407,7 +2407,7 @@ Test if an element is visible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L559)
+### [`elementInvisible(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L569)
 
 Test if an element is invisible
 
@@ -2425,7 +2425,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L583)
+### [`waitFor(querySelectorOrFn, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L593)
 
 Test if an element is invisible
 
@@ -2446,7 +2446,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L645)
+### [`waitForText(selector, opts, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L655)
 
 Test if an element is invisible
 
@@ -2476,7 +2476,7 @@ Test if an element is invisible
 | :---         | :--- | :---        |
 | Not specified | Promise<HTMLElement \| Element \| void> |  |
 
-### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L682)
+### [`querySelector(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L692)
 
 Run a querySelector as an assert and also get the results
 
@@ -2494,7 +2494,7 @@ Run a querySelector as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | HTMLElement \| Element |  |
 
-### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L701)
+### [`querySelectorAll(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L711)
 
 Run a querySelectorAll as an assert and also get the results
 
@@ -2512,7 +2512,7 @@ Run a querySelectorAll as an assert and also get the results
 | :---         | :--- | :---        |
 | Not specified | Array<HTMLElement \| Element> |  |
 
-### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L730)
+### [`getComputedStyle(selector, msg)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L740)
 
 Retrieves the computed styles for a given element.
 
@@ -2537,17 +2537,17 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | CSSStyleDeclaration | The computed styles of the element. |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L827)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L837)
 
    pass: number,
    fail: number
  }>}
 
-## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L908)
+## [TestRunner](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L918)
 
 
 
-### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L959)
+### [`constructor(report)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L969)
 
 
 
@@ -2555,7 +2555,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | report | (lines: string) => void |  | true |  |
 
-### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L968)
+### [`nextId()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L978)
 
 
 
@@ -2563,11 +2563,11 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | string |  |
 
-### [`length()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L975)
+### [`length()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L985)
 
 
 
-### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L985)
+### [`add(name, fn, only)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L995)
 
 
 
@@ -2577,7 +2577,7 @@ Retrieves the computed styles for a given element.
 | fn | TestFn |  | false |  |
 | only | boolean |  | false |  |
 
-### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1007)
+### [`run()`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1017)
 
 
 
@@ -2585,7 +2585,7 @@ Retrieves the computed styles for a given element.
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-### [`onFinish())`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1054)
+### [`onFinish())`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1064)
 
 
 
@@ -2593,7 +2593,7 @@ Retrieves the computed styles for a given element.
 | :---     | :--- | :---:   | :---:    | :---        |
 | ) | (result: { total: number, success: number, fail: number  | > void} callback | false |  |
 
-## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1082)
+## [`only(name, fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1092)
 
 
 
@@ -2602,7 +2602,7 @@ Retrieves the computed styles for a given element.
 | name | string |  | false |  |
 | fn | TestFn |  | true |  |
 
-## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1092)
+## [`skip(_name, _fn)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1102)
 
 
 
@@ -2611,7 +2611,7 @@ Retrieves the computed styles for a given element.
 | _name | string |  | false |  |
 | _fn | TestFn |  | true |  |
 
-## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1098)
+## [`setStrict(strict)`](https://github.com/socketsupply/socket/blob/master/api/test/index.js#L1108)
 
 
 
@@ -2848,7 +2848,7 @@ Shows a native directory dialog.
 
 ### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L354)
 
-This is a high-level API that you should use instead of `ipc.send` when
+This is a high-level API that you should use instead of `ipc.request` when
  you want to send a message to another window or to the backend.
 
 

@@ -329,9 +329,9 @@ export class Test {
    * ```
    */
   async requestAnimationFrame (msg = null) {
-    if (document.hasFocus()) {
+    if (globalThis.document && globalThis.document.hasFocus()) {
       // RAF only works when the window is focused
-      await new Promise(resolve => window.requestAnimationFrame(resolve))
+      await new Promise(resolve => globalThis.requestAnimationFrame(resolve))
     } else {
       await new Promise((resolve) => setTimeout(resolve, 0))
     }
@@ -355,7 +355,11 @@ export class Test {
     msg = msg || `Clicked on ${typeof selector === 'string' ? selector : 'element'}`
     const el = toElement(selector)
 
-    if (!(el instanceof window.HTMLElement)) throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    if (globalThis.HTMLElement && !(el instanceof globalThis.HTMLElement)) {
+      throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    }
+
+    // @ts-ignore
     el.click()
     await this.requestAnimationFrame()
     this.pass(msg)
@@ -377,7 +381,7 @@ export class Test {
     const element = toElement(selector)
     msg = msg || `Fired click event on ${typeof selector === 'string' ? selector : 'element'}`
     dispatchEventHelper({
-      event: new window.MouseEvent('click', {
+      event: new globalThis.MouseEvent('click', {
         bubbles: true,
         cancelable: true,
         button: 0
@@ -424,7 +428,10 @@ export class Test {
   async focus (selector, msg) {
     msg = msg || `Focused on ${typeof selector === 'string' ? selector : 'element'}`
     const el = toElement(selector)
-    if (!(el instanceof window.HTMLElement)) throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    if (globalThis.HTMLElement && !(el instanceof globalThis.HTMLElement)) {
+      throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    }
+    // @ts-ignore
     el.focus()
     await this.requestAnimationFrame()
     this.pass(msg)
@@ -445,7 +452,10 @@ export class Test {
   async blur (selector, msg) {
     msg = msg || `Blurred from ${typeof selector === 'string' ? selector : 'element'}`
     const el = toElement(selector)
-    if (!(el instanceof window.HTMLElement)) throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    if (globalThis.HTMLElement && !(el instanceof globalThis.HTMLElement)) {
+      throw new Error('selector needs to be instance of HTMLElement or resolve to one')
+    }
+    // @ts-ignore
     el.blur()
     await this.requestAnimationFrame()
     this.pass(msg)
@@ -680,7 +690,7 @@ export class Test {
    * ```
    */
   querySelector (selector, msg) {
-    const el = document.querySelector(selector)
+    const el = globalThis.document?.querySelector?.(selector) ?? null
     msg = msg || `querySelector(${selector})`
     this.ok(el, msg)
     return el
@@ -699,7 +709,7 @@ export class Test {
    * ```
    */
   querySelectorAll (selector, msg) {
-    const elems = document.querySelectorAll(selector)
+    const elems = globalThis.document?.querySelectorAll?.(selector) ?? []
     const elementArray = Array.from(elems)
     msg = msg || `querySelectorAll(${selector})`
     this.ok(elementArray.length, msg)

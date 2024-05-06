@@ -26,12 +26,20 @@ const defaultTimeout = 5 * SECOND
  *
  */
 export function toElement (selector) {
-  if (typeof selector === 'string') selector = document.querySelector(selector)
-  if (!(
-    selector instanceof window.HTMLElement ||
-    selector instanceof window.Element
-  )) throw new Error('stringOrElement needs to be an instance of HTMLElement or a querySelector that resolves to a HTMLElement')
-  return selector
+  if (globalThis.document) {
+    if (typeof selector === 'string') {
+      selector = globalThis.document.querySelector(selector)
+    }
+
+    if (!(
+      selector instanceof globalThis.HTMLElement ||
+      selector instanceof globalThis.Element
+    )) {
+      throw new Error('stringOrElement needs to be an instance of HTMLElement or a querySelector that resolves to a HTMLElement')
+    }
+
+    return selector
+  }
 }
 
 /**
@@ -64,7 +72,7 @@ export function waitFor (args, lambda) {
     } = args
 
     if (!lambda && selector) {
-      lambda = () => document.querySelector(selector)
+      lambda = () => globalThis.document?.querySelector?.(selector) ?? null
     }
 
     const interval = setInterval(() => {
@@ -185,11 +193,11 @@ export function waitForText (args) {
 export function event (args) {
   let {
     event,
-    element = window
+    element = globalThis
   } = args
 
   if (typeof event === 'string') {
-    event = new window.CustomEvent(event)
+    event = new globalThis.CustomEvent(event)
   }
 
   if (typeof event !== 'object') {

@@ -61,7 +61,7 @@ const scripts = new WeakMap()
 // A weak mapping of created contexts
 const contexts = new WeakMap()
 // a weak mapping of created global objects
-const globalObjects = new WeakMap()
+const globalObjects = new Map()
 
 // a shared context when one is not given
 const sharedContext = createContext({})
@@ -103,6 +103,12 @@ function convertSourceToString (source) {
 
   return source
 }
+
+/**
+ * Shared broadcast for virtual machaines
+ * @type {BroadcastChannel}
+ */
+export const channel = new BroadcastChannel('socket.runtime.vm')
 
 /**
  * @ignore
@@ -1180,7 +1186,7 @@ export class Script extends EventTarget {
 /**
  * Gets the VM context window.
  * This function will create it if it does not already exist.
- * The current window will be used on Android or iOS platforms as there can
+ * The current window will be used on Android platforms as there can
  * only be one window.
  * @return {Promise<import('./window.js').ApplicationWindow}
  */
@@ -1192,9 +1198,8 @@ export async function getContextWindow () {
 
   const currentWindow = await application.getCurrentWindow()
 
-  // just return the current window for android/ios as there can only ever be one
+  // just return the current window for android as there can only ever be one
   if (
-    os.platform() === 'ios' ||
     os.platform() === 'android' ||
     (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
   ) {
@@ -1261,19 +1266,29 @@ export async function getContextWindow () {
   )
 
   const promises = []
-  promises.push(pendingContextWindow)
+  promises.push(Promise.resolve(pendingContextWindow))
 
   if (!existingContextWindow) {
-    const eventName = `vm:${VM_WINDOW_INDEX}:ready`
     promises.push(new Promise((resolve) => {
-      globalThis.addEventListener(eventName, resolve, { once: true })
+      const timeout = setTimeout(resolve, 500)
+      channel.addEventListener('message', function onMessage (event) {
+        if (event.data?.ready === VM_WINDOW_INDEX) {
+          clearTimeout(timeout)
+          resolve()
+          channel.removeEventListener('message', onMessage)
+        }
+      })
     }))
   }
 
   const ready = Promise.all(promises)
+  contextWindow = pendingContextWindow
+  contextWindow.ready = ready
+
   await ready
   contextWindow = await pendingContextWindow
   contextWindow.ready = ready
+
   return contextWindow
 }
 
@@ -1286,9 +1301,8 @@ export async function getContextWorker () {
     return await contextWorker.ready
   }
 
-  // just return the current window for android/ios as there can only ever be one
+  // just return the current window for android as there can only ever be one
   if (
-    os.platform() === 'ios' ||
     os.platform() === 'android' ||
     (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
   ) {
@@ -1947,5 +1961,6 @@ export default {
   runInThisContext,
   Script,
   createContext,
-  isContext
+  isContext,
+  channel
 }

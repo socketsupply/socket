@@ -520,8 +520,7 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     const value = open.call(this, method, url.toString(), isAsyncRequest !== false, ...args)
 
     if (
-      globalThis.__args?.config &&
-      globalThis.__args.config.webview_fetch_allow_runtime_headers === true ||
+      globalThis.__args?.config?.webview_fetch_allow_runtime_headers === true ||
       /(socket|ipc|node|npm):/.test(url.protocol) ||
       protocols.handlers.has(url.protocol.slice(0, -1)) ||
       url.hostname === globalThis.__args.config.meta_bundle_identifier
