@@ -956,11 +956,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
         GCC_WARN_UNUSED_FUNCTION = YES;
         GCC_WARN_UNUSED_VARIABLE = YES;
-        IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+        IPHONEOS_DEPLOYMENT_TARGET = 15.0;
         MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
         MTL_FAST_MATH = YES;
         ONLY_ACTIVE_ARCH = YES;
-        SDKROOT = iphoneos;
+        SDKROOT = {{ios_sdkroot}};
         SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
       };
       name = Debug;
@@ -1016,10 +1016,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
           "$(inherited)",
         );
-        IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+        IPHONEOS_DEPLOYMENT_TARGET = 15.0;
         MTL_ENABLE_DEBUG_INFO = NO;
         MTL_FAST_MATH = YES;
-        SDKROOT = iphoneos;
+        SDKROOT = {{ios_sdkroot}};
         SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
         VALIDATE_PRODUCT = YES;
       };
@@ -1040,12 +1040,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
-        INFOPLIST_KEY_CFBundleDisplayName = "{{build_name}}";
-        INFOPLIST_KEY_LSApplicationCategoryType = Developer;
-        INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
         INFOPLIST_KEY_NSHumanReadableCopyright = "{{meta_copyright}}";
-        INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
         INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
         INFOPLIST_KEY_UIRequiresFullScreen = YES;
         INFOPLIST_KEY_UIStatusBarHidden = YES;
@@ -1090,12 +1085,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
-        INFOPLIST_KEY_CFBundleDisplayName = "{{build_name}}";
-        INFOPLIST_KEY_LSApplicationCategoryType = Developer;
-        INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
         INFOPLIST_KEY_NSHumanReadableCopyright = "{{meta_copyright}}";
-        INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
         INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
         INFOPLIST_KEY_UIRequiresFullScreen = YES;
         INFOPLIST_KEY_UIStatusBarHidden = YES;
@@ -1188,6 +1178,12 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key>
   <string>{{meta_bundle_identifier}}</string>
 
+  <key>CFBundleDisplayName</key>
+  <string>{{build_name}}</string>
+
+  <key>CFBundleName</key>
+  <string>{{build_name}}</string>
+
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 
@@ -1214,6 +1210,9 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
       </array>
     </dict>
   </array>
+
+  <key>LSApplicationCategoryType</key>
+  <string>{{ios_category}}</string>
 
   <!-- Application configuration -->
   <key>LSApplicationQueriesSchemes</key>
@@ -1300,6 +1299,9 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
     <true/>
   </dict>
 
+
+  <key>UIApplicationSupportsIndirectInputEvents</key>
+  <true/>
 
   <!-- User given plist data -->
 {{ios_info_plist_data}}
