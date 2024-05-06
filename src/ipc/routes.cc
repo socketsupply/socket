@@ -1,5 +1,7 @@
-#include "../core/types.hh"
+#include "../app/app.hh"
+#include "../cli/cli.hh"
 #include "../core/json.hh"
+#include "../core/types.hh"
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -38,16 +40,237 @@ static JSON::Any validateMessageParameters (
 
 static void mapIPCRoutes (Router *router) {
   auto userConfig = router->bridge->userConfig;
-#if defined(__APPLE__)
+#if SSC_PLATFORM_APPLE
   auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  #if SSC_PLATFORM_IOS
     "socket.runtime.mobile"
   #else
     "socket.runtime.desktop"
   #endif
   );
 #endif
+
+  /**
+   * Attemps to exit the application
+   * @param value The exit code
+   */
+  router->map("application.exit", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    const auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    int exitCode;
+    REQUIRE_AND_GET_MESSAGE_VALUE(exitCode, "value", std::stoi);
+
+  #if SSC_PLATFORM_APPLE
+    if (app->wasLaunchedFromCli) {
+      debug("__EXIT_SIGNAL__=%d", exitCode);
+      CLI::notify();
+    }
+  #endif
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    window->exit(exitCode);
+
+    reply(Result::Data { message, JSON::Object {} });
+  });
+
+  /**
+   * Get the screen size available to the application
+   */
+  router->map("application.getScreenSize", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto screenSize = window->getScreenSize();
+    const JSON::Object json = JSON::Object::Entries {
+      { "width", screenSize.width },
+      { "height", screenSize.height }
+    };
+
+    reply(Result::Data { message, json });
+  });
+
+  /**
+   * Get all active application windows
+   * @param value - A list of window indexes to filter on
+   */
+  router->map("application.getWindows", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto requested = split(message.value, ',');
+    Vector<int> indices;
+
+    if (requested.size() == 0) {
+      for (const auto& window : app->windowManager.windows) {
+        if (window != nullptr) {
+          indices.push_back(window->index);
+        }
+      }
+    } else {
+      for (const auto& value : requested) {
+        try {
+          indices.push_back(std::stoi(value));
+        } catch (...) {
+          return reply(Result::Err { message, "Invalid index given" });
+        }
+      }
+    }
+
+    const auto json  = app->windowManager.json(indices);
+    reply(Result::Data { message, json });
+  });
+
+  /**
+   * Set the application tray menu
+   * @param value - The DSL for the system tray menu
+   */
+  router->map("application.setTrayMenu", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    const auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    window->setTrayMenu(message.value);
+    reply(Result::Data { message, JSON::Object {} });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Application Tray Menu is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Set the application system menu
+   * @param value - The DSL for the system tray menu
+   */
+  router->map("application.setSystemMenu", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    const auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    window->setSystemMenu(message.value);
+    reply(Result::Data { message, JSON::Object {} });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Application System Menu is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Set the application system menu item enabled state
+   * @param value - The DSL for the system tray menu
+   * @param enabled - true or false
+   * @param indexMain
+   * @param indexSub
+   */
+  router->map("application.setSystemMenuItemEnabled", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    const auto err = validateMessageParameters(message, {"value", "enabled", "indexMain", "indexSub"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+
+    if (window == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto enabled = message.get("enabled") == "true";
+    int indexMain;
+    int indexSub;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(indexMain, "indexMain", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(indexSub, "indexSub", std::stoi);
+
+    window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+
+    reply(Result::Data { message, JSON::Object {} });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Application System Menu is not supported"}
+      }
+    });
+  #endif
+  });
 
   /**
    * Starts a bluetooth service
@@ -154,20 +377,6 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
-   * Maps a message buffer bytes to an index + sequence.
-   *
-   * This setup allows us to push a byte array to the bridge and
-   * map it to an IPC call index and sequence pair, which is reused for an
-   * actual IPC call, subsequently. This is used for systems that do not support
-   * a POST/PUT body in XHR requests natively, so instead we decorate
-   * `message.buffer` with already an mapped buffer.
-   */
-  router->map("buffer.map", false, [=](auto message, auto router, auto reply) {
-    router->setMappedBuffer(message.index, message.seq, message.buffer);
-    reply(Result { message.seq, message });
-  });
-
-  /**
    * Kills an already spawned child process.
    *
    * @param id
@@ -194,7 +403,7 @@ static void mapIPCRoutes (Router *router) {
     int signal;
     REQUIRE_AND_GET_MESSAGE_VALUE(signal, "signal", std::stoi);
 
-    router->core->childProcess.kill(
+    router->bridge->core->childProcess.kill(
       message.seq,
       id,
       signal,
@@ -247,7 +456,7 @@ static void mapIPCRoutes (Router *router) {
       .allowStderr = message.get("stderr") != "false"
     };
 
-    router->core->childProcess.spawn(
+    router->bridge->core->childProcess.spawn(
       message.seq,
       id,
       args,
@@ -309,7 +518,7 @@ static void mapIPCRoutes (Router *router) {
       .killSignal = killSignal
     };
 
-    router->core->childProcess.exec(
+    router->bridge->core->childProcess.exec(
       message.seq,
       id,
       args,
@@ -344,7 +553,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->childProcess.write(
+    router->bridge->core->childProcess.write(
       message.seq,
       id,
       message.buffer.bytes,
@@ -370,7 +579,7 @@ static void mapIPCRoutes (Router *router) {
     int family = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(family, "family", std::stoi, "0");
 
-    router->core->dns.lookup(
+    router->bridge->core->dns.lookup(
       message.seq,
       Core::DNS::LookupOptions { message.get("hostname"), family },
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -456,7 +665,7 @@ static void mapIPCRoutes (Router *router) {
     auto name = message.get("name");
 
     if (!Extension::load(name)) {
-      #if defined(_WIN32)
+      #if SSC_PLATFORM_WINDOWS
       auto error = formatWindowsError(GetLastError(), "bridge");
       #else
       auto err = dlerror();
@@ -538,7 +747,7 @@ static void mapIPCRoutes (Router *router) {
 
     if (!Extension::isLoaded(name)) {
       return reply(Result::Err { message, JSON::Object::Entries {
-      #if defined(_WIN32)
+      #if SSC_PLATFORM_WINDOWS
         {"message", "Extension '" + name + "' is not loaded"}
       #else
         {"message", "Extension '" + name + "' is not loaded" + String(dlerror())}
@@ -601,7 +810,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->core->fs.access(
+    router->bridge->core->fs.access(
       message.seq,
       message.get("path"),
       mode,
@@ -613,7 +822,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns a mapping of file system constants.
    */
   router->map("fs.constants", [=](auto message, auto router, auto reply) {
-    router->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -632,7 +841,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->core->fs.chmod(
+    router->bridge->core->fs.chmod(
       message.seq,
       message.get("path"),
       mode,
@@ -659,7 +868,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
 
-    router->core->fs.chown(
+    router->bridge->core->fs.chown(
       message.seq,
       message.get("path"),
       static_cast<uv_uid_t>(uid),
@@ -687,7 +896,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
 
-    router->core->fs.lchown(
+    router->bridge->core->fs.lchown(
       message.seq,
       message.get("path"),
       static_cast<uv_uid_t>(uid),
@@ -711,7 +920,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->fs.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -729,7 +938,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.closedir(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->fs.closedir(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -748,7 +957,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.closeOpenDescriptor(
+    router->bridge->core->fs.closeOpenDescriptor(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -763,7 +972,7 @@ static void mapIPCRoutes (Router *router) {
    * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
-    router->core->fs.closeOpenDescriptor(
+    router->bridge->core->fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -787,7 +996,7 @@ static void mapIPCRoutes (Router *router) {
     int flags = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->core->fs.copyFile(
+    router->bridge->core->fs.copyFile(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -809,7 +1018,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.link(
+    router->bridge->core->fs.link(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -834,7 +1043,7 @@ static void mapIPCRoutes (Router *router) {
     int flags = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->core->fs.symlink(
+    router->bridge->core->fs.symlink(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -859,7 +1068,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.fstat(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->fs.fstat(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -877,7 +1086,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.fsync(
+    router->bridge->core->fs.fsync(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -903,7 +1112,7 @@ static void mapIPCRoutes (Router *router) {
     int64_t offset;
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoll);
 
-    router->core->fs.ftruncate(
+    router->bridge->core->fs.ftruncate(
       message.seq,
       id,
       offset,
@@ -915,7 +1124,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
-    router->core->fs.getOpenDescriptors(
+    router->bridge->core->fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -934,7 +1143,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.lstat(
+    router->bridge->core->fs.lstat(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -958,7 +1167,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->core->fs.mkdir(
+    router->bridge->core->fs.mkdir(
       message.seq,
       message.get("path"),
       mode,
@@ -995,7 +1204,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->core->fs.open(
+    router->bridge->core->fs.open(
       message.seq,
       id,
       message.get("path"),
@@ -1021,7 +1230,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.opendir(
+    router->bridge->core->fs.opendir(
       message.seq,
       id,
       message.get("path"),
@@ -1050,7 +1259,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
-    router->core->fs.read(
+    router->bridge->core->fs.read(
       message.seq,
       id,
       size,
@@ -1076,7 +1285,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(entries, "entries", std::stoi);
 
-    router->core->fs.readdir(
+    router->bridge->core->fs.readdir(
       message.seq,
       id,
       entries,
@@ -1096,7 +1305,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.readlink(
+    router->bridge->core->fs.readlink(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1115,7 +1324,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.realpath(
+    router->bridge->core->fs.realpath(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1136,7 +1345,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.retainOpenDescriptor(
+    router->bridge->core->fs.retainOpenDescriptor(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1156,7 +1365,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.rename(
+    router->bridge->core->fs.rename(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -1176,7 +1385,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.rmdir(
+    router->bridge->core->fs.rmdir(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1195,7 +1404,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.stat(
+    router->bridge->core->fs.stat(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1215,7 +1424,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.watch(
+    router->bridge->core->fs.watch(
       message.seq,
       id,
       message.get("path"),
@@ -1235,7 +1444,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->core->fs.unlink(
+    router->bridge->core->fs.unlink(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1255,7 +1464,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.watch(
+    router->bridge->core->fs.watch(
       message.seq,
       id,
       message.get("path"),
@@ -1288,7 +1497,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
-    router->core->fs.write(
+    router->bridge->core->fs.write(
       message.seq,
       id,
       message.buffer.bytes,
@@ -1298,9 +1507,8 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-#if defined(__APPLE__)
   router->map("geolocation.getCurrentPosition", [=](auto message, auto router, auto reply) {
-    router->core->geolocation.getCurrentPosition(
+    router->bridge->core->geolocation.getCurrentPosition(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -1316,7 +1524,7 @@ static void mapIPCRoutes (Router *router) {
     int id = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
 
-    router->core->geolocation.watchPosition(
+    router->bridge->core->geolocation.watchPosition(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1332,7 +1540,7 @@ static void mapIPCRoutes (Router *router) {
 
     int id = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
-    router->core->geolocation.clearWatch(
+    router->bridge->core->geolocation.clearWatch(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1340,7 +1548,6 @@ static void mapIPCRoutes (Router *router) {
 
     reply(Result { message.seq, message, JSON::Object{} });
   });
-#endif
 
   /**
    * A private API for artifically setting the current cached CWD value.
@@ -1364,10 +1571,10 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     NSLog(@"%s", value);
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
-  #elif defined(__ANDROID__)
+  #elif SSC_PLATFORM_ANDROID
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else
     printf("%s\n", value);
@@ -1415,7 +1622,7 @@ static void mapIPCRoutes (Router *router) {
 
 
     const auto notification = Notifications::Notification(message.get("id"));
-    router->core->notifications.close(notification);
+    router->bridge->core->notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
       {"id", notification.identifier}
@@ -1423,7 +1630,7 @@ static void mapIPCRoutes (Router *router) {
   });
 
   router->map("notification.list", [=](auto message, auto router, auto reply) {
-    router->core->notifications.list([=](const auto notifications) {
+    router->bridge->core->notifications.list([=](const auto notifications) {
       JSON::Array entries;
       for (const auto& notification : notifications) {
         entries.push(notification.json());
@@ -1453,7 +1660,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(buffer, "buffer", std::stoi, "0");
     REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi, "0");
 
-    router->core->os.bufferSize(
+    router->bridge->core->os.bufferSize(
       message.seq,
       id,
       size,
@@ -1466,41 +1673,41 @@ static void mapIPCRoutes (Router *router) {
    * Returns a mapping of operating  system constants.
    */
   router->map("os.constants", [=](auto message, auto router, auto reply) {
-    router->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns a mapping of network interfaces.
    */
   router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
-    router->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
   router->map("os.cpus", [=](auto message, auto router, auto reply) {
-    router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.rusage", [=](auto message, auto router, auto reply) {
-    router->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.uptime", [=](auto message, auto router, auto reply) {
-    router->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.uname", [=](auto message, auto router, auto reply) {
-    router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.hrtime", [=](auto message, auto router, auto reply) {
-    router->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
-    router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.paths", [=](auto message, auto router, auto reply) {
@@ -1522,7 +1729,7 @@ static void mapIPCRoutes (Router *router) {
     String log;
     String tmp = fs::temp_directory_path().string();
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     static const auto uid = getuid();
     static const auto pwuid = getpwuid(uid);
     static const auto HOME = pwuid != nullptr
@@ -1557,7 +1764,7 @@ static void mapIPCRoutes (Router *router) {
 
   #undef DIRECTORY_PATH_FROM_FILE_MANAGER
 
-  #elif defined(__linux__)
+  #elif SSC_PLATFORM_LINUX
     static const auto uid = getuid();
     static const auto pwuid = getpwuid(uid);
     static const auto HOME = pwuid != nullptr
@@ -1618,7 +1825,7 @@ static void mapIPCRoutes (Router *router) {
     home = Path(HOME).string();
     data = XDG_DATA_HOME + "/" + bundleIdentifier;
     log = config;
-  #elif defined(_WIN32)
+  #elif SSC_PLATFORM_WINDOWS
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
     downloads = (Path(USERPROFILE) / "Downloads").string();
@@ -1658,14 +1865,14 @@ static void mapIPCRoutes (Router *router) {
 
     auto name = message.get("name");
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     if (name == "geolocation") {
-      if (router->core->geolocation.locationObserver.isAuthorized) {
+      if (router->bridge->core->geolocation.locationObserver.isAuthorized) {
         auto data = JSON::Object::Entries {{"state", "granted"}};
         return reply(Result::Data { message, data });
-      } else if (router->core->geolocation.locationObserver.locationManager) {
+      } else if (router->bridge->core->geolocation.locationObserver.locationManager) {
         auto authorizationStatus = (
-          router->core->geolocation.locationObserver.locationManager.authorizationStatus
+          router->bridge->core->geolocation.locationObserver.locationManager.authorizationStatus
         );
 
         if (authorizationStatus == kCLAuthorizationStatusDenied) {
@@ -1705,7 +1912,7 @@ static void mapIPCRoutes (Router *router) {
   });
 
   router->map("permissions.request", [=](auto message, auto router, auto reply) {
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     __block auto userConfig = router->bridge->userConfig;
   #else
     auto userConfig = router->bridge->userConfig;
@@ -1720,14 +1927,14 @@ static void mapIPCRoutes (Router *router) {
     auto name = message.get("name");
 
     if (name == "geolocation") {
-    #if defined(__APPLE__)
-      auto performedActivation = [router->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
+    #if SSC_PLATFORM_APPLE
+      auto performedActivation = [router->bridge->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
         if (!isAuthorized) {
           auto reason = @("Location observer could not be activated");
 
-          if (!router->core->geolocation.locationObserver.locationManager) {
+          if (!router->bridge->core->geolocation.locationObserver.locationManager) {
             reason = @("Location observer manager is not initialized");
-          } else if (!router->core->geolocation.locationObserver.locationManager.location) {
+          } else if (!router->bridge->core->geolocation.locationObserver.locationManager.location) {
             reason = @("Location observer manager could not provide location");
           }
 
@@ -1743,7 +1950,7 @@ static void mapIPCRoutes (Router *router) {
         if (isAuthorized) {
           auto data = JSON::Object::Entries {{"state", "granted"}};
           return reply(Result::Data { message, data });
-        } else if (router->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
+        } else if (router->bridge->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
           auto data = JSON::Object::Entries {{"state", "prompt"}};
           return reply(Result::Data { message, data });
         } else {
@@ -1763,7 +1970,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     if (name == "notifications") {
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       UNAuthorizationOptions options = UNAuthorizationOptionProvisional;
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
       auto requestAlert = message.get("alert") == "true";
@@ -1852,25 +2059,25 @@ static void mapIPCRoutes (Router *router) {
       if (message.value == "load") {
         const auto href = message.get("location.href");
         if (href.size() > 0) {
-          router->location.href = href;
-          router->location.workers.clear();
+          router->bridge->navigator.location.set(href);
+          router->bridge->navigator.location.workers.clear();
           auto tmp = href;
           tmp = replace(tmp, "socket://", "");
           tmp = replace(tmp, "https://", "");
           tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
           const auto parsed = URL::Components::parse(tmp);
-          router->location.pathname = parsed.pathname;
-          router->location.query = parsed.query;
+          router->bridge->navigator.location.pathname = parsed.pathname;
+          router->bridge->navigator.location.query = parsed.query;
         }
       }
 
-      if (router->bridge == router->core->serviceWorker.bridge) {
+      if (router->bridge == router->bridge->core->serviceWorker.bridge) {
         if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
-          if (router->location.href.size() > 0 && message.value == "beforeruntimeinit") {
-            router->core->serviceWorker.reset();
-            router->core->serviceWorker.isReady = false;
+          if (router->bridge->navigator.location.href.size() > 0 && message.value == "beforeruntimeinit") {
+            router->bridge->core->serviceWorker.reset();
+            router->bridge->core->serviceWorker.isReady = false;
           } else if (message.value == "runtimeinit") {
-            router->core->serviceWorker.isReady = true;
+            router->bridge->core->serviceWorker.isReady = true;
           }
         }
       }
@@ -1880,11 +2087,11 @@ static void mapIPCRoutes (Router *router) {
       const auto workerLocation = message.get("runtime-worker-location");
       const auto href = message.get("location.href");
       if (href.size() > 0 && workerLocation.size() > 0) {
-        router->location.workers[href] = workerLocation;
+        router->bridge->navigator.location.workers[href] = workerLocation;
       }
     }
 
-    router->core->platform.event(
+    router->bridge->core->platform.event(
       message.seq,
       message.value,
       message.get("data"),
@@ -1904,7 +2111,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    router->core->platform.notify(
+    router->bridge->core->platform.notify(
       message.seq,
       message.get("title"),
       message.get("body"),
@@ -1923,7 +2130,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    router->core->platform.revealFile(
+    router->bridge->core->platform.revealFile(
       message.seq,
       message.get("value"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1947,7 +2154,7 @@ static void mapIPCRoutes (Router *router) {
         { "url", message.value }
       };
 
-      router->bridge->router.emit("applicationurl", json.str());
+      router->bridge->emit("applicationurl", json.str());
       reply(Result {
         message.seq,
         message,
@@ -1958,7 +2165,7 @@ static void mapIPCRoutes (Router *router) {
       return;
     }
 
-    router->core->platform.openExternal(
+    router->bridge->core->platform.openExternal(
       message.seq,
       message.value,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1986,21 +2193,21 @@ static void mapIPCRoutes (Router *router) {
           {"hash", SSC::VERSION_HASH_STRING}}
         },
         {"host-operating-system",
-        #if defined(__APPLE__)
-          #if TARGET_IPHONE_SIMULATOR
+        #if SSC_PLATFORM_APPLE
+          #if SSC_PLATFORM_IOS_SIMULATOR
              "iphonesimulator"
-          #elif TARGET_OS_IPHONE
+          #elif SSC_PLATFORM_IOS
             "iphoneos"
           #else
              "macosx"
           #endif
-        #elif defined(__ANDROID__)
+        #elif SSC_PLATFORM_ANDROID
              (router->bridge->isAndroidEmulator ? "android-emulator" : "android")
-        #elif defined(__WIN32)
+        #elif SSC_PLATFORM_WINDOWS
              "win32"
-        #elif defined(__linux__)
+        #elif SSC_PLATFORM_LINUX
              "linux"
-        #elif defined(__unix__) || defined(__unix)
+        #elif SSC_PLATFORM_UNIX
              "unix"
         #else
              "unknown"
@@ -2026,7 +2233,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    if (!router->core->hasPost(id)) {
+    if (!router->bridge->core->hasPost(id)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"id", std::to_string(id)},
         {"message", "Post not found for given 'id'"}
@@ -2034,9 +2241,9 @@ static void mapIPCRoutes (Router *router) {
     }
 
     auto result = Result { message.seq, message };
-    result.post = router->core->getPost(id);
+    result.post = router->bridge->core->getPost(id);
     reply(result);
-    router->core->removePost(id);
+    router->bridge->core->removePost(id);
   });
 
   /**
@@ -2054,10 +2261,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (data.size() > 0 && router->core->protocolHandlers.hasHandler(scheme)) {
-      router->core->protocolHandlers.setHandlerData(scheme, { data });
+    if (data.size() > 0 && router->bridge->core->protocolHandlers.hasHandler(scheme)) {
+      router->bridge->core->protocolHandlers.setHandlerData(scheme, { data });
     } else {
-      router->core->protocolHandlers.registerHandler(scheme, { data });
+      router->bridge->core->protocolHandlers.registerHandler(scheme, { data });
     }
 
     reply(Result { message.seq, message });
@@ -2076,13 +2283,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->core->protocolHandlers.unregisterHandler(scheme);
+    router->bridge->core->protocolHandlers.unregisterHandler(scheme);
 
     reply(Result { message.seq, message });
   });
@@ -2100,13 +2307,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    const auto data = router->core->protocolHandlers.getHandlerData(scheme);
+    const auto data = router->bridge->core->protocolHandlers.getHandlerData(scheme);
 
     reply(Result { message.seq, message, JSON::Raw(data.json) });
   });
@@ -2126,13 +2333,13 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (!router->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->core->protocolHandlers.setHandlerData(scheme, { data });
+    router->bridge->core->protocolHandlers.setHandlerData(scheme, { data });
 
     reply(Result { message.seq, message });
   });
@@ -2143,7 +2350,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
     #endif
       IO::write(message.value, false);
@@ -2164,7 +2371,7 @@ static void mapIPCRoutes (Router *router) {
         debug("%s", message.value.c_str());
       }
     } else if (message.value.size() > 0) {
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
     #endif
       IO::write(message.value, true);
@@ -2193,7 +2400,7 @@ static void mapIPCRoutes (Router *router) {
       .scriptURL = message.get("scriptURL")
     };
 
-    const auto registration = router->core->serviceWorker.registerServiceWorker(options);
+    const auto registration = router->bridge->core->serviceWorker.registerServiceWorker(options);
     auto json = JSON::Object {
       JSON::Object::Entries {
         {"registration", registration.json()}
@@ -2207,7 +2414,7 @@ static void mapIPCRoutes (Router *router) {
    * Resets the service worker container state.
    */
   router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
-    router->core->serviceWorker.reset();
+    router->bridge->core->serviceWorker.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2223,7 +2430,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-    router->core->serviceWorker.unregisterServiceWorker(scope);
+    router->bridge->core->serviceWorker.unregisterServiceWorker(scope);
 
     return reply(Result::Data { message, JSON::Object {} });
   });
@@ -2241,7 +2448,7 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scope = message.get("scope");
 
-    for (const auto& entry : router->core->serviceWorker.registrations) {
+    for (const auto& entry : router->bridge->core->serviceWorker.registrations) {
       const auto& registration = entry.second;
       if (scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
@@ -2265,7 +2472,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     auto json = JSON::Array::Entries {};
-    for (const auto& entry : router->core->serviceWorker.registrations) {
+    for (const auto& entry : router->bridge->core->serviceWorker.registrations) {
       const auto& registration = entry.second;
       json.push_back(registration.json());
     }
@@ -2286,7 +2493,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->serviceWorker.skipWaiting(id);
+    router->bridge->core->serviceWorker.skipWaiting(id);
 
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2310,10 +2517,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scriptURL = message.get("scriptURL");
 
     if (workerURL.size() > 0 && scriptURL.size() > 0) {
-      router->location.workers[workerURL] = scriptURL;
+      router->bridge->navigator.location.workers[workerURL] = scriptURL;
     }
 
-    router->core->serviceWorker.updateState(id, message.get("state"));
+    router->bridge->core->serviceWorker.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2333,7 +2540,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.set(message.get("key"), message.get("value"));
@@ -2365,7 +2572,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data {
@@ -2401,7 +2608,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.remove(message.get("key"));
@@ -2432,7 +2639,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.clear();
@@ -2463,7 +2670,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data { message, registration.storage.json() });
@@ -2489,7 +2696,7 @@ static void mapIPCRoutes (Router *router) {
     uint32_t timeout;
     REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoul);
     const auto wait = message.get("wait") == "true";
-    const Core::Timers::ID id = router->core->timers.setTimeout(timeout, [=]() {
+    const Core::Timers::ID id = router->bridge->core->timers.setTimeout(timeout, [=]() {
       if (wait) {
         reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
       }
@@ -2509,7 +2716,7 @@ static void mapIPCRoutes (Router *router) {
 
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-    router->core->timers.clearTimeout(id);
+    router->bridge->core->timers.clearTimeout(id);
 
     reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
   });
@@ -2537,7 +2744,7 @@ static void mapIPCRoutes (Router *router) {
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
 
-    router->core->udp.bind(
+    router->bridge->core->udp.bind(
       message.seq,
       id,
       options,
@@ -2559,7 +2766,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge->core->udp.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -2583,7 +2790,7 @@ static void mapIPCRoutes (Router *router) {
 
     options.address = message.get("address", "0.0.0.0");
 
-    router->core->udp.connect(
+    router->bridge->core->udp.connect(
       message.seq,
       id,
       options,
@@ -2605,7 +2812,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.disconnect(
+    router->bridge->core->udp.disconnect(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2626,7 +2833,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.getPeerName(
+    router->bridge->core->udp.getPeerName(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2647,7 +2854,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.getSockName(
+    router->bridge->core->udp.getSockName(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2668,7 +2875,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.getState(
+    router->bridge->core->udp.getState(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2690,7 +2897,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.readStart(
+    router->bridge->core->udp.readStart(
       message.seq,
       id,
       [message, reply](auto seq, auto json, auto post) {
@@ -2714,7 +2921,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.readStop(
+    router->bridge->core->udp.readStop(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2750,7 +2957,7 @@ static void mapIPCRoutes (Router *router) {
     options.address = message.get("address", "0.0.0.0");
     options.bytes = message.buffer.bytes;
 
-    router->core->udp.send(
+    router->bridge->core->udp.send(
       message.seq,
       id,
       options,
@@ -2758,6 +2965,17 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
+  /**
+   * Show the file system picker dialog
+   * @param allowMultiple
+   * @param allowFiles
+   * @param allowDirs
+   * @param type
+   * @param contentTypeSpecs
+   * @param defaultName
+   * @param defaultPath
+   * @param title
+   */
   router->map("window.showFileSystemPicker", [=](auto message, auto router, auto reply) {
     const auto allowMultiple = message.get("allowMultiple") == "true";
     const auto allowFiles = message.get("allowFiles") == "true";
@@ -2770,7 +2988,7 @@ static void mapIPCRoutes (Router *router) {
     const auto title = message.get("title", isSave ? "Save" : "Open");
 
     Dialog dialog;
-    auto options = Dialog::FileSystemPickerOptions {
+    const auto options = Dialog::FileSystemPickerOptions {
       .directories = allowDirs,
       .multiple = allowMultiple,
       .files = allowFiles,
@@ -2784,10 +3002,10 @@ static void mapIPCRoutes (Router *router) {
       const auto result = dialog.showSaveFilePicker(options);
 
       if (result.size() == 0) {
-        auto err = JSON::Object::Entries {{"type", "AbortError"}};
+        const auto err = JSON::Object::Entries {{"type", "AbortError"}};
         reply(Result::Err { message, err });
       } else {
-        auto data = JSON::Object::Entries {
+        const auto data = JSON::Object::Entries {
           {"paths", JSON::Array::Entries{result}}
         };
         reply(Result::Data { message, data });
@@ -2804,17 +3022,843 @@ static void mapIPCRoutes (Router *router) {
         paths.push(result);
       }
 
-      auto data = JSON::Object::Entries {
+      const auto data = JSON::Object::Entries {
         {"paths", paths}
       };
 
       reply(Result::Data { message, data });
     }
   });
+
+  /**
+   * Closes a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.close", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+
+    if (!window) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    reply(Result::Data { message, window->json() });
+
+    App::sharedApplication()->core->setTimeout(16, [=] () {
+      app->windowManager.destroyWindow(targetWindowIndex);
+    });
+  });
+
+  /**
+   * Creates a new window
+   * @param url
+   * @param title
+   * @param canExit
+   * @param headless
+   * @param radius
+   * @param margin
+   * @param height
+   * @param width
+   * @param minWidth
+   * @param minHeight
+   * @param maxWidth
+   * @param maxHeight
+   * @param resizable
+   * @param frameless
+   * @param closable
+   * @param maximizable
+   * @param minimizable
+   * @param aspectRatio
+   * @param titlebarStyle
+   * @param windowControlOffsets
+   * @param backgroundColorLight
+   * @param backgroundColorDark
+   * @param utility
+   * @param userScript
+   * @param userConfig
+   * @param targetWindowIndex
+   */
+  router->map("window.create", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    if (
+      targetWindowIndex >= SSC_MAX_WINDOWS &&
+      message.get("headless") != "true" &&
+      message.get("debug") != "true"
+    ) {
+      static const auto maxWindows = std::to_string(SSC_MAX_WINDOWS);
+      return reply(Result::Err {
+        message,
+        "Cannot create widow with an index beyond " + maxWindows
+      });
+    }
+
+    if (
+      app->windowManager.getWindow(targetWindowIndex) != nullptr &&
+      app->windowManager.getWindowStatus(targetWindowIndex) != WindowManager::WindowStatus::WINDOW_NONE
+    ) {
+      return reply(Result::Err {
+        message,
+        "Window with index " + message.get("targetWindowIndex") + " already exists"
+      });
+    }
+
+    const auto window = app->windowManager.getWindow(0);
+    const auto screen = window->getScreenSize();
+    auto options = WindowOptions {};
+
+    options.url = message.get("url");
+    options.title = message.get("title");
+    options.canExit = message.get("canExit") == "true" ? true : false;
+    options.headless = app->userConfig["build_headless"] == "true";
+
+    if (message.get("headless") == "true") {
+      options.headless = true;
+    } else if (message.get("headless") == "false") {
+      options.headless = false;
+    }
+
+    if (message.has("port")) {
+      options.port = std::stoi(message.get("port"));
+    }
+
+    if (message.has("radius")) {
+      options.radius = std::stof(message.get("radius"));
+    }
+
+    if (message.has("margin")) {
+      options.margin = std::stof(message.get("margin"));
+    }
+
+    options.minWidth = message.get("minWidth").size()
+      ? window->getSizeInPixels(message.get("minWidth"), screen.width)
+      : 0;
+
+    options.minHeight = message.get("minHeight").size()
+      ? window->getSizeInPixels(message.get("minHeight"), screen.height)
+      : 0;
+
+    options.maxWidth = message.get("maxWidth").size()
+      ? window->getSizeInPixels(message.get("maxWidth"), screen.width)
+      : screen.width;
+
+    options.maxHeight = message.get("maxHeight").size()
+      ? window->getSizeInPixels(message.get("maxHeight"), screen.height)
+      : screen.height;
+
+    options.resizable = message.get("resizable") == "true" ? true : false;
+    options.frameless = message.get("frameless") == "true" ? true : false;
+    options.closable = message.get("closable") == "true" ? true : false;
+    options.maximizable = message.get("maximizable") == "true" ? true : false;
+    options.minimizable = message.get("minimizable") == "true" ? true : false;
+    options.aspectRatio = message.get("aspectRatio");
+    options.titlebarStyle = message.get("titlebarStyle");
+    options.title = message.get("title");
+    options.windowControlOffsets = message.get("windowControlOffsets");
+    options.backgroundColorLight = message.get("backgroundColorLight");
+    options.backgroundColorDark = message.get("backgroundColorDark");
+    options.utility = message.get("utility") == "true" ? true : false;
+    options.debug = message.get("debug") == "true" ? true : false;
+    options.userScript = message.get("userScript");
+    options.index = targetWindowIndex;
+    options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
+    options.userConfig = INI::parse(message.get("config"));
+
+    if (options.index >= SSC_MAX_WINDOWS) {
+      options.preloadCommonJS = false;
+    }
+
+    app->dispatch([=]() {
+      const auto createdWindow = app->windowManager.createWindow(options);
+
+      if (options.url.size() > 0) {
+        createdWindow->navigate(options.url);
+      }
+
+    #if SSC_PLATFORM_DESKTOP
+      createdWindow->show();
+    #endif
+
+      reply(Result::Data { message, createdWindow->json() });
+    });
+  });
+
+  /**
+   * Gets the background color of a target window window
+   * @param targetWindowIndex
+   */
+  router->map("window.getBackgroundColor", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    reply(Result::Data { message, window->getBackgroundColor() });
+  });
+
+  /**
+   * Gets the title of a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.gtTitle", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    reply(Result::Data { message, window->getTitle() });
+  });
+
+  /**
+   * Hides a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.hide", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->hide();
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
+   * Maximize a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.maximize", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->maximize();
+      reply(Result::Data { message, window->json() });
+    });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Maximizing the window is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Minimize a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.minimize", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->minimize();
+      reply(Result::Data { message, window->json() });
+    });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Minimizing the window is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Navigate a targetbnnb
+   * @param targetWindowIndex
+   */
+  router->map("window.navigate", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex", "url"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    const auto requestedURL = message.get("url");
+    const auto allowed = window->bridge.navigator.isNavigationRequestAllowed(
+      window->bridge.navigator.location.href,
+      requestedURL
+    );
+
+    if (!allowed) {
+      return reply(Result::Err { message, "Navigation to URL is not allowed" });
+    }
+
+    app->dispatch([=]() {
+      window->bridge.navigator.location.set(requestedURL);
+      window->bridge.navigate(requestedURL);
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
+   * Restore a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.restore", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->restore();
+      reply(Result::Data { message, window->json() });
+    });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Restoring the window is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Send an event to another window
+   * @param event
+   * @param value
+   * @param targetWindowIndex
+   */
+  router->map("window.send", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    const auto event = message.get("event");
+    const auto value = message.get("value");
+    const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
+
+    if (targetWindowIndex < 0) {
+      return reply(Result::Err { message, "Invalid target window index" });
+    }
+
+    const auto targetWindow = app->windowManager.getWindow(targetWindowIndex);
+
+    if (!targetWindow) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      debug("eval: %s", getEmitToRenderProcessJavaScript(event, value).c_str());
+      targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
+      reply(Result { message.seq, message });
+    });
+  });
+
+  /**
+   * Sets the background color
+   * @param targetWindowIndex
+   * @param red
+   * @param green
+   * @param blue
+   * @param alpha
+   *
+   */
+  router->map("window.setBackgroundColor", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+    int red = 0;
+    int green = 0;
+    int blue = 0;
+    float alpha = 1;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    if (message.has("red")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(red, "red", std::stoi);
+    }
+
+    if (message.has("green")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(green, "green", std::stoi);
+    }
+
+    if (message.has("blue")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(blue, "blue", std::stoi);
+    }
+
+    if (message.has("alpha")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(alpha, "alpha", std::stof);
+    }
+
+    if (alpha > 1 || alpha < 0) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Invalid 'alpha' parameter given"},
+          {"type", "RangeError"}
+        }
+      });
+    }
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->setBackgroundColor(red, green, blue, alpha);
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
+   * Creates and displays a context menu at the current mouse position (desktop only)
+   * @param value
+   */
+  router->map("window.setContextMenu", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"index", "value"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto window = app->windowManager.getWindow(message.index);
+    const auto windowStatus = app->windowManager.getWindowStatus(message.index);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->setContextMenu(message.seq, message.value);
+      reply(Result::Data { message, JSON::Object {} });
+    });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Setting a window context menu is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Sets the size of a target window (desktop only)
+   * @param targetWindowIndex
+   * @param height
+   * @param width
+   */
+  router->map("window.setSize", [=](auto message, auto router, auto reply) {
+  #if SSC_PLATFORM_DESKTOP
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex", "height", "width"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    const auto screen = window->getScreenSize();
+    const auto width = window->getSizeInPixels(message.get("width"), screen.width);
+    const auto height = window->getSizeInPixels(message.get("height"), screen.height);
+
+    app->dispatch([=]() {
+      window->setSize(width, height, 0);
+      reply(Result::Data { message, window->json() });
+    });
+  #else
+    reply(Result::Err {
+      message,
+      JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Setting the window title is not supported"}
+      }
+    });
+  #endif
+  });
+
+  /**
+   * Sets the title of a target windo
+   * @param targetWindowIndex
+   * @param value
+   */
+  router->map("window.setTitle", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex", "value"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->setTitle(message.value);
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
+   * Shows a target window
+   * @param targetWindowIndex
+   */
+  router->map("window.show", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=]() {
+      window->show();
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
+   * Shows the target window web inspector (desktop only)
+   * @param targetWindowIndex
+   */
+  router->map("window.showInspector", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    app->dispatch([=] () {
+      window->showInspector();
+      reply(Result::Data { message, window->json() });
+    });
+  });
 }
 
 namespace SSC::IPC {
-  void Router::init () {
+  void Router::mapRoutes () {
     mapIPCRoutes(this);
   }
 }

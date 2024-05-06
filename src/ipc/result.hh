@@ -13,6 +13,8 @@ namespace SSC::IPC {
           Message::Seq seq;
           JSON::Any value;
           Err () = default;
+          Err (const Message&, const char*);
+          Err (const Message&, const String&);
           Err (const Message&, JSON::Any);
       };
 

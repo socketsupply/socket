@@ -111,38 +111,38 @@ using Task = id<WKURLSchemeTask>;
 #elif SSC_PLATFORM_LINUX
 static const auto MAX_URI_SCHEME_REQUEST_BODY_BYTES = 4 * 1024 * 1024;
 static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer userData) {
-  static auto windowManager = App::instance()->getWindowManager();
   static auto userConfig = SSC::getUserConfig();
-  auto webview = webkit_uri_scheme_request_get_web_view(schemeRequest);
+  static auto app = App::sharedApplication();
 
-  if (!windowManager) {
+  if (!app) {
     const auto quark = g_quark_from_string(userConfig["meta_bundle_identifier"].c_str());
     const auto error = g_error_new(quark, 1, "Missing WindowManager in request");
     webkit_uri_scheme_request_finish_error(schemeRequest, error);
     return;
   }
 
-  IPC::Router* router = nullptr;
+  auto webview = webkit_uri_scheme_request_get_web_view(schemeRequest);
+  IPC::Bridge* bridge = nullptr;
 
-  for (auto& window : windowManager->windows) {
+  for (auto& window : app->windowManager.windows) {
     if (
       window != nullptr &&
       window->bridge != nullptr &&
       WEBKIT_WEB_VIEW(window->webview) == webview
     ) {
-      router = &window->bridge->router;
+      bridge = &window->bridge;
       break;
     }
   }
 
-  if (!router) {
+  if (!bridge) {
     const auto quark = g_quark_from_string(userConfig["meta_bundle_identifier"].c_str());
-    const auto error = g_error_new(quark, 1, "Missing IPC bridge router in request");
+    const auto error = g_error_new(quark, 1, "Missing IPC bridge in request");
     webkit_uri_scheme_request_finish_error(schemeRequest, error);
     return;
   }
 
-  auto request = IPC::SchemeHandlers::Request::Builder(router->schemeHandlers, schemeRequest)
+  auto request = IPC::SchemeHandlers::Request::Builder(&bridge->schemeHandlers, schemeRequest)
     .setMethod(String(webkit_uri_scheme_request_get_http_method(platformRequest)))
     // copies all request soup headers
     .setHeaders(webkit_uri_scheme_request_get_http_headers(request))
@@ -264,8 +264,9 @@ namespace SSC::IPC {
 {511, "Network Authentication Required"}
   };
 
-  SchemeHandlers::SchemeHandlers (Router* router) {
-    this->router = router;
+  SchemeHandlers::SchemeHandlers (Bridge* bridge)
+    : bridge(bridge)
+  {
     this->internals = new SchemeHandlersInternals(this);
   }
 
@@ -278,6 +279,9 @@ namespace SSC::IPC {
       delete this->internals;
       this->internals = nullptr;
     }
+  }
+
+  void SchemeHandlers::init () {
   }
 
   void SchemeHandlers::configure (const Configuration& configuration) {
@@ -440,7 +444,7 @@ namespace SSC::IPC {
     // stored request reference
     auto& req = result.first->second;
 
-    handler(req, this->router, req.callbacks, [this, id, callback](auto& response) {
+    handler(req, this->bridge, req.callbacks, [this, id, callback](auto& response) {
       // make sure the response was finished before
       // calling the `callback` function below
       response.finish();
@@ -475,16 +479,12 @@ namespace SSC::IPC {
     );
   }
 
+  void SchemeHandlers::configureWebView (WebView* webview) {
   #if SSC_PLATFORM_APPLE
-    void SchemeHandlers::configureWebView (SSCBridgeWebView* webview) {
-    }
   #elif SSC_PLATFORM_LINUX
-    void SchemeHandlers::configureWebView (WebKitWebView* webview) {
-    }
   #elif SSC_PLATFORM_WINDOWS
-    void SchemeHandlers::configureWebView (ICoreWebView2* webview) {
-    }
   #endif
+  }
 
   SchemeHandlers::Request::Builder::Builder (
     SchemeHandlers* handlers,
@@ -501,7 +501,7 @@ namespace SSC::IPC {
     CoTaskMemFree(requestURI);
   #endif
 
-    const auto userConfig = handlers->router->bridge->userConfig;
+    const auto userConfig = handlers->bridge->userConfig;
     const auto url = URL::Components::parse(this->absoluteURL);
     const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
       ? userConfig.at("meta_bundle_identifier")
@@ -516,7 +516,7 @@ namespace SSC::IPC {
     ));
 
     // default client id, can be overloaded with 'runtime-client-id' header
-    this->request->client.id = handlers->router->bridge->id;
+    this->request->client.id = handlers->bridge->id;
 
     // build request URL components from parsed URL components
     this->request->originalURL = this->absoluteURL;
@@ -684,7 +684,7 @@ namespace SSC::IPC {
     const Options& options
   )
     : handlers(handlers),
-      router(handlers->router),
+      bridge(handlers->bridge),
       scheme(options.scheme),
       method(options.method),
       hostname(options.hostname),
@@ -725,7 +725,7 @@ namespace SSC::IPC {
     destination->finalized = source.finalized.load();
     destination->cancelled  = source.cancelled.load();
 
-    destination->router = source.router;
+    destination->bridge = source.bridge;
     destination->handlers = source.handlers;
     destination->platformRequest = source.platformRequest;
   }
@@ -843,7 +843,9 @@ namespace SSC::IPC {
       id(request.id)
   {
     const auto defaultHeaders = split(
-      this->request.router->bridge->userConfig["webview_headers"],
+      this->request.bridge->userConfig.contains("webview_headers")
+        ? this->request.bridge->userConfig.at("webview_headers")
+        : "",
       '\n'
     );
 
@@ -1144,14 +1146,14 @@ namespace SSC::IPC {
   }
 
   void SchemeHandlers::Response::setHeader (const String& name, const Headers::Value& value) {
-    const auto router = this->request.handlers->router;
+    const auto bridge = this->request.handlers->bridge;
     if (toLowerCase(name) == "referer") {
-      if (router->location.workers.contains(value.string)) {
-        const auto workerLocation = router->location.workers[value.string];
+      if (bridge->navigator.location.workers.contains(value.string)) {
+        const auto workerLocation = bridge->navigator.location.workers[value.string];
         this->headers[name] = workerLocation;
         return;
-      } else if (router->core->serviceWorker.bridge->router.location.workers.contains(value.string)) {
-        const auto workerLocation = router->core->serviceWorker.bridge->router.location.workers[value.string];
+      } else if (bridge->core->serviceWorker.bridge->navigator.location.workers.contains(value.string)) {
+        const auto workerLocation = bridge->core->serviceWorker.bridge->navigator.location.workers[value.string];
         this->headers[name] = workerLocation;
         return;
       }
@@ -1210,7 +1212,10 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::Response::fail (const String& reason) {
-    const auto bundleIdentifier = this->request.router->bridge->userConfig["meta_bundle_identifier"];
+    const auto bundleIdentifier = this->request.bridge->userConfig.contains("meta_bundle_identifier")
+      ? this->request.bridge->userConfig.at("meta_bundle_identifier")
+      : "";
+
     if (
       this->finished ||
       !this->handlers->isRequestActive(this->id) ||
