@@ -78,7 +78,15 @@ namespace SSC {
     return components;
   }
 
+  URL::URL (const JSON::Object& json)
+    : URL(json["href"].str())
+  {}
+
   URL::URL (const String& href) {
+    this->set(href);
+  }
+
+  void URL::set (const String& href) {
     const auto components = URL::Components::parse(href);
 
     this->scheme = components.scheme;
@@ -141,10 +149,6 @@ namespace SSC {
       }
     }
   }
-
-  URL::URL (const JSON::Object& json)
-    : URL(json["href"].str())
-  {}
 
   const String URL::str () const {
     return this->href;

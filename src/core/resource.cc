@@ -36,11 +36,11 @@ namespace SSC {
     }
 
   #if SSC_PLATFORM_MACOS
-    static const auto currentDirectory = NSFileManager.defaultManager.currentDirectoryPath;
-    value = currentDirectory.UTF8String;
+    static const auto resourcePath = NSBundle.mainBundle.resourcePath;
+    value = resourcePath.UTF8String;
   #elif SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
     static const auto resourcePath = NSBundle.mainBundle.resourcePath;
-    value = [[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String];
+    value = [resourcePath stringByAppendingPathComponent: @"ui"].UTF8String;
   #elif SSC_PLATFORM_LINUX
     static const auto self = fs::canonical("/proc/self/exe");
     value = self.parent_path().string();

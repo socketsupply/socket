@@ -586,6 +586,10 @@ namespace SSC {
         initEventLoop();
       }
 
+      ~Core () {
+        this->shutdown();
+      }
+
       void shutdown ();
 
       void resumeAllPeers ();

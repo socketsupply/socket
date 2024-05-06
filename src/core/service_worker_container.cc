@@ -158,7 +158,7 @@ namespace SSC {
 
   ServiceWorkerContainer::~ServiceWorkerContainer () {
     if (this->bridge != nullptr) {
-      this->bridge->router.emit("serviceWorker.destroy", "{}");
+      this->bridge->emit("serviceWorker.destroy", JSON::Object {});
     }
 
     this->core = nullptr;
@@ -497,7 +497,7 @@ namespace SSC {
       const auto& registration = this->registrations.at(scope);
 
       if (this->bridge != nullptr) {
-        this->bridge->router.emit("serviceWorker.register", registration.json().str());
+        this->bridge->emit("serviceWorker.register", registration.json().str());
       }
 
       return registration;
@@ -521,7 +521,7 @@ namespace SSC {
 
     if (this->bridge != nullptr) {
       this->core->setImmediate([&, this]() {
-        this->bridge->router.emit("serviceWorker.register", registration.json().str());
+        this->bridge->emit("serviceWorker.register", registration.json().str());
       });
     }
 
@@ -537,7 +537,7 @@ namespace SSC {
     if (this->registrations.contains(scope)) {
       const auto& registration = this->registrations.at(scope);
       if (this->bridge != nullptr) {
-        return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
+        return this->bridge->emit("serviceWorker.unregister", registration.json().str());
       }
 
       this->registrations.erase(scope);
@@ -549,7 +549,7 @@ namespace SSC {
         const auto& registration = this->registrations.at(entry.first);
 
         if (this->bridge != nullptr) {
-          return this->bridge->router.emit("serviceWorker.unregister", registration.json().str());
+          return this->bridge->emit("serviceWorker.unregister", registration.json().str());
         }
 
         this->registrations.erase(entry.first);
@@ -584,7 +584,7 @@ namespace SSC {
           registration.state = Registration::State::Activating;
 
           if (this->bridge != nullptr) {
-            this->bridge->router.emit("serviceWorker.skipWaiting", registration.json().str());
+            this->bridge->emit("serviceWorker.skipWaiting", registration.json().str());
           }
         }
         break;
@@ -615,7 +615,7 @@ namespace SSC {
         }
 
         if (this->bridge != nullptr) {
-          this->bridge->router.emit("serviceWorker.updateState", registration.json().str());
+          this->bridge->emit("serviceWorker.updateState", registration.json().str());
         }
 
         break;
@@ -725,7 +725,7 @@ namespace SSC {
       this->fetchCallbacks.insert_or_assign(id, callback);
       this->fetchRequests.insert_or_assign(id, request);
 
-      return this->bridge->router.emit("serviceWorker.fetch", json.str());
+      return this->bridge->emit("serviceWorker.fetch", json.str());
     }
 
     return false;

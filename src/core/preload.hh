@@ -8,6 +8,7 @@ namespace SSC {
   struct PreloadOptions {
     bool module = false;
     bool wrap = false;
+    uint64_t clientId = 0;
     String userScript = "";
   };
 

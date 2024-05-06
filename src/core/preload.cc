@@ -49,7 +49,7 @@ namespace SSC {
       "      id: globalThis.window && globalThis.top !== globalThis.window   \n"
       "        ? '" + std::to_string(rand64()) + "'                          \n"
       "        : globalThis.window && globalThis.top                         \n"
-      "          ? '" + std::to_string(opts.clientId) + "'                   \n"
+      "          ? '" + std::to_string(preloadOptions.clientId) + "'         \n"
       "          : null,                                                     \n"
       "      type: globalThis.window                                         \n"
       "        ? 'window'                                                    \n"

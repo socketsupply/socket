@@ -29,11 +29,11 @@ namespace SSC {
     return posts.at(id);
   }
 
-
   void Core::shutdown () {
   #if SSC_PLATFORM_DESKTOP
     this->childProcess.shutdown();
   #endif
+    this->stopEventLoop();
   }
 
   bool Core::hasPost (uint64_t id) {
@@ -147,7 +147,7 @@ namespace SSC {
     }
   }
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if SSC_PLATFORM_LINUX
   struct UVSource {
     GSource base; // should ALWAYS be first member
     gpointer tag;
@@ -207,7 +207,7 @@ namespace SSC {
       }
     });
 
-  #if defined(__linux__) && !defined(__ANDROID__)
+  #if SSC_PLATFORM_LINUX
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
     uvSource->core = this;
@@ -239,7 +239,7 @@ namespace SSC {
   void Core::stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
-  #if defined(__ANDROID__) || defined(_WIN32)
+  #if SSC_PLATFORM_ANDROID || SSC_PLATFORM_WINDOWS
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -305,10 +305,10 @@ namespace SSC {
       startTimers();
     });
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     Lock lock(loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-  #elif defined(__ANDROID__) || !defined(__linux__)
+  #elif SSC_PLATFORM_ANDROID || SSC_PLATFORM_WINDOWS
     Lock lock(loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {

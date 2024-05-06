@@ -4,6 +4,7 @@
 #include "module.hh"
 #include "debug.hh"
 #include "url.hh"
+#include "core.hh"
 
 #if SSC_PLATFORM_APPLE
 @implementation SSCUserNotificationCenterDelegate
@@ -364,14 +365,18 @@ namespace SSC {
             : "An unknown error occurred"
         );
 
-        callback(ShowResult { message });
+        this->core->dispatchEventLoop([=] () {
+          callback(ShowResult { message });
+        });
       #if !__has_feature(objc_arc)
         [content release];
       #endif
         return;
       }
 
-      callback(ShowResult { "", id });
+      this->core->dispatchEventLoop([=] () {
+        callback(ShowResult { "", options.id });
+      });
     }];
   #endif
     return false;
@@ -409,8 +414,8 @@ namespace SSC {
     }];
   }
 
-#if SSC_PLATFORM_LINUX
-  void Notifications::configureWebView (WebKitWebView* webview) {
+  void Notifications::configureWebView (WebView* webview) {
+  #if SSC_PLATFORM_LINUX
     Lock lock(this->mutex);
 
     static bool areWebContextSignalsConnected = false;
@@ -423,19 +428,19 @@ namespace SSC {
         WebKitNotification* notification,
         gpointer userData
       ) -> bool {
-        static auto windowManager = App::instance()->getWindowManager();
+        static auto app = App::sharedApplication();
 
-        if (windowManager == nullptr) {
+        if (app == nullptr) {
           return false;
         }
 
-        for (auto& window : windowManager->windows) {
+        for (auto& window : app->windowManager.windows) {
           if (
             window != nullptr &&
             window->bridge != nullptr &&
             WEBKIT_WEB_VIEW(window->webview) == webview
            ) {
-            auto userConfig = window->bridge->userConfig;
+            auto userConfig = window->bridge.userConfig;
             return userConfig["permissions_allow_notifications"] != "false";
           }
         }
@@ -499,9 +504,7 @@ namespace SSC {
         this
       );
     }
+  #elif SSC_PLATFORM_WINDOWS
+  #endif
   }
-#elif SSC_PLATFORM_WINDOWS
-  void Notifications::configureWebView (ICoreWebView2* webview) {
-  }
-#endif
 }

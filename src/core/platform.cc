@@ -250,9 +250,8 @@ namespace SSC {
     #if SSC_PLATFORM_APPLE
       const auto url = [NSURL URLWithString: @(value.c_str())];
 
-      #if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
-        auto app = [UIApplication sharedApplication];
-        [app openURL: url options: @{} completionHandler: ^(BOOL success) {
+      #if SSC_PLATFORM_IOS
+        [UIApplication.sharedApplication openURL: url options: @{} completionHandler: ^(BOOL success) {
           auto json = JSON::Object {};
 
           if (!success) {
