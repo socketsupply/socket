@@ -1621,7 +1621,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
 
-    const auto notification = Notifications::Notification(message.get("id"));
+    const auto notification = Notifications::Notification { message.get("id") };
     router->bridge->core->notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
