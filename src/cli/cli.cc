@@ -302,7 +302,7 @@ inline String prefixFile () {
   return socketHome;
 }
 
-static Process::id_type appPid = 0;
+static Process::PID appPid = 0;
 static Process* appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
@@ -4244,8 +4244,16 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_identifier"] = "";
       }
 
+      if (settings["ios_sdkroot"].size() == 0) {
+        if (flagBuildForSimulator) {
+          settings["ios_sdkroot"] = "iphonesimulator";
+        } else {
+          settings["ios_sdkroot"] = "iphoneos";
+        }
+      }
+
       // --platform=ios should always build for arm64 even on Darwin x86_64
-      auto arch = flagBuildForSimulator ? platform.arch : "arm64";
+      auto arch = String(flagBuildForSimulator ? "x86_64" : "arm64");
       auto deviceType = arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
 
       auto deviceLibs = Path(prefixFile()) / "lib" / deviceType;
@@ -5122,9 +5130,6 @@ int main (const int argc, const char* argv[]) {
 
       entitlementSettings["configured_entitlements"] = "";
 
-      if (flagDebugMode) {
-      }
-
       if (settings["permissions_allow_push_notifications"] == "true") {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
@@ -5177,7 +5182,7 @@ int main (const int argc, const char* argv[]) {
         : "name=" + settings["ios_simulator_device"];
 
       String destination = flagBuildForSimulator
-        ? "platform=iOS Simulator,OS=latest," + deviceIdentity
+        ? "platform=iOS Simulator,OS=latest," + deviceIdentity + ",arch=x86_64"
         : "generic/platform=iOS";
 
       String deviceType;
@@ -5187,20 +5192,18 @@ int main (const int argc, const char* argv[]) {
         settings["ios_codesign_identity"] = "iPhone Distribution";
       }
 
-      auto sup = String("archive");
-      auto configuration = String(flagDebugMode ? "Debug" : "Release");
-
-      if (!flagShouldPackage) {
-        sup = "CONFIGURATION_BUILD_DIR=" + pathToDist.string();
-      }
+      const auto configuration = String(flagDebugMode ? "Debug" : "Release");
+      const auto args = flagShouldPackage
+        ? String("archive")
+        : "CONFIGURATION_BUILD_DIR=" + pathToDist.string();
 
       archiveCommand
         << "xcodebuild"
-        << " build " << sup
+        << " build " << args
         << " -allowProvisioningUpdates"
-        << " -configuration " << configuration
         << " -scheme " << settings["build_name"]
-        << " -destination '" << destination << "'";
+        << " -destination '" << destination << "'"
+        << " -configuration " << configuration;
 
       if (flagShouldPackage) {
         archiveCommand << " -archivePath build/" << settings["build_name"];
