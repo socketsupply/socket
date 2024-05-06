@@ -3,6 +3,7 @@
 
 #include "module.hh"
 #include "platform.hh"
+#include "../window/webview.hh"
 
 namespace SSC {
   class Notifications;
@@ -70,6 +71,8 @@ namespace SSC {
       Notifications (Core* core);
       ~Notifications ();
 
+      void configureWebView (WebView* webview);
+
       bool removePermissionChangeObserver (const PermissionChangeObserver& observer);
       bool addPermissionChangeObserver (
         const PermissionChangeObserver& observer,
@@ -91,12 +94,6 @@ namespace SSC {
       bool show (const ShowOptions& options, const ShowCallback callback);
       bool close (const Notification& notification);
       void list (const ListCallback callback) const;
-
-    #if SSC_PLATFORM_LINUX
-      void configureWebView (WebKitWebView* webview);
-    #elif SSC_PLATFORM_WINDOWS
-      void configureWebView (ICoreWebView2 *webviev);
-    #endif
   };
 }
 #endif

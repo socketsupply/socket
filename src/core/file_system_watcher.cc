@@ -108,7 +108,6 @@ namespace SSC {
     this->watchedPaths.clear();
 
     if (this->ownsCore && this->core != nullptr) {
-      this->core->stopEventLoop();
       delete this->core;
     }
 

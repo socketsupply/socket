@@ -2,6 +2,7 @@
 #define SSC_SOCKET_JSON_HH
 
 #include "types.hh"
+#include "platform.hh"
 
 namespace SSC::JSON {
   // forward
@@ -15,28 +16,7 @@ namespace SSC::JSON {
   class String;
 
   using ObjectEntries = std::map<SSC::String, Any>;
-  using ArrayEntries = std::vector<Any>;
-
-  class Error : public std::invalid_argument {
-    public:
-      SSC::String name;
-      SSC::String message;
-      SSC::String location;
-
-      Error (
-        const SSC::String& name,
-        const SSC::String& message,
-        const SSC::String& location
-      ) : std::invalid_argument(name + ": " + message + " (from " + location + ")") {
-        this->name = name;
-        this->message = message;
-        this->location = location;
-      }
-
-      auto str () const {
-        return SSC::String(name + ": " + message + " (from " + location + ")");
-      }
-  };
+  using ArrayEntries = Vector<Any>;
 
   enum class Type {
     Empty = -1,
@@ -47,7 +27,8 @@ namespace SSC::JSON {
     Boolean = 4,
     Number = 5,
     String = 6,
-    Raw = 7
+    Raw = 7,
+    Error = 8
   };
 
   template <typename D, Type t> struct Value {
@@ -66,10 +47,12 @@ namespace SSC::JSON {
           case Type::Null: return SSC::String("null");
           case Type::Object: return SSC::String("object");
           case Type::String: return SSC::String("string");
+          case Type::Error: return SSC::String("error");
         }
       }
 
-      bool isRaw() const { return this->type == Type::Raw; }
+      bool isError () const { return this->type == Type::Error; }
+      bool isRaw () const { return this->type == Type::Raw; }
       bool isArray () const { return this->type == Type::Array; }
       bool isBoolean () const { return this->type == Type::Boolean; }
       bool isNumber () const { return this->type == Type::Number; }
@@ -77,6 +60,81 @@ namespace SSC::JSON {
       bool isObject () const { return this->type == Type::Object; }
       bool isString () const { return this->type == Type::String; }
       bool isEmpty () const { return this->type == Type::Empty; }
+  };
+
+  class Error : public std::invalid_argument, public Value<SSC::String, Type::Error> {
+    public:
+      int code = 0;
+      SSC::String name;
+      SSC::String message;
+      SSC::String location;
+
+      Error () : std::invalid_argument("") {};
+      Error (const Error& error) : std::invalid_argument(error.str()) {
+        this->code = error.code;
+        this->name = error.name;
+        this->message = error.message;
+        this->location = error.location;
+      }
+
+      Error (Error* error) : std::invalid_argument(error->str()) {
+        this->code = error->code;
+        this->name = error->name;
+        this->message = error->message;
+        this->location = error->location;
+      }
+
+      Error (
+        const SSC::String& name,
+        const SSC::String& message,
+        int code = 0
+      ) : std::invalid_argument(name + ": " + message) {
+        this->name = name;
+        this->code = code;
+        this->message = message;
+      }
+
+      Error (
+        const SSC::String& message
+      ) : std::invalid_argument(message) {
+        this->message = message;
+      }
+
+      Error (
+        const SSC::String& name,
+        const SSC::String& message,
+        const SSC::String& location
+      ) : std::invalid_argument(name + ": " + message + " (from " + location + ")") {
+        this->name = name;
+        this->message = message;
+        this->location = location;
+      }
+
+      SSC::String value () const {
+        return this->str();
+      }
+
+      const char* what () const noexcept override {
+        return this->message.c_str();
+      }
+
+      const SSC::String str () const {
+        if (this->name.size() > 0 && this->message.size() > 0 && this->location.size() > 0) {
+          return this->name + ": " + this->message + " (from " + this->location + ")";
+        } else if (this->name.size() > 0 && this->message.size() > 0) {
+          return this->name + ": " + this->message;
+        } else if (this->name.size() > 0 && this->location.size() > 0) {
+          return this->name + " (from " + this->location + ")";
+        } else if (this->message.size() > 0 && this->location.size() > 0) {
+          return this->message + " (from " + this->location + ")";
+        } else if (this->name.size() > 0) {
+          return this->name;
+        } else if (this->message.size() > 0) {
+          return this->message;
+        }
+
+        return "";
+      }
   };
 
   class Null : public Value<std::nullptr_t, Type::Null> {
@@ -96,7 +154,7 @@ namespace SSC::JSON {
 
   class Any : public Value<void *, Type::Any> {
     public:
-      std::shared_ptr<void> pointer = nullptr;
+      SharedPointer<void> pointer = nullptr;
 
       Any () {
         this->pointer = nullptr;
@@ -113,7 +171,7 @@ namespace SSC::JSON {
         this->type = any.type;
       }
 
-      Any (Type type, std::shared_ptr<void> pointer) {
+      Any (Type type, SharedPointer<void> pointer) {
         this->type = type;
         this->pointer = pointer;
       }
@@ -127,10 +185,8 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
-    #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    #if SSC_PLATFORM_APPLE
       Any (size_t);
-    #endif
-    #if defined(__APPLE__)
       Any (ssize_t);
     #endif
       Any (const Number);
@@ -142,7 +198,13 @@ namespace SSC::JSON {
       Any (const ObjectEntries);
       Any (const Array);
       Any (const ArrayEntries);
-      Any (const Raw source);
+      Any (const Raw);
+      Any (const Error);
+    #if SSC_PLATFORM_APPLE
+      Any (const NSError*);
+    #elif SSC_PLATFORM_LINUX
+      Any (const GError*);
+    #endif
 
       SSC::String str () const;
 
@@ -227,6 +289,24 @@ namespace SSC::JSON {
           auto key = tuple.first;
           auto value = Any(tuple.second);
           this->data.insert_or_assign(key, value);
+        }
+      }
+
+      Object (const Error& error) {
+        if (error.name.size() > 0) {
+          this->set("name", error.name);
+        }
+
+        if (error.message.size() > 0) {
+          this->set("message", error.message);
+        }
+
+        if (error.location.size() > 0) {
+          this->set("location", error.location);
+        }
+
+        if (error.code != 0) {
+          this->set("code", error.code);
         }
       }
 
@@ -447,6 +527,10 @@ namespace SSC::JSON {
 
       String (const Boolean& boolean) {
         this->data = boolean.str();
+      }
+
+      String (const Error& error) {
+        this->data = error.str();
       }
 
       SSC::String str () const;

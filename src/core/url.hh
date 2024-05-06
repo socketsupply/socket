@@ -35,8 +35,11 @@ namespace SSC {
     String query;
     Map searchParams;
 
+    URL () = default;
     URL (const String& href);
     URL (const JSON::Object& json);
+    void set (const String& href);
+    void set (const JSON::Object& json);
     const String str () const;
     const JSON::Object json () const;
   };

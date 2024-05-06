@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <UIKit/UIKit.h>
+#include <objc/runtime.h>
 #else
 #include <Cocoa/Cocoa.h>
 #include <Carbon/Carbon.h>
@@ -64,32 +65,41 @@
 #include <windows.h>
 
 #include <dwmapi.h>
+#include <fileapi.h>
 #include <io.h>
-#include <tchar.h>
-#include <wingdi.h>
-
+#include <objidl.h>
 #include <signal.h>
+#include <shellapi.h>
 #include <shlobj_core.h>
+#include <shlwapi.h>
 #include <shobjidl.h>
+#include <tchar.h>
+#include <urlmon.h>
+#include <uxtheme.h>
+#include <wingdi.h>
+#include <wrl.h>
 
 #if !defined(SOCKET_RUNTIME_EXTENSION)
 #include <WebView2.h>
 #include <WebView2EnvironmentOptions.h>
 #endif
 
-#include <shellapi.h>
-
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "dbghelp.lib")
+#pragma comment(lib, "Dwmapi.lib")
+#pragma comment(lib, "Gdi32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "libuv.lib")
+#pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "version.lib")
+#pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "userenv.lib")
+#pragma comment(lib, "UxTheme.lib")
+#pragma comment(lib, "version.lib")
 #pragma comment(lib, "WebView2LoaderStatic.lib")
 #pragma comment(lib, "Ws2_32.lib")
-#pragma comment(lib, "iphlpapi.lib")
-#pragma comment(lib, "psapi.lib")
-#pragma comment(lib, "userenv.lib")
-#pragma comment(lib, "libuv.lib")
-#pragma comment(lib, "dbghelp.lib")
 
 #define isatty _isatty
 #define fileno _fileno
