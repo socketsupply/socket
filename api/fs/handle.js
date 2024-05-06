@@ -8,6 +8,7 @@ import {
 
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
+import { F_OK, O_APPEND } from './constants.js'
 import { AsyncResource } from '../async/resource.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
@@ -16,7 +17,6 @@ import diagnostics from '../diagnostics.js'
 import { Buffer } from '../buffer.js'
 import { rand64 } from '../crypto.js'
 import { Stats } from './stats.js'
-import { F_OK } from './constants.js'
 import fds from './fds.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
@@ -258,7 +258,11 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
-    return await this.writeFile(data, options)
+    if ((this.flags & O_APPEND) !== O_APPEND) {
+      return await this.writeFile(data, options)
+    }
+
+    return await this.write(data, 0, data.length, -1, options)
   }
 
   /**
