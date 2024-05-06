@@ -3,18 +3,14 @@
 
 #include "../core/core.hh"
 #include "../core/platform.hh"
-
-#if SSC_PLATFORM_WINDOWS
-#include "WebView2.h"
-#include "WebView2EnvironmentOptions.h"
-#endif
+#include "../window/webview.hh"
 
 #if SSC_PLATFORM_APPLE
 @class SSCBridgeWebView;
 #endif
 
 namespace SSC::IPC {
-  class Router;
+  class Bridge;
   class SchemeHandlers;
 }
 
@@ -126,7 +122,7 @@ namespace SSC::IPC {
         Atomic<bool> cancelled = false;
 
         Error* error = nullptr;
-        const Router* router = nullptr;
+        const Bridge* bridge = nullptr;
         SchemeHandlers* handlers = nullptr;
         PlatformRequest platformRequest;
 
@@ -214,7 +210,7 @@ namespace SSC::IPC {
       using HandlerCallback = Function<void(Response&)>;
       using Handler = Function<void(
         const Request&,
-        const Router*,
+        const Bridge*,
         RequestCallbacks& callbacks,
         HandlerCallback
       )>;
@@ -223,38 +219,29 @@ namespace SSC::IPC {
       using RequestMap = std::map<uint64_t, Request>;
 
       struct Configuration {
-      #if SSC_PLATFORM_APPLE
-        WKWebViewConfiguration* webview = nullptr;
-      #elif
-        ComPtr<CoreWebView2EnvironmentOptions> webview = nullptr;
-      #endif
+        WebViewSettings* webview;
       };
 
       Configuration configuration;
-      Router* router = nullptr;
       HandlerMap handlers;
+
+      Bridge* bridge = nullptr;
 
     #if SSC_PLATFORM_WINDOWS
       Set<ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
     #endif
 
-      SchemeHandlers (Router* router);
+      SchemeHandlers (Bridge* bridge);
       ~SchemeHandlers ();
 
+      void init ();
       void configure (const Configuration& configuration);
+      void configureWebView (WebView* webview);
       bool hasHandlerForScheme (const String& scheme);
       bool registerSchemeHandler (const String& scheme, const Handler& handler);
       bool handleRequest (const Request& request, const HandlerCallback calllback = nullptr);
       bool isRequestActive (uint64_t id);
       bool isRequestCancelled (uint64_t id);
-
-    #if SSC_PLATFORM_APPLE
-      void configureWebView (SSCBridgeWebView* webview);
-    #elif SSC_PLATFORM_LINUX
-      void configureWebView (WebKitWebView* webview);
-    #elif SSC_PLATFORM_WINDOWS
-      void configureWebView (ICoreWebView2* webview);
-    #endif
   };
 }
 

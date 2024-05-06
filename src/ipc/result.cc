@@ -1,10 +1,7 @@
 #include "result.hh"
 
 namespace SSC::IPC {
-  Result::Result (
-    const Message::Seq& seq,
-    const Message& message
-  ) {
+  Result::Result (const Message::Seq& seq, const Message& message) {
     this->id = rand64();
     this->seq = seq;
     this->message = message;
@@ -16,8 +13,8 @@ namespace SSC::IPC {
     const Message::Seq& seq,
     const Message& message,
     JSON::Any value
-  ) : Result(seq, message, value, Post{}) {
-  }
+  ) : Result(seq, message, value, Post{})
+  {}
 
   Result::Result (
     const Message::Seq& seq,
@@ -99,26 +96,27 @@ namespace SSC::IPC {
     return json.str();
   }
 
-  Result::Err::Err (
-    const Message& message,
-    JSON::Any value
-  ) {
+  Result::Err::Err (const Message& message, JSON::Any value) {
     this->seq = message.seq;
     this->message = message;
     this->value = value;
   }
 
-  Result::Data::Data (
-    const Message& message,
-    JSON::Any value
-  ) : Data(message, value, Post{}) {
+  Result::Err::Err (const Message& message, const char* error)
+    : Err(message, String(error))
+  {}
+
+  Result::Err::Err (const Message& message, const String& error) {
+    this->seq = message.seq;
+    this->message = message;
+    this->value = JSON::Object::Entries {{"message", error}};
   }
 
-  Result::Data::Data (
-    const Message& message,
-    JSON::Any value,
-    Post post
-  ) {
+  Result::Data::Data (const Message& message, JSON::Any value)
+    : Data(message, value, Post{})
+  {}
+
+  Result::Data::Data (const Message& message, JSON::Any value, Post post) {
     this->seq = message.seq;
     this->message = message;
     this->value = value;

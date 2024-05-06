@@ -9,19 +9,9 @@ namespace SSC::IPC {
   class Bridge;
   class Router {
     public:
-      using EvaluateJavaScriptCallback = std::function<void(const String)>;
-      using DispatchCallback = std::function<void()>;
-      using ReplyCallback = std::function<void(const Result&)>;
-      using ResultCallback = std::function<void(Result)>;
-      using MessageCallback = std::function<void(const Message&, Router*, ReplyCallback)>;
-      using BufferMap = std::map<String, MessageBuffer>;
-
-      struct Location {
-        String href;
-        String pathname;
-        String query;
-        Map workers;
-      };
+      using ReplyCallback = Function<void(const Result&)>;
+      using ResultCallback = Function<void(Result)>;
+      using MessageCallback = Function<void(const Message&, Router*, ReplyCallback)>;
 
       struct MessageCallbackContext {
         bool async = true;
@@ -36,74 +26,44 @@ namespace SSC::IPC {
       using Table = std::map<String, MessageCallbackContext>;
       using Listeners = std::map<String, std::vector<MessageCallbackListenerContext>>;
 
-      struct WebViewURLPathResolution {
-        String pathname = "";
-        bool redirect = false;
-      };
-
-      struct WebViewNavigatorMount {
-        WebViewURLPathResolution resolution; // absolute URL resolution
-        String path; // root path on host file system
-        String route; // root path in webview navigator
-      };
-
-      static WebViewURLPathResolution resolveURLPathForWebView (String inputPath, const String& basePath);
-      static WebViewNavigatorMount resolveNavigatorMountForWebView (const String& path);
-
     private:
       Table preserved;
 
     public:
-      EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
-      Function<void(DispatchCallback)> dispatchFunction = nullptr;
-
       Listeners listeners;
-      BufferMap buffers;
       Mutex mutex;
       Table table;
 
-      Location location;
-
-      Core *core = nullptr;
       Bridge *bridge = nullptr;
 
       Router () = default;
+      Router (Bridge* bridge);
       Router (const Router&) = delete;
       Router (const Router&&) = delete;
       Router (Router&&) = delete;
 
       void init ();
-      void init (Bridge* bridge);
-
-      MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
-      bool hasMappedBuffer (int index, const Message::Seq seq);
-      void removeMappedBuffer (int index, const Message::Seq seq);
-      void setMappedBuffer(int index, const Message::Seq seq, MessageBuffer msg_buf);
-
+      void mapRoutes ();
       void preserveCurrentTable ();
-
-      uint64_t listen (const String& name, MessageCallback callback);
+      uint64_t listen (const String& name, const MessageCallback& callback);
       bool unlisten (const String& name, uint64_t token);
-      void map (const String& name, MessageCallback callback);
-      void map (const String& name, bool async, MessageCallback callback);
+      void map (const String& name, const MessageCallback& callback);
+      void map (const String& name, bool async, const MessageCallback& callback);
       void unmap (const String& name);
-      bool dispatch (DispatchCallback callback);
-      bool emit (const String& name, const String data);
-      bool evaluateJavaScript (const String javaScript);
-      bool send (const Message::Seq& seq, const String data, const Post post);
-      bool invoke (const String& msg, ResultCallback callback);
-      bool invoke (const String& msg, const char *bytes, size_t size);
+      bool invoke (const String& uri, const ResultCallback& callback);
+      bool invoke (const String& uri, SharedPointer<char *> bytes, size_t size);
       bool invoke (
-        const String& msg,
-        const char *bytes,
+        const String& uri,
+        SharedPointer<char *> bytes,
         size_t size,
-        ResultCallback callback
+        const ResultCallback& callback
       );
+
       bool invoke (
-        const Message& msg,
-        const char *bytes,
+        const Message& message,
+        SharedPointer<char *> bytes,
         size_t size,
-        ResultCallback callback
+        const ResultCallback& callback
       );
   };
 }
