@@ -88,7 +88,7 @@ export class ExtendableEvent extends Event {
       throw new DOMException('Event is not active', 'InvalidStateError')
     }
 
-    if (promise && promise instanceof Promise) {
+    if (typeof promise?.then === 'function') {
       this.#pendingPromiseCount++
       this.#promises.push(promise)
       promise.then(
@@ -249,16 +249,6 @@ export class FetchEvent extends ExtendableEvent {
         if (response.type === 'error') {
           const statusCode = 0
           const headers = []
-            .concat(Array.from(response.headers.entries()))
-            .concat(Array.from(FetchEvent.defaultHeaders.entries()))
-            .map((entry) => entry.join(':'))
-            .concat('Runtime-Response-Source:serviceworker')
-            .concat('Access-Control-Allow-Credentials:true')
-            .concat('Access-Control-Allow-Origin:*')
-            .concat('Access-Control-Allow-Methods:*')
-            .concat('Access-Control-Allow-Headers:*')
-            .join('\n')
-
           const params = {
             statusCode,
             clientId,

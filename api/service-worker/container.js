@@ -111,7 +111,7 @@ async function preloadExistingRegistration (container) {
     if (registration.active) {
       if (
         application.config.webview_service_worker_mode === 'hybrid' ||
-        /android|ios/i.test(os.platform())
+        /android/i.test(os.platform())
       ) {
         if (
           !internal.get(container).isRegistered &&
@@ -311,7 +311,7 @@ export class ServiceWorkerContainer extends EventTarget {
         String(application.config.webview_service_worker_frame) !== 'false' &&
         (
           application.config.webview_service_worker_mode === 'hybrid' ||
-          /android|ios/i.test(os.platform())
+          /android/i.test(os.platform())
         )
       ) {
         await ServiceWorkerContainerRealm.init(this)
