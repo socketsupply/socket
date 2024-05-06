@@ -6,7 +6,7 @@
 #include "../process/process.hh"
 #include "../window/window.hh"
 
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
 #include <dbus/dbus.h>
 #include <fcntl.h>
 #endif
@@ -21,7 +21,7 @@
 // A cross platform MAIN macro that
 // magically gives us argc and argv.
 //
-#if defined(_WIN32)
+#if SSC_PLATFORM_WINDOWS
 #define MAIN                         \
   static const int argc = __argc;    \
   static char** argv = __argv;       \
@@ -36,12 +36,12 @@
   int main (int argc, char** argv)
 #endif
 
-#if defined(__APPLE__)
+#if SSC_PLATFORM_APPLE
 #include <os/log.h>
 #endif
 
 #define InvalidWindowIndexError(index) \
-  SSC::String("Invalid index given for window: ") + std::to_string(index)
+  String("Invalid index given for window: ") + std::to_string(index)
 
 static void installSignalHandler (int signum, void (*handler)(int)) {
 #if SSC_PLATFORM_LINUX
@@ -66,9 +66,9 @@ static Function<void(int)> shutdownHandler;
 // 'socket.runtime.signal' broadcast channel to propagate to all
 // other windows who may be subscribers
 static void defaultWindowSignalHandler (int signal) {
-  auto app = App::instance();
-  if (app != nullptr && app->windowManager != nullptr) {
-    auto defaultWindow = app->windowManager->getWindow(0);
+  auto app = App::sharedApplication();
+  if (app != nullptr) {
+    auto defaultWindow = app->windowManager.getWindow(0);
     if (defaultWindow != nullptr) {
       if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
         const auto json = JSON::Object {
@@ -84,15 +84,15 @@ static void defaultWindowSignalHandler (int signal) {
 }
 
 void signalHandler (int signal) {
-  static auto app = App::instance();
-  static auto userConfig = SSC::getUserConfig();
+  static auto app = App::sharedApplication();
+  static auto userConfig = getUserConfig();
   static const auto signalsDisabled = userConfig["application_signals"] == "false";
   static const auto signals = parseStringList(userConfig["application_signals"]);
   String name;
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     name = String(sys_signame[signal]);
-  #elif defined(__linux__)
+  #elif SSC_PLATFORM_LINUX
     name = strsignal(signal);
   #endif
 
@@ -107,18 +107,18 @@ void signalHandler (int signal) {
   }
 }
 
-SSC::String getNavigationError (const String &cwd, const String &value) {
+String getNavigationError (const String &cwd, const String &value) {
   auto url = value.substr(7);
 
   if (!value.starts_with("socket://") &&  !value.starts_with("socket://")) {
-    return SSC::String("only socket:// protocol is allowed for the file navigation. Got url ") + value;
+    return String("only socket:// protocol is allowed for the file navigation. Got url ") + value;
   }
 
   if (url.empty()) {
-    return SSC::String("empty url");
+    return String("empty url");
   }
 
-  return SSC::String("");
+  return String("");
 }
 
 inline const Vector<int> splitToInts (const String& s, const char& c) {
@@ -132,14 +132,14 @@ inline const Vector<int> splitToInts (const String& s, const char& c) {
   return result;
 }
 
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
 static void handleApplicationURLEvent (const String url) {
-  SSC::JSON::Object json = SSC::JSON::Object::Entries {{
+  JSON::Object json = JSON::Object::Entries {{
     "url", url
   }};
 
-  if (app_ptr != nullptr && app_ptr->windowManager != nullptr) {
-    for (auto window : app_ptr->windowManager->windows) {
+  if (app_ptr != nullptr) {
+    for (auto window : app_ptr->windowManager.windows) {
       if (window != nullptr) {
         if (window->index == 0) {
           gtk_widget_show_all(GTK_WIDGET(window->window));
@@ -149,7 +149,7 @@ static void handleApplicationURLEvent (const String url) {
           gtk_window_present(GTK_WINDOW(window->window));
         }
 
-        window->bridge->router.emit("applicationurl", json.str());
+        window->bridge.emit("applicationurl", json.str());
       }
     }
   }
@@ -170,7 +170,7 @@ static DBusHandlerResult onDBusMessage (
   DBusMessage* message,
   void* userData
 ) {
-  static auto userConfig = SSC::getUserConfig();
+  static auto userConfig = getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   static auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
 
@@ -187,9 +187,9 @@ static DBusHandlerResult onDBusMessage (
 
   return DBUS_HANDLER_RESULT_HANDLED;
 }
-#elif defined(_WIN32)
+#elif SSC_PLATFORM_WINDOWS
 BOOL registerWindowsURISchemeInRegistry () {
-  static auto userConfig = SSC::getUserConfig();
+  static auto userConfig = getUserConfig();
   HKEY shellKey;
   HKEY key;
   LONG result;
@@ -260,7 +260,7 @@ BOOL registerWindowsURISchemeInRegistry () {
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
   // use 'SIGPWR' instead of the default 'SIGUSR1' handler
   // see https://github.com/WebKit/WebKit/blob/2fd8f81aac4e867ffe107c0e1b3e34b1628c0953/Source/WTF/wtf/posix/ThreadingPOSIX.cpp#L185
   Env::set("JSC_SIGNAL_FOR_GC", "30");
@@ -270,8 +270,7 @@ MAIN {
   // Singletons should be static to remove some possible race conditions in
   // their instantiation and destruction.
   static App app(instanceId);
-  static WindowManager windowManager(app);
-  static auto userConfig = SSC::getUserConfig();
+  static auto userConfig = getUserConfig();
 
   // TODO(trevnorris): Since App is a singleton, follow the CppCoreGuidelines
   // better in how it's handled in the future.
@@ -280,21 +279,19 @@ MAIN {
   // windowManager instance.
   app_ptr = &app;
 
-  app.setWindowManager(&windowManager);
   const String _host = getDevHost();
   const auto _port = getDevPort();
 
-  const SSC::String OK_STATE = "0";
-  const SSC::String ERROR_STATE = "1";
-  const SSC::String EMPTY_SEQ = SSC::String("");
+  const String OK_STATE = "0";
+  const String ERROR_STATE = "1";
 
   auto cwd = app.getcwd();
   app.userConfig = userConfig;
 
-  SSC::String suffix = "";
+  String suffix = "";
 
-  SSC::StringStream argvArray;
-  SSC::StringStream argvForward;
+  StringStream argvArray;
+  StringStream argvForward;
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
@@ -309,7 +306,7 @@ MAIN {
 
   auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
   static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
   static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
   auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
@@ -445,7 +442,7 @@ MAIN {
 
     g_signal_connect(gtkApp, "activate", G_CALLBACK(onGTKApplicationActivation), NULL);
   }
-#elif defined(_WIN32)
+#elif SSC_PLATFORM_WINDOWS
   HANDLE hMutex = CreateMutex(NULL, TRUE, bundleIdentifier.c_str());
   auto lastWindowsError = GetLastError();
   auto appProtocol = userConfig["meta_application_protocol"];
@@ -493,7 +490,7 @@ MAIN {
   // isn't the most robust way of doing this. possible a URI-encoded query
   // string would be more in-line with how everything else works.
   for (auto const arg : std::span(argv, argc)) {
-    auto s = SSC::String(arg);
+    auto s = String(arg);
 
     argvArray
       << "'"
@@ -556,7 +553,7 @@ MAIN {
     } else if (versionRequested) {
       argvForward << " " << "version --warn-arg-usage=" << s;
     } else if (c > 1 || isCommandMode) {
-      argvForward << " " << SSC::String(arg);
+      argvForward << " " << String(arg);
     }
   }
 
@@ -566,7 +563,7 @@ MAIN {
 
   app.userConfig["build_name"] += suffix;
 
-  argvForward << " --ssc-version=v" << SSC::VERSION_STRING;
+  argvForward << " --ssc-version=v" << VERSION_STRING;
   argvForward << " --version=v" << app.userConfig["meta_version"];
   argvForward << " --name=" << app.userConfig["build_name"];
 
@@ -574,7 +571,7 @@ MAIN {
     argvForward << " --debug=1";
   }
 
-  SSC::StringStream env;
+  StringStream env;
   for (auto const &envKey : parseStringList(app.userConfig["build_env"])) {
     auto cleanKey = trim(envKey);
 
@@ -584,12 +581,12 @@ MAIN {
 
     auto envValue = Env::get(cleanKey.c_str());
 
-    env << SSC::String(
+    env << String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
   }
 
-  SSC::String cmd;
+  String cmd;
   if (platform.os == "win32") {
     cmd = app.userConfig["win_cmd"];
   } else {
@@ -635,7 +632,7 @@ MAIN {
       cmd,
       argvForward.str(),
       cwd,
-      [&](SSC::String const &out) {
+      [&](String const &out) {
         IPC::Message message(out);
 
         if (message.name == "exit") {
@@ -645,8 +642,8 @@ MAIN {
           IO::write(message.get("value"), false);
         }
       },
-      [](SSC::String const &out) { IO::write(out, true); },
-      [](SSC::String const &code){ exit(std::stoi(code)); }
+      [](String const &out) { IO::write(out, true); },
+      [](String const &code){ exit(std::stoi(code)); }
     );
 
     if (cmd.size() == 0) {
@@ -657,7 +654,7 @@ MAIN {
     createProcess(true);
 
     shutdownHandler = [&](int signum) {
-    #if defined(__linux__)
+    #if SSC_PLATFORM_LINUX
       unlink(appInstanceLock.c_str());
     #endif
       if (process != nullptr) {
@@ -676,7 +673,7 @@ MAIN {
     return exitCode;
   }
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
   static auto SSC_OS_LOG_BUNDLE = os_log_create(
     bundleIdentifier.c_str(),
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
@@ -688,14 +685,14 @@ MAIN {
   #endif
 
   auto onStdErr = [&](auto err) {
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", err.c_str());
   #endif
     std::cerr << "\033[31m" + err + "\033[0m";
 
-    for (auto w : windowManager.windows) {
+    for (auto w : app.windowManager.windows) {
       if (w != nullptr) {
-        auto window = windowManager.getWindow(w->opts.index);
+        auto window = app.windowManager.getWindow(w->opts.index);
         window->eval(getEmitToRenderProcessJavaScript("process-error", err));
       }
     }
@@ -705,7 +702,7 @@ MAIN {
   // # Backend -> Main
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
-  auto onStdOut = [&](SSC::String const &out) {
+  auto onStdOut = [&](String const &out) {
     IPC::Message message(out);
 
     if (message.index > 0 && message.name.size() == 0) {
@@ -721,7 +718,7 @@ MAIN {
     auto value = message.get("value");
 
     if (message.name == "stdout") {
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       dispatch_async(dispatch_get_main_queue(), ^{
         os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
       });
@@ -731,7 +728,7 @@ MAIN {
     }
 
     if (message.name == "stderr") {
-    #if defined(__APPLE__)
+    #if SSC_PLATFORM_APPLE
       dispatch_async(dispatch_get_main_queue(), ^{
         os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
       });
@@ -750,19 +747,19 @@ MAIN {
       auto seq = message.get("seq");
 
       if (message.name == "send") {
-        SSC::String script = getEmitToRenderProcessJavaScript(
+        String script = getEmitToRenderProcessJavaScript(
           message.get("event"),
           value
         );
         if (message.index >= 0) {
-          auto window = windowManager.getWindow(message.index);
+          auto window = app.windowManager.getWindow(message.index);
           if (window) {
             window->eval(script);
           }
         } else {
-          for (auto w : windowManager.windows) {
+          for (auto w : app.windowManager.windows) {
             if (w != nullptr) {
-              auto window = windowManager.getWindow(w->opts.index);
+              auto window = app.windowManager.getWindow(w->opts.index);
               window->eval(script);
             }
           }
@@ -770,10 +767,10 @@ MAIN {
         return;
       }
 
-      auto window = windowManager.getOrCreateWindow(message.index);
+      auto window = app.windowManager.getOrCreateWindow(message.index);
 
       if (!window) {
-        auto defaultWindow = windowManager.getWindow(0);
+        auto defaultWindow = app.windowManager.getWindow(0);
 
         if (defaultWindow) {
           window = defaultWindow;
@@ -784,7 +781,7 @@ MAIN {
 
       if (message.name == "heartbeat") {
         if (seq.size() > 0) {
-          auto result = SSC::IPC::Result(message.seq, message, "heartbeat");
+          auto result = IPC::Result(message.seq, message, "heartbeat");
           window->resolvePromise(seq, OK_STATE, result.str());
         }
 
@@ -803,9 +800,9 @@ MAIN {
       }
 
       if (message.name == "process.exit") {
-        for (auto w : windowManager.windows) {
+        for (auto w : app.windowManager.windows) {
           if (w != nullptr) {
-            auto window = windowManager.getWindow(w->opts.index);
+            auto window = app.windowManager.getWindow(w->opts.index);
             window->resolvePromise(message.seq, OK_STATE, value);
           }
         }
@@ -820,10 +817,10 @@ MAIN {
     cwd,
     onStdOut,
     onStdErr,
-    [&](SSC::String const &code) {
-      for (auto w : windowManager.windows) {
+    [&](String const &code) {
+      for (auto w : app.windowManager.windows) {
         if (w != nullptr) {
-          auto window = windowManager.getWindow(w->opts.index);
+          auto window = app.windowManager.getWindow(w->opts.index);
           window->eval(getEmitToRenderProcessJavaScript("backend-exit", code));
         }
       }
@@ -842,12 +839,12 @@ MAIN {
     // debug("onMessage %s", out.c_str());
     IPC::Message message(out, true);
 
-    auto window = windowManager.getWindow(message.index);
+    auto window = app.windowManager.getWindow(message.index);
     auto value = message.get("value");
 
     // the window must exist
     if (!window && message.index >= 0) {
-      auto defaultWindow = windowManager.getWindow(0);
+      auto defaultWindow = app.windowManager.getWindow(0);
 
       if (defaultWindow) {
         window = defaultWindow;
@@ -877,7 +874,7 @@ MAIN {
         window->resolvePromise(seq, OK_STATE, json);
         return;
       }
-      window->resolvePromise(seq, ERROR_STATE, SSC::JSON::null);
+      window->resolvePromise(seq, ERROR_STATE, JSON::null);
       return;
     }
 
@@ -888,7 +885,7 @@ MAIN {
         killProcess(process);
       }
 
-      window->resolvePromise(seq, OK_STATE, SSC::JSON::null);
+      window->resolvePromise(seq, OK_STATE, JSON::null);
       return;
     }
 
@@ -897,553 +894,7 @@ MAIN {
       if (cmd.size() > 0 && process != nullptr) {
         process->write(out);
       }
-      window->resolvePromise(seq, OK_STATE, SSC::JSON::null);
-      return;
-    }
-
-    if (message.name == "window.send") {
-      const auto event = message.get("event");
-      const auto value = message.get("value");
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      const auto currentWindow = windowManager.getWindow(message.index);
-      if (targetWindow) {
-        targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
-      }
-      const auto seq = message.get("seq");
-      currentWindow->resolvePromise(seq, OK_STATE, SSC::JSON::null);
-      return;
-    }
-
-    if (message.name == "application.exit") {
-      try {
-        exitCode = std::stoi(value);
-      } catch (...) {
-      }
-
-    #if defined(__APPLE__)
-      if (app.wasLaunchedFromCli) {
-        debug("__EXIT_SIGNAL__=%d", exitCode);
-        CLI::notify();
-      }
-    #endif
-      window->exit(exitCode);
-      return;
-    }
-
-    if (message.name == "application.getScreenSize") {
-      const auto seq = message.get("seq");
-      const auto index = message.index;
-      const auto window = windowManager.getWindow(index);
-      if (window) {
-        const auto screenSize = window->getScreenSize();
-        const JSON::Object json = JSON::Object::Entries {
-          { "width", screenSize.width },
-          { "height", screenSize.height }
-        };
-        window->resolvePromise(seq, OK_STATE, json);
-      }
-      return;
-    }
-
-    if (message.name == "application.getWindows") {
-      const auto index = message.index;
-      const auto window = windowManager.getWindow(index);
-      auto indices = splitToInts(value, ',');
-      if (indices.size() == 0) {
-        for (auto w : windowManager.windows) {
-          if (w != nullptr) {
-            indices.push_back(w->opts.index);
-          }
-        }
-      }
-      const auto result = windowManager.json(indices).str();
-      window->resolvePromise(message.get("seq"), OK_STATE, result);
-      return;
-    }
-
-    if (message.name == "window.create") {
-      const auto seq = message.get("seq");
-
-      auto currentWindowIndex = message.index < 0 ? 0 : message.index;
-      auto currentWindow = windowManager.getWindow(currentWindowIndex);
-
-      auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : 0;
-      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-
-      if (targetWindowIndex >= SSC_MAX_WINDOWS && message.get("headless") != "true" && message.get("debug") != "true") {
-        const JSON::Object json = JSON::Object::Entries {
-          { "err", String("Cannot create window with an index beyond ") + std::to_string(SSC_MAX_WINDOWS) }
-        };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json);
-        return;
-      }
-
-      auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
-
-      if (targetWindow && targetWindowStatus != WindowManager::WindowStatus::WINDOW_NONE) {
-        const JSON::Object json = JSON::Object::Entries {
-          { "err", "Window with index " + std::to_string(targetWindowIndex) + " already exists" }
-        };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json);
-        return;
-      }
-
-      const auto error = getNavigationError(cwd, message.get("url"));
-      if (error.size() > 0) {
-        const JSON::Object json = SSC::JSON::Object::Entries {
-          {"err", JSON::Object::Entries {
-            {"message", error}
-          }}
-        };
-        currentWindow->resolvePromise(seq, ERROR_STATE, json);
-        return;
-      }
-
-      // fill the options
-      auto options = WindowOptions {};
-
-      options.title = message.get("title");
-      options.url = message.get("url");
-
-      if (message.get("port").size() > 0) {
-        options.port = std::stoi(message.get("port"));
-      }
-
-      if (message.get("radius").size() > 0) {
-        options.radius = std::stof(message.get("radius"));
-      }
-
-      if (message.get("margin").size() > 0) {
-        options.margin = std::stof(message.get("margin"));
-      }
-
-      auto screen = currentWindow->getScreenSize();
-
-      options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
-      options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
-
-      options.minWidth = message.get("minWidth").size() ? currentWindow->getSizeInPixels(message.get("minWidth"), screen.width) : 0;
-      options.minHeight = message.get("minHeight").size() ? currentWindow->getSizeInPixels(message.get("minHeight"), screen.height) : 0;
-      options.maxWidth = message.get("maxWidth").size() ? currentWindow->getSizeInPixels(message.get("maxWidth"), screen.width) : screen.width;
-      options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
-
-      options.canExit = message.get("canExit") == "true" ? true : false;
-
-      options.headless = userConfig["build_headless"] == "true";
-
-      if (message.get("headless") == "true") {
-        options.headless = true;
-      } else if (message.get("headless") == "false") {
-        options.headless = false;
-      }
-
-      options.resizable = message.get("resizable") == "true" ? true : false;
-      options.frameless = message.get("frameless") == "true" ? true : false;
-      options.closable = message.get("closable") == "true" ? true : false;
-      options.maximizable = message.get("maximizable") == "true" ? true : false;
-      options.minimizable = message.get("minimizable") == "true" ? true : false;
-      options.aspectRatio = message.get("aspectRatio");
-      options.titlebarStyle = message.get("titlebarStyle");
-      options.title = message.get("title");
-      options.windowControlOffsets = message.get("windowControlOffsets");
-      options.backgroundColorLight = message.get("backgroundColorLight");
-      options.backgroundColorDark = message.get("backgroundColorDark");
-      options.utility = message.get("utility") == "true" ? true : false;
-      options.debug = message.get("debug") == "true" ? true : false;
-      options.userScript = message.get("userScript");
-      options.index = targetWindowIndex;
-      options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
-      options.userConfig = INI::parse(message.get("config"));
-
-      if (options.index >= SSC_MAX_WINDOWS) {
-        options.preloadCommonJS = false;
-      }
-
-      targetWindow = windowManager.createWindow(options);
-
-      targetWindow->show(EMPTY_SEQ);
-
-      if (options.url.size() > 0) {
-        targetWindow->navigate(seq, options.url);
-      }
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-      return;
-    }
-
-    if (message.name == "window.close") {
-      const auto index = message.index;
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
-      const auto window = windowManager.getWindow(index);
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
-
-      if (targetWindow) {
-        JSON::Object json = JSON::Object::Entries {
-          { "data", targetWindow->json()},
-        };
-
-        auto result = SSC::IPC::Result(message.seq, message, json);
-        window->resolvePromise(
-          message.seq,
-          OK_STATE,
-          result.json()
-        );
-
-        App::instance()->core->setTimeout(16, [=] () {
-          windowManager.destroyWindow(targetWindowIndex);
-        });
-      }
-      return;
-    }
-
-    if (message.name == "window.show") {
-      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
-      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-      auto index = message.index < 0 ? 0 : message.index;
-      auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
-      auto resolveWindow = windowManager.getWindow(index);
-
-      if (!targetWindow || targetWindowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
-        JSON::Object json = JSON::Object::Entries {
-          { "err", targetWindowStatus }
-        };
-
-        auto result = SSC::IPC::Result(message.seq, message, json);
-        resolveWindow->resolvePromise(
-          message.seq,
-          ERROR_STATE,
-          result.json()
-        );
-        return;
-      }
-
-      targetWindow->show(EMPTY_SEQ);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() }
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      resolveWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-      return;
-    }
-
-    if (message.name == "window.hide") {
-      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
-      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-      auto index = message.index < 0 ? 0 : message.index;
-      auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
-      auto resolveWindow = windowManager.getWindow(index);
-
-      if (!targetWindow || targetWindowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
-        JSON::Object json = JSON::Object::Entries {
-          { "err", targetWindowStatus }
-        };
-
-        auto result = SSC::IPC::Result(message.seq, message, json);
-        resolveWindow->resolvePromise(
-          message.seq,
-          ERROR_STATE,
-          result.json()
-        );
-        return;
-      }
-
-      targetWindow->hide(EMPTY_SEQ);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() }
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      resolveWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-
-      return;
-    }
-
-    if (message.name == "window.setTitle") {
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      targetWindow->setTitle(value);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-
-      return;
-    }
-
-    if (message.name == "window.navigate") {
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      const auto url = message.get("url");
-      const auto error = getNavigationError(cwd, url);
-
-      if (error.size() > 0) {
-        JSON::Object json = JSON::Object::Entries {
-          { "err", error }
-        };
-
-        currentWindow->resolvePromise(
-          message.seq,
-          ERROR_STATE,
-          json.str()
-        );
-
-        return;
-      }
-
-      if (targetWindow == nullptr) {
-        JSON::Object json = JSON::Object::Entries {
-          { "err", "Target window is not available" }
-        };
-
-        currentWindow->resolvePromise(
-          message.seq,
-          ERROR_STATE,
-          json.str()
-        );
-
-        return;
-      }
-
-      targetWindow->navigate(seq, url);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-
-      return;
-    }
-
-    if (message.name == "window.showInspector") {
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      targetWindow->showInspector();
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", true },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-
-      return;
-    }
-
-    if (message.name == "window.setBackgroundColor") {
-      int red = 0;
-      int green = 0;
-      int blue = 0;
-      float alpha = 1;
-
-      try {
-        red = std::stoi(message.get("red"));
-        green = std::stoi(message.get("green"));
-        blue = std::stoi(message.get("blue"));
-        alpha = std::stof(message.get("alpha"));
-      } catch (...) {
-      }
-
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      targetWindow->setBackgroundColor(red, green, blue, alpha);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-      return;
-    }
-
-    if (message.name == "window.getBackgroundColor") {
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      auto color = targetWindow->getBackgroundColor();
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", color },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-      return;
-    }
-
-    if (message.name == "window.setSize") {
-      const auto seq = message.seq;
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      auto screen = currentWindow->getScreenSize();
-
-      float width = currentWindow->getSizeInPixels(message.get("width"), screen.width);
-      float height = currentWindow->getSizeInPixels(message.get("height"), screen.height);
-
-      targetWindow->setSize(width, height, 0);
-
-      JSON::Object json = JSON::Object::Entries {
-        { "data", targetWindow->json() },
-      };
-
-      auto result = SSC::IPC::Result(message.seq, message, json);
-      currentWindow->resolvePromise(
-        message.seq,
-        OK_STATE,
-        result.json()
-      );
-      return;
-    }
-
-    if (message.name == "application.setTrayMenu") {
-      const auto seq = message.get("seq");
-      window->setTrayMenu(seq, value);
-      return;
-    }
-
-    if (message.name == "application.setSystemMenu") {
-      const auto seq = message.get("seq");
-      window->setSystemMenu(seq, message.value);
-      return;
-    }
-
-    if (message.name == "application.setSystemMenuItemEnabled") {
-      const auto seq = message.get("seq");
-      const auto enabled = message.get("enabled").find("true") != -1;
-      int indexMain = 0;
-      int indexSub = 0;
-
-      try {
-        indexMain = std::stoi(message.get("indexMain"));
-        indexSub = std::stoi(message.get("indexSub"));
-      } catch (...) {
-        window->resolvePromise(
-          message.seq,
-          OK_STATE,
-          SSC::JSON::null
-        );
-        return;
-      }
-
-      window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      window->resolvePromise(
-        message.seq,
-        OK_STATE,
-        SSC::JSON::null
-      );
-      return;
-    }
-
-    bool isMaximize = message.name == "window.maximize";
-    bool isMinimize = message.name == "window.minimize";
-    bool isRestore = message.name == "window.restore";
-
-    if (isMaximize || isMinimize || isRestore) {
-      const auto currentIndex = message.index;
-      const auto currentWindow = windowManager.getWindow(currentIndex);
-      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0
-        ? std::stoi(message.get("targetWindowIndex"))
-        : currentIndex;
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-
-      if (isMaximize) {
-        targetWindow->maximize();
-        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
-      }
-
-      if (isMinimize) {
-        targetWindow->minimize();
-        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
-      }
-
-      if (isRestore) {
-        targetWindow->restore();
-        window->resolvePromise(message.seq, OK_STATE, SSC::JSON::null);
-      }
-
-      return;
-    }
-
-    if (message.name == "window.setContextMenu") {
-      auto seq = message.get("seq");
-      window->setContextMenu(seq, value);
-      window->resolvePromise(
-        message.seq,
-        OK_STATE,
-        SSC::JSON::null
-      );
+      window->resolvePromise(seq, OK_STATE, JSON::null);
       return;
     }
 
@@ -1464,7 +915,7 @@ MAIN {
       }}
     };
 
-    auto result = SSC::IPC::Result(message.seq, message, err);
+    auto result = IPC::Result(message.seq, message, err);
     window->resolvePromise(
       message.seq,
       ERROR_STATE,
@@ -1479,16 +930,16 @@ MAIN {
   // we clean up the windows and the backend process.
   //
   shutdownHandler = [&](int code) {
-  #if defined(__linux__)
+  #if SSC_PLATFORM_LINUX
     unlink(appInstanceLock.c_str());
   #endif
     if (process != nullptr) {
       process->kill();
     }
 
-    windowManager.destroy();
+    app.windowManager.destroy();
 
-  #if defined(__APPLE__)
+  #if SSC_PLATFORM_APPLE
     if (app_ptr->wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", 0);
       CLI::notify();
@@ -1501,7 +952,7 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
   Thread mainThread([&]() {
 #endif
     Vector<String> properties = {
@@ -1544,7 +995,7 @@ MAIN {
       return String("");
     };
 
-    windowManager.configure(WindowManagerOptions {
+    app.windowManager.configure(WindowManagerOptions {
       .defaultHeight = getProperty("window_height"),
       .defaultWidth = getProperty("window_width"),
       .defaultMinWidth = getProperty("window_min_width"),
@@ -1563,7 +1014,7 @@ MAIN {
     auto isMinimizable = getProperty("window_minimizable");
     auto isClosable = getProperty("window_closable");
 
-    auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
+    auto defaultWindow = app.windowManager.createDefaultWindow(WindowOptions {
       .resizable = getProperty("window_resizable") == "false" ? false : true,
       .minimizable = (isMinimizable == "" || isMinimizable == "true") ? true : false,
       .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
@@ -1586,7 +1037,7 @@ MAIN {
       auto serviceWorkerUserConfig = userConfig;
       auto screen = defaultWindow->getScreenSize();
       serviceWorkerUserConfig["webview_watch_reload"] = "false";
-      auto serviceWorkerWindow = windowManager.createWindow({
+      auto serviceWorkerWindow = app.windowManager.createWindow({
         .canExit = false,
         .width = defaultWindow->getSizeInPixels("80%", screen.width),
         .height = defaultWindow->getSizeInPixels("80%", screen.height),
@@ -1598,21 +1049,20 @@ MAIN {
         .preloadCommonJS = false
       });
 
-      app.core->serviceWorker.init(serviceWorkerWindow->bridge);
-      serviceWorkerWindow->show(EMPTY_SEQ);
+      app.core->serviceWorker.init(&serviceWorkerWindow->bridge);
+      serviceWorkerWindow->show();
       serviceWorkerWindow->navigate(
-        EMPTY_SEQ,
         "socket://" + userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
       );
     } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
-      app.core->serviceWorker.init(defaultWindow->bridge);
+      app.core->serviceWorker.init(&defaultWindow->bridge);
     }
 
-    defaultWindow->show(EMPTY_SEQ);
+    defaultWindow->show();
 
     if (_port > 0) {
-      defaultWindow->navigate(EMPTY_SEQ, _host + ":" + std::to_string(_port));
-      defaultWindow->setSystemMenu(EMPTY_SEQ, String(
+      defaultWindow->navigate(_host + ":" + std::to_string(_port));
+      defaultWindow->setSystemMenu(String(
         "Developer Mode: \n"
         "  Reload: r + CommandOrControl\n"
         "  Quit: q + CommandOrControl\n"
@@ -1621,12 +1071,10 @@ MAIN {
     } else {
       if (app.userConfig["webview_root"].size() != 0) {
         defaultWindow->navigate(
-          EMPTY_SEQ,
           "socket://" + app.userConfig["meta_bundle_identifier"] + app.userConfig["webview_root"]
         );
       } else {
         defaultWindow->navigate(
-          EMPTY_SEQ,
           "socket://" + app.userConfig["meta_bundle_identifier"] + "/index.html"
         );
       }
@@ -1637,7 +1085,7 @@ MAIN {
       std::getline(std::cin, value);
 
       Thread t([&](String value) {
-        auto app = App::instance();
+        auto app = App::sharedApplication();
 
         while (!app->core->domReady) {
           std::this_thread::sleep_for(std::chrono::milliseconds(128));
@@ -1663,8 +1111,8 @@ MAIN {
     // start the platform specific event loop for the main
     // thread and run it until it returns a non-zero int.
     //
-    while (app.run() == 0);
-#if defined(__linux__)
+    while (app.run(argc, argv) == 0);
+#if SSC_PLATFORM_LINUX
   });
 #endif
 
@@ -1774,7 +1222,7 @@ MAIN {
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
 #endif
 
-#if defined(__linux__)
+#if SSC_PLATFORM_LINUX
   if (mainThread.joinable()) {
     mainThread.join();
   }
