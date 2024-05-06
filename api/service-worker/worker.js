@@ -4,6 +4,7 @@ globalThis.isServiceWorkerScope = true
 import { ServiceWorkerGlobalScope } from './global.js'
 import { createStorageInterface } from './storage.js'
 import { Module, createRequire } from '../module.js'
+import { createCallSites } from '../internal/callsite.js'
 import { STATUS_CODES } from '../http.js'
 import { Notification } from '../notification.js'
 import { Environment } from './env.js'
@@ -38,6 +39,11 @@ Object.defineProperties(
 
 const module = { exports: {} }
 const events = new Set()
+const stages = { register: null, install: null, activate: null }
+// service worker life cycle stages
+stages.register = new Deferred()
+stages.install = new Deferred(stages.register)
+stages.activate = new Deferred(stages.install)
 
 // event listeners
 hooks.onReady(onReady)
@@ -45,6 +51,7 @@ globalThis.addEventListener('message', onMessage)
 
 // service worker  globals
 globals.register('ServiceWorker.state', state)
+globals.register('ServiceWorker.stages', stages)
 globals.register('ServiceWorker.events', events)
 globals.register('ServiceWorker.module', module)
 
@@ -232,7 +239,9 @@ async function onMessage (event) {
     if (typeof state.activate === 'function') {
       globalThis.addEventListener('activate', async (event) => {
         try {
-          await state.activate(event.context.env, event.ontext)
+          const promise = state.activate(event.context.env, event.ontext)
+          event.waitUntil(promise)
+          await promise
         } catch (err) {
           debug(err)
         }
@@ -242,7 +251,9 @@ async function onMessage (event) {
     if (typeof state.install === 'function') {
       globalThis.addEventListener('install', async (event) => {
         try {
-          await state.install(event.context.env, event.context)
+          const promise = state.install(event.context.env, event.context)
+          event.waitUntil(promise)
+          await promise
         } catch (err) {
           debug(err)
         }
@@ -269,20 +280,33 @@ async function onMessage (event) {
         event.respondWith(deferred.promise)
 
         try {
-          response = await state.fetch(
+          const promise = state.fetch(
             event.request,
             event.context.env,
             event.context
           )
+          event.waitUntil(promise)
+          response = await promise
         } catch (err) {
           debug(err)
-          response = new Response(util.inspect(err), {
-            statusText: err.message || STATUS_CODES[500],
-            status: 500,
-            headers: {
-              'Runtime-Preload-Injection': 'disabled'
-            }
-          })
+          if (event.request.headers.get('accept') === 'application/json') {
+            const stack = createCallSites(err, err.stack)
+            response = Response.json({ name: err.name, message: err.message, stack }, {
+              statusText: err.message || STATUS_CODES[500],
+              status: 500,
+              headers: {
+                'Runtime-Preload-Injection': 'disabled'
+              }
+            })
+          } else {
+            response = new Response(util.inspect(err), {
+              statusText: err.message || STATUS_CODES[500],
+              status: 500,
+              headers: {
+                'Runtime-Preload-Injection': 'disabled'
+              }
+            })
+          }
         }
 
         if (response) {
@@ -304,7 +328,7 @@ async function onMessage (event) {
     }
 
     globalThis.postMessage({ __service_worker_registered: { id } })
-    return
+    return stages.register.resolve()
   }
 
   if (data?.unregister) {
@@ -317,35 +341,49 @@ async function onMessage (event) {
 
   if (data?.install?.id === state.id) {
     event.stopImmediatePropagation()
+    await stages.register
+
     const installEvent = new ExtendableEvent('install')
+
     events.add(installEvent)
     state.serviceWorker.state = 'installing'
     await state.notify('serviceWorker')
+
     globalThis.dispatchEvent(installEvent)
     await installEvent.waitsFor()
+
     state.serviceWorker.state = 'installed'
     await state.notify('serviceWorker')
     events.delete(installEvent)
-    return
+
+    return stages.install.resolve()
   }
 
   if (data?.activate?.id === state.id) {
     event.stopImmediatePropagation()
+    await stages.install
+
     const activateEvent = new ExtendableEvent('activate')
+
     events.add(activateEvent)
     state.serviceWorker.state = 'activating'
     await state.notify('serviceWorker')
+
     globalThis.dispatchEvent(activateEvent)
     await activateEvent.waitsFor()
+
     state.serviceWorker.state = 'activated'
     await state.notify('serviceWorker')
     events.delete(activateEvent)
-    return
+
+    return stages.activate.resolve()
   }
 
   if (data?.fetch?.request) {
     event.stopImmediatePropagation()
-    if (/post|put/i.test(data.fetch.request.method)) {
+    await stages.activate
+
+    if (/post|put|patch|query/i.test(data.fetch.request.method)) {
       const result = await ipc.request('serviceWorker.fetch.request.body', {
         id: data.fetch.request.id
       }, { responseType: 'arraybuffer' })
