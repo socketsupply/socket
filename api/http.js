@@ -40,6 +40,7 @@ export const METHODS = [
   'PROPPATCH',
   'PURGE',
   'PUT',
+  'QUERY',
   'REBIND',
   'REPORT',
   'SEARCH',

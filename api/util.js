@@ -203,7 +203,7 @@ export function isPromiseLike (object) {
 }
 
 export function toString (object) {
-  return Object.prototype.toString(object)
+  return Object.prototype.toString.call(object)
 }
 
 export function toBuffer (object, encoding = undefined) {
@@ -240,33 +240,6 @@ export function splitBuffer (buffer, highWaterMark) {
   return buffers
 }
 
-export function InvertedPromise () {
-  console.warn(
-    '\'InvertedPromise\' is deprecated.' +
-    'Please use \'Deferred\' from \'socket:async\''
-  )
-
-  const context = {}
-  const promise = new Promise((resolve, reject) => {
-    Object.assign(context, {
-      resolve (value) {
-        promise.value = value
-        resolve(value)
-        return promise
-      },
-
-      reject (error) {
-        const err = new Error(error.message, { cause: error })
-        promise.error = err
-        reject(err)
-        return promise
-      }
-    })
-  })
-
-  return Object.assign(promise, context)
-}
-
 export function clamp (value, min, max) {
   if (!Number.isFinite(value)) {
     value = min
@@ -293,9 +266,12 @@ export function promisify (original) {
     let object = Object.create(null)
 
     if (
+      // @ts-ignore
       original[promisify.custom] &&
+      // @ts-ignore
       typeof original[promisify.custom] === 'object'
     ) {
+      // @ts-ignore
       object = original[promisify.custom]
     } else if (original.promises && typeof original.promises === 'object') {
       object = original.promises
@@ -310,10 +286,12 @@ export function promisify (original) {
       }
     }
 
+    // @ts-ignore
     Object.defineProperty(object, promisify.custom, {
       configurable: true,
       enumerable: false,
       writable: false,
+      // @ts-ignore
       __proto__: null,
       value: object
     })
@@ -325,12 +303,16 @@ export function promisify (original) {
     throw new TypeError('Expecting original to be a function or object.')
   }
 
+  // @ts-ignore
   if (original[promisify.custom]) {
+    // @ts-ignore
     const fn = original[promisify.custom]
+    // @ts-ignore
     Object.defineProperty(fn, promisify.custom, {
       configurable: true,
       enumerable: false,
       writable: false,
+      // @ts-ignore
       __proto__: null,
       value: fn
     })
@@ -338,7 +320,9 @@ export function promisify (original) {
     return fn
   }
 
+  // @ts-ignore
   const argumentNames = Array.isArray(original[promisify.args])
+  // @ts-ignore
     ? original[promisify.args]
     : []
 

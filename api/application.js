@@ -303,7 +303,7 @@ export async function createWindow (opts) {
     options.height = opts.height.toString()
   }
 
-  const { data, err } = await ipc.send('window.create', options)
+  const { data, err } = await ipc.request('window.create', options)
 
   if (err) {
     throw err
@@ -317,13 +317,13 @@ export async function createWindow (opts) {
  * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
-  if (os.platform() === 'ios' || os.platform() === 'android') {
+  if (os.platform() === 'android') {
     return {
       width: globalThis.screen?.availWidth ?? 0,
       height: globalThis.screen?.availHeight ?? 0
     }
   }
-  const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
+  const { data, err } = await ipc.request('application.getScreenSize', { index: globalThis.__args.index })
   if (err) {
     throw err
   }
@@ -345,7 +345,7 @@ function throwOnInvalidIndex (index) {
 export async function getWindows (indices, options = null) {
   if (
     !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
-    (os.platform() === 'ios' || os.platform() === 'android')
+    (os.platform() === 'android')
   ) {
     return new ApplicationWindowList([
       new ApplicationWindow({
@@ -353,7 +353,7 @@ export async function getWindows (indices, options = null) {
         id: globalThis.__args?.client?.id ?? null,
         width: globalThis.screen?.availWidth ?? 0,
         height: globalThis.screen?.availHeight ?? 0,
-        title: document.title,
+        title: globalThis.document.title,
         status: 31
       })
     ])
@@ -370,7 +370,7 @@ export async function getWindows (indices, options = null) {
     throwOnInvalidIndex(index)
   }
 
-  const result = await ipc.send('application.getWindows', resultIndices)
+  const result = await ipc.request('application.getWindows', resultIndices)
 
   if (result.err) {
     throw result.err
@@ -419,7 +419,7 @@ export async function getCurrentWindow () {
  * @return {Promise<ipc.Result>}
  */
 export async function exit (code = 0) {
-  const { data, err } = await ipc.send('application.exit', code)
+  const { data, err } = await ipc.request('application.exit', code)
   if (err) {
     throw err
   }
@@ -532,7 +532,7 @@ export async function setTrayMenu (o) {
  * @return {Promise<ipc.Result>}
  */
 export async function setSystemMenuItemEnabled (value) {
-  return await ipc.send('application.setSystemMenuItemEnabled', value)
+  return await ipc.request('application.setSystemMenuItemEnabled', value)
 }
 
 /**

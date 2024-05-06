@@ -124,7 +124,7 @@ export class ApplicationWindow {
    * @return {Promise<object>} - the options of the window
    */
   async close () {
-    const { data, err } = await ipc.send('window.close', {
+    const { data, err } = await ipc.request('window.close', {
       index: this.#senderWindowIndex,
       targetWindowIndex: this.#index
     })
@@ -139,7 +139,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async show () {
-    const response = await ipc.send('window.show', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const response = await ipc.request('window.show', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -148,7 +148,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async hide () {
-    const response = await ipc.send('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const response = await ipc.request('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -157,7 +157,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async maximize () {
-    const response = await ipc.send('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const response = await ipc.request('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -166,7 +166,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async minimize () {
-    const response = await ipc.send('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const response = await ipc.request('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -175,7 +175,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async restore () {
-    const response = await ipc.send('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const response = await ipc.request('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -185,7 +185,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async setTitle (title) {
-    const response = await ipc.send('window.setTitle', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, value: title })
+    const response = await ipc.request('window.setTitle', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, value: title })
     return this.#updateOptions(response)
   }
 
@@ -228,7 +228,7 @@ export class ApplicationWindow {
       options.height = opts.height.toString()
     }
 
-    const response = await ipc.send('window.setSize', options)
+    const response = await ipc.request('window.setSize', options)
     return this.#updateOptions(response)
   }
 
@@ -238,7 +238,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async navigate (path) {
-    const response = await ipc.send('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatURL(path) })
+    const response = await ipc.request('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatURL(path) })
     return this.#updateOptions(response)
   }
 
@@ -247,7 +247,7 @@ export class ApplicationWindow {
    * @return {Promise<object>}
    */
   async showInspector () {
-    const { data, err } = await ipc.send('window.showInspector', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    const { data, err } = await ipc.request('window.showInspector', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     if (err) {
       throw err
     }
@@ -264,7 +264,7 @@ export class ApplicationWindow {
    * @return {Promise<object>}
    */
   async setBackgroundColor (opts) {
-    const response = await ipc.send('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts })
+    const response = await ipc.request('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts })
     return this.#updateOptions(response)
   }
 
@@ -273,7 +273,7 @@ export class ApplicationWindow {
    * @return {Promise<object>}
    */
   async getBackgroundColor () {
-    return await ipc.send('window.getBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return await ipc.request('window.getBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
   }
 
   /**
@@ -341,7 +341,7 @@ export class ApplicationWindow {
   }
 
   /**
-   * This is a high-level API that you should use instead of `ipc.send` when
+   * This is a high-level API that you should use instead of `ipc.request` when
    * you want to send a message to another window or to the backend.
    *
    * @param {object} options - an options object
@@ -371,14 +371,14 @@ export class ApplicationWindow {
     const value = typeof options.value !== 'string' ? JSON.stringify(options.value) : options.value
 
     if (options.backend === true) {
-      return await ipc.send('process.write', {
+      return await ipc.request('process.write', {
         index: this.#senderWindowIndex,
         event: options.event,
         value: value !== undefined ? JSON.stringify(value) : null
       })
     }
 
-    return await ipc.send('window.send', {
+    return await ipc.request('window.send', {
       index: this.#senderWindowIndex,
       targetWindowIndex: options.window,
       event: options.event,
@@ -396,7 +396,7 @@ export class ApplicationWindow {
     if (this.#index === this.#senderWindowIndex) {
       globalThis.dispatchEvent(new MessageEvent('message', message))
     } else {
-      return await ipc.send('window.send', {
+      return await ipc.request('window.send', {
         index: this.#senderWindowIndex,
         targetWindowIndex: this.#index,
         event: 'message',

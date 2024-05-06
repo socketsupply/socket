@@ -59,24 +59,14 @@ class State {
   init () {
     globalThis.addEventListener('message', this.onMessage)
     hooks.onReady(async () => {
+      const currentWindow = await application.getCurrentWindow()
+
       this.worker = await vm.getContextWorker()
       this.worker.port.addEventListener('message', this.onWorkerMessage)
       this.worker.port.addEventListener('mesageerror', this.onWorkerMessageError)
       this.worker.port.postMessage({ type: 'realm' })
 
-      const windows = await application.getWindows([], { max: false })
-      const currentWindow = await application.getCurrentWindow()
-
-      for (const index in windows) {
-        const window = windows[index]
-        if (window.index !== currentWindow.index) {
-          await currentWindow.send({
-            window: window.index,
-            event: `vm:${currentWindow.index}:ready`,
-            value: {}
-          })
-        }
-      }
+      vm.channel.postMessage({ ready: currentWindow.index })
     })
   }
 

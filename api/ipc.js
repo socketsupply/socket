@@ -149,6 +149,7 @@ function getErrorClass (type, fallback) {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
       const object = Object.create(globalThis['${type}']?.prototype ?? {}, {
+        message: { enumerable: true, configurable: true, writable: true, value: null },
         code: { value: null }
       })
 

@@ -1,10 +1,4 @@
 /* global ErrorEvent */
-/**
- * @module Async.Deferred
- *
- * Manage deferred promise resolution.
- */
-import wrap from './wrap.js'
 
 /**
  * Dispatched when a `Deferred` internal promise is resolved.
@@ -66,9 +60,11 @@ export class Deferred extends EventTarget {
 
   /**
    * `Deferred` class constructor.
+   * @param {Deferred|Promise?} [promise]
    */
-  constructor () {
+  constructor (promise) {
     super()
+
     this.#promise = new Promise((resolve, reject) => {
       this.resolve = (value) => {
         try {
@@ -88,6 +84,11 @@ export class Deferred extends EventTarget {
         }
       }
     })
+
+    if (typeof promise?.then === 'function') {
+      const p = this.#promise
+      this.#promise = promise.then(() => p)
+    }
 
     this.then = this.then.bind(this)
     this.catch = this.catch.bind(this)
@@ -120,9 +121,9 @@ export class Deferred extends EventTarget {
    */
   then (resolve, reject) {
     if (resolve && reject) {
-      return this.promise.then(wrap(resolve), wrap(reject))
+      return this.promise.then(resolve, reject)
     } else if (resolve) {
-      return this.promise.then(wrap(resolve))
+      return this.promise.then(resolve)
     } else {
       return this.promise.then()
     }
@@ -135,15 +136,15 @@ export class Deferred extends EventTarget {
    * @param {function(Error)=} [callback]
    */
   catch (callback) {
-    return this.promise.catch(wrap(callback))
+    return this.promise.catch(callback)
   }
 
   /**
    * Attaches a callback for when the promise is settled (fulfilled or rejected).
-   * @type {function(any?)} [callback]
+   * @param {function(any?)} [callback]
    */
   finally (callback) {
-    return this.promise.finally(wrap(callback))
+    return this.promise.finally(callback)
   }
 }
 

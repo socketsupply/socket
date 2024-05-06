@@ -659,7 +659,7 @@ declare module "socket:diagnostics/channels" {
          * Returns a string representation of the `ChannelRegistry`.
          * @ignore
          */
-        toString(): string;
+        toString(): any;
         /**
          * Iterator interface
          * @ignore
@@ -794,7 +794,7 @@ declare module "socket:diagnostics/channels" {
          * Returns a string representation of the `ChannelRegistry`.
          * @ignore
          */
-        toString(): string;
+        toString(): any;
         /**
          * Returns a JSON representation of the `ChannelRegistry`.
          * @return {object}
@@ -1284,6 +1284,11 @@ declare module "socket:async/deferred" {
      */
     export class Deferred extends EventTarget {
         /**
+         * `Deferred` class constructor.
+         * @param {Deferred|Promise?} [promise]
+         */
+        constructor(promise?: Deferred | (Promise<any> | null));
+        /**
          * Function to resolve the associated promise.
          * @type {function}
          */
@@ -1308,7 +1313,11 @@ declare module "socket:async/deferred" {
          * @param {function(Error)=} [callback]
          */
         catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
-        finally(arg0: any | null): any;
+        /**
+         * Attaches a callback for when the promise is settled (fulfilled or rejected).
+         * @param {function(any?)} [callback]
+         */
+        finally(callback?: (arg0: any | null) => any): Promise<any>;
         /**
          * The promise associated with this Deferred instance.
          * @type {Promise<any>}
@@ -3276,7 +3285,10 @@ declare module "socket:fs/handle" {
          * @param {string=} [options.encoding = 'utf8']
          * @param {object=} [options.signal]
          */
-        appendFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void>;
+        appendFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void | {
+            buffer: any;
+            bytesWritten: number;
+        }>;
         /**
          * Change permissions of file handle.
          * @param {number} mode
@@ -5994,11 +6006,10 @@ declare module "socket:util" {
     export function isClass(value: any): boolean;
     export function isBuffer(value: any): boolean;
     export function isPromiseLike(object: any): boolean;
-    export function toString(object: any): string;
+    export function toString(object: any): any;
     export function toBuffer(object: any, encoding?: any): any;
     export function toProperCase(string: any): any;
     export function splitBuffer(buffer: any, highWaterMark: any): any[];
-    export function InvertedPromise(): Promise<any>;
     export function clamp(value: any, min: any, max: any): number;
     export function promisify(original: any): any;
     export function inspect(value: any, options: any): any;
@@ -6500,7 +6511,7 @@ declare module "socket:window" {
          */
         showDirectoryFilePicker(options: object): Promise<string[]>;
         /**
-         * This is a high-level API that you should use instead of `ipc.send` when
+         * This is a high-level API that you should use instead of `ipc.request` when
          * you want to send a message to another window or to the backend.
          *
          * @param {object} options - an options object
@@ -6515,7 +6526,7 @@ declare module "socket:window" {
             backend?: boolean | undefined;
             event: string;
             value?: (string | object) | undefined;
-        }): Promise<ipc.Result>;
+        }): Promise<any>;
         /**
          * Post a message to a window
          * TODO(@jwerle): research using `BroadcastChannel` instead
@@ -8192,6 +8203,17 @@ declare module "socket:commonjs/package" {
      *   isRelative: boolean,
      *   hasManifest: boolean
      * }} ParsedPackageName
+     */
+    /**
+     * @typedef {{
+     *   require?: string | string[],
+     *   import?: string | string[],
+     *   default?: string | string[],
+     *   default?: string | string[],
+     *   worker?: string | string[],
+     *   browser?: string | string[]
+     * }} PackageExports
+    
     /**
      * The default package index file such as 'index.js'
      * @type {string}
@@ -8491,10 +8513,6 @@ declare module "socket:commonjs/package" {
         type?: 'commonjs' | 'module';
         prefix?: string;
     };
-    /**
-     * /**
-     * The default package index file such as 'index.js'
-     */
     export type ParsedPackageName = {
         organization: string | null;
         name: string;
@@ -8503,6 +8521,18 @@ declare module "socket:commonjs/package" {
         url: URL;
         isRelative: boolean;
         hasManifest: boolean;
+    };
+    /**
+     * /**
+     * The default package index file such as 'index.js'
+     */
+    export type PackageExports = {
+        require?: string | string[];
+        import?: string | string[];
+        default?: string | string[];
+        default?: string | string[];
+        worker?: string | string[];
+        browser?: string | string[];
     };
     import { Loader } from "socket:commonjs/loader";
 }
@@ -8601,7 +8631,7 @@ declare module "socket:vm" {
     /**
      * Gets the VM context window.
      * This function will create it if it does not already exist.
-     * The current window will be used on Android or iOS platforms as there can
+     * The current window will be used on Android platforms as there can
      * only be one window.
      * @return {Promise<import('./window.js').ApplicationWindow}
      */
@@ -8734,6 +8764,11 @@ declare module "socket:vm" {
      * @return {boolean}
      */
     export function isContext(object: any): boolean;
+    /**
+     * Shared broadcast for virtual machaines
+     * @type {BroadcastChannel}
+     */
+    export const channel: BroadcastChannel;
     /**
      * A container for a context worker message channel that looks like a "worker".
      * @ignore
@@ -8936,6 +8971,7 @@ declare module "socket:vm" {
         export { Script };
         export { createContext };
         export { isContext };
+        export { channel };
     }
     export default _default;
     export type ScriptOptions = {
@@ -13883,10 +13919,12 @@ declare module "socket:commonjs/builtins" {
     /**
      * Gets a builtin module by name.
      * @param {string} name
-     * @param {{ builtins?: object }}
+     * @param {{ builtins?: object }} [options]
      * @return {any}
      */
-    export function getBuiltin(name: string, options?: any): any;
+    export function getBuiltin(name: string, options?: {
+        builtins?: object;
+    }): any;
     /**
      * A mapping of builtin modules
      * @type {object}
