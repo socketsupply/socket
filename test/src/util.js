@@ -140,8 +140,6 @@ test('util.splitBuffer', (t) => {
   t.equal(c.toString(), 'ar', 'util.splitBuffer returns an array of buffers')
 })
 
-test('util.InvertedPromise', (t) => {})
-
 test('util.clamp', (t) => {
   t.equal(util.clamp(0, 0, 1), 0, 'util.clamp returns the lower bound if the value is less than the lower bound')
   t.equal(util.clamp(1, 0, 1), 1, 'util.clamp returns the upper bound if the value is greater than the upper bound')
