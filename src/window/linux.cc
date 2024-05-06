@@ -18,6 +18,7 @@ namespace SSC {
   Window::Window (App& app, WindowOptions opts)
     : app(app),
       opts(opts),
+      bridge(app.core, opts.userData),
       hotkey(this)
   {
     auto userConfig = SSC::getUserConfig();
@@ -69,18 +70,26 @@ namespace SSC {
     }
 
     this->index = this->opts.index;
-    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
-    this->bridge->router.configureHandlers({});
 
-    this->hotkey.init(this->bridge);
+    this->bridge.navigateFunction = [this] (const auto url) {
+      this->navigate("", url);
+    };
 
-    this->bridge->router.dispatchFunction = [&app] (auto callback) {
+    this->bridge.router.dispatchFunction = [&app] (auto callback) {
       app.dispatch([callback] { callback(); });
     };
 
-    this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
+    this->bridge.router.evaluateJavaScriptFunction = [this] (auto js) {
       this->eval(js);
     };
+
+    opts.clientId = this->bridge.id;
+
+    this->bridge.preload = createPreload(opts, {
+      .module = true,
+      .wrap = true,
+      .userScript = opts.userScript
+    });
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
@@ -108,7 +117,7 @@ namespace SSC {
         auto valueString = jsc_value_to_string(value);
         auto str = String(valueString);
 
-        if (!window->bridge->route(str, nullptr, 0)) {
+        if (!window->bridge.route(str, nullptr, 0)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
@@ -127,7 +136,11 @@ namespace SSC {
       NULL
     );
 
-    webview = GTK_WIDGET(WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+    this->bridge.configureSchemeHandlers({
+      .webview = settings
+    });
+
+    this->webview = GTK_WIDGET(WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
       "web-context", webContext,
       "settings", settings,
       "user-content-manager", cm,
@@ -135,8 +148,7 @@ namespace SSC {
       NULL
     )));
 
-    this->bridge->navigator.configureWebView(webview);
-    this->bridge->core->notifications.configureWebView(webview);
+    this->bridge.configureWebView(this->webview);
 
     gtk_widget_set_can_focus(GTK_WIDGET(webview), true);
 
@@ -596,10 +608,10 @@ namespace SSC {
 
     auto onDestroy = +[](GtkWidget*, gpointer arg) {
       auto* w = static_cast<Window*>(arg);
-      auto* app = App::instance();
-      app->windowManager->destroyWindow(w->index);
+      auto* app = App::sharedApplication();
+      app->windowManager.destroyWindow(w->index);
 
-      for (auto window : app->windowManager->windows) {
+      for (auto window : app->windowManager.windows) {
         if (window == nullptr) continue;
 
         JSON::Object json = JSON::Object::Entries {
@@ -646,14 +658,6 @@ namespace SSC {
       }),
       this
     );
-
-    opts.clientId = this->bridge->id;
-
-    this->bridge->preload = createPreload(opts, {
-      .module = true,
-      .wrap = true,
-      .userScript = opts.userScript
-    });
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
@@ -802,7 +806,6 @@ namespace SSC {
   }
 
   Window::~Window () {
-    delete this->bridge;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -971,6 +974,10 @@ namespace SSC {
 
   void Window::restore () {
     gtk_window_deiconify(GTK_WINDOW(window));
+  }
+
+  void Window::navigate (const String& url) {
+    return this->navigate("", url);
   }
 
   void Window::navigate (const String &seq, const String &url) {
@@ -1276,7 +1283,7 @@ namespace SSC {
 
     if (isTrayMenu) {
       static auto userConfig = SSC::getUserConfig();
-      static auto app = App::instance();
+      static auto app = App::sharedApplication();
       GtkStatusIcon *trayIcon;
       auto cwd = app->getcwd();
       auto trayIconPath = String("application_tray_icon");
@@ -1309,7 +1316,7 @@ namespace SSC {
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
           auto w = static_cast<Window*>(arg);
           gtk_menu_popup_at_pointer(GTK_MENU(w->menutray), NULL);
-          w->bridge->router.emit("tray", "true");
+          w->bridge.emit("tray", "true");
         }),
         this
       );

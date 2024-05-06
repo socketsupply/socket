@@ -1,8 +1,9 @@
+#include "../app/app.hh"
 #include "window.hh"
 
 namespace SSC {
-  WindowManager::WindowManager (App &app)
-    : app(app),
+  WindowManager::WindowManager (SharedPointer<Core> core)
+    : core(core),
       windows(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED)
   {
     if (isDebugEnabled()) {
@@ -23,24 +24,24 @@ namespace SSC {
     this->destroyed = true;
   }
 
-  void WindowManager::WindowManager::configure (const WindowManagerOptions& configuration) {
+  void WindowManager::WindowManager::configure (const WindowManagerOptions& options) {
     if (this->destroyed) {
       return;
     }
 
-    this->options.defaultHeight = configuration.defaultHeight;
-    this->options.defaultWidth = configuration.defaultWidth;
-    this->options.defaultMinWidth = configuration.defaultMinWidth;
-    this->options.defaultMinHeight = configuration.defaultMinHeight;
-    this->options.defaultMaxWidth = configuration.defaultMaxWidth;
-    this->options.defaultMaxHeight = configuration.defaultMaxHeight;
-    this->options.onMessage = configuration.onMessage;
-    this->options.userConfig = configuration.userConfig;
-    this->options.onExit = configuration.onExit;
-    this->options.aspectRatio = configuration.aspectRatio;
-    this->options.isTest = configuration.isTest;
-    this->options.argv = configuration.argv;
-    this->options.cwd = configuration.cwd;
+    this->options.defaultHeight = options.defaultHeight;
+    this->options.defaultWidth = options.defaultWidth;
+    this->options.defaultMinWidth = options.defaultMinWidth;
+    this->options.defaultMinHeight = options.defaultMinHeight;
+    this->options.defaultMaxWidth = options.defaultMaxWidth;
+    this->options.defaultMaxHeight = options.defaultMaxHeight;
+    this->options.onMessage = options.onMessage;
+    this->options.userConfig = options.userConfig;
+    this->options.onExit = options.onExit;
+    this->options.aspectRatio = options.aspectRatio;
+    this->options.isTest = options.isTest;
+    this->options.argv = options.argv;
+    this->options.cwd = options.cwd;
     this->options.userConfig = getUserConfig();
   }
 
@@ -127,7 +128,7 @@ namespace SSC {
       }
     }
 
-    App::instance()->dispatch([this, index]() {
+    App::sharedApplication()->dispatch([this, index]() {
       Lock lock(this->mutex);
       this->windows[index] = nullptr;
     });
@@ -146,31 +147,27 @@ namespace SSC {
 
     StringStream env;
 
-    if (options.userConfig.size() > 0) {
-      if (options.userConfig.contains("build_env")) {
-        for (auto const &envKey : parseStringList(options.userConfig.at("build_env"))) {
-          auto cleanKey = trim(envKey);
+    for (auto const &entry : parseStringList(this->options.userConfig["build_env"])) {
+      const auto key = trim(entry);
 
-          if (!Env::has(cleanKey)) {
-            continue;
-          }
-
-          auto envValue = Env::get(cleanKey.c_str());
-
-          env << String(
-              cleanKey + "=" + encodeURIComponent(envValue) + "&"
-              );
-        }
+      if (!Env::has(key)) {
+        continue;
       }
-    } else {
-      for (auto const &envKey : parseStringList(this->options.userConfig["build_env"])) {
+
+      const auto value = decodeURIComponent(Env::get(key));
+
+      env << key + "=" + value + "&";
+    }
+
+    if (options.userConfig.contains("build_env")) {
+      for (auto const &envKey : parseStringList(options.userConfig.at("build_env"))) {
         auto cleanKey = trim(envKey);
 
         if (!Env::has(cleanKey)) {
           continue;
         }
 
-        auto envValue = Env::get(cleanKey);
+        auto envValue = Env::get(cleanKey.c_str());
 
         env << String(
           cleanKey + "=" + encodeURIComponent(envValue) + "&"
@@ -244,7 +241,7 @@ namespace SSC {
       this->log("Creating Window#" + std::to_string(options.index));
     }
 
-    auto window = SharedPointer<ManagedWindow>(new ManagedWindow(*this, app, windowOptions));
+    auto window = SharedPointer<ManagedWindow>(new ManagedWindow(*this, this->core, windowOptions));
 
     window->status = WindowStatus::WINDOW_CREATED;
     window->onExit = this->options.onExit;
@@ -296,29 +293,30 @@ namespace SSC {
 
   WindowManager::ManagedWindow::ManagedWindow (
     WindowManager &manager,
-    App &app,
-    WindowOptions options
-  ) : Window(app, options),
+    SharedPointer<Core> core,
+    const WindowOptions& options
+  ) : index(options.index),
+      Window(core, options),
       manager(manager)
   {}
 
   WindowManager::ManagedWindow::~ManagedWindow () {}
 
-  void WindowManager::ManagedWindow::show (const String &seq) {
+  void WindowManager::ManagedWindow::show () {
     auto index = std::to_string(this->opts.index);
-    manager.log("Showing Window#" + index + " (seq=" + seq + ")");
+    manager.log("Showing Window#" + index);
     status = WindowStatus::WINDOW_SHOWING;
     Window::show();
     status = WindowStatus::WINDOW_SHOWN;
   }
 
-  void WindowManager::ManagedWindow::hide (const String &seq) {
+  void WindowManager::ManagedWindow::hide () {
     if (
       status > WindowStatus::WINDOW_HIDDEN &&
       status < WindowStatus::WINDOW_EXITING
     ) {
       auto index = std::to_string(this->opts.index);
-      manager.log("Hiding Window#" + index + " (seq=" + seq + ")");
+      manager.log("Hiding Window#" + index);
       status = WindowStatus::WINDOW_HIDING;
       Window::hide();
       status = WindowStatus::WINDOW_HIDDEN;
@@ -361,13 +359,9 @@ namespace SSC {
   }
 
   JSON::Object WindowManager::ManagedWindow::json () const {
-    auto index = this->opts.index;
-    auto size = this->getSize();
-    uint64_t id = 0;
-
-    if (this->bridge != nullptr) {
-      id = this->bridge->id;
-    }
+    const auto index = this->opts.index;
+    const auto size = this->getSize();
+    const auto id = this->bridge.id;
 
     return JSON::Object::Entries {
       {"id", std::to_string(id)},
