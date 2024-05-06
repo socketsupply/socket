@@ -102,16 +102,13 @@ declare sources=(
   $(find "$root"/src/core/*.cc)
   $(find "$root"/src/ipc/*.cc)
   $(find "$root"/src/extension/*.cc)
+  "$root/src/window/manager.cc"
   "$root/src/window/dialog.cc"
+  "$root/src/window/hotkey.cc"
 )
 
 declare test_headers=()
 declare cflags
-
-if [[ "$platform" = "desktop" ]]; then
-  sources+=("$root/src/window/hotkey.cc")
-  sources+=("$root/src/window/manager.cc")
-fi
 
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
@@ -141,7 +138,7 @@ elif [[ "$host" = "Win32" ]]; then
   sources+=("$root/src/process/win.cc")
 fi
 
-cflags+=($("$root/bin/cflags.sh"))
+cflags+=($(ARCH="$arch" "$root/bin/cflags.sh"))
 
 if [[ "$platform" = "android" ]]; then
   cflags+=("$clang_target ${android_includes[*]}")
