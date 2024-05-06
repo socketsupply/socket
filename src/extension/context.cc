@@ -45,7 +45,7 @@ bool sapi_context_dispatch (
     return false;
   }
 
-  return ctx->router->dispatch([=]() {
+  return ctx->router->bridge->dispatch([=]() {
     callback(ctx, data);
   });
 }

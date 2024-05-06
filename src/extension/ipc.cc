@@ -252,11 +252,11 @@ bool sapi_ipc_send_bytes (
       post
     );
 
-    return ctx->router->send(result.seq, result.str(), result.post);
+    return ctx->router->bridge->send(result.seq, result.str(), result.post);
   }
 
   auto result = SSC::IPC::Result(SSC::JSON::null);
-  return ctx->router->send(result.seq, result.str(), post);
+  return ctx->router->bridge->send(result.seq, result.str(), post);
 }
 
 bool sapi_ipc_send_bytes_with_result (
@@ -283,7 +283,7 @@ bool sapi_ipc_send_bytes_with_result (
     memcpy(*post.body, bytes, size);
   }
 
-  return ctx->router->send(result->seq, result->str(), post);
+  return ctx->router->bridge->send(result->seq, result->str(), post);
 }
 
 bool sapi_ipc_send_json (
@@ -328,11 +328,11 @@ bool sapi_ipc_send_json (
       value
     );
 
-    return ctx->router->send(result.seq, result.str(), result.post);
+    return ctx->router->bridge->send(result.seq, result.str(), result.post);
   }
 
   auto result = SSC::IPC::Result(value);
-  return ctx->router->send(result.seq, result.str(), result.post);
+  return ctx->router->bridge->send(result.seq, result.str(), result.post);
 }
 
 bool sapi_ipc_send_json_with_result (
@@ -371,7 +371,7 @@ bool sapi_ipc_send_json_with_result (
   }
 
   auto res = SSC::IPC::Result(result->seq, result->message, value);
-  return ctx->router->send(res.seq, res.str(), res.post);
+  return ctx->router->bridge->send(res.seq, res.str(), res.post);
 }
 
 bool sapi_ipc_emit (
@@ -379,7 +379,7 @@ bool sapi_ipc_emit (
   const char* name,
   const char* data
 ) {
-  return ctx && ctx->router ? ctx->router->emit(name, data) : false;
+  return ctx && ctx->router ? ctx->router->bridge->emit(name, SSC::String(data)) : false;
 }
 
 bool sapi_ipc_invoke (
@@ -396,7 +396,14 @@ bool sapi_ipc_invoke (
     uri = "ipc://" + uri;
   }
 
-  return ctx->router->invoke(uri, bytes, size, [ctx, callback](auto result) {
+  SSC::SharedPointer<char*> data = nullptr;
+
+  if (bytes != nullptr && size > 0) {
+    data = std::make_shared<char*>(new char[size]{0});
+    memcpy(*data, bytes, size);
+  }
+
+  return ctx->router->invoke(uri, data, size, [ctx, callback](auto result) {
     callback(
       reinterpret_cast<const sapi_ipc_result_t*>(&result),
       reinterpret_cast<const sapi_ipc_router_t*>(&ctx->router)
@@ -686,11 +693,7 @@ void sapi_ipc_result_set_header (
   if (result && name && value) {
     result->headers.set(name, value);
 
-  #if !defined(_WIN32)
-    if (
-      strcasecmp(name, "content-type") == 0 &&
-      strcasecmp(value, "text/event-stream") == 0
-    ) {
+    if (result->headers.get("content-type") == "text/event-stream") {
       result->context->retain();
       result->post = SSC::Post();
       result->post.eventStream = std::make_shared<SSC::Post::EventStreamCallback>(
@@ -698,10 +701,7 @@ void sapi_ipc_result_set_header (
           return false;
         }
       );
-    } else if (
-      strcasecmp(name, "transfer-encoding") == 0 &&
-      strcasecmp(value, "chunked") == 0
-    ) {
+    } else if (result->headers.get("transfer-encoding") == "chunked") {
       result->context->retain();
       result->post = SSC::Post();
       result->post.chunkStream = std::make_shared<SSC::Post::ChunkStreamCallback>(
@@ -710,7 +710,6 @@ void sapi_ipc_result_set_header (
         }
       );
     }
-  #endif
   }
 }
 

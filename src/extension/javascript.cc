@@ -12,5 +12,5 @@ void sapi_javascript_evaluate (
   }
 
   auto script = SSC::createJavaScript(name, source);
-  ctx->router->evaluateJavaScript(script);
+  ctx->router->bridge->evaluateJavaScript(script);
 }
