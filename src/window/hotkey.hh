@@ -37,7 +37,7 @@ namespace SSC {
         bool passive = true;
       };
 
-    #if defined(__linux__) && !defined(__ANDROID__)
+    #if SSC_PLATFORM_LINUX
       struct GTKKeyPressEventContext {
         HotKeyContext* context = nullptr;
         ID id = 0;
@@ -58,7 +58,7 @@ namespace SSC {
 
       Options options;
 
-    #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+    #if SSC_PLATFORM_MACOS
       // Apple Carbon API
       EventHotKeyRef eventHotKeyRef;
     #endif
@@ -71,10 +71,10 @@ namespace SSC {
     public:
       using Bindings = std::map<HotKeyBinding::ID, HotKeyBinding>;
 
-    #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+    #if SSC_PLATFORM_MACOS
       // Apple Carbon API
       EventTargetRef eventTarget;
-    #elif defined(__linux__) && !defined(__ANDROID__)
+    #elif SSC_PLATFORM_LINUX
       std::map<
         HotKeyBinding::ID,
         HotKeyBinding::GTKKeyPressEventContext
@@ -82,7 +82,6 @@ namespace SSC {
     #endif
 
       Window* window = nullptr;
-      IPC::Bridge* bridge = nullptr;
 
       // state
       Mutex mutex;
@@ -90,10 +89,11 @@ namespace SSC {
       Vector<HotKeyBinding::ID> bindingIds;
       Bindings& bindings;
 
+      HotKeyContext (const HotKeyContext&) = delete;
       HotKeyContext (Window* window);
       ~HotKeyContext ();
 
-      void init (IPC::Bridge* bridge);
+      void init ();
       void reset ();
       const HotKeyBinding bind (
         HotKeyBinding::Expression expression,

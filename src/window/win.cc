@@ -1,18 +1,5 @@
-#include <shlwapi.h>
-#include <objidl.h>
-#include <wrl.h>
-#include <shellapi.h>
-#include <fileapi.h>
-#include <urlmon.h>
-
-#include "WebView2.h"
-#include "WebView2EnvironmentOptions.h"
-
 #include "window.hh"
 #include "../core/types.hh"
-
-#pragma comment(lib, "Shlwapi.lib")
-#pragma comment(lib, "urlmon.lib")
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
@@ -1617,6 +1604,10 @@ namespace SSC {
     });
   }
 
+  void Window::navigate (const String& url) {
+    return this->navigate("", url);
+  }
+
   void Window::navigate (const SSC::String& seq, const SSC::String& value) {
     auto index = std::to_string(this->opts.index);
 
@@ -1740,7 +1731,7 @@ namespace SSC {
     NOTIFYICONDATA nid;
 
     if (isTrayMenu) {
-      static auto app = App::instance();
+      static auto app = App::sharedApplication();
 
       auto cwd = app->getcwd();
       auto trayIconPath = String("application_tray_icon");
@@ -1978,7 +1969,7 @@ namespace SSC {
     WPARAM wParam,
     LPARAM lParam
   ) {
-    static auto app = SSC::App::instance();
+    static auto app = SSC::App::sharedApplication();
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
     if (message == WM_COPYDATA) {
@@ -2082,7 +2073,7 @@ namespace SSC {
           {"data", w->index}
         };
 
-        auto app = App::instance();
+        auto app = App::sharedApplication();
         app->windowManager->destroyWindow(w->index);
 
         for (auto window : app->windowManager->windows) {

@@ -40,7 +40,6 @@ namespace SSC {
     Map userConfig = getUserConfig();
     MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
-    uint64_t clientId = 0;
     String userScript = "";
     String runtimePrimordialOverrides = "";
     bool preloadCommonJS = true;

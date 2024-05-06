@@ -4,12 +4,12 @@
 #include <iostream>
 
 #include "../ipc/ipc.hh"
-#include "../app/app.hh"
 #include "../core/env.hh"
 #include "../core/config.hh"
 
 #include "hotkey.hh"
 #include "options.hh"
+#include "webview.hh"
 
 #ifndef SSC_MAX_WINDOWS
 #define SSC_MAX_WINDOWS 32
@@ -37,89 +37,50 @@ namespace SSC {
 @class SSCWindow;
 
 @interface SSCWindowDelegate :
-#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
-  NSObject
+#if SSC_PLATFORM_IOS
+  NSObject<
+    UIScrollViewDelegate,
+    WKScriptMessageHandler
+  >
 #else
-  NSObject <NSWindowDelegate, WKScriptMessageHandler>
+  NSObject <
+    NSWindowDelegate,
+    WKScriptMessageHandler
+  >
 #endif
-- (void) userContentController: (WKUserContentController*) userContentController
-       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
 
 @interface SSCWindow :
-#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+#if SSC_PLATFORM_IOS
   UIWindow
 #else
   NSWindow
 #endif
 
-@property (nonatomic) SSC::Window* window;
-@property (nonatomic, assign) SSCBridgedWebView *webview;
+@property (nonatomic, assign) SSC::Window* window;
+@property (nonatomic, strong) SSCBridgedWebView* webview;
 
 #if SSC_PLATFORM_MACOS
-@property (nonatomic, retain) NSView *titleBarView;
+@property (nonatomic, strong) NSView *titleBarView;
 @property (nonatomic) NSPoint windowControlOffsets;
 #endif
 @end
 
+#if SSC_PLATFORM_IOS
+@interface SSCWebViewController : UIViewController
+@property (nonatomic, strong) SSCBridgedWebView* webview;
+@end
+#endif
+
+#if SSC_PLATFORM_MACOS
 @interface WKOpenPanelParameters (WKPrivate)
 - (NSArray<NSString*>*) _acceptedMIMETypes;
 - (NSArray<NSString*>*) _acceptedFileExtensions;
 - (NSArray<NSString*>*) _allowedFileExtensions;
 @end
-
-@interface SSCBridgedWebView :
-#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
-  WKWebView<WKUIDelegate>
-#else
-  WKWebView<
-    WKUIDelegate,
-    NSDraggingDestination,
-    NSFilePromiseProviderDelegate,
-    NSDraggingSource
-  >
-
-  @property (nonatomic) NSPoint initialWindowPos;
-  @property (nonatomic) CGFloat contentHeight;
-  @property (nonatomic) CGFloat radius;
-  @property (nonatomic) CGFloat margin;
-  @property (nonatomic) BOOL shouldDrag;
-
-  -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
-  sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
-
-  -             (void) webView: (WKWebView*) webView
-    runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
-              initiatedByFrame: (WKFrameInfo*) frame
-             completionHandler: (void (^)(NSArray<NSURL*>*)) completionHandler;
 #endif
 
-#if SSC_PLATFORM_MACOS || (SSC_PLATFORM_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
-
-  -                                      (void) webView: (WKWebView*) webView
-   requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
-                                       initiatedByFrame: (WKFrameInfo*) frame
-                                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-
-  -                        (void) webView: (WKWebView*) webView
-   requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
-                         initiatedByFrame: (WKFrameInfo*) frame
-                                     type: (WKMediaCaptureType) type
-                          decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler;
-#endif
-
-  -                     (void) webView: (WKWebView*) webView
-    runJavaScriptAlertPanelWithMessage: (NSString*) message
-                      initiatedByFrame: (WKFrameInfo*) frame
-                     completionHandler: (void (^)(void)) completionHandler;
-
-  -                       (void) webView: (WKWebView*) webView
-    runJavaScriptConfirmPanelWithMessage: (NSString*) message
-                        initiatedByFrame: (WKFrameInfo*) frame
-                       completionHandler: (void (^)(BOOL result)) completionHandler;
-@end
-
-#if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+#if SSC_PLATFORM_IOS
 @interface SSCUIPickerDelegate : NSObject<
   UIDocumentPickerDelegate,
 
@@ -130,13 +91,13 @@ namespace SSC {
   @property (nonatomic) SSC::Dialog* dialog;
 
   // UIDocumentPickerDelegate
-  -  (void) documentPicker: (UIDocumentPickerViewController*) controller
-    didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
+  - (void) documentPicker: (UIDocumentPickerViewController*) controller
+   didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
   - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller;
 
   // UIImagePickerControllerDelegate
-  -  (void) imagePickerController: (UIImagePickerController*) picker
-    didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info;
+  - (void) imagePickerController: (UIImagePickerController*) picker
+   didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info;
   - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
 @end
 #endif
@@ -164,22 +125,24 @@ namespace SSC {
     public:
       HotKeyContext hotkey;
       WindowOptions opts;
-      App& app;
+      IPC::Bridge bridge;
+      SharedPointer<Core> core = nullptr;
 
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
-      IPC::Bridge *bridge = nullptr;
       int index = 0;
       int width = 0;
       int height = 0;
       bool exiting = false;
 
-    #if SSC_PLATFORM_APPLE
-    #if SSC_PLATFORM_MACOS
-      SSCWindow* window = nullptr;
+    #if SSC_PLATFORM_IOS
+      SSCWebViewController* viewController = nullptr;
     #endif
-      SSCBridgedWebView* webview;
+
+    #if SSC_PLATFORM_APPLE
       SSCWindowDelegate* windowDelegate = nullptr;
+      SSCBridgedWebView* webview = nullptr;
+      SSCWindow* window = nullptr;
       WKProcessPool* processPool = nullptr;
     #elif SSC_PLATFORM_LINUX
       GtkSelectionData *selectionData = nullptr;
@@ -225,7 +188,7 @@ namespace SSC {
       void resize (HWND window);
     #endif
 
-      Window (App&, WindowOptions);
+      Window (SharedPointer<Core> core, const WindowOptions&);
       ~Window ();
 
       static ScreenSize getScreenSize ();
@@ -235,12 +198,12 @@ namespace SSC {
       void show ();
       void hide ();
       void kill ();
-      void exit (int code);
-      void close (int code);
-      void minimize();
-      void maximize();
-      void restore();
-      void navigate (const String&, const String&);
+      void exit (int code = 0);
+      void close (int code = 0);
+      void minimize ();
+      void maximize ();
+      void restore ();
+      void navigate (const String&);
       const String getTitle () const;
       void setTitle (const String&);
       ScreenSize getSize ();
@@ -256,9 +219,9 @@ namespace SSC {
       void setBackgroundColor (const String& rgba);
       String getBackgroundColor ();
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
-      void setSystemMenu (const String& seq, const String& dsl);
-      void setMenu (const String& seq, const String& dsl, const bool& isTrayMenu);
-      void setTrayMenu (const String& seq, const String& dsl);
+      void setSystemMenu (const String& dsl);
+      void setMenu (const String& dsl, const bool& isTrayMenu);
+      void setTrayMenu (const String& dsl);
       void showInspector ();
 
       void resolvePromise (
@@ -341,19 +304,20 @@ namespace SSC {
         public:
           WindowStatus status;
           WindowManager &manager;
+          int index = 0;
 
           ManagedWindow (
             WindowManager &manager,
-            App &app,
-            WindowOptions opts
+            SharedPointer<Core> core,
+            const WindowOptions& options
           );
 
           ~ManagedWindow ();
 
-          void show (const String &seq);
-          void hide (const String &seq);
-          void close (int code);
-          void exit (int code);
+          void show ();
+          void hide ();
+          void close (int code = 0);
+          void exit (int code = 0);
           void kill ();
           void gc ();
           JSON::Object json () const;
@@ -361,27 +325,32 @@ namespace SSC {
 
       std::chrono::system_clock::time_point lastDebugLogLine;
 
-      App &app;
-      bool destroyed = false;
       Vector<SharedPointer<ManagedWindow>> windows;
-      Mutex mutex;
       WindowManagerOptions options;
+      SharedPointer<Core> core = nullptr;
+      Atomic<bool> destroyed = false;
+      Mutex mutex;
 
-      WindowManager (App &app);
+      WindowManager (SharedPointer<Core> core);
+      WindowManager () = delete;
+      WindowManager (const WindowManager&) = delete;
       ~WindowManager ();
 
-      void inline log (const String line) {
-        if (destroyed || !isDebugEnabled()) return;
+      void inline log (const String& line) {
         using namespace std::chrono;
 
-        auto now = system_clock::now();
-        auto delta = duration_cast<milliseconds>(now - lastDebugLogLine).count();
+        if (this->destroyed || !isDebugEnabled()) {
+          return;
+        }
+
+        const auto now = system_clock::now();
+        const auto delta = duration_cast<milliseconds>(now - this->lastDebugLogLine).count();
 
         std::cout << "• " << line;
         std::cout << " \033[0;32m+" << delta << "ms\033[0m";
         std::cout << std::endl;
 
-        lastDebugLogLine = now;
+        this->lastDebugLogLine = now;
       }
 
       void destroy ();
@@ -415,7 +384,7 @@ namespace SSC {
         String title;
       };
 
-    #if SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+    #if SSC_PLATFORM_IOS
       SSCUIPickerDelegate* uiPickerDelegate = nullptr;
       Vector<String> delegatedResults;
       std::mutex delegateMutex;

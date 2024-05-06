@@ -1,8 +1,11 @@
-#include "hotkey.hh"
-#include "window.hh"
+#include "../core/platform.hh"
 #include "../core/string.hh"
 #include "../core/json.hh"
 #include "../ipc/ipc.hh"
+#include "../app/app.hh"
+
+#include "hotkey.hh"
+#include "window.hh"
 
 namespace SSC {
   // bindings are global to the entire application so we maintain these
@@ -10,7 +13,7 @@ namespace SSC {
   static HotKeyBinding::ID nextGlobalBindingID = 1024;
   static HotKeyContext::Bindings globalBindings;
 
-#if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+#if SSC_PLATFORM_MACOS
   static OSStatus carbonEventHandlerCallback (
     EventHandlerCallRef eventHandlerCallRef,
     EventRef eventRef,
@@ -26,10 +29,10 @@ namespace SSC {
       return eventNotHandledErr;
     }
 
-    auto context = reinterpret_cast<HotKeyContext*>(userData);
+    const auto context = reinterpret_cast<HotKeyContext*>(userData);
 
     // if the context was removed somehow, bail early
-    if (context == nullptr || context->bridge == nullptr) {
+    if (context == nullptr || context->window == nullptr) {
       return eventNotHandledErr;
     }
 
@@ -42,7 +45,6 @@ namespace SSC {
       NULL,
       &eventHotKeyID
     );
-
 
     context->onHotKeyBindingCallback(eventHotKeyID.id);
 
@@ -57,7 +59,7 @@ namespace SSC {
 
     return eventNotHandledErr;
   }
-#elif defined(__linux__) && !defined(__ANDROID__)
+#elif SSC_PLATFORM_LINUX
   static bool gtkKeyPressEventHandlerCallback (
     GtkWidget* widget,
     GdkEventKey* event,
@@ -69,13 +71,13 @@ namespace SSC {
       return false;
     }
 
-    auto context = reinterpret_cast<HotKeyBinding::GTKKeyPressEventContext*>(userData);
+    const auto context = reinterpret_cast<HotKeyBinding::GTKKeyPressEventContext*>(userData);
 
     // if the context was removed somehow, bail early
     if (
       context == nullptr ||
       context->context == nullptr ||
-      context->context->bridge == nullptr
+      context->context->window == nullptr
     ) {
       return false;
     }
@@ -111,7 +113,7 @@ namespace SSC {
 #endif
 
   HotKeyCodeMap::HotKeyCodeMap () {
-  #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+  #if SSC_PLATFORM_MACOS
     keys.insert_or_assign("a", kVK_ANSI_A);
     keys.insert_or_assign("b", kVK_ANSI_B);
     keys.insert_or_assign("c", kVK_ANSI_C);
@@ -226,7 +228,7 @@ namespace SSC {
     modifiers.insert_or_assign("ctrl", controlKey);
 
     modifiers.insert_or_assign("shift", shiftKey);
-  #elif defined(__linux__) && !defined(__ANDROID__)
+  #elif SSC_PLATFORM_LINUX
     keys.insert_or_assign("a", GDK_KEY_a);
     keys.insert_or_assign("b", GDK_KEY_b);
     keys.insert_or_assign("c", GDK_KEY_c);
@@ -375,7 +377,7 @@ namespace SSC {
     modifiers.insert_or_assign("right shift", GDK_SHIFT_MASK);
     modifiers.insert_or_assign("left shift", GDK_SHIFT_MASK);
     modifiers.insert_or_assign("shift", GDK_SHIFT_MASK);
-  #elif defined(_WIN32)
+  #elif SSC_PLATFORM_WINDOWS
     keys.insert_or_assign("a", 0x41);
     keys.insert_or_assign("b", 0x42);
     keys.insert_or_assign("c", 0x43);
@@ -503,13 +505,7 @@ namespace SSC {
   }
 
   const HotKeyCodeMap::Code HotKeyCodeMap::get (Key key) const {
-    // normalize key to lower case
-    std::transform(
-      key.begin(),
-      key.end(),
-      key.begin(),
-      [](auto ch) { return std::tolower(ch); }
-    );
+    key = toLowerCase(key);
 
     if (keys.contains(key)) {
       return keys.at(key);
@@ -523,29 +519,12 @@ namespace SSC {
   }
 
   const bool HotKeyCodeMap::isModifier (Key key) const {
-    // normalize key to lower case
-    std::transform(
-      key.begin(),
-      key.end(),
-      key.begin(),
-      [](auto ch) { return std::tolower(ch); }
-    );
-
-    return modifiers.contains(key);
+    return modifiers.contains(toLowerCase(key));
   }
 
   const bool HotKeyCodeMap::isKey (Key key) const {
-    // normalize key to lower case
-    std::transform(
-      key.begin(),
-      key.end(),
-      key.begin(),
-      [](auto ch) { return std::tolower(ch); }
-    );
-
-    return keys.contains(key);
+    return keys.contains(toLowerCase(key));
   }
-
 
   HotKeyBinding::Sequence HotKeyBinding::parseExpression (Expression input) {
     static const auto delimiter = "+";
@@ -553,14 +532,7 @@ namespace SSC {
     Sequence sequence;
 
     for (auto token : tokens) {
-      std::transform(
-        token.begin(),
-        token.end(),
-        token.begin(),
-        [](auto ch) { return std::tolower(ch); }
-      );
-
-      token = replace(token, "ctrl", "control");
+      token = replace(toLowerCase(token), "ctrl", "control");
 
       if (token == "cmd") {
         token = "command";
@@ -616,11 +588,10 @@ namespace SSC {
     this->reset();
   }
 
-  void HotKeyContext::init (IPC::Bridge* bridge) {
-    static auto userConfig = SSC::getUserConfig();
-    this->bridge = bridge;
+  void HotKeyContext::init () {
+    auto userConfig = this->window->bridge.userConfig;
 
-  #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+  #if SSC_PLATFORM_MACOS
     // Carbon API event type spec
     static const EventTypeSpec eventTypeSpec = {
       .eventClass = kEventClassKeyboard,
@@ -638,8 +609,7 @@ namespace SSC {
     );
   #endif
 
-    this->bridge->router.map("window.hotkey.bind", [this](auto message, auto router, auto reply) mutable {
-      static auto userConfig = SSC::getUserConfig();
+    this->window->bridge.router.map("window.hotkey.bind", [=, this](auto message, auto router, auto reply) mutable {
       HotKeyBinding::Options options;
       options.passive = true; // default
 
@@ -653,7 +623,7 @@ namespace SSC {
         try {
           id = std::stoul(message.get("id"));
         } catch (...) {
-          auto err = JSON::Object::Entries {
+          const auto err = JSON::Object::Entries {
             {"message", "Invalid 'id' given in parameters"}
           };
 
@@ -661,7 +631,7 @@ namespace SSC {
         }
 
         if (!this->bindings.contains(id)) {
-          auto err = JSON::Object::Entries {
+          const auto err = JSON::Object::Entries {
             {"type", "NotFoundError"},
             {"message", "Invalid 'id' given in parameters"}
           };
@@ -669,10 +639,10 @@ namespace SSC {
           return reply(IPC::Result::Err { message, err });
         }
 
-        auto& binding = this->bindings.at(id);
+        const auto& binding = this->bindings.at(id);
 
         if (!binding.isValid()) {
-          auto err = JSON::Object::Entries {
+          const auto err = JSON::Object::Entries {
             {"message", "Invalid 'expression' in parameters"}
           };
 
@@ -680,7 +650,7 @@ namespace SSC {
         }
 
         if (!this->bind(binding.expression, options).isValid()) {
-          auto err = JSON::Object::Entries {
+          const auto err = JSON::Object::Entries {
             {"message", "Failed to bind existing binding expression to context"}
           };
           return reply(IPC::Result::Err { message, err });
@@ -692,7 +662,7 @@ namespace SSC {
           sequence.push_back(token);
         }
 
-        auto data = JSON::Object::Entries {
+        const auto data = JSON::Object::Entries {
           {"expression", binding.expression},
           {"sequence", sequence},
           {"hash", binding.hash},
@@ -709,7 +679,7 @@ namespace SSC {
     #endif
 
       if (expression.size() == 0) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"message", "Expecting 'expression' in parameters"}
         };
         return reply(IPC::Result::Err { message, err });
@@ -723,10 +693,10 @@ namespace SSC {
         return reply(IPC::Result::Err { message, err });
       }
 
-      auto binding = this->bind(expression, options);
+      const auto binding = this->bind(expression, options);
 
       if (!binding.isValid()) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"message", "Invalid 'expression' in parameters"}
         };
         return reply(IPC::Result::Err { message, err });
@@ -738,7 +708,7 @@ namespace SSC {
         sequence.push_back(token);
       }
 
-      auto data = JSON::Object::Entries {
+      const auto data = JSON::Object::Entries {
         {"expression", binding.expression},
         {"sequence", sequence},
         {"hash", binding.hash},
@@ -748,7 +718,7 @@ namespace SSC {
       reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
+    this->window->bridge.router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
       static auto userConfig = SSC::getUserConfig();
       HotKeyBinding::ID id;
     #if SSC_PLATFORM_LINUX
@@ -758,7 +728,7 @@ namespace SSC {
     #endif
 
       if (userConfig["permissions_allow_hotkeys"] == "false") {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"type", "SecurityError"},
           {"message", "The HotKey API is not allowed."}
         };
@@ -769,7 +739,7 @@ namespace SSC {
         if (this->hasBindingForExpression(expression)) {
           const auto binding = this->getBindingForExpression(expression);
           if (!binding.isValid()) {
-            auto err = JSON::Object::Entries {
+            const auto err = JSON::Object::Entries {
               {"type", "NotFoundError"},
               {"message", "Binding for expression '" + expression + "' is not valid"}
             };
@@ -777,19 +747,19 @@ namespace SSC {
           }
 
           if (!this->unbind(binding.id)) {
-            auto err = JSON::Object::Entries {
+            const auto err = JSON::Object::Entries {
               {"message", "Failed to unbind hotkey expression"}
             };
             return reply(IPC::Result::Err { message, err });
           }
 
-          auto data = JSON::Object::Entries {
+          const auto data = JSON::Object::Entries {
             {"id", binding.id}
           };
 
           return reply(IPC::Result::Data { message, data });
         } else {
-          auto err = JSON::Object::Entries {
+          const auto err = JSON::Object::Entries {
             {"type", "NotFoundError"},
             {"message", "Binding for expression '" + expression + "' in does not exist"}
           };
@@ -798,7 +768,7 @@ namespace SSC {
       }
 
       if (!message.has("id") || message.get("id").size() == 0) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"message", "Expression 'id' in parameters"}
         };
         return reply(IPC::Result::Err { message, err });
@@ -807,7 +777,7 @@ namespace SSC {
       try {
         id = std::stoul(message.get("id"));
       } catch (...) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"message", "Invalid 'id' given in parameters"}
         };
 
@@ -815,7 +785,7 @@ namespace SSC {
       }
 
       if (!this->bindings.contains(id)) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"type", "NotFoundError"},
           {"message", "Invalid 'id' given in parameters"}
         };
@@ -824,25 +794,23 @@ namespace SSC {
       }
 
       if (!this->unbind(id)) {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"message", "Failed to unbind hotkey expression"}
         };
 
         return reply(IPC::Result::Err { message, err });
       }
 
-      auto data = JSON::Object::Entries {
+      const auto data = JSON::Object::Entries {
         {"id", id}
       };
 
       return reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.reset", [this](auto message, auto router, auto reply) mutable {
-      static auto userConfig = SSC::getUserConfig();
-
+    this->window->bridge.router.map("window.hotkey.reset", [=, this](auto message, auto router, auto reply) mutable {
       if (userConfig["permissions_allow_hotkeys"] == "false") {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"type", "SecurityError"},
           {"message", "The HotKey API is not allowed."}
         };
@@ -852,12 +820,11 @@ namespace SSC {
       return reply(IPC::Result { message.seq, message });
     });
 
-    this->bridge->router.map("window.hotkey.bindings", [this](auto message, auto router, auto reply) mutable {
-      static auto userConfig = SSC::getUserConfig();
+    this->window->bridge.router.map("window.hotkey.bindings", [=, this](auto message, auto router, auto reply) mutable {
       auto data = JSON::Array::Entries {};
 
       if (userConfig["permissions_allow_hotkeys"] == "false") {
-        auto err = JSON::Object::Entries {
+        const auto err = JSON::Object::Entries {
           {"type", "SecurityError"},
           {"message", "The HotKey API is not allowed."}
         };
@@ -872,7 +839,7 @@ namespace SSC {
           sequence.push_back(token);
         }
 
-        auto json = JSON::Object::Entries {
+        const auto json = JSON::Object::Entries {
           {"expression", binding.expression},
           {"sequence", sequence},
           {"hash", binding.hash},
@@ -885,8 +852,7 @@ namespace SSC {
       return reply(IPC::Result::Data { message, data });
     });
 
-    this->bridge->router.map("window.hotkey.mappings", [this](auto message, auto router, auto reply) mutable {
-      static auto userConfig = SSC::getUserConfig();
+    this->window->bridge.router.map("window.hotkey.mappings", [=, this](auto message, auto router, auto reply) mutable {
       static const HotKeyCodeMap map;
 
       auto modifiers = JSON::Object::Entries {};
@@ -908,7 +874,7 @@ namespace SSC {
         keys.insert(entry);
       }
 
-      auto data = JSON::Object::Entries {
+      const auto data = JSON::Object::Entries {
         {"modifiers", modifiers},
         {"keys", keys}
       };
@@ -938,17 +904,16 @@ namespace SSC {
       return HotKeyBinding(0, "");
     }
 
-    if (this->bridge == nullptr) {
+    if (this->window == nullptr) {
       return HotKeyBinding(0, "");
     }
 
     const auto exists = this->hasBindingForExpression(expression);
-
     auto binding = exists
       ? getBindingForExpression(expression)
       : HotKeyBinding(nextGlobalBindingID, expression);
 
-  #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+  #if SSC_PLATFORM_MACOS
     if (!exists) {
       EventHotKeyID eventHotKeyID;
       eventHotKeyID.id = binding.id;
@@ -967,7 +932,7 @@ namespace SSC {
         return HotKeyBinding(0, "");
       }
     }
-  #elif defined(__linux__) && !defined(__ANDROID__)
+  #elif SSC_PLATFORM_LINUX
     static const HotKeyCodeMap hotKeyCodeMap;
 
     if (!this->gtkKeyPressEventContexts.contains(binding.id)) {
@@ -984,7 +949,7 @@ namespace SSC {
         &context
       );
     }
-  #elif defined(_WIN32)
+  #elif SSC_PLATFORM_WINDOWS
     if (!exists) {
       const auto status = RegisterHotKey(
         this->window->window,
@@ -1011,7 +976,7 @@ namespace SSC {
   bool HotKeyContext::unbind (HotKeyBinding::ID id) {
     Lock lock(this->mutex);
 
-    if (this->bridge == nullptr || this->window == nullptr) {
+    if (this->window == nullptr) {
       return false;
     }
 
@@ -1020,12 +985,12 @@ namespace SSC {
     }
 
     const auto& binding = this->bindings.at(id);
-  #if defined(__APPLE__) && (!TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR)
+  #if SSC_PLATFORM_MACOS
     if (UnregisterEventHotKey(binding.eventHotKeyRef) == 0) {
       this->bindings.erase(id);
       return true;
     }
-  #elif defined(__linux__) && !defined(__ANDROID__)
+  #elif SSC_PLATFORM_LINUX
     if (this->window->window == nullptr) {
       return false;
     }
@@ -1039,7 +1004,7 @@ namespace SSC {
     }
 
     return true;
-  #elif defined(_WIN32)
+  #elif SSC_PLATFORM_WINDOWS
     if (UnregisterHotKey(this->window->window, id)) {
       this->bindings.erase(id);
       return true;
@@ -1078,7 +1043,7 @@ namespace SSC {
   }
 
   bool HotKeyContext::onHotKeyBindingCallback (HotKeyBinding::ID id) {
-    auto app = App::instance();
+    auto app = App::sharedApplication();
     if (app != nullptr && this->bindings.contains(id)) {
       const auto& binding = this->bindings.at(id);
 
@@ -1092,15 +1057,15 @@ namespace SSC {
         sequence.push_back(token);
       }
 
-      auto data = JSON::Object::Entries {
+      const auto data = JSON::Object::Entries {
         {"expression", binding.expression},
         {"sequence", sequence},
         {"hash", binding.hash},
         {"id", binding.id}
       };
 
-      auto json = JSON::Object{ data };
-      return this->window->bridge->router.emit("hotkey", json.str());
+      const auto json = JSON::Object{ data };
+      return this->window->bridge.emit("hotkey", json.str());
     }
 
     return false;
