@@ -189,7 +189,7 @@ export function isBuiltin (name, options = null) {
 /**
  * Gets a builtin module by name.
  * @param {string} name
- * @param {{ builtins?: object }}
+ * @param {{ builtins?: object }} [options]
  * @return {any}
  */
 export function getBuiltin (name, options = null) {
@@ -203,6 +203,12 @@ export function getBuiltin (name, options = null) {
     throw new ModuleNotFoundError(
       `Cannot find builtin module '${originalName}`
     )
+  }
+
+  if (options?.builtins && typeof options.builtins === 'object') {
+    if (name in options.builtins) {
+      return options.builtins[name]
+    }
   }
 
   if (name in builtins) {

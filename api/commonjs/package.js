@@ -19,7 +19,7 @@ const isWorkerScope = globalThis.self === globalThis && !globalThis.window
  * @return {boolean}
  */
 export function detectESMSource (source) {
-  if (/(import\s|export[{|\s]|export\s(const|var|let|async|function|class)|export\sdefault|export\s?\*\s?from|(from\s['|"]))\s/.test(source)) {
+  if (/(import\s|export[{|\s]|export\s(const|var|let|async|function|class)|export\sdefault|export\s?\*\s?from|(from\s['|"]))/.test(source)) {
     return true
   }
 
@@ -68,6 +68,18 @@ export function detectESMSource (source) {
  *   isRelative: boolean,
  *   hasManifest: boolean
  * }} ParsedPackageName
+ */
+
+/**
+ * @typedef {{
+ *   require?: string | string[],
+ *   import?: string | string[],
+ *   default?: string | string[],
+ *   default?: string | string[],
+ *   worker?: string | string[],
+ *   browser?: string | string[]
+ * }} PackageExports
+
 /**
  * The default package index file such as 'index.js'
  * @type {string}
@@ -412,7 +424,7 @@ export class Name {
     let pathname = this.#pathname !== name ? this.#pathname : ''
 
     if (pathname && pathname.startsWith('/')) {
-      pathname = path.slice(1)
+      pathname = pathname.slice(1)
     }
 
     if (organization) {
@@ -557,9 +569,10 @@ export class Package {
 
   #imports = {}
 
-  #exports = {
-    '.': {}
-  }
+  /**
+   * @type {Record<string, PackageExports>}
+   */
+  #exports = {}
 
   /**
    * `Package` class constructor.
@@ -785,6 +798,7 @@ export class Package {
         entry = `.${entry}`
       }
 
+      // @ts-ignore
       if (URL.canParse(entry, this.id)) {
         return new URL(entry, this.id).href
       }
@@ -895,10 +909,14 @@ export class Package {
       this.#type = 'module'
     }
 
+    if (!this.#exports['.']) {
+      this.#exports['.'] = {}
+    }
+
     if (typeof info.exports === 'string') {
       if (this.#type === 'commonjs') {
         this.#exports['.'].require = info.exports
-      } else if (type === 'module') {
+      } else if (this.#type === 'module') {
         this.#exports['.'].import = info.exports
       }
     }
