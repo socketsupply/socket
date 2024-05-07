@@ -39,13 +39,11 @@ namespace SSC {
 #endif
 
 @property (nonatomic, assign) SSC::App* app;
-@property (nonatomic, strong) SSCWindow* window;
 @end
 #endif
 
 namespace SSC {
   class App {
-    // an opaque pointer to the configured `WindowManager<Window, App>`
     public:
       static inline Atomic<bool> isReady = false;
       static App* sharedApplication ();

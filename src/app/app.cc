@@ -148,11 +148,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   self.app = App::sharedApplication();
   self.app->applicationDelegate = self;
 
-  self.window = [SSCWindow.alloc initWithFrame: frame];
-  self.window.rootViewController = [SSCWebViewController new];
-  self.window.rootViewController.view.frame = frame;
-  [self.window makeKeyAndVisible];
-
   [notificationCenter
     addObserver: self
        selector: @selector(keyboardDidShow:)
@@ -251,6 +246,8 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
       "socket://" + self.app->userConfig["meta_bundle_identifier"] + "/index.html"
     );
   }
+
+  defaultWindow->show();
 
   return YES;
 }
@@ -475,9 +472,9 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
-        {"event", "will-change"},
-        {"width", width},
-        {"height", height},
+          {"event", "will-change"},
+          {"width", width},
+          {"height", height},
         }}
       });
     }
