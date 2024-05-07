@@ -1,4 +1,5 @@
 /* global ErrorEvent */
+import { defineBuiltin } from './builtins.js'
 import { Deferred } from '../async/deferred.js'
 import serialize from '../internal/serialize.js'
 import database from '../internal/database.js'
@@ -858,3 +859,13 @@ export class Cache {
 }
 
 export default Cache
+
+defineBuiltin('commonjs/cache', {
+  CACHE_CHANNEL_MESSAGE_ID,
+  CACHE_CHANNEL_MESSAGE_REPLICATE,
+  CacheCollection,
+  SnapshotData,
+  Snapshot,
+  Storage,
+  Cache
+})

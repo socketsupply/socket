@@ -1,5 +1,5 @@
+import { defineBuiltin, getBuiltin, isBuiltin } from './builtins.js'
 import { DEFAULT_PACKAGE_PREFIX, Package } from './package.js'
-import { getBuiltin, isBuiltin } from './builtins.js'
 import { ModuleNotFoundError } from '../errors.js'
 import { isFunction } from '../util/types.js'
 import location from '../location.js'
@@ -371,3 +371,9 @@ export function createRequire (options) {
 }
 
 export default createRequire
+
+defineBuiltin('commonjs/require', {
+  Meta,
+  globalPaths,
+  createRequire
+})

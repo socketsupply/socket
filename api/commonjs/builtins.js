@@ -24,6 +24,7 @@ import * as dgram from '../dgram.js'
 import * as diagnostics from '../diagnostics.js'
 import * as dns from '../dns.js'
 import events from '../events.js'
+import errno from '../errno.js'
 import * as extension from '../extension.js'
 import * as fs from '../fs.js'
 import * as gc from '../gc.js'
@@ -38,6 +39,7 @@ import * as os from '../os.js'
 import { posix as path } from '../path.js'
 import process from '../process.js'
 import * as querystring from '../querystring.js'
+import * as serviceWorker from '../service-worker.js'
 import stream from '../stream.js'
 // eslint-disable-next-line
 import * as string_decoder from '../string_decoder.js'
@@ -63,7 +65,7 @@ export const builtins = {}
  * @param {string}
  * @param {object} exports
  */
-export function define (name, exports, copy = true) {
+export function defineBuiltin (name, exports, copy = true) {
   if (exports && typeof exports === 'object') {
     if (copy) {
       builtins[name] = { ...exports }
@@ -71,18 +73,24 @@ export function define (name, exports, copy = true) {
     } else {
       builtins[name] = exports
     }
+  } else if (typeof exports === 'string' && exports in builtins) {
+    // alias
+    Object.defineProperty(builtins, name, {
+      configurable: true,
+      enumerable: true,
+      get: () => builtins[exports]
+    })
   } else {
     builtins[name] = exports
   }
 }
 
-// eslint-disable-next-line
-define('async', _async)
-define('async_context', {
+// node.js compat modules
+defineBuiltin('async_context', {
   AsyncLocalStorage,
   AsyncResource
 })
-define('async_hooks', {
+defineBuiltin('async_hooks', {
   AsyncLocalStorage,
   AsyncResource,
   executionAsyncResource,
@@ -91,74 +99,87 @@ define('async_hooks', {
   createHook,
   AsyncHook
 })
-
-define('application', application)
-define('assert', assert, false)
-define('buffer', buffer, false)
-define('console', console, false)
-define('constants', constants)
+defineBuiltin('assert', assert, false)
+defineBuiltin('buffer', buffer, false)
+defineBuiltin('console', console, false)
+defineBuiltin('constants', constants)
 // eslint-disable-next-line
-define('child_process', child_process)
-define('crypto', crypto)
-define('dgram', dgram)
-define('diagnostics_channel', diagnostics)
-define('dns', dns)
-define('dns/promises', dns.promises)
-define('events', events, false)
-define('extension', extension)
-define('fs', fs)
-define('fs/promises', fs.promises)
-define('http', http)
-define('https', https)
-define('gc', gc)
-define('ipc', ipc)
-define('language', language)
-define('location', location)
-define('mime', mime)
-define('net', {})
-define('network', network)
-define('os', os)
-define('path', path)
-define('perf_hooks', { performance: globalThis.performance })
-define('process', process, false)
-define('querystring', querystring)
-define('stream', stream, false)
-define('stream/web', stream.web)
+defineBuiltin('child_process', child_process)
+defineBuiltin('crypto', crypto)
+defineBuiltin('dgram', dgram)
+defineBuiltin('diagnostics_channel', diagnostics)
+defineBuiltin('dns', dns)
+defineBuiltin('dns/promises', dns.promises)
+defineBuiltin('events', events, false)
+defineBuiltin('fs', fs)
+defineBuiltin('fs/promises', fs.promises)
+defineBuiltin('http', http)
+defineBuiltin('https', https)
+defineBuiltin('net', {})
+defineBuiltin('os', os)
+defineBuiltin('path', path)
+defineBuiltin('perf_hooks', { performance: globalThis.performance })
+defineBuiltin('process', process, false)
+defineBuiltin('querystring', querystring)
+defineBuiltin('stream', stream, false)
+defineBuiltin('stream/web', stream.web)
 // eslint-disable-next-line
-define('string_decoder', string_decoder)
-define('sys', util)
-define('test', test, false)
-define('timers', timers)
-define('timers/promises', timers.promises)
-define('tty', tty)
-define('util', util)
-define('util/types', util.types)
-define('url', url)
-define('vm', vm)
-define('window', window)
+defineBuiltin('string_decoder', string_decoder)
+defineBuiltin('sys', util)
+defineBuiltin('test', test, false)
+defineBuiltin('timers', timers)
+defineBuiltin('timers/promises', timers.promises)
+defineBuiltin('tty', tty)
+defineBuiltin('util', util)
+defineBuiltin('util/types', util.types)
+defineBuiltin('url', url)
+defineBuiltin('vm', vm)
 // eslint-disable-next-line
-define('worker_threads', worker_threads)
-
+defineBuiltin('worker_threads', worker_threads)
 // unsupported, but stubbed as entries
-define('v8', {})
-define('zlib', {})
+defineBuiltin('v8', {})
+defineBuiltin('zlib', {})
+
+// runtime modules
+// eslint-disable-next-line
+defineBuiltin('async', _async)
+defineBuiltin('application', application)
+defineBuiltin('commonjs/builtins', builtins, false)
+defineBuiltin('errno', errno)
+defineBuiltin('extension', extension)
+defineBuiltin('gc', gc)
+defineBuiltin('ipc', ipc)
+defineBuiltin('language', language)
+defineBuiltin('location', location)
+defineBuiltin('mime', mime)
+defineBuiltin('network', network)
+defineBuiltin('service-worker', serviceWorker)
+defineBuiltin('window', window)
 
 /**
  * Known runtime specific builtin modules.
- * @type {string[]}
+ * @type {Set<string>}
  */
-export const runtimeModules = [
+export const runtimeModules = new Set([
   'async',
   'application',
+  'commonjs/builtins',
+  'commonjs/cache',
+  'commonjs/loader',
+  'commonjs/module',
+  'commonjs/package',
+  'commonjs/require',
   'extension',
+  'errno',
   'gc',
   'ipc',
   'language',
   'location',
   'mime',
   'network',
+  'service-worker',
   'window'
-]
+])
 
 /**
  * Predicate to determine if a given module name is a builtin module.
@@ -171,7 +192,7 @@ export function isBuiltin (name, options = null) {
   name = name.replace(/^(socket|node):/, '')
 
   if (
-    runtimeModules.includes(name) &&
+    runtimeModules.has(name) &&
     !originalName.startsWith('socket:')
   ) {
     return false
@@ -197,7 +218,7 @@ export function getBuiltin (name, options = null) {
   name = name.replace(/^(socket|node):/, '')
 
   if (
-    runtimeModules.includes(name) &&
+    runtimeModules.has(name) &&
     !originalName.startsWith('socket:')
   ) {
     throw new ModuleNotFoundError(

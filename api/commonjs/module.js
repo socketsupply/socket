@@ -2,10 +2,10 @@
 /* eslint-disable no-void, no-sequences */
 import { globalPaths, createRequire as createRequireImplementation } from './require.js'
 import { DEFAULT_PACKAGE_PREFIX, Package } from './package.js'
+import builtins, { defineBuiltin } from './builtins.js'
 import application from '../application.js'
 import { Loader } from './loader.js'
 import location from '../location.js'
-import builtins from './builtins.js'
 import process from '../process.js'
 import path from '../path.js'
 
@@ -895,7 +895,8 @@ export function createRequire (url, options = null) {
   return Module.createRequire(url, options)
 }
 
-builtins.module = Module
-builtins.module.Module = Module
+Module.Module = Module
 
 export default Module
+
+defineBuiltin('commonjs/module', Module, false)
