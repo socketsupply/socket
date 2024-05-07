@@ -1103,6 +1103,14 @@ namespace SSC {
       }
     }
 
+    if (opts.width > 0 && opts.height > 0) {
+      this->setSize(opts.height, opts.width);
+    } else if (opts.width > 0) {
+      this->setSize(window.frame.size.height, opts.width);
+    } else if (opts.height > 0) {
+      this->setSize(opts.height, window.frame.size.width);
+    }
+
     this->bridge.configureWebView(this->webview);
   #if SSC_PLATFORM_MACOS
     // Window style: titled, closable, minimizable
