@@ -989,6 +989,19 @@ export function inherits (Constructor, Super) {
   Object.setPrototypeOf(Constructor.prototype, Super.prototype)
 }
 
+/**
+ * @ignore
+ * @param {string} source
+ * @return {boolean}
+ */
+export function isESMSource (source) {
+  if (/\b(import\s*[\w{},*\s]*\s*from\s*['"][^'"]+['"]|export\s*(?:\*\s*from\s*['"][^'"]+['"]|default\s*from\s*['"][^'"]+['"]|[\w{}*\s,]+))\s*(?:;|\b)/.test(source)) {
+    return true
+  }
+
+  return false
+}
+
 export function deprecate (...args) {
   // noop
 }
