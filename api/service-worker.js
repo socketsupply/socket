@@ -2,6 +2,13 @@ import { ExtendableEvent, FetchEvent } from './service-worker/events.js'
 import { Environment } from './service-worker/env.js'
 import { Context } from './service-worker/context.js'
 
+/**
+ * A reference toe opened environment. This value is an instance of an
+ * `Environment` if the scope is a ServiceWorker scope.
+ * @type {Environment|null}
+ */
+export const env = Environment.instance
+
 export {
   ExtendableEvent,
   FetchEvent,
@@ -13,5 +20,6 @@ export default {
   ExtendableEvent,
   FetchEvent,
   Environment,
-  Context
+  Context,
+  env
 }
