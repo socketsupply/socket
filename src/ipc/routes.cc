@@ -3163,6 +3163,14 @@ static void mapIPCRoutes (Router *router) {
       options.margin = std::stof(message.get("margin"));
     }
 
+    options.width = message.get("width").size()
+      ? window->getSizeInPixels(message.get("width"), screen.width)
+      : 0;
+
+    options.height = message.get("height").size()
+      ? window->getSizeInPixels(message.get("height"), screen.height)
+      : 0;
+
     options.minWidth = message.get("minWidth").size()
       ? window->getSizeInPixels(message.get("minWidth"), screen.width)
       : 0;
