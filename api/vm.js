@@ -24,10 +24,11 @@
  * ```
  */
 
+/* eslint-disable no-new-func */
 /* global ErrorEvent, EventTarget, MessagePort */
 import { maybeMakeError } from './ipc.js'
 import { SharedWorker } from './internal/shared-worker.js'
-import { detectESMSource } from './commonjs/package.js'
+import { isESMSource } from './util.js'
 import application from './application.js'
 import globals from './internal/globals.js'
 import process from './process.js'
@@ -61,7 +62,7 @@ const scripts = new WeakMap()
 // A weak mapping of created contexts
 const contexts = new WeakMap()
 // a weak mapping of created global objects
-const globalObjects = new Map()
+const globalObjects = new WeakMap()
 
 // a shared context when one is not given
 const sharedContext = createContext({})
@@ -938,7 +939,7 @@ export class Script extends EventTarget {
     gc.ref(this)
 
     this.#ready = getContextWindow()
-      .then(getContextWorker())
+      .then(() => getContextWorker())
       .catch((error) => {
         this.dispatchEvent(new ErrorEvent('error', { error }))
       })
@@ -973,6 +974,14 @@ export class Script extends EventTarget {
    */
   get ready () {
     return this.#ready
+  }
+
+  /**
+   * The default script context object
+   * @type {object}
+   */
+  get context () {
+    return this.#context
   }
 
   /**
@@ -1239,6 +1248,7 @@ export async function getContextWindow () {
         frame.onload = resolve
         frame.onerror = (event) => {
           reject(new Error('Failed to load VM context window frame', {
+            // @ts-ignore
             cause: event.error ?? event
           }))
         }
@@ -1255,6 +1265,7 @@ export async function getContextWindow () {
     application.createWindow({
       canExit: true,
       headless: !process.env.SOCKET_RUNTIME_VM_DEBUG,
+      // @ts-ignore
       debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
       index: VM_WINDOW_INDEX,
       title: VM_WINDOW_TITLE,
@@ -1274,7 +1285,7 @@ export async function getContextWindow () {
       channel.addEventListener('message', function onMessage (event) {
         if (event.data?.ready === VM_WINDOW_INDEX) {
           clearTimeout(timeout)
-          resolve()
+          resolve(null)
           channel.removeEventListener('message', onMessage)
         }
       })
@@ -1317,6 +1328,7 @@ export async function getContextWorker () {
       globalThis.location.pathname === new URL(VM_WINDOW_PATH).pathname
     ) {
       // inside realm frame
+      // @ts-ignore
       contextWorker = new ContextWorkerInterfaceProxy(globalThis.top.__globals)
       contextWorker.ready = Promise.resolve(contextWorker)
     } else {
@@ -1355,8 +1367,9 @@ export async function getContextWorker () {
       if (
         globalThis.window &&
         globalThis.top !== globalThis.window &&
-        globalThis.location.pathname === new URL(VM_WINDOW_INDEX).pathname
+        globalThis.location.pathname === new URL(VM_WINDOW_PATH).pathname
       ) {
+        // @ts-ignore
         globalThis.top.__globals.register('vm.contextWorker', contextWorker)
       }
     }
@@ -1522,9 +1535,10 @@ export function getIntrinsicTypeString (value) {
  * Creates a global proxy object for context execution.
  * @ignore
  * @param {object} context
+ * @param {object=} [options]
  * @return {Proxy}
  */
-export function createGlobalObject (context, options) {
+export function createGlobalObject (context, options = null) {
   const existing = context && globals.get(context)
 
   if (existing) {
@@ -1548,7 +1562,7 @@ export function createGlobalObject (context, options) {
 
   const handler = {}
   const traps = {
-    get (_, property, receiver) {
+    get (_, property) {
       if (property === 'console') {
         return console
       }
@@ -1592,7 +1606,7 @@ export function createGlobalObject (context, options) {
       return prototype
     },
 
-    setPrototypeOf (_, prototype) {
+    setPrototypeOf () {
       return false
     },
 
@@ -1721,7 +1735,7 @@ export function createGlobalObject (context, options) {
  * @return {boolean}
  */
 export function detectFunctionSourceType (source) {
-  if (detectESMSource(source)) {
+  if (isESMSource(source)) {
     return 'module'
   }
 
@@ -1737,8 +1751,8 @@ export function detectFunctionSourceType (source) {
  */
 export function compileFunction (source, options = null) {
   source = convertSourceToString(source)
-
   options = { ...options }
+
   // detect source type naively
   if (!options?.type) {
     options.type = detectFunctionSourceType(source)
@@ -1777,25 +1791,25 @@ export function compileFunction (source, options = null) {
       async: true,
       wrap: false
     })
-  } else {
-    const globalObject = (
-      globalObjects.get(options?.context) ??
-      createGlobalObject(options?.context)
-    )
-
-    const wrappedSource = options?.wrap === false
-      ? source
-      : wrapFunctionSource(source, options)
-
-    const args = Array.from(options?.scope || []).concat(wrappedSource)
-    const compiled = options?.async === true
-      // eslint-disable-next-line
-      ? new AsyncFunction(...args)
-      // eslint-disable-next-line
-      : new Function(...args)
-
-    return compiled.bind(globalObject, globalObject)
   }
+
+  const globalObject = (
+    globalObjects.get(options?.context) ??
+    createGlobalObject(options?.context)
+  )
+
+  const wrappedSource = options?.wrap === false
+    ? source
+    : wrapFunctionSource(source, options)
+
+  const args = Array.from(options?.scope || []).concat(wrappedSource)
+  const compiled = options?.async === true
+    // @ts-ignore
+    ? new AsyncFunction(...args)
+    // @ts-ignore
+    : new Function(...args)
+
+  return compiled.bind(globalObject, globalObject)
 }
 
 /**
