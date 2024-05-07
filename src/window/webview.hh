@@ -76,6 +76,7 @@ namespace SSC {
   using WebViewSettings = ComPtr<CoreWebView2EnvironmentOptions>;
 #else
   struct WebView;
+  struct WebViewSettings;
 #endif
 }
 

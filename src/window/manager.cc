@@ -241,13 +241,13 @@ namespace SSC {
       this->log("Creating Window#" + std::to_string(options.index));
     }
 
-    auto window = SharedPointer<ManagedWindow>(new ManagedWindow(*this, this->core, windowOptions));
+    auto window = new ManagedWindow(*this, this->core, windowOptions);
 
     window->status = WindowStatus::WINDOW_CREATED;
     window->onExit = this->options.onExit;
     window->onMessage = this->options.onMessage;
 
-    this->windows[options.index] = std::move(window);
+    this->windows[options.index].reset(window);
 
     return this->windows.at(options.index);
   }
@@ -369,7 +369,11 @@ namespace SSC {
       {"title", this->getTitle()},
       {"width", size.width},
       {"height", size.height},
-      {"status", this->status}
+      {"status", this->status},
+      {"position", JSON::Object::Entries {
+        {"x", this->position.x},
+        {"y", this->position.y}
+      }}
     };
   }
 }
