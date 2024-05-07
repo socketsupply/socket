@@ -83,7 +83,9 @@ namespace SSC {
   {}
 
   URL::URL (const String& href) {
-    this->set(href);
+    if (href.size() > 0) {
+      this->set(href);
+    }
   }
 
   void URL::set (const String& href) {
@@ -100,7 +102,10 @@ namespace SSC {
       this->protocol = components.scheme + ":";
     }
 
-    const auto authorityParts = split(components.authority, '@');
+    const auto authorityParts = components.authority.size() > 0
+      ? split(components.authority, '@')
+      : Vector<String> {};
+
     if (authorityParts.size() == 2) {
       const auto userParts = split(authorityParts[0], ':');
 
@@ -140,12 +145,14 @@ namespace SSC {
       this->href = this->origin + this->pathname + this->search + this->hash;
     }
 
-    for (const auto& entry : split(this->query, '&')) {
-      const auto parts = split(entry, '=');
-      if (parts.size() == 2) {
-        const auto key = decodeURIComponent(trim(parts[0]));
-        const auto value = decodeURIComponent(trim(parts[1]));
-        this->searchParams.insert_or_assign(key, value);
+    if (this->query.size() > 0) {
+      for (const auto& entry : split(this->query, '&')) {
+        const auto parts = split(entry, '=');
+        if (parts.size() == 2) {
+          const auto key = decodeURIComponent(trim(parts[0]));
+          const auto value = decodeURIComponent(trim(parts[1]));
+          this->searchParams.insert_or_assign(key, value);
+        }
       }
     }
   }
