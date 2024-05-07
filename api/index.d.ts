@@ -6024,6 +6024,12 @@ declare module "socket:util" {
     export function isValidPercentageValue(input: any): boolean;
     export function compareBuffers(a: any, b: any): any;
     export function inherits(Constructor: any, Super: any): void;
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function isESMSource(source: string): boolean;
     export function deprecate(...args: any[]): void;
     export { types };
     export const TextDecoder: {
@@ -7060,1503 +7066,6 @@ declare module "socket:internal/shared-worker" {
     export default SharedWorker;
 }
 
-declare module "socket:internal/serialize" {
-    export default function serialize(value: any): any;
-}
-
-declare module "socket:internal/database" {
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     *
-     * @typedef {{
-     *   version?: string | undefined
-     * }} DatabaseOptions
-     */
-    /**
-     * A typed container for various optional options made to a `get()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined,
-     *   count?: number | undefined
-     * }} DatabaseGetOptions
-     */
-    /**
-     * A typed container for various optional options made to a `put()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined,
-     *   durability?: 'strict' | 'relaxed' | undefined
-     * }} DatabasePutOptions
-     */
-    /**
-     * A typed container for various optional options made to a `delete()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined
-     * }} DatabaseDeleteOptions
-     */
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     *
-     * @typedef {{
-     *   offset?: number | undefined,
-     *   backlog?: number | undefined
-     * }} DatabaseRequestQueueWaitOptions
-     */
-    /**
-     * A typed container for various optional options made to a `entries()` function
-     * on a `Database` instance.
-     *
-     * @typedef {{
-     *   store?: string | undefined,
-     *   stores?: string[] | undefined
-     * }} DatabaseEntriesOptions
-     */
-    /**
-     * A `DatabaseRequestQueueRequestConflict` callback function type.
-     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
-     */
-    /**
-     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
-     * @param {EventTarget} target
-     * @param {string} eventType
-     * @return {Promise<Event>}
-     */
-    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
-    /**
-     * Creates an opens a named `Database` instance.
-     * @param {string} name
-     * @param {?DatabaseOptions | undefined} [options]
-     * @return {Promise<Database>}
-     */
-    export function open(name: string, options?: (DatabaseOptions | undefined) | null): Promise<Database>;
-    /**
-     * Complete deletes a named `Database` instance.
-     * @param {string} name
-     * @param {?DatabaseOptions|undefined} [options]
-     */
-    export function drop(name: string, options?: (DatabaseOptions | undefined) | null): Promise<void>;
-    /**
-     * A mapping of named `Database` instances that are currently opened
-     * @type {Map<string, WeakRef<Database>>}
-     */
-    export const opened: Map<string, WeakRef<Database>>;
-    /**
-     * A container for conflict resolution for a `DatabaseRequestQueue` instance
-     * `IDBRequest` instance.
-     */
-    export class DatabaseRequestQueueRequestConflict {
-        /**
-         * `DatabaseRequestQueueRequestConflict` class constructor
-         * @param {function(any): void)} resolve
-         * @param {function(Error): void)} reject
-         * @param {function(): void)} cleanup
-         */
-        constructor(resolve: any, reject: any, cleanup: any);
-        /**
-         * Called when a conflict is resolved.
-         * @param {any} argument
-         */
-        resolve(argument?: any): void;
-        /**
-         * Called when a conflict is rejected
-         * @param {Error} error
-         */
-        reject(error: Error): void;
-        #private;
-    }
-    /**
-     * An event dispatched on a `DatabaseRequestQueue`
-     */
-    export class DatabaseRequestQueueEvent extends Event {
-        /**
-         * `DatabaseRequestQueueEvent` class constructor.
-         * @param {string} type
-         * @param {IDBRequest|IDBTransaction} request
-         */
-        constructor(type: string, request: IDBRequest | IDBTransaction);
-        /**
-         * A reference to the underlying request for this event.
-         * @type {IDBRequest|IDBTransaction}
-         */
-        get request(): IDBRequest<any> | IDBTransaction;
-        #private;
-    }
-    /**
-     * An event dispatched on a `Database`
-     */
-    export class DatabaseEvent extends Event {
-        /**
-         * `DatabaseEvent` class constructor.
-         * @param {string} type
-         * @param {Database} database
-         */
-        constructor(type: string, database: Database);
-        /**
-         * A reference to the underlying database for this event.
-         * @type {Database}
-         */
-        get database(): Database;
-        #private;
-    }
-    /**
-     * An error event dispatched on a `DatabaseRequestQueue`
-     */
-    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
-        /**
-         * `DatabaseRequestQueueErrorEvent` class constructor.
-         * @param {string} type
-         * @param {IDBRequest|IDBTransaction} request
-         * @param {{ error: Error, cause?: Error }} options
-         */
-        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
-            error: Error;
-            cause?: Error;
-        });
-        /**
-         * A reference to the underlying request for this error event.
-         * @type {IDBRequest|IDBTransaction}
-         */
-        get request(): IDBRequest<any> | IDBTransaction;
-        #private;
-    }
-    /**
-     * A container for various `IDBRequest` and `IDBTransaction` instances
-     * occurring during the life cycles of a `Database` instance.
-     */
-    export class DatabaseRequestQueue extends EventTarget {
-        /**
-         * Computed queue length
-         * @type {number}
-         */
-        get length(): number;
-        /**
-         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
-         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
-         * upon an error' event.
-         * @param {IDBRequest|IDBTransaction}
-         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
-         * @return {Promise}
-         */
-        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
-        /**
-         * Waits for all pending requests to complete. This function will throw when
-         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
-         * Callers of this function can optionally specify a maximum backlog to wait
-         * for instead of waiting for all requests to finish.
-         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
-         */
-        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
-        #private;
-    }
-    /**
-     * An interface for reading from named databases backed by IndexedDB.
-     */
-    export class Database extends EventTarget {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         * @param {?DatabaseOptions | undefined} [options]
-         */
-        constructor(name: string, options?: (DatabaseOptions | undefined) | null);
-        /**
-         * `true` if the `Database` is currently opening, otherwise `false`.
-         * A `Database` instance should not attempt to be opened if this property value
-         * is `true`.
-         * @type {boolean}
-         */
-        get opening(): boolean;
-        /**
-         * `true` if the `Database` instance was successfully opened such that the
-         * internal `IDBDatabase` storage instance was created and can be referenced
-         * on the `Database` instance, otherwise `false`.
-         * @type {boolean}
-         */
-        get opened(): boolean;
-        /**
-         * `true` if the `Database` instance was closed or has not been opened such
-         * that the internal `IDBDatabase` storage instance was not created or cannot
-         * be referenced on the `Database` instance, otherwise `false`.
-         * @type {boolean}
-         */
-        get closed(): boolean;
-        /**
-         * `true` if the `Database` is currently closing, otherwise `false`.
-         * A `Database` instance should not attempt to be closed if this property value
-         * is `true`.
-         * @type {boolean}
-         */
-        get closing(): boolean;
-        /**
-         * The name of the `IDBDatabase` database. This value cannot be `null`.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The version of the `IDBDatabase` database. This value may be `null`.
-         * @type {?string}
-         */
-        get version(): string;
-        /**
-         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
-         * This value may ba `null`.
-         * @type {?IDBDatabase}
-         */
-        get storage(): IDBDatabase;
-        /**
-         * Opens the `IDBDatabase` database optionally at a specific "version" if
-         * one was given upon construction of the `Database` instance. This function
-         * is not idempotent and will throw if the underlying `IDBDatabase` instance
-         * was created successfully or is in the process of opening.
-         * @return {Promise}
-         */
-        open(): Promise<any>;
-        /**
-         * Closes the `IDBDatabase` database storage, if opened. This function is not
-         * idempotent and will throw if the underlying `IDBDatabase` instance is
-         * already closed (not opened) or currently closing.
-         * @return {Promise}
-         */
-        close(): Promise<any>;
-        /**
-         * Deletes entire `Database` instance and closes after successfully
-         * delete storage.
-         */
-        drop(): Promise<void>;
-        /**
-         * Gets a "readonly" value by `key` in the `Database` object storage.
-         * @param {string} key
-         * @param {?DatabaseGetOptions|undefined} [options]
-         * @return {Promise<object|object[]|null>}
-         */
-        get(key: string, options?: (DatabaseGetOptions | undefined) | null): Promise<object | object[] | null>;
-        /**
-         * Put a `value` at `key`, updating if it already exists, otherwise
-         * "inserting" it into the `Database` instance.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefined} [options]
-         * @return {Promise}
-         */
-        put(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
-        /**
-         * Inserts a new `value` at `key`. This function throws if a value at `key`
-         * already exists.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefined} [options]
-         * @return {Promise}
-         */
-        insert(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
-        /**
-         * Update a `value` at `key`, updating if it already exists, otherwise
-         * "inserting" it into the `Database` instance.
-         * @param {string} key
-         * @param {any} value
-         * @param {?DatabasePutOptions|undefined} [options]
-         * @return {Promise}
-         */
-        update(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
-        /**
-         * Delete a value at `key`.
-         * @param {string} key
-         * @param {?DatabaseDeleteOptions|undefined} [options]
-         * @return {Promise}
-         */
-        delete(key: string, options?: (DatabaseDeleteOptions | undefined) | null): Promise<any>;
-        /**
-         * Gets a "readonly" value by `key` in the `Database` object storage.
-         * @param {string} key
-         * @param {?DatabaseEntriesOptions|undefined} [options]
-         * @return {Promise<object|object[]|null>}
-         */
-        entries(options?: (DatabaseEntriesOptions | undefined) | null): Promise<object | object[] | null>;
-        #private;
-    }
-    namespace _default {
-        export { Database };
-        export { open };
-        export { drop };
-    }
-    export default _default;
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     */
-    export type DatabaseOptions = {
-        version?: string | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `get()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseGetOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-        count?: number | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `put()` function
-     * on a `Database` instance.
-     */
-    export type DatabasePutOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-        durability?: 'strict' | 'relaxed' | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `delete()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseDeleteOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-    };
-    /**
-     * A typed container for optional options given to the `Database`
-     * class constructor.
-     */
-    export type DatabaseRequestQueueWaitOptions = {
-        offset?: number | undefined;
-        backlog?: number | undefined;
-    };
-    /**
-     * A typed container for various optional options made to a `entries()` function
-     * on a `Database` instance.
-     */
-    export type DatabaseEntriesOptions = {
-        store?: string | undefined;
-        stores?: string[] | undefined;
-    };
-    /**
-     * A `DatabaseRequestQueueRequestConflict` callback function type.
-     */
-    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
-}
-
-declare module "socket:commonjs/cache" {
-    /**
-     * @typedef {{
-     *   types?: object,
-     *   loader?: import('./loader.js').Loader
-     * }} CacheOptions
-     */
-    export const CACHE_CHANNEL_MESSAGE_ID: "id";
-    export const CACHE_CHANNEL_MESSAGE_REPLICATE: "replicate";
-    /**
-     * @typedef {{
-     *   name: string
-     * }} StorageOptions
-     */
-    /**
-     * An storage context object with persistence and durability
-     * for service worker storages.
-     */
-    export class Storage extends EventTarget {
-        /**
-         * Maximum entries that will be restored from storage into the context object.
-         * @type {number}
-         */
-        static MAX_CONTEXT_ENTRIES: number;
-        /**
-         * A mapping of known `Storage` instances.
-         * @type {Map<string, Storage>}
-         */
-        static instances: Map<string, Storage>;
-        /**
-         * Opens an storage for a particular name.
-         * @param {StorageOptions} options
-         * @return {Promise<Storage>}
-         */
-        static open(options: StorageOptions): Promise<Storage>;
-        /**
-         * `Storage` class constructor
-         * @ignore
-         * @param {StorageOptions} options
-         */
-        constructor(options: StorageOptions);
-        /**
-         * A reference to the currently opened storage database.
-         * @type {import('../internal/database.js').Database}
-         */
-        get database(): import("socket:internal/database").Database;
-        /**
-         * `true` if the storage is opened, otherwise `false`.
-         * @type {boolean}
-         */
-        get opened(): boolean;
-        /**
-         * `true` if the storage is opening, otherwise `false`.
-         * @type {boolean}
-         */
-        get opening(): boolean;
-        /**
-         * A proxied object for reading and writing storage state.
-         * Values written to this object must be cloneable with respect to the
-         * structured clone algorithm.
-         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
-         * @type {Proxy<object>}
-         */
-        get context(): ProxyConstructor;
-        /**
-         * The current storage name. This value is also used as the
-         * internal database name.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * A promise that resolves when the storage is opened.
-         * @type {Promise?}
-         */
-        get ready(): Promise<any>;
-        /**
-         * @ignore
-         * @param {Promise} promise
-         */
-        forwardRequest(promise: Promise<any>): Promise<any>;
-        /**
-         * Resets the current storage to an empty state.
-         */
-        reset(): Promise<void>;
-        /**
-         * Synchronizes database entries into the storage context.
-         */
-        sync(options?: any): Promise<void>;
-        /**
-         * Opens the storage.
-         * @ignore
-         */
-        open(options?: any): Promise<any>;
-        /**
-         * Closes the storage database, purging existing state.
-         * @ignore
-         */
-        close(): Promise<void>;
-        #private;
-    }
-    /**
-     * A container for `Snapshot` data storage.
-     */
-    export class SnapshotData {
-        /**
-         * `SnapshotData` class constructor.
-         * @param {object=} [data]
-         */
-        constructor(data?: object | undefined);
-        toJSON: () => this;
-        [Symbol.toStringTag]: string;
-    }
-    /**
-     * A container for storing a snapshot of the cache data.
-     */
-    export class Snapshot {
-        /**
-         * @type {typeof SnapshotData}
-         */
-        static Data: typeof SnapshotData;
-        /**
-         * A reference to the snapshot data.
-         * @type {Snapshot.Data}
-         */
-        get data(): typeof SnapshotData;
-        /**
-         * @ignore
-         * @return {object}
-         */
-        toJSON(): object;
-        #private;
-    }
-    /**
-     * An interface for managing and performing operations on a collection
-     * of `Cache` objects.
-     */
-    export class CacheCollection {
-        /**
-         * `CacheCollection` class constructor.
-         * @ignore
-         * @param {Cache[]|Record<string, Cache>} collection
-         */
-        constructor(collection: Cache[] | Record<string, Cache>);
-        /**
-         * Adds a `Cache` instance to the collection.
-         * @param {string|Cache} name
-         * @param {Cache=} [cache]
-         * @param {boolean}
-         */
-        add(name: string | Cache, cache?: Cache | undefined): any;
-        /**
-         * Calls a method on each `Cache` object in the collection.
-         * @param {string} method
-         * @param {...any} args
-         * @return {Promise<Record<string,any>>}
-         */
-        call(method: string, ...args: any[]): Promise<Record<string, any>>;
-        restore(): Promise<Record<string, any>>;
-        reset(): Promise<Record<string, any>>;
-        snapshot(): Promise<Record<string, any>>;
-        get(key: any): Promise<Record<string, any>>;
-        delete(key: any): Promise<Record<string, any>>;
-        keys(key: any): Promise<Record<string, any>>;
-        values(key: any): Promise<Record<string, any>>;
-        clear(key: any): Promise<Record<string, any>>;
-    }
-    /**
-     * A container for a shared cache that lives for the life time of
-     * application execution. Updates to this storage are replicated to other
-     * instances in the application context, including windows and workers.
-     */
-    export class Cache {
-        /**
-         * A globally shared type mapping for the cache to use when
-         * derserializing a value.
-         * @type {Map<string, function>}
-         */
-        static types: Map<string, Function>;
-        /**
-         * A globally shared cache store keyed by cache name. This is useful so
-         * when multiple instances of a `Cache` are created, they can share the
-         * same data store, reducing duplications.
-         * @type {Record<string, Map<string, object>}
-         */
-        static shared: Record<string, Map<string, object>>;
-        /**
-         * A mapping of opened `Storage` instances.
-         * @type {Map<string, Storage>}
-         */
-        static storages: Map<string, Storage>;
-        /**
-         * The `Cache.Snapshot` class.
-         * @type {typeof Snapshot}
-         */
-        static Snapshot: typeof Snapshot;
-        /**
-         * The `Cache.Storage` class
-         * @type {typeof Storage}
-         */
-        static Storage: typeof Storage;
-        /**
-         * Creates a snapshot of the current cache which can be serialized and
-         * stored in persistent storage.
-         * @return {Snapshot}
-         */
-        static snapshot(): Snapshot;
-        /**
-         * Restore caches from persistent storage.
-         * @param {string[]} names
-         * @return {Promise}
-         */
-        static restore(names: string[]): Promise<any>;
-        /**
-         * `Cache` class constructor.
-         * @param {string} name
-         * @param {CacheOptions=} [options]
-         */
-        constructor(name: string, options?: CacheOptions | undefined);
-        /**
-         * The unique ID for this cache.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The loader associated with this cache.
-         * @type {import('./loader.js').Loader}
-         */
-        get loader(): import("socket:commonjs/loader").Loader;
-        /**
-         * A reference to the persisted storage.
-         * @type {Storage}
-         */
-        get storage(): Storage;
-        /**
-         * The cache name
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The underlying cache data map.
-         * @type {Map}
-         */
-        get data(): Map<any, any>;
-        /**
-         * The broadcast channel associated with this cach.
-         * @type {BroadcastChannel}
-         */
-        get channel(): BroadcastChannel;
-        /**
-         * The size of the cache.
-         * @type {number}
-         */
-        get size(): number;
-        /**
-         * @type {Map}
-         */
-        get types(): Map<any, any>;
-        /**
-         * Resets the cache map and persisted storage.
-         */
-        reset(): Promise<void>;
-        /**
-         * Restores cache data from storage.
-         */
-        restore(): Promise<void>;
-        /**
-         * Creates a snapshot of the current cache which can be serialized and
-         * stored in persistent storage.
-         * @return {Snapshot.Data}
-         */
-        snapshot(): typeof SnapshotData;
-        /**
-         * Get a value at `key`.
-         * @param {string} key
-         * @return {object|undefined}
-         */
-        get(key: string): object | undefined;
-        /**
-         * Set `value` at `key`.
-         * @param {string} key
-         * @param {object} value
-         * @return {Cache}
-         */
-        set(key: string, value: object): Cache;
-        /**
-         * Returns `true` if `key` is in cache, otherwise `false`.
-         * @param {string}
-         * @return {boolean}
-         */
-        has(key: any): boolean;
-        /**
-         * Delete a value at `key`.
-         * This does not replicate to shared caches.
-         * @param {string} key
-         * @return {boolean}
-         */
-        delete(key: string): boolean;
-        /**
-         * Returns an iterator for all cache keys.
-         * @return {object}
-         */
-        keys(): object;
-        /**
-         * Returns an iterator for all cache values.
-         * @return {object}
-         */
-        values(): object;
-        /**
-         * Returns an iterator for all cache entries.
-         * @return {object}
-         */
-        entries(): object;
-        /**
-         * Clears all entries in the cache.
-         * This does not replicate to shared caches.
-         * @return {undefined}
-         */
-        clear(): undefined;
-        /**
-         * Enumerates entries in map calling `callback(value, key
-         * @param {function(object, string, Cache): any} callback
-         */
-        forEach(callback: (arg0: object, arg1: string, arg2: Cache) => any): void;
-        /**
-         * Broadcasts a replication to other shared caches.
-         */
-        replicate(): this;
-        /**
-         * Destroys the cache. This function stops the broadcast channel and removes
-         * and listeners
-         */
-        destroy(): void;
-        /**
-         * @ignore
-         */
-        [Symbol.iterator](): any;
-        #private;
-    }
-    export default Cache;
-    export type CacheOptions = {
-        types?: object;
-        loader?: import("socket:commonjs/loader").Loader;
-    };
-    export type StorageOptions = {
-        name: string;
-    };
-}
-
-declare module "socket:commonjs/loader" {
-    /**
-     * @typedef {{
-     *   extensions?: string[] | Set<string>
-     *   origin?: URL | string,
-     *   statuses?: Cache
-     *   cache?: { response?: Cache, status?: Cache },
-     *   headers?: Headers | Map | object | string[][]
-     * }} LoaderOptions
-     */
-    /**
-     * @typedef {{
-     *   loader?: Loader,
-     *   origin?: URL | string
-     * }} RequestOptions
-     */
-    /**
-     * @typedef {{
-     *   headers?: Headers | object | array[],
-     *   status?: number
-     * }} RequestStatusOptions
-     */
-    /**
-     * @typedef {{
-     *   headers?: Headers | object
-     * }} RequestLoadOptions
-     */
-    /**
-     * @typedef {{
-     *   request?: Request,
-     *   headers?: Headers,
-     *   status?: number,
-     *   buffer?: ArrayBuffer,
-     *   text?: string
-     * }} ResponseOptions
-     */
-    /**
-     * A container for the status of a CommonJS resource. A `RequestStatus` object
-     * represents meta data for a `Request` that comes from a preflight
-     * HTTP HEAD request.
-     */
-    export class RequestStatus {
-        /**
-         * Creates a `RequestStatus` from JSON input.
-         * @param {object} json
-         * @return {RequestStatus}
-         */
-        static from(json: object, options: any): RequestStatus;
-        /**
-         * `RequestStatus` class constructor.
-         * @param {Request} request
-         * @param {RequestStatusOptions} [options]
-         */
-        constructor(request: Request, options?: RequestStatusOptions);
-        set request(request: Request);
-        /**
-         * The `Request` object associated with this `RequestStatus` object.
-         * @type {Request}
-         */
-        get request(): Request;
-        /**
-         * The unique ID of this `RequestStatus`, which is the absolute URL as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The origin for this `RequestStatus` object.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * A HTTP status code for this `RequestStatus` object.
-         * @type {number|undefined}
-         */
-        get status(): number;
-        /**
-         * An alias for `status`.
-         * @type {number|undefined}
-         */
-        get value(): number;
-        /**
-         * @ignore
-         */
-        get valueOf(): number;
-        /**
-         * The HTTP headers for this `RequestStatus` object.
-         * @type {Headers}
-         */
-        get headers(): Headers;
-        /**
-         * The resource location for this `RequestStatus` object. This value is
-         * determined from the 'Content-Location' header, if available, otherwise
-         * it is derived from the request URL pathname (including the query string).
-         * @type {string}
-         */
-        get location(): string;
-        /**
-         * `true` if the response status is considered OK, otherwise `false`.
-         * @type {boolean}
-         */
-        get ok(): boolean;
-        /**
-         * Loads the internal state for this `RequestStatus` object.
-         * @param {RequestLoadOptions|boolean} [options]
-         * @return {RequestStatus}
-         */
-        load(options?: RequestLoadOptions | boolean): RequestStatus;
-        /**
-         * Converts this `RequestStatus` to JSON.
-         * @ignore
-         * @return {{
-         *   id: string,
-         *   origin: string | null,
-         *   status: number,
-         *   headers: Array<string[]>
-         *   request: object | null | undefined
-         * }}
-         */
-        toJSON(includeRequest?: boolean): {
-            id: string;
-            origin: string | null;
-            status: number;
-            headers: Array<string[]>;
-            request: object | null | undefined;
-        };
-        #private;
-    }
-    /**
-     * A container for a synchronous CommonJS request to local resource or
-     * over the network.
-     */
-    export class Request {
-        /**
-         * Creates a `Request` instance from JSON input
-         * @param {object} json
-         * @param {RequestOptions=} [options]
-         * @return {Request}
-         */
-        static from(json: object, options?: RequestOptions | undefined): Request;
-        /**
-         * `Request` class constructor.
-         * @param {URL|string} url
-         * @param {URL|string=} [origin]
-         * @param {RequestOptions=} [options]
-         */
-        constructor(url: URL | string, origin?: (URL | string) | undefined, options?: RequestOptions | undefined);
-        /**
-         * The unique ID of this `Request`, which is the absolute URL as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The absolute `URL` of this `Request` object.
-         * @type {URL}
-         */
-        get url(): URL;
-        /**
-         * The origin for this `Request`.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * The `Loader` for this `Request` object.
-         * @type {Loader?}
-         */
-        get loader(): Loader;
-        /**
-         * The `RequestStatus` for this `Request`
-         * @type {RequestStatus}
-         */
-        get status(): RequestStatus;
-        /**
-         * Loads the CommonJS source file, optionally checking the `Loader` cache
-         * first, unless ignored when `options.cache` is `false`.
-         * @param {RequestLoadOptions=} [options]
-         * @return {Response}
-         */
-        load(options?: RequestLoadOptions | undefined): Response;
-        /**
-         * Converts this `Request` to JSON.
-         * @ignore
-         * @return {{
-         *   url: string,
-         *   status: object | undefined
-         * }}
-         */
-        toJSON(includeStatus?: boolean): {
-            url: string;
-            status: object | undefined;
-        };
-        #private;
-    }
-    /**
-     * A container for a synchronous CommonJS request response for a local resource
-     * or over the network.
-     */
-    export class Response {
-        /**
-         * Creates a `Response` from JSON input
-         * @param {obejct} json
-         * @param {ResponseOptions=} [options]
-         * @return {Response}
-         */
-        static from(json: obejct, options?: ResponseOptions | undefined): Response;
-        /**
-         * `Response` class constructor.
-         * @param {Request|ResponseOptions} request
-         * @param {ResponseOptions=} [options]
-         */
-        constructor(request: Request | ResponseOptions, options?: ResponseOptions | undefined);
-        /**
-         * The unique ID of this `Response`, which is the absolute
-         * URL of the request as a string.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The `Request` object associated with this `Response` object.
-         * @type {Request}
-         */
-        get request(): Request;
-        /**
-         * The response headers from the associated request.
-         * @type {Headers}
-         */
-        get headers(): Headers;
-        /**
-         * The `Loader` associated with this `Response` object.
-         * @type {Loader?}
-         */
-        get loader(): Loader;
-        /**
-         * The `Response` status code from the associated `Request` object.
-         * @type {number}
-         */
-        get status(): number;
-        /**
-         * The `Response` string from the associated `Request`
-         * @type {string}
-         */
-        get text(): string;
-        /**
-         * The `Response` array buffer from the associated `Request`
-         * @type {ArrayBuffer?}
-         */
-        get buffer(): ArrayBuffer;
-        /**
-         * `true` if the response is considered OK, otherwise `false`.
-         * @type {boolean}
-         */
-        get ok(): boolean;
-        /**
-         * Converts this `Response` to JSON.
-         * @ignore
-         * @return {{
-         *   id: string,
-         *   text: string,
-         *   status: number,
-         *   buffer: number[] | null,
-         *   headers: Array<string[]>
-         * }}
-         */
-        toJSON(): {
-            id: string;
-            text: string;
-            status: number;
-            buffer: number[] | null;
-            headers: Array<string[]>;
-        };
-        #private;
-    }
-    /**
-     * A container for loading CommonJS module sources
-     */
-    export class Loader {
-        /**
-         * A request class used by `Loader` objects.
-         * @type {typeof Request}
-         */
-        static Request: typeof Request;
-        /**
-         * A response class used by `Loader` objects.
-         * @type {typeof Request}
-         */
-        static Response: typeof Request;
-        /**
-         * Resolves a given module URL to an absolute URL with an optional `origin`.
-         * @param {URL|string} url
-         * @param {URL|string} [origin]
-         * @return {string}
-         */
-        static resolve(url: URL | string, origin?: URL | string): string;
-        /**
-         * Default extensions for a loader.
-         * @type {Set<string>}
-         */
-        static defaultExtensions: Set<string>;
-        /**
-         * `Loader` class constructor.
-         * @param {string|URL|LoaderOptions} origin
-         * @param {LoaderOptions=} [options]
-         */
-        constructor(origin: string | URL | LoaderOptions, options?: LoaderOptions | undefined);
-        /**
-         * The internal caches for this `Loader` object.
-         * @type {{ response: Cache, status: Cache }}
-         */
-        get cache(): {
-            response: Cache;
-            status: Cache;
-        };
-        /**
-         * Headers used in too loader requests.
-         * @type {Headers}
-         */
-        get headers(): Headers;
-        /**
-         * A set of supported `Loader` extensions.
-         * @type {Set<string>}
-         */
-        get extensions(): Set<string>;
-        set origin(origin: string);
-        /**
-         * The origin of this `Loader` object.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * Loads a CommonJS module source file at `url` with an optional `origin`, which
-         * defaults to the application origin.
-         * @param {URL|string} url
-         * @param {URL|string|object} [origin]
-         * @param {RequestOptions=} [options]
-         * @return {Response}
-         */
-        load(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): Response;
-        /**
-         * Queries the status of a CommonJS module source file at `url` with an
-         * optional `origin`, which defaults to the application origin.
-         * @param {URL|string} url
-         * @param {URL|string|object} [origin]
-         * @param {RequestOptions=} [options]
-         * @return {RequestStatus}
-         */
-        status(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): RequestStatus;
-        /**
-         * Resolves a given module URL to an absolute URL based on the loader origin.
-         * @param {URL|string} url
-         * @param {URL|string} [origin]
-         * @return {string}
-         */
-        resolve(url: URL | string, origin?: URL | string): string;
-        #private;
-    }
-    export default Loader;
-    export type LoaderOptions = {
-        extensions?: string[] | Set<string>;
-        origin?: URL | string;
-        statuses?: Cache;
-        cache?: {
-            response?: Cache;
-            status?: Cache;
-        };
-        headers?: Headers | Map<any, any> | object | string[][];
-    };
-    export type RequestOptions = {
-        loader?: Loader;
-        origin?: URL | string;
-    };
-    export type RequestStatusOptions = {
-        headers?: Headers | object | any[][];
-        status?: number;
-    };
-    export type RequestLoadOptions = {
-        headers?: Headers | object;
-    };
-    export type ResponseOptions = {
-        request?: Request;
-        headers?: Headers;
-        status?: number;
-        buffer?: ArrayBuffer;
-        text?: string;
-    };
-    import { Headers } from "socket:ipc";
-    import { Cache } from "socket:commonjs/cache";
-}
-
-declare module "socket:commonjs/package" {
-    /**
-     * @ignore
-     * @param {string} source
-     * @return {boolean}
-     */
-    export function detectESMSource(source: string): boolean;
-    /**
-     * @typedef {{
-     *   manifest?: string,
-     *   index?: string,
-     *   description?: string,
-     *   version?: string,
-     *   license?: string,
-     *   exports?: object,
-     *   type?: 'commonjs' | 'module',
-     *   info?: object,
-     *   origin?: string,
-     *   dependencies?: Dependencies | object | Map
-     * }} PackageOptions
-     */
-    /**
-     * @typedef {import('./loader.js').RequestOptions & {
-     *   type?: 'commonjs' | 'module'
-     *   prefix?: string
-     * }} PackageLoadOptions
-     */
-    /**
-     * {import('./loader.js').RequestOptions & {
-     *   load?: boolean,
-     *   type?: 'commonjs' | 'module',
-     *   browser?: boolean,
-     *   children?: string[]
-     *   extensions?: string[] | Set<string>
-     * }} PackageResolveOptions
-     */
-    /**
-     * @typedef {{
-     *   organization: string | null,
-     *   name: string,
-     *   version: string | null,
-     *   pathname: string,
-     *   url: URL,
-     *   isRelative: boolean,
-     *   hasManifest: boolean
-     * }} ParsedPackageName
-     */
-    /**
-     * @typedef {{
-     *   require?: string | string[],
-     *   import?: string | string[],
-     *   default?: string | string[],
-     *   default?: string | string[],
-     *   worker?: string | string[],
-     *   browser?: string | string[]
-     * }} PackageExports
-    
-    /**
-     * The default package index file such as 'index.js'
-     * @type {string}
-     */
-    export const DEFAULT_PACKAGE_INDEX: string;
-    /**
-     * The default package manifest file name such as 'package.json'
-     * @type {string}
-     */
-    export const DEFAULT_PACKAGE_MANIFEST_FILE_NAME: string;
-    /**
-     * The default package path prefix such as 'node_modules/'
-     * @type {string}
-     */
-    export const DEFAULT_PACKAGE_PREFIX: string;
-    /**
-     * The default package version, when one is not provided
-     * @type {string}
-     */
-    export const DEFAULT_PACKAGE_VERSION: string;
-    /**
-     * The default license for a package'
-     * @type {string}
-     */
-    export const DEFAULT_LICENSE: string;
-    /**
-     * A container for a package name that includes a package organization identifier,
-     * its fully qualified name, or for relative package names, its pathname
-     */
-    export class Name {
-        /**
-         * Parses a package name input resolving the actual module name, including an
-         * organization name given. If a path includes a manifest file
-         * ('package.json'), then the directory containing that file is considered a
-         * valid package and it will be included in the returned value. If a relative
-         * path is given, then the path is returned if it is a valid pathname. This
-         * function returns `null` for bad input.
-         * @param {string|URL} input
-         * @param {{ origin?: string | URL, manifest?: string }=} [options]
-         * @return {ParsedPackageName?}
-         */
-        static parse(input: string | URL, options?: {
-            origin?: string | URL;
-            manifest?: string;
-        } | undefined): ParsedPackageName | null;
-        /**
-         * Returns `true` if the given `input` can be parsed by `Name.parse` or given
-         * as input to the `Name` class constructor.
-         * @param {string|URL} input
-         * @param {{ origin?: string | URL, manifest?: string }=} [options]
-         * @return {boolean}
-         */
-        static canParse(input: string | URL, options?: {
-            origin?: string | URL;
-            manifest?: string;
-        } | undefined): boolean;
-        /**
-         * Creates a new `Name` from input.
-         * @param {string|URL} input
-         * @param {{ origin?: string | URL, manifest?: string }=} [options]
-         * @return {Name}
-         */
-        static from(input: string | URL, options?: {
-            origin?: string | URL;
-            manifest?: string;
-        } | undefined): Name;
-        /**
-         * `Name` class constructor.
-         * @param {string|URL|NameOptions|Name} name
-         * @param {{ origin?: string | URL, manifest?: string }=} [options]
-         * @throws TypeError
-         */
-        constructor(name: string | URL | NameOptions | Name, options?: {
-            origin?: string | URL;
-            manifest?: string;
-        } | undefined);
-        /**
-         * The id of this package name.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The actual package name.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * An alias for 'name'.
-         * @type {string}
-         */
-        get value(): string;
-        /**
-         * The origin of the package, if available.
-         * This value may be `null`.
-         * @type {string?}
-         */
-        get origin(): string;
-        /**
-         * The package version if available.
-         * This value may be `null`.
-         * @type {string?}
-         */
-        get version(): string;
-        /**
-         * The actual package pathname, if given in name string.
-         * This value is always a string defaulting to '.' if no path
-         * was given in name string.
-         * @type {string}
-         */
-        get pathname(): string;
-        /**
-         * The organization name.
-         * This value may be `null`.
-         * @type {string?}
-         */
-        get organization(): string;
-        /**
-         * `true` if the package name was relative, otherwise `false`.
-         * @type {boolean}
-         */
-        get isRelative(): boolean;
-        /**
-         * Converts this package name to a string.
-         * @ignore
-         * @return {string}
-         */
-        toString(): string;
-        /**
-         * Converts this `Name` instance to JSON.
-         * @ignore
-         * @return {object}
-         */
-        toJSON(): object;
-        #private;
-    }
-    /**
-     * A container for package dependencies that map a package name to a `Package` instance.
-     */
-    export class Dependencies {
-        constructor(parent: any, options?: any);
-        get map(): Map<any, any>;
-        get origin(): any;
-        add(name: any, info?: any): void;
-        get(name: any, options?: any): any;
-        entries(): IterableIterator<[any, any]>;
-        keys(): IterableIterator<any>;
-        values(): IterableIterator<any>;
-        load(options?: any): void;
-        [Symbol.iterator](): IterableIterator<[any, any]>;
-        #private;
-    }
-    /**
-     * A container for CommonJS module metadata, often in a `package.json` file.
-     */
-    export class Package {
-        /**
-         * A high level class for a package name.
-         * @type {typeof Name}
-         */
-        static Name: typeof Name;
-        /**
-         * A high level container for package dependencies.
-         * @type {typeof Dependencies}
-         */
-        static Dependencies: typeof Dependencies;
-        /**
-         * Creates and loads a package
-         * @param {string|URL|NameOptions|Name} name
-         * @param {PackageOptions & PackageLoadOptions=} [options]
-         * @return {Package}
-         */
-        static load(name: string | URL | NameOptions | Name, options?: (PackageOptions & PackageLoadOptions) | undefined): Package;
-        /**
-         * `Package` class constructor.
-         * @param {string|URL|NameOptions|Name} name
-         * @param {PackageOptions=} [options]
-         */
-        constructor(name: string | URL | NameOptions | Name, options?: PackageOptions | undefined);
-        /**
-         * The unique ID of this `Package`, which is the absolute
-         * URL of the directory that contains its manifest file.
-         * @type {string}
-         */
-        get id(): string;
-        /**
-         * The absolute URL to the package manifest file
-         * @type {string}
-         */
-        get url(): string;
-        /**
-         * A reference to the package subpath imports and browser mappings.
-         * These values are typically used with its corresponding `Module`
-         * instance require resolvers.
-         * @type {object}
-         */
-        get imports(): any;
-        /**
-         * A loader for this package, if available. This value may be `null`.
-         * @type {Loader}
-         */
-        get loader(): Loader;
-        /**
-         * `true` if the package was actually "loaded", otherwise `false`.
-         * @type {boolean}
-         */
-        get loaded(): boolean;
-        /**
-         * The name of the package.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * The description of the package.
-         * @type {string}
-         */
-        get description(): string;
-        /**
-         * The organization of the package. This value may be `null`.
-         * @type {string?}
-         */
-        get organization(): string;
-        /**
-         * The license of the package.
-         * @type {string}
-         */
-        get license(): string;
-        /**
-         * The version of the package.
-         * @type {string}
-         */
-        get version(): string;
-        /**
-         * The origin for this package.
-         * @type {string}
-         */
-        get origin(): string;
-        /**
-         * The exports mappings for the package
-         * @type {object}
-         */
-        get exports(): any;
-        /**
-         * The package type.
-         * @type {'commonjs'|'module'}
-         */
-        get type(): "module" | "commonjs";
-        /**
-         * The raw package metadata object.
-         * @type {object?}
-         */
-        get info(): any;
-        /**
-         * @type {Dependencies}
-         */
-        get dependencies(): Dependencies;
-        /**
-         * An alias for `entry`
-         * @type {string?}
-         */
-        get main(): string;
-        /**
-         * The entry to the package
-         * @type {string?}
-         */
-        get entry(): string;
-        /**
-         * Load the package information at an optional `origin` with
-         * optional request `options`.
-         * @param {PackageLoadOptions=} [options]
-         * @throws SyntaxError
-         * @return {boolean}
-         */
-        load(origin?: any, options?: PackageLoadOptions | undefined): boolean;
-        /**
-         * Resolve a file's `pathname` within the package.
-         * @param {string|URL} pathname
-         * @param {PackageResolveOptions=} [options]
-         * @return {string}
-         */
-        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
-        #private;
-    }
-    export default Package;
-    export type PackageOptions = {
-        manifest?: string;
-        index?: string;
-        description?: string;
-        version?: string;
-        license?: string;
-        exports?: object;
-        type?: 'commonjs' | 'module';
-        info?: object;
-        origin?: string;
-        dependencies?: Dependencies | object | Map<any, any>;
-    };
-    export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
-        type?: 'commonjs' | 'module';
-        prefix?: string;
-    };
-    export type ParsedPackageName = {
-        organization: string | null;
-        name: string;
-        version: string | null;
-        pathname: string;
-        url: URL;
-        isRelative: boolean;
-        hasManifest: boolean;
-    };
-    /**
-     * /**
-     * The default package index file such as 'index.js'
-     */
-    export type PackageExports = {
-        require?: string | string[];
-        import?: string | string[];
-        default?: string | string[];
-        default?: string | string[];
-        worker?: string | string[];
-        browser?: string | string[];
-    };
-    import { Loader } from "socket:commonjs/loader";
-}
-
 declare module "socket:console" {
     export function patchGlobalConsole(globalConsole: any, options?: {}): any;
     export const globalConsole: globalThis.Console;
@@ -8698,9 +7207,10 @@ declare module "socket:vm" {
      * Creates a global proxy object for context execution.
      * @ignore
      * @param {object} context
+     * @param {object=} [options]
      * @return {Proxy}
      */
-    export function createGlobalObject(context: object, options: any): ProxyConstructor;
+    export function createGlobalObject(context: object, options?: object | undefined): ProxyConstructor;
     /**
      * @ignore
      * @param {string} source
@@ -8943,6 +7453,11 @@ declare module "socket:vm" {
          * @type {Promise<Boolean>}
          */
         get ready(): Promise<boolean>;
+        /**
+         * The default script context object
+         * @type {object}
+         */
+        get context(): any;
         /**
          * Destroy the script execution context.
          * @return {Promise}
@@ -10260,6 +8775,384 @@ declare module "socket:fetch/fetch" {
         export { Response };
     }
     export default _default;
+}
+
+declare module "socket:internal/database" {
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   version?: string | undefined
+     * }} DatabaseOptions
+     */
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined,
+     *   count?: number | undefined
+     * }} DatabaseGetOptions
+     */
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined,
+     *   durability?: 'strict' | 'relaxed' | undefined
+     * }} DatabasePutOptions
+     */
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseDeleteOptions
+     */
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     *
+     * @typedef {{
+     *   offset?: number | undefined,
+     *   backlog?: number | undefined
+     * }} DatabaseRequestQueueWaitOptions
+     */
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     *
+     * @typedef {{
+     *   store?: string | undefined,
+     *   stores?: string[] | undefined
+     * }} DatabaseEntriesOptions
+     */
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     * @typedef {function(Event, DatabaseRequestQueueRequestConflict): any} DatabaseRequestQueueConflictResolutionCallback
+     */
+    /**
+     * Waits for an event of `eventType` to be dispatched on a given `EventTarget`.
+     * @param {EventTarget} target
+     * @param {string} eventType
+     * @return {Promise<Event>}
+     */
+    export function waitFor(target: EventTarget, eventType: string): Promise<Event>;
+    /**
+     * Creates an opens a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions | undefined} [options]
+     * @return {Promise<Database>}
+     */
+    export function open(name: string, options?: (DatabaseOptions | undefined) | null): Promise<Database>;
+    /**
+     * Complete deletes a named `Database` instance.
+     * @param {string} name
+     * @param {?DatabaseOptions|undefined} [options]
+     */
+    export function drop(name: string, options?: (DatabaseOptions | undefined) | null): Promise<void>;
+    /**
+     * A mapping of named `Database` instances that are currently opened
+     * @type {Map<string, WeakRef<Database>>}
+     */
+    export const opened: Map<string, WeakRef<Database>>;
+    /**
+     * A container for conflict resolution for a `DatabaseRequestQueue` instance
+     * `IDBRequest` instance.
+     */
+    export class DatabaseRequestQueueRequestConflict {
+        /**
+         * `DatabaseRequestQueueRequestConflict` class constructor
+         * @param {function(any): void)} resolve
+         * @param {function(Error): void)} reject
+         * @param {function(): void)} cleanup
+         */
+        constructor(resolve: any, reject: any, cleanup: any);
+        /**
+         * Called when a conflict is resolved.
+         * @param {any} argument
+         */
+        resolve(argument?: any): void;
+        /**
+         * Called when a conflict is rejected
+         * @param {Error} error
+         */
+        reject(error: Error): void;
+        #private;
+    }
+    /**
+     * An event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueEvent extends Event {
+        /**
+         * `DatabaseRequestQueueEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction);
+        /**
+         * A reference to the underlying request for this event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * An event dispatched on a `Database`
+     */
+    export class DatabaseEvent extends Event {
+        /**
+         * `DatabaseEvent` class constructor.
+         * @param {string} type
+         * @param {Database} database
+         */
+        constructor(type: string, database: Database);
+        /**
+         * A reference to the underlying database for this event.
+         * @type {Database}
+         */
+        get database(): Database;
+        #private;
+    }
+    /**
+     * An error event dispatched on a `DatabaseRequestQueue`
+     */
+    export class DatabaseRequestQueueErrorEvent extends ErrorEvent {
+        /**
+         * `DatabaseRequestQueueErrorEvent` class constructor.
+         * @param {string} type
+         * @param {IDBRequest|IDBTransaction} request
+         * @param {{ error: Error, cause?: Error }} options
+         */
+        constructor(type: string, request: IDBRequest | IDBTransaction, options: {
+            error: Error;
+            cause?: Error;
+        });
+        /**
+         * A reference to the underlying request for this error event.
+         * @type {IDBRequest|IDBTransaction}
+         */
+        get request(): IDBRequest<any> | IDBTransaction;
+        #private;
+    }
+    /**
+     * A container for various `IDBRequest` and `IDBTransaction` instances
+     * occurring during the life cycles of a `Database` instance.
+     */
+    export class DatabaseRequestQueue extends EventTarget {
+        /**
+         * Computed queue length
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Pushes an `IDBRequest` or `IDBTransaction onto the queue and returns a
+         * `Promise` that resolves upon a 'success' or 'complete' event and rejects
+         * upon an error' event.
+         * @param {IDBRequest|IDBTransaction}
+         * @param {?DatabaseRequestQueueConflictResolutionCallback} [conflictResolutionCallback]
+         * @return {Promise}
+         */
+        push(request: any, conflictResolutionCallback?: DatabaseRequestQueueConflictResolutionCallback | null): Promise<any>;
+        /**
+         * Waits for all pending requests to complete. This function will throw when
+         * an `IDBRequest` or `IDBTransaction` instance emits an 'error' event.
+         * Callers of this function can optionally specify a maximum backlog to wait
+         * for instead of waiting for all requests to finish.
+         * @param {?DatabaseRequestQueueWaitOptions | undefined} [options]
+         */
+        wait(options?: (DatabaseRequestQueueWaitOptions | undefined) | null): Promise<any[]>;
+        #private;
+    }
+    /**
+     * An interface for reading from named databases backed by IndexedDB.
+     */
+    export class Database extends EventTarget {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         * @param {?DatabaseOptions | undefined} [options]
+         */
+        constructor(name: string, options?: (DatabaseOptions | undefined) | null);
+        /**
+         * `true` if the `Database` is currently opening, otherwise `false`.
+         * A `Database` instance should not attempt to be opened if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
+         * `true` if the `Database` instance was successfully opened such that the
+         * internal `IDBDatabase` storage instance was created and can be referenced
+         * on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * `true` if the `Database` instance was closed or has not been opened such
+         * that the internal `IDBDatabase` storage instance was not created or cannot
+         * be referenced on the `Database` instance, otherwise `false`.
+         * @type {boolean}
+         */
+        get closed(): boolean;
+        /**
+         * `true` if the `Database` is currently closing, otherwise `false`.
+         * A `Database` instance should not attempt to be closed if this property value
+         * is `true`.
+         * @type {boolean}
+         */
+        get closing(): boolean;
+        /**
+         * The name of the `IDBDatabase` database. This value cannot be `null`.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The version of the `IDBDatabase` database. This value may be `null`.
+         * @type {?string}
+         */
+        get version(): string;
+        /**
+         * A reference to the `IDBDatabase`, if the `Database` instance was opened.
+         * This value may ba `null`.
+         * @type {?IDBDatabase}
+         */
+        get storage(): IDBDatabase;
+        /**
+         * Opens the `IDBDatabase` database optionally at a specific "version" if
+         * one was given upon construction of the `Database` instance. This function
+         * is not idempotent and will throw if the underlying `IDBDatabase` instance
+         * was created successfully or is in the process of opening.
+         * @return {Promise}
+         */
+        open(): Promise<any>;
+        /**
+         * Closes the `IDBDatabase` database storage, if opened. This function is not
+         * idempotent and will throw if the underlying `IDBDatabase` instance is
+         * already closed (not opened) or currently closing.
+         * @return {Promise}
+         */
+        close(): Promise<any>;
+        /**
+         * Deletes entire `Database` instance and closes after successfully
+         * delete storage.
+         */
+        drop(): Promise<void>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseGetOptions|undefined} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        get(key: string, options?: (DatabaseGetOptions | undefined) | null): Promise<object | object[] | null>;
+        /**
+         * Put a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefined} [options]
+         * @return {Promise}
+         */
+        put(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
+        /**
+         * Inserts a new `value` at `key`. This function throws if a value at `key`
+         * already exists.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefined} [options]
+         * @return {Promise}
+         */
+        insert(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
+        /**
+         * Update a `value` at `key`, updating if it already exists, otherwise
+         * "inserting" it into the `Database` instance.
+         * @param {string} key
+         * @param {any} value
+         * @param {?DatabasePutOptions|undefined} [options]
+         * @return {Promise}
+         */
+        update(key: string, value: any, options?: (DatabasePutOptions | undefined) | null): Promise<any>;
+        /**
+         * Delete a value at `key`.
+         * @param {string} key
+         * @param {?DatabaseDeleteOptions|undefined} [options]
+         * @return {Promise}
+         */
+        delete(key: string, options?: (DatabaseDeleteOptions | undefined) | null): Promise<any>;
+        /**
+         * Gets a "readonly" value by `key` in the `Database` object storage.
+         * @param {string} key
+         * @param {?DatabaseEntriesOptions|undefined} [options]
+         * @return {Promise<object|object[]|null>}
+         */
+        entries(options?: (DatabaseEntriesOptions | undefined) | null): Promise<object | object[] | null>;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { open };
+        export { drop };
+    }
+    export default _default;
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseOptions = {
+        version?: string | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `get()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseGetOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+        count?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `put()` function
+     * on a `Database` instance.
+     */
+    export type DatabasePutOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+        durability?: 'strict' | 'relaxed' | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `delete()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseDeleteOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A typed container for optional options given to the `Database`
+     * class constructor.
+     */
+    export type DatabaseRequestQueueWaitOptions = {
+        offset?: number | undefined;
+        backlog?: number | undefined;
+    };
+    /**
+     * A typed container for various optional options made to a `entries()` function
+     * on a `Database` instance.
+     */
+    export type DatabaseEntriesOptions = {
+        store?: string | undefined;
+        stores?: string[] | undefined;
+    };
+    /**
+     * A `DatabaseRequestQueueRequestConflict` callback function type.
+     */
+    export type DatabaseRequestQueueConflictResolutionCallback = (arg0: Event, arg1: DatabaseRequestQueueRequestConflict) => any;
 }
 
 declare module "socket:service-worker/env" {
@@ -13101,6 +11994,28 @@ declare module "socket:network" {
     export { Cache, sha256, Encryption, Packet, NAT };
 }
 
+declare module "socket:service-worker" {
+    /**
+     * A reference toe opened environment. This value is an instance of an
+     * `Environment` if the scope is a ServiceWorker scope.
+     * @type {Environment|null}
+     */
+    export const env: Environment | null;
+    namespace _default {
+        export { ExtendableEvent };
+        export { FetchEvent };
+        export { Environment };
+        export { Context };
+        export { env };
+    }
+    export default _default;
+    import { Environment } from "socket:service-worker/env";
+    import { ExtendableEvent } from "socket:service-worker/events";
+    import { FetchEvent } from "socket:service-worker/events";
+    import { Context } from "socket:service-worker/context";
+    export { ExtendableEvent, FetchEvent, Environment, Context };
+}
+
 declare module "socket:string_decoder" {
     export function StringDecoder(encoding: any): void;
     export class StringDecoder {
@@ -13928,7 +12843,7 @@ declare module "socket:commonjs/builtins" {
      * @param {string}
      * @param {object} exports
      */
-    export function define(name: any, exports: object, copy?: boolean): void;
+    export function defineBuiltin(name: any, exports: object, copy?: boolean): void;
     /**
      * Predicate to determine if a given module name is a builtin module.
      * @param {string} name
@@ -13952,10 +12867,1129 @@ declare module "socket:commonjs/builtins" {
     export const builtins: object;
     /**
      * Known runtime specific builtin modules.
-     * @type {string[]}
+     * @type {Set<string>}
      */
-    export const runtimeModules: string[];
+    export const runtimeModules: Set<string>;
     export default builtins;
+}
+
+declare module "socket:internal/serialize" {
+    export default function serialize(value: any): any;
+}
+
+declare module "socket:commonjs/cache" {
+    /**
+     * @typedef {{
+     *   types?: object,
+     *   loader?: import('./loader.js').Loader
+     * }} CacheOptions
+     */
+    export const CACHE_CHANNEL_MESSAGE_ID: "id";
+    export const CACHE_CHANNEL_MESSAGE_REPLICATE: "replicate";
+    /**
+     * @typedef {{
+     *   name: string
+     * }} StorageOptions
+     */
+    /**
+     * An storage context object with persistence and durability
+     * for service worker storages.
+     */
+    export class Storage extends EventTarget {
+        /**
+         * Maximum entries that will be restored from storage into the context object.
+         * @type {number}
+         */
+        static MAX_CONTEXT_ENTRIES: number;
+        /**
+         * A mapping of known `Storage` instances.
+         * @type {Map<string, Storage>}
+         */
+        static instances: Map<string, Storage>;
+        /**
+         * Opens an storage for a particular name.
+         * @param {StorageOptions} options
+         * @return {Promise<Storage>}
+         */
+        static open(options: StorageOptions): Promise<Storage>;
+        /**
+         * `Storage` class constructor
+         * @ignore
+         * @param {StorageOptions} options
+         */
+        constructor(options: StorageOptions);
+        /**
+         * A reference to the currently opened storage database.
+         * @type {import('../internal/database.js').Database}
+         */
+        get database(): import("socket:internal/database").Database;
+        /**
+         * `true` if the storage is opened, otherwise `false`.
+         * @type {boolean}
+         */
+        get opened(): boolean;
+        /**
+         * `true` if the storage is opening, otherwise `false`.
+         * @type {boolean}
+         */
+        get opening(): boolean;
+        /**
+         * A proxied object for reading and writing storage state.
+         * Values written to this object must be cloneable with respect to the
+         * structured clone algorithm.
+         * @see {https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm}
+         * @type {Proxy<object>}
+         */
+        get context(): ProxyConstructor;
+        /**
+         * The current storage name. This value is also used as the
+         * internal database name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * A promise that resolves when the storage is opened.
+         * @type {Promise?}
+         */
+        get ready(): Promise<any>;
+        /**
+         * @ignore
+         * @param {Promise} promise
+         */
+        forwardRequest(promise: Promise<any>): Promise<any>;
+        /**
+         * Resets the current storage to an empty state.
+         */
+        reset(): Promise<void>;
+        /**
+         * Synchronizes database entries into the storage context.
+         */
+        sync(options?: any): Promise<void>;
+        /**
+         * Opens the storage.
+         * @ignore
+         */
+        open(options?: any): Promise<any>;
+        /**
+         * Closes the storage database, purging existing state.
+         * @ignore
+         */
+        close(): Promise<void>;
+        #private;
+    }
+    /**
+     * A container for `Snapshot` data storage.
+     */
+    export class SnapshotData {
+        /**
+         * `SnapshotData` class constructor.
+         * @param {object=} [data]
+         */
+        constructor(data?: object | undefined);
+        toJSON: () => this;
+        [Symbol.toStringTag]: string;
+    }
+    /**
+     * A container for storing a snapshot of the cache data.
+     */
+    export class Snapshot {
+        /**
+         * @type {typeof SnapshotData}
+         */
+        static Data: typeof SnapshotData;
+        /**
+         * A reference to the snapshot data.
+         * @type {Snapshot.Data}
+         */
+        get data(): typeof SnapshotData;
+        /**
+         * @ignore
+         * @return {object}
+         */
+        toJSON(): object;
+        #private;
+    }
+    /**
+     * An interface for managing and performing operations on a collection
+     * of `Cache` objects.
+     */
+    export class CacheCollection {
+        /**
+         * `CacheCollection` class constructor.
+         * @ignore
+         * @param {Cache[]|Record<string, Cache>} collection
+         */
+        constructor(collection: Cache[] | Record<string, Cache>);
+        /**
+         * Adds a `Cache` instance to the collection.
+         * @param {string|Cache} name
+         * @param {Cache=} [cache]
+         * @param {boolean}
+         */
+        add(name: string | Cache, cache?: Cache | undefined): any;
+        /**
+         * Calls a method on each `Cache` object in the collection.
+         * @param {string} method
+         * @param {...any} args
+         * @return {Promise<Record<string,any>>}
+         */
+        call(method: string, ...args: any[]): Promise<Record<string, any>>;
+        restore(): Promise<Record<string, any>>;
+        reset(): Promise<Record<string, any>>;
+        snapshot(): Promise<Record<string, any>>;
+        get(key: any): Promise<Record<string, any>>;
+        delete(key: any): Promise<Record<string, any>>;
+        keys(key: any): Promise<Record<string, any>>;
+        values(key: any): Promise<Record<string, any>>;
+        clear(key: any): Promise<Record<string, any>>;
+    }
+    /**
+     * A container for a shared cache that lives for the life time of
+     * application execution. Updates to this storage are replicated to other
+     * instances in the application context, including windows and workers.
+     */
+    export class Cache {
+        /**
+         * A globally shared type mapping for the cache to use when
+         * derserializing a value.
+         * @type {Map<string, function>}
+         */
+        static types: Map<string, Function>;
+        /**
+         * A globally shared cache store keyed by cache name. This is useful so
+         * when multiple instances of a `Cache` are created, they can share the
+         * same data store, reducing duplications.
+         * @type {Record<string, Map<string, object>}
+         */
+        static shared: Record<string, Map<string, object>>;
+        /**
+         * A mapping of opened `Storage` instances.
+         * @type {Map<string, Storage>}
+         */
+        static storages: Map<string, Storage>;
+        /**
+         * The `Cache.Snapshot` class.
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
+        /**
+         * The `Cache.Storage` class
+         * @type {typeof Storage}
+         */
+        static Storage: typeof Storage;
+        /**
+         * Creates a snapshot of the current cache which can be serialized and
+         * stored in persistent storage.
+         * @return {Snapshot}
+         */
+        static snapshot(): Snapshot;
+        /**
+         * Restore caches from persistent storage.
+         * @param {string[]} names
+         * @return {Promise}
+         */
+        static restore(names: string[]): Promise<any>;
+        /**
+         * `Cache` class constructor.
+         * @param {string} name
+         * @param {CacheOptions=} [options]
+         */
+        constructor(name: string, options?: CacheOptions | undefined);
+        /**
+         * The unique ID for this cache.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The loader associated with this cache.
+         * @type {import('./loader.js').Loader}
+         */
+        get loader(): import("socket:commonjs/loader").Loader;
+        /**
+         * A reference to the persisted storage.
+         * @type {Storage}
+         */
+        get storage(): Storage;
+        /**
+         * The cache name
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The underlying cache data map.
+         * @type {Map}
+         */
+        get data(): Map<any, any>;
+        /**
+         * The broadcast channel associated with this cach.
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
+        /**
+         * The size of the cache.
+         * @type {number}
+         */
+        get size(): number;
+        /**
+         * @type {Map}
+         */
+        get types(): Map<any, any>;
+        /**
+         * Resets the cache map and persisted storage.
+         */
+        reset(): Promise<void>;
+        /**
+         * Restores cache data from storage.
+         */
+        restore(): Promise<void>;
+        /**
+         * Creates a snapshot of the current cache which can be serialized and
+         * stored in persistent storage.
+         * @return {Snapshot.Data}
+         */
+        snapshot(): typeof SnapshotData;
+        /**
+         * Get a value at `key`.
+         * @param {string} key
+         * @return {object|undefined}
+         */
+        get(key: string): object | undefined;
+        /**
+         * Set `value` at `key`.
+         * @param {string} key
+         * @param {object} value
+         * @return {Cache}
+         */
+        set(key: string, value: object): Cache;
+        /**
+         * Returns `true` if `key` is in cache, otherwise `false`.
+         * @param {string}
+         * @return {boolean}
+         */
+        has(key: any): boolean;
+        /**
+         * Delete a value at `key`.
+         * This does not replicate to shared caches.
+         * @param {string} key
+         * @return {boolean}
+         */
+        delete(key: string): boolean;
+        /**
+         * Returns an iterator for all cache keys.
+         * @return {object}
+         */
+        keys(): object;
+        /**
+         * Returns an iterator for all cache values.
+         * @return {object}
+         */
+        values(): object;
+        /**
+         * Returns an iterator for all cache entries.
+         * @return {object}
+         */
+        entries(): object;
+        /**
+         * Clears all entries in the cache.
+         * This does not replicate to shared caches.
+         * @return {undefined}
+         */
+        clear(): undefined;
+        /**
+         * Enumerates entries in map calling `callback(value, key
+         * @param {function(object, string, Cache): any} callback
+         */
+        forEach(callback: (arg0: object, arg1: string, arg2: Cache) => any): void;
+        /**
+         * Broadcasts a replication to other shared caches.
+         */
+        replicate(): this;
+        /**
+         * Destroys the cache. This function stops the broadcast channel and removes
+         * and listeners
+         */
+        destroy(): void;
+        /**
+         * @ignore
+         */
+        [Symbol.iterator](): any;
+        #private;
+    }
+    export default Cache;
+    export type CacheOptions = {
+        types?: object;
+        loader?: import("socket:commonjs/loader").Loader;
+    };
+    export type StorageOptions = {
+        name: string;
+    };
+}
+
+declare module "socket:commonjs/loader" {
+    /**
+     * @typedef {{
+     *   extensions?: string[] | Set<string>
+     *   origin?: URL | string,
+     *   statuses?: Cache
+     *   cache?: { response?: Cache, status?: Cache },
+     *   headers?: Headers | Map | object | string[][]
+     * }} LoaderOptions
+     */
+    /**
+     * @typedef {{
+     *   loader?: Loader,
+     *   origin?: URL | string
+     * }} RequestOptions
+     */
+    /**
+     * @typedef {{
+     *   headers?: Headers | object | array[],
+     *   status?: number
+     * }} RequestStatusOptions
+     */
+    /**
+     * @typedef {{
+     *   headers?: Headers | object
+     * }} RequestLoadOptions
+     */
+    /**
+     * @typedef {{
+     *   request?: Request,
+     *   headers?: Headers,
+     *   status?: number,
+     *   buffer?: ArrayBuffer,
+     *   text?: string
+     * }} ResponseOptions
+     */
+    /**
+     * A container for the status of a CommonJS resource. A `RequestStatus` object
+     * represents meta data for a `Request` that comes from a preflight
+     * HTTP HEAD request.
+     */
+    export class RequestStatus {
+        /**
+         * Creates a `RequestStatus` from JSON input.
+         * @param {object} json
+         * @return {RequestStatus}
+         */
+        static from(json: object, options: any): RequestStatus;
+        /**
+         * `RequestStatus` class constructor.
+         * @param {Request} request
+         * @param {RequestStatusOptions} [options]
+         */
+        constructor(request: Request, options?: RequestStatusOptions);
+        set request(request: Request);
+        /**
+         * The `Request` object associated with this `RequestStatus` object.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The unique ID of this `RequestStatus`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The origin for this `RequestStatus` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * A HTTP status code for this `RequestStatus` object.
+         * @type {number|undefined}
+         */
+        get status(): number;
+        /**
+         * An alias for `status`.
+         * @type {number|undefined}
+         */
+        get value(): number;
+        /**
+         * @ignore
+         */
+        get valueOf(): number;
+        /**
+         * The HTTP headers for this `RequestStatus` object.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * The resource location for this `RequestStatus` object. This value is
+         * determined from the 'Content-Location' header, if available, otherwise
+         * it is derived from the request URL pathname (including the query string).
+         * @type {string}
+         */
+        get location(): string;
+        /**
+         * `true` if the response status is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        /**
+         * Loads the internal state for this `RequestStatus` object.
+         * @param {RequestLoadOptions|boolean} [options]
+         * @return {RequestStatus}
+         */
+        load(options?: RequestLoadOptions | boolean): RequestStatus;
+        /**
+         * Converts this `RequestStatus` to JSON.
+         * @ignore
+         * @return {{
+         *   id: string,
+         *   origin: string | null,
+         *   status: number,
+         *   headers: Array<string[]>
+         *   request: object | null | undefined
+         * }}
+         */
+        toJSON(includeRequest?: boolean): {
+            id: string;
+            origin: string | null;
+            status: number;
+            headers: Array<string[]>;
+            request: object | null | undefined;
+        };
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request to local resource or
+     * over the network.
+     */
+    export class Request {
+        /**
+         * Creates a `Request` instance from JSON input
+         * @param {object} json
+         * @param {RequestOptions=} [options]
+         * @return {Request}
+         */
+        static from(json: object, options?: RequestOptions | undefined): Request;
+        /**
+         * `Request` class constructor.
+         * @param {URL|string} url
+         * @param {URL|string=} [origin]
+         * @param {RequestOptions=} [options]
+         */
+        constructor(url: URL | string, origin?: (URL | string) | undefined, options?: RequestOptions | undefined);
+        /**
+         * The unique ID of this `Request`, which is the absolute URL as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute `URL` of this `Request` object.
+         * @type {URL}
+         */
+        get url(): URL;
+        /**
+         * The origin for this `Request`.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The `Loader` for this `Request` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `RequestStatus` for this `Request`
+         * @type {RequestStatus}
+         */
+        get status(): RequestStatus;
+        /**
+         * Loads the CommonJS source file, optionally checking the `Loader` cache
+         * first, unless ignored when `options.cache` is `false`.
+         * @param {RequestLoadOptions=} [options]
+         * @return {Response}
+         */
+        load(options?: RequestLoadOptions | undefined): Response;
+        /**
+         * Converts this `Request` to JSON.
+         * @ignore
+         * @return {{
+         *   url: string,
+         *   status: object | undefined
+         * }}
+         */
+        toJSON(includeStatus?: boolean): {
+            url: string;
+            status: object | undefined;
+        };
+        #private;
+    }
+    /**
+     * A container for a synchronous CommonJS request response for a local resource
+     * or over the network.
+     */
+    export class Response {
+        /**
+         * Creates a `Response` from JSON input
+         * @param {obejct} json
+         * @param {ResponseOptions=} [options]
+         * @return {Response}
+         */
+        static from(json: obejct, options?: ResponseOptions | undefined): Response;
+        /**
+         * `Response` class constructor.
+         * @param {Request|ResponseOptions} request
+         * @param {ResponseOptions=} [options]
+         */
+        constructor(request: Request | ResponseOptions, options?: ResponseOptions | undefined);
+        /**
+         * The unique ID of this `Response`, which is the absolute
+         * URL of the request as a string.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The `Request` object associated with this `Response` object.
+         * @type {Request}
+         */
+        get request(): Request;
+        /**
+         * The response headers from the associated request.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * The `Loader` associated with this `Response` object.
+         * @type {Loader?}
+         */
+        get loader(): Loader;
+        /**
+         * The `Response` status code from the associated `Request` object.
+         * @type {number}
+         */
+        get status(): number;
+        /**
+         * The `Response` string from the associated `Request`
+         * @type {string}
+         */
+        get text(): string;
+        /**
+         * The `Response` array buffer from the associated `Request`
+         * @type {ArrayBuffer?}
+         */
+        get buffer(): ArrayBuffer;
+        /**
+         * `true` if the response is considered OK, otherwise `false`.
+         * @type {boolean}
+         */
+        get ok(): boolean;
+        /**
+         * Converts this `Response` to JSON.
+         * @ignore
+         * @return {{
+         *   id: string,
+         *   text: string,
+         *   status: number,
+         *   buffer: number[] | null,
+         *   headers: Array<string[]>
+         * }}
+         */
+        toJSON(): {
+            id: string;
+            text: string;
+            status: number;
+            buffer: number[] | null;
+            headers: Array<string[]>;
+        };
+        #private;
+    }
+    /**
+     * A container for loading CommonJS module sources
+     */
+    export class Loader {
+        /**
+         * A request class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Request: typeof Request;
+        /**
+         * A response class used by `Loader` objects.
+         * @type {typeof Request}
+         */
+        static Response: typeof Request;
+        /**
+         * Resolves a given module URL to an absolute URL with an optional `origin`.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        static resolve(url: URL | string, origin?: URL | string): string;
+        /**
+         * Default extensions for a loader.
+         * @type {Set<string>}
+         */
+        static defaultExtensions: Set<string>;
+        /**
+         * `Loader` class constructor.
+         * @param {string|URL|LoaderOptions} origin
+         * @param {LoaderOptions=} [options]
+         */
+        constructor(origin: string | URL | LoaderOptions, options?: LoaderOptions | undefined);
+        /**
+         * The internal caches for this `Loader` object.
+         * @type {{ response: Cache, status: Cache }}
+         */
+        get cache(): {
+            response: Cache;
+            status: Cache;
+        };
+        /**
+         * Headers used in too loader requests.
+         * @type {Headers}
+         */
+        get headers(): Headers;
+        /**
+         * A set of supported `Loader` extensions.
+         * @type {Set<string>}
+         */
+        get extensions(): Set<string>;
+        set origin(origin: string);
+        /**
+         * The origin of this `Loader` object.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * Loads a CommonJS module source file at `url` with an optional `origin`, which
+         * defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {Response}
+         */
+        load(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): Response;
+        /**
+         * Queries the status of a CommonJS module source file at `url` with an
+         * optional `origin`, which defaults to the application origin.
+         * @param {URL|string} url
+         * @param {URL|string|object} [origin]
+         * @param {RequestOptions=} [options]
+         * @return {RequestStatus}
+         */
+        status(url: URL | string, origin?: URL | string | object, options?: RequestOptions | undefined): RequestStatus;
+        /**
+         * Resolves a given module URL to an absolute URL based on the loader origin.
+         * @param {URL|string} url
+         * @param {URL|string} [origin]
+         * @return {string}
+         */
+        resolve(url: URL | string, origin?: URL | string): string;
+        #private;
+    }
+    export default Loader;
+    export type LoaderOptions = {
+        extensions?: string[] | Set<string>;
+        origin?: URL | string;
+        statuses?: Cache;
+        cache?: {
+            response?: Cache;
+            status?: Cache;
+        };
+        headers?: Headers | Map<any, any> | object | string[][];
+    };
+    export type RequestOptions = {
+        loader?: Loader;
+        origin?: URL | string;
+    };
+    export type RequestStatusOptions = {
+        headers?: Headers | object | any[][];
+        status?: number;
+    };
+    export type RequestLoadOptions = {
+        headers?: Headers | object;
+    };
+    export type ResponseOptions = {
+        request?: Request;
+        headers?: Headers;
+        status?: number;
+        buffer?: ArrayBuffer;
+        text?: string;
+    };
+    import { Headers } from "socket:ipc";
+    import { Cache } from "socket:commonjs/cache";
+}
+
+declare module "socket:commonjs/package" {
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function detectESMSource(source: string): boolean;
+    /**
+     * @typedef {{
+     *   manifest?: string,
+     *   index?: string,
+     *   description?: string,
+     *   version?: string,
+     *   license?: string,
+     *   exports?: object,
+     *   type?: 'commonjs' | 'module',
+     *   info?: object,
+     *   origin?: string,
+     *   dependencies?: Dependencies | object | Map
+     * }} PackageOptions
+     */
+    /**
+     * @typedef {import('./loader.js').RequestOptions & {
+     *   type?: 'commonjs' | 'module'
+     *   prefix?: string
+     * }} PackageLoadOptions
+     */
+    /**
+     * {import('./loader.js').RequestOptions & {
+     *   load?: boolean,
+     *   type?: 'commonjs' | 'module',
+     *   browser?: boolean,
+     *   children?: string[]
+     *   extensions?: string[] | Set<string>
+     * }} PackageResolveOptions
+     */
+    /**
+     * @typedef {{
+     *   organization: string | null,
+     *   name: string,
+     *   version: string | null,
+     *   pathname: string,
+     *   url: URL,
+     *   isRelative: boolean,
+     *   hasManifest: boolean
+     * }} ParsedPackageName
+     */
+    /**
+     * @typedef {{
+     *   require?: string | string[],
+     *   import?: string | string[],
+     *   default?: string | string[],
+     *   default?: string | string[],
+     *   worker?: string | string[],
+     *   browser?: string | string[]
+     * }} PackageExports
+    
+    /**
+     * The default package index file such as 'index.js'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_INDEX: string;
+    /**
+     * The default package manifest file name such as 'package.json'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_MANIFEST_FILE_NAME: string;
+    /**
+     * The default package path prefix such as 'node_modules/'
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_PREFIX: string;
+    /**
+     * The default package version, when one is not provided
+     * @type {string}
+     */
+    export const DEFAULT_PACKAGE_VERSION: string;
+    /**
+     * The default license for a package'
+     * @type {string}
+     */
+    export const DEFAULT_LICENSE: string;
+    /**
+     * A container for a package name that includes a package organization identifier,
+     * its fully qualified name, or for relative package names, its pathname
+     */
+    export class Name {
+        /**
+         * Parses a package name input resolving the actual module name, including an
+         * organization name given. If a path includes a manifest file
+         * ('package.json'), then the directory containing that file is considered a
+         * valid package and it will be included in the returned value. If a relative
+         * path is given, then the path is returned if it is a valid pathname. This
+         * function returns `null` for bad input.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {ParsedPackageName?}
+         */
+        static parse(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined): ParsedPackageName | null;
+        /**
+         * Returns `true` if the given `input` can be parsed by `Name.parse` or given
+         * as input to the `Name` class constructor.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {boolean}
+         */
+        static canParse(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined): boolean;
+        /**
+         * Creates a new `Name` from input.
+         * @param {string|URL} input
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @return {Name}
+         */
+        static from(input: string | URL, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined): Name;
+        /**
+         * `Name` class constructor.
+         * @param {string|URL|NameOptions|Name} name
+         * @param {{ origin?: string | URL, manifest?: string }=} [options]
+         * @throws TypeError
+         */
+        constructor(name: string | URL | NameOptions | Name, options?: {
+            origin?: string | URL;
+            manifest?: string;
+        } | undefined);
+        /**
+         * The id of this package name.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The actual package name.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * An alias for 'name'.
+         * @type {string}
+         */
+        get value(): string;
+        /**
+         * The origin of the package, if available.
+         * This value may be `null`.
+         * @type {string?}
+         */
+        get origin(): string;
+        /**
+         * The package version if available.
+         * This value may be `null`.
+         * @type {string?}
+         */
+        get version(): string;
+        /**
+         * The actual package pathname, if given in name string.
+         * This value is always a string defaulting to '.' if no path
+         * was given in name string.
+         * @type {string}
+         */
+        get pathname(): string;
+        /**
+         * The organization name.
+         * This value may be `null`.
+         * @type {string?}
+         */
+        get organization(): string;
+        /**
+         * `true` if the package name was relative, otherwise `false`.
+         * @type {boolean}
+         */
+        get isRelative(): boolean;
+        /**
+         * Converts this package name to a string.
+         * @ignore
+         * @return {string}
+         */
+        toString(): string;
+        /**
+         * Converts this `Name` instance to JSON.
+         * @ignore
+         * @return {object}
+         */
+        toJSON(): object;
+        #private;
+    }
+    /**
+     * A container for package dependencies that map a package name to a `Package` instance.
+     */
+    export class Dependencies {
+        constructor(parent: any, options?: any);
+        get map(): Map<any, any>;
+        get origin(): any;
+        add(name: any, info?: any): void;
+        get(name: any, options?: any): any;
+        entries(): IterableIterator<[any, any]>;
+        keys(): IterableIterator<any>;
+        values(): IterableIterator<any>;
+        load(options?: any): void;
+        [Symbol.iterator](): IterableIterator<[any, any]>;
+        #private;
+    }
+    /**
+     * A container for CommonJS module metadata, often in a `package.json` file.
+     */
+    export class Package {
+        /**
+         * A high level class for a package name.
+         * @type {typeof Name}
+         */
+        static Name: typeof Name;
+        /**
+         * A high level container for package dependencies.
+         * @type {typeof Dependencies}
+         */
+        static Dependencies: typeof Dependencies;
+        /**
+         * Creates and loads a package
+         * @param {string|URL|NameOptions|Name} name
+         * @param {PackageOptions & PackageLoadOptions=} [options]
+         * @return {Package}
+         */
+        static load(name: string | URL | NameOptions | Name, options?: (PackageOptions & PackageLoadOptions) | undefined): Package;
+        /**
+         * `Package` class constructor.
+         * @param {string|URL|NameOptions|Name} name
+         * @param {PackageOptions=} [options]
+         */
+        constructor(name: string | URL | NameOptions | Name, options?: PackageOptions | undefined);
+        /**
+         * The unique ID of this `Package`, which is the absolute
+         * URL of the directory that contains its manifest file.
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * The absolute URL to the package manifest file
+         * @type {string}
+         */
+        get url(): string;
+        /**
+         * A reference to the package subpath imports and browser mappings.
+         * These values are typically used with its corresponding `Module`
+         * instance require resolvers.
+         * @type {object}
+         */
+        get imports(): any;
+        /**
+         * A loader for this package, if available. This value may be `null`.
+         * @type {Loader}
+         */
+        get loader(): Loader;
+        /**
+         * `true` if the package was actually "loaded", otherwise `false`.
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * The name of the package.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * The description of the package.
+         * @type {string}
+         */
+        get description(): string;
+        /**
+         * The organization of the package. This value may be `null`.
+         * @type {string?}
+         */
+        get organization(): string;
+        /**
+         * The license of the package.
+         * @type {string}
+         */
+        get license(): string;
+        /**
+         * The version of the package.
+         * @type {string}
+         */
+        get version(): string;
+        /**
+         * The origin for this package.
+         * @type {string}
+         */
+        get origin(): string;
+        /**
+         * The exports mappings for the package
+         * @type {object}
+         */
+        get exports(): any;
+        /**
+         * The package type.
+         * @type {'commonjs'|'module'}
+         */
+        get type(): "module" | "commonjs";
+        /**
+         * The raw package metadata object.
+         * @type {object?}
+         */
+        get info(): any;
+        /**
+         * @type {Dependencies}
+         */
+        get dependencies(): Dependencies;
+        /**
+         * An alias for `entry`
+         * @type {string?}
+         */
+        get main(): string;
+        /**
+         * The entry to the package
+         * @type {string?}
+         */
+        get entry(): string;
+        /**
+         * Load the package information at an optional `origin` with
+         * optional request `options`.
+         * @param {PackageLoadOptions=} [options]
+         * @throws SyntaxError
+         * @return {boolean}
+         */
+        load(origin?: any, options?: PackageLoadOptions | undefined): boolean;
+        /**
+         * Resolve a file's `pathname` within the package.
+         * @param {string|URL} pathname
+         * @param {PackageResolveOptions=} [options]
+         * @return {string}
+         */
+        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
+        #private;
+    }
+    export default Package;
+    export type PackageOptions = {
+        manifest?: string;
+        index?: string;
+        description?: string;
+        version?: string;
+        license?: string;
+        exports?: object;
+        type?: 'commonjs' | 'module';
+        info?: object;
+        origin?: string;
+        dependencies?: Dependencies | object | Map<any, any>;
+    };
+    export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
+        type?: 'commonjs' | 'module';
+        prefix?: string;
+    };
+    export type ParsedPackageName = {
+        organization: string | null;
+        name: string;
+        version: string | null;
+        pathname: string;
+        url: URL;
+        isRelative: boolean;
+        hasManifest: boolean;
+    };
+    /**
+     * /**
+     * The default package index file such as 'index.js'
+     */
+    export type PackageExports = {
+        require?: string | string[];
+        import?: string | string[];
+        default?: string | string[];
+        default?: string | string[];
+        worker?: string | string[];
+        browser?: string | string[];
+    };
+    import { Loader } from "socket:commonjs/loader";
 }
 
 declare module "socket:commonjs/require" {
@@ -14431,6 +14465,9 @@ declare module "socket:commonjs/module" {
          */
         [Symbol.toStringTag](): string;
         #private;
+    }
+    export namespace Module {
+        export { Module };
     }
     export default Module;
     export type ModuleResolver = (arg0: string, arg1: Module, arg2: (arg0: string) => any) => any;
@@ -14947,21 +14984,6 @@ declare module "socket:notification" {
     export default Notification;
     import { Enumeration } from "socket:enumeration";
     import URL from "socket:url";
-}
-
-declare module "socket:service-worker" {
-    namespace _default {
-        export { ExtendableEvent };
-        export { FetchEvent };
-        export { Environment };
-        export { Context };
-    }
-    export default _default;
-    import { ExtendableEvent } from "socket:service-worker/events";
-    import { FetchEvent } from "socket:service-worker/events";
-    import { Environment } from "socket:service-worker/env";
-    import { Context } from "socket:service-worker/context";
-    export { ExtendableEvent, FetchEvent, Environment, Context };
 }
 
 declare module "socket:stream-relay" {
