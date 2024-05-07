@@ -3332,7 +3332,6 @@ static void mapIPCRoutes (Router *router) {
    * @param targetWindowIndex
    */
   router->map("window.maximize", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3362,18 +3361,15 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
+    #if SSC_PLATFORM_DESKTOP
       window->maximize();
+    #else
+      const auto screen = window->getScreenSize();
+      window->setSize(screen.height, screen.width);
+      window->show();
+    #endif
       reply(Result::Data { message, window->json() });
     });
-  #else
-    reply(Result::Err {
-      message,
-      JSON::Object::Entries {
-        {"type", "NotSupportedError"},
-        {"message", "Maximizing the window is not supported"}
-      }
-    });
-  #endif
   });
 
   /**
@@ -3381,7 +3377,6 @@ static void mapIPCRoutes (Router *router) {
    * @param targetWindowIndex
    */
   router->map("window.minimize", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3411,18 +3406,13 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
+    #if SSC_PLATFORM_DESKTOP
       window->minimize();
+    #else
+      window->hide();
+    #endif
       reply(Result::Data { message, window->json() });
     });
-  #else
-    reply(Result::Err {
-      message,
-      JSON::Object::Entries {
-        {"type", "NotSupportedError"},
-        {"message", "Minimizing the window is not supported"}
-      }
-    });
-  #endif
   });
 
   /**
@@ -3480,7 +3470,6 @@ static void mapIPCRoutes (Router *router) {
    * @param targetWindowIndex
    */
   router->map("window.restore", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3510,18 +3499,13 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
+    #if SSC_PLATFORM_DESKTOP
       window->restore();
+    #else
+      window->show();
+    #endif
       reply(Result::Data { message, window->json() });
     });
-  #else
-    reply(Result::Err {
-      message,
-      JSON::Object::Entries {
-        {"type", "NotSupportedError"},
-        {"message", "Restoring the window is not supported"}
-      }
-    });
-  #endif
   });
 
   /**
@@ -3684,13 +3668,57 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
+   * Sets the position  of a target window
+   * @param targetWindowIndex
+   * @param height
+   * @param width
+   */
+  router->map("window.setPosition", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"targetWindowIndex", "x", "y"});
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is invalid state" });
+    }
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int targetWindowIndex;
+
+    REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
+
+    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+
+    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    const auto screen = window->getScreenSize();
+    const auto x = Window::getSizeInPixels(message.get("x"), screen.width);
+    const auto y = Window::getSizeInPixels(message.get("y"), screen.height);
+
+    app->dispatch([=]() {
+      window->setPosition(x, y);
+      reply(Result::Data { message, window->json() });
+    });
+  });
+
+  /**
    * Sets the size of a target window (desktop only)
    * @param targetWindowIndex
    * @param height
    * @param width
    */
   router->map("window.setSize", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex", "height", "width"});
 
@@ -3727,15 +3755,6 @@ static void mapIPCRoutes (Router *router) {
       window->setSize(width, height, 0);
       reply(Result::Data { message, window->json() });
     });
-  #else
-    reply(Result::Err {
-      message,
-      JSON::Object::Entries {
-        {"type", "NotSupportedError"},
-        {"message", "Setting the window title is not supported"}
-      }
-    });
-  #endif
   });
 
   /**
