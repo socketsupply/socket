@@ -3,6 +3,7 @@
  * @module CommonJS.Loader
  */
 import { CacheCollection, Cache } from './cache.js'
+import { defineBuiltin } from './builtins.js'
 import InternalSymbols from '../internal/symbols.js'
 import { Headers } from '../ipc.js'
 import location from '../location.js'
@@ -882,3 +883,10 @@ export class Loader {
 }
 
 export default Loader
+
+defineBuiltin('commonjs/loader', {
+  RequestStatus,
+  Response,
+  Request,
+  Loader
+})

@@ -2,6 +2,8 @@
  * @module CommonJS.Package
  */
 import { ModuleNotFoundError } from '../errors.js'
+import { defineBuiltin } from './builtins.js'
+import { isESMSource } from '../util.js'
 import { Loader } from './loader.js'
 import location from '../location.js'
 import path from '../path.js'
@@ -19,11 +21,7 @@ const isWorkerScope = globalThis.self === globalThis && !globalThis.window
  * @return {boolean}
  */
 export function detectESMSource (source) {
-  if (/(import\s|export[{|\s]|export\s(const|var|let|async|function|class)|export\sdefault|export\s?\*\s?from|(from\s['|"]))/.test(source)) {
-    return true
-  }
-
-  return false
+  return isESMSource(source)
 }
 
 /**
@@ -1254,3 +1252,15 @@ export class Package {
 }
 
 export default Package
+
+defineBuiltin('commonjs/package', {
+  DEFAULT_PACKAGE_MANIFEST_FILE_NAME,
+  DEFAULT_PACKAGE_VERSION,
+  DEFAULT_PACKAGE_PREFIX,
+  DEFAULT_PACKAGE_INDEX,
+  DEFAULT_LICENSE,
+  detectESMSource,
+  Dependencies,
+  Package,
+  Name
+})

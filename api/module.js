@@ -1,8 +1,8 @@
 /**
  * @module Module
  */
+import builtins, { defineBuiltin, isBuiltin } from './commonjs/builtins.js'
 import { createRequire, Module } from './commonjs/module.js'
-import builtins, { isBuiltin } from './commonjs/builtins.js'
 
 /**
  * @typedef {import('./commonjs/module.js').ModuleOptions} ModuleOptions
@@ -16,3 +16,5 @@ export { createRequire, Module, builtins, isBuiltin }
 export const builtinModules = builtins
 
 export default Module
+
+defineBuiltin('module', Module, false)
