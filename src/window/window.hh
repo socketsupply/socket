@@ -57,7 +57,6 @@ namespace SSC {
   NSWindow
 #endif
 
-@property (nonatomic, assign) SSC::Window* window;
 @property (nonatomic, strong) SSCBridgedWebView* webview;
 
 #if SSC_PLATFORM_MACOS
@@ -123,9 +122,15 @@ namespace SSC {
 
   class Window {
     public:
+      struct Position {
+        float x;
+        float y;
+      };
+
       HotKeyContext hotkey;
       WindowOptions opts;
       IPC::Bridge bridge;
+      Position position;
       SharedPointer<Core> core = nullptr;
 
       MessageCallback onMessage = [](const String) {};
@@ -133,6 +138,8 @@ namespace SSC {
       int index = 0;
       int width = 0;
       int height = 0;
+      int x = 0;
+      int y = 0;
       bool exiting = false;
 
     #if SSC_PLATFORM_IOS
@@ -208,7 +215,8 @@ namespace SSC {
       void setTitle (const String&);
       ScreenSize getSize ();
       const ScreenSize getSize () const;
-      void setSize (int, int, int);
+      void setSize (int height, int width, int hints = 0);
+      void setPosition (float, float);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();

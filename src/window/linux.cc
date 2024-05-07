@@ -1092,6 +1092,12 @@ namespace SSC {
     this->height = height;
   }
 
+  void Window::setPosition (float x, float y) {
+    gtk_window_move(GTK_WINDOW(this->window), (int) x, (int) y);
+    this->position.x = x;
+    this->position.y = y;
+  }
+
   void Window::setTrayMenu (const String& seq, const String& value) {
     this->setMenu(seq, value, true);
   }

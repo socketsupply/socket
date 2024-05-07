@@ -18,13 +18,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
 );
 
 @implementation SSCWebViewController
-- (void) viewDidAppear: (BOOL) animated {
-  [super viewDidAppear: animated];
-  const auto window = App::sharedApplication()->applicationDelegate.window;
-  if (!window.window) {
-    App::sharedApplication()->windowManager.getWindow(0)->show();
-  }
-}
 @end
 #endif
 
@@ -860,14 +853,13 @@ namespace SSC {
       bridge(core, opts.userConfig),
       hotkey(this)
   {
+  #if SSC_PLATFORM_IOS
+    const auto frame = UIScreen.mainScreen.bounds;
+  #endif
     const auto processInfo = NSProcessInfo.processInfo;
     const auto configuration = [WKWebViewConfiguration new];
     const auto preferences = configuration.preferences;
     auto userConfig = opts.userConfig;
-
-  #if SSC_PLATFORM_IOS
-    const auto frame = UIScreen.mainScreen.bounds;
-  #endif
 
     this->index = opts.index;
     //this->processPool = [WKProcessPool new];
@@ -1142,7 +1134,6 @@ namespace SSC {
     // this->window.movableByWindowBackground = true;
     this->window.delegate = this->windowDelegate;
     this->window.opaque = YES;
-    this->window.window = this;
     this->window.webview = this->webview;
 
     if (opts.maximizable == false) {
@@ -1296,6 +1287,13 @@ namespace SSC {
         [NSApp activateIgnoringOtherApps: YES];
       }
     }
+  #elif SSC_PLATFORM_IOS
+    this->window = [SSCWindow.alloc initWithFrame: frame];
+    this->viewController = [SSCWebViewController new];
+    this->viewController.webview = this->webview;
+    [this->viewController.view addSubview: this->webview];
+    this->window.rootViewController = this->viewController;
+    this->window.rootViewController.view.frame = frame;
   #endif
 
     if (opts.title.size() > 0) {
@@ -1358,22 +1356,8 @@ namespace SSC {
       [NSApp activateIgnoringOtherApps: YES];
     }
   #elif SSC_PLATFORM_IOS
-    const auto app = App::sharedApplication();
-    const auto webview = this->webview;
-    if (app && webview) {
-      auto window = app->applicationDelegate.window;
-      if (window) {
-        if (window.window != this) {
-          if (window.webview) {
-            [window.webview removeFromSuperview];
-          }
-          window.window = this;
-          window.webview = webview;
-          debug("gestureRecognizers: %lu", webview.gestureRecognizers.count);
-          [window.rootViewController.view addSubview: webview];
-        }
-      }
-    }
+    [this->webview becomeFirstResponder];
+    [this->window makeKeyAndVisible];
   #endif
   }
 
@@ -1417,7 +1401,6 @@ namespace SSC {
 
         [this->window performClose: nil];
         this->window = nullptr;
-        this->window.window = nullptr;
         this->window.webview = nullptr;
         this->window.delegate = nullptr;
         this->window.contentView = nullptr;
@@ -1459,14 +1442,8 @@ namespace SSC {
       [this->window orderOut: this->window];
     }
   #elif SSC_PLATFORM_IOS
-    const auto window = this->window
-      ? this->window
-      : App::sharedApplication()->applicationDelegate.window;
-
-    if (window && window.window == this) {
-      [this->webview removeFromSuperview];
-      window.window = nullptr;
-      window.webview = nullptr;
+    if (this->window) {
+      this->window.hidden = YES;
     }
   #endif
     this->eval(getEmitToRenderProcessJavaScript("window-hide", "{}"));
@@ -1551,15 +1528,11 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
-    const auto window = this->window
-      ? this->window
-      : App::sharedApplication()->applicationDelegate.window;
-
-    if (window == nullptr) {
+    if (this->window == nullptr) {
       return ScreenSize {0, 0};
     }
 
-    const auto frame = window.frame;
+    const auto frame = this->window.frame;
 
     this->height = frame.size.height;
     this->width = frame.size.width;
@@ -1571,15 +1544,11 @@ namespace SSC {
   }
 
   const ScreenSize Window::getSize () const {
-    const auto window = this->window
-      ? this->window
-      : App::sharedApplication()->applicationDelegate.window;
-
-    if (window == nullptr) {
+    if (this->window == nullptr) {
       return ScreenSize {0, 0};
     }
 
-    const auto frame = window.frame;
+    const auto frame = this->window.frame;
 
     return ScreenSize {
       .height = (int) frame.size.height,
@@ -1602,6 +1571,25 @@ namespace SSC {
       this->width = width;
     }
   #endif
+  }
+
+  void Window::setPosition (float x, float y) {
+  #if SSC_PLATFORM_MACOS
+    if (this->window) {
+      const auto point = NSPointFromCGPoint(CGPointMake(x, y));
+      this->window.frameTopLeftPoint = point;
+    }
+  #elif SSC_PLATFORM_IOS
+    if (this->window) {
+      auto frame = this->window.frame;
+      frame.origin.x = x;
+      frame.origin.y = y;
+      this->window.frame = frame;
+    }
+  #endif
+
+    this->position.x = x;
+    this->position.y = y;
   }
 
   void Window::closeContextMenu () {
@@ -1652,20 +1640,16 @@ namespace SSC {
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
-    const auto window = this->window
-      ? this->window
-      : App::sharedApplication()->applicationDelegate.window;
-
-    if (window) {
+    if (this->window) {
       CGFloat rgba[4] = { r / 255.0, g / 255.0, b / 255.0, a };
     #if SSC_PLATFORM_MACOS
-      [window setBackgroundColor: [NSColor
+      [this->window setBackgroundColor: [NSColor
         colorWithColorSpace: NSColorSpace.sRGBColorSpace
                  components: rgba
                       count: 4
       ]];
     #elif SSC_PLATFORM_IOS
-      [window setBackgroundColor: [UIColor
+      [this->window setBackgroundColor: [UIColor
         colorWithRed: rgba[0]
                green: rgba[1]
                 blue: rgba[2]
@@ -1676,12 +1660,8 @@ namespace SSC {
   }
 
   String Window::getBackgroundColor () {
-    const auto window = this->window
-      ? this->window
-      : App::sharedApplication()->applicationDelegate.window;
-
-    if (window) {
-      const auto backgroundColor = window.backgroundColor;
+    if (this->window) {
+      const auto backgroundColor = this->window.backgroundColor;
       CGFloat r, g, b, a;
     #if SSC_PLATFORM_MACOS
       const auto rgba = [backgroundColor colorUsingColorSpace: NSColorSpace.sRGBColorSpace];

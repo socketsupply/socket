@@ -1701,11 +1701,13 @@ namespace SSC {
       r.bottom = height;
 
       AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
-
       SetWindowPos(
         window,
         NULL,
-        r.left, r.top, r.right - r.left, r.bottom - r.top,
+        r.left,
+        r.top,
+        r.right - r.left,
+        r.bottom - r.top,
         SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED
       );
 
@@ -1714,6 +1716,29 @@ namespace SSC {
 
     this->width = width;
     this->height = height;
+  }
+
+  void Window::setPosition (float x, float y) {
+    RECT r;
+    r.left = x;
+    r.top = y;
+    r.right = this->width;
+    r.bottom = this->height;
+
+    AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
+    SetWindowPos(
+      window,
+      NULL,
+      r.left,
+      r.top,
+      r.right - r.left,
+      r.bottom - r.top,
+      SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED
+    );
+
+    resize(window);
+    this->position.x = x;
+    this->position.y = y;
   }
 
   void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
