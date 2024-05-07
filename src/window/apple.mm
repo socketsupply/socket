@@ -1557,8 +1557,8 @@ namespace SSC {
   }
 
   void Window::setSize (int width, int height, int hints) {
-  #if SSC_PLATFORM_MACOS
     if (this->window) {
+    #if SSC_PLATFORM_MACOS
       [this->window
         setFrame: NSMakeRect(0.f, 0.f, (float) width, (float) height)
          display: YES
@@ -1566,27 +1566,30 @@ namespace SSC {
       ];
 
       [this->window center];
-
-      this->height = height;
-      this->width = width;
+    #elif SSC_PLATFORM_IOS
+      auto frame = this->window.frame;
+      frame.size.width = width;
+      frame.size.height = height;
+      this->window.frame = frame;
+    #endif
     }
-  #endif
+
+    this->height = height;
+    this->width = width;
   }
 
   void Window::setPosition (float x, float y) {
-  #if SSC_PLATFORM_MACOS
     if (this->window) {
+    #if SSC_PLATFORM_MACOS
       const auto point = NSPointFromCGPoint(CGPointMake(x, y));
       this->window.frameTopLeftPoint = point;
-    }
-  #elif SSC_PLATFORM_IOS
-    if (this->window) {
+    #elif SSC_PLATFORM_IOS
       auto frame = this->window.frame;
       frame.origin.x = x;
       frame.origin.y = y;
       this->window.frame = frame;
+    #endif
     }
-  #endif
 
     this->position.x = x;
     this->position.y = y;
