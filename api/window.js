@@ -104,6 +104,17 @@ export class ApplicationWindow {
   }
 
   /**
+   * Get the position of the window
+   * @return {{ x: number, y: number }} - the position of the window
+   */
+  getPosition () {
+    return {
+      x: this.#options.x,
+      y: this.#options.y
+    }
+  }
+
+  /**
    * Get the title of the window
    * @return {string} - the title of the window
    */
@@ -229,6 +240,53 @@ export class ApplicationWindow {
     }
 
     const response = await ipc.request('window.setSize', options)
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Sets the position of the window
+   * @param {object} opts - an options object
+   * @param {(number|string)=} opts.x - the x position of the window
+   * @param {(number|string)=} opts.y - the y position of the window
+   * @return {Promise<object>}
+   * @throws {Error} - if the x or y is invalid
+   */
+  async setPosition (opts) {
+    // default values
+    const options = {
+      targetWindowIndex: this.#index,
+      index: this.#senderWindowIndex
+    }
+
+    if ((opts.x != null && typeof opts.x !== 'number' && typeof opts.x !== 'string') ||
+      (typeof opts.x === 'string' && !isValidPercentageValue(opts.x)) ||
+      (typeof opts.x === 'number' && !(Number.isInteger(opts.x) && opts.x > 0))) {
+      throw new Error(`Window x must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.x} instead.`)
+    }
+
+    if (typeof opts.x === 'string' && isValidPercentageValue(opts.x)) {
+      options.x = opts.x
+    }
+
+    if (typeof opts.x === 'number') {
+      options.x = opts.x.toString()
+    }
+
+    if ((opts.y != null && typeof opts.y !== 'number' && typeof opts.y !== 'string') ||
+      (typeof opts.y === 'string' && !isValidPercentageValue(opts.y)) ||
+      (typeof opts.y === 'number' && !(Number.isInteger(opts.y) && opts.y > 0))) {
+      throw new Error(`Window y must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.y} instead.`)
+    }
+
+    if (typeof opts.y === 'string' && isValidPercentageValue(opts.y)) {
+      options.y = opts.y
+    }
+
+    if (typeof opts.y === 'number') {
+      options.y = opts.y.toString()
+    }
+
+    const response = await ipc.request('window.setPosition', options)
     return this.#updateOptions(response)
   }
 
