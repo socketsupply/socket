@@ -6398,6 +6398,14 @@ declare module "socket:window" {
             height: number;
         };
         /**
+         * Get the position of the window
+         * @return {{ x: number, y: number }} - the position of the window
+         */
+        getPosition(): {
+            x: number;
+            y: number;
+        };
+        /**
          * Get the title of the window
          * @return {string} - the title of the window
          */
@@ -6455,6 +6463,18 @@ declare module "socket:window" {
             width?: (number | string) | undefined;
             height?: (number | string) | undefined;
         }): Promise<ipc.Result>;
+        /**
+         * Sets the position of the window
+         * @param {object} opts - an options object
+         * @param {(number|string)=} opts.x - the x position of the window
+         * @param {(number|string)=} opts.y - the y position of the window
+         * @return {Promise<object>}
+         * @throws {Error} - if the x or y is invalid
+         */
+        setPosition(opts: {
+            x?: (number | string) | undefined;
+            y?: (number | string) | undefined;
+        }): Promise<object>;
         /**
          * Navigate the window to a given path
          * @param {object} path - file path
