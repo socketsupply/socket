@@ -253,7 +253,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationDidEnterBackground: (UIApplication*) application {
-  debug("applicationDidEnterBackground");
   for (const auto& window : self.app->windowManager.windows) {
     if (window != nullptr) {
       window->eval("window.blur()");
@@ -262,7 +261,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationWillEnterForeground: (UIApplication*) application {
-  debug("applicationWillEnterForeground");
   for (const auto& window : self.app->windowManager.windows) {
     if (window != nullptr) {
       if (!window->webview.isHidden) {
@@ -280,12 +278,10 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationWillTerminate: (UIApplication*) application {
-  debug("applicationWillTerminate");
   // TODO(@jwerle): what should we do here?
 }
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
-  debug("applicationDidBecomeActive");
   dispatch_async(queue, ^{
     self.app->core->resumeAllPeers();
     self.app->core->runEventLoop();
@@ -293,7 +289,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationWillResignActive: (UIApplication*) application {
-  debug("applicationWillResignActive");
   dispatch_async(queue, ^{
     self.app->core->stopEventLoop();
     self.app->core->pauseAllPeers();
@@ -304,7 +299,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
  continueUserActivity: (NSUserActivity*) userActivity
    restorationHandler: (void (^)(NSArray<id<UIUserActivityRestoring>>*)) restorationHandler
 {
-  debug("application:continueUserActivity:restorationHandler");
   return [self
                          application: application
     willContinueUserActivityWithType: userActivity.activityType
@@ -314,7 +308,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
               - (BOOL) application: (UIApplication*) application
   willContinueUserActivityWithType: (NSString*) userActivityType
 {
-  debug("application:willContinueUserActivityWithType");
   static auto userConfig = SSC::getUserConfig();
   const auto webpageURL = application.userActivity.webpageURL;
 
@@ -370,32 +363,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   return emitted;
 }
 
-- (void) touchesBegan: (NSSet<UITouch*>*) touches
-            withEvent: (UIEvent*) event
-{
-  debug("touchesBegan:withEvent:");
-}
-
-- (void) touchesMoved: (NSSet<UITouch*>*) touches
-            withEvent: (UIEvent*) event
-{
-  debug("touchesMoved:withEvent:");
-}
-
-- (void) touchesEnded: (NSSet<UITouch*>*) touches
-           withEvent: (UIEvent*) event
-{
-  debug("touchesEnded:withEvent:");
-}
-
-- (void) touchesCancelled: (NSSet<UITouch*>*) touches
-               withEvent: (UIEvent*) event
-{
-  debug("touchesCancelled:withEvent:");
-}
-
 - (void) keyboardWillHide: (NSNotification*) notification {
-  debug("keyboardWillHide");
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
       const auto info = notification.userInfo;
@@ -415,7 +383,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardDidHide: (NSNotification*) notification {
-  debug("keyboardDidHide");
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
       window->bridge.emit("keyboard", JSON::Object::Entries {
@@ -428,7 +395,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillShow: (NSNotification*) notification {
-  debug("keyboardWillShow");
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
       const auto info = notification.userInfo;
@@ -448,7 +414,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardDidShow: (NSNotification*) notification {
-  debug("keyboardDidShow");
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
       window->bridge.emit("keyboard", JSON::Object::Entries {
@@ -461,7 +426,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillChange: (NSNotification*) notification {
-  debug("keyboardWillChange");
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
       const auto keyboardInfo = notification.userInfo;
