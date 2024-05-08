@@ -1148,6 +1148,9 @@ namespace SSC {
       this->window.collectionBehavior = NSWindowCollectionBehaviorFullScreenAuxiliary;
     }
 
+    // Add webview to window
+    this->window.contentView = this->webview;
+
     if (opts.frameless) {
       this->window.titlebarAppearsTransparent = YES;
       this->window.movableByWindowBackground = YES;
@@ -1214,7 +1217,7 @@ namespace SSC {
         this->window.windowControlOffsets = NSMakePoint(x, y);
         this->window.titleBarView = titleBarView;
 
-        [this->window.contentView addSubview: titleBarView];
+        [this->webview addSubview: titleBarView];
       } else {
         NSLog(@"Failed to retrieve standard window buttons.");
       }
@@ -1257,9 +1260,6 @@ namespace SSC {
     if (!didSetBackgroundColor) {
       this->window.backgroundColor = NSColor.windowBackgroundColor;
     }
-
-    // Add webview to window
-    this->window.contentView = this->webview;
 
     // Position window in center of screen
     [this->window center];
