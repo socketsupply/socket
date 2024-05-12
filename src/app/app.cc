@@ -364,6 +364,40 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillHide: (NSNotification*) notification {
+  NSDictionary *userInfo = notification.userInfo;
+  CGRect keyboardFrame = [[userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+  CGFloat keyboardHeight = keyboardFrame.size.height;
+
+  const auto window = self.app->windowManager.getWindow(0);
+  CGRect startFrame = window->webview.frame;
+  CGRect endFrame = CGRectMake(startFrame.origin.x, startFrame.origin.y, startFrame.size.width, startFrame.size.height + keyboardHeight);  // Expanding back
+
+  __block CGFloat animationProgress = 0;
+  NSTimeInterval duration = ([userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]) * 1.25;
+  NSTimeInterval stepDuration = duration / 120.0;
+
+  NSNumber *curve = userInfo[UIKeyboardAnimationCurveUserInfoKey];
+  UIViewAnimationOptions animationCurve = [curve unsignedIntegerValue] << 16;
+
+  [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
+    animationProgress += stepDuration / duration;
+
+    if (animationProgress >= 1.0) {
+      animationProgress = 1.0;
+      window->webview.frame = endFrame;
+      [timer invalidate];
+    } else {
+      CGFloat interpolatedProgress = 1 - pow(1 - animationProgress, 3);  // Using ease-out cubic is wrong, we could improve this curve
+
+      CGRect newFrame = CGRectMake(startFrame.origin.x + (endFrame.origin.x - startFrame.origin.x) * interpolatedProgress,
+                                   startFrame.origin.y + (endFrame.origin.y - startFrame.origin.y) * interpolatedProgress,
+                                   startFrame.size.width + (endFrame.size.width - startFrame.size.width) * interpolatedProgress,
+                                   startFrame.size.height + (endFrame.size.height - startFrame.size.height) * interpolatedProgress);
+
+      window->webview.frame = newFrame;
+    }
+  }];
+
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
       const auto info = notification.userInfo;
@@ -395,6 +429,41 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillShow: (NSNotification*) notification {
+  NSDictionary *userInfo = notification.userInfo;
+  NSValue *keyboardFrameValue = userInfo[UIKeyboardFrameEndUserInfoKey];
+  CGRect keyboardFrame = [keyboardFrameValue CGRectValue];
+  CGFloat keyboardHeight = keyboardFrame.size.height;
+
+  const auto window = self.app->windowManager.getWindow(0);
+  CGRect startFrame = window->webview.frame;
+  CGRect endFrame = CGRectMake(startFrame.origin.x, startFrame.origin.y, startFrame.size.width, startFrame.size.height - keyboardHeight);
+
+  __block CGFloat animationProgress = 0;
+  NSTimeInterval duration = (([userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]) * 1.6);
+  NSTimeInterval stepDuration = duration / 120.0;
+
+  NSNumber *curve = userInfo[UIKeyboardAnimationCurveUserInfoKey];
+  UIViewAnimationOptions animationCurve = [curve unsignedIntegerValue] << 16;
+
+  [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
+    animationProgress += stepDuration / duration;
+
+    if (animationProgress >= 1.0) {
+      animationProgress = 1.0;
+      window->webview.frame = endFrame;
+      [timer invalidate];
+    } else {
+      CGFloat interpolatedProgress = 1 - pow(1 - animationProgress, 3);
+
+      CGRect newFrame = CGRectMake(startFrame.origin.x + (endFrame.origin.x - startFrame.origin.x) * interpolatedProgress,
+                                   startFrame.origin.y + (endFrame.origin.y - startFrame.origin.y) * interpolatedProgress,
+                                   startFrame.size.width + (endFrame.size.width - startFrame.size.width) * interpolatedProgress,
+                                   startFrame.size.height + (endFrame.size.height - startFrame.size.height) * interpolatedProgress);
+
+      window->webview.frame = newFrame;
+    }
+  }];
+
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
       const auto info = notification.userInfo;
