@@ -13,6 +13,7 @@ namespace SSC {
 @interface SSCBridgedWebView :
 #if SSC_PLATFORM_IOS
   WKWebView<WKUIDelegate>
+  @property (strong, nonatomic) NSLayoutConstraint *keyboardHeightConstraint;
 #else
   WKWebView<
     WKUIDelegate,

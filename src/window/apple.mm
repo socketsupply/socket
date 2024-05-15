@@ -1299,9 +1299,24 @@ namespace SSC {
     this->window = [SSCWindow.alloc initWithFrame: frame];
     this->viewController = [SSCWebViewController new];
     this->viewController.webview = this->webview;
-    [this->viewController.view addSubview: this->webview];
+
+    UIUserInterfaceStyle interfaceStyle = this->window.traitCollection.userInterfaceStyle;
+
+    if (interfaceStyle == UIUserInterfaceStyleDark && opts.backgroundColorDark.size() > 0) {
+      this->setBackgroundColor(opts.backgroundColorDark);
+    } else if (opts.backgroundColorLight.size() > 0) {
+      this->setBackgroundColor(opts.backgroundColorLight);
+    } else {
+      this->viewController.webview.backgroundColor = [UIColor systemBackgroundColor];
+      this->window.backgroundColor = [UIColor systemBackgroundColor];
+      this->viewController.webview.opaque = NO;
+    }
+
+    [this->viewController.view addSubview:this->webview];
+
     this->window.rootViewController = this->viewController;
     this->window.rootViewController.view.frame = frame;
+
   #endif
 
     if (opts.title.size() > 0) {
