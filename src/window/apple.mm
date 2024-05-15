@@ -200,12 +200,10 @@ int lastY = 0;
 - (void) viewDidChangeEffectiveAppearance {
   [super viewDidChangeEffectiveAppearance];
 
-  if (@available(macOS 10.14, *)) {
-    if ([self.window.effectiveAppearance.name containsString: @"Dark"]) {
-      [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 0.1 alpha: 1.0]]; // Dark mode color
-    } else {
-      [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 1.0 alpha: 1.0]]; // Light mode color
-    }
+  if ([self.window.effectiveAppearance.name containsString: @"Dark"]) {
+    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 0.1 alpha: 1.0]]; // Dark mode color
+  } else {
+    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 1.0 alpha: 1.0]]; // Light mode color
   }
 }
 
@@ -793,6 +791,26 @@ int lastY = 0;
 #endif
 }
 
+#if SSC_PLATFORM_IOS
+- (void)traitCollectionDidChange:(UITraitCollection *) previousTraitCollection {
+  [super traitCollectionDidChange:previousTraitCollection];
+
+  static auto userConfig = getUserConfig();
+  const auto window = (Window*) objc_getAssociatedObject(self, "window");
+
+  UIUserInterfaceStyle interfaceStyle = window->window.traitCollection.userInterfaceStyle;
+
+  auto hasBackgroundDark = userConfig.count("window_background_color_dark") > 0;
+  auto hasBackgroundLight = userConfig.count("window_background_color_light") > 0;
+
+  if (interfaceStyle == UIUserInterfaceStyleDark && hasBackgroundDark) {
+    window->setBackgroundColor(userConfig["window_background_color_dark"]);
+  } else if (hasBackgroundLight) {
+    window->setBackgroundColor(userConfig["window_background_color_light"]);
+  }
+}
+#endif
+
 -                       (void) webView: (WKWebView*) webview
   runJavaScriptConfirmPanelWithMessage: (NSString*) message
                       initiatedByFrame: (WKFrameInfo*) frame
@@ -1302,10 +1320,13 @@ namespace SSC {
 
     UIUserInterfaceStyle interfaceStyle = this->window.traitCollection.userInterfaceStyle;
 
-    if (interfaceStyle == UIUserInterfaceStyleDark && opts.backgroundColorDark.size() > 0) {
-      this->setBackgroundColor(opts.backgroundColorDark);
-    } else if (opts.backgroundColorLight.size() > 0) {
-      this->setBackgroundColor(opts.backgroundColorLight);
+    auto hasBackgroundDark = userConfig.count("window_background_color_dark") > 0;
+    auto hasBackgroundLight = userConfig.count("window_background_color_light") > 0;
+
+    if (interfaceStyle == UIUserInterfaceStyleDark && hasBackgroundDark) {
+      this->setBackgroundColor(userConfig["window_background_color_dark"]);
+    } else if (hasBackgroundLight) {
+      this->setBackgroundColor(userConfig["window_background_color_light"]);
     } else {
       this->viewController.webview.backgroundColor = [UIColor systemBackgroundColor];
       this->window.backgroundColor = [UIColor systemBackgroundColor];
@@ -1675,12 +1696,15 @@ namespace SSC {
                       count: 4
       ]];
     #elif SSC_PLATFORM_IOS
-      [this->window setBackgroundColor: [UIColor
+      auto color = [UIColor
         colorWithRed: rgba[0]
                green: rgba[1]
                 blue: rgba[2]
                alpha: rgba[3]
-      ]];
+      ];
+
+      [this->window setBackgroundColor: color];
+      [this->webview setBackgroundColor: color];
     #endif
     }
   }
