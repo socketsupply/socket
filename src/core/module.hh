@@ -53,7 +53,7 @@ namespace SSC {
           Vector<Observer> observers;
           Mutex mutex;
 
-          bool add (const Observer& observer, const Observer::Callback callback = nullptr) {
+          bool add (const Observer& observer, const typename Observer::Callback callback = nullptr) {
             Lock lock(this->mutex);
             if (this->has(observer)) {
               auto& existing = this->get(observer.id);
