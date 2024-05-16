@@ -177,10 +177,11 @@ export class Name {
       const organization = components[0]
       let [name, version = null] = components[1].split('@')
       pathname = [organization || '', name, ...components.slice(2)].filter(Boolean).join('/')
+
       // manifest was given, this could be a nested package
       if (hasManifest) {
         name = [organization, name].filter(Boolean).concat(components.slice(2)).join('/')
-        return {
+        const r = {
           name,
           version,
           organization,
@@ -189,6 +190,7 @@ export class Name {
           isRelative,
           hasManifest
         }
+        return r
       }
 
       // only a organization was given, return `null`
@@ -198,7 +200,7 @@ export class Name {
 
       name = `${organization}/${name}`
 
-      // only `@<org>/package>` was given
+      // only `@<org>/<package>` was given
       if (components.length === 2) {
         return {
           name,
