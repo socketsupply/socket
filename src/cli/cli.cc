@@ -3003,7 +3003,7 @@ int main (const int argc, const char* argv[]) {
         const auto destFileName = "Icon-" + std::to_string(size) + "x" + std::to_string(size) + "@" + std::to_string(scale) + "x.png";
         const auto destFilePath = Path { iconsPath / destFileName };
 
-        const auto src = platform.mac ? settings["mac_icon"] : settings["ios_icon"];
+        const auto src = isForDesktop ? settings["mac_icon"] : settings["ios_icon"];
 
         StringStream sipsCommand;
         sipsCommand
