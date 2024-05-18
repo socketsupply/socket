@@ -5,6 +5,11 @@
 #include "../ipc/ipc.hh"
 #include "../window/window.hh"
 
+#if SSC_PLATFORM_IOS
+#import <QuartzCore/QuartzCore.h>
+#import <objc/runtime.h>
+#endif
+
 namespace SSC {
   class App;
 }
@@ -30,6 +35,12 @@ namespace SSC {
 
 #elif SSC_PLATFORM_IOS
   UIResponder <UIApplicationDelegate>
+  @property (nonatomic, strong) CADisplayLink *displayLink;
+  @property (nonatomic, assign) CGFloat keyboardHeight;
+  @property (nonatomic, assign) BOOL inMotion;
+  @property (nonatomic, assign) CGFloat progress;
+  @property (nonatomic, assign) NSTimeInterval animationDuration;
+
   - (BOOL) application: (UIApplication*) application
   continueUserActivity: (NSUserActivity*) userActivity
     restorationHandler: (void (^)(NSArray<id<UIUserActivityRestoring>>*)) restorationHandler;

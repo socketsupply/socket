@@ -365,40 +365,15 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
 - (void) keyboardWillHide: (NSNotification*) notification {
   NSDictionary *userInfo = notification.userInfo;
-  CGRect keyboardFrame = [[userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+  CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
   CGFloat keyboardHeight = keyboardFrame.size.height;
 
-  const auto window = self.app->windowManager.getWindow(0);
-  window->webview.scrollView.scrollEnabled = YES;
+  self.keyboardHeight = keyboardFrame.size.height;
+  self.animationDuration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
 
-  CGRect startFrame = window->webview.frame;
-  CGRect endFrame = CGRectMake(startFrame.origin.x, startFrame.origin.y, startFrame.size.width, startFrame.size.height + keyboardHeight);  // Expanding back
-
-  __block CGFloat animationProgress = 0;
-  NSTimeInterval duration = ([userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]) * 0.9;
-  NSTimeInterval stepDuration = duration / 120.0;
-
-  NSNumber *curve = userInfo[UIKeyboardAnimationCurveUserInfoKey];
-  UIViewAnimationOptions animationCurve = [curve unsignedIntegerValue] << 16;
-
-  [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
-    animationProgress += stepDuration / duration;
-
-    if (animationProgress >= 1.0) {
-      animationProgress = 1.0;
-      window->webview.frame = endFrame;
-      [timer invalidate];
-    } else {
-      CGFloat interpolatedProgress = 1 - pow(1 - animationProgress, 3);  // Using ease-out cubic is wrong, we could improve this curve
-
-      CGRect newFrame = CGRectMake(startFrame.origin.x + (endFrame.origin.x - startFrame.origin.x) * interpolatedProgress,
-                                   startFrame.origin.y + (endFrame.origin.y - startFrame.origin.y) * interpolatedProgress,
-                                   startFrame.size.width + (endFrame.size.width - startFrame.size.width) * interpolatedProgress,
-                                   startFrame.size.height + (endFrame.size.height - startFrame.size.height) * interpolatedProgress);
-
-      window->webview.frame = newFrame;
-    }
-  }];
+  self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardHide:)];
+  self.displayLink.preferredFramesPerSecond = 120;
+  [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
@@ -407,7 +382,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
       const auto rect = [keyboardFrameBegin CGRectValue];
       const auto height = rect.size.height;
 
-      window->webview.scrollView.scrollEnabled = YES;
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
           {"event", "will-hide"},
@@ -430,43 +404,17 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   }
 }
 
-- (void) keyboardWillShow: (NSNotification*) notification {
+- (void)keyboardWillShow: (NSNotification*) notification {
   NSDictionary *userInfo = notification.userInfo;
-  NSValue *keyboardFrameValue = userInfo[UIKeyboardFrameEndUserInfoKey];
-  CGRect keyboardFrame = [keyboardFrameValue CGRectValue];
+  CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
   CGFloat keyboardHeight = keyboardFrame.size.height;
 
-  const auto window = self.app->windowManager.getWindow(0);
-  window->webview.scrollView.scrollEnabled = NO;
+  self.keyboardHeight = keyboardFrame.size.height;
+  self.animationDuration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
 
-  CGRect startFrame = window->webview.frame;
-  CGRect endFrame = CGRectMake(startFrame.origin.x, startFrame.origin.y, startFrame.size.width, startFrame.size.height - keyboardHeight);
-
-  __block CGFloat animationProgress = 0;
-  NSTimeInterval duration = (([userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]) * 1.9);
-  NSTimeInterval stepDuration = duration / 120.0;
-
-  NSNumber *curve = userInfo[UIKeyboardAnimationCurveUserInfoKey];
-  UIViewAnimationOptions animationCurve = [curve unsignedIntegerValue] << 16;
-
-  [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
-      animationProgress += stepDuration / duration;
-
-      if (animationProgress >= 1.0) {
-        animationProgress = 1.0;
-        window->webview.frame = endFrame;
-        [timer invalidate];
-      } else {
-        CGFloat interpolatedProgress = 1 - pow(1 - animationProgress, 3);
-
-        CGRect newFrame = CGRectMake(startFrame.origin.x + (endFrame.origin.x - startFrame.origin.x) * interpolatedProgress,
-                                     startFrame.origin.y + (endFrame.origin.y - startFrame.origin.y) * interpolatedProgress,
-                                     startFrame.size.width + (endFrame.size.width - startFrame.size.width) * interpolatedProgress,
-                                     startFrame.size.height + (endFrame.size.height - startFrame.size.height) * interpolatedProgress);
-
-        window->webview.frame = newFrame;
-      }
-  }];
+  self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardShow:)];
+  self.displayLink.preferredFramesPerSecond = 60;
+  [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
@@ -475,7 +423,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
       const auto rect = [keyboardFrameBegin CGRectValue];
       const auto height = rect.size.height;
 
-      window->webview.scrollView.scrollEnabled = NO;
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
         {"event", "will-show"},
@@ -484,6 +431,65 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
       });
     }
   }
+}
+
+- (void) keyboardShow: (CADisplayLink*) displayLink {
+  if (self.inMotion) return;
+  self.inMotion = true;
+
+  const auto window = self.app->windowManager.getWindow(0);
+  const auto stepDuration = (self.animationDuration / 60.0) / 40;
+
+  auto timer = [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
+    CGRect newFrame = window->webview.frame;
+
+    CGFloat p = self.progress / self.keyboardHeight;
+    p = p > 1.0 ? 1.0 : p;
+    CGFloat easedHeightChange = 0.3 + pow(1.0 - p, 16);
+    newFrame.size.height -= easedHeightChange;
+
+    window->webview.frame = newFrame;
+
+    CGFloat progressIncrement = easedHeightChange > 0 ? easedHeightChange : 0;
+    self.progress += progressIncrement;
+
+    if (self.progress >= self.keyboardHeight) {
+      [displayLink invalidate];
+      [timer invalidate];
+      self.inMotion = false;
+    }
+  }];
+
+  [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+}
+
+- (void) keyboardHide: (CADisplayLink*) displayLink {
+  if (self.inMotion) return;
+  self.inMotion = true;
+
+  const auto window = self.app->windowManager.getWindow(0);
+  const auto stepDuration = self.animationDuration / 60.0;
+
+  auto timer = [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
+    CGRect newFrame = window->webview.frame;
+
+    CGFloat p = (self.progress / self.keyboardHeight || 1);
+    CGFloat easedHeightChange = 8 + pow(--p, 4);
+    newFrame.size.height += easedHeightChange; // Adjusted to increase the height
+
+    window->webview.frame = newFrame;
+
+    CGFloat progressIncrement = easedHeightChange > 0 ? easedHeightChange : 0;
+    self.progress -= progressIncrement; // Decrease the progress
+
+    if (self.progress <= 0) { // Check if progress is zero or less
+      [displayLink invalidate];
+      [timer invalidate];
+      self.inMotion = false;
+    }
+  }];
+
+  [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
 }
 
 - (void) keyboardDidShow: (NSNotification*) notification {
