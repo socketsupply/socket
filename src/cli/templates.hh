@@ -688,6 +688,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
 		2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */; };
 		2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A4 /* UserNotifications.framework */; };
+		2996EDB22770BC1F00C672B0 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672B0 /* QuartzCore.framework */; };
 		2996EDB22770BC1F00C672A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5E2761336B001832A1 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -717,6 +718,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		2996EDB12770BC1F00C672A2 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
 		2996EDB12770BC1F00C672A4 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		2996EDB12770BC1F00C672B0 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartzcore.framework; path = System/Library/Frameworks/Quartzcore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -734,6 +736,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
 				2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
 				2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */,
+        2996EDB22770BC1F00C672B0 /* QuartzCore.framework in Frameworks */,
 				294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
 				290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
 			);
@@ -807,6 +810,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				2996EDB12770BC1F00C672A2 /* Network.framework */,
 				2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */,
 				2996EDB12770BC1F00C672A4 /* UserNotifications.framework */,
+				2996EDB12770BC1F00C672B0 /* QuartzCore.framework */,
 				294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
 				294A3C792763E9C6007B5B9A /* UIKit.framework */,
 			);

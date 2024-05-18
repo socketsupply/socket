@@ -4463,6 +4463,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_flags"] +
               " -framework UniformTypeIdentifiers" +
               " -framework CoreBluetooth" +
+              " -framework QuartzCore" +
               " -framework CoreLocation" +
               " -framework Network" +
               " -framework UserNotifications" +
