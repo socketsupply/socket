@@ -1,7 +1,6 @@
 #include "../app/app.hh"
 #include "../cli/cli.hh"
 #include "../core/json.hh"
-#include "../core/types.hh"
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -40,10 +39,10 @@ static JSON::Any validateMessageParameters (
 
 static void mapIPCRoutes (Router *router) {
   auto userConfig = router->bridge->userConfig;
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-  #if SSC_PLATFORM_IOS
+  auto SOCKET_RUNTIME_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     "socket.runtime.mobile"
   #else
     "socket.runtime.desktop"
@@ -70,7 +69,7 @@ static void mapIPCRoutes (Router *router) {
     int exitCode;
     REQUIRE_AND_GET_MESSAGE_VALUE(exitCode, "value", std::stoi);
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (app->wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", exitCode);
       CLI::notify();
@@ -158,7 +157,7 @@ static void mapIPCRoutes (Router *router) {
    * @param value - The DSL for the system tray menu
    */
   router->map("application.setTrayMenu", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value"});
 
@@ -194,7 +193,7 @@ static void mapIPCRoutes (Router *router) {
    * @param value - The DSL for the system tray menu
    */
   router->map("application.setSystemMenu", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value"});
 
@@ -233,7 +232,7 @@ static void mapIPCRoutes (Router *router) {
    * @param indexSub
    */
   router->map("application.setSystemMenuItemEnabled", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value", "enabled", "indexMain", "indexSub"});
 
@@ -356,7 +355,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto bytes = *message.buffer.bytes;
+    auto bytes = message.buffer.bytes.get();
     auto size = message.buffer.size;
 
     if (bytes == nullptr) {
@@ -383,7 +382,7 @@ static void mapIPCRoutes (Router *router) {
    * @param signal
    */
   router->map("child_process.kill", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -419,7 +418,7 @@ static void mapIPCRoutes (Router *router) {
    * @param args (command, ...args)
    */
   router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -469,7 +468,7 @@ static void mapIPCRoutes (Router *router) {
   });
 
   router->map("child_process.exec", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -536,7 +535,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    */
   router->map("child_process.write", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
       {"message", "Operation is not supported on this platform"}
@@ -665,7 +664,7 @@ static void mapIPCRoutes (Router *router) {
     auto name = message.get("name");
 
     if (!Extension::load(name)) {
-      #if SSC_PLATFORM_WINDOWS
+      #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       auto error = formatWindowsError(GetLastError(), "bridge");
       #else
       auto err = dlerror();
@@ -747,7 +746,7 @@ static void mapIPCRoutes (Router *router) {
 
     if (!Extension::isLoaded(name)) {
       return reply(Result::Err { message, JSON::Object::Entries {
-      #if SSC_PLATFORM_WINDOWS
+      #if SOCKET_RUNTIME_PLATFORM_WINDOWS
         {"message", "Extension '" + name + "' is not loaded"}
       #else
         {"message", "Extension '" + name + "' is not loaded" + String(dlerror())}
@@ -1571,10 +1570,10 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     NSLog(@"%s", value);
-    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
-  #elif SSC_PLATFORM_ANDROID
+    os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else
     printf("%s\n", value);
@@ -1591,7 +1590,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    const auto options = Notifications::ShowOptions {
+    const auto options = Core::Notifications::ShowOptions {
       message.get("id"),
       message.get("title"),
       message.get("tag"),
@@ -1621,7 +1620,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
 
-    const auto notification = Notifications::Notification { message.get("id") };
+    const auto notification = Core::Notifications::Notification { message.get("id") };
     router->bridge->core->notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
@@ -1729,7 +1728,7 @@ static void mapIPCRoutes (Router *router) {
     String log;
     String tmp = fs::temp_directory_path().string();
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     static const auto uid = getuid();
     static const auto pwuid = getpwuid(uid);
     static const auto HOME = pwuid != nullptr
@@ -1764,7 +1763,7 @@ static void mapIPCRoutes (Router *router) {
 
   #undef DIRECTORY_PATH_FROM_FILE_MANAGER
 
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     static const auto uid = getuid();
     static const auto pwuid = getpwuid(uid);
     static const auto HOME = pwuid != nullptr
@@ -1825,7 +1824,7 @@ static void mapIPCRoutes (Router *router) {
     home = Path(HOME).string();
     data = XDG_DATA_HOME + "/" + bundleIdentifier;
     log = config;
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
     downloads = (Path(USERPROFILE) / "Downloads").string();
@@ -1865,7 +1864,7 @@ static void mapIPCRoutes (Router *router) {
 
     auto name = message.get("name");
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (name == "geolocation") {
       if (router->bridge->core->geolocation.locationObserver.isAuthorized) {
         auto data = JSON::Object::Entries {{"state", "granted"}};
@@ -1912,7 +1911,7 @@ static void mapIPCRoutes (Router *router) {
   });
 
   router->map("permissions.request", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     __block auto userConfig = router->bridge->userConfig;
   #else
     auto userConfig = router->bridge->userConfig;
@@ -1927,7 +1926,7 @@ static void mapIPCRoutes (Router *router) {
     auto name = message.get("name");
 
     if (name == "geolocation") {
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       auto performedActivation = [router->bridge->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
         if (!isAuthorized) {
           auto reason = @("Location observer could not be activated");
@@ -1970,7 +1969,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     if (name == "notifications") {
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       UNAuthorizationOptions options = UNAuthorizationOptionProvisional;
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
       auto requestAlert = message.get("alert") == "true";
@@ -2071,13 +2070,13 @@ static void mapIPCRoutes (Router *router) {
         }
       }
 
-      if (router->bridge == router->bridge->core->serviceWorker.bridge) {
+      if (router->bridge == router->bridge->navigator.serviceWorker.bridge) {
         if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
           if (router->bridge->navigator.location.href.size() > 0 && message.value == "beforeruntimeinit") {
-            router->bridge->core->serviceWorker.reset();
-            router->bridge->core->serviceWorker.isReady = false;
+            router->bridge->navigator.serviceWorker.reset();
+            router->bridge->navigator.serviceWorker.isReady = false;
           } else if (message.value == "runtimeinit") {
-            router->bridge->core->serviceWorker.isReady = true;
+            router->bridge->navigator.serviceWorker.isReady = true;
           }
         }
       }
@@ -2193,21 +2192,21 @@ static void mapIPCRoutes (Router *router) {
           {"hash", SSC::VERSION_HASH_STRING}}
         },
         {"host-operating-system",
-        #if SSC_PLATFORM_APPLE
-          #if SSC_PLATFORM_IOS_SIMULATOR
+        #if SOCKET_RUNTIME_PLATFORM_APPLE
+          #if SOCKET_RUNTIME_PLATFORM_IOS_SIMULATOR
              "iphonesimulator"
-          #elif SSC_PLATFORM_IOS
+          #elif SOCKET_RUNTIME_PLATFORM_IOS
             "iphoneos"
           #else
              "macosx"
           #endif
-        #elif SSC_PLATFORM_ANDROID
+        #elif SOCKET_RUNTIME_PLATFORM_ANDROID
              (router->bridge->isAndroidEmulator ? "android-emulator" : "android")
-        #elif SSC_PLATFORM_WINDOWS
+        #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
              "win32"
-        #elif SSC_PLATFORM_LINUX
+        #elif SOCKET_RUNTIME_PLATFORM_LINUX
              "linux"
-        #elif SSC_PLATFORM_UNIX
+        #elif SOCKET_RUNTIME_PLATFORM_UNIX
              "unix"
         #else
              "unknown"
@@ -2261,10 +2260,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (data.size() > 0 && router->bridge->core->protocolHandlers.hasHandler(scheme)) {
-      router->bridge->core->protocolHandlers.setHandlerData(scheme, { data });
+    if (data.size() > 0 && router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
+      router->bridge->navigator.serviceWorker.protocols.setHandlerData(scheme, { data });
     } else {
-      router->bridge->core->protocolHandlers.registerHandler(scheme, { data });
+      router->bridge->navigator.serviceWorker.protocols.registerHandler(scheme, { data });
     }
 
     reply(Result { message.seq, message });
@@ -2283,13 +2282,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->bridge->core->protocolHandlers.unregisterHandler(scheme);
+    router->bridge->navigator.serviceWorker.protocols.unregisterHandler(scheme);
 
     reply(Result { message.seq, message });
   });
@@ -2307,13 +2306,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    const auto data = router->bridge->core->protocolHandlers.getHandlerData(scheme);
+    const auto data = router->bridge->navigator.serviceWorker.protocols.getHandlerData(scheme);
 
     reply(Result { message.seq, message, JSON::Raw(data.json) });
   });
@@ -2333,13 +2332,13 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (!router->bridge->core->protocolHandlers.hasHandler(scheme)) {
+    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->bridge->core->protocolHandlers.setHandlerData(scheme, { data });
+    router->bridge->navigator.serviceWorker.protocols.setHandlerData(scheme, { data });
 
     reply(Result { message.seq, message });
   });
@@ -2350,12 +2349,12 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
-    #if SSC_PLATFORM_APPLE
-      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
     #endif
       IO::write(message.value, false);
     } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {
-      IO::write(String(*message.buffer.bytes, message.buffer.size), false);
+      IO::write(String(message.buffer.bytes.get(), message.buffer.size), false);
     }
 
     reply(Result { message.seq, message });
@@ -2371,12 +2370,12 @@ static void mapIPCRoutes (Router *router) {
         debug("%s", message.value.c_str());
       }
     } else if (message.value.size() > 0) {
-    #if SSC_PLATFORM_APPLE
-      os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
     #endif
       IO::write(message.value, true);
     } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {
-      IO::write(String(*message.buffer.bytes, message.buffer.size), true);
+      IO::write(String(message.buffer.bytes.get(), message.buffer.size), true);
     }
 
     reply(Result { message.seq, message });
@@ -2400,7 +2399,7 @@ static void mapIPCRoutes (Router *router) {
       .scriptURL = message.get("scriptURL")
     };
 
-    const auto registration = router->bridge->core->serviceWorker.registerServiceWorker(options);
+    const auto registration = router->bridge->navigator.serviceWorker.registerServiceWorker(options);
     auto json = JSON::Object {
       JSON::Object::Entries {
         {"registration", registration.json()}
@@ -2414,7 +2413,7 @@ static void mapIPCRoutes (Router *router) {
    * Resets the service worker container state.
    */
   router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
-    router->bridge->core->serviceWorker.reset();
+    router->bridge->navigator.serviceWorker.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2430,7 +2429,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-    router->bridge->core->serviceWorker.unregisterServiceWorker(scope);
+    router->bridge->navigator.serviceWorker.unregisterServiceWorker(scope);
 
     return reply(Result::Data { message, JSON::Object {} });
   });
@@ -2448,7 +2447,7 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scope = message.get("scope");
 
-    for (const auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       const auto& registration = entry.second;
       if (scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
@@ -2472,7 +2471,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     auto json = JSON::Array::Entries {};
-    for (const auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       const auto& registration = entry.second;
       json.push_back(registration.json());
     }
@@ -2493,7 +2492,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->serviceWorker.skipWaiting(id);
+    router->bridge->navigator.serviceWorker.skipWaiting(id);
 
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2520,7 +2519,7 @@ static void mapIPCRoutes (Router *router) {
       router->bridge->navigator.location.workers[workerURL] = scriptURL;
     }
 
-    router->bridge->core->serviceWorker.updateState(id, message.get("state"));
+    router->bridge->navigator.serviceWorker.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2540,7 +2539,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.set(message.get("key"), message.get("value"));
@@ -2572,7 +2571,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data {
@@ -2608,7 +2607,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.remove(message.get("key"));
@@ -2639,7 +2638,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.clear();
@@ -2670,7 +2669,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->core->serviceWorker.registrations) {
+    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data { message, registration.storage.json() });
@@ -2986,8 +2985,9 @@ static void mapIPCRoutes (Router *router) {
     const auto defaultName = message.get("defaultName");
     const auto defaultPath = message.get("defaultPath");
     const auto title = message.get("title", isSave ? "Save" : "Open");
+    const auto app = App::sharedApplication();
+    const auto window = app->windowManager.getWindowForBridge(router->bridge);
 
-    Dialog dialog;
     const auto options = Dialog::FileSystemPickerOptions {
       .directories = allowDirs,
       .multiple = allowMultiple,
@@ -2999,7 +2999,7 @@ static void mapIPCRoutes (Router *router) {
     };
 
     if (isSave) {
-      const auto result = dialog.showSaveFilePicker(options);
+      const auto result = window->dialog.showSaveFilePicker(options);
 
       if (result.size() == 0) {
         const auto err = JSON::Object::Entries {{"type", "AbortError"}};
@@ -3014,8 +3014,8 @@ static void mapIPCRoutes (Router *router) {
       JSON::Array paths;
       const auto results = (
         allowFiles && !allowDirs
-          ? dialog.showOpenFilePicker(options)
-          : dialog.showDirectoryPicker(options)
+          ? window->dialog.showOpenFilePicker(options)
+          : window->dialog.showDirectoryPicker(options)
       );
 
       for (const auto& result : results) {
@@ -3073,7 +3073,7 @@ static void mapIPCRoutes (Router *router) {
    * Creates a new window
    * @param url
    * @param title
-   * @param canExit
+   * @param shouldExitApplicationOnClose
    * @param headless
    * @param radius
    * @param margin
@@ -3115,11 +3115,11 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
     if (
-      targetWindowIndex >= SSC_MAX_WINDOWS &&
+      targetWindowIndex >= SOCKET_RUNTIME_MAX_WINDOWS &&
       message.get("headless") != "true" &&
       message.get("debug") != "true"
     ) {
-      static const auto maxWindows = std::to_string(SSC_MAX_WINDOWS);
+      static const auto maxWindows = std::to_string(SOCKET_RUNTIME_MAX_WINDOWS);
       return reply(Result::Err {
         message,
         "Cannot create widow with an index beyond " + maxWindows
@@ -3140,19 +3140,13 @@ static void mapIPCRoutes (Router *router) {
     const auto screen = window->getScreenSize();
     auto options = WindowOptions {};
 
-    options.url = message.get("url");
-    options.title = message.get("title");
-    options.canExit = message.get("canExit") == "true" ? true : false;
+    options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
     options.headless = app->userConfig["build_headless"] == "true";
 
     if (message.get("headless") == "true") {
       options.headless = true;
     } else if (message.get("headless") == "false") {
       options.headless = false;
-    }
-
-    if (message.has("port")) {
-      options.port = std::stoi(message.get("port"));
     }
 
     if (message.has("radius")) {
@@ -3194,7 +3188,6 @@ static void mapIPCRoutes (Router *router) {
     options.minimizable = message.get("minimizable") == "true" ? true : false;
     options.aspectRatio = message.get("aspectRatio");
     options.titlebarStyle = message.get("titlebarStyle");
-    options.title = message.get("title");
     options.windowControlOffsets = message.get("windowControlOffsets");
     options.backgroundColorLight = message.get("backgroundColorLight");
     options.backgroundColorDark = message.get("backgroundColorDark");
@@ -3202,23 +3195,25 @@ static void mapIPCRoutes (Router *router) {
     options.debug = message.get("debug") == "true" ? true : false;
     options.userScript = message.get("userScript");
     options.index = targetWindowIndex;
-    options.runtimePrimordialOverrides = message.get("__runtime_primordial_overrides__");
+    options.RUNTIME_PRIMORDIAL_OVERRIDES = message.get("__runtime_primordial_overrides__");
     options.userConfig = INI::parse(message.get("config"));
 
-    if (options.index >= SSC_MAX_WINDOWS) {
-      options.preloadCommonJS = false;
+    if (options.index >= SOCKET_RUNTIME_MAX_WINDOWS) {
+      options.features.useGlobalCommonJS = false;
     }
 
     app->dispatch([=]() {
-      const auto createdWindow = app->windowManager.createWindow(options);
+      auto createdWindow = app->windowManager.createWindow(options);
 
-      if (options.url.size() > 0) {
-        createdWindow->navigate(options.url);
+      if (message.has("title")) {
+        createdWindow->setTitle(message.get("title"));
       }
 
-    #if SSC_PLATFORM_DESKTOP
+      if (message.has("url")) {
+        createdWindow->navigate(message.get("url"));
+      }
+
       createdWindow->show();
-    #endif
 
       reply(Result::Data { message, createdWindow->json() });
     });
@@ -3264,7 +3259,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets the title of a target window
    * @param targetWindowIndex
    */
-  router->map("window.gtTitle", [=](auto message, auto router, auto reply) {
+  router->map("window.getTitle", [=](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3369,7 +3364,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-    #if SSC_PLATFORM_DESKTOP
+    #if SOCKET_RUNTIME_PLATFORM_DESKTOP
       window->maximize();
     #else
       const auto screen = window->getScreenSize();
@@ -3414,7 +3409,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-    #if SSC_PLATFORM_DESKTOP
+    #if SOCKET_RUNTIME_PLATFORM_DESKTOP
       window->minimize();
     #else
       window->hide();
@@ -3507,7 +3502,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-    #if SSC_PLATFORM_DESKTOP
+    #if SOCKET_RUNTIME_PLATFORM_DESKTOP
       window->restore();
     #else
       window->show();
@@ -3635,7 +3630,7 @@ static void mapIPCRoutes (Router *router) {
    * @param value
    */
   router->map("window.setContextMenu", [=](auto message, auto router, auto reply) {
-  #if SSC_PLATFORM_DESKTOP
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"index", "value"});
 

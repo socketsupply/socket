@@ -50,13 +50,12 @@ cflags+=(
   $CFLAG
   $CXXFLAGS
   -std=c++2a
-  -fvisibility=hidden
   -I"$root/include"
   -I"$root/build/uv/include"
   -I"$root/build/include"
-  -DSSC_BUILD_TIME="$(date '+%s')"
-  -DSSC_VERSION_HASH=$(git rev-parse --short=8 HEAD)
-  -DSSC_VERSION=$(cat "$root/VERSION.txt")
+  -DSOCKET_RUNTIME_BUILD_TIME="$(date '+%s')"
+  -DSOCKET_RUNTIME_VERSION_HASH=$(git rev-parse --short=8 HEAD)
+  -DSOCKET_RUNTIME_VERSION=$(cat "$root/VERSION.txt")
 )
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then

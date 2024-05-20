@@ -1,12 +1,11 @@
-#ifndef SSC_CORE_BLUETOOTH_H
-#define SSC_CORE_BLUETOOTH_H
+#ifndef SOCKET_RUNTIME_CORE_BLUETOOTH_H
+#define SOCKET_RUNTIME_CORE_BLUETOOTH_H
 
+#include "../platform/platform.hh"
 #include "json.hh"
-#include "platform.hh"
 #include "post.hh"
-#include "types.hh"
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCBluetoothController : NSObject<
   CBCentralManagerDelegate,
   CBPeripheralManagerDelegate,
@@ -33,7 +32,7 @@ namespace SSC {
       using EmitFunction = Function<void(const String, JSON::Any)>;
       using Callback = Function<void(String, JSON::Any)>;
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       SSCBluetoothController* controller = nullptr;
     #endif
 

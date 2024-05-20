@@ -1,5 +1,4 @@
 #include "window.hh"
-#include "../core/types.hh"
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
@@ -1520,7 +1519,7 @@ namespace SSC {
   }
 
   void Window::close (int code) {
-    if (opts.canExit) {
+    if (opts.shouldExitApplicationOnClose) {
       this->exit(0);
       DestroyWindow(window);
     } else {

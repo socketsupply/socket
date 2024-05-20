@@ -830,7 +830,9 @@ function android_fte() {
   fi
 
   NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$(use_bin_ext ".cmd")"
+  NDK_TOOLCHAINS="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains"
   export NDK_BUILD
+  export NDK_TOOLCHAINS
 
   rc=$?
   [[ -n "$set_exit_code" ]] && exit $rc

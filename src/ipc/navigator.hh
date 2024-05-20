@@ -1,13 +1,11 @@
-#ifndef SSC_IPC_NAVIGATOR_H
-#define SSC_IPC_NAVIGATOR_H
+#ifndef SOCKET_RUNTIME_IPC_NAVIGATOR_H
+#define SOCKET_RUNTIME_IPC_NAVIGATOR_H
 
-#include "../core/url.hh"
-#include "../core/types.hh"
 #include "../core/config.hh"
-#include "../core/platform.hh"
 #include "../core/resource.hh"
-#include "../core/service_worker_container.hh"
-#include "../window/webview.hh"
+#include "../core/url.hh"
+#include "../core/webview.hh"
+#include "../serviceworker/container.hh"
 
 namespace SSC::IPC {
   // forward
@@ -15,7 +13,7 @@ namespace SSC::IPC {
   class Navigator;
 }
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
 @property (nonatomic) SSC::IPC::Navigator* navigator;
 -    (void) webView: (WKWebView*) webView
@@ -82,7 +80,7 @@ namespace SSC::IPC {
       Location location;
       Bridge* bridge = nullptr;
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       SSCNavigationDelegate* navigationDelegate = nullptr;
     #endif
 
@@ -95,7 +93,7 @@ namespace SSC::IPC {
       void configureWebView (WebView* object);
       bool handleNavigationRequest (const String& currentURL, const String& requestedURL);
       bool isNavigationRequestAllowed (const String& location, const String& requestURL);
+      void configureMounts ();
   };
 }
-
 #endif

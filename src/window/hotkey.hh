@@ -1,8 +1,7 @@
-#ifndef SSC_WINDOW_HOTKEY_H
-#define SSC_WINDOW_HOTKEY_H
+#ifndef SOCKET_RUNTIME_WINDOW_HOTKEY_H
+#define SOCKET_RUNTIME_WINDOW_HOTKEY_H
 
-#include "../core/platform.hh"
-#include "../core/types.hh"
+#include "../platform/platform.hh"
 #include "../ipc/ipc.hh"
 
 namespace SSC {
@@ -37,7 +36,7 @@ namespace SSC {
         bool passive = true;
       };
 
-    #if SSC_PLATFORM_LINUX
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
       struct GTKKeyPressEventContext {
         HotKeyContext* context = nullptr;
         ID id = 0;
@@ -58,7 +57,7 @@ namespace SSC {
 
       Options options;
 
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       // Apple Carbon API
       EventHotKeyRef eventHotKeyRef;
     #endif
@@ -71,10 +70,10 @@ namespace SSC {
     public:
       using Bindings = std::map<HotKeyBinding::ID, HotKeyBinding>;
 
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       // Apple Carbon API
       EventTargetRef eventTarget;
-    #elif SSC_PLATFORM_LINUX
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
       std::map<
         HotKeyBinding::ID,
         HotKeyBinding::GTKKeyPressEventContext

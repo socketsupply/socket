@@ -41,9 +41,8 @@
 #include <span>
 #include <unordered_set>
 
-#include "../core/core.hh"
 #include "../extension/extension.hh"
-#include "../process/process.hh"
+#include "../core/core.hh"
 
 #include "templates.hh"
 #include "cli.hh"
@@ -52,8 +51,8 @@
 #define CMD_RUNNER
 #endif
 
-#ifndef SSC_BUILD_TIME
-#define SSC_BUILD_TIME 0
+#ifndef SOCKET_RUNTIME_BUILD_TIME
+#define SOCKET_RUNTIME_BUILD_TIME 0
 #endif
 
 using namespace SSC;
@@ -68,7 +67,6 @@ Thread* sourcesWatcherSupportThread = nullptr;
 
 Mutex signalHandlerMutex;
 
-String _settings;
 Path targetPath;
 Map settings;
 Map rc;
@@ -303,7 +301,7 @@ inline String prefixFile () {
 }
 
 static Process::PID appPid = 0;
-static Process* appProcess = nullptr;
+static SharedPointer<Process> appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
@@ -655,10 +653,11 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
     dst = fs::absolute(dst);
 
     if (!fs::exists(fs::status(src))) {
-      log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
+      log("WARNING: [build.copy-map] entry '" + src.string() +  "' does not exist");
       continue;
     }
 
+    // ensure 'dst' parent directories exist
     if (!fs::exists(fs::status(dst.parent_path()))) {
       fs::create_directories(dst.parent_path());
     }
@@ -675,6 +674,14 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
       if (fs::exists(fs::status(mappedSourceFile))) {
         fs::remove_all(mappedSourceFile);
       }
+    }
+
+    if (flagDebugMode || flagVerboseMode) {
+      debug(
+        "[build.copy-map] %s = %s",
+        fs::relative(src, targetPath).c_str(),
+        fs::relative(dst, targetPath).c_str()
+      );
     }
 
     fs::copy(
@@ -853,6 +860,7 @@ void signalHandler (int signal) {
 
   if (appProcess != nullptr) {
     appProcess->kill();
+    appProcess = nullptr;
   }
 
   appPid = 0;
@@ -888,20 +896,6 @@ void signalHandler (int signal) {
     appStatus = signal;
     log("App result: " + std::to_string(signal));
   }
-
-  if (signal == SIGTERM) {
-    exit(1);
-    return;
-  }
-
-#if !defined(_WIN32)
-  if (signal == SIGUSR2) {
-    exit(0);
-    return;
-  }
-#endif
-
-  exit(signal);
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
@@ -1064,7 +1058,7 @@ int runApp (const Path& path, const String& args, bool headless) {
     unlink(appInstanceLock.c_str());
 #endif
 
-  appProcess = new SSC::Process(
+  appProcess = std::make_shared<Process>(
     headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
@@ -1073,17 +1067,15 @@ int runApp (const Path& path, const String& args, bool headless) {
     [](const auto& output) { signalHandler(std::atoi(output.c_str()));  }
   );
 
-  appPid = appProcess->open();
-  const auto status = appProcess->wait();
+  auto p = appProcess;
+  appPid = p->open();
+  const auto status = p->wait();
   if (appStatus == -1) {
     appStatus = status;
     log("App result: " + std::to_string(appStatus.load()));
   }
 
-  if (appProcess != nullptr) {
-    delete appProcess;
-    appProcess = nullptr;
-  }
+  p = nullptr;
 
   return appStatus;
 }
@@ -1555,7 +1547,7 @@ bool startAndroidApp (AndroidCliState& state) {
 
   auto mainActivity = settings["android_main_activity"];
   if (mainActivity.size() == 0) {
-    mainActivity = String(DEFAULT_ANDROID_ACTIVITY_NAME);
+    mainActivity = String(DEFAULT_ANDROID_MAIN_ACTIVITY_NAME);
   }
 
   state.adbShellStart << "shell am start -n " << settings["android_bundle_identifier"] << "/" << settings["android_bundle_identifier"] << mainActivity << " 2>&1";
@@ -1690,7 +1682,12 @@ void initializeRC (Path targetPath) {
   }
 
   if (fs::exists(path) && fs::is_regular_file(path)) {
-    extendMap(rc, INI::parse(readFile(path)));
+    extendMap(rc, INI::parse(tmpl(readFile(path), Map {
+      {"platform.arch", platform.arch},
+      {"platform.arch.short", replace(platform.arch, "x86_64", "x64")},
+      {"platform.os", platform.os},
+      {"platform.os.short", replace(platform.os, "win32", "win")}
+    })));
 
     for (const auto& tuple : rc) {
       auto key = tuple.first;
@@ -2163,11 +2160,16 @@ int main (const int argc, const char* argv[]) {
           }
 
           code = String(
-            "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
+            "static constexpr unsigned char __socket_runtime_user_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
           );
         }
 
-        settings = INI::parse(ini);
+        settings = INI::parse(tmpl(ini, Map {
+          {"platform.arch", platform.arch},
+          {"platform.arch.short", replace(platform.arch, "x86_64", "x64")},
+          {"platform.os", platform.os},
+          {"platform.os.short", replace(platform.os, "win32", "win")}
+        }));
 
         if (settings["meta_type"] == "extension" || settings["build_type"] == "extension") {
           auto extension = settings["build_name"];
@@ -2883,7 +2885,7 @@ int main (const int argc, const char* argv[]) {
     } else {
       struct stat stats;
       if (stat(convertWStringToString(binaryPath).c_str(), &stats) == 0) {
-        if (SSC_BUILD_TIME > stats.st_mtime) {
+        if (SOCKET_RUNTIME_BUILD_TIME > stats.st_mtime) {
           flagRunUserBuildOnly = false;
         }
       }
@@ -2941,8 +2943,8 @@ int main (const int argc, const char* argv[]) {
     bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
 
     if (isForDesktop) {
-      fs::create_directories(paths.platformSpecificOutputPath / "include");
-      writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+      fs::create_directories(paths.platformSpecificOutputPath / "include" / "socket");
+      writeFile(paths.platformSpecificOutputPath / "include" / "socket" / "_user-config-bytes.hh", settings["ini_code"]);
     }
 
     //
@@ -3078,9 +3080,9 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework OSLog";
       flags += " -DMACOS=1";
       if (flagCodeSign) {
-        flags += " -DSSC_PLATFORM_SANDBOXED=1";
+        flags += " -DSOCKET_RUNTIME_PLATFORM_SANDBOXED=1";
       } else {
-        flags += " -DSSC_PLATFORM_SANDBOXED=0";
+        flags += " -DSOCKET_RUNTIME_PLATFORM_SANDBOXED=0";
       }
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
@@ -3229,24 +3231,26 @@ int main (const int argc, const char* argv[]) {
       auto jni = src / "main" / "jni";
       auto res = src / "main" / "res";
       auto pkg = src / "main" / "java" / bundle_path;
+      auto runtime  = src / "main" / "java" / "socket" / "runtime";
 
       if (settings["android_main_activity"].size() == 0) {
-        settings["android_main_activity"] = String(DEFAULT_ANDROID_ACTIVITY_NAME);
+        settings["android_main_activity"] = String(DEFAULT_ANDROID_MAIN_ACTIVITY_NAME);
+      }
+
+      if (settings["android_webview_window_activity"].size() == 0) {
+        settings["android_webview_window_activity"] = String(DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME);
+      }
+
+      if (settings["android_application"].size() == 0) {
+        settings["android_application"] = String(DEFAULT_ANDROID_APPLICATION_NAME);
       }
 
       fs::create_directories(output);
       fs::create_directories(src);
       fs::create_directories(pkg);
+      fs::create_directories(runtime);
       fs::create_directories(jni);
-      fs::create_directories(jni / "android");
-      fs::create_directories(jni / "app");
-      fs::create_directories(jni / "core");
-      fs::create_directories(jni / "include");
-      fs::create_directories(jni / "ipc");
-      fs::create_directories(jni / "process");
       fs::create_directories(jni / "src");
-      fs::create_directories(jni / "window");
-
       fs::create_directories(res);
       fs::create_directories(res / "layout");
       fs::create_directories(res / "values");
@@ -3326,42 +3330,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      // user entry
       fs::copy(trim(prefixFile("src/init.cc")), jni, fs::copy_options::overwrite_existing);
-      // android runtime
-      fs::copy(trim(prefixFile("src/android/bridge.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/android/runtime.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/android/string_wrap.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/android/window.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      // core
-      fs::copy(trim(prefixFile("src/core/codec.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/config.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/debug.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/env.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/file_system_watcher.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/ini.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/io.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/platform.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/service_worker_container.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/string.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/types.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/version.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/process/process.hh")), jni / "process", fs::copy_options::overwrite_existing);
-      // ipc
-      fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
-      // window
-      fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
-
-      // libuv
-      fs::copy(
-        trim(prefixFile("uv")),
-        jni / "uv",
-        fs::copy_options::overwrite_existing | fs::copy_options::recursive
-      );
 
       fs::copy(
         trim(prefixFile("include")),
@@ -3369,7 +3338,7 @@ int main (const int argc, const char* argv[]) {
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
-      writeFile(jni / "user-config-bytes.hh", settings["ini_code"]);
+      writeFile(jni / "include" / "socket" / "_user-config-bytes.hh", settings["ini_code"]);
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","json","jsonld","js","jsx","mjs","ts","tsx","css","xml","wasm")OPTIONS", ',');
@@ -3587,9 +3556,9 @@ int main (const int argc, const char* argv[]) {
       writeFile(output / "build.gradle", trim(tmpl(gGradleBuild, settings)));
       writeFile(output / "gradle.properties", trim(tmpl(gGradleProperties, settings)));
 
-      writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
+      writeFile(res / "layout" / "web_view.xml", trim(tmpl(gAndroidLayoutWebView, settings)));
+      writeFile(res / "layout" / "window_container_view.xml", trim(tmpl(gAndroidLayoutWindowContainerView, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
-      writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
 
       // allow user space to override all `res/` files
       if (fs::exists(androidResources)) {
@@ -3604,9 +3573,8 @@ int main (const int argc, const char* argv[]) {
       pp
         << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
         << "-DANDROID=1" << " "
-        << "-DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\" "
-        << "-DSSC_VERSION=" << SSC::VERSION_STRING << " "
-        << "-DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING << " ";
+        << "-DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING << " "
+        << "-DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING << " ";
 
       Map makefileContext;
 
@@ -3763,7 +3731,7 @@ int main (const int argc, const char* argv[]) {
           std::unordered_set<String> cflags;
           std::unordered_set<String> cppflags;
 
-          compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+          compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
 
           if (path.size() > 0) {
             fs::current_path(targetPath);
@@ -3913,7 +3881,7 @@ int main (const int argc, const char* argv[]) {
               "-I$(LOCAL_PATH)/"
             );
 
-            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
             compiler = CXX.size() > 0 ? CXX : "clang++";
             compilerFlags += " -v";
             compilerFlags += " -std=c++2a -v";
@@ -3946,7 +3914,7 @@ int main (const int argc, const char* argv[]) {
               << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
-              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM=1"
               << " --target=wasm32"
               << " --no-standard-libraries"
               << " -Wl,--import-memory"
@@ -3961,8 +3929,8 @@ int main (const int argc, const char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSSC_VERSION=" << SSC::VERSION_STRING
-              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << sources.str()
               << " -o " << lib.string()
@@ -3987,7 +3955,7 @@ int main (const int argc, const char* argv[]) {
             continue;
           }
 
-          make << "## socket/extensions/" << extension << RUNTIME_EXTENSION_FILE_EXT << std::endl;
+          make << "## socket/extensions/" << extension << SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME << std::endl;
           make << "include $(CLEAR_VARS)" << std::endl;
           make << "LOCAL_MODULE := extension-" << extension << std::endl;
           make << std::endl;
@@ -4008,8 +3976,8 @@ int main (const int argc, const char* argv[]) {
           make << "LOCAL_CFLAGS += \\" << std::endl;
           make << "  -DDEBUG=" << (flagDebugMode ? 1 : 0) << " \\" << std::endl;
           make << "  -DANDROID=1" << " \\" << std::endl;
-          make << "  -DSSC_VERSION=" << SSC::VERSION_STRING << " \\" << std::endl;
-          make << "  -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING << std::endl;
+          make << "  -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING << " \\" << std::endl;
+          make << "  -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING << std::endl;
           make << std::endl;
 
           if (compilerFlags.size() > 0) {
@@ -4092,71 +4060,48 @@ int main (const int argc, const char* argv[]) {
         trim(tmpl(tmpl(gAndroidMakefile, makefileContext), settings))
       );
 
-      // Android Source
-      writeFile(
-        jni  / "android" / "internal.hh",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/internal.hh")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_path_underscored
-        )
-      );
+      // Android Sources
+      std::map<Path, String> sources = {
+        // user files
+        {pkg / "app.kt", "src/android/app.kt"},
+        {pkg / "main.kt", "src/android/main.kt"},
 
-      writeFile(
-        pkg / "bridge.kt",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/bridge.kt")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          settings["android_bundle_identifier"]
-        )
-      );
+        // runtime package files
+        {runtime / "app" / "app.kt", "src/app/app.kt"},
+        {runtime / "core" / "console.kt", "src/core/console.kt"},
+        {runtime / "core" / "webview.kt", "src/core/webview.kt"},
+        {runtime / "ipc" / "bridge.kt", "src/ipc/bridge.kt"},
+        {runtime / "ipc" / "message.kt", "src/ipc/message.kt"},
+        {runtime / "ipc" / "navigator.kt", "src/ipc/navigator.kt"},
+        {runtime / "ipc" / "scheme_handlers.kt", "src/ipc/scheme_handlers.kt"},
+        {runtime / "window" / "dialog.kt", "src/window/dialog.kt"},
+        {runtime / "window" / "manager.kt", "src/window/manager.kt"},
+        {runtime / "window" / "window.kt", "src/window/window.kt"},
+      };
 
-      writeFile(
-        pkg / "main.kt",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          settings["android_bundle_identifier"]
-        )
-      );
-
-      writeFile(
-        pkg / "runtime.kt",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          settings["android_bundle_identifier"]
-        )
-      );
-
-      writeFile(
-        pkg / "window.kt",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/window.kt")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          settings["android_bundle_identifier"]
-        )
-      );
-
-      writeFile(
-        pkg / "webview.kt",
-        std::regex_replace(
-          convertWStringToString(readFile(trim(prefixFile("src/android/webview.kt")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          settings["android_bundle_identifier"]
-        )
-      );
+      for (const auto& entry : sources) {
+        const auto filename = trim(prefixFile(entry.second));
+        const auto value = convertWStringToString(readFile(filename));
+        fs::create_directories(entry.first.parent_path());
+        writeFile(
+          entry.first,
+          replace(
+            value,
+            "__BUNDLE_IDENTIFIER__",
+            settings["android_bundle_identifier"]
+          )
+        );
+      }
 
       // custom source files
       for (auto const &file : parseStringList(settings["android_sources"])) {
         // log(String("Android source: " + String(target / file)).c_str());
         writeFile(
           pkg / Path(file).filename(),
-          tmpl(std::regex_replace(
+          tmpl(
             convertWStringToString(readFile(targetPath / file )),
-            std::regex("__BUNDLE_IDENTIFIER__"),
-            settings["android_bundle_identifier"]
-          ), settings)
+            settings
+          )
         );
       }
     }
@@ -4290,16 +4235,15 @@ int main (const int argc, const char* argv[]) {
       );
 
       writeFile(
-        paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh",
+        paths.platformSpecificOutputPath / "include" / "socket" / "_user-config-bytes.hh",
         settings["ini_code"]
       );
 
       Map xCodeProjectVariables = settings;
       extendMap(xCodeProjectVariables, Map {
-        {"SSC_SETTINGS", _settings},
-        {"SSC_VERSION", VERSION_STRING},
-        {"SSC_VERSION_HASH", VERSION_HASH_STRING},
-        {"SSC_PLATFORM_SANDBOXED", flagCodeSign ? "1" : "0"},
+        {"SOCKET_RUNTIME_VERSION", VERSION_STRING},
+        {"SOCKET_RUNTIME_VERSION_HASH", VERSION_HASH_STRING},
+        {"SOCKET_RUNTIME_PLATFORM_SANDBOXED", flagCodeSign ? "1" : "0"},
         {"__ios_native_extensions_build_ids", ""},
         {"__ios_native_extensions_build_refs", ""},
         {"__ios_native_extensions_build_context_refs", ""},
@@ -4479,7 +4423,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
 
-            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
 
             // --platform=ios should always build for arm64 even on Darwin x86_64
             if (!flagBuildForSimulator) {
@@ -4538,8 +4482,8 @@ int main (const int argc, const char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSSC_VERSION=" << SSC::VERSION_STRING
-              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
               << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
               << " -fembed-bitcode"
               << " -fPIC"
@@ -4580,7 +4524,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_ios_compiler_debug_flags"] + " "
             );
 
-            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
             compiler = CXX.size() > 0 ? CXX : "clang++";
             compilerFlags += " -v";
             compilerFlags += " -std=c++2a -v";
@@ -4613,7 +4557,7 @@ int main (const int argc, const char* argv[]) {
               << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
-              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM=1"
               << " --target=wasm32"
               << " --no-standard-libraries"
               << " -Wl,--import-memory"
@@ -4628,8 +4572,8 @@ int main (const int argc, const char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSSC_VERSION=" << SSC::VERSION_STRING
-              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << join(sources, " ")
               << " -o " << lib.string()
@@ -4673,7 +4617,7 @@ int main (const int argc, const char* argv[]) {
             linkerFlags += " -arch arm64 ";
           }
 
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + RUNTIME_EXTENSION_FILE_EXT));
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME));
           fs::create_directories(lib.parent_path());
           auto compileExtensionLibraryCommand = StringStream();
           compileExtensionLibraryCommand
@@ -5329,7 +5273,7 @@ int main (const int argc, const char* argv[]) {
       sdkmanager
         << packages.str();
 
-      if (Env::get("SSC_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
+      if (Env::get("SOCKET_RUNTIME_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
         if (debugEnv || verboseEnv) {
           log(sdkmanager.str());
         }
@@ -5456,7 +5400,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       // just build for CI
-      if (Env::get("SSC_CI").size() > 0) {
+      if (Env::get("SOCKET_RUNTIME_CI").size() > 0) {
         StringStream gradlew;
         gradlew << localDirPrefix << "gradlew build";
 
@@ -5690,7 +5634,7 @@ int main (const int argc, const char* argv[]) {
           );
 
           auto objects = StringStream();
-          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + RUNTIME_EXTENSION_FILE_EXT));
+          auto lib = (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME));
 
           fs::create_directories(lib.parent_path());
 
@@ -5774,7 +5718,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_" + os + "_compiler_debug_flags"] + " "
             );
 
-            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
 
             if (platform.mac) {
               compilerFlags += " -framework UniformTypeIdentifiers";
@@ -5895,8 +5839,8 @@ int main (const int argc, const char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSSC_VERSION=" << SSC::VERSION_STRING
-              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
             #if !defined(_WIN32)
               << " -fPIC"
             #endif
@@ -5959,7 +5903,7 @@ int main (const int argc, const char* argv[]) {
               settings["build_extensions_" + extension + "_" + os + "_compiler_debug_flags"] + " "
             );
 
-            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION";
+            compilerFlags += " -DSOCKET_RUNTIME_EXTENSION=1";
             compiler = CXX.size() > 0 && !IN_GITHUB_ACTIONS_CI ? CXX : "clang++";
             compilerFlags += " -v";
             compilerFlags += " -std=c++2a -v";
@@ -5995,7 +5939,7 @@ int main (const int argc, const char* argv[]) {
               << (" -I" + quote + trim(prefixFile("include/socket/webassembly")) + quote)
               << (" -I" + quote + trim(prefixFile("src")) + quote)
               << (" -L" + quote + trim(prefixFile("lib")) + quote)
-              << " -DSOCKET_RUNTIME_EXTENSION_WASM"
+              << " -DSOCKET_RUNTIME_EXTENSION_WASM=1"
               << " --target=wasm32"
               << " --no-standard-libraries"
               << " -Wl,--import-memory"
@@ -6020,8 +5964,8 @@ int main (const int argc, const char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSSC_VERSION=" << SSC::VERSION_STRING
-              << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << join(sources, " ")
               << " -o " << (quote + lib.string() + quote)
@@ -6132,7 +6076,13 @@ int main (const int argc, const char* argv[]) {
 
           if (platform.mac) {
             if (isForDesktop) {
-              settings["mac_codesign_paths"] += (paths.pathResourcesRelativeToUserBuild / "socket" / "extensions" / extension / (extension + RUNTIME_EXTENSION_FILE_EXT)).string() + ";";
+              settings["mac_codesign_paths"] += (
+                paths.pathResourcesRelativeToUserBuild /
+                "socket" /
+                "extensions" /
+                extension /
+                (extension + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME)
+              ).string() + ";";
             }
           }
 
@@ -6180,9 +6130,8 @@ int main (const int argc, const char* argv[]) {
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
         << " -DHOST=" << "\\\"" << devHost << "\\\""
         << " -DPORT=" << devPort
-        << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
-        << " -DSSC_VERSION=" << SSC::VERSION_STRING
-        << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+        << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
+        << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
         << quote // win32 - quote the entire command
       ;
 
@@ -7197,12 +7146,12 @@ int main (const int argc, const char* argv[]) {
     settings.insert(std::make_pair("port", devPort));
 
     const bool debugEnv = (
-      Env::get("SSC_DEBUG").size() > 0 ||
+      Env::get("SOCKET_RUNTIME_DEBUG").size() > 0 ||
       Env::get("DEBUG").size() > 0
     );
 
     const bool verboseEnv = (
-      Env::get("SSC_VERBOSE").size() > 0 ||
+      Env::get("SOCKET_RUNTIME_VERBOSE").size() > 0 ||
       Env::get("VERBOSE").size() > 0
     );
 

@@ -1,6 +1,8 @@
+#include "../serviceworker/protocols.hh"
 #include "../extension/extension.hh"
 #include "../window/window.hh"
-#include "../core/protocol_handlers.hh"
+#include "../core/version.hh"
+#include "../app/app.hh"
 #include "ipc.hh"
 
 extern const SSC::Map SSC::getUserConfig ();
@@ -10,12 +12,18 @@ namespace SSC::IPC {
   static Vector<Bridge*> instances;
   static Mutex mutex;
 
-  // create a proxy module so imports of the module of concern are imported
-  // exactly once at the canonical URL (file:///...) in contrast to module
-  // URLs (socket:...)
-
-  static constexpr auto moduleTemplate =
+  // The `ESM_IMPORT_PROXY_TEMPLATE` is used to provide an ESM module as
+  // a proxy to a canonical URL for a module so `socket:<module>` and
+  // `socket://<bundle_identifier>/socket/<module>.js` resolve to the exact
+  // same module
+  static constexpr auto ESM_IMPORT_PROXY_TEMPLATE =
   R"S(
+  /**
+   * This module exists to provide a proxy to a canonical URL for a module
+   * so `socket:<module>` and `socket://<bundle_identifier>/socket/<module>.js`
+   * resolve to the exact same module instance.
+   * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
+   */
   import module from '{{url}}'
   export * from '{{url}}'
   export default module
@@ -63,7 +71,7 @@ namespace SSC::IPC {
     "worker_threads"
   };
 
-#if SSC_PLATFORM_DESKTOP
+#if SOCKET_RUNTIME_PLATFORM_DESKTOP
   static FileSystemWatcher* developerResourcesFileSystemWatcher = nullptr;
   static void initializeDeveloperResourcesFileSystemWatcher (SharedPointer<Core> core) {
     auto defaultUserConfig = SSC::getUserConfig();
@@ -96,9 +104,9 @@ namespace SSC::IPC {
             (!userConfig.contains("webview_watch_reload") || userConfig.at("webview_watch_reload") != "false")
           ) {
             // check if changed path was a service worker, if so unregister it so it can be reloaded
-            for (const auto& entry : developerResourcesFileSystemWatcher->core->serviceWorker.registrations) {
+            for (const auto& entry : App::sharedApplication()->serviceWorkerContainer.registrations) {
               const auto& registration = entry.second;
-            #if defined(__ANDROID__)
+            #if SOCKET_RUNTIME_PLATFORM_ANDROID
               auto scriptURL = String("https://");
             #else
               auto scriptURL = String("socket://");
@@ -116,7 +124,7 @@ namespace SSC::IPC {
                 // 2. re-register service worker
                 // 3. wait for it to be registered
                 // 4. emit 'filedidchange' event
-                bridge->core->serviceWorker.unregisterServiceWorker(entry.first);
+                bridge->navigator.serviceWorker.unregisterServiceWorker(entry.first);
                 bridge->core->setTimeout(8, [bridge, result, &registration] () {
                   bridge->core->setInterval(8, [bridge, result, &registration] (auto cancel) {
                     if (registration.state == ServiceWorkerContainer::Registration::State::Activated) {
@@ -135,7 +143,7 @@ namespace SSC::IPC {
                     }
                   });
 
-                  bridge->core->serviceWorker.registerServiceWorker(registration.options);
+                  bridge->navigator.serviceWorker.registerServiceWorker(registration.options);
                 });
                 return;
               }
@@ -156,10 +164,10 @@ namespace SSC::IPC {
       navigator(this),
       schemeHandlers(this)
   {
-    Lock lock(SSC::IPC::mutex);
-    instances.push_back(this);
-
     this->id = rand64();
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    this->isAndroidEmulator = App::sharedApplication()->isAndroidEmulator;
+  #endif
 
     this->bluetooth.sendFunction = [this](
       const String& seq,
@@ -174,6 +182,10 @@ namespace SSC::IPC {
       const JSON::Any value
     ) {
       this->emit(seq, value.str());
+    };
+
+    this->dispatchFunction = [] (auto callback) {
+      App::sharedApplication()->dispatch(callback);
     };
 
     core->networkStatus.addObserver(this->networkStatusObserver, [this](auto json) {
@@ -193,7 +205,7 @@ namespace SSC::IPC {
     // on Linux, much of the Notification API is supported so these observers
     // below are not needed as those events already occur in the webview
     // we are patching for the other platforms
-  #if !SSC_PLATFORM_LINUX
+  #if !SOCKET_RUNTIME_PLATFORM_LINUX
     core->notifications.addPermissionChangeObserver(this->notificationsPermissionChangeObserver, [this](auto json) {
       JSON::Object event = JSON::Object::Entries {
         {"name", "notifications"},
@@ -213,7 +225,9 @@ namespace SSC::IPC {
     }
   #endif
 
-  #if SSC_PLATFORM_DESKTOP
+    Lock lock(SSC::IPC::mutex);
+    instances.push_back(this);
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     initializeDeveloperResourcesFileSystemWatcher(core);
   #endif
   }
@@ -233,7 +247,7 @@ namespace SSC::IPC {
         instances.erase(cursor);
       }
 
-      #if SSC_PLATFORM_DESKTOP
+      #if SOCKET_RUNTIME_PLATFORM_DESKTOP
         if (instances.size() == 0) {
           if (developerResourcesFileSystemWatcher) {
             developerResourcesFileSystemWatcher->stop();
@@ -251,7 +265,6 @@ namespace SSC::IPC {
   }
 
   void Bridge::configureWebView (WebView* webview) {
-    this->core->notifications.configureWebView(webview);
     this->schemeHandlers.configureWebView(webview);
     this->navigator.configureWebView(webview);
   }
@@ -295,13 +308,13 @@ namespace SSC::IPC {
     return false;
   }
 
-  bool Bridge::route (const String& uri, SharedPointer<char *> bytes, size_t size) {
+  bool Bridge::route (const String& uri, SharedPointer<char[]> bytes, size_t size) {
     return this->route(uri, bytes, size, nullptr);
   }
 
   bool Bridge::route (
     const String& uri,
-    SharedPointer<char*> bytes,
+    SharedPointer<char[]> bytes,
     size_t size,
     Router::ResultCallback callback
   ) {
@@ -524,11 +537,6 @@ namespace SSC::IPC {
 
         return callback(response);
       }
-
-      if (message.get("resolve") == "false") {
-        auto response = SchemeHandlers::Response(request, 200);
-        return callback(response);
-      }
     });
 
     this->schemeHandlers.registerSchemeHandler("socket", [this](
@@ -629,12 +637,9 @@ namespace SSC::IPC {
               if (resource.mimeType() != "text/html") {
                 response.send(resource);
               } else {
-                const auto html = injectHTMLPreload(
-                  this->core.get(),
-                  userConfig,
-                  resource.str(),
-                  this->preload
-                );
+                const auto html = this->preload.insertIntoHTML(resource.str(), {
+                  .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
+                });
 
                 response.setHeader("content-type", "text/html");
                 response.setHeader("content-length", html.size());
@@ -647,7 +652,7 @@ namespace SSC::IPC {
           return callback(response);
         }
 
-        if (this->core->serviceWorker.registrations.size() > 0) {
+        if (this->navigator.serviceWorker.registrations.size() > 0) {
           const auto fetch = ServiceWorkerContainer::FetchRequest {
             request.method,
             request.scheme,
@@ -655,11 +660,11 @@ namespace SSC::IPC {
             request.pathname,
             request.query,
             request.headers,
-            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
+            ServiceWorkerContainer::FetchBody { request.body.size, request.body.bytes },
             ServiceWorkerContainer::Client { request.client.id, this->preload }
           };
 
-          const auto fetched = this->core->serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
+          const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
             if (!request.isActive()) {
               return;
             }
@@ -668,7 +673,7 @@ namespace SSC::IPC {
               response.fail("ServiceWorker request failed");
             } else {
               response.writeHead(res.statusCode, res.headers);
-              response.write(res.buffer.size, res.buffer.bytes);
+              response.write(res.body.size, res.body.bytes);
             }
 
             callback(response);
@@ -705,25 +710,37 @@ namespace SSC::IPC {
         resourcePath = applicationResources + "/socket" + pathname;
         contentLocation = "/socket" + pathname;
 
-        auto resource = FileResource(resourcePath);
+        auto resource = FileResource(resourcePath, { .cache = true });
 
         if (resource.exists()) {
-          const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
-          const auto module = tmpl(moduleTemplate, Map {{"url", url}});
+          const auto url = (
+            "socket://" +
+            bundleIdentifier +
+            "/socket" +
+            pathname +
+            (request.query.size() > 0 ? "?" + request.query : "")
+          );
+
+          const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
+            {"url", url},
+            {"commit", VERSION_HASH_STRING},
+            {"pathname", pathname}
+          });
+
           const auto contentType = resource.mimeType();
 
           if (contentType.size() > 0) {
             response.setHeader("content-type", contentType);
           }
 
-          response.setHeader("content-length", module.size());
+          response.setHeader("content-length", moduleImportProxy.size());
 
           if (contentLocation.size() > 0) {
             response.setHeader("content-location", contentLocation);
           }
 
           response.writeHead(200);
-          response.write(trim(module));
+          response.write(moduleImportProxy);
         }
 
         return callback(response);
@@ -780,7 +797,7 @@ namespace SSC::IPC {
         contentLocation = "/socket" + pathname;
         resourcePath = applicationResources + contentLocation;
 
-        auto resource = FileResource(resourcePath);
+        auto resource = FileResource(resourcePath, { .cache = true });
 
         if (!resource.exists()) {
           if (!pathname.ends_with(".js")) {
@@ -798,12 +815,12 @@ namespace SSC::IPC {
             resourcePath = applicationResources + contentLocation;
           }
 
-          resource = FileResource(resourcePath);
+          resource = FileResource(resourcePath, { .cache = true });
         }
 
         if (resource.exists()) {
           const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
-          const auto module = tmpl(moduleTemplate, Map {{"url", url}});
+          const auto module = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {{"url", url}});
           const auto contentType = resource.mimeType();
 
           if (contentType.size() > 0) {
@@ -833,7 +850,7 @@ namespace SSC::IPC {
 
     for (const auto& entry : split(this->userConfig["webview_protocol-handlers"], " ")) {
       const auto scheme = replace(trim(entry), ":", "");
-      if (this->core->protocolHandlers.registerHandler(scheme)) {
+      if (this->navigator.serviceWorker.protocols.registerHandler(scheme)) {
         protocolHandlers.insert_or_assign(scheme, "");
       }
     }
@@ -843,7 +860,7 @@ namespace SSC::IPC {
       if (key.starts_with("webview_protocol-handlers_")) {
         const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
         const auto data = entry.second;
-        if (this->core->protocolHandlers.registerHandler(scheme, { data })) {
+        if (this->navigator.serviceWorker.protocols.registerHandler(scheme, { data })) {
           protocolHandlers.insert_or_assign(scheme, data);
         }
       }
@@ -876,7 +893,7 @@ namespace SSC::IPC {
       }
 
       scriptURL = (
-      #if SSC_PLATFORM_ANDROID
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
         "https://" +
       #else
         "socket://" +
@@ -885,7 +902,7 @@ namespace SSC::IPC {
         scriptURL
       );
 
-      this->core->serviceWorker.registerServiceWorker({
+      this->navigator.serviceWorker.registerServiceWorker({
         .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
         .scope = scope,
         .scriptURL = scriptURL,
@@ -899,7 +916,7 @@ namespace SSC::IPC {
         auto& callbacks,
         auto callback
       ) {
-        if (this->core->serviceWorker.registrations.size() > 0) {
+        if (this->navigator.serviceWorker.registrations.size() > 0) {
           auto hostname = request.hostname;
           auto pathname = request.pathname;
 
@@ -907,7 +924,7 @@ namespace SSC::IPC {
             hostname = this->userConfig["meta_bundle_identifier"];
           }
 
-          const auto scope = this->core->protocolHandlers.getServiceWorkerScope(request.scheme);
+          const auto scope = this->navigator.serviceWorker.protocols.getServiceWorkerScope(request.scheme);
 
           if (scope.size() > 0) {
             pathname = scope + pathname;
@@ -920,11 +937,11 @@ namespace SSC::IPC {
             pathname,
             request.query,
             request.headers,
-            ServiceWorkerContainer::FetchBuffer { request.body.size, request.body.bytes },
+            ServiceWorkerContainer::FetchBody { request.body.size, request.body.bytes },
             ServiceWorkerContainer::Client { request.client.id, this->preload }
           };
 
-          const auto fetched = this->core->serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
+          const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
             if (!request.isActive()) {
               return;
             }
@@ -935,7 +952,7 @@ namespace SSC::IPC {
               response.fail("ServiceWorker request failed");
             } else {
               response.writeHead(res.statusCode, res.headers);
-              response.write(res.buffer.size, res.buffer.bytes);
+              response.write(res.body.size, res.body.bytes);
             }
 
             callback(response);
@@ -957,5 +974,9 @@ namespace SSC::IPC {
         callback(response);
       });
     }
+  }
+
+  void Bridge::configureNavigatorMounts () {
+    this->navigator.configureMounts();
   }
 }

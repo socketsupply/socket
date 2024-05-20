@@ -1,8 +1,10 @@
-#ifndef SSC_CORE_RESOURCE
-#define SSC_CORE_RESOURCE
+#ifndef SOCKET_RUNTIME_CORE_RESOURCE_H
+#define SOCKET_RUNTIME_CORE_RESOURCE_H
 
-#include "platform.hh"
-#include "types.hh"
+#include "../platform/platform.hh"
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#endif
 
 namespace SSC {
   class Resource {
@@ -14,14 +16,30 @@ namespace SSC {
   };
 
   class FileResource : public Resource {
-    struct Cache {
-      SharedPointer<char*> bytes = nullptr;
-      size_t size = 0;
-    };
-
-    Cache cache;
-    SharedPointer<char*> bytes = nullptr;
     public:
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      static void setSharedAndroidAssetManager (Android::AssetManager*);
+      static Android::AssetManager* getSharedAndroidAssetManager ();
+    #endif
+
+      static bool isFile (const String& resourcePath);
+      static bool isFile (const Path& resourcePath);
+      static bool isDirectory (const String& resourcePath);
+      static bool isDirectory (const Path& resourcePath);
+
+      struct Cache {
+        SharedPointer<char[]> bytes = nullptr;
+        size_t size = 0;
+      };
+
+      struct Options {
+        bool cache;
+      };
+
+      Cache cache;
+      Options options;
+      SharedPointer<char[]> bytes = nullptr;
+
       static std::map<String, Set<String>> mimeTypes;
       static Path getResourcesPath ();
       static Path getResourcePath (const Path& resourcePath);
@@ -29,11 +47,13 @@ namespace SSC {
 
       Path path;
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       NSURL* url = nullptr;
+    #elif SOCKET_RUNTIME_PLATFORM_APPLE
     #endif
 
-      FileResource (const String& resourcePath);
+      FileResource (const Path& resourcePath, const Options& options = {});
+      FileResource (const String& resourcePath, const Options& options = {});
       ~FileResource ();
       FileResource (const FileResource&);
       FileResource (FileResource&&);
@@ -46,9 +66,10 @@ namespace SSC {
       bool hasAccess () const noexcept;
       const String mimeType () const noexcept;
       size_t size (bool cached = false) noexcept;
+      size_t size () const noexcept;
+      const char* read () const;
       const char* read (bool cached = false);
       const String str (bool cached = false);
   };
 }
-
 #endif

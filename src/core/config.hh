@@ -1,24 +1,19 @@
-#ifndef SSC_CORE_CONFIG_H
-#define SSC_CORE_CONFIG_H
+#ifndef SOCKET_RUNTIME_CORE_CONFIG_H
+#define SOCKET_RUNTIME_CORE_CONFIG_H
 
 #include <iterator>
 
-// TODO(@jwerle): remove this and any need for it
-#ifndef SSC_SETTINGS
-#define SSC_SETTINGS ""
+#ifndef SOCKET_RUNTIME_VERSION
+#define SOCKET_RUNTIME_VERSION ""
 #endif
 
-#ifndef SSC_VERSION
-#define SSC_VERSION ""
-#endif
-
-#ifndef SSC_VERSION_HASH
-#define SSC_VERSION_HASH ""
+#ifndef SOCKET_RUNTIME_VERSION_HASH
+#define SOCKET_RUNTIME_VERSION_HASH ""
 #endif
 
 // TODO(@jwerle): use a better name
-#if !defined(SSC_PLATFORM_SANDBOXED)
-#define SSC_PLATFORM_SANDBOXED 0
+#if !defined(SOCKET_RUNTIME_PLATFORM_SANDBOXED)
+#define SOCKET_RUNTIME_PLATFORM_SANDBOXED 0
 #endif
 
 // TODO(@jwerle): stop using this and prefer a namespaced macro
@@ -37,14 +32,22 @@
 #endif
 
 #if defined(__cplusplus)
-#include "types.hh"
+#include "../platform/platform.hh"
+
+extern "C" {
+  // implemented in `init.cc`
+  extern const unsigned char* socket_runtime_init_get_user_config_bytes ();
+  extern unsigned int socket_runtime_init_get_user_config_bytes_size ();
+  extern bool socket_runtime_init_is_debug_enabled ();
+  extern const char* socket_runtime_init_get_dev_host ();
+  extern int socket_runtime_init_get_dev_port ();
+}
 
 namespace SSC {
-  // implemented in `init.cc`
-  extern const Map getUserConfig ();
-  extern bool isDebugEnabled ();
-  extern const String getDevHost ();
-  extern int getDevPort ();
+  const Map getUserConfig ();
+  bool isDebugEnabled ();
+  const String getDevHost ();
+  int getDevPort ();
 
   /**
    * A container for configuration that can be mutated and queried using
@@ -211,5 +214,4 @@ namespace SSC {
   };
 }
 #endif
-
 #endif

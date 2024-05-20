@@ -1,11 +1,15 @@
-#ifndef SSC_APP_APP_H
-#define SSC_APP_APP_H
+#ifndef SOCKET_RUNTIME_APP_APP_H
+#define SOCKET_RUNTIME_APP_APP_H
 
 #include "../core/core.hh"
-#include "../ipc/ipc.hh"
 #include "../window/window.hh"
+#include "../serviceworker/container.hh"
 
-#if SSC_PLATFORM_IOS
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#endif
+
+#if SOCKET_RUNTIME_PLATFORM_IOS
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #endif
@@ -14,9 +18,9 @@ namespace SSC {
   class App;
 }
 
-#ifdef SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCApplicationDelegate :
-#if SSC_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
   NSObject<NSApplicationDelegate>
   @property (strong, nonatomic) NSStatusItem *statusItem;
   - (void) applicationDidFinishLaunching: (NSNotification*) notification;
@@ -33,7 +37,7 @@ namespace SSC {
   didFailToContinueUserActivityWithType: (NSString*) userActivityType
                                   error: (NSError*) error;
 
-#elif SSC_PLATFORM_IOS
+#elif SOCKET_RUNTIME_PLATFORM_IOS
   UIResponder <UIApplicationDelegate>
   @property (nonatomic, strong) CADisplayLink *displayLink;
   @property (nonatomic, assign) CGFloat keyboardHeight;
@@ -59,19 +63,29 @@ namespace SSC {
       static inline Atomic<bool> isReady = false;
       static App* sharedApplication ();
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       // created and set in `App::App()` on macOS or
       // created by `UIApplicationMain` and set in `application:didFinishLaunchingWithOptions:` on iOS
       SSCApplicationDelegate* applicationDelegate = nullptr;
     #endif
 
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       NSAutoreleasePool* pool = [NSAutoreleasePool new];
-    #elif SSC_PLATFORM_WINDOWS
+    #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       Atomic<bool> isConsoleVisible = false;
       _In_ HINSTANCE hInstance;
       WNDCLASSEX wcex;
       MSG msg;
+    #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      Android::BuildInformation androidBuildInformation;
+      Android::Looper androidLooper;
+      Android::JVMEnvironment jvm;
+      JNIEnv* jni;
+      jobject self;
+      jobject appActivity;
+      bool isAndroidEmulator = false;
+      int androidLooperpipeFDS[2];
+
     #endif
 
       ExitCallback onExit = nullptr;
@@ -82,28 +96,40 @@ namespace SSC {
 
       WindowManager windowManager;
       SharedPointer<Core> core = nullptr;
+      ServiceWorkerContainer serviceWorkerContainer;
       Map userConfig = SSC::getUserConfig();
 
-    #if SSC_PLATFORM_WINDOWS
+    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       App (void *);
       void ShowConsole ();
       void HideConsole ();
     #endif
 
-      App (int, SharedPointer<Core> = SharedPointer<Core>(new Core()));
-      App (SharedPointer<Core> = SharedPointer<Core>(new Core()));
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      App (JNIEnv* env, jobject self, SharedPointer<Core> core = SharedPointer<Core>(new Core()));
+    #else
+      App (int instanceId, SharedPointer<Core> core = SharedPointer<Core>(new Core()));
+      App (SharedPointer<Core> core = SharedPointer<Core>(new Core()));
+    #endif
       App () = delete;
       App (const App&) = delete;
       App (App&&) = delete;
       ~App ();
 
       int run (int argc = 0, char** argv = nullptr);
+      void init ();
       void kill ();
       void exit (int code);
       void restart ();
       void dispatch (Function<void()>);
       String getcwd ();
-  };
+      bool hasRuntimePermission (const String& permission) const;
 
+      /*
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      bool isAndroidPermissionAllowed (const String& permission);
+    #endif
+    */
+  };
 }
 #endif

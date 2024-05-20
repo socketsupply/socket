@@ -4,7 +4,7 @@
 
 using namespace SSC;
 
-#if defined(__APPLE__)
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCBluetoothController ()
 @property (nonatomic) Bluetooth* bluetooth;
 @end

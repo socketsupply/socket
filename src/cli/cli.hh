@@ -1,8 +1,7 @@
-#ifndef SSC_CLI_HH
-#define SSC_CLI_HH
+#ifndef SOCKET_RUNTIME_CLI_H
+#define SOCKET_RUNTIME_CLI_H
 
-#include "../core/platform.hh"
-#include "../core/string.hh"
+#include "../platform/platform.hh"
 #include "../core/env.hh"
 
 #include <signal.h>

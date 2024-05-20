@@ -5,7 +5,7 @@
 
 using namespace SSC;
 
-#if SSC_PLATFORM_IOS
+#if SOCKET_RUNTIME_PLATFORM_IOS
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -16,13 +16,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "socket.runtime.app.queue",
   qos
 );
-
-@implementation SSCWebViewController
-@end
 #endif
 
 @implementation SSCWindow
-#if SSC_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
   - (void) layoutIfNeeded {
     [super layoutIfNeeded];
 
@@ -72,7 +69,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     const auto string = (NSString*) scriptMessage.body;
     const auto uri = String(string.UTF8String);
 
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     const auto msg = IPC::Message(uri);
     if (msg.name == "application.exit" || msg.name == "process.exit") {
       const auto code = std::stoi(msg.get("value", "0"));
@@ -94,7 +91,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     }
   }
 
-  - (SSCBridgedWebView*) webView: (SSCBridgedWebView*) webview
+  - (SSCWebView*) webView: (SSCWebView*) webview
   createWebViewWithConfiguration: (WKWebViewConfiguration*) configuration
              forNavigationAction: (WKNavigationAction*) navigationAction
                   windowFeatures: (WKWindowFeatures*) windowFeatures
@@ -103,7 +100,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   return nullptr;
 }
 
-#if SSC_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
 - (void) menuItemSelected: (NSMenuItem*) menuItem {
   auto window = (Window*) objc_getAssociatedObject(self, "window");
 
@@ -143,7 +140,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   auto window = (Window*) objc_getAssociatedObject(self, "window");
   auto app = App::sharedApplication();
 
-  if (!app || !window || !window->exiting) {
+  if (!app || !window || !window->isExiting) {
     return true;
   }
 
@@ -164,8 +161,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
 #endif
 
   window->window = nullptr;
-  if (window->opts.canExit) {
-    window->exiting = true;
+  if (window->options.shouldExitApplicationOnClose) {
+    window->isExiting = true;
     window->exit(0);
     return true;
   }
@@ -174,7 +171,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   window->hide();
   return true;
 }
-#elif SSC_PLATFORM_IOS
+#elif SOCKET_RUNTIME_PLATFORM_IOS
 - (void) scrollViewDidScroll: (UIScrollView*) scrollView {
   auto window = (Window*) objc_getAssociatedObject(self, "window");
   if (window) {
@@ -184,702 +181,23 @@ static dispatch_queue_t queue = dispatch_queue_create(
 #endif
 @end
 
-@implementation SSCBridgedWebView
-#if SSC_PLATFORM_MACOS
-Vector<String> draggablePayload;
-CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
-int lastX = 0;
-int lastY = 0;
-
-- (void) viewDidAppear: (BOOL) animated {
-}
-
-- (void) viewDidDisappear: (BOOL) animated {
-}
-
-- (void) viewDidChangeEffectiveAppearance {
-  [super viewDidChangeEffectiveAppearance];
-
-  if ([self.window.effectiveAppearance.name containsString: @"Dark"]) {
-    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 0.1 alpha: 1.0]]; // Dark mode color
-  } else {
-    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 1.0 alpha: 1.0]]; // Light mode color
-  }
-}
-
-- (void) resizeSubviewsWithOldSize: (NSSize) oldSize {
-  [super resizeSubviewsWithOldSize: oldSize];
-
-  const auto w = reinterpret_cast<SSCWindow*>(self.window);
-  const auto viewWidth = w.titleBarView.frame.size.width;
-  const auto viewHeight = w.titleBarView.frame.size.height;
-  const auto newX = w.windowControlOffsets.x;
-  const auto newY = 0.f;
-
-  const auto closeButton = [w standardWindowButton: NSWindowCloseButton];
-  const auto minimizeButton = [w standardWindowButton: NSWindowMiniaturizeButton];
-  const auto zoomButton = [w standardWindowButton: NSWindowZoomButton];
-
-  if (closeButton && minimizeButton && zoomButton) {
-    [w.titleBarView addSubview: closeButton];
-    [w.titleBarView addSubview: minimizeButton];
-    [w.titleBarView addSubview: zoomButton];
-  }
-
-  w.titleBarView.frame = NSMakeRect(newX, newY, viewWidth, viewHeight);
-}
-
-- (instancetype) initWithFrame: (NSRect) frameRect
-                 configuration: (WKWebViewConfiguration*) configuration
-                        radius: (CGFloat) radius
-                        margin: (CGFloat) margin
-{
-  self = [super initWithFrame: frameRect configuration: configuration];
-
-  if (self && radius > 0.0) {
-    self.radius = radius;
-    self.margin = margin;
-    self.layer.cornerRadius = radius;
-    self.layer.masksToBounds = YES;
-  }
-
-  return self;
-}
-
-- (void) layout {
-  [super layout];
-
-  NSRect bounds = self.superview.bounds;
-
-  if (self.radius > 0.0) {
-    if (self.contentHeight == 0.0) {
-      self.contentHeight = self.superview.bounds.size.height - self.bounds.size.height;
-    }
-
-    bounds.size.height = bounds.size.height - self.contentHeight;
-  }
-
-  if (self.margin > 0.0) {
-    CGFloat borderWidth = self.margin;
-    self.frame = NSInsetRect(bounds, borderWidth, borderWidth);
-  }
-}
-
-- (BOOL) wantsPeriodicDraggingUpdates {
-  return YES;
-}
-
-- (BOOL) prepareForDragOperation: (id<NSDraggingInfo>) info {
-  [info setDraggingFormation: NSDraggingFormationNone];
-  return YES;
-}
-
-- (BOOL) performDragOperation: (id<NSDraggingInfo>) info {
-  return YES;
-}
-
-- (void) concludeDragOperation: (id<NSDraggingInfo>) info {
-}
-
-- (void) updateDraggingItemsForDrag: (id<NSDraggingInfo>) info {
-}
-
-- (NSDragOperation) draggingEntered: (id<NSDraggingInfo>) info {
-  const auto json = JSON::Object {};
-  const auto payload = getEmitToRenderProcessJavaScript("dragenter", json.str());
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-  [self draggingUpdated: info];
-  return NSDragOperationGeneric;
-}
-
-- (NSDragOperation) draggingUpdated: (id<NSDraggingInfo>) info {
-  const auto position = info.draggingLocation;
-  const auto x = std::to_string(position.x);
-  const auto y = std::to_string(self.frame.size.height - position.y);
-
-  auto count = draggablePayload.size();
-  auto inbound = false;
-
-  if (count == 0) {
-    inbound = true;
-    count = [info numberOfValidItemsForDrop];
-  }
-
-  const auto data = JSON::Object::Entries {
-    {"count", (unsigned int) count},
-    {"inbound", inbound},
-    {"x", x},
-    {"y", y}
-  };
-
-  const auto json = JSON::Object {data};
-  const auto payload = getEmitToRenderProcessJavaScript("drag", json.str());
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-  return [super draggingUpdated: info];
-}
-
-- (void) draggingExited: (id<NSDraggingInfo>) info {
-  const auto position = info.draggingLocation;
-  const auto x = std::to_string(position.x);
-  const auto y = std::to_string(self.frame.size.height - position.y);
-
-  const auto data = JSON::Object::Entries {
-    {"x", x},
-    {"y", y}
-  };
-
-  const auto json = JSON::Object {data};
-  const auto payload = getEmitToRenderProcessJavaScript("dragend", json.str());
-
-  draggablePayload.clear();
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-}
-
-- (void) draggingEnded: (id<NSDraggingInfo>) info {
-  const auto pasteboard = info.draggingPasteboard;
-  const auto position = info.draggingLocation;
-  const auto x = position.x;
-  const auto y = self.frame.size.height - position.y;
-
-  const auto pasteboardFiles = [pasteboard
-    readObjectsForClasses: @[NSURL.class]
-                  options: @{}
-  ];
-
-  auto files = JSON::Array::Entries {};
-
-  for (NSURL* file in pasteboardFiles) {
-    files.push_back(file.path.UTF8String);
-  }
-
-  const auto data = JSON::Object::Entries {
-    {"files", files},
-    {"x", x},
-    {"y", y}
-  };
-
-  const auto json = JSON::Object { data };
-  const auto payload = getEmitToRenderProcessJavaScript("dropin", json.str());
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-}
-
-- (void) updateEvent: (NSEvent*) event {
-  const auto location = [self convertPoint: event.locationInWindow fromView :nil];
-  const auto x = std::to_string(location.x);
-  const auto y = std::to_string(location.y);
-  const auto count = draggablePayload.size();
-
-  if (((int) location.x) == lastX || ((int) location.y) == lastY) {
-    return [super mouseDown: event];
-  }
-
-  const auto data = JSON::Object::Entries {
-    {"count", (unsigned int) count},
-    {"x", x},
-    {"y", y}
-  };
-
-  const auto json = JSON::Object { data };
-  const auto payload = getEmitToRenderProcessJavaScript("drag", json.str());
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-}
-
-- (void) mouseUp: (NSEvent*) event {
-  [super mouseUp: event];
-
-  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
-  const auto x = location.x;
-  const auto y = location.y;
-
-  const auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
-  const auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
-
-  if (significantMoveX || significantMoveY) {
-    for (const auto& path : draggablePayload) {
-      const auto data = JSON::Object::Entries {
-        {"src", path},
-        {"x", x},
-        {"y", y}
-      };
-
-      const auto json = JSON::Object { data };
-      const auto payload = getEmitToRenderProcessJavaScript("drop", json.str());
-
-      [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-    }
-  }
-
-  const auto data = JSON::Object::Entries {
-    {"x", x},
-    {"y", y}
-  };
-
-  const auto json = JSON::Object { data };
-  auto payload = getEmitToRenderProcessJavaScript("dragend", json.str());
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-}
-
-- (void) mouseDown: (NSEvent*) event {
-  self.shouldDrag = false;
-  draggablePayload.clear();
-
-  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
-  const auto x = std::to_string(location.x);
-  const auto y = std::to_string(location.y);
-
-  self.initialWindowPos = location;
-
-  lastX = (int) location.x;
-  lastY = (int) location.y;
-
-  String js(
-    "(() => {                                                                      "
-    "  const v = '--app-region';                                                   "
-    "  let el = document.elementFromPoint(" + x + "," + y + ");                    "
-    "                                                                              "
-    "  while (el) {                                                                "
-    "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
-    "    el = el.parentElement;                                                    "
-    "  }                                                                           "
-    "  return ''                                                                   "
-    "})()                                                                          "
-  );
-
-  [self
-    evaluateJavaScript: @(js.c_str())
-     completionHandler: ^(id result, NSError *error)
-  {
-    if (error) {
-      NSLog(@"%@", error);
-      [super mouseDown: event];
-      return;
-    }
-
-    if (![result isKindOfClass: NSString.class]) {
-      [super mouseDown: event];
-      return;
-    }
-
-    const auto match = String([result UTF8String]);
-
-    if (match.compare("movable") != 0) {
-      [super mouseDown: event];
-      return;
-    }
-
-    self.shouldDrag = true;
-    [self updateEvent: event];
-  }];
-}
-
-- (void) mouseDragged: (NSEvent*) event {
-  NSPoint currentLocation = [self convertPoint:event.locationInWindow fromView:nil];
-
-  if (self.shouldDrag) {
-    CGFloat deltaX = currentLocation.x - self.initialWindowPos.x;
-    CGFloat deltaY = currentLocation.y - self.initialWindowPos.y;
-
-    NSRect frame = self.window.frame;
-    frame.origin.x += deltaX;
-    frame.origin.y -= deltaY;
-
-    [self.window setFrame:frame display:YES];
-  }
-
-  [super mouseDragged:event];
-
-  if (!NSPointInRect(currentLocation, self.frame)) {
-    auto payload = getEmitToRenderProcessJavaScript("dragexit", "{}");
-    [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-  }
-
-  /*
-
-  // TODO(@heapwolf): refactor the legacy native multi-file drag-drop stuff
-
-  if (draggablePayload.size() == 0) {
-    return;
-  }
-
-  const auto x = location.x;
-  const auto y = location.y;
-  const auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
-  const auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
-
-  if (significantMoveX || significantMoveY) {
-    const auto data = JSON::Object::Entries {
-      {"count", (unsigned int) draggablePayload.size()},
-      {"x", x},
-      {"y", y}
-    };
-
-    const auto json = JSON::Object { data };
-    const auto payload = getEmitToRenderProcessJavaScript("drag", json.str());
-
-    [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-  }
-
-  if (NSPointInRect(location, self.frame)) {
-    return;
-  }
-
-  const auto pasteboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
-  const auto dragItems = [NSMutableArray new];
-  const auto iconSize = NSMakeSize(32, 32); // according to documentation
-
-  [pasteboard declareTypes: @[(NSString*) kPasteboardTypeFileURLPromise] owner:self];
-
-  auto dragPosition = [self convertPoint: event.locationInWindow fromView: nil];
-  dragPosition.x -= 16;
-  dragPosition.y -= 16;
-
-  NSRect imageLocation;
-  imageLocation.origin = dragPosition;
-  imageLocation.size = iconSize;
-
-  for (const auto& file : draggablePayload) {
-    const auto url = [NSURL fileURLWithPath: @(file.c_str())];
-    const auto icon = [NSWorkspace.sharedWorkspace iconForContentType: UTTypeURL];
-
-    NSArray* (^providerBlock)() = ^NSArray* () {
-      const auto component = [
-        [NSDraggingImageComponent.alloc initWithKey: NSDraggingImageComponentIconKey
-      ] retain];
-
-      component.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
-      component.contents = icon;
-      return @[component];
-    };
-
-    auto provider = [NSFilePromiseProvider.alloc initWithFileType: @"public.url" delegate: self];
-
-    [provider setUserInfo: @(file.c_str())];
-
-    auto dragItem = [NSDraggingItem.alloc initWithPasteboardWriter: provider];
-
-    dragItem.draggingFrame = NSMakeRect(
-      dragPosition.x,
-      dragPosition.y,
-      iconSize.width,
-      iconSize.height
-    );
-
-    dragItem.imageComponentsProvider = providerBlock;
-    [dragItems addObject: dragItem];
-  }
-
-  auto session = [self
-      beginDraggingSessionWithItems: dragItems
-                              event: event
-                             source: self
-  ];
-
-  session.draggingFormation = NSDraggingFormationPile;
-  draggablePayload.clear();
-  */
-}
-
--       (NSDragOperation) draggingSession: (NSDraggingSession*) session
-    sourceOperationMaskForDraggingContext: (NSDraggingContext) context
-{
-  return NSDragOperationGeneric;
-}
-
-- (void) filePromiseProvider: (NSFilePromiseProvider*) filePromiseProvider
-           writePromiseToURL: (NSURL*) url
-           completionHandler: (void (^)(NSError *errorOrNil)) completionHandler
-{
-  const auto dest = String(url.path.UTF8String);
-  const auto src = String([filePromiseProvider.userInfo UTF8String]);
-  const auto data = [@"" dataUsingEncoding: NSUTF8StringEncoding];
-
-  [data writeToURL: url atomically: YES];
-
-  const auto json = JSON::Object {
-    JSON::Object::Entries {
-      {"src", src},
-      {"dest", dest}
-    }
-  };
-
-  const auto payload = getEmitToRenderProcessJavaScript("dropout", json.str());
-
-  [self evaluateJavaScript: @(payload.c_str()) completionHandler: nil];
-
-  completionHandler(nil);
-}
-
-- (NSString*) filePromiseProvider: (NSFilePromiseProvider*) filePromiseProvider
-                  fileNameForType: (NSString*) fileType
-{
-  const auto id = rand64();
-  const auto filename = std::to_string(id) + ".download";
-  return @(filename.c_str());
-}
-
--             (void) webView: (WKWebView*) webView
-  runOpenPanelWithParameters: (WKOpenPanelParameters*) parameters
-            initiatedByFrame: (WKFrameInfo*) frame
-           completionHandler: (void (^)(NSArray<NSURL*>*URLs)) completionHandler
-{
-  const auto acceptedFileExtensions = parameters._acceptedFileExtensions;
-  const auto acceptedMIMETypes = parameters._acceptedMIMETypes;
-  StringStream contentTypesSpec;
-
-  for (NSString* acceptedMIMEType in acceptedMIMETypes) {
-    contentTypesSpec << acceptedMIMEType.UTF8String << "|";
-  }
-
-  if (acceptedFileExtensions.count > 0) {
-    contentTypesSpec << "*/*:";
-    const auto count = acceptedFileExtensions.count;
-    int seen = 0;
-    for (NSString* acceptedFileExtension in acceptedFileExtensions) {
-      const auto string = String(acceptedFileExtension.UTF8String);
-
-      if (!string.starts_with(".")) {
-        contentTypesSpec << ".";
-      }
-
-      contentTypesSpec << string;
-      if (++seen < count) {
-        contentTypesSpec << ",";
-      }
-    }
-  }
-
-  auto contentTypes = trim(contentTypesSpec.str());
-
-  if (contentTypes.size() == 0) {
-    contentTypes = "*/*";
-  }
-
-  if (contentTypes.ends_with("|")) {
-    contentTypes = contentTypes.substr(0, contentTypes.size() - 1);
-  }
-
-  const auto options = Dialog::FileSystemPickerOptions {
-    .directories = false,
-    .multiple = parameters.allowsMultipleSelection ? true : false,
-    .contentTypes = contentTypes,
-    .defaultName = "",
-    .defaultPath = "",
-    .title = "Choose a File"
-  };
-
-  Dialog dialog;
-  const auto results = dialog.showOpenFilePicker(options);
-
-  if (results.size() == 0) {
-    completionHandler(nullptr);
-    return;
-  }
-
-  auto urls = [NSMutableArray array];
-
-  for (const auto& result : results) {
-    [urls addObject: [NSURL URLWithString: @(result.c_str())]];
-  }
-
-  completionHandler(urls);
-}
-#endif
-
-#if (!SSC_PLATFORM_IOS_SIMULATOR) || (SSC_PLATFORM_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
--                                      (void) webView: (WKWebView*) webView
- requestDeviceOrientationAndMotionPermissionForOrigin: (WKSecurityOrigin*) origin
-                                     initiatedByFrame: (WKFrameInfo*) frame
-                                      decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = getUserConfig();
-
-  if (userConfig["permissions_allow_device_orientation"] == "false") {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-
--                        (void) webView: (WKWebView*) webView
- requestMediaCapturePermissionForOrigin: (WKSecurityOrigin*) origin
-                       initiatedByFrame: (WKFrameInfo*) frame
-                                   type: (WKMediaCaptureType) type
-                        decisionHandler: (void (^)(WKPermissionDecision decision)) decisionHandler {
-  static auto userConfig = getUserConfig();
-
-  if (userConfig["permissions_allow_user_media"] == "false") {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  if (type == WKMediaCaptureTypeCameraAndMicrophone) {
-    if (
-      userConfig["permissions_allow_camera"] == "false" ||
-      userConfig["permissions_allow_microphone"] == "false"
-    ) {
-      decisionHandler(WKPermissionDecisionDeny);
-      return;
-    }
-  }
-
-  if (
-    type == WKMediaCaptureTypeCamera &&
-    userConfig["permissions_allow_camera"] == "false"
-  ) {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  if (
-    type == WKMediaCaptureTypeMicrophone &&
-    userConfig["permissions_allow_microphone"] == "false"
-  ) {
-    decisionHandler(WKPermissionDecisionDeny);
-    return;
-  }
-
-  decisionHandler(WKPermissionDecisionGrant);
-}
-#endif
-
--                     (void) webView: (SSCBridgedWebView*) webview
-  runJavaScriptAlertPanelWithMessage: (NSString*) message
-                    initiatedByFrame: (WKFrameInfo*) frame
-                   completionHandler: (void (^)(void)) completionHandler
-{
-  static auto userConfig = getUserConfig();
-  const auto title = userConfig.contains("window_alert_title")
-    ? userConfig["window_alert_title"]
-    : userConfig["meta_title"] + ":";
-
-#if SSC_PLATFORM_IOS
-  const auto alert = [UIAlertController
-    alertControllerWithTitle: @(title.c_str())
-                     message: message
-              preferredStyle: UIAlertControllerStyleAlert
-  ];
-
-  const auto ok = [UIAlertAction
-    actionWithTitle: @"OK"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler();
-  }];
-
-  [alert addAction: ok];
-
-  [webview.window.rootViewController
-    presentViewController: alert
-                 animated: YES
-               completion: nil
-  ];
-#else
-  const auto alert = [NSAlert new];
-  [alert setMessageText: @(title.c_str())];
-  [alert setInformativeText: message];
-  [alert addButtonWithTitle: @"OK"];
-  [alert runModal];
-  completionHandler();
-#if !__has_feature(objc_arc)
-  [alert release];
-#endif
-#endif
-}
-
-#if SSC_PLATFORM_IOS
-- (void)traitCollectionDidChange:(UITraitCollection *) previousTraitCollection {
-  [super traitCollectionDidChange:previousTraitCollection];
-
-  static auto userConfig = getUserConfig();
-  const auto window = (Window*) objc_getAssociatedObject(self, "window");
-
-  UIUserInterfaceStyle interfaceStyle = window->window.traitCollection.userInterfaceStyle;
-
-  auto hasBackgroundDark = userConfig.count("window_background_color_dark") > 0;
-  auto hasBackgroundLight = userConfig.count("window_background_color_light") > 0;
-
-  if (interfaceStyle == UIUserInterfaceStyleDark && hasBackgroundDark) {
-    window->setBackgroundColor(userConfig["window_background_color_dark"]);
-  } else if (hasBackgroundLight) {
-    window->setBackgroundColor(userConfig["window_background_color_light"]);
-  }
-}
-#endif
-
--                       (void) webView: (WKWebView*) webview
-  runJavaScriptConfirmPanelWithMessage: (NSString*) message
-                      initiatedByFrame: (WKFrameInfo*) frame
-                     completionHandler: (void (^)(BOOL result)) completionHandler
-{
-  static auto userConfig = getUserConfig();
-  const auto title = userConfig.contains("window_alert_title")
-    ? userConfig["window_alert_title"]
-    : userConfig["meta_title"] + ":";
-
-#if SSC_PLATFORM_IOS
-  const auto alert = [UIAlertController
-    alertControllerWithTitle: @(title.c_str())
-                     message: message
-              preferredStyle: UIAlertControllerStyleAlert
-  ];
-
-  const auto ok = [UIAlertAction
-    actionWithTitle: @"OK"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler(YES);
-  }];
-
-  const auto cancel = [UIAlertAction
-    actionWithTitle: @"Cancel"
-              style: UIAlertActionStyleDefault
-            handler: ^(UIAlertAction * action) {
-    completionHandler(NO);
-  }];
-
-  [alert addAction: ok];
-  [alert addAction: cancel];
-
-  [webview.window.rootViewController
-    presentViewController: alert
-                 animated: YES
-               completion: nil
-  ];
-#else
-  const auto alert = [NSAlert new];
-  [alert setMessageText: @(title.c_str())];
-  [alert setInformativeText: message];
-  [alert addButtonWithTitle: @"OK"];
-  [alert addButtonWithTitle: @"Cancel"];
-  completionHandler([alert runModal] == NSAlertFirstButtonReturn);
-#if !__has_feature(objc_arc)
-  [alert release];
-#endif
-#endif
-}
-@end
-
 namespace SSC {
-  Window::Window (SharedPointer<Core> core, const WindowOptions& opts)
+  Window::Window (SharedPointer<Core> core, const WindowOptions& options)
     : core(core),
-      opts(opts),
-      bridge(core, opts.userConfig),
-      hotkey(this)
+      options(options),
+      bridge(core, options.userConfig),
+      hotkey(this),
+      dialog(this)
   {
-  #if SSC_PLATFORM_IOS
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     const auto frame = UIScreen.mainScreen.bounds;
   #endif
     const auto processInfo = NSProcessInfo.processInfo;
     const auto configuration = [WKWebViewConfiguration new];
     const auto preferences = configuration.preferences;
-    auto userConfig = opts.userConfig;
+    auto userConfig = options.userConfig;
 
-    this->index = opts.index;
+    this->index = options.index;
     //this->processPool = [WKProcessPool new];
     this->windowDelegate = [SSCWindowDelegate new];
 
@@ -888,12 +206,12 @@ namespace SSC {
     };
 
     this->bridge.dispatchFunction = [this] (auto callback) {
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       const auto app = App::sharedApplication();
       if (app != nullptr) {
         app->dispatch(callback);
       }
-    #elif SSC_PLATFORM_IOS
+    #elif SOCKET_RUNTIME_PLATFORM_IOS
       dispatch_async(queue, ^{
         callback();
       });
@@ -906,11 +224,11 @@ namespace SSC {
       });
     };
 
-    this->bridge.preload = createPreload(opts, {
+    this->bridge.preload = createPreload(options, {
       .module = true,
       .wrap = true,
       .clientId = this->bridge.id,
-      .userScript = opts.userScript
+      .userScript = options.userScript
     });
 
     configuration.defaultWebpagePreferences.allowsContentJavaScript = YES;
@@ -1018,7 +336,7 @@ namespace SSC {
       }
     }
 
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     @try {
       [preferences setValue: @YES forKey: @"cookieEnabled"];
 
@@ -1048,22 +366,23 @@ namespace SSC {
       debug("Failed to set preference: 'offlineApplicationCacheIsEnabled': %@", error);
     }
 
-    if (opts.debug || isDebugEnabled()) {
+    if (options.debug || isDebugEnabled()) {
       [preferences setValue: @YES forKey: @"developerExtrasEnabled"];
     }
 
     this->bridge.init();
     this->hotkey.init();
+    this->bridge.configureNavigatorMounts();
     this->bridge.configureSchemeHandlers({
       .webview = configuration
     });
 
-  #if SSC_PLATFORM_MACOS
-    this->webview = [SSCBridgedWebView.alloc
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
+    this->webview = [SSCWebView.alloc
       initWithFrame: NSZeroRect
       configuration: configuration
-             radius: (CGFloat) opts.radius
-             margin: (CGFloat) opts.margin
+             radius: (CGFloat) options.radius
+             margin: (CGFloat) options.margin
     ];
 
     this->webview.wantsLayer = YES;
@@ -1076,8 +395,8 @@ namespace SSC {
         SSC::VERSION_STRING.c_str()
     ];
     [this->webview setValue: @(0) forKey: @"drawsBackground"];
-  #elif SSC_PLATFORM_IOS
-    this->webview = [SSCBridgedWebView.alloc
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
+    this->webview = [SSCWebView.alloc
       initWithFrame: frame
       configuration: configuration
     ];
@@ -1115,46 +434,46 @@ namespace SSC {
       OBJC_ASSOCIATION_ASSIGN
     );
 
-    if (opts.debug || isDebugEnabled()) {
+    if (options.debug || isDebugEnabled()) {
       if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
         this->webview.inspectable = YES;
       }
     }
 
-    if (opts.width > 0 && opts.height > 0) {
-      this->setSize(opts.height, opts.width);
-    } else if (opts.width > 0) {
-      this->setSize(window.frame.size.height, opts.width);
-    } else if (opts.height > 0) {
-      this->setSize(opts.height, window.frame.size.width);
+    if (options.width > 0 && options.height > 0) {
+      this->setSize(options.height, options.width);
+    } else if (options.width > 0) {
+      this->setSize(window.frame.size.height, options.width);
+    } else if (options.height > 0) {
+      this->setSize(options.height, window.frame.size.width);
     }
 
     this->bridge.configureWebView(this->webview);
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
     // Set window to be resizable
-    if (opts.resizable) {
+    if (options.resizable) {
       style |= NSWindowStyleMaskResizable;
     }
 
-    if (opts.closable) {
+    if (options.closable) {
       style |= NSWindowStyleMaskClosable;
     }
 
-    if (opts.minimizable) {
+    if (options.minimizable) {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
     this->window = [SSCWindow.alloc
-        initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
+        initWithContentRect: NSMakeRect(0, 0, options.width, options.height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO
     ];
     // this->window.appearance = [NSAppearance appearanceNamed: NSAppearanceNameVibrantDark];
-    this->window.contentMinSize = NSMakeSize(opts.minWidth, opts.minHeight);
+    this->window.contentMinSize = NSMakeSize(options.minWidth, options.minHeight);
     this->window.titleVisibility = NSWindowTitleVisible;
     this->window.titlebarAppearsTransparent = true;
     // this->window.movableByWindowBackground = true;
@@ -1162,33 +481,33 @@ namespace SSC {
     this->window.opaque = YES;
     this->window.webview = this->webview;
 
-    if (opts.maximizable == false) {
+    if (options.maximizable == false) {
       this->window.collectionBehavior = NSWindowCollectionBehaviorFullScreenAuxiliary;
     }
 
     // Add webview to window
     this->window.contentView = this->webview;
 
-    if (opts.frameless) {
+    if (options.frameless) {
       this->window.titlebarAppearsTransparent = YES;
       this->window.movableByWindowBackground = YES;
       style = NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskBorderless;
       style |= NSWindowStyleMaskResizable;
       this->window.styleMask = style;
-    } else if (opts.utility) {
+    } else if (options.utility) {
       style |= NSWindowStyleMaskBorderless;
       style |= NSWindowStyleMaskUtilityWindow;
       this->window.styleMask = style;
     }
 
-    if (opts.titlebarStyle == "hidden") {
+    if (options.titlebarStyle == "hidden") {
       // hidden title bar and a full-size content window.
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskResizable;
       this->window.styleMask = style;
       this->window.titleVisibility = NSWindowTitleHidden;
-    } else if (opts.titlebarStyle == "hiddenInset") {
+    } else if (options.titlebarStyle == "hiddenInset") {
       // hidden titlebar with inset/offset window controls
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskTitled;
@@ -1200,8 +519,8 @@ namespace SSC {
       auto x = 16.f;
       auto y = 42.f;
 
-      if (opts.windowControlOffsets.size() > 0) {
-        auto parts = split(opts.windowControlOffsets, 'x');
+      if (options.windowControlOffsets.size() > 0) {
+        auto parts = split(options.windowControlOffsets, 'x');
         try {
           x = std::stof(parts[0]);
           y = std::stof(parts[1]);
@@ -1241,8 +560,8 @@ namespace SSC {
       }
     }
 
-    if (opts.aspectRatio.size() > 2) {
-      const auto parts = split(opts.aspectRatio, ':');
+    if (options.aspectRatio.size() > 2) {
+      const auto parts = split(options.aspectRatio, ':');
       if (parts.size() == 2) {
         CGFloat aspectRatio;
 
@@ -1264,13 +583,13 @@ namespace SSC {
     bool didSetBackgroundColor = false;
 
     if ([appearance bestMatchFromAppearancesWithNames: @[NSAppearanceNameDarkAqua]]) {
-      if (opts.backgroundColorDark.size()) {
-        this->setBackgroundColor(opts.backgroundColorDark);
+      if (options.backgroundColorDark.size()) {
+        this->setBackgroundColor(options.backgroundColorDark);
         didSetBackgroundColor = true;
       }
     } else {
-      if (opts.backgroundColorLight.size()) {
-        this->setBackgroundColor(opts.backgroundColorLight);
+      if (options.backgroundColorLight.size()) {
+        this->setBackgroundColor(options.backgroundColorLight);
         didSetBackgroundColor = true;
       }
     }
@@ -1291,8 +610,8 @@ namespace SSC {
       nil
 		]];
 
-    if (opts.index == 0) {
-      if (opts.headless || userConfig["application_agent"] == "true") {
+    if (options.index == 0) {
+      if (options.headless || userConfig["application_agent"] == "true") {
         NSApp.activationPolicy = NSApplicationActivationPolicyAccessory;
 
         if (userConfig["application_agent"] == "true") {
@@ -1306,14 +625,14 @@ namespace SSC {
         NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
       }
 
-      if (opts.headless) {
+      if (options.headless) {
         [NSApp activateIgnoringOtherApps: NO];
       } else {
         // Sets the app as the active app
         [NSApp activateIgnoringOtherApps: YES];
       }
     }
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     this->window = [SSCWindow.alloc initWithFrame: frame];
     this->viewController = [SSCWebViewController new];
     this->viewController.webview = this->webview;
@@ -1339,10 +658,6 @@ namespace SSC {
     this->window.rootViewController.view.frame = frame;
 
   #endif
-
-    if (opts.title.size() > 0) {
-      this->setTitle(opts.title);
-    }
   }
 
   Window::~Window () {
@@ -1371,9 +686,9 @@ namespace SSC {
   }
 
   ScreenSize Window::getScreenSize () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     const auto frame = NSScreen.mainScreen.frame;
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     const auto frame = UIScreen.mainScreen.bounds;
   #endif
     return ScreenSize {
@@ -1383,30 +698,30 @@ namespace SSC {
   }
 
   void Window::show () {
-  #if SSC_PLATFORM_MACOS
-    if (this->opts.index == 0) {
-      if (opts.headless || this->bridge.userConfig["application_agent"] == "true") {
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
+    if (this->options.index == 0) {
+      if (options.headless || this->bridge.userConfig["application_agent"] == "true") {
         NSApp.activationPolicy = NSApplicationActivationPolicyAccessory;
       } else {
         NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
       }
     }
 
-    if (this->opts.headless || this->bridge.userConfig["application_agent"] == "true") {
+    if (this->options.headless || this->bridge.userConfig["application_agent"] == "true") {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
       [this->webview becomeFirstResponder];
       [this->window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
     }
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     [this->webview becomeFirstResponder];
     [this->window makeKeyAndVisible];
   #endif
   }
 
   void Window::exit (int code) {
-    exiting = true;
+    isExiting = true;
     this->close(code);;
     if (onExit != nullptr) onExit(code);
   }
@@ -1431,7 +746,7 @@ namespace SSC {
       }
 
       if (this->window != nullptr) {
-      #if SSC_PLATFORM_MACOS
+      #if SOCKET_RUNTIME_PLATFORM_MACOS
         auto contentView = this->window.contentView;
         auto subviews = NSMutableArray.array;
 
@@ -1463,29 +778,29 @@ namespace SSC {
   }
 
   void Window::maximize () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     [this->window zoom: this->window];
   #endif
   }
 
   void Window::minimize () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     [this->window miniaturize: this->window];
   #endif
   }
 
   void Window::restore () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     [this->window deminiaturize: this->window];
   #endif
   }
 
   void Window::hide () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (this->window) {
       [this->window orderOut: this->window];
     }
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     if (this->window) {
       this->window.hidden = YES;
     }
@@ -1507,7 +822,7 @@ namespace SSC {
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (!this->window || !this->webview) return;
     NSMenu* menuBar = [NSApp mainMenu];
     NSArray* menuBarItems = [menuBar itemArray];
@@ -1546,11 +861,11 @@ namespace SSC {
   }
 
   const String Window::getTitle () const {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (this->window && this->window.title.UTF8String != nullptr) {
       return this->window.title.UTF8String;
     }
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     if (this->viewController && this->viewController.title.UTF8String != nullptr) {
       return this->viewController.title.UTF8String;
     }
@@ -1560,11 +875,11 @@ namespace SSC {
   }
 
   void Window::setTitle (const String& title) {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (this->window) {
       this->window.title =  @(title.c_str());
     }
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     if (this->viewController) {
       this->viewController.title = @(title.c_str());
     }
@@ -1602,7 +917,7 @@ namespace SSC {
 
   void Window::setSize (int width, int height, int hints) {
     if (this->window) {
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       [this->window
         setFrame: NSMakeRect(0.f, 0.f, (float) width, (float) height)
          display: YES
@@ -1610,7 +925,7 @@ namespace SSC {
       ];
 
       [this->window center];
-    #elif SSC_PLATFORM_IOS
+    #elif SOCKET_RUNTIME_PLATFORM_IOS
       auto frame = this->window.frame;
       frame.size.width = width;
       frame.size.height = height;
@@ -1624,10 +939,10 @@ namespace SSC {
 
   void Window::setPosition (float x, float y) {
     if (this->window) {
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       const auto point = NSPointFromCGPoint(CGPointMake(x, y));
       this->window.frameTopLeftPoint = point;
-    #elif SSC_PLATFORM_IOS
+    #elif SOCKET_RUNTIME_PLATFORM_IOS
       auto frame = this->window.frame;
       frame.origin.x = x;
       frame.origin.y = y;
@@ -1640,19 +955,19 @@ namespace SSC {
   }
 
   void Window::closeContextMenu () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     // TODO(@jwerle)
   #endif
   }
 
   void Window::closeContextMenu (const String &instanceId) {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     // TODO(@jwerle)
   #endif
   }
 
   void Window::showInspector () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (this->webview) {
       // This is a private method on the webview, so we need to use
       // the pragma keyword to suppress the access warning.
@@ -1689,13 +1004,13 @@ namespace SSC {
   void Window::setBackgroundColor (int r, int g, int b, float a) {
     if (this->window) {
       CGFloat rgba[4] = { r / 255.0, g / 255.0, b / 255.0, a };
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       [this->window setBackgroundColor: [NSColor
         colorWithColorSpace: NSColorSpace.sRGBColorSpace
                  components: rgba
                       count: 4
       ]];
-    #elif SSC_PLATFORM_IOS
+    #elif SOCKET_RUNTIME_PLATFORM_IOS
       auto color = [UIColor
         colorWithRed: rgba[0]
                green: rgba[1]
@@ -1713,9 +1028,9 @@ namespace SSC {
     if (this->window) {
       const auto backgroundColor = this->window.backgroundColor;
       CGFloat r, g, b, a;
-    #if SSC_PLATFORM_MACOS
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       const auto rgba = [backgroundColor colorUsingColorSpace: NSColorSpace.sRGBColorSpace];
-    #elif SSC_PLATFORM_IOS
+    #elif SOCKET_RUNTIME_PLATFORM_IOS
       const auto rgba = [backgroundColor colorWithAlphaComponent: 1];
     #endif
 
@@ -1737,7 +1052,7 @@ namespace SSC {
   }
 
   void Window::setContextMenu (const String& instanceId, const String& menuSource) {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     const auto mouseLocation = NSEvent.mouseLocation;
     const auto contextMenu = [[NSMenu.alloc initWithTitle: @"contextMenu"] autorelease];
     const auto location = NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y));
@@ -1805,7 +1120,7 @@ namespace SSC {
   }
 
   void Window::setMenu (const String& menuSource, const bool& isTrayMenu) {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     auto app = App::sharedApplication();
 
     if (!app || menuSource.empty()) {

@@ -190,7 +190,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
- * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+ * @param {boolean=} [opts.shouldExitApplicationOnClose=false] - whether the window can exit the app
  * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
  * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
  * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
@@ -218,7 +218,7 @@ export async function createWindow (opts) {
     backgroundColorDark: opts.backgroundColorDark ?? '',
     backgroundColorLight: opts.backgroundColorLight ?? '',
     utility: opts.utility ?? false,
-    canExit: opts.canExit ?? false,
+    shouldExitApplicationOnClose: opts.shouldExitApplicationOnClose ?? false,
     /**
      * @private
      * @type {number}

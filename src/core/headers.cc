@@ -213,7 +213,7 @@ namespace SSC {
     this->string = std::to_string(value);
   }
 
-#if defined(__APPLE__)
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   Headers::Value::Value (ssize_t value) {
     this->string = std::to_string(value);
   }
@@ -241,5 +241,13 @@ namespace SSC {
 
   const char * Headers::Value::c_str() const {
     return this->str().c_str();
+  }
+
+  const String toHeaderCase (const String& source) {
+    Vector<String> parts;
+    for (const auto& entry : split(trim(source), '-')) {
+      parts.push_back(toProperCase(entry));
+    }
+    return join(parts, '-');
   }
 }

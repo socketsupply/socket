@@ -1,5 +1,5 @@
-#ifndef SSC_IPC_RESULT_H
-#define SSC_IPC_RESULT_H
+#ifndef SOCKET_RUNTIME_IPC_RESULT_H
+#define SOCKET_RUNTIME_IPC_RESULT_H
 
 #include "../core/core.hh"
 #include "message.hh"

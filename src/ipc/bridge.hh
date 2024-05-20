@@ -1,8 +1,10 @@
-#ifndef SSC_IPC_BRIDGE_H
-#define SSC_IPC_BRIDGE_H
+#ifndef SOCKET_RUNTIME_IPC_BRIDGE_H
+#define SOCKET_RUNTIME_IPC_BRIDGE_H
 
 #include "../core/core.hh"
-#include "../window/webview.hh"
+#include "../core/webview.hh"
+
+#include "preload.hh"
 #include "navigator.hh"
 #include "router.hh"
 #include "scheme_handlers.hh"
@@ -17,11 +19,11 @@ namespace SSC::IPC {
 
       static Vector<Bridge*> getInstances();
 
-      const NetworkStatus::Observer networkStatusObserver;
-      const Geolocation::PermissionChangeObserver geolocationPermissionChangeObserver;
-      const Notifications::PermissionChangeObserver notificationsPermissionChangeObserver;
-      const Notifications::NotificationResponseObserver notificationResponseObserver;
-      const Notifications::NotificationPresentedObserver notificationPresentedObserver;
+      const CoreNetworkStatus::Observer networkStatusObserver;
+      const CoreGeolocation::PermissionChangeObserver geolocationPermissionChangeObserver;
+      const CoreNotifications::PermissionChangeObserver notificationsPermissionChangeObserver;
+      const CoreNotifications::NotificationResponseObserver notificationResponseObserver;
+      const CoreNotifications::NotificationPresentedObserver notificationPresentedObserver;
 
       EvaluateJavaScriptFunction evaluateJavaScriptFunction = nullptr;
       NavigateFunction navigateFunction = nullptr;
@@ -30,14 +32,14 @@ namespace SSC::IPC {
       Bluetooth bluetooth;
       Navigator navigator;
       SchemeHandlers schemeHandlers;
+      Preload preload;
       Router router;
       Map userConfig = getUserConfig();
 
       SharedPointer<Core> core = nullptr;
-      String preload = "";
       uint64_t id = 0;
 
-    #if SSC_PLATFORM_ANDROID
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
       bool isAndroidEmulator = false;
     #endif
 
@@ -50,11 +52,12 @@ namespace SSC::IPC {
       void init ();
       void configureWebView (WebView* webview);
       void configureSchemeHandlers (const SchemeHandlers::Configuration& configuration);
+      void configureNavigatorMounts ();
 
-      bool route (const String& uri, SharedPointer<char *> bytes, size_t size);
+      bool route (const String& uri, SharedPointer<char[]> bytes, size_t size);
       bool route (
         const String& uri,
-        SharedPointer<char *> bytes,
+        SharedPointer<char[]> bytes,
         size_t size,
         Router::ResultCallback
       );
@@ -63,10 +66,10 @@ namespace SSC::IPC {
       bool evaluateJavaScript (const String& source);
       bool dispatch (const DispatchCallback& callback);
       bool navigate (const String& url);
-      bool emit (const String& name, const String& data);
-      bool emit (const String& name, const JSON::Any& json);
-      bool send (const Message::Seq& seq, const String& data, const Post& post);
-      bool send (const Message::Seq& seq, const JSON::Any& json, const Post& post);
+      bool emit (const String& name, const String& data = "");
+      bool emit (const String& name, const JSON::Any& json = {});
+      bool send (const Message::Seq& seq, const String& data, const Post& post = {});
+      bool send (const Message::Seq& seq, const JSON::Any& json, const Post& post = {});
   };
 }
 #endif

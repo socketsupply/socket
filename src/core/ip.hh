@@ -1,10 +1,9 @@
-#ifndef SSC_CORE_IP_H
-#define SSC_CORE_IP_H
+#ifndef SOCKET_RUNTIME_CORE_IP_H
+#define SOCKET_RUNTIME_CORE_IP_H
 
-#include "platform.hh"
-#include "types.hh"
+#include "../platform/platform.hh"
 
-namespace SSC {
+namespace SSC::IP {
   static inline String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);

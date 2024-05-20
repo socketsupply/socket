@@ -1,5 +1,5 @@
-#ifndef SSC_IPC_CLIENT_H
-#define SSC_IPC_CLIENT_H
+#ifndef SOCKET_RUNTIME_IPC_CLIENT_H
+#define SOCKET_RUNTIME_IPC_CLIENT_H
 
 #include "../core/core.hh"
 

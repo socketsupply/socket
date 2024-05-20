@@ -1,8 +1,6 @@
-#ifndef SSC_CORE_MODULE_H
-#define SSC_CORE_MODULE_H
+#ifndef SOCKET_RUNTIME_CORE_MODULE_H
+#define SOCKET_RUNTIME_CORE_MODULE_H
 
-#include "platform.hh"
-#include "types.hh"
 #include "json.hh"
 #include "post.hh"
 
@@ -10,17 +8,17 @@ namespace SSC {
   uint64_t rand64 ();
   // forward
   class Core;
-  class Module {
+  class CoreModule {
     public:
-      using Callback = Function<void(String, JSON::Any, Post)>;
+      using Callback = Function<void(const String, JSON::Any, Post)>;
 
       struct RequestContext {
         String seq;
-        Module::Callback cb;
+        CoreModule::Callback callback;
         RequestContext () = default;
-        RequestContext (String seq, Module::Callback cb) {
+        RequestContext (String seq, const CoreModule::Callback& callback) {
           this->seq = seq;
-          this->cb = cb;
+          this->callback = callback;
         }
       };
 
@@ -111,21 +109,23 @@ namespace SSC {
           }
 
           template <typename... Types>
-            bool dispatch (Types... arguments) {
-              Lock lock(this->mutex);
-              bool dispatched = false;
-              for (auto& observer : this->observers) {
-                if (observer.callback != nullptr) {
-                  observer.callback(arguments...);
-                  dispatched = true;
-                }
+          bool dispatch (Types... arguments) {
+            Lock lock(this->mutex);
+            bool dispatched = false;
+            for (auto& observer : this->observers) {
+              if (observer.callback != nullptr) {
+                observer.callback(arguments...);
+                dispatched = true;
               }
-              return dispatched;
             }
+            return dispatched;
+          }
       };
 
       Core *core = nullptr;
-      Module (Core* core);
+      CoreModule (Core* core)
+        : core(core)
+      {}
   };
 }
 #endif

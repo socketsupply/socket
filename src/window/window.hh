@@ -1,43 +1,43 @@
-#ifndef SSC_WINDOW_WINDOW_H
-#define SSC_WINDOW_WINDOW_H
+#ifndef SOCKET_RUNTIME_WINDOW_WINDOW_H
+#define SOCKET_RUNTIME_WINDOW_WINDOW_H
 
 #include <iostream>
 
-#include "../ipc/ipc.hh"
 #include "../core/env.hh"
 #include "../core/config.hh"
+#include "../core/webview.hh"
 
+#include "../ipc/ipc.hh"
+
+#include "dialog.hh"
 #include "hotkey.hh"
 #include "options.hh"
-#include "webview.hh"
 
-#ifndef SSC_MAX_WINDOWS
-#define SSC_MAX_WINDOWS 32
+#ifndef SOCKET_RUNTIME_MAX_WINDOWS
+#define SOCKET_RUNTIME_MAX_WINDOWS 32
 #endif
 
-#define SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX SSC_MAX_WINDOWS + 1
+#define SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX SOCKET_RUNTIME_MAX_WINDOWS + 1
 
-#ifndef SSC_MAX_WINDOWS_RESERVED
-#define SSC_MAX_WINDOWS_RESERVED 16
+#ifndef SOCKET_RUNTIME_MAX_WINDOWS_RESERVED
+#define SOCKET_RUNTIME_MAX_WINDOWS_RESERVED 16
 #endif
 
-#if SSC_PLATFORM_WINDOWS
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
 #define WM_HANDLE_DEEP_LINK WM_APP + 1
 #define WM_SOCKET_TRAY WM_APP + 2
 #endif
 
 namespace SSC {
   // forward
-  class Dialog;
   class Window;
 }
 
-#if SSC_PLATFORM_APPLE
-@class SSCBridgedWebView;
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @class SSCWindow;
 
 @interface SSCWindowDelegate :
-#if SSC_PLATFORM_IOS
+#if SOCKET_RUNTIME_PLATFORM_IOS
   NSObject<
     UIScrollViewDelegate,
     WKScriptMessageHandler
@@ -51,60 +51,22 @@ namespace SSC {
 @end
 
 @interface SSCWindow :
-#if SSC_PLATFORM_IOS
+#if SOCKET_RUNTIME_PLATFORM_IOS
   UIWindow
 #else
   NSWindow
 #endif
 
-@property (nonatomic, strong) SSCBridgedWebView* webview;
-
-#if SSC_PLATFORM_MACOS
-@property (nonatomic, strong) NSView *titleBarView;
-@property (nonatomic) NSPoint windowControlOffsets;
+#if SOCKET_RUNTIME_PLATFORM_MACOS
+  @property (nonatomic, strong) NSView *titleBarView;
+  @property (nonatomic) NSPoint windowControlOffsets;
 #endif
+  @property (nonatomic, strong) SSCWebView* webview;
 @end
-
-#if SSC_PLATFORM_IOS
-@interface SSCWebViewController : UIViewController
-@property (nonatomic, strong) SSCBridgedWebView* webview;
-@end
-#endif
-
-#if SSC_PLATFORM_MACOS
-@interface WKOpenPanelParameters (WKPrivate)
-- (NSArray<NSString*>*) _acceptedMIMETypes;
-- (NSArray<NSString*>*) _acceptedFileExtensions;
-- (NSArray<NSString*>*) _allowedFileExtensions;
-@end
-#endif
-
-#if SSC_PLATFORM_IOS
-@interface SSCUIPickerDelegate : NSObject<
-  UIDocumentPickerDelegate,
-
-  // TODO(@jwerle): use 'PHPickerViewControllerDelegate' instead
-  UIImagePickerControllerDelegate,
-  UINavigationControllerDelegate
->
-  @property (nonatomic) SSC::Dialog* dialog;
-
-  // UIDocumentPickerDelegate
-  - (void) documentPicker: (UIDocumentPickerViewController*) controller
-   didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls;
-  - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller;
-
-  // UIImagePickerControllerDelegate
-  - (void) imagePickerController: (UIImagePickerController*) picker
-   didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id>*) info;
-  - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker;
-@end
-#endif
-
 #endif
 
 namespace SSC {
-#if SSC_PLATFORM_WINDOWS
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
   class DragDrop;
 #endif
 
@@ -115,11 +77,19 @@ namespace SSC {
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
   };
 
+  /**
+   * A container for holding an application's screen size
+   */
   struct ScreenSize {
     int height = 0;
     int width = 0;
   };
 
+  /**
+   * `Window` is a base class that implements a variety of APIs for a
+   * window on host platforms. Windows contain a WebView that is connected
+   * to the core runtime through a window's "IPC Bridge".
+   */
   class Window {
     public:
       struct Position {
@@ -127,51 +97,123 @@ namespace SSC {
         float y;
       };
 
+      struct Size {
+        int width = 0;
+        int height = 0;
+      };
+
+      /**
+       * The options used to create this window.
+       */
+      const WindowOptions options;
+
+      /**
+       * The "hot key" context for this window.
+       * The "hot key" features are only available on desktop platforms.
+       */
       HotKeyContext hotkey;
-      WindowOptions opts;
+
+      /**
+       * The IPC bridge that connects the application window's WebView to
+       * the runtime and various core modules and functions.
+       */
       IPC::Bridge bridge;
+
+      /**
+       * The (x, y) screen coordinate position of the window.
+       */
       Position position;
+
+      /**
+       * The current mouse (x, y) position when dragging started.
+       */
+      Position dragStart;
+
+      /**
+       * The current mouse (x, y) position while dragging.
+       */
+      Position dragging;
+
+      /**
+       * The size (width, height) of the window.
+       */
+      Size size;
+
+      /**
+       * A shared pointer the application `Core` instance.
+       */
       SharedPointer<Core> core = nullptr;
 
+      /**
+       * A callback function that is called when a "script message" is received
+       * from the WebVew.
+       */
       MessageCallback onMessage = [](const String) {};
-      ExitCallback onExit = nullptr;
-      int index = 0;
-      int width = 0;
-      int height = 0;
-      int x = 0;
-      int y = 0;
-      bool exiting = false;
 
-    #if SSC_PLATFORM_IOS
+      /**
+       * A callback function that is called when the window wants to exit the
+       * application. This function is called _only_ when
+       * `options.shouldExitApplicationOnClose` is `true`.
+       */
+      ExitCallback onExit = nullptr;
+
+      /**
+       * The unique index of the window instance. This value is used by the
+       * `WindowManager` and various standard libary IPC functions for
+       * addressing a window a unique manner.
+       */
+      int index = 0;
+
+      /**
+       * This value is `true` when the window has closed an is indicating that the
+       * application is exiting
+       */
+      Atomic<bool> isExiting = false;
+
+      /**
+       * A pointer to the platform WebView.
+       */
+      WebView* webview;
+
+      /**
+       * A controller for showing system dialogs such as a "file picker"
+       */
+      Dialog dialog;
+
+    #if SOCKET_RUNTIME_PLATFORM_IOS
       SSCWebViewController* viewController = nullptr;
     #endif
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       SSCWindowDelegate* windowDelegate = nullptr;
-      SSCBridgedWebView* webview = nullptr;
       SSCWindow* window = nullptr;
       WKProcessPool* processPool = nullptr;
-    #elif SSC_PLATFORM_LINUX
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
       GtkSelectionData *selectionData = nullptr;
       GtkAccelGroup *accelGroup = nullptr;
-      GtkWidget *webview = nullptr;
-      GtkWidget *window = nullptr;
-      GtkWidget *menubar = nullptr;
-      GtkWidget *menutray = nullptr;
-      GtkWidget *vbox = nullptr;
-      GtkWidget *popup = nullptr;
-      int popupId;
+
+      GtkWidget* vbox = nullptr;
+      GtkWidget* window = nullptr;
+      GtkWidget* menubar = nullptr;
+      GtkWidget* menutray = nullptr;
+      GtkWidget* contextMenu = nullptr;
+
+      WebKitUserContentManager* userContentManager;
+      WebKitWebsitePolicies* policies;
+      WebKitSettings* settings;
+
+      int contextMenuID;
       double dragLastX = 0;
       double dragLastY = 0;
+
       bool shouldDrag;
       Vector<String> draggablePayload;
       bool isDragInvokedInsideWindow;
       GdkPoint initialLocation;
-    #elif SSC_PLATFORM_WINDOWS
+    #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
-      ICoreWebView2 *webview = nullptr;
       HMENU menubar;
       HMENU menutray;
       DWORD mainThread = GetCurrentThreadId();
@@ -193,6 +235,9 @@ namespace SSC {
       Path modulePath;
 
       void resize (HWND window);
+    #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      String pendingNavigationLocation;
+      jobject androidWindowRef;
     #endif
 
       Window (SharedPointer<Core> core, const WindowOptions&);
@@ -213,14 +258,14 @@ namespace SSC {
       void navigate (const String&);
       const String getTitle () const;
       void setTitle (const String&);
-      ScreenSize getSize ();
-      const ScreenSize getSize () const;
+      Size getSize ();
+      const Size getSize () const;
       void setSize (int height, int width, int hints = 0);
       void setPosition (float, float);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();
-    #if SSC_PLATFORM_LINUX
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
       void closeContextMenu (GtkWidget *, const String&);
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
@@ -265,22 +310,13 @@ namespace SSC {
       }
   };
 
-  struct WindowManagerOptions {
-    String aspectRatio = "";
+  struct WindowManagerOptions : WindowOptions {
     String defaultHeight = "0";
     String defaultWidth = "0";
     String defaultMinWidth = "0";
     String defaultMinHeight = "0";
     String defaultMaxWidth = "100%";
     String defaultMaxHeight = "100%";
-    bool headless = false;
-    bool isTest = false;
-    bool canExit = false;
-    String argv = "";
-    String cwd = "";
-    Map userConfig;
-    MessageCallback onMessage = [](const String) {};
-    ExitCallback onExit = nullptr;
   };
 
   struct WindowPropertiesFlags {
@@ -331,7 +367,7 @@ namespace SSC {
           JSON::Object json () const;
       };
 
-      std::chrono::system_clock::time_point lastDebugLogLine;
+      std::chrono::system_clock::time_point lastDebugLogLine = std::chrono::system_clock::now();
 
       Vector<SharedPointer<ManagedWindow>> windows;
       WindowManagerOptions options;
@@ -366,6 +402,8 @@ namespace SSC {
 
       SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
       SharedPointer<ManagedWindow> getWindow (int index);
+      SharedPointer<ManagedWindow> getWindowForBridge (IPC::Bridge* bridge);
+      SharedPointer<ManagedWindow> getWindowForWebView (WebView* webview);;
       SharedPointer<ManagedWindow> getOrCreateWindow (int index);
       SharedPointer<ManagedWindow> getOrCreateWindow (int index, const WindowOptions& options);
       WindowStatus getWindowStatus (int index);
@@ -378,47 +416,7 @@ namespace SSC {
       JSON::Array json (const Vector<int>& indices);
   };
 
-  class Dialog {
-    public:
-      struct FileSystemPickerOptions {
-        enum class Type { Open, Save };
-        bool directories = false;
-        bool multiple = false;
-        bool files = false;
-        Type type = Type::Open;
-        String contentTypes;
-        String defaultName;
-        String defaultPath;
-        String title;
-      };
-
-    #if SSC_PLATFORM_IOS
-      SSCUIPickerDelegate* uiPickerDelegate = nullptr;
-      Vector<String> delegatedResults;
-      std::mutex delegateMutex;
-    #endif
-
-      Dialog ();
-      ~Dialog ();
-
-      String showSaveFilePicker (
-        const FileSystemPickerOptions& options
-      );
-
-      Vector<String> showOpenFilePicker (
-        const FileSystemPickerOptions& options
-      );
-
-      Vector<String> showDirectoryPicker (
-        const FileSystemPickerOptions& options
-      );
-
-      Vector<String> showFileSystemPicker (
-        const FileSystemPickerOptions& options
-      );
-  };
-
-#if SSC_PLATFORM_WINDOWS
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;

@@ -14,8 +14,9 @@ namespace SSC::IPC {
     this->cancel = message.cancel;
   }
 
-  Message::Message (const String& source) : Message(source, false) {
-  }
+  Message::Message (const String& source)
+    : Message(source, false)
+  {}
 
   Message::Message (const String& source, bool decodeValues) {
     String str = source;

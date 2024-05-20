@@ -1,5 +1,5 @@
-#include "extension.hh"
 #include <string.h>
+#include "extension.hh"
 
 const sapi_json_type_t sapi_json_typeof (const sapi_json_any_t* json) {
   if (json->isNull()) return SAPI_JSON_TYPE_NULL;

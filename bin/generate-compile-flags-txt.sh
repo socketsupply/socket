@@ -6,6 +6,8 @@ declare platform="desktop"
 declare force=0
 declare args=()
 
+source "$root/bin/android-functions.sh"
+
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
   platform="iPhoneOS"
@@ -43,12 +45,22 @@ while (( $# > 0 )); do
       arch="aarch64"
       platform="Android";
       export TARGET_OS_ANDROID=1
+      android_fte > /dev/null
       args+=("-U__APPLE__")
+      args+=("-D__ANDROID__=1")
+      args+=("--sysroot=$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot")
+      args+=("-I$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot/usr/include/$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]')-android")
+      args+=("-I$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot/usr/include/c++/v1")
     elif [[ "$1" = "android-emulator" ]] || [[ "$1" = "AndroidEmulator" ]]; then
       arch="x86_64"
       platform="AndroidEmulator";
       export TARGET_ANDROID_EMULATOR=1
+      android_fte > /dev/null
       args+=("-U__APPLE__")
+      args+=("-D__ANDROID__=1")
+      args+=("--sysroot=$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot")
+      args+=("-I$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot/usr/include/$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]')-android")
+      args+=("-I$NDK_TOOLCHAINS/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m )/sysroot/usr/include/c++/v1")
     else
       platform="$1";
     fi

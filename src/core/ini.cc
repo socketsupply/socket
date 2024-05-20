@@ -1,3 +1,4 @@
+#include "../platform/platform.hh"
 #include "ini.hh"
 
 namespace SSC::INI {

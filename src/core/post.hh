@@ -1,7 +1,7 @@
-#ifndef SSC_CORE_POST_H
-#define SSC_CORE_POST_H
+#ifndef SOCKET_RUNTIME_CORE_POST_H
+#define SOCKET_RUNTIME_CORE_POST_H
 
-#include "types.hh"
+#include "../platform/types.hh"
 
 namespace SSC {
   struct Post {
@@ -19,7 +19,7 @@ namespace SSC {
 
     uint64_t id = 0;
     uint64_t ttl = 0;
-    SharedPointer<char*> body = nullptr;
+    SharedPointer<char[]> body = nullptr;
     size_t length = 0;
     String headers = "";
     String workerId = "";

@@ -2,7 +2,19 @@
 #include "debug.hh"
 #include "core.hh"
 
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#include <fstream>
+#endif
+
 namespace SSC {
+  static std::map<String, FileResource::Cache> caches;
+  static Mutex mutex;
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  Android::AssetManager* sharedAndroidAssetManager = nullptr;
+#endif
+
   std::map<String, Set<String>> FileResource::mimeTypes = {
     {"application/font-woff", { ".woff" }},
     {"application/font-woff2", { ".woff2" }},
@@ -28,6 +40,94 @@ namespace SSC {
     {"video/ogg", { ".ogv" }}
   };
 
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  static Path getRelativeAndroidAssetManagerPath (const Path& resourcePath) {
+    auto resourcesPath = FileResource::getResourcesPath();
+    auto assetPath = replace(resourcePath.string(), resourcesPath.string(), "");
+    if (assetPath.starts_with("/")) {
+      assetPath = assetPath.substr(1);
+    }
+
+    return Path(assetPath);
+  }
+#endif
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  void FileResource::setSharedAndroidAssetManager (Android::AssetManager* assetManager) {
+    Lock lock(mutex);
+    sharedAndroidAssetManager = assetManager;
+  }
+
+  Android::AssetManager* FileResource::getSharedAndroidAssetManager () {
+    return sharedAndroidAssetManager;
+  }
+#endif
+
+  bool FileResource::isFile (const String& resourcePath) {
+    return FileResource::isFile(Path(resourcePath));
+  }
+
+  bool FileResource::isFile (const Path& resourcePath) {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(resourcePath);
+      const auto asset = AAssetManager_open(
+        sharedAndroidAssetManager,
+        assetPath.c_str(),
+        AASSET_MODE_BUFFER
+      );
+
+      if (asset) {
+        AAsset_close(asset);
+        return true;
+      }
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_APPLE
+    static auto fileManager = [[NSFileManager alloc] init];
+    bool isDirectory = false;
+    const auto fileExistsAtPath = [fileManager
+      fileExistsAtPath: @(this->path.string().c_str())
+           isDirectory: &isDirectory
+    ];
+
+    return fileExistsAtPath && !isDirectory
+  #endif
+
+    return fs::is_regular_file(resourcePath);
+  }
+
+  bool FileResource::isDirectory (const String& resourcePath) {
+    return FileResource::isDirectory(Path(resourcePath));
+  }
+
+  bool FileResource::isDirectory (const Path& resourcePath) {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(resourcePath);
+      const auto assetDir = AAssetManager_openDir(
+        sharedAndroidAssetManager,
+        assetPath.c_str()
+      );
+
+      if (assetDir) {
+        AAssetDir_close(assetDir);
+        return true;
+      }
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_APPLE
+    static auto fileManager = [[NSFileManager alloc] init];
+    bool isDirectory = false;
+    const auto fileExistsAtPath = [fileManager
+      fileExistsAtPath: @(this->path.string().c_str())
+           isDirectory: &isDirectory
+    ];
+
+    return fileExistsAtPath && isDirectory
+  #endif
+
+    return fs::is_directory(resourcePath);
+  }
+
   Path FileResource::getResourcesPath () {
     static String value;
 
@@ -35,16 +135,16 @@ namespace SSC {
       return Path(value);
     }
 
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     static const auto resourcePath = NSBundle.mainBundle.resourcePath;
     value = resourcePath.UTF8String;
-  #elif SSC_PLATFORM_IOS || SSC_PLATFORM_IOS_SIMULATOR
+  #elif SOCKET_RUNTIME_PLATFORM_IOS || SOCKET_RUNTIME_PLATFORM_IOS_SIMULATOR
     static const auto resourcePath = NSBundle.mainBundle.resourcePath;
     value = [resourcePath stringByAppendingPathComponent: @"ui"].UTF8String;
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     static const auto self = fs::canonical("/proc/self/exe");
     value = self.parent_path().string();
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     const auto self = Path(filename).remove_filename();
@@ -60,7 +160,7 @@ namespace SSC {
   #endif
 
     if (value.size() > 0) {
-    #if !SSC_PLATFORM_WINDOWS
+    #if !PLATFORM_WINDOWS
       std::replace(
         value.begin(),
         value.end(),
@@ -83,7 +183,7 @@ namespace SSC {
 
   Path FileResource::getResourcePath (const String& resourcePath) {
     const auto resourcesPath = FileResource::getResourcesPath();
-  #if SSC_PLATFORM_WINDOWS
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (resourcePath.starts_with("\\")) {
       return Path(resourcesPath.string() + resourcePath);
     }
@@ -98,11 +198,17 @@ namespace SSC {
   #endif
   }
 
-  FileResource::FileResource (const String& resourcePath) {
-    this->path = fs::absolute(Path(resourcePath));
-
+  FileResource::FileResource (
+    const Path& resourcePath,
+    const Options& options
+  ) : options(options) {
+    this->path = fs::absolute(resourcePath);
     this->startAccessing();
   }
+
+  FileResource::FileResource (const String& resourcePath, const Options& options)
+    : FileResource(Path(resourcePath), options)
+  {}
 
   FileResource::~FileResource () {
     this->stopAccessing();
@@ -112,6 +218,7 @@ namespace SSC {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
+    this->options = resource.options;
     this->accessing = resource.accessing.load();
 
     if (this->accessing) {
@@ -123,6 +230,7 @@ namespace SSC {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
+    this->options = resource.options;
     this->accessing = resource.accessing.load();
 
     resource.bytes = nullptr;
@@ -138,6 +246,7 @@ namespace SSC {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
+    this->options = resource.options;
     this->accessing = resource.accessing.load();
 
     if (this->accessing) {
@@ -151,6 +260,7 @@ namespace SSC {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
+    this->options = resource.options;
     this->accessing = resource.accessing.load();
 
     resource.bytes = nullptr;
@@ -171,9 +281,13 @@ namespace SSC {
       return false;
     }
 
-  #if SSC_PLATFORM_APPLE
+    if (caches.contains(this->path.string())) {
+      this->cache = caches.at(this->path.string());
+    }
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->url == nullptr) {
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       this->url = [NSURL fileURLWithPath: @(this->path.string().c_str())];
     #endif
     }
@@ -193,7 +307,7 @@ namespace SSC {
     if (!this->accessing) {
       return false;
     }
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->url != nullptr) {
       [this->url stopAccessingSecurityScopedResource];
     }
@@ -207,15 +321,31 @@ namespace SSC {
       return false;
     }
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     static auto fileManager = [[NSFileManager alloc] init];
     return [fileManager
       fileExistsAtPath: @(this->path.string().c_str())
            isDirectory: NULL
     ];
-  #endif
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
+      const auto asset = AAssetManager_open(
+        sharedAndroidAssetManager,
+        assetPath.c_str(),
+        AASSET_MODE_BUFFER
+      );
 
-    return false;
+      if (asset) {
+        AAsset_close(asset);
+        return true;
+      }
+    }
+
+    return fs::exists(this->path);
+  #else
+    return fs::exists(this->path);
+  #endif
   }
 
   bool FileResource::hasAccess () const noexcept {
@@ -239,7 +369,7 @@ namespace SSC {
       }
     }
 
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (extension.size() > 0) {
       @try {
         const auto types = [UTType
@@ -253,25 +383,25 @@ namespace SSC {
         }
       } @catch (::id) {}
     }
-    #elif SSC_PLATFORM_LINUX
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
       gboolean typeGuessResultUncertain = false;
       gchar* type = nullptr;
 
-      type = g_content_type_guess(path.c_str(), nullptr, 0, &typeGuessResultUncertain);
+      type = g_content_type_guess(this->path.string().c_str(), nullptr, 0, &typeGuessResultUncertain);
 
       if (!type || typeGuessResultUncertain) {
-        const auto bytes = this->read(true);
-        const auto size = this->size(true);
+        const auto bytes = this->read();
+        const auto size = this->size();
         const auto nextType = g_content_type_guess(
-          path.c_str(),
-          data,
-          bytes,
+          reinterpret_cast<const gchar*>(this->path.string().c_str()),
+          reinterpret_cast<const guchar*>(bytes),
+          (gsize) size,
           &typeGuessResultUncertain
         );
 
         if (nextType) {
           if (type) {
-            g_free(type)
+            g_free(type);
           }
 
           type = nextType;
@@ -289,7 +419,7 @@ namespace SSC {
       }
 
       return mimeType;
-    #elif SSC_PLATFORM_WINDOWS
+    #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       LPWSTR mimeData;
       const auto bytes = this->read(true)
       const auto size = this->size(true);
@@ -307,9 +437,19 @@ namespace SSC {
       if (result == S_OK) {
         return convertWStringToString(WString(mimeData));
       }
+    #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (extension.size() > 1) {
+        return Android::MimeTypeMap::sharedMimeTypeMap()->getMimeTypeFromExtension(
+          extension.starts_with(".") ? extension.substr(1) : extension
+        );
+      }
     #endif
 
     return "";
+  }
+
+  size_t FileResource::size () const noexcept {
+    return this->cache.size;
   }
 
   size_t FileResource::size (bool cached) noexcept {
@@ -321,7 +461,7 @@ namespace SSC {
       return -1;
     }
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->url != nullptr) {
       NSNumber* size = nullptr;
       NSError* error = nullptr;
@@ -336,7 +476,7 @@ namespace SSC {
 
       this->cache.size = size.longLongValue;
     }
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     LARGE_INTEGER fileSize;
     auto handle = CreateFile(
       this->path.c_str(),
@@ -355,11 +495,38 @@ namespace SSC {
     } else {
       return -2;
     }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    bool success = false;
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
+      const auto asset = AAssetManager_open(
+        sharedAndroidAssetManager,
+        assetPath.c_str(),
+        AASSET_MODE_BUFFER
+      );
+
+      if (asset) {
+        this->cache.size = AAsset_getLength(asset);
+        AAsset_close(asset);
+      }
+    }
+
+    if (!success) {
+      if (fs::exists(this->path)) {
+        this->cache.size = fs::file_size(this->path);
+      }
+    }
   #else
-    this->cache.size = fs::file_size(this->path);
+    if (fs::exists(this->path)) {
+      this->cache.size = fs::file_size(this->path);
+    }
   #endif
 
     return this->cache.size;
+  }
+
+  const char* FileResource::read () const {
+    return this->cache.bytes.get();
   }
 
   // caller takes ownership of returned pointer
@@ -369,37 +536,38 @@ namespace SSC {
     }
 
     if (cached && this->cache.bytes != nullptr) {
-      return *this->cache.bytes;
+      return this->cache.bytes.get();
     }
 
     if (this->bytes != nullptr) {
       this->bytes = nullptr;
     }
 
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->url == nullptr) {
       return nullptr;
     }
 
     const auto data = [NSData dataWithContentsOfURL: this->url];
     if (data.length > 0) {
-      this->bytes = std::make_shared<char*>(new char[data.length]{0});
-      memcpy(*this->bytes, data.bytes, data.length);
+      this->bytes.reset(new char[data.length]{0});
+      memcpy(this->bytes.get(), data.bytes, data.length);
     }
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    GError* error = nullptr;
     char* contents = nullptr;
     gsize size = 0;
     if (g_file_get_contents(this->path.string().c_str(), &contents, &size, &error)) {
       if (size > 0) {
-        this->bytes = std::make_shared<char*>(new char[size]{0});
-        memcpy(*this->bytes, contents, size);
+        this->bytes.reset(new char[size]{0});
+        memcpy(this->bytes.get(), contents, size);
       }
     }
 
     if (contents) {
       g_free(contents);
     }
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     auto handle = CreateFile(
       this->path.c_str(),
       GENERIC_READ, // access
@@ -422,17 +590,62 @@ namespace SSC {
       );
 
       if (result) {
-        this->bytes = std::make_shared<char*>(bytes);
+        this->bytes.reset(bytes);
       } else {
         delete [] bytes;
       }
 
       CloseHandle(handle);
     }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    bool success = false;
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
+      const auto asset = AAssetManager_open(
+        sharedAndroidAssetManager,
+        assetPath.c_str(),
+        AASSET_MODE_BUFFER
+      );
+
+      if (asset) {
+        auto size = AAsset_getLength(asset);
+        if (size) {
+          const auto buffer = AAsset_getBuffer(asset);
+          if (buffer) {
+            auto bytes = new char[size]{0};
+            memcpy(bytes, buffer, size);
+            this->bytes.reset(bytes);
+            this->cache.size = size;
+            success = true;
+          }
+        }
+
+        AAsset_close(asset);
+      }
+    }
+
+    if (!success) {
+      auto stream = std::ifstream(this->path);
+      auto buffer = std::istreambuf_iterator<char>(stream);
+      auto size = fs::file_size(this->path);
+      auto end = std::istreambuf_iterator<char>();
+
+      auto bytes = new char[size]{0};
+      String content;
+
+      content.assign(buffer, end);
+      memcpy(bytes, content.data(), size);
+
+      this->bytes.reset(bytes);
+      this->cache.size = size;
+    }
   #endif
 
     this->cache.bytes = this->bytes;
-    return *this->cache.bytes;
+    if (this->options.cache) {
+      caches.insert_or_assign(this->path.string(), this->cache);
+    }
+    return this->cache.bytes.get();
   }
 
   const String FileResource::str (bool cached) {
