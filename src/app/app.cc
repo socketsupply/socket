@@ -373,7 +373,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
   self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardHide:)];
   self.displayLink.preferredFramesPerSecond = 120;
-  [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+  [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
@@ -413,8 +413,8 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   self.animationDuration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
 
   self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardShow:)];
-  self.displayLink.preferredFramesPerSecond = 60;
-  [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+  self.displayLink.preferredFramesPerSecond = 120;
+  [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
@@ -438,20 +438,19 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   self.inMotion = true;
 
   const auto window = self.app->windowManager.getWindow(0);
-  const auto stepDuration = (self.animationDuration / 60.0) / 40;
 
-  auto timer = [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
+  auto timer = [NSTimer scheduledTimerWithTimeInterval: 0.0008 repeats: YES block:^(NSTimer * _Nonnull timer) {
     CGRect newFrame = window->webview.frame;
 
     CGFloat p = self.progress / self.keyboardHeight;
     p = p > 1.0 ? 1.0 : p;
-    CGFloat easedHeightChange = 0.3 + pow(1.0 - p, 16);
+
+    CGFloat easedHeightChange = 0.5 + pow(1.4 - p, 8);
     newFrame.size.height -= easedHeightChange;
 
     window->webview.frame = newFrame;
 
-    CGFloat progressIncrement = easedHeightChange > 0 ? easedHeightChange : 0;
-    self.progress += progressIncrement;
+    self.progress += easedHeightChange > 0 ? easedHeightChange : 0;
 
     if (self.progress >= self.keyboardHeight) {
       [displayLink invalidate];
@@ -460,7 +459,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     }
   }];
 
-  [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+  [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
 }
 
 - (void) keyboardHide: (CADisplayLink*) displayLink {
@@ -489,7 +488,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     }
   }];
 
-  [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+  [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
 }
 
 - (void) keyboardDidShow: (NSNotification*) notification {
