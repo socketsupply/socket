@@ -7,7 +7,7 @@ const sapi_process_exec_t* sapi_process_exec (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec is not supported on this platform");
   return nullptr;
-#endif
+#else
 
   if (ctx == nullptr) return nullptr;
   if (!ctx->isAllowed("process_exec")) {
@@ -18,6 +18,7 @@ const sapi_process_exec_t* sapi_process_exec (
   auto process = SSC::exec(command);
   process.output = SSC::trim(process.output);
   return ctx->memory.alloc<sapi_process_exec_t>(ctx, process);
+#endif
 }
 
 int sapi_process_exec_get_exit_code (
@@ -26,9 +27,9 @@ int sapi_process_exec_get_exit_code (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec_get_exit_code is not supported on this platform");
   return -1;
-#endif
-
+#else
   return process != nullptr ? process->exitCode : -1;
+#endif
 }
 
 const char* sapi_process_exec_get_output (
@@ -37,9 +38,9 @@ const char* sapi_process_exec_get_output (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec_get_output is not supported on this platform");
   return nullptr;
-#endif
-
+#else
   return process != nullptr ? process->output.c_str() : nullptr;
+#endif
 }
 
 sapi_process_spawn_t* sapi_process_spawn (
@@ -54,8 +55,7 @@ sapi_process_spawn_t* sapi_process_spawn (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn is not supported on this platform");
   return nullptr;
-#endif
-
+#else
   auto process = ctx->memory.alloc<sapi_process_spawn_t>(
     ctx,
     command,
@@ -67,6 +67,7 @@ sapi_process_spawn_t* sapi_process_spawn (
   );
   process->open();
   return process;
+#endif
 }
 
 int sapi_process_spawn_get_exit_code (
@@ -75,8 +76,9 @@ int sapi_process_spawn_get_exit_code (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_exit_code is not supported on this platform");
   return -1;
-#endif
+#else
   return process != nullptr ? process->status.load() : -1;
+#endif
 }
 
 unsigned long sapi_process_spawn_get_pid (
@@ -85,8 +87,9 @@ unsigned long sapi_process_spawn_get_pid (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_pid is not supported on this platform");
   return 0;
-#endif
+#else
   return process != nullptr ? process->id : 0;
+#endif
 }
 
 sapi_context_t* sapi_process_spawn_get_context (
@@ -95,8 +98,9 @@ sapi_context_t* sapi_process_spawn_get_context (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_context is not supported on this platform");
   return nullptr;
-#endif
+#else
   return process != nullptr ? process->context : nullptr;
+#endif
 }
 
 int sapi_process_spawn_wait (
@@ -105,8 +109,9 @@ int sapi_process_spawn_wait (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_wait is not supported on this platform");
   return -1;
-#endif
+#else
   return process != nullptr ? process->wait() : -1;
+#endif
 }
 
 bool sapi_process_spawn_write (
@@ -117,10 +122,11 @@ bool sapi_process_spawn_write (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_write is not supported on this platform");
   return false;
-#endif
+#else
   if (!process || process->closed) return false;
   process->write(data, size);
   return true;
+#endif
 }
 
 bool sapi_process_spawn_close_stdin (
@@ -129,10 +135,11 @@ bool sapi_process_spawn_close_stdin (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_close_stdin is not supported on this platform");
   return false;
-#endif
+#else
   if (!process || process->closed) return false;
   process->closeStdin();
   return true;
+#endif
 }
 
 bool sapi_process_spawn_kill (
@@ -142,8 +149,9 @@ bool sapi_process_spawn_kill (
 #if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_kill is not supported on this platform");
   return false;
-#endif
+#else
   if (!process || process->closed) return false;
   process->kill(code);
   return true;
+#endif
 }

@@ -142,7 +142,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   const auto frame = UIScreen.mainScreen.bounds;
 
   Vector<String> argv;
-  StringStream env;
   bool isTest = false;
 
   self.app = App::sharedApplication();
@@ -191,21 +190,26 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     argv.push_back("'" + trim(arg) + "'");
   }
 
-  env << String("width=" + std::to_string(frame.size.width) + "&");
-  env << String("height=" + std::to_string(frame.size.height) + "&");
+  auto windowManagerOptions = WindowManagerOptions {};
 
-  self.app->windowManager.configure(WindowManagerOptions {
-    .isTest = isTest,
-    .argv = join(argv, ','),
-    .cwd = self.app->getcwd(),
-    .userConfig = self.app->userConfig,
-  });
+  for (const auto& arg : split(self.app->userConfig["ssc_argv"], ',')) {
+    if (arg.find("--test") == 0) {
+      windowManagerOptions.features.useTestScript = true;
+    }
 
-  const auto defaultWindow = self.app->windowManager.createDefaultWindow(WindowOptions {
-    .shouldExitApplicationOnClose = true,
-    .title = self.app->userConfig["meta_title"],
-    .env = env.str()
-  });
+    windowManagerOptions.argv.push_back("'" + trim(arg) + "'");
+  }
+
+
+  windowManagerOptions.userConfig = self.app->userConfig;
+
+  self.app->windowManager.configure(windowManagerOptions);
+
+  auto defaultWindow = self.app->windowManager.createDefaultWindow(WindowOptions {
+     .shouldExitApplicationOnClose = true
+    });
+
+  defaultWindow->setTitle(self.app->userConfig["meta_title"]);
 
   static const auto port = getDevPort();
   static const auto host = getDevHost();
@@ -214,18 +218,19 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     self.app->userConfig["webview_service_worker_mode"] != "hybrid" &&
     self.app->userConfig["permissions_allow_service_worker"] != "false"
   ) {
-    const auto screen = defaultWindow->getScreenSize();
+    auto serviceWorkerWindowOptions = WindowOptions {};
     auto serviceWorkerUserConfig = self.app->userConfig;
-    serviceWorkerUserConfig["webview_watch_reload"] = "false";
-    auto serviceWorkerWindow = self.app->windowManager.createWindow({
-      .shouldExitApplicationOnClose = false,
-      .index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
-      .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
-      .env = env.str(),
-      .userConfig = serviceWorkerUserConfig,
-      .preloadCommonJS = false
-    });
+    const auto screen = defaultWindow->getScreenSize();
 
+    serviceWorkerUserConfig["webview_watch_reload"] = "false";
+    serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
+    serviceWorkerWindowOptions.index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX;
+    serviceWorkerWindowOptions.headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0;
+    serviceWorkerWindowOptions.userConfig = serviceWorkerUserConfig;
+    serviceWorkerWindowOptions.features.useGlobalCommonJS = false;
+    serviceWorkerWindowOptions.features.useGlobalNodeJS = false;
+
+    auto serviceWorkerWindow = self.app->windowManager.createWindow(serviceWorkerWindowOptions);
     self.app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
 
     serviceWorkerWindow->navigate(
@@ -805,10 +810,8 @@ namespace SSC {
     t.detach();
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->androidLooper.isAcquired()) {
-      debug("before dispatch");
       this->androidLooper.dispatch([=] () {
         const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
-        debug("in dispatch");
         callback();
       });
     }

@@ -1,9 +1,8 @@
-#if defined(__cplusplus)
 #include <socket/_user-config-bytes.hh>
 
+#if defined(__cplusplus)
 extern "C" {
-
-  // implemented in `init.cc`
+#endif
   const unsigned char* socket_runtime_init_get_user_config_bytes () {
     return __socket_runtime_user_config_bytes;
   }
@@ -32,5 +31,6 @@ extern "C" {
   #endif
     return 0;
   }
+#if defined(__cplusplus)
 }
 #endif

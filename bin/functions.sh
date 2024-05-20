@@ -22,6 +22,11 @@ fi
 
 function stat_mtime () {
   stat $stat_format_arg $stat_mtime_spec "$1" 2>/dev/null
+  local rc=$?
+  if (( rc != 0 )); then
+    echo 0
+  fi
+  return $rc
 }
 
 function latest_mtime() {

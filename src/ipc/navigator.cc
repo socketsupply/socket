@@ -155,7 +155,11 @@ namespace SSC::IPC {
       }
     }
 
-    return resolveLocationPathname(pathname, dirname);
+    auto resolution = resolveLocationPathname(pathname, dirname);
+    if (resolution.pathname.size() > 0) {
+      resolution.type = Navigator::Location::Resolution::Type::Resource;
+    }
+    return resolution;
   }
 
   bool Navigator::Location::Resolution::isUnknown () const {
@@ -318,7 +322,7 @@ namespace SSC::IPC {
     }
 
     if (!this->isNavigationRequestAllowed(currentURL, requestedURL)) {
-      debug("Navigation was ignored for: %s", requestedURL.c_str());
+      debug("IPC::Navigation: A navigation request was ignored for: %s", requestedURL.c_str());
       return false;
     }
 

@@ -1,6 +1,7 @@
 #ifndef SOCKET_RUNTIME_CORE_MODULE_H
 #define SOCKET_RUNTIME_CORE_MODULE_H
 
+#include "../platform/platform.hh"
 #include "json.hh"
 #include "post.hh"
 

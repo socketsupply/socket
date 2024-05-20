@@ -24,6 +24,11 @@
 #endif
 
 #if SOCKET_RUNTIME_PLATFORM_MACOS
+- (instancetype) initWithFrame: (NSRect) frameRect
+                 configuration: (WKWebViewConfiguration*) configuration
+                        radius: (CGFloat) radius
+                        margin: (CGFloat) margin;
+
   -   (NSDragOperation) draggingSession: (NSDraggingSession *) session
   sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 
@@ -58,13 +63,6 @@
                        completionHandler: (void (^)(BOOL result)) completionHandler;
 @end
 
-#if SOCKET_RUNTIME_PLATFORM_MACOS
-@interface WKOpenPanelParameters (WKPrivate)
-  - (NSArray<NSString*>*) _acceptedMIMETypes;
-  - (NSArray<NSString*>*) _acceptedFileExtensions;
-  - (NSArray<NSString*>*) _allowedFileExtensions;
-@end
-#endif
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @interface SSCWebViewController : UIViewController
   @property (nonatomic, strong) SSCWebView* webview;

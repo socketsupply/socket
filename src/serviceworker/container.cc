@@ -682,7 +682,7 @@ namespace SSC {
               this->core->setTimeout(8, [this, request, callback, &registration] {
                 if (!this->fetch(request, callback)) {
                   debug(
-                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%lu'",
+                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
                     request.method.c_str(),
                     request.pathname.c_str(),
                     (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),

@@ -428,7 +428,7 @@ namespace SSC::IPC {
     const auto id = request.id;
 
   #if !SOCKET_RUNTIME_PLATFORM_ANDROID
-    this->bridge->dispatch([=] {
+    this->bridge->dispatch([=, this] {
   #endif
       if (request.isActive() && !request.isCancelled()) {
         // stored request reference
@@ -448,10 +448,8 @@ namespace SSC::IPC {
             callback(response);
           }
 
-          debug("before request lock");
           Lock lock(requests.mutex);
           requests.map.erase(id);
-          debug("after request unlock");
         });
       }
   #if !SOCKET_RUNTIME_PLATFORM_ANDROID

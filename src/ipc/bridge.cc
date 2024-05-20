@@ -577,9 +577,9 @@ namespace SSC::IPC {
             return callback(response);
           }
         } else if (resolved.isResource()) {
-          resourcePath = resolved.pathname;
+          resourcePath = applicationResources + resolved.pathname;
         } else if (resolved.isMount()) {
-          resourcePath = resolved.mount.filename;
+          resourcePath = applicationResources + resolved.mount.filename;
         } else if (request.pathname == "" || request.pathname == "/") {
           if (userConfig.contains("webview_default_index")) {
             resourcePath = userConfig["webview_default_index"];
@@ -716,8 +716,7 @@ namespace SSC::IPC {
           const auto url = (
             "socket://" +
             bundleIdentifier +
-            "/socket" +
-            pathname +
+            contentLocation +
             (request.query.size() > 0 ? "?" + request.query : "")
           );
 
