@@ -591,6 +591,7 @@ function _install {
     mkdir -p "$SOCKET_HOME/include"
     cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
     cp -rfp "$root"/include/* "$SOCKET_HOME/include"
+    rm -f "$SOCKET_HOME/include/socket/_user-config-bytes.hh"
 
     if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
       if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then

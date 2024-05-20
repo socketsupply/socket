@@ -1,4 +1,7 @@
 #include "webview.hh"
+#include "../window/window.hh"
+
+using namespace SSC;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 #if SOCKET_RUNTIME_PLATFORM_MACOS
@@ -9,10 +12,9 @@
 @end
 #endif
 
-@implementation SSCBridgedWebView
+@implementation SSCWebView
 #if SOCKET_RUNTIME_PLATFORM_MACOS
 Vector<String> draggablePayload;
-CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 int lastX = 0;
 int lastY = 0;
 
@@ -572,7 +574,7 @@ int lastY = 0;
 }
 #endif
 
--                     (void) webView: (SSCBridgedWebView*) webview
+-                     (void) webView: (SSCWebView*) webview
   runJavaScriptAlertPanelWithMessage: (NSString*) message
                     initiatedByFrame: (WKFrameInfo*) frame
                    completionHandler: (void (^)(void)) completionHandler
@@ -689,6 +691,9 @@ int lastY = 0;
 }
 @end
 
+#if SOCKET_RUNTIME_PLATFORM_IOS
 @implementation SSCWebViewController
 @end
+#endif
+
 #endif

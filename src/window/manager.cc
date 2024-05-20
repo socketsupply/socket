@@ -274,7 +274,10 @@ namespace SSC {
       options.userConfig.contains("build_headless") &&
       options.userConfig.at("build_headless") == "true"
     );
-    windowOptions.userConfig = options.userConfig;
+
+    if (options.userConfig.size() > 0) {
+      windowOptions.userConfig = options.userConfig;
+    }
 
     const auto window = this->createWindow(windowOptions);
 

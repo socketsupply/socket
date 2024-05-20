@@ -86,11 +86,11 @@ namespace SSC {
     static auto fileManager = [[NSFileManager alloc] init];
     bool isDirectory = false;
     const auto fileExistsAtPath = [fileManager
-      fileExistsAtPath: @(this->path.string().c_str())
+      fileExistsAtPath: @(resourcePath.c_str())
            isDirectory: &isDirectory
     ];
 
-    return fileExistsAtPath && !isDirectory
+    return fileExistsAtPath && !isDirectory;
   #endif
 
     return fs::is_regular_file(resourcePath);
@@ -118,11 +118,11 @@ namespace SSC {
     static auto fileManager = [[NSFileManager alloc] init];
     bool isDirectory = false;
     const auto fileExistsAtPath = [fileManager
-      fileExistsAtPath: @(this->path.string().c_str())
+      fileExistsAtPath: @(resourcePath.string().c_str())
            isDirectory: &isDirectory
     ];
 
-    return fileExistsAtPath && isDirectory
+    return fileExistsAtPath && isDirectory;
   #endif
 
     return fs::is_directory(resourcePath);
@@ -219,11 +219,7 @@ namespace SSC {
     this->bytes = resource.bytes;
     this->cache = resource.cache;
     this->options = resource.options;
-    this->accessing = resource.accessing.load();
-
-    if (this->accessing) {
-      this->startAccessing();
-    }
+    this->startAccessing();
   }
 
   FileResource::FileResource (FileResource&& resource) {
@@ -237,9 +233,7 @@ namespace SSC {
     resource.cache.size = 0;
     resource.cache.bytes = nullptr;
 
-    if (this->accessing) {
-      this->startAccessing();
-    }
+    this->startAccessing();
   }
 
   FileResource& FileResource::operator= (const FileResource& resource) {
@@ -340,7 +334,7 @@ namespace SSC {
         AAsset_close(asset);
         return true;
       }
-    }
+    j}
 
     return fs::exists(this->path);
   #else

@@ -676,7 +676,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
       }
     }
 
-    if (flagDebugMode || flagVerboseMode) {
+    if (flagVerboseMode) {
       debug(
         "[build.copy-map] %s = %s",
         fs::relative(src, targetPath).c_str(),
@@ -2160,7 +2160,7 @@ int main (const int argc, const char* argv[]) {
           }
 
           code = String(
-            "static constexpr unsigned char __socket_runtime_user_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
+            "static const unsigned char __socket_runtime_user_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
           );
         }
 
@@ -5060,10 +5060,6 @@ int main (const int argc, const char* argv[]) {
       // Copy and or create the source files we need for the build.
       //
       fs::copy(trim(prefixFile("src/init.cc")), pathToDist);
-      fs::copy(trim(prefixFile("src/core/config.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/string.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/types.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/ini.hh")), pathToDist / "core");
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);

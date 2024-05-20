@@ -231,11 +231,11 @@ namespace SSC {
 
   bool Extension::setHandle (const String& name, void* handle) {
     if (!extensions.contains(name)) {
-      std::cout << "WARN - extensions does not contain " << name << std::endl;
+      IO::write("WARN - extensions does not contain " + name);
       return false;
     }
 
-    std::cout << "Registering extension handle " << name << std::endl;
+    IO::write("Registering extension handle " + name);
     extensions.at(name)->handle = handle;
     return true;
   }

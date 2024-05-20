@@ -2,6 +2,7 @@
 #include "../app/app.hh"
 #include "../cli/cli.hh"
 #include "../ipc/ipc.hh"
+#include "../core/webview.hh"
 
 using namespace SSC;
 
@@ -20,6 +21,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
 @implementation SSCWindow
 #if SOCKET_RUNTIME_PLATFORM_MACOS
+CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   - (void) layoutIfNeeded {
     [super layoutIfNeeded];
 
@@ -224,9 +226,7 @@ namespace SSC {
       });
     };
 
-    this->bridge.preload = createPreload(options, {
-      .module = true,
-      .wrap = true,
+    this->bridge.preload = IPC::createPreload({
       .clientId = this->bridge.id,
       .userScript = options.userScript
     });
@@ -717,6 +717,13 @@ namespace SSC {
   #elif SOCKET_RUNTIME_PLATFORM_IOS
     [this->webview becomeFirstResponder];
     [this->window makeKeyAndVisible];
+    this->window.hidden = NO;
+    const auto app = App::sharedApplication();
+    for (auto window : app->windowManager.windows) {
+      if (window != nullptr && reinterpret_cast<Window*>(window.get()) != this) {
+        window->hide();
+      }
+    }
   #endif
   }
 
@@ -886,32 +893,32 @@ namespace SSC {
   #endif
   }
 
-  ScreenSize Window::getSize () {
+  Window::Size Window::getSize () {
     if (this->window == nullptr) {
-      return ScreenSize {0, 0};
+      return Size {0, 0};
     }
 
     const auto frame = this->window.frame;
 
-    this->height = frame.size.height;
-    this->width = frame.size.width;
+    this->size.height = frame.size.height;
+    this->size.width = frame.size.width;
 
-    return ScreenSize {
-      .height = (int) frame.size.height,
-      .width = (int) frame.size.width
+    return Size {
+      .width = (int) frame.size.width,
+      .height = (int) frame.size.height
     };
   }
 
-  const ScreenSize Window::getSize () const {
+  const Window::Size Window::getSize () const {
     if (this->window == nullptr) {
-      return ScreenSize {0, 0};
+      return Size {0, 0};
     }
 
     const auto frame = this->window.frame;
 
-    return ScreenSize {
-      .height = (int) frame.size.height,
-      .width = (int) frame.size.width
+    return Size {
+      .width = (int) frame.size.width,
+      .height = (int) frame.size.height
     };
   }
 
@@ -933,8 +940,8 @@ namespace SSC {
     #endif
     }
 
-    this->height = height;
-    this->width = width;
+    this->size.height = height;
+    this->size.width = width;
   }
 
   void Window::setPosition (float x, float y) {

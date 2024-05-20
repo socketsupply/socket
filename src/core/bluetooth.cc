@@ -373,9 +373,9 @@ using namespace SSC;
   post.headers = headers.str();
 
   if (bytes != nullptr && length > 0) {
-    post.body = std::make_shared<char*>(new char[length]{0});
+    post.body = std::make_shared<char[]>(length);
     post.length = length;
-    memcpy(*post.body, bytes, length);
+    memcpy(post.body.get(), bytes, length);
   }
 
   auto json = JSON::Object::Entries {

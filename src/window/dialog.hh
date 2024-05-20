@@ -3,6 +3,12 @@
 
 #include "../platform/platform.hh"
 
+namespace SSC {
+  // forward
+  class Window;
+  class Dialog;
+}
+
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @interface SSCUIPickerDelegate : NSObject<
   UIDocumentPickerDelegate,
@@ -26,8 +32,6 @@
 #endif
 
 namespace SSC {
-  // forward
-  class Window;
   class Dialog {
     public:
       struct FileSystemPickerOptions {
@@ -50,7 +54,7 @@ namespace SSC {
 
       Window* window = nullptr;
       Dialog (Window* window);
-      Dialog () = delete;
+      Dialog () = default;
       Dialog (const Dialog&) = delete;
       Dialog (Dialog&&) = delete;
       ~Dialog ();

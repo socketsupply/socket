@@ -172,25 +172,29 @@ function main () {
   local max_concurrency=$CPU_CORES
 
   local newest_mtime=0
-  newest_mtime="$(latest_mtime ${test_headers[@]})"
 
   mkdir -p "$output_directory/include"
   cp -rf "$root/include"/* "$output_directory/include"
+  rm -f "$output_directory/include/socket/_user-config-bytes.hh"
 
   for source in "${sources[@]}"; do
-    if (( i++ > max_concurrency )); then
-      for pid in "${pids[@]}"; do
-        wait "$pid" 2>/dev/null
-      done
-      i=0
+    if (( ${#pids[@]} > max_concurrency )); then
+      wait "${pids[0]}" 2>/dev/null
+      pids=("${pids[@]:1}")
     fi
 
     {
       declare src_directory="$root/src"
       declare object="${source/.cc/$d.o}"
+      declare header="${source/.cc/.hh}"
       declare object="${object/$src_directory/$output_directory}"
 
-      if (( force )) || ! test -f "$object" || (( newest_mtime > $(stat_mtime "$object") )) || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
+      if (( force )) ||
+        ! test -f "$object" ||
+        (( newest_mtime > $(stat_mtime "$object") )) ||
+        (( $(stat_mtime "$source") > $(stat_mtime "$object") )) ||
+        (( $(stat_mtime "$header") > $(stat_mtime "$source") ));
+      then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         quiet "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
