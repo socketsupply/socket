@@ -240,8 +240,8 @@ bool sapi_ipc_send_bytes (
   };
 
   if (bytes != nullptr && size > 0) {
-    post.body = std::make_shared<char*>(new char[size]{0});
-    memcpy(*post.body, bytes, size);
+    post.body = std::make_shared<char[]>(size);
+    memcpy(post.body.get(), bytes, size);
   }
 
   if (message) {
@@ -279,8 +279,8 @@ bool sapi_ipc_send_bytes_with_result (
   };
 
   if (bytes != nullptr && size > 0) {
-    post.body = std::make_shared<char*>(new char[size]{0});
-    memcpy(*post.body, bytes, size);
+    post.body = std::make_shared<char[]>(size);
+    memcpy(post.body.get(), bytes, size);
   }
 
   return ctx->router->bridge->send(result->seq, result->str(), post);
@@ -396,11 +396,11 @@ bool sapi_ipc_invoke (
     uri = "ipc://" + uri;
   }
 
-  SSC::SharedPointer<char*> data = nullptr;
+  SSC::SharedPointer<char[]> data = nullptr;
 
   if (bytes != nullptr && size > 0) {
-    data = std::make_shared<char*>(new char[size]{0});
-    memcpy(*data, bytes, size);
+    data.reset(new char[size]{0});
+    memcpy(data.get(), bytes, size);
   }
 
   return ctx->router->invoke(uri, data, size, [ctx, callback](auto result) {
@@ -500,7 +500,7 @@ const unsigned char* sapi_ipc_message_get_bytes (
   const sapi_ipc_message_t* message
 ) {
   if (!message) return nullptr;
-  return reinterpret_cast<const unsigned char*>(*message->buffer.bytes);
+  return reinterpret_cast<const unsigned char*>(message->buffer.bytes.get());
 }
 
 unsigned int sapi_ipc_message_get_bytes_size (
@@ -666,8 +666,8 @@ void sapi_ipc_result_set_bytes (
 ) {
   if (result && size && bytes) {
     result->post.length = size;
-    result->post.body = std::make_shared<char*>(new char[size]{0});
-    memcpy(*result->post.body, bytes, size);
+    result->post.body = std::make_shared<char[]>(size);
+    memcpy(result->post.body.get(), bytes, size);
   }
 }
 
@@ -675,7 +675,7 @@ unsigned char* sapi_ipc_result_get_bytes (
   const sapi_ipc_result_t* result
 ) {
   return result
-    ? reinterpret_cast<unsigned char*>(*result->post.body)
+    ? reinterpret_cast<unsigned char*>(result->post.body.get())
     : nullptr;
 }
 

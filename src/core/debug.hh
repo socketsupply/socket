@@ -1,26 +1,22 @@
-#ifndef SSC_CORE_DEBUG_H
-#define SSC_CORE_DEBUG_H
+#ifndef SOCKET_RUNTIME_CORE_DEBUG_H
+#define SOCKET_RUNTIME_CORE_DEBUG_H
 
 #include "config.hh"
-#include "platform.hh"
 
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#include <OSLog/OSLog.h>
-
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 // Apple
 #ifndef debug
-// define `ssc_os_debug` (macos/ios)
+// define `socket_runtime_os_log_debug` (macos/ios)
 #if defined(SSC_CLI)
-#  define ssc_os_debug(...)
+#  define socket_runtime_os_log_debug(...)
 #else
-static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
+static os_log_t SOCKET_RUNTIME_OS_LOG_DEBUG = nullptr;
 // wrap `os_log*` functions for global debugger
-#define ssc_os_debug(format, fmt, ...) ({                                      \
-  if (!SSC_OS_LOG_DEBUG_BUNDLE) {                                              \
+#define socket_runtime_os_log_debug(format, fmt, ...) ({                       \
+  if (!SOCKET_RUNTIME_OS_LOG_DEBUG) {                                          \
     static auto userConfig = SSC::getUserConfig();                             \
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];       \
-    SSC_OS_LOG_DEBUG_BUNDLE = os_log_create(                                   \
+    SOCKET_RUNTIME_OS_LOG_DEBUG = os_log_create(                               \
       bundleIdentifier.c_str(),                                                \
       "socket.runtime.debug"                                                   \
     );                                                                         \
@@ -28,7 +24,7 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
                                                                                \
   auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
   os_log_error(                                                                \
-    SSC_OS_LOG_DEBUG_BUNDLE,                                                   \
+    SOCKET_RUNTIME_OS_LOG_DEBUG,                                               \
     "%{public}s",                                                              \
     string.UTF8String                                                          \
   );                                                                           \
@@ -38,20 +34,20 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 // define `debug(...)` macro
 #define debug(format, ...) ({                                                  \
   NSLog(@format, ##__VA_ARGS__);                                               \
-  ssc_os_debug("%{public}@", format, ##__VA_ARGS__);                           \
+  socket_runtime_os_log_debug("%{public}@", format, ##__VA_ARGS__);            \
 })
 #endif // `debug`
 #endif  // `__APPLE__`
 
 // Linux
-#if defined(__linux__) && !defined(__ANDROID__)
+#if SOCKET_RUNTIME_PLATFORM_LINUX
 #  ifndef debug
 #    define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 #  endif // `debug`
 #endif // `__linux__`
 
 // Android (Linux)
-#if defined(__linux__) && defined(__ANDROID__)
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
 #  ifndef debug
 #    define debug(format, ...)                                                 \
       __android_log_print(                                                     \
@@ -64,13 +60,10 @@ static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 #endif // `__ANDROID__`
 
 // Windows
-#if defined(_WIN32)
-#  if defined(_WIN32) && defined(DEBUG)
-#    define _WIN32_DEBUG 1
-#  endif // `_WIN32 && DEBUG`
-#  ifndef debug
-#    define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
-#  endif // `debug`
-#endif // `_WIN32`
-
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS && defined(DEBUG)
+#  define _WIN32_DEBUG 1
+#endif // `_WIN32 && DEBUG`
+#ifndef debug
+#  define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#endif // `debug`
 #endif

@@ -1,30 +1,36 @@
-#include "core/config.hh"
-#include "core/string.hh"
-#include "core/types.hh"
-#include "core/ini.hh"
-
 #if defined(__cplusplus)
-// These rely on project-specific, compile-time variables.
-namespace SSC {
-  bool isDebugEnabled () {
-    return DEBUG == 1;
+#include <socket/_user-config-bytes.hh>
+
+extern "C" {
+
+  // implemented in `init.cc`
+  const unsigned char* socket_runtime_init_get_user_config_bytes () {
+    return __socket_runtime_user_config_bytes;
   }
 
-  const Map getUserConfig () {
-    #include "user-config-bytes.hh" // NOLINT
-    return INI::parse(std::string(
-      (const char*) __ssc_config_bytes,
-      sizeof(__ssc_config_bytes)
-    ));
+  unsigned int socket_runtime_init_get_user_config_bytes_size () {
+    return sizeof(__socket_runtime_user_config_bytes);
   }
 
-  const String getDevHost () {
-    static const auto host = String(HOST);
-    return host;
+  bool socket_runtime_init_is_debug_enabled () {
+  #if DEBUG
+    return true;
+  #endif
+    return false;
   }
 
-  int getDevPort () {
+  const char* socket_runtime_init_get_dev_host () {
+  #if defined(HOST)
+    return HOST;
+  #endif
+    return "";
+  }
+
+  int socket_runtime_init_get_dev_port () {
+  #if defined(PORT)
     return PORT;
+  #endif
+    return 0;
   }
 }
 #endif

@@ -466,7 +466,10 @@ constexpr auto gCredits = R"HTML(
   </p>
 )HTML";
 
-constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainActivity";
+constexpr auto DEFAULT_ANDROID_APPLICATION_NAME = ".App";
+constexpr auto DEFAULT_ANDROID_MAIN_ACTIVITY_NAME = ".MainActivity";
+//constexpr auto DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME = "socket.runtime.window.WebViewWindowActivity";
+constexpr auto DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME = "socket.runtime.window.WindowActivity";
 
 //
 // Android Manifest
@@ -488,6 +491,7 @@ constexpr auto gAndroidManifest = R"XML(
   {{android_manifest_xml_permissions}}
 
   <application
+    android:name="{{android_application}}"
     android:allowBackup="true"
     android:label="{{meta_title}}"
     android:theme="@style/Theme.AppCompat.Light"
@@ -495,12 +499,15 @@ constexpr auto gAndroidManifest = R"XML(
     {{android_application_icon_config}}
     {{android_allow_cleartext}}
   >
+    <meta-data
+      android:name="android.webkit.WebView.MetricsOptOut"
+      android:value="true"
+    />
     <activity
       android:name="{{android_main_activity}}"
       android:exported="true"
       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-      android:launchMode="singleInstance"
-      android:hardwareAccelerated="true"
+      android:launchMode="singleTop"
     >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -516,6 +523,20 @@ constexpr auto gAndroidManifest = R"XML(
       </intent-filter>
 
       {{android_activity_intent_filters}}
+    </activity>
+    <activity
+      android:name="{{android_webview_window_activity}}"
+      android:exported="true"
+      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+      android:launchMode="standard"
+      android:documentLaunchMode="intoExisting"
+      android:hardwareAccelerated="true"
+    >
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <category android:name="android.intent.category.BROWSABLE" />
+      </intent-filter>
     </activity>
   </application>
 </manifest>
@@ -949,9 +970,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_OPTIMIZATION_LEVEL = 0;
         GCC_PREPROCESSOR_DEFINITIONS = (
           "DEBUG=1",
-          "SSC_VERSION={{SSC_VERSION}}",
-          "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
-          "SSC_PLATFORM_SANDBOXED={{SSC_PLATFORM_SANDBOXED}}",
+          "SOCKET_RUNTIME_VERSION={{SOCKET_RUNTIME_VERSION}}",
+          "SOCKET_RUNTIME_VERSION_HASH={{SOCKET_RUNTIME_VERSION_HASH}}",
+          "SOCKET_RUNTIME_PLATFORM_SANDBOXED={{SOCKET_RUNTIME_PLATFORM_SANDBOXED}}",
           "$(inherited)",
         );
         GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1016,8 +1037,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_WARN_UNUSED_FUNCTION = YES;
         GCC_WARN_UNUSED_VARIABLE = YES;
         GCC_PREPROCESSOR_DEFINITIONS = (
-          "SSC_VERSION={{SSC_VERSION}}",
-          "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
+          "SOCKET_RUNTIME_VERSION={{SOCKET_RUNTIME_VERSION}}",
+          "SOCKET_RUNTIME_VERSION_HASH={{SOCKET_RUNTIME_VERSION_HASH}}",
           "$(inherited)",
         );
         IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -1326,7 +1347,7 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 //
 constexpr auto gGradleBuild = R"GROOVY(
 buildscript {
-  ext.kotlin_version = '1.9.10'
+  ext.kotlin_version = '1.9.20'
   repositories {
     google()
     mavenCentral()
@@ -1424,9 +1445,11 @@ dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+  implementation 'androidx.fragment:fragment-ktx:1.7.1'
+  implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
   implementation 'androidx.appcompat:appcompat:1.6.1'
-  implementation 'androidx.core:core-ktx:1.12.0'
-  implementation 'androidx.webkit:webkit:1.8.0'
+  implementation 'androidx.core:core-ktx:1.13.0'
+  implementation 'androidx.webkit:webkit:1.9.0'
 }
 )GROOVY";
 
@@ -1453,7 +1476,6 @@ android.suppressUnsupportedCompileSdk=34
 android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
-android.experimental.legacyTransform.forceNonIncremental=true
 )GRADLE";
 
 //
@@ -1499,14 +1521,10 @@ LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =         \
-  android/bridge.cc       \
-  android/runtime.cc      \
-  android/string_wrap.cc  \
-  android/window.cc       \
   init.cc
 
-LOCAL_STATIC_LIBRARIES := \
-  libuv                   \
+LOCAL_WHOLE_STATIC_LIBRARIES := \
+  libuv                         \
   libsocket-runtime-static
 
 include $(BUILD_SHARED_LIBRARY)
@@ -1551,9 +1569,9 @@ constexpr auto gProGuardRules = R"PGR(
 )PGR";
 
 //
-// Android `layout/web_view_activity.xml`
+// Android `layout/web_view.xml`
 //
-constexpr auto gAndroidLayoutWebviewActivity = R"XML(
+constexpr auto gAndroidLayoutWebView = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
 <WebView
   xmlns:android="http://schemas.android.com/apk/res/android"
@@ -1562,6 +1580,25 @@ constexpr auto gAndroidLayoutWebviewActivity = R"XML(
   android:layout_width="match_parent"
   android:layout_height="match_parent"
 />
+)XML";
+
+//
+// Android `layout/window_container_view.xml`
+//
+constexpr auto gAndroidLayoutWindowContainerView = R"XML(
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+>
+  <androidx.fragment.app.FragmentContainerView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/window"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+  />
+</FrameLayout>
 )XML";
 
 constexpr auto gAndroidValuesStrings = R"XML(
@@ -1576,7 +1613,6 @@ constexpr auto gAndroidValuesStrings = R"XML(
 constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1310"
-
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"

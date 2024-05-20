@@ -2,17 +2,16 @@
 
 #include "config.hh"
 #include "env.hh"
-#include "string.hh"
 
-namespace SSC {
-  bool Env::has (const char* name) {
+namespace SSC::Env {
+  bool has (const char* name) {
     static auto userConfig = getUserConfig();
 
     if (userConfig[String("env_") + name].size() > 0) {
       return true;
     }
 
-  #if defined(_WIN32)
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     char* value = nullptr;
     size_t size = 0;
     auto result = _dupenv_s(&value, &size, name);
@@ -38,18 +37,18 @@ namespace SSC {
     return true;
   }
 
-  bool Env::has (const String& name) {
+  bool has (const String& name) {
     return has(name.c_str());
   }
 
-  String Env::get (const char* name) {
+  String get (const char* name) {
     static auto userConfig = getUserConfig();
 
     if (userConfig[String("env_") + name].size() > 0) {
       return userConfig[String("env_") + name];
     }
 
-    #if defined(_WIN32)
+    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
       auto query = _dupenv_s(&variableValue, &valueSize, name);
@@ -72,11 +71,11 @@ namespace SSC {
     #endif
   }
 
-  String Env::get (const String& name) {
+  String get (const String& name) {
     return get(name.c_str());
   }
 
-  String Env::get (const String& name, const String& fallback) {
+  String get (const String& name, const String& fallback) {
     const auto value = get(name);
 
     if (value.size() == 0) {
@@ -86,16 +85,16 @@ namespace SSC {
     return value;
   }
 
-  void Env::set (const String& name, const String& value) {
-  #if defined(_WIN32)
+  void set (const String& name, const String& value) {
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     _putenv((name + "=" + value).c_str());
   #else
     setenv(name.c_str(), value.c_str(), 1);
   #endif
   }
 
-  void Env::set (const char* name) {
-  #if defined(_WIN32)
+  void set (const char* name) {
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     _putenv(name);
   #else
     auto parts = split(String(name), '=');

@@ -1,5 +1,7 @@
-#include "window.hh"
 #include <fstream>
+
+#include "../app/app.hh"
+#include "window.hh"
 
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
@@ -9,106 +11,224 @@ static GtkTargetEntry droppableTypes[] = {
 #define DEFAULT_MONITOR_HEIGHT 364
 
 namespace SSC {
-  struct WebViewJavaScriptAsyncContext {
-    IPC::Router::ReplyCallback reply;
-    IPC::Message message;
-    Window *window;
-  };
-
-  Window::Window (App& app, WindowOptions opts)
-    : app(app),
-      opts(opts),
-      bridge(app.core, opts.userData),
-      hotkey(this)
+  Window::Window (SharedPointer<Core> core, const WindowOptions& options)
+    : core(core),
+      options(options),
+      bridge(core, options.userConfig),
+      hotkey(this),
+      dialog(this)
   {
-    auto userConfig = SSC::getUserConfig();
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
-    this->accelGroup = gtk_accel_group_new();
-    this->popupId = 0;
-    this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    this->popup = nullptr;
 
-    this->shouldDrag = false;
-    this->initialLocation = {0,0};
+    auto userConfig = options.userConfig;
+    auto webContext = webkit_web_context_get_default();
 
-    gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
-
-    if (this->opts.aspectRatio.size() > 0) {
-      g_signal_connect(
-        window,
-        "configure-event",
-        G_CALLBACK(+[](GtkWidget *widget, GdkEventConfigure *event, gpointer ptr) {
-          auto w = static_cast<Window*>(ptr);
-          if (!w) return FALSE;
-
-          // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
-          auto parts = split(w->opts.aspectRatio, ':');
-          float aspectWidth = 0;
-          float aspectHeight = 0;
-
-          try {
-            aspectWidth = std::stof(trim(parts[0]));
-            aspectHeight = std::stof(trim(parts[1]));
-          } catch (...) {
-            debug("invalid aspect ratio");
-            return FALSE;
-          }
-
-          if (aspectWidth > 0 && aspectHeight > 0) {
-            GdkGeometry geom;
-            geom.min_aspect = aspectWidth / aspectHeight;
-            geom.max_aspect = geom.min_aspect;
-            gtk_window_set_geometry_hints(GTK_WINDOW(widget), widget, &geom, GdkWindowHints(GDK_HINT_ASPECT));
-          }
-
-          return FALSE;
-        }),
-        this
-      );
-
-      // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
+    if (options.index == 0) {
+      // only Window#0 should set this value
+      webkit_web_context_set_sandbox_enabled(webContext, true);
     }
 
-    this->index = this->opts.index;
+    this->bridge.userConfig = userConfig;
+    this->bridge.configureNavigatorMounts();
+    this->settings = webkit_settings_new();
+    // ALWAYS on or off
+    webkit_settings_set_enable_webgl(this->settings, true);
+    // TODO(@jwerle); make configurable with '[permissions] allow_media'
+    webkit_settings_set_enable_media(this->settings, true);
+    webkit_settings_set_enable_webaudio(this->settings, true);
+    webkit_settings_set_zoom_text_only(this->settings, false);
+    webkit_settings_set_enable_mediasource(this->settings, true);
+    // TODO(@jwerle); make configurable with '[permissions] allow_dialogs'
+    webkit_settings_set_allow_modal_dialogs(this->settings, true);
+    webkit_settings_set_enable_dns_prefetching(this->settings, true);
+    webkit_settings_set_enable_encrypted_media(this->settings, true);
+    webkit_settings_set_media_playback_allows_inline(this->settings, true);
+    webkit_settings_set_enable_developer_extras(this->settings, options.debug);
+    webkit_settings_set_allow_universal_access_from_file_urls(this->settings, true);
+
+    webkit_settings_set_enable_media_stream(
+      this->settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_enable_media_capabilities(
+      this->settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_enable_webrtc(
+      this->settings,
+      userConfig["permissions_allow_user_media"] != "false"
+    );
+
+    webkit_settings_set_javascript_can_access_clipboard(
+      this->settings,
+      userConfig["permissions_allow_clipboard"] != "false"
+    );
+
+    webkit_settings_set_enable_fullscreen(
+      this->settings,
+      userConfig["permissions_allow_fullscreen"] != "false"
+    );
+
+    webkit_settings_set_enable_html5_local_storage(
+      this->settings,
+      userConfig["permissions_allow_data_access"] != "false"
+    );
+
+    webkit_settings_set_enable_html5_database(
+      this->settings,
+      userConfig["permissions_allow_data_access"] != "false"
+    );
+
+    auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
+    webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
+
+    this->userContentManager = webkit_user_content_manager_new();
+    webkit_user_content_manager_register_script_message_handler(this->userContentManager, "external");
+
+    this->policies = webkit_website_policies_new_with_policies(
+      "autoplay", userConfig["permission_allow_autoplay"] != "false"
+        ? WEBKIT_AUTOPLAY_ALLOW
+        : WEBKIT_AUTOPLAY_DENY,
+      nullptr
+    );
+
+    this->webview = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+      "user-content-manager", this->userContentManager,
+      "website-policies", this->policies,
+      "web-context", webContext,
+      "settings", this->settings,
+      nullptr
+    ));
+
+    gtk_widget_set_can_focus(GTK_WIDGET(this->webview), true);
+
+    this->index = this->options.index;
+    this->dragStart = {0,0};
+    this->shouldDrag = false;
+    this->contextMenu = nullptr;
+    this->contextMenuID = 0;
+
+    this->accelGroup = gtk_accel_group_new();
+    this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    this->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     this->bridge.navigateFunction = [this] (const auto url) {
-      this->navigate("", url);
+      this->navigate(url);
     };
 
-    this->bridge.router.dispatchFunction = [&app] (auto callback) {
-      app.dispatch([callback] { callback(); });
+    this->bridge.evaluateJavaScriptFunction = [this] (const auto source) {
+      this->eval(source);
     };
 
-    this->bridge.router.evaluateJavaScriptFunction = [this] (auto js) {
-      this->eval(js);
-    };
-
-    opts.clientId = this->bridge.id;
-
-    this->bridge.preload = createPreload(opts, {
-      .module = true,
-      .wrap = true,
-      .userScript = opts.userScript
+    this->bridge.preload = IPC::createPreload({
+      .clientId = this->bridge.id,
+      .userScript = options.userScript
     });
 
-    if (opts.resizable) {
-      gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
-      gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+    gtk_box_pack_end(GTK_BOX(this->vbox), GTK_WIDGET(this->webview), true, true, 0);
+
+    gtk_container_add(GTK_CONTAINER(this->window), this->vbox);
+
+    gtk_widget_add_events(this->window, GDK_ALL_EVENTS_MASK);
+    gtk_widget_grab_focus(GTK_WIDGET(this->webview));
+    gtk_widget_realize(GTK_WIDGET(this->window));
+
+    if (options.resizable) {
+      gtk_window_set_default_size(GTK_WINDOW(window), options.width, options.height);
     } else {
-      gtk_widget_set_size_request(window, opts.width, opts.height);
+      gtk_widget_set_size_request(this->window, options.width, options.height);
     }
 
-    gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+    gtk_window_set_resizable(GTK_WINDOW(this->window), options.resizable);
+    gtk_window_set_position(GTK_WINDOW(this->window), GTK_WIN_POS_CENTER);
+    gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
 
-    WebKitUserContentManager* cm = webkit_user_content_manager_new();
-    webkit_user_content_manager_register_script_message_handler(cm, "external");
+    GdkRGBA webviewBackground = {0.0, 0.0, 0.0, 0.0};
+    bool hasDarkValue = this->options.backgroundColorDark.size();
+    bool hasLightValue = this->options.backgroundColorLight.size();
+    bool isDarkMode = false;
+
+    auto isKDEDarkMode = []() -> bool {
+      std::string home = std::getenv("HOME") ? std::getenv("HOME") : "";
+      std::string filepath = home + "/.config/kdeglobals";
+      std::ifstream file(filepath);
+
+      if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filepath << std::endl;
+        return false;
+      }
+
+      std::string line;
+
+      while (getline(file, line)) {
+        std::string lower_line;
+
+        std::transform(
+          line.begin(),
+          line.end(),
+          std::back_inserter(lower_line),
+          [](unsigned char c) { return std::tolower(c); }
+        );
+
+        if (lower_line.find("dark") != std::string::npos) {
+          std::cout << "Found dark setting in line: " << line << std::endl;
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    auto isGnomeDarkMode = [&]() -> bool {
+     GtkStyleContext* context = gtk_widget_get_style_context(window);
+
+      GdkRGBA background_color;
+      gtk_style_context_get_background_color(context, GTK_STATE_FLAG_NORMAL, &background_color);
+
+      bool is_dark_theme = (0.299*  background_color.red +
+                            0.587*  background_color.green +
+                            0.114*  background_color.blue) < 0.5;
+
+      return FALSE;
+    };
+
+    if (hasDarkValue || hasLightValue) {
+      GdkRGBA color = {0};
+
+      const gchar* desktop_env = getenv("XDG_CURRENT_DESKTOP");
+
+      if (desktop_env != NULL && g_str_has_prefix(desktop_env, "GNOME")) {
+        isDarkMode = isGnomeDarkMode();
+      } else {
+        isDarkMode = isKDEDarkMode();
+      }
+
+      if (isDarkMode && hasDarkValue) {
+        gdk_rgba_parse(&color, this->options.backgroundColorDark.c_str());
+      } else if (hasLightValue) {
+        gdk_rgba_parse(&color, this->options.backgroundColorLight.c_str());
+      }
+
+      gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
+    }
+
+    webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &webviewBackground);
+
+    this->hotkey.init();
+    this->bridge.init();
+    this->bridge.configureSchemeHandlers({
+      .webview = settings
+    });
+
+    this->bridge.configureWebView(this->webview);
 
     g_signal_connect(
-      cm,
+      this->userContentManager,
       "script-message-received::external",
       G_CALLBACK(+[](
-        WebKitUserContentManager* cm,
+        WebKitUserContentManager* userContentManager,
         WebKitJavascriptResult* result,
         gpointer ptr
       ) {
@@ -128,35 +248,29 @@ namespace SSC {
       this
     );
 
-    auto webContext = webkit_web_context_get_default();
-    auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
-    auto settings = webkit_settings_new();
-    auto policies = webkit_website_policies_new_with_policies(
-      "autoplay", userConfig["permission_allow_autoplay"] != "false" ? WEBKIT_AUTOPLAY_ALLOW : WEBKIT_AUTOPLAY_DENY,
-      NULL
+    g_signal_connect(
+      G_OBJECT(this->webview),
+      "show-notification",
+      G_CALLBACK(+[](
+        WebKitWebView* webview,
+        WebKitNotification* notification,
+        gpointer userData
+      ) -> bool {
+        const auto window = reinterpret_cast<Window*>(userData);
+
+        if (window == nullptr) {
+          return false;
+        }
+
+        auto userConfig = window->bridge.userConfig;
+        return userConfig["permissions_allow_notifications"] != "false";
+      }),
+      this
     );
-
-    this->bridge.configureSchemeHandlers({
-      .webview = settings
-    });
-
-    this->webview = GTK_WIDGET(WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
-      "web-context", webContext,
-      "settings", settings,
-      "user-content-manager", cm,
-      "website-policies", policies,
-      NULL
-    )));
-
-    this->bridge.configureWebView(this->webview);
-
-    gtk_widget_set_can_focus(GTK_WIDGET(webview), true);
-
-    webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
 
     // handle `navigator.permissions.query()`
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "query-permission-state",
       G_CALLBACK((+[](
         WebKitWebView* webview,
@@ -194,11 +308,11 @@ namespace SSC {
     );
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "permission-request",
       G_CALLBACK((+[](
         WebKitWebView* webview,
-        WebKitPermissionRequest *request,
+        WebKitPermissionRequest* request,
         gpointer userData
       ) -> bool {
         Window* window = reinterpret_cast<Window*>(userData);
@@ -243,7 +357,7 @@ namespace SSC {
 
         if (result) {
           auto title = userConfig["meta_title"];
-          GtkWidget *dialog = gtk_message_dialog_new(
+          GtkWidget* dialog = gtk_message_dialog_new(
             GTK_WINDOW(window->window),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
@@ -284,32 +398,36 @@ namespace SSC {
       droppableTypes,
       G_N_ELEMENTS(droppableTypes),
       GDK_ACTION_COPY
-    ); */
+    );
 
-    /* gtk_drag_dest_set(
+    gtk_drag_dest_set(
       webview,
       GTK_DEST_DEFAULT_ALL,
       droppableTypes,
       1,
       GDK_ACTION_MOVE
-    ); */
+    );
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "button-release-event",
-      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
+      G_CALLBACK(+[](GtkWidget* wv, GdkEventButton* event, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
         w->shouldDrag = false;
+        w->dragStart.x = 0;
+        w->dragStart.y = 0;
+        w->dragging.x = 0;
+        w->dragging.y = 0;
         return FALSE;
       }),
       this
     );
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "button-press-event",
-      G_CALLBACK(+[](GtkWidget *wv, GdkEventButton *event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
+      G_CALLBACK(+[](GtkWidget* wv, GdkEventButton* event, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
         w->shouldDrag = false;
 
         if (event->button == GDK_BUTTON_PRIMARY) {
@@ -319,11 +437,11 @@ namespace SSC {
 
           gdk_window_get_position(win, &initialX, &initialY);
 
-          w->initialLocation.x = initialX;
-          w->initialLocation.y = initialY;
+          w->dragStart.x = initialX;
+          w->dragStart.y = initialY;
 
-          w->dragLastX = event->x_root;
-          w->dragLastY = event->y_root;
+          w->dragging.x = event->x_root;
+          w->dragging.y = event->y_root;
 
           GdkDevice* device;
 
@@ -353,7 +471,7 @@ namespace SSC {
             nullptr,
             nullptr,
             [](GObject* src, GAsyncResult* result, gpointer arg) {
-              auto *w = static_cast<Window*>(arg);
+              auto* w = static_cast<Window*>(arg);
               if (!w) return;
 
               GError* error = NULL;
@@ -381,31 +499,31 @@ namespace SSC {
     );
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "focus",
       G_CALLBACK(+[](
-        GtkWidget *wv,
+        GtkWidget* wv,
         GtkDirectionType direction,
         gpointer arg)
       {
-        auto *w = static_cast<Window*>(arg);
+        auto* w = static_cast<Window*>(arg);
         if (!w) return;
       }),
       this
     );
 
-    /* g_signal_connect(
-      G_OBJECT(webview),
+    g_signal_connect(
+      G_OBJECT(this->webview),
       "drag-data-get",
       G_CALLBACK(+[](
-        GtkWidget *wv,
-        GdkDragContext *context,
-        GtkSelectionData *data,
+        GtkWidget* wv,
+        GdkDragContext* context,
+        GtkSelectionData* data,
         guint info,
         guint time,
         gpointer arg)
       {
-        auto *w = static_cast<Window*>(arg);
+        auto* w = static_cast<Window*>(arg);
         if (!w) return;
 
         if (w->isDragInvokedInsideWindow) {
@@ -433,17 +551,17 @@ namespace SSC {
         gtk_selection_data_set_uris(data, uris);
       }),
       this
-    ); */
+    );
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "motion-notify-event",
       G_CALLBACK(+[](
-        GtkWidget *wv,
-        GdkEventMotion *event,
+        GtkWidget* wv,
+        GdkEventMotion* event,
         gpointer arg)
       {
-        auto *w = static_cast<Window*>(arg);
+        auto* w = static_cast<Window*>(arg);
         if (!w) return FALSE;
 
         if (w->shouldDrag && event->state & GDK_BUTTON1_MASK) {
@@ -470,16 +588,16 @@ namespace SSC {
 
           gdk_window_get_position(win, &x, &y);
 
-          gint offset_x = event->x_root - w->dragLastX;
-          gint offset_y = event->y_root - w->dragLastY;
+          gint offset_x = event->x_root - w->dragging.x;
+          gint offset_y = event->y_root - w->dragging.y;
 
           gint newX = x + offset_x;
           gint newY = y + offset_y;
 
           gdk_window_move(win, newX - offsetWidth, newY - offsetHeight);
 
-          w->dragLastX = event->x_root;
-          w->dragLastY = event->y_root;
+          w->dragging.x = event->x_root;
+          w->dragging.y = event->y_root;
         }
 
         return FALSE;
@@ -489,7 +607,7 @@ namespace SSC {
         //
         // char* target_uri = g_file_get_uri(drag_info->target_location);
 
-        /* int count = w->draggablePayload.size();
+        int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
         // w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
@@ -505,7 +623,7 @@ namespace SSC {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(getEmitToRenderProcessJavaScript("drag", json)); */
+        w->eval(getEmitToRenderProcessJavaScript("drag", json));
       }),
       this
     );
@@ -514,10 +632,10 @@ namespace SSC {
     // https://wiki.gnome.org/action/show/Newcomers/OldDragNDropTutorial?action=show&redirect=Newcomers%2FDragNDropTutorial
 
     g_signal_connect(
-      G_OBJECT(webview),
+      G_OBJECT(this->webview),
       "drag-end",
-      G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
+      G_CALLBACK(+[](GtkWidget* wv, GdkDragContext* context, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
         if (!w) return;
 
         // w->isDragInvokedInsideWindow = false;
@@ -527,15 +645,15 @@ namespace SSC {
       this
     );
 
-    /* g_signal_connect(
-      G_OBJECT(webview),
+    g_signal_connect(
+      G_OBJECT(this->webview),
       "drag-data-received",
       G_CALLBACK(+[](
         GtkWidget* wv,
         GdkDragContext* context,
         gint x,
         gint y,
-        GtkSelectionData *data,
+        GtkSelectionData* data,
         guint info,
         guint time,
         gpointer arg)
@@ -562,10 +680,10 @@ namespace SSC {
         }
       }),
       this
-    ); */
+    );
 
-    /* g_signal_connect(
-      G_OBJECT(webview),
+    g_signal_connect(
+      G_OBJECT(this->webview),
       "drag-drop",
       G_CALLBACK(+[](
         GtkWidget* widget,
@@ -604,15 +722,20 @@ namespace SSC {
         return TRUE;
       }),
       this
-    ); */
+    );
+    */
 
+    /*
+    * FIXME(@jwerle): this can race - ideally, this is fixed in an abstraction
     auto onDestroy = +[](GtkWidget*, gpointer arg) {
       auto* w = static_cast<Window*>(arg);
       auto* app = App::sharedApplication();
       app->windowManager.destroyWindow(w->index);
 
       for (auto window : app->windowManager.windows) {
-        if (window == nullptr) continue;
+        if (window == nullptr || window.get() == w) {
+          continue;
+        }
 
         JSON::Object json = JSON::Object::Entries {
           {"data", w->index}
@@ -620,25 +743,24 @@ namespace SSC {
 
         window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
       }
-
-      w->close(0);
       return FALSE;
     };
 
     g_signal_connect(
-      G_OBJECT(window),
+      G_OBJECT(this->window),
       "destroy",
       G_CALLBACK(onDestroy),
       this
     );
+    */
 
     g_signal_connect(
-      G_OBJECT(window),
+      G_OBJECT(this->window),
       "delete-event",
       G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
 
-        if (w->opts.canExit == false) {
+        if (w->options.shouldExitApplicationOnClose == false) {
           w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
           return gtk_widget_hide_on_delete(widget);
         }
@@ -650,162 +772,88 @@ namespace SSC {
     );
 
     g_signal_connect(
-      G_OBJECT(window),
+      G_OBJECT(this->window),
       "size-allocate", // https://docs.gtk.org/gtk3/method.Window.get_size.html
-      G_CALLBACK(+[](GtkWidget* widget,GtkAllocation *allocation, gpointer arg) {
+      G_CALLBACK(+[](GtkWidget* widget,GtkAllocation* allocation, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
-        gtk_window_get_size(GTK_WINDOW(widget), &w->width, &w->height);
+        gtk_window_get_size(GTK_WINDOW(widget), &w->size.width, &w->size.height);
       }),
       this
     );
 
-    WebKitUserContentManager *manager =
-      webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
+    if (this->options.aspectRatio.size() > 0) {
+      g_signal_connect(
+        window,
+        "configure-event",
+        G_CALLBACK(+[](GtkWidget* widget, GdkEventConfigure* event, gpointer ptr) {
+          auto w = static_cast<Window*>(ptr);
+          if (!w) return FALSE;
 
-    // ALWAYS on or off
-    webkit_settings_set_enable_webgl(settings, true);
-    webkit_settings_set_zoom_text_only(settings, false);
-    webkit_settings_set_enable_mediasource(settings, true);
-    webkit_settings_set_enable_encrypted_media(settings, true);
-    webkit_settings_set_media_playback_allows_inline(settings, true);
-    webkit_settings_set_enable_dns_prefetching(settings, true);
+          // TODO(@heapwolf): make the parsed aspectRatio properties so it doesnt need to be recalculated.
+          auto parts = split(w->options.aspectRatio, ':');
+          float aspectWidth = 0;
+          float aspectHeight = 0;
 
-    // TODO(@jwerle); make configurable with '[permissions] allow_dialogs'
-    webkit_settings_set_allow_modal_dialogs(
-      settings,
-      true
-    );
+          try {
+            aspectWidth = std::stof(trim(parts[0]));
+            aspectHeight = std::stof(trim(parts[1]));
+          } catch (...) {
+            debug("invalid aspect ratio");
+            return FALSE;
+          }
 
-    // TODO(@jwerle); make configurable with '[permissions] allow_media'
-    webkit_settings_set_enable_media(settings, true);
-    webkit_settings_set_enable_webaudio(settings, true);
+          if (aspectWidth > 0 && aspectHeight > 0) {
+            GdkGeometry geom;
+            geom.min_aspect = aspectWidth / aspectHeight;
+            geom.max_aspect = geom.min_aspect;
+            gtk_window_set_geometry_hints(GTK_WINDOW(widget), widget, &geom, GdkWindowHints(GDK_HINT_ASPECT));
+          }
 
-    webkit_settings_set_enable_media_stream(
-      settings,
-      userConfig["permissions_allow_user_media"] != "false"
-    );
+          return FALSE;
+        }),
+        this
+      );
 
-    webkit_settings_set_enable_media_capabilities(
-      settings,
-      userConfig["permissions_allow_user_media"] != "false"
-    );
-
-    webkit_settings_set_enable_webrtc(
-      settings,
-      userConfig["permissions_allow_user_media"] != "false"
-    );
-
-    webkit_settings_set_javascript_can_access_clipboard(
-      settings,
-      userConfig["permissions_allow_clipboard"] != "false"
-    );
-
-    webkit_settings_set_enable_fullscreen(
-      settings,
-      userConfig["permissions_allow_fullscreen"] != "false"
-    );
-
-    webkit_settings_set_enable_html5_local_storage(
-      settings,
-      userConfig["permissions_allow_data_access"] != "false"
-    );
-
-    webkit_settings_set_enable_html5_database(
-      settings,
-      userConfig["permissions_allow_data_access"] != "false"
-    );
-
-    GdkRGBA webviewBackground = {0.0, 0.0, 0.0, 0.0};
-    bool hasDarkValue = this->opts.backgroundColorDark.size();
-    bool hasLightValue = this->opts.backgroundColorLight.size();
-    bool isDarkMode = false;
-
-    auto is_kde_dark_mode = []() -> bool {
-      std::string home = std::getenv("HOME") ? std::getenv("HOME") : "";
-      std::string filepath = home + "/.config/kdeglobals";
-      std::ifstream file(filepath);
-
-      if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filepath << std::endl;
-        return false;
-      }
-
-      std::string line;
-
-      while (getline(file, line)) {
-        std::string lower_line;
-
-        std::transform(
-          line.begin(),
-          line.end(),
-          std::back_inserter(lower_line),
-          [](unsigned char c) { return std::tolower(c); }
-        );
-
-        if (lower_line.find("dark") != std::string::npos) {
-          std::cout << "Found dark setting in line: " << line << std::endl;
-          return true;
-        }
-      }
-
-      return false;
-    };
-
-    auto is_gnome_dark_mode = [&]() -> bool {
-     GtkStyleContext *context = gtk_widget_get_style_context(window);
-
-      GdkRGBA background_color;
-      gtk_style_context_get_background_color(context, GTK_STATE_FLAG_NORMAL, &background_color);
-
-      bool is_dark_theme = (0.299 * background_color.red +
-                            0.587 * background_color.green +
-                            0.114 * background_color.blue) < 0.5;
-
-      return FALSE;
-    };
-
-    if (hasDarkValue || hasLightValue) {
-      GdkRGBA color = {0};
-
-      const gchar *desktop_env = getenv("XDG_CURRENT_DESKTOP");
-
-      if (desktop_env != NULL && g_str_has_prefix(desktop_env, "GNOME")) {
-        isDarkMode = is_gnome_dark_mode();
-      } else {
-        isDarkMode = is_kde_dark_mode();
-      }
-
-      if (isDarkMode && hasDarkValue) {
-        gdk_rgba_parse(&color, this->opts.backgroundColorDark.c_str());
-      } else if (hasLightValue) {
-        gdk_rgba_parse(&color, this->opts.backgroundColorLight.c_str());
-      }
-
-      gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
+      // gtk_window_set_aspect_ratio(GTK_WINDOW(window), aspectRatio, TRUE);
     }
-
-    webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &webviewBackground);
-
-    if (this->opts.debug) {
-      webkit_settings_set_enable_developer_extras(settings, true);
-    }
-
-    webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
-    webkit_settings_set_allow_file_access_from_file_urls(settings, true);
-
-    // webkit_settings_set_allow_top_navigation_to_data_urls(settings, true);
-
-    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-
-    gtk_box_pack_end(GTK_BOX(vbox), webview, true, true, 0);
-
-    gtk_container_add(GTK_CONTAINER(window), vbox);
-    gtk_widget_add_events(window, GDK_ALL_EVENTS_MASK);
-
-    gtk_widget_grab_focus(GTK_WIDGET(webview));
   }
 
   Window::~Window () {
+    if (this->policies) {
+      g_object_unref(this->policies);
+      this->policies = nullptr;
+    }
+
+    if (this->settings) {
+      g_object_unref(this->settings);
+      this->settings = nullptr;
+    }
+
+    if (this->userContentManager) {
+      g_object_unref(this->userContentManager);
+      this->userContentManager = nullptr;
+    }
+
+    if (this->webview) {
+      g_object_unref(this->webview);
+      this->webview = nullptr;
+    }
+
+    if (this->window) {
+      auto w = this->window;
+      this->window = nullptr;
+      gtk_widget_destroy(w);
+    }
+
+    if (this->accelGroup) {
+      g_object_unref(this->accelGroup);
+      this->accelGroup = nullptr;
+    }
+
+    if (this->vbox) {
+      //g_object_unref(this->vbox);
+      this->vbox = nullptr;
+    }
   }
 
   ScreenSize Window::getScreenSize () {
@@ -873,26 +921,27 @@ namespace SSC {
   }
 
   void Window::eval (const String& source) {
-    auto webview = this->webview;
-    this->app.dispatch([=, this] {
-      webkit_web_view_evaluate_javascript(
-        WEBKIT_WEB_VIEW(this->webview),
-        String(source).c_str(),
-        -1,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr
-      );
-    });
+    if (this->webview) {
+      App::sharedApplication()->dispatch([=, this] {
+        webkit_web_view_evaluate_javascript(
+          this->webview,
+          String(source).c_str(),
+          -1,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr
+        );
+      });
+    }
   }
 
   void Window::show () {
     gtk_widget_realize(this->window);
 
-    this->index = this->opts.index;
-    if (this->opts.headless == false) {
+    this->index = this->options.index;
+    if (this->options.headless == false) {
       gtk_widget_show_all(this->window);
       gtk_window_present(GTK_WINDOW(this->window));
     }
@@ -923,7 +972,7 @@ namespace SSC {
   }
 
   String Window::getBackgroundColor () {
-    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
+    GtkStyleContext* context = gtk_widget_get_style_context(this->window);
 
     GdkRGBA color;
     gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
@@ -934,9 +983,9 @@ namespace SSC {
       str,
       sizeof(str),
       "rgba(%d, %d, %d, %f)",
-      (int)(color.red * 255),
-      (int)(color.green * 255),
-      (int)(color.blue * 255),
+      (int)(color.red*  255),
+      (int)(color.green*  255),
+      (int)(color.blue*  255),
       color.alpha
     );
 
@@ -944,23 +993,23 @@ namespace SSC {
   }
 
   void Window::showInspector () {
-    WebKitWebInspector *inspector = webkit_web_view_get_inspector((WebKitWebView*)(this->webview));
-    webkit_web_inspector_show(inspector);
-
-    // this->webview->inspector.show();
+    auto inspector = webkit_web_view_get_inspector(this->webview);
+    if (inspector) {
+      webkit_web_inspector_show(inspector);
+    }
   }
 
   void Window::exit (int code) {
-    if (onExit != nullptr) onExit(code);
+    auto cb = this->onExit;
+    this->onExit = nullptr;
+    if (cb != nullptr) cb(code);
   }
 
-  void Window::kill () {
-    // gtk releases objects automatically.
-  }
+  void Window::kill () {}
 
-  void Window::close (int code) {
-    if (opts.canExit) {
-      this->exit(code);
+  void Window::close (int _) {
+    if (this->window) {
+      gtk_window_close(GTK_WINDOW(this->window));
     }
   }
 
@@ -977,15 +1026,8 @@ namespace SSC {
   }
 
   void Window::navigate (const String& url) {
-    return this->navigate("", url);
-  }
-
-  void Window::navigate (const String &seq, const String &url) {
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
+    if (this->webview) {
+      webkit_web_view_load_uri(this->webview, url.c_str());
     }
   }
 
@@ -1000,23 +1042,23 @@ namespace SSC {
     return "";
   }
 
-  void Window::setTitle (const String &s) {
+  void Window::setTitle (const String& s) {
     gtk_widget_realize(window);
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
   }
 
   void Window::about () {
-    GtkWidget *dialog = gtk_dialog_new();
+    GtkWidget* dialog = gtk_dialog_new();
     gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 200);
 
-    GtkWidget *body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
-    GtkContainer *content = GTK_CONTAINER(body);
+    GtkWidget* body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
+    GtkContainer* content = GTK_CONTAINER(body);
 
     String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      app.userConfig["build_name"] +
+      this->bridge.userConfig["build_name"] +
       ".png";
 
-    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
+    GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file_at_scale(
       imgPath.c_str(),
       60,
       60,
@@ -1024,25 +1066,25 @@ namespace SSC {
       nullptr
     );
 
-    GtkWidget *img = gtk_image_new_from_pixbuf(pixbuf);
+    GtkWidget* img = gtk_image_new_from_pixbuf(pixbuf);
     gtk_widget_set_margin_top(img, 20);
     gtk_widget_set_margin_bottom(img, 20);
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.userConfig["build_name"] + " v" + app.userConfig["meta_version"]);
+    String title_value(this->bridge.userConfig["build_name"] + " v" + this->bridge.userConfig["meta_version"]);
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
-    GtkWidget *label_title = gtk_label_new("");
+    GtkWidget* label_title = gtk_label_new("");
     gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
     gtk_container_add(content, label_title);
 
-    GtkWidget *label_op_version = gtk_label_new("");
+    GtkWidget* label_op_version = gtk_label_new("");
     gtk_label_set_markup(GTK_LABEL(label_op_version), version_value.c_str());
     gtk_container_add(content, label_op_version);
 
-    GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), app.userConfig["meta_copyright"].c_str());
+    GtkWidget* label_copyright = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_copyright), this->bridge.userConfig["meta_copyright"].c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(
@@ -1059,12 +1101,18 @@ namespace SSC {
     gtk_dialog_run(GTK_DIALOG(dialog));
   }
 
-  ScreenSize Window::getSize () {
-    return ScreenSize { this->height, this->width };
+  Window::Size Window::getSize () {
+    gtk_widget_get_size_request(
+      this->window,
+      &this->size.width,
+      &this->size.height
+    );
+
+    return this->size;
   }
 
-  const ScreenSize Window::getSize () const {
-    return ScreenSize { this->height, this->width };
+  const Window::Size Window::getSize () const {
+    return this->size;
   }
 
   void Window::setSize (int width, int height, int hints) {
@@ -1088,8 +1136,8 @@ namespace SSC {
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
 
-    this->width = width;
-    this->height = height;
+    this->size.width = width;
+    this->size.height = height;
   }
 
   void Window::setPosition (float x, float y) {
@@ -1098,24 +1146,22 @@ namespace SSC {
     this->position.y = y;
   }
 
-  void Window::setTrayMenu (const String& seq, const String& value) {
-    this->setMenu(seq, value, true);
+  void Window::setTrayMenu (const String& value) {
+    this->setMenu(value, true);
   }
 
-  void Window::setSystemMenu (const String& seq, const String& value) {
-    this->setMenu(seq, value, false);
+  void Window::setSystemMenu (const String& value) {
+    this->setMenu(value, false);
   }
 
-  void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
-    Lock lock(mutex);
-
+  void Window::setMenu (const String& menuSource, const bool& isTrayMenu) {
     if (menuSource.empty()) {
       return;
     }
 
     auto clear = [this](GtkWidget* menu) {
-      GList *iter;
-      GList *children = gtk_container_get_children(GTK_CONTAINER(menu));
+      GList* iter;
+      GList* children = gtk_container_get_children(GTK_CONTAINER(menu));
 
       for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
         gtk_widget_destroy(GTK_WIDGET(iter->data));
@@ -1131,7 +1177,7 @@ namespace SSC {
       menubar = menubar == nullptr ? gtk_menu_bar_new() : clear(menubar);
     }
 
-    GtkStyleContext *context = gtk_widget_get_style_context(this->window);
+    GtkStyleContext* context = gtk_widget_get_style_context(this->window);
 
     GdkRGBA color;
     gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
@@ -1147,8 +1193,8 @@ namespace SSC {
       auto menuParts = split(line, ':');
       auto menuTitle = menuParts[0];
       // if this is a tray menu, append directly to the tray instead of a submenu.
-      auto *ctx = isTrayMenu ? menutray : gtk_menu_new();
-      GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
+      auto* ctx = isTrayMenu ? menutray : gtk_menu_new();
+      GtkWidget* menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
 
       if (isTrayMenu && menuSource.size() == 1) {
         if (menuParts.size() > 1) {
@@ -1158,7 +1204,7 @@ namespace SSC {
         g_signal_connect(
           G_OBJECT(menuItem),
           "activate",
-          G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+          G_CALLBACK(+[](GtkWidget* t, gpointer arg) {
             auto w = static_cast<Window*>(arg);
             auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
             auto parent = gtk_widget_get_name(t);
@@ -1175,7 +1221,7 @@ namespace SSC {
         auto title = parts[0];
         String key = "";
 
-        GtkWidget *item;
+        GtkWidget* item;
 
         if (parts[0].find("---") != -1) {
           item = gtk_separator_menu_item_new();
@@ -1242,7 +1288,7 @@ namespace SSC {
             g_signal_connect(
               G_OBJECT(item),
               "activate",
-              G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+              G_CALLBACK(+[](GtkWidget* t, gpointer arg) {
                 auto w = static_cast<Window*>(arg);
                 auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
                 auto parent = gtk_widget_get_name(t);
@@ -1255,7 +1301,7 @@ namespace SSC {
             g_signal_connect(
               G_OBJECT(item),
               "activate",
-              G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+              G_CALLBACK(+[](GtkWidget* t, gpointer arg) {
                 auto w = static_cast<Window*>(arg);
                 auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
                 auto parent = gtk_widget_get_name(t);
@@ -1290,7 +1336,7 @@ namespace SSC {
     if (isTrayMenu) {
       static auto userConfig = SSC::getUserConfig();
       static auto app = App::sharedApplication();
-      GtkStatusIcon *trayIcon;
+      GtkStatusIcon* trayIcon;
       auto cwd = app->getcwd();
       auto trayIconPath = String("application_tray_icon");
 
@@ -1319,22 +1365,17 @@ namespace SSC {
       g_signal_connect(
         trayIcon,
         "activate",
-        G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+        G_CALLBACK(+[](GtkWidget* t, gpointer arg) {
           auto w = static_cast<Window*>(arg);
           gtk_menu_popup_at_pointer(GTK_MENU(w->menutray), NULL);
-          w->bridge.emit("tray", "true");
+          w->bridge.emit("tray", true);
         }),
         this
       );
       gtk_widget_show_all(menutray);
     } else {
-      gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
+      gtk_box_pack_start(GTK_BOX(this->vbox), menubar, false, false, 0);
       gtk_widget_show_all(menubar);
-    }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -1343,46 +1384,46 @@ namespace SSC {
   }
 
   void Window::closeContextMenu () {
-    if (popupId > 0) {
-      popupId = 0;
-      auto seq = std::to_string(popupId);
+    if (this->contextMenuID > 0) {
+      const auto seq = std::to_string(this->contextMenuID);
+      this->contextMenuID = 0;
       closeContextMenu(seq);
     }
   }
 
-  void Window::closeContextMenu (const String &seq) {
-    if (popup != nullptr) {
-      auto ptr = popup;
-      popup = nullptr;
+  void Window::closeContextMenu (const String& seq) {
+    if (contextMenu != nullptr) {
+      auto ptr = contextMenu;
+      contextMenu = nullptr;
       closeContextMenu(ptr, seq);
     }
   }
 
   void Window::closeContextMenu (
-    GtkWidget *popupMenu,
-    const String &seq
+    GtkWidget* contextMenu,
+    const String& seq
   ) {
-    if (popupMenu != nullptr) {
-      gtk_menu_popdown((GtkMenu *) popupMenu);
-      gtk_widget_destroy(popupMenu);
+    if (contextMenu != nullptr) {
+      gtk_menu_popdown((GtkMenu* ) contextMenu);
+      gtk_widget_destroy(contextMenu);
       this->eval(getResolveMenuSelectionJavaScript(seq, "", "contextMenu", "context"));
     }
   }
 
   void Window::setContextMenu (
-    const String &seq,
-    const String &menuSource
+    const String& seq,
+    const String& menuSource
   ) {
     closeContextMenu();
     if (menuSource.empty()) return void(0);
 
     // members
-    popup = gtk_menu_new();
+    this->contextMenu = gtk_menu_new();
 
     try {
-      popupId = std::stoi(seq);
+      this->contextMenuID = std::stoi(seq);
     } catch (...) {
-      popupId = 0;
+      this->contextMenuID = 0;
     }
 
     auto menuItems = split(menuSource, '\n');
@@ -1393,20 +1434,20 @@ namespace SSC {
       }
 
       if (itemData.find("---") != -1) {
-        auto *item = gtk_separator_menu_item_new();
+        auto* item = gtk_separator_menu_item_new();
         gtk_widget_show(item);
-        gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
+        gtk_menu_shell_append(GTK_MENU_SHELL(this->contextMenu), item);
         continue;
       }
 
       auto pair = split(itemData, ':');
       auto meta = String(seq + ";" + itemData);
-      auto *item = gtk_menu_item_new_with_label(pair[0].c_str());
+      auto* item = gtk_menu_item_new_with_label(pair[0].c_str());
 
       g_signal_connect(
         G_OBJECT(item),
         "activate",
-        G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+        G_CALLBACK(+[](GtkWidget* t, gpointer arg) {
           auto window = static_cast<Window*>(arg);
           if (!window) return;
 
@@ -1423,7 +1464,7 @@ namespace SSC {
 
       gtk_widget_set_name(item, meta.c_str());
       gtk_widget_show(item);
-      gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
+      gtk_menu_shell_append(GTK_MENU_SHELL(this->contextMenu), item);
     }
 
     GdkRectangle rect;
@@ -1447,13 +1488,13 @@ namespace SSC {
     rect.x = x - 1;
     rect.y = y - 1;
 
-    gtk_widget_add_events(popup, GDK_ALL_EVENTS_MASK);
-    gtk_widget_set_can_focus(popup, true);
-    gtk_widget_show_all(popup);
-    gtk_widget_grab_focus(popup);
+    gtk_widget_add_events(contextMenu, GDK_ALL_EVENTS_MASK);
+    gtk_widget_set_can_focus(contextMenu, true);
+    gtk_widget_show_all(contextMenu);
+    gtk_widget_grab_focus(contextMenu);
 
     gtk_menu_popup_at_rect(
-      GTK_MENU(popup),
+      GTK_MENU(contextMenu),
       win,
       &rect,
       GDK_GRAVITY_SOUTH_WEST,

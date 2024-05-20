@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "../platform/platform.hh"
 #include "../cli/cli.hh"
 #include "env.hh"
 #include "io.hh"
@@ -12,10 +13,10 @@ namespace SSC::IO {
 
     stream << input;
 
-    // skip writing newline if running on Windows GHA CI
-  #if defined(_WIN32)
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (isGitHubActionsCI) {
       CLI::notify();
+      // skip writing newline if running on Windows GHA CI
       return;
     }
 

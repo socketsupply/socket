@@ -1,8 +1,7 @@
-#ifndef SSC_SOCKET_JSON_HH
-#define SSC_SOCKET_JSON_HH
+#ifndef SOCKET_RUNTIME_CORE_JSON_H
+#define SOCKET_RUNTIME_CORE_JSON_H
 
-#include "types.hh"
-#include "platform.hh"
+#include "../platform/platform.hh"
 
 namespace SSC::JSON {
   // forward
@@ -185,7 +184,7 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (size_t);
       Any (ssize_t);
     #endif
@@ -200,9 +199,9 @@ namespace SSC::JSON {
       Any (const ArrayEntries);
       Any (const Raw);
       Any (const Error);
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (const NSError*);
-    #elif SSC_PLATFORM_LINUX
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
       Any (const GError*);
     #endif
 

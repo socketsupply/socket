@@ -1,5 +1,3 @@
-#include "../core/platform.hh"
-#include "../core/string.hh"
 #include "../core/json.hh"
 #include "../ipc/ipc.hh"
 #include "../app/app.hh"
@@ -13,7 +11,7 @@ namespace SSC {
   static HotKeyBinding::ID nextGlobalBindingID = 1024;
   static HotKeyContext::Bindings globalBindings;
 
-#if SSC_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
   static OSStatus carbonEventHandlerCallback (
     EventHandlerCallRef eventHandlerCallRef,
     EventRef eventRef,
@@ -59,7 +57,7 @@ namespace SSC {
 
     return eventNotHandledErr;
   }
-#elif SSC_PLATFORM_LINUX
+#elif SOCKET_RUNTIME_PLATFORM_LINUX
   static bool gtkKeyPressEventHandlerCallback (
     GtkWidget* widget,
     GdkEventKey* event,
@@ -113,7 +111,7 @@ namespace SSC {
 #endif
 
   HotKeyCodeMap::HotKeyCodeMap () {
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     keys.insert_or_assign("a", kVK_ANSI_A);
     keys.insert_or_assign("b", kVK_ANSI_B);
     keys.insert_or_assign("c", kVK_ANSI_C);
@@ -228,7 +226,7 @@ namespace SSC {
     modifiers.insert_or_assign("ctrl", controlKey);
 
     modifiers.insert_or_assign("shift", shiftKey);
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     keys.insert_or_assign("a", GDK_KEY_a);
     keys.insert_or_assign("b", GDK_KEY_b);
     keys.insert_or_assign("c", GDK_KEY_c);
@@ -377,7 +375,7 @@ namespace SSC {
     modifiers.insert_or_assign("right shift", GDK_SHIFT_MASK);
     modifiers.insert_or_assign("left shift", GDK_SHIFT_MASK);
     modifiers.insert_or_assign("shift", GDK_SHIFT_MASK);
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     keys.insert_or_assign("a", 0x41);
     keys.insert_or_assign("b", 0x42);
     keys.insert_or_assign("c", 0x43);
@@ -591,7 +589,7 @@ namespace SSC {
   void HotKeyContext::init () {
     auto userConfig = this->window->bridge.userConfig;
 
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     // Carbon API event type spec
     static const EventTypeSpec eventTypeSpec = {
       .eventClass = kEventClassKeyboard,
@@ -672,7 +670,7 @@ namespace SSC {
         return reply(IPC::Result::Data { message, data });
       }
 
-    #if SSC_PLATFORM_LINUX
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
       const auto expression = decodeURIComponent(message.get("expression"));
     #else
       const auto expression = message.get("expression");
@@ -721,7 +719,7 @@ namespace SSC {
     this->window->bridge.router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
       static auto userConfig = SSC::getUserConfig();
       HotKeyBinding::ID id;
-    #if SSC_PLATFORM_LINUX
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
       const auto expression = decodeURIComponent(message.get("expression"));
     #else
       const auto expression = message.get("expression");
@@ -913,7 +911,7 @@ namespace SSC {
       ? getBindingForExpression(expression)
       : HotKeyBinding(nextGlobalBindingID, expression);
 
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (!exists) {
       EventHotKeyID eventHotKeyID;
       eventHotKeyID.id = binding.id;
@@ -932,7 +930,7 @@ namespace SSC {
         return HotKeyBinding(0, "");
       }
     }
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     static const HotKeyCodeMap hotKeyCodeMap;
 
     if (!this->gtkKeyPressEventContexts.contains(binding.id)) {
@@ -949,7 +947,7 @@ namespace SSC {
         &context
       );
     }
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (!exists) {
       const auto status = RegisterHotKey(
         this->window->window,
@@ -985,12 +983,12 @@ namespace SSC {
     }
 
     const auto& binding = this->bindings.at(id);
-  #if SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (UnregisterEventHotKey(binding.eventHotKeyRef) == 0) {
       this->bindings.erase(id);
       return true;
     }
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     if (this->window->window == nullptr) {
       return false;
     }
@@ -1004,7 +1002,7 @@ namespace SSC {
     }
 
     return true;
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (UnregisterHotKey(this->window->window, id)) {
       this->bindings.erase(id);
       return true;

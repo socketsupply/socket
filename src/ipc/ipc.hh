@@ -1,5 +1,5 @@
-#ifndef SSC_IPC_H
-#define SSC_IPC_H
+#ifndef SOCKET_RUNTIME_IPC_H
+#define SOCKET_RUNTIME_IPC_H
 
 #include "bridge.hh"
 #include "client.hh"

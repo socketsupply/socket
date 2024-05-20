@@ -1,7 +1,12 @@
 #include "../core/debug.hh"
+#include "../app/app.hh"
 #include "window.hh"
 
-#if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#endif
+
+#if SOCKET_RUNTIME_PLATFORM_IOS
 @implementation SSCUIPickerDelegate : NSObject
 -  (void) documentPicker: (UIDocumentPickerViewController*) controller
   didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls
@@ -41,7 +46,9 @@
 #endif
 
 namespace SSC {
-  Dialog::Dialog () {
+  Dialog::Dialog (Window* window)
+    : window(window)
+  {
   #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     this->uiPickerDelegate = [SSCUIPickerDelegate new];
     this->uiPickerDelegate.dialog = this;
@@ -252,6 +259,7 @@ namespace SSC {
 
     std::lock_guard<std::mutex> lock(this->delegateMutex);
     paths = this->delegatedResults;
+    this->delegatedResults.clear();
   #else
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
@@ -751,6 +759,59 @@ namespace SSC {
     }
 
     CoUninitialize();
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->window->androidWindowRef) {
+      const auto app = App::sharedApplication();
+      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      const auto dialogRef = CallObjectClassMethodFromAndroidEnvironment(
+        attachment.env,
+        this->window->androidWindowRef,
+        "getDialog",
+        "()Lsocket/runtime/window/Dialog;"
+      );
+
+      String mimeTypes;
+      // <mime>:<ext>,<ext>|<mime>:<ext>|...
+      for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
+        const auto parts = split(contentTypeSpec, ":");
+        const auto mime = parts[0];
+        const auto classes = split(mime, "/");
+        if (classes.size() == 2) {
+          if (mimeTypes.size() == 0) {
+            mimeTypes = mime;
+          } else {
+            mimeTypes += "|" + mime;
+          }
+        }
+      }
+
+      const auto mimeTypesRef = attachment.env->NewStringUTF(mimeTypes.c_str());
+      const auto results = (jobjectArray) CallObjectClassMethodFromAndroidEnvironment(
+        attachment.env,
+        dialogRef,
+        "showFileSystemPicker",
+        "(Ljava/lang/String;ZZZ)[Landroid/net/Uri;",
+        mimeTypesRef,
+        allowDirectories,
+        allowMultiple,
+        allowFiles
+      );
+
+      const auto length = attachment.env->GetArrayLength(results);
+      for (int i = 0; i < length; ++i) {
+        const auto uri = (jstring) attachment.env->GetObjectArrayElement(results, i);
+        if (uri) {
+          const auto string = Android::StringWrap(attachment.env, CallObjectClassMethodFromAndroidEnvironment(
+            attachment.env,
+            uri,
+            "toString",
+            "()Ljava/lang/String;"
+          )).str();
+
+          paths.push_back(string);
+        }
+      }
+    }
   #endif
 
     return paths;

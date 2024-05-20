@@ -1,7 +1,7 @@
-#ifndef SSC_CORE_CODEC_HH
-#define SSC_CORE_CODEC_HH
+#ifndef SOCKET_RUNTIME_CORE_CODEC_H
+#define SOCKET_RUNTIME_CORE_CODEC_H
 
-#include "types.hh"
+#include "../platform/types.hh"
 
 namespace SSC {
   /**

@@ -1,15 +1,15 @@
 #include "../app/app.hh"
 #include "window.hh"
 
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#endif
+
 namespace SSC {
   WindowManager::WindowManager (SharedPointer<Core> core)
     : core(core),
-      windows(SSC_MAX_WINDOWS + SSC_MAX_WINDOWS_RESERVED)
-  {
-    if (isDebugEnabled()) {
-      this->lastDebugLogLine = std::chrono::system_clock::now();
-    }
-  }
+      windows(SOCKET_RUNTIME_MAX_WINDOWS + SOCKET_RUNTIME_MAX_WINDOWS_RESERVED)
+  {}
 
   WindowManager::~WindowManager () {
     this->destroy();
@@ -29,20 +29,10 @@ namespace SSC {
       return;
     }
 
-    this->options.defaultHeight = options.defaultHeight;
-    this->options.defaultWidth = options.defaultWidth;
-    this->options.defaultMinWidth = options.defaultMinWidth;
-    this->options.defaultMinHeight = options.defaultMinHeight;
-    this->options.defaultMaxWidth = options.defaultMaxWidth;
-    this->options.defaultMaxHeight = options.defaultMaxHeight;
-    this->options.onMessage = options.onMessage;
-    this->options.userConfig = options.userConfig;
-    this->options.onExit = options.onExit;
-    this->options.aspectRatio = options.aspectRatio;
-    this->options.isTest = options.isTest;
-    this->options.argv = options.argv;
-    this->options.cwd = options.cwd;
-    this->options.userConfig = getUserConfig();
+    this->options = options;
+    if (this->options.userConfig.size() == 0) {
+      this->options.userConfig = getUserConfig();
+    }
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getWindow (
@@ -70,6 +60,24 @@ namespace SSC {
     return this->getWindow(index, WindowStatus::WINDOW_EXITING);
   }
 
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::getWindowForBridge (IPC::Bridge* bridge) {
+    for (const auto& window : this->windows) {
+      if (window != nullptr && &window->bridge == bridge) {
+        return window;
+      }
+    }
+    return nullptr;
+  }
+
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::getWindowForWebView (WebView* webview) {
+    for (const auto& window : this->windows) {
+      if (window != nullptr && window->webview == webview) {
+        return window;
+      }
+    }
+    return nullptr;
+  }
+
   SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (int index) {
     return this->getOrCreateWindow(index, WindowOptions {});
   }
@@ -83,9 +91,9 @@ namespace SSC {
     }
 
     if (this->getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
-      WindowOptions opts = options;
-      opts.index = index;
-      return this->createWindow(opts);
+      WindowOptions optionsCopy = options;
+      optionsCopy.index = index;
+      return this->createWindow(optionsCopy);
     }
 
     return this->getWindow(index);
@@ -116,22 +124,21 @@ namespace SSC {
     auto window = this->windows[index];
     if (window != nullptr) {
       if (window->status < WINDOW_CLOSING) {
-        window->close(0);
+        window->close();
       }
 
       if (window->status < WINDOW_KILLING) {
         window->kill();
       }
 
-      if (window->opts.canExit) {
-        window->exit(0);
-      }
-    }
-
-    App::sharedApplication()->dispatch([this, index]() {
       Lock lock(this->mutex);
       this->windows[index] = nullptr;
-    });
+      if (window->options.shouldExitApplicationOnClose) {
+        App::sharedApplication()->dispatch([window]() {
+          window->exit(0);
+        });
+      }
+    }
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {
@@ -143,36 +150,6 @@ namespace SSC {
 
     if (this->windows[options.index] != nullptr) {
       return this->windows[options.index];
-    }
-
-    StringStream env;
-
-    for (auto const &entry : parseStringList(this->options.userConfig["build_env"])) {
-      const auto key = trim(entry);
-
-      if (!Env::has(key)) {
-        continue;
-      }
-
-      const auto value = decodeURIComponent(Env::get(key));
-
-      env << key + "=" + value + "&";
-    }
-
-    if (options.userConfig.contains("build_env")) {
-      for (auto const &envKey : parseStringList(options.userConfig.at("build_env"))) {
-        auto cleanKey = trim(envKey);
-
-        if (!Env::has(cleanKey)) {
-          continue;
-        }
-
-        auto envValue = Env::get(cleanKey.c_str());
-
-        env << String(
-          cleanKey + "=" + encodeURIComponent(envValue) + "&"
-        );
-      }
     }
 
     auto screen = Window::getScreenSize();
@@ -197,47 +174,69 @@ namespace SSC {
       : options.maxHeight;
 
     WindowOptions windowOptions = {
-      .resizable = options.resizable,
       .minimizable = options.minimizable,
       .maximizable = options.maximizable,
+      .resizable = options.resizable,
       .closable = options.closable,
       .frameless = options.frameless,
       .utility = options.utility,
-      .canExit = options.canExit,
-      .width = width,
-      .height = height,
-      .minWidth = minWidth,
-      .minHeight = minHeight,
-      .maxWidth = maxWidth,
+      .shouldExitApplicationOnClose = options.shouldExitApplicationOnClose,
       .maxHeight = maxHeight,
+      .minHeight = minHeight,
+      .height = height,
+      .maxWidth = maxWidth,
+      .minWidth = minWidth,
+      .width = width,
       .radius = options.radius,
       .margin = options.margin,
-      .index = options.index,
-      .debug = isDebugEnabled() || options.debug,
-      .isTest = this->options.isTest,
-      .headless = options.headless,
       .aspectRatio = options.aspectRatio,
       .titlebarStyle = options.titlebarStyle,
       .windowControlOffsets = options.windowControlOffsets,
       .backgroundColorLight = options.backgroundColorLight,
       .backgroundColorDark = options.backgroundColorDark,
-      .cwd = this->options.cwd,
-      .title = options.title.size() > 0 ? options.title : "",
-      .url = options.url.size() > 0 ? options.url : "data:text/html,<html>",
-      .argv = this->options.argv,
-      .preload = options.preload.size() > 0 ? options.preload : "",
-      .env = env.str(),
-      .userConfig = this->options.userConfig,
-      .userScript = options.userScript,
-      .runtimePrimordialOverrides = options.runtimePrimordialOverrides,
-      .preloadCommonJS = options.preloadCommonJS != false
     };
+
+    windowOptions.RUNTIME_PRIMORDIAL_OVERRIDES = options.RUNTIME_PRIMORDIAL_OVERRIDES;
+    windowOptions.userScript = options.userScript;
+    windowOptions.userConfig = this->options.userConfig;
+    windowOptions.headless = options.headless;
+    windowOptions.features = options.features;
+    windowOptions.debug = isDebugEnabled() || options.debug;
+    windowOptions.index = options.index;
+    windowOptions.argv = options.argv;
+
+    for (auto const &entry : parseStringList(this->options.userConfig["build_env"])) {
+      const auto key = trim(entry);
+
+      if (!Env::has(key)) {
+        continue;
+      }
+
+      const auto value = decodeURIComponent(Env::get(key));
+
+      windowOptions.env[key] = value;
+    }
+
+    if (options.userConfig.contains("build_env")) {
+      for (auto const &entry : parseStringList(options.userConfig.at("build_env"))) {
+        const auto key = trim(entry);
+
+        if (!Env::has(key)) {
+          continue;
+        }
+
+        const auto value = decodeURIComponent(Env::get(key));
+
+        windowOptions.env[key] = value;
+      }
+    }
+
 
     for (const auto& tuple : options.userConfig) {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }
 
-    if (isDebugEnabled()) {
+    if (options.debug || isDebugEnabled()) {
       this->log("Creating Window#" + std::to_string(options.index));
     }
 
@@ -253,30 +252,47 @@ namespace SSC {
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createDefaultWindow (const WindowOptions& options) {
-    return this->createWindow(WindowOptions {
-      .resizable = options.resizable,
+    static const auto devHost = SSC::getDevHost();
+    auto windowOptions = WindowOptions {
       .minimizable = options.minimizable,
       .maximizable = options.maximizable,
+      .resizable = options.resizable,
       .closable = options.closable,
       .frameless = options.frameless,
       .utility = options.utility,
-      .canExit = true,
-      .width = options.width,
+      .shouldExitApplicationOnClose = true,
       .height = options.height,
-      .index = 0,
-    #ifdef PORT
-      .port = PORT,
-    #endif
-      .headless = (
-        options.userConfig.contains("build_headless") &&
-        options.userConfig.at("build_headless") == "true"
-      ),
+      .width = options.width,
       .titlebarStyle = options.titlebarStyle,
       .windowControlOffsets = options.windowControlOffsets,
       .backgroundColorLight = options.backgroundColorLight,
       .backgroundColorDark = options.backgroundColorDark,
-      .userConfig = options.userConfig
-    });
+    };
+
+    windowOptions.index = 0;
+    windowOptions.headless = (
+      options.userConfig.contains("build_headless") &&
+      options.userConfig.at("build_headless") == "true"
+    );
+    windowOptions.userConfig = options.userConfig;
+
+    const auto window = this->createWindow(windowOptions);
+
+    if (isDebugEnabled()) {
+      this->lastDebugLogLine = std::chrono::system_clock::now();
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      if (devHost.starts_with("http:")) {
+        auto webContext = webkit_web_context_get_default();
+        auto security = webkit_web_context_get_security_manager(webContext);
+        webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
+        webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
+        webkit_security_manager_register_uri_scheme_as_secure(security, "http");
+        webkit_security_manager_register_uri_scheme_as_local(security, "http");
+      }
+    #endif
+    }
+
+    return window;
   }
 
   JSON::Array WindowManager::json (const Vector<int>& indices) {
@@ -303,7 +319,7 @@ namespace SSC {
   WindowManager::ManagedWindow::~ManagedWindow () {}
 
   void WindowManager::ManagedWindow::show () {
-    auto index = std::to_string(this->opts.index);
+    auto index = std::to_string(this->options.index);
     manager.log("Showing Window#" + index);
     status = WindowStatus::WINDOW_SHOWING;
     Window::show();
@@ -315,7 +331,7 @@ namespace SSC {
       status > WindowStatus::WINDOW_HIDDEN &&
       status < WindowStatus::WINDOW_EXITING
     ) {
-      auto index = std::to_string(this->opts.index);
+      auto index = std::to_string(this->options.index);
       manager.log("Hiding Window#" + index);
       status = WindowStatus::WINDOW_HIDING;
       Window::hide();
@@ -325,11 +341,11 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::close (int code) {
     if (status < WindowStatus::WINDOW_CLOSING) {
-      auto index = std::to_string(this->opts.index);
+      auto index = std::to_string(this->options.index);
       manager.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
       status = WindowStatus::WINDOW_CLOSING;
       Window::close(code);
-      if (this->opts.canExit) {
+      if (this->options.shouldExitApplicationOnClose) {
         status = WindowStatus::WINDOW_EXITED;
       } else {
         status = WindowStatus::WINDOW_CLOSED;
@@ -339,7 +355,7 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::exit (int code) {
     if (status < WindowStatus::WINDOW_EXITING) {
-      auto index = std::to_string(this->opts.index);
+      auto index = std::to_string(this->options.index);
       manager.log("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
       status = WindowStatus::WINDOW_EXITING;
       Window::exit(code);
@@ -349,17 +365,17 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::kill () {
     if (status < WindowStatus::WINDOW_KILLING) {
-      auto index = std::to_string(this->opts.index);
+      auto index = std::to_string(this->options.index);
       manager.log("Killing Window#" + index);
       status = WindowStatus::WINDOW_KILLING;
       Window::kill();
       status = WindowStatus::WINDOW_KILLED;
-      manager.destroyWindow(this->opts.index);
+      manager.destroyWindow(this->options.index);
     }
   }
 
   JSON::Object WindowManager::ManagedWindow::json () const {
-    const auto index = this->opts.index;
+    const auto index = this->options.index;
     const auto size = this->getSize();
     const auto id = this->bridge.id;
 
@@ -377,3 +393,8 @@ namespace SSC {
     };
   }
 }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+extern "C" {
+}
+#endif

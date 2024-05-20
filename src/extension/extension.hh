@@ -1,19 +1,15 @@
-#ifndef SSC_EXTENSION_H
-#define SSC_EXTENSION_H
-
-#if !defined(_WIN32)
-#  include <dlfcn.h>
-#endif
+#ifndef SOCKET_RUNTIME_EXTENSION_EXTENSION_H
+#define SOCKET_RUNTIME_EXTENSION_EXTENSION_H
 
 #include "../../include/socket/extension.h"
-#include "../process/process.hh"
+#include "../core/process.hh"
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 
-#if defined(_WIN32)
-#define RUNTIME_EXTENSION_FILE_EXT ".dll"
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+#define SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME ".dll"
 #else
-#define RUNTIME_EXTENSION_FILE_EXT ".so"
+#define SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME ".so"
 #endif
 
 namespace SSC {
@@ -278,5 +274,4 @@ extern "C" {
     {}
   };
 };
-
 #endif

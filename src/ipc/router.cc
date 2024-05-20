@@ -15,7 +15,10 @@ namespace SSC::IPC {
     this->preserved = this->table;
   }
 
-  uint64_t Router::listen (const String& name, const MessageCallback& callback) {
+  uint64_t Router::listen (
+    const String& name,
+    const MessageCallback& callback
+  ) {
     const auto key = toLowerCase(name);
 
     if (!this->listeners.contains(key)) {
@@ -57,7 +60,7 @@ namespace SSC::IPC {
   ) {
     if (callback != nullptr) {
       const auto key = toLowerCase(name);
-      table.insert_or_assign(key, MessageCallbackContext {
+      this->table.insert_or_assign(key, MessageCallbackContext {
         async,
         callback
       });
@@ -65,10 +68,14 @@ namespace SSC::IPC {
   }
 
   void Router::unmap (const String& name) {
-    table.erase(toLowerCase(name));
+    this->table.erase(toLowerCase(name));
   }
 
-  bool Router::invoke (const String& uri, SharedPointer<char *> bytes, size_t size) {
+  bool Router::invoke (
+    const String& uri,
+    SharedPointer<char[]> bytes,
+    size_t size
+  ) {
     return this->invoke(uri, bytes, size, [this](auto result) {
       this->bridge->send(result.seq, result.str(), result.post);
     });
@@ -80,7 +87,7 @@ namespace SSC::IPC {
 
   bool Router::invoke (
     const String& uri,
-    SharedPointer<char *> bytes,
+    SharedPointer<char[]> bytes,
     size_t size,
     const ResultCallback& callback
   ) {
@@ -94,7 +101,7 @@ namespace SSC::IPC {
 
   bool Router::invoke (
     const Message& message,
-    SharedPointer<char *>const  bytes,
+    SharedPointer<char[]> bytes,
     size_t size,
     const ResultCallback& callback
   ) {

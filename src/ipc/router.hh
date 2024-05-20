@@ -1,5 +1,5 @@
-#ifndef SSC_IPC_ROUTER_H
-#define SSC_IPC_ROUTER_H
+#ifndef SOCKET_RUNTIME_IPC_ROUTER_H
+#define SOCKET_RUNTIME_IPC_ROUTER_H
 
 #include "../core/core.hh"
 #include "message.hh"
@@ -51,17 +51,17 @@ namespace SSC::IPC {
       void map (const String& name, bool async, const MessageCallback& callback);
       void unmap (const String& name);
       bool invoke (const String& uri, const ResultCallback& callback);
-      bool invoke (const String& uri, SharedPointer<char *> bytes, size_t size);
+      bool invoke (const String& uri, SharedPointer<char[]> bytes, size_t size);
       bool invoke (
         const String& uri,
-        SharedPointer<char *> bytes,
+        SharedPointer<char[]> bytes,
         size_t size,
         const ResultCallback& callback
       );
 
       bool invoke (
         const Message& message,
-        SharedPointer<char *> bytes,
+        SharedPointer<char[]> bytes,
         size_t size,
         const ResultCallback& callback
       );

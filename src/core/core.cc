@@ -1,11 +1,12 @@
 #include "core.hh"
+#include "modules/fs.hh"
 
 #define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
 #define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
 
 namespace SSC {
   uint64_t rand64 () {
-    uint64_t r = 0;
+    static const auto maxWidth = RAND_MAX_WIDTH;
     static bool init = false;
 
     if (!init) {
@@ -13,8 +14,9 @@ namespace SSC {
       srand(time(0));
     }
 
-    for (int i = 0; i < 64; i += RAND_MAX_WIDTH) {
-      r <<= RAND_MAX_WIDTH;
+    uint64_t r = 0;
+    for (int i = 0; i < 64; i += maxWidth) {
+      r <<= maxWidth;
       r ^= (unsigned) rand();
     }
     return r;
@@ -30,7 +32,7 @@ namespace SSC {
   }
 
   void Core::shutdown () {
-  #if SSC_PLATFORM_DESKTOP
+  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     this->childProcess.shutdown();
   #endif
     this->stopEventLoop();
@@ -42,11 +44,11 @@ namespace SSC {
   }
 
   bool Core::hasPostBody (const char* body) {
-    Lock lock(postsMutex);
+    Lock lock(this->postsMutex);
     if (body == nullptr) return false;
     for (const auto& tuple : posts) {
       auto post = tuple.second;
-      if (*post.body == body) return true;
+      if (post.body.get() == body) return true;
     }
     return false;
   }
@@ -73,7 +75,7 @@ namespace SSC {
   }
 
   void Core::putPost (uint64_t id, Post p) {
-    Lock lock(postsMutex);
+    Lock lock(this->postsMutex);
     p.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now() +
       std::chrono::milliseconds(32 * 1024)
@@ -94,7 +96,7 @@ namespace SSC {
   }
 
   String Core::createPost (String seq, String params, Post post) {
-    Lock lock(postsMutex);
+    Lock lock(this->postsMutex);
 
     if (post.id == 0) {
       post.id = rand64();
@@ -134,7 +136,7 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
-    Lock lock(postsMutex);
+    Lock lock(this->postsMutex);
     std::vector<uint64_t> ids;
 
     for (auto const &tuple : posts) {
@@ -147,7 +149,7 @@ namespace SSC {
     }
   }
 
-#if SSC_PLATFORM_LINUX
+#if SOCKET_RUNTIME_PLATFORM_LINUX
   struct UVSource {
     GSource base; // should ALWAYS be first member
     gpointer tag;
@@ -190,7 +192,7 @@ namespace SSC {
     }
 
     didLoopInit = true;
-    Lock lock(loopMutex);
+    Lock lock(this->loopMutex);
     uv_loop_init(&eventLoop);
     eventLoopAsync.data = (void *) this;
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
@@ -207,7 +209,7 @@ namespace SSC {
       }
     });
 
-  #if SSC_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
     uvSource->core = this;
@@ -239,7 +241,7 @@ namespace SSC {
   void Core::stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
-  #if SSC_PLATFORM_ANDROID || SSC_PLATFORM_WINDOWS
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -271,7 +273,7 @@ namespace SSC {
 
   void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
     {
-      Lock lock(loopMutex);
+      Lock lock(this->loopMutex);
       eventLoopDispatchQueue.push(callback);
     }
 
@@ -305,11 +307,11 @@ namespace SSC {
       startTimers();
     });
 
-  #if SSC_PLATFORM_APPLE
-    Lock lock(loopMutex);
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    Lock lock(this->loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-  #elif SSC_PLATFORM_ANDROID || SSC_PLATFORM_WINDOWS
-    Lock lock(loopMutex);
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_WINDOWS
+    Lock lock(this->loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
@@ -324,11 +326,20 @@ namespace SSC {
   #endif
   }
 
+  struct Timer {
+    uv_timer_t handle;
+    bool repeated = false;
+    bool started = false;
+    uint64_t timeout = 0;
+    uint64_t interval = 0;
+    uv_timer_cb invoke;
+  };
+
   static Timer releaseWeakDescriptors = {
     .timeout = 256, // in milliseconds
     .invoke = [](uv_timer_t *handle) {
       auto core = reinterpret_cast<Core *>(handle->data);
-      Vector<uint64_t> ids;
+      Vector<CoreFS::ID> ids;
       String msg = "";
 
       {
@@ -358,7 +369,6 @@ namespace SSC {
         } else {
           // free
           core->fs.descriptors.erase(id);
-          delete desc;
         }
       }
     }
@@ -369,11 +379,11 @@ namespace SSC {
       return;
     }
 
-    Lock lock(timersMutex);
+    Lock lock(this->timersMutex);
 
     auto loop = getEventLoop();
 
-    std::vector<Timer *> timersToInit = {
+    Vector<Timer *> timersToInit = {
       &releaseWeakDescriptors
     };
 
@@ -386,9 +396,9 @@ namespace SSC {
   }
 
   void Core::startTimers () {
-    Lock lock(timersMutex);
+    Lock lock(this->timersMutex);
 
-    std::vector<Timer *> timersToStart = {
+    Vector<Timer *> timersToStart = {
       &releaseWeakDescriptors
     };
 
@@ -417,9 +427,9 @@ namespace SSC {
       return;
     }
 
-    Lock lock(timersMutex);
+    Lock lock(this->timersMutex);
 
-    std::vector<Timer *> timersToStop = {
+    Vector<Timer *> timersToStop = {
       &releaseWeakDescriptors
     };
 
@@ -432,27 +442,35 @@ namespace SSC {
     didTimersStart = false;
   }
 
-  const Core::Timers::ID Core::setTimeout (uint64_t timeout, const Core::Timers::TimeoutCallback callback) {
+  const CoreTimers::ID Core::setTimeout (
+    uint64_t timeout,
+    const CoreTimers::TimeoutCallback& callback
+  ) {
     return this->timers.setTimeout(timeout, callback);
   }
 
-  const Core::Timers::ID Core::setImmediate (const Core::Timers::ImmediateCallback callback) {
+  const CoreTimers::ID Core::setImmediate (
+    const CoreTimers::ImmediateCallback& callback
+  ) {
     return this->timers.setImmediate(callback);
   }
 
-  const Core::Timers::ID Core::setInterval (uint64_t interval, const Core::Timers::IntervalCallback callback) {
+  const CoreTimers::ID Core::setInterval (
+    uint64_t interval,
+    const CoreTimers::IntervalCallback& callback
+  ) {
     return this->timers.setInterval(interval, callback);
   }
 
-  bool Core::clearTimeout (const Core::Timers::ID id) {
+  bool Core::clearTimeout (const CoreTimers::ID id) {
     return this->timers.clearTimeout(id);
   }
 
-  bool Core::clearImmediate (const Core::Timers::ID id) {
+  bool Core::clearImmediate (const CoreTimers::ID id) {
     return this->timers.clearImmediate(id);
   }
 
-  bool Core::clearInterval (const Core::Timers::ID id) {
+  bool Core::clearInterval (const CoreTimers::ID id) {
     return this->timers.clearInterval(id);
   }
 }

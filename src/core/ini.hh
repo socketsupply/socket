@@ -1,8 +1,7 @@
-#ifndef SSC_CORE_INI_H
-#define SSC_CORE_INI_H
+#ifndef SOCKET_RUNTIME_CORE_INI_H
+#define SOCKET_RUNTIME_CORE_INI_H
 
-#include "string.hh"
-#include "types.hh"
+#include "../platform/types.hh"
 
 namespace SSC::INI {
   Map parse (const String& source);

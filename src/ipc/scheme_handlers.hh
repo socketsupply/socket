@@ -1,12 +1,11 @@
-#ifndef SSC_IPC_SCHEME_HANDLERS_H
-#define SSC_IPC_SCHEME_HANDLERS_H
+#ifndef SOCKET_RUNTIME_IPC_SCHEME_HANDLERS_H
+#define SOCKET_RUNTIME_IPC_SCHEME_HANDLERS_H
 
 #include "../core/core.hh"
-#include "../core/platform.hh"
-#include "../window/webview.hh"
+#include "../core/webview.hh"
 
-#if SSC_PLATFORM_APPLE
-@class SSCBridgeWebView;
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../android/platform.hh"
 #endif
 
 namespace SSC::IPC {
@@ -21,9 +20,9 @@ namespace SSC::IPC {
       SchemeHandlersInternals* internals = nullptr;
 
     public:
-    #if SSC_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       using Error = NSError;
-    #elif SSC_PLATFORM_LINUX
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
       using Error = GError;
     #else
       using Error = char;
@@ -35,7 +34,7 @@ namespace SSC::IPC {
 
       struct Body {
         size_t size = 0;
-        SharedPointer<char*> bytes = nullptr;
+        SharedPointer<char[]> bytes = nullptr;
       };
 
       struct RequestCallbacks {
@@ -43,17 +42,20 @@ namespace SSC::IPC {
         Function<void()> finish;
       };
 
-      #if SSC_PLATFORM_APPLE
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
         using PlatformRequest = id<WKURLSchemeTask>;
         using PlatformResponse = NSHTTPURLResponse*;
-      #elif SSC_PLATFORM_LINUX
+      #elif SOCKET_RUNTIME_PLATFORM_LINUX
         using PlatformRequest = WebKitURISchemeRequest*;
         using PlatformResponse = WebKitURISchemeResponse*;
-      #elif SSC_PLATFORM_WINDOWS
+      #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
         using PlatformRequest = ICoreWebView2WebResourceRequest*;
         using PlatformResponse = ICoreWebView2WebResourceResponse*;
+      #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+        using PlatformRequest = jobject;
+        using PlatformResponse = jobject;
       #else
-        // TODO
+        // TODO: error
       #endif
 
       struct Request {
@@ -88,12 +90,12 @@ namespace SSC::IPC {
           Builder& setHeaders (const Headers& headers);
           Builder& setHeaders (const Map& headers);
 
-        #if SSC_PLATFORM_APPLE
+        #if SOCKET_RUNTIME_PLATFORM_APPLE
           Builder& setHeaders (const NSDictionary<NSString*, NSString*>* headers);
           Builder& setBody (const NSData* data);
-        #elif SSC_PLATFORM_LINUX
+        #elif SOCKET_RUNTIME_PLATFORM_LINUX
           Builder& setHeaders (const SoupMessageHeaders* headers);
-          Builder& setBody (const GInputStream* stream);
+          Builder& setBody (GInputStream* stream);
         #endif
 
           Builder& setBody (const Body& body);
@@ -122,7 +124,7 @@ namespace SSC::IPC {
         Atomic<bool> cancelled = false;
 
         Error* error = nullptr;
-        const Bridge* bridge = nullptr;
+        Bridge* bridge = nullptr;
         SchemeHandlers* handlers = nullptr;
         PlatformRequest platformRequest;
 
@@ -164,8 +166,8 @@ namespace SSC::IPC {
         Atomic<bool> finished = false;
         SchemeHandlers* handlers = nullptr;
         PlatformResponse platformResponse = nullptr;
-      #if SSC_PLATFORM_LINUX
-        GInputStream* platformResponseStream = nullptr
+      #if SOCKET_RUNTIME_PLATFORM_LINUX
+        GInputStream* platformResponseStream = nullptr;
       #endif
 
         Response (
@@ -181,7 +183,7 @@ namespace SSC::IPC {
         Response& operator= (Response&&) noexcept;
 
         bool write (size_t size, const char* bytes);
-        bool write (size_t size, SharedPointer<char*>);
+        bool write (size_t size, SharedPointer<char[]>);
         bool write (const String& source);
         bool write (const JSON::Any& json);
         bool write (const FileResource& resource);
@@ -193,11 +195,13 @@ namespace SSC::IPC {
         void setHeader (const String& name, const Headers::Value& value);
         void setHeader (const String& name, size_t value);
         void setHeader (const String& name, int64_t value);
+      #if !SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_ANDROID
         void setHeader (const String& name, uint64_t value);
+      #endif
         void setHeader (const Headers::Header& header);
         void setHeaders (const Headers& headers);
         void setHeaders (const Map& headers);
-      #if SSC_PLATFORM_APPLE
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
         void setHeaders (const NSDictionary<NSString*, NSString*>* headers);
       #endif
         const String getHeader (const String& name) const;
@@ -227,7 +231,7 @@ namespace SSC::IPC {
 
       Bridge* bridge = nullptr;
 
-    #if SSC_PLATFORM_WINDOWS
+    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       Set<ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
     #endif
 
@@ -244,5 +248,4 @@ namespace SSC::IPC {
       bool isRequestCancelled (uint64_t id);
   };
 }
-
 #endif

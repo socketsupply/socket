@@ -1,7 +1,4 @@
-#include <regex>
-
 #include "json.hh"
-#include "string.hh"
 
 namespace SSC::JSON {
   Null null;
@@ -146,7 +143,7 @@ namespace SSC::JSON {
     this->type = Type::Number;
   }
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   Any::Any (size_t number) {
     this->pointer = SharedPointer<void>(new Number((double) number));
     this->type = Type::Number;
@@ -193,7 +190,7 @@ namespace SSC::JSON {
     this->type = Type::Error;
   }
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   Any::Any (const NSError* error) {
     this->type = Type::Error;
     this->pointer = SharedPointer<void>(new Error(
@@ -202,7 +199,7 @@ namespace SSC::JSON {
       error.code
     ));
   }
-#elif SSC_PLATFORM_LINUX
+#elif SOCKET_RUNTIME_PLATFORM_LINUX
   Any::Any (const GError* error) {
     this->type = Type::Error;
     this->pointer = SharedPointer<void>(new Error(

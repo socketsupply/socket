@@ -2,7 +2,7 @@
 
 using namespace SSC;
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -15,7 +15,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 );
 
 @implementation SSCApplicationDelegate
-#if SSC_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
 - (void) applicationDidFinishLaunching: (NSNotification*) notification {
   self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength: NSVariableStatusItemLength];
 }
@@ -67,7 +67,7 @@ continueUserActivity: (NSUserActivity*) userActivity
               - (BOOL) application: (NSApplication*) application
   willContinueUserActivityWithType: (NSString*) userActivityType
 {
-  static auto userConfig = SSC::getUserConfig();
+  static auto userConfig = getUserConfig();
   const auto webpageURL = application.userActivity.webpageURL;
 
   if (userActivityType == nullptr) {
@@ -134,7 +134,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   debug("application:didFailToContinueUserActivityWithType:error: %@", error);
 }
 
-#elif SSC_PLATFORM_IOS
+#elif SOCKET_RUNTIME_PLATFORM_IOS
 -           (BOOL) application: (UIApplication*) application
  didFinishLaunchingWithOptions: (NSDictionary*) launchOptions
 {
@@ -202,7 +202,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   });
 
   const auto defaultWindow = self.app->windowManager.createDefaultWindow(WindowOptions {
-    .canExit = true,
+    .shouldExitApplicationOnClose = true,
     .title = self.app->userConfig["meta_title"],
     .env = env.str()
   });
@@ -218,21 +218,21 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     auto serviceWorkerUserConfig = self.app->userConfig;
     serviceWorkerUserConfig["webview_watch_reload"] = "false";
     auto serviceWorkerWindow = self.app->windowManager.createWindow({
-      .canExit = false,
-      .index = SSC_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
+      .shouldExitApplicationOnClose = false,
+      .index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX,
       .headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0,
       .env = env.str(),
       .userConfig = serviceWorkerUserConfig,
       .preloadCommonJS = false
     });
 
-    self.app->core->serviceWorker.init(&serviceWorkerWindow->bridge);
+    self.app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
 
     serviceWorkerWindow->navigate(
       "socket://" + self.app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
     );
   } else if (self.app->userConfig["webview_service_worker_mode"] == "hybrid") {
-    self.app->core->serviceWorker.init(&defaultWindow->bridge);
+    self.app->serviceWorkerContainer.init(&defaultWindow->bridge);
   }
 
   if (isDebugEnabled() && port > 0 && host.size() > 0) {
@@ -283,7 +283,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->core->resumeAllPeers();
+    self.app->core->udp.resumeAllSockets();
     self.app->core->runEventLoop();
   });
 }
@@ -291,7 +291,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 - (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
     self.app->core->stopEventLoop();
-    self.app->core->pauseAllPeers();
+    self.app->core->udp.pauseAllSockets();
   });
 }
 
@@ -308,7 +308,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
               - (BOOL) application: (UIApplication*) application
   willContinueUserActivityWithType: (NSString*) userActivityType
 {
-  static auto userConfig = SSC::getUserConfig();
+  static auto userConfig = getUserConfig();
   const auto webpageURL = application.userActivity.webpageURL;
 
   if (userActivityType == nullptr) {
@@ -545,14 +545,14 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 namespace SSC {
   static App* applicationInstance = nullptr;
 
-#if SSC_PLATFORM_WINDOWS
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
   static FILE* console = nullptr;
 
-  static inline void alert (const SSC::WString &ws) {
-    MessageBoxA(nullptr, SSC::convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  static inline void alert (const WString &ws) {
+    MessageBoxA(nullptr, convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  static inline void alert (const SSC::String &s) {
+  static inline void alert (const String &s) {
     MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
@@ -562,32 +562,44 @@ namespace SSC {
 #endif
 
   App* App::sharedApplication () {
-    return SSC::applicationInstance;
+    return applicationInstance;
   }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  App::App (JNIEnv* env, jobject self, SharedPointer<Core> core)
+    : core(core),
+      windowManager(core),
+      serviceWorkerContainer(core),
+      jvm(env),
+      androidLooper(env)
+  {
+    if (applicationInstance == nullptr) {
+      applicationInstance = this;
+    }
+
+    this->jni = env;
+    this->self = env->NewGlobalRef(self);
+    this->init();
+  }
+#else
+  App::App (int _, SharedPointer<Core> core)
+    : App(core)
+  {}
 
   App::App (SharedPointer<Core> core)
     : core(core),
-      windowManager(core)
+      windowManager(core),
+      serviceWorkerContainer(core)
   {
     if (applicationInstance == nullptr) {
-      SSC::applicationInstance = this;
+      applicationInstance = this;
     }
 
     const auto cwd = getcwd();
     uv_chdir(cwd.c_str());
-
-  #if SSC_PLATFORM_LINUX
-    gtk_init_check(0, nullptr);
-  #elif SSC_PLATFORM_MACOS
-    this->applicationDelegate = [SSCApplicationDelegate new];
-    this->applicationDelegate.app = this;
-    NSApplication.sharedApplication.delegate = this->applicationDelegate;
-  #endif
+    this->init();
   }
-
-  App::App (int _, SharedPointer<Core> core)
-    : App(core)
-  {}
+#endif
 
   App::~App () {
     if (applicationInstance == this) {
@@ -595,12 +607,77 @@ namespace SSC {
     }
   }
 
+  void App::init () {
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    gtk_init_check(0, nullptr);
+
+    auto webContext = webkit_web_context_get_default();
+
+    g_signal_connect(
+      G_OBJECT(webContext),
+      "initialize-notification-permissions",
+      G_CALLBACK(+[](
+        WebKitWebContext* webContext,
+        gpointer userData
+      ) {
+        static const auto app = App::sharedApplication();
+        static const auto bundleIdentifier = app->userConfig["meta_bundle_identifier"];
+        static const auto areNotificationsAllowed = (
+          !app->userConfig.contains("permissions_allow_notifications") ||
+          app->userConfig.at("permissions_allow_notifications") != "false"
+        );
+
+        const auto uri = "socket://" + bundleIdentifier;
+        const auto origin = webkit_security_origin_new_for_uri(uri.c_str());
+
+        GList* allowed = nullptr;
+        GList* disallowed = nullptr;
+
+        webkit_security_origin_ref(origin);
+
+        if (origin && allowed && disallowed) {
+          if (areNotificationsAllowed) {
+            disallowed = g_list_append(disallowed, (gpointer) origin);
+          } else {
+            allowed = g_list_append(allowed, (gpointer) origin);
+          }
+
+          if (allowed && disallowed) {
+            webkit_web_context_initialize_notification_permissions(
+              webContext,
+              allowed,
+              disallowed
+            );
+          }
+        }
+
+        if (allowed) {
+          g_list_free(allowed);
+        }
+
+        if (disallowed) {
+          g_list_free(disallowed);
+        }
+
+        if (origin) {
+          webkit_security_origin_unref(origin);
+        }
+      }),
+      nullptr
+    );
+  #elif SOCKET_RUNTIME_PLATFORM_MACOS
+    this->applicationDelegate = [SSCApplicationDelegate new];
+    this->applicationDelegate.app = this;
+    NSApplication.sharedApplication.delegate = this->applicationDelegate;
+  #endif
+  }
+
   int App::run (int argc, char** argv) {
-  #if SSC_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
     gtk_main();
-  #elif SSC_PLATFORM_MACOS
+  #elif SOCKET_RUNTIME_PLATFORM_MACOS
     [NSApp run];
-  #elif SSC_PLATFORM_IOS
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
     @autoreleasepool {
       return UIApplicationMain(
         argc,
@@ -609,7 +686,7 @@ namespace SSC {
         NSStringFromClass(SSCApplicationDelegate.class)
       );
     }
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     MSG msg;
 
     if (!GetMessage(&msg, nullptr, 0, 0)) {
@@ -647,15 +724,15 @@ namespace SSC {
     this->core->shutdown();
     // Distinguish window closing with app exiting
     shouldExit = true;
-  #if SSC_PLATFORM_LINUX
-    gtk_main();
-  #elif SSC_PLATFORM_MACOS
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    gtk_main_quit();
+  #elif SOCKET_RUNTIME_PLATFORM_MACOS
     // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
     if (!wasLaunchedFromCli) {
       [NSApp terminate: nil];
     }
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (isDebugEnabled()) {
       if (w32ShowConsole) {
         HideConsole();
@@ -666,11 +743,11 @@ namespace SSC {
   }
 
   void App::restart () {
-  #if SSC_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
     // @TODO
-  #elif SSC_PLATFORM_MACOS
+  #elif SOCKET_RUNTIME_PLATFORM_MACOS
     // @TODO
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     char filename[MAX_PATH] = "";
     PROCESS_INFORMATION pi;
     STARTUPINFO si = { sizeof(STARTUPINFO) };
@@ -681,7 +758,7 @@ namespace SSC {
   }
 
   void App::dispatch (Function<void()> callback) {
-  #if SSC_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
     // @TODO
     auto threadCallback = new Function<void()>(callback);
 
@@ -696,7 +773,7 @@ namespace SSC {
         delete static_cast<Function<void()>*>(callback);
       }
     );
-  #elif SSC_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_APPLE
     auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
     auto queue = dispatch_get_global_queue(priority, 0);
 
@@ -705,7 +782,7 @@ namespace SSC {
         callback();
       });
     });
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static auto mainThread = GetCurrentThreadId();
     auto threadCallback = (LPARAM) new Function<void()>(callback);
 
@@ -726,6 +803,15 @@ namespace SSC {
     });
 
     t.detach();
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->androidLooper.isAcquired()) {
+      debug("before dispatch");
+      this->androidLooper.dispatch([=] () {
+        const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
+        debug("in dispatch");
+        callback();
+      });
+    }
   #endif
   }
 
@@ -733,13 +819,45 @@ namespace SSC {
     return SSC::getcwd();
   }
 
+  bool App::hasRuntimePermission (const String& permission) const {
+    static const auto userConfig = getUserConfig();
+    const auto key = String("permissions_allow_") + replace(permission, "-", "_");
+
+    if (!userConfig.contains(key)) {
+      return false;
+    }
+
+    return userConfig.at(key) != "false";
+  }
+
+  /*
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  bool App::isAndroidPermissionAllowed (const String& permission) {
+    const auto attachment = Android::JNIEnvironmentAttachment(
+      this->jvm.get(),
+      this->jvm.jniVersion
+    );
+
+    return CallClassMethodFromAndroidEnvironment(
+      this->jni,
+      Boolean,
+      this->self,
+      "checkPermission",
+      "("
+      "Ljava/lang/String;" // permission name
+      ")Z" // Boolean return type
+    );
+  }
+#endif
+*/
+
   void App::exit (int code) {
     if (this->onExit != nullptr) {
       this->onExit(code);
     }
   }
 
-#if SSC_PLATFORM_WINDOWS
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
   void App::ShowConsole () {
     if (!isConsoleVisible) {
       isConsoleVisible = true;
@@ -757,7 +875,7 @@ namespace SSC {
   }
 
   App::App (void* h) : App() {
-    static auto userConfig = SSC::getUserConfig();
+    static auto userConfig = getUserConfig();
     this->hInstance = (HINSTANCE) h;
 
     // this fixes bad default quality DPI.
@@ -800,3 +918,354 @@ namespace SSC {
   };
 #endif
 }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+extern "C" {
+  jlong ANDROID_EXTERNAL(app, App, alloc)(JNIEnv *env, jobject self) {
+    if (App::sharedApplication() == nullptr) {
+      auto attachment = Android::JNIEnvironmentAttachment(env);
+      auto app = new App(attachment.env, self);
+      app->init();
+    }
+    return reinterpret_cast<jlong>(App::sharedApplication());
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setRootDirectory)(
+    JNIEnv *env,
+    jobject self,
+    jstring rootDirectoryString
+  ) {
+    const auto rootDirectory = Android::StringWrap(env, rootDirectoryString).str();
+    setcwd(rootDirectory);
+    uv_chdir(rootDirectory.c_str());
+    return true;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setAssetManager)(
+    JNIEnv *env,
+    jobject self,
+    jobject assetManager
+  ) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    if (!assetManager) {
+      ANDROID_THROW(env, "'assetManager' object is null");
+      return false;
+    }
+
+    // `Core::FS` and `FileResource` will use the asset manager
+    // when looking for file resources, the asset manager will
+    // take precedence
+    FileResource::setSharedAndroidAssetManager(AAssetManager_fromJava(env, assetManager));
+    return true;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setMimeTypeMap)(
+    JNIEnv *env,
+    jobject self,
+    jobject mimeTypeMap
+  ) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    if (!mimeTypeMap) {
+      ANDROID_THROW(env, "'mimeTypeMap' object is null");
+      return false;
+    }
+
+    Android::initializeMimeTypeMap(env->NewGlobalRef(mimeTypeMap), app->jvm);
+    return true;
+  }
+
+  void ANDROID_EXTERNAL(app, App, setBuildInformation)(
+    JNIEnv *env,
+    jobject self,
+    jstring brandString,
+    jstring deviceString,
+    jstring fingerprintString,
+    jstring hardwareString,
+    jstring modelString,
+    jstring manufacturerString,
+    jstring productString
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    app->androidBuildInformation.brand = Android::StringWrap(env, brandString).str();
+    app->androidBuildInformation.device = Android::StringWrap(env, deviceString).str();
+    app->androidBuildInformation.fingerprint = Android::StringWrap(env, fingerprintString).str();
+    app->androidBuildInformation.hardware = Android::StringWrap(env, hardwareString).str();
+    app->androidBuildInformation.model = Android::StringWrap(env, modelString).str();
+    app->androidBuildInformation.manufacturer = Android::StringWrap(env, manufacturerString).str();
+    app->androidBuildInformation.product = Android::StringWrap(env, productString).str();
+    app->isAndroidEmulator = (
+      (
+        app->androidBuildInformation.brand.starts_with("generic") &&
+        app->androidBuildInformation.device.starts_with("generic")
+      ) ||
+      app->androidBuildInformation.fingerprint.starts_with("generic") ||
+      app->androidBuildInformation.fingerprint.starts_with("unknown") ||
+      app->androidBuildInformation.hardware.find("goldfish") != String::npos ||
+      app->androidBuildInformation.hardware.find("ranchu") != String::npos ||
+      app->androidBuildInformation.model.find("google_sdk") != String::npos ||
+      app->androidBuildInformation.model.find("Emulator") != String::npos ||
+      app->androidBuildInformation.model.find("Android SDK built for x86") != String::npos ||
+      app->androidBuildInformation.manufacturer.find("Genymotion") != String::npos ||
+      app->androidBuildInformation.product.find("sdk_google") != String::npos ||
+      app->androidBuildInformation.product.find("google_sdk") != String::npos ||
+      app->androidBuildInformation.product.find("sdk") != String::npos ||
+      app->androidBuildInformation.product.find("sdk_x86") != String::npos ||
+      app->androidBuildInformation.product.find("sdk_gphone64_arm64") != String::npos ||
+      app->androidBuildInformation.product.find("vbox86p") != String::npos ||
+      app->androidBuildInformation.product.find("emulator") != String::npos ||
+      app->androidBuildInformation.product.find("simulator") != String::npos
+    );
+  }
+
+  jstring ANDROID_EXTERNAL(app, App, getUserConfigValue)(
+    JNIEnv *env,
+    jobject self,
+    jstring keyString
+  ) {
+    const auto app = App::sharedApplication();
+    const auto key = Android::StringWrap(env, keyString).str();
+    const auto value = env->NewStringUTF(
+      app->userConfig.contains(key)
+        ? app->userConfig.at(key).c_str()
+        : ""
+    );
+
+    return value;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, hasRuntimePermission)(
+    JNIEnv *env,
+    jobject self,
+    jstring permissionString
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto permission = Android::StringWrap(env, permissionString).str();
+    return app->hasRuntimePermission(permission);
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, isDebugEnabled)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    return isDebugEnabled();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onCreateAppActivity)(
+    JNIEnv *env,
+    jobject self,
+    jobject appActivity
+  ) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    if (app->appActivity) {
+      app->jni->DeleteGlobalRef(app->appActivity);
+    }
+
+    app->appActivity = app->jni->NewGlobalRef(appActivity);
+
+    if (!app->androidLooper.isAcquired()) {
+      app->androidLooper.acquire();
+    }
+
+    if (app->windowManager.getWindowStatus(0) == WindowManager::WINDOW_NONE) {
+      auto windowManagerOptions = WindowManagerOptions {};
+
+      for (const auto& arg : split(app->userConfig["ssc_argv"], ',')) {
+        if (arg.find("--test") == 0) {
+          windowManagerOptions.features.useTestScript = true;
+        }
+
+        windowManagerOptions.argv.push_back("'" + trim(arg) + "'");
+      }
+
+      windowManagerOptions.userConfig = app->userConfig;
+
+      app->windowManager.configure(windowManagerOptions);
+
+      app->dispatch([=]() {
+        auto defaultWindow = app->windowManager.createDefaultWindow(WindowOptions {
+          .shouldExitApplicationOnClose = true
+        });
+
+        defaultWindow->setTitle(app->userConfig["meta_title"]);
+
+        if (
+          app->userConfig["webview_service_worker_mode"] != "hybrid" &&
+          app->userConfig["permissions_allow_service_worker"] != "false"
+        ) {
+          if (app->windowManager.getWindowStatus(SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX) == WindowManager::WINDOW_NONE) {
+            auto serviceWorkerWindowOptions = WindowOptions {};
+            auto serviceWorkerUserConfig = app->userConfig;
+            auto screen = defaultWindow->getScreenSize();
+
+            serviceWorkerUserConfig["webview_watch_reload"] = "false";
+            serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
+            serviceWorkerWindowOptions.index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX;
+            serviceWorkerWindowOptions.headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0;
+            serviceWorkerWindowOptions.userConfig = serviceWorkerUserConfig;
+            serviceWorkerWindowOptions.features.useGlobalCommonJS = false;
+            serviceWorkerWindowOptions.features.useGlobalNodeJS = false;
+
+            auto serviceWorkerWindow = app->windowManager.createWindow(serviceWorkerWindowOptions);
+            app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
+            serviceWorkerWindow->navigate(
+              "socket://" + app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
+            );
+          }
+        } else if (app->userConfig["webview_service_worker_mode"] == "hybrid") {
+          app->serviceWorkerContainer.init(&defaultWindow->bridge);
+        }
+
+        defaultWindow->show();
+
+        static const auto port = getDevPort();
+        static const auto host = getDevHost();
+
+        if (isDebugEnabled() && port > 0 && host.size() > 0) {
+          defaultWindow->navigate(host + ":" + std::to_string(port));
+        } else if (app->userConfig["webview_root"].size() != 0) {
+          defaultWindow->navigate(
+            "socket://" + app->userConfig["meta_bundle_identifier"] + app->userConfig["webview_root"]
+          );
+        } else {
+          defaultWindow->navigate(
+            "socket://" + app->userConfig["meta_bundle_identifier"] + "/index.html"
+          );
+        }
+      });
+    }
+  }
+
+  void ANDROID_EXTERNAL(app, App, onDestroyAppActivity)(
+    JNIEnv *env,
+    jobject self,
+    jobject appActivity
+  ) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    if (app->appActivity) {
+      app->jni->DeleteGlobalRef(app->appActivity);
+      app->appActivity = nullptr;
+    }
+  }
+
+  void ANDROID_EXTERNAL(app, App, onDestroy)(JNIEnv *env, jobject self) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    if (app->jni && app->self) {
+      app->jni->NewGlobalRef(app->self);
+    }
+
+    app->jni = nullptr;
+    app->self = nullptr;
+
+    app->core->udp.pauseAllSockets();
+    app->core->stopEventLoop();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onStart)(JNIEnv *env, jobject self) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    app->core->udp.resumeAllSockets();
+    app->core->runEventLoop();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onStop)(JNIEnv *env, jobject self) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    app->core->udp.pauseAllSockets();
+    app->core->stopEventLoop();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onResume)(JNIEnv *env, jobject self) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    app->core->udp.resumeAllSockets();
+    app->core->runEventLoop();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onPause)(JNIEnv *env, jobject self) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    app->core->udp.pauseAllSockets();
+    app->core->stopEventLoop();
+  }
+
+  void ANDROID_EXTERNAL(app, App, onPermissionChange)(
+    JNIEnv *env,
+    jobject self,
+    jstring nameString,
+    jstring stateString
+  ) {
+    auto app = App::sharedApplication();
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto name = Android::StringWrap(env, nameString).str();
+    const auto state = Android::StringWrap(env, stateString).str();
+
+    if (name == "geolocation") {
+      app->core->geolocation.permissionChangeObservers.dispatch(JSON::Object::Entries {
+        {"state", state}
+      });
+    }
+
+    if (name == "notification") {
+      app->core->notifications.permissionChangeObservers.dispatch(JSON::Object::Entries {
+        {"state", state}
+      });
+    }
+  }
+}
+#endif

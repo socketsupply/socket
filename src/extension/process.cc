@@ -4,7 +4,7 @@ const sapi_process_exec_t* sapi_process_exec (
   sapi_context_t* ctx,
   const char* command
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec is not supported on this platform");
   return nullptr;
 #endif
@@ -23,7 +23,7 @@ const sapi_process_exec_t* sapi_process_exec (
 int sapi_process_exec_get_exit_code (
   const sapi_process_exec_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec_get_exit_code is not supported on this platform");
   return -1;
 #endif
@@ -34,7 +34,7 @@ int sapi_process_exec_get_exit_code (
 const char* sapi_process_exec_get_output (
   const sapi_process_exec_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_exec_get_output is not supported on this platform");
   return nullptr;
 #endif
@@ -51,7 +51,7 @@ sapi_process_spawn_t* sapi_process_spawn (
   sapi_process_spawn_stderr_callback_t onstderr,
   sapi_process_spawn_exit_callback_t onexit
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn is not supported on this platform");
   return nullptr;
 #endif
@@ -72,7 +72,7 @@ sapi_process_spawn_t* sapi_process_spawn (
 int sapi_process_spawn_get_exit_code (
   const sapi_process_spawn_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_exit_code is not supported on this platform");
   return -1;
 #endif
@@ -82,7 +82,7 @@ int sapi_process_spawn_get_exit_code (
 unsigned long sapi_process_spawn_get_pid (
   const sapi_process_spawn_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_pid is not supported on this platform");
   return 0;
 #endif
@@ -92,7 +92,7 @@ unsigned long sapi_process_spawn_get_pid (
 sapi_context_t* sapi_process_spawn_get_context (
   const sapi_process_spawn_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_get_context is not supported on this platform");
   return nullptr;
 #endif
@@ -102,7 +102,7 @@ sapi_context_t* sapi_process_spawn_get_context (
 int sapi_process_spawn_wait (
   sapi_process_spawn_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_wait is not supported on this platform");
   return -1;
 #endif
@@ -114,7 +114,7 @@ bool sapi_process_spawn_write (
   const char* data,
   const size_t size
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_write is not supported on this platform");
   return false;
 #endif
@@ -126,12 +126,12 @@ bool sapi_process_spawn_write (
 bool sapi_process_spawn_close_stdin (
   sapi_process_spawn_t* process
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_close_stdin is not supported on this platform");
   return false;
 #endif
   if (!process || process->closed) return false;
-  process->close_stdin();
+  process->closeStdin();
   return true;
 }
 
@@ -139,7 +139,7 @@ bool sapi_process_spawn_kill (
   sapi_process_spawn_t* process,
   int code
 ) {
-#if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if SOCKET_RUNTIME_PLATFORM_IOS
   debug("sapi_process_spawn_kill is not supported on this platform");
   return false;
 #endif

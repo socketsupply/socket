@@ -1,8 +1,7 @@
-#ifndef SSC_FILE_SYSTEM_WATCHER_H
-#define SSC_FILE_SYSTEM_WATCHER_H
+#ifndef SOCKET_RUNTIME_FILE_SYSTEM_WATCHER_H
+#define SOCKET_RUNTIME_FILE_SYSTEM_WATCHER_H
 
-#include "platform.hh"
-#include "types.hh"
+#include "../platform/platform.hh"
 
 namespace SSC {
   class Core;

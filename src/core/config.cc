@@ -1,12 +1,29 @@
 #include "config.hh"
-#include "ini.hh"
-#include "string.hh"
-
 #include "debug.hh"
+#include "ini.hh"
 
 namespace SSC {
   static constexpr char NAMESPACE_SEPARATOR = '.';
   static const String NAMESPACE_SEPARATOR_STRING = String(1, NAMESPACE_SEPARATOR);
+
+  bool isDebugEnabled () {
+    return socket_runtime_init_is_debug_enabled();
+  }
+
+  const Map getUserConfig () {
+    const auto bytes = socket_runtime_init_get_user_config_bytes();
+    const auto size = socket_runtime_init_get_user_config_bytes_size();
+    // #include "user-config-bytes.hh" // NOLINT
+    return INI::parse(String((const char*) bytes, size));
+  }
+
+  const String getDevHost () {
+    return socket_runtime_init_get_dev_host();
+  }
+
+  int getDevPort () {
+    return socket_runtime_init_get_dev_port();
+  }
 
   Config::Config (const String& source) {
     this->map = INI::parse(source, NAMESPACE_SEPARATOR_STRING);

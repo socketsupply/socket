@@ -112,7 +112,7 @@ namespace SSC {
 
   bool Extension::Context::release () {
     if (this->retain_count == 0) {
-      debug("WARN - Double release of SSC extension context");
+      debug("WARN - Double release of runtime extension context");
       return false;
     }
     if (--this->retain_count == 0) {
@@ -186,7 +186,7 @@ namespace SSC {
 
   String Extension::getExtensionsDirectory (const String& name) {
     auto cwd = getcwd();
-  #if defined(_WIN32)
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     return cwd + "\\socket\\extensions\\" + name + "\\";
   #else
     return cwd + "/socket/extensions/" + name + "/";
@@ -272,7 +272,7 @@ namespace SSC {
   }
 
   String Extension::getExtensionType (const String& name) {
-    const auto libraryPath = getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
+    const auto libraryPath = getExtensionsDirectory(name) + (name + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME);
     const auto wasmPath = getExtensionsDirectory(name) + (name + ".wasm");
     if (fs::exists(wasmPath)) {
       return "wasm32";
@@ -292,7 +292,7 @@ namespace SSC {
     }
 
     if (type == "shared") {
-      return getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
+      return getExtensionsDirectory(name) + (name + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME);
     }
 
     return "";
@@ -305,16 +305,16 @@ namespace SSC {
     // check if extension is already known
     if (isLoaded(name)) return true;
 
-    auto path = getExtensionsDirectory(name) + (name + RUNTIME_EXTENSION_FILE_EXT);
+    auto path = getExtensionsDirectory(name) + (name + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME);
 
-  #if defined(_WIN32)
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     auto handle = LoadLibrary(path.c_str());
     if (handle == nullptr) return false;
     auto __sapi_extension_init = (sapi_extension_registration_entry) GetProcAddress(handle, "__sapi_extension_init");
     if (!__sapi_extension_init) return false;
   #else
-  #if defined(__ANDROID__)
-    auto handle = dlopen(String("libextension-" + name + RUNTIME_EXTENSION_FILE_EXT).c_str(), RTLD_NOW | RTLD_LOCAL);
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    auto handle = dlopen(String("libextension-" + name + SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME).c_str(), RTLD_NOW | RTLD_LOCAL);
   #else
     auto handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
   #endif
@@ -386,7 +386,7 @@ namespace SSC {
       return true;
     }
 
-  #if defined(_WIN32)
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (!FreeLibrary(reinterpret_cast<HMODULE>(extension->handle))) {
       return false;
     }
@@ -570,23 +570,23 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
     output = message;
   }
 
-#if defined(__linux__) && defined(__ANDROID__)
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
   __android_log_print(ANDROID_LOG_INFO, "Console", "%s", message);
 #else
   SSC::IO::write(output, false);
 #endif
 
-#if defined(__APPLE__)
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-      "socket.runtime.mobile"
-#else
-      "socket.runtime.desktop"
-#endif
-      );
-  os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", output.c_str());
+  static auto SOCKET_RUNTIME_OS_LOG_INFO = os_log_create(bundleIdentifier.c_str(),
+  #if SOCKET_RUNTIME_PLATFORM_MOBILE
+    "socket.runtime.mobile"
+  #else
+    "socket.runtime.desktop"
+  #endif
+  );
+  os_log_with_type(SOCKET_RUNTIME_OS_LOG_INFO, OS_LOG_TYPE_INFO, "%{public}s", output.c_str());
 #endif
 }
 

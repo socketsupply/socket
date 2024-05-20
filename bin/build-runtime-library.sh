@@ -100,8 +100,11 @@ declare objects=()
 declare sources=(
   $(find "$root"/src/app/*.cc)
   $(find "$root"/src/core/*.cc)
-  $(find "$root"/src/ipc/*.cc)
+  $(find "$root"/src/core/modules/*.cc)
   $(find "$root"/src/extension/*.cc)
+  $(find "$root"/src/ipc/*.cc)
+  $(find "$root"/src/platform/*.cc)
+  $(find "$root"/src/serviceworker/*.cc)
   "$root/src/window/manager.cc"
   "$root/src/window/dialog.cc"
   "$root/src/window/hotkey.cc"
@@ -121,21 +124,23 @@ if [[ "$platform" = "android" ]]; then
 
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
   clang_target="$(android_clang_target "$arch")"
-  sources+=("$root/src/process/unix.cc")
+  sources+=("$root/src/core/process/unix.cc")
+  sources+=($(find "$root/src/platform/android"/*.cc))
+  sources+=("$root/src/window/android.cc")
 elif [[ "$host" = "Darwin" ]]; then
   sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)) || (( TARGET_IPHONE_SIMULATOR )); then
     cflags=("-sdk" "iphoneos" "$clang")
     clang="xcrun"
   else
-    sources+=("$root/src/process/unix.cc")
+    sources+=("$root/src/core/process/unix.cc")
   fi
 elif [[ "$host" = "Linux" ]]; then
   sources+=("$root/src/window/linux.cc")
-  sources+=("$root/src/process/unix.cc")
+  sources+=("$root/src/core/process/unix.cc")
 elif [[ "$host" = "Win32" ]]; then
   sources+=("$root/src/window/win.cc")
-  sources+=("$root/src/process/win.cc")
+  sources+=("$root/src/core/process/win.cc")
 fi
 
 cflags+=($(ARCH="$arch" "$root/bin/cflags.sh"))

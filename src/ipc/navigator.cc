@@ -1,10 +1,14 @@
-#include "../core/platform.hh"
+#include "../window/window.hh"
+#include "../app/app.hh"
+
 #include "navigator.hh"
 #include "bridge.hh"
 
-#include "../window/window.hh"
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../platform/android.hh"
+#endif
 
-#if SSC_PLATFORM_APPLE
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 @implementation SSCNavigationDelegate
 -    (void) webView: (WKWebView*) webview
   didFailNavigation: (WKNavigation*) navigation
@@ -58,78 +62,7 @@ namespace SSC::IPC {
       URL()
   {}
 
-  void Navigator::Location::init () {
-    // determine HOME
-  #if SSC_PLATFORM_WINDOWS
-    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
-  #elif SSC_PLATFORM_IOS
-    static const auto HOME = String(NSHomeDirectory().UTF8String);
-  #else
-    static const auto uid = getuid();
-    static const auto pwuid = getpwuid(uid);
-    static const auto HOME = pwuid != nullptr
-      ? String(pwuid->pw_dir)
-      : Env::get("HOME", getcwd());
-  #endif
-
-    static const Map mappings = {
-      {"\\$HOST_HOME", HOME},
-      {"~", HOME},
-
-      {"\\$HOST_CONTAINER",
-      #if SSC_PLATFORM_IOS
-        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
-      #elif SSC_PLATFORM_MACOS
-        // `homeDirectoryForCurrentUser` resolves to sandboxed container
-        // directory when in "sandbox" mode, otherwise the user's HOME directory
-        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
-      #elif SSC_PLATFORM_LINUX || SSC_PLATFORM_ANDROID
-        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux/Android
-        getcwd()
-      #elif SSC_PLATFORM_WINDOWS
-        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
-        getcwd()
-      #else
-        getcwd()
-      #endif
-      },
-
-      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
-      #if SSC_PLATFORM_APPLE
-        NSBundle.mainBundle.resourcePath.UTF8String
-      #else
-        getcwd()
-      #endif
-      }
-    };
-
-    for (const auto& entry : bridge->userConfig) {
-      if (entry.first.starts_with("webview_navigator_mounts_")) {
-        auto key = replace(entry.first, "webview_navigator_mounts_", "");
-
-        if (key.starts_with("android") && !platform.android) continue;
-        if (key.starts_with("ios") && !platform.ios) continue;
-        if (key.starts_with("linux") && !platform.linux) continue;
-        if (key.starts_with("mac") && !platform.mac) continue;
-        if (key.starts_with("win") && !platform.win) continue;
-
-        key = replace(key, "android_", "");
-        key = replace(key, "ios_", "");
-        key = replace(key, "linux_", "");
-        key = replace(key, "mac_", "");
-        key = replace(key, "win_", "");
-
-        String path = key;
-
-        for (const auto& map : mappings) {
-          path = replace(path, map.first, map.second);
-        }
-
-        const auto& value = entry.second;
-        this->mounts.insert_or_assign(path, value);
-      }
-    }
-  }
+  void Navigator::Location::init () {}
 
   /**
    * .
@@ -170,7 +103,7 @@ namespace SSC::IPC {
     const auto filename = (fs::path(dirname) / fs::path(result)).make_preferred();
 
     // 1. Try the given path if it's a file
-    if (fs::is_regular_file(filename)) {
+    if (FileResource::isFile(filename)) {
       return Navigator::Location::Resolution {
         .pathname = "/" + replace(fs::relative(filename, dirname).string(), "\\\\", "/")
       };
@@ -178,7 +111,7 @@ namespace SSC::IPC {
 
     // 2. Try appending a `/` to the path and checking for an index.html
     const auto index = filename / fs::path("index.html");
-    if (fs::is_regular_file(index)) {
+    if (FileResource::isFile(index)) {
       if (filename.string().ends_with("\\") || filename.string().ends_with("/")) {
         return Navigator::Location::Resolution {
           .pathname = "/" + replace(fs::relative(index, dirname).string(), "\\\\", "/"),
@@ -194,7 +127,7 @@ namespace SSC::IPC {
 
     // 3. Check if appending a .html file extension gives a valid file
     const auto html = Path(filename).replace_extension(".html");
-    if (fs::is_regular_file(html)) {
+    if (FileResource::isFile(html)) {
       return Navigator::Location::Resolution {
         .pathname = "/" + replace(fs::relative(html, dirname).string(), "\\\\", "/")
       };
@@ -245,16 +178,16 @@ namespace SSC::IPC {
   Navigator::Navigator (Bridge* bridge)
     : bridge(bridge),
       location(bridge),
-      serviceWorker(bridge->core->serviceWorker)
+      serviceWorker(App::sharedApplication()->serviceWorkerContainer)
   {
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->navigationDelegate = [SSCNavigationDelegate new];
     this->navigationDelegate.navigator = this;
   #endif
   }
 
   Navigator::~Navigator () {
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->navigationDelegate) {
       this->navigationDelegate.navigator = nullptr;
 
@@ -272,9 +205,9 @@ namespace SSC::IPC {
   }
 
   void Navigator::configureWebView (WebView* webview) {
-  #if SSC_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     webview.navigationDelegate = this->navigationDelegate;
-  #elif SSC_PLATFORM_LINUX
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
     g_signal_connect(
       G_OBJECT(webview),
       "decide-policy",
@@ -295,7 +228,7 @@ namespace SSC::IPC {
         const auto action = webkit_navigation_policy_decision_get_navigation_action(navigation);
         const auto request = webkit_navigation_action_get_request(action);
         const auto currentURL = String(webkit_web_view_get_uri(webview));
-        const auto requestedURL = String(webkit_uri_request_get_uri(request)
+        const auto requestedURL = String(webkit_uri_request_get_uri(request));
 
         if (!navigator->handleNavigationRequest(currentURL, requestedURL)) {
           webkit_policy_decision_ignore(decision);
@@ -306,7 +239,7 @@ namespace SSC::IPC {
       })),
       this
     );
-  #elif SSC_PLATFORM_WINDOWS
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     EventRegistrationToken tokenNavigation;
     webview->add_NavigationStarting(
       Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
@@ -400,6 +333,10 @@ namespace SSC::IPC {
     auto userConfig = this->bridge->userConfig;
     const auto allowed = split(trim(userConfig["webview_navigator_policies_allowed"]), ' ');
 
+    if (requestedURL == "about:blank") {
+      return true;
+    }
+
     for (const auto& entry : split(userConfig["webview_protocol-handlers"], " ")) {
       const auto scheme = replace(trim(entry), ":", "");
       if (requestedURL.starts_with(scheme + ":")) {
@@ -436,7 +373,11 @@ namespace SSC::IPC {
 
     if (
       requestedURL.starts_with("socket:") ||
+      requestedURL.starts_with("node:") ||
       requestedURL.starts_with("npm:") ||
+      requestedURL.starts_with("ipc:") ||
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+    #endif
       requestedURL.starts_with(devHost)
     ) {
       return true;
@@ -444,4 +385,115 @@ namespace SSC::IPC {
 
     return false;
   }
+
+  void Navigator::configureMounts () {
+    // determine HOME
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
+    static const auto HOME = String(NSHomeDirectory().UTF8String);
+  #else
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+  #endif
+
+    static const Map mappings = {
+      {"\\$HOST_HOME", HOME},
+      {"~", HOME},
+
+      {"\\$HOST_CONTAINER",
+      #if SOCKET_RUNTIME_PLATFORM_IOS
+        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
+      #elif SOCKET_RUNTIME_PLATFORM_MACOS
+        // `homeDirectoryForCurrentUser` resolves to sandboxed container
+        // directory when in "sandbox" mode, otherwise the user's HOME directory
+        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
+      #elif SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_ANDROID
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux/Android
+        getcwd()
+      #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
+        getcwd()
+      #else
+        getcwd()
+      #endif
+      },
+
+      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
+        NSBundle.mainBundle.resourcePath.UTF8String
+      #else
+        getcwd()
+      #endif
+      }
+    };
+
+    for (const auto& entry : this->bridge->userConfig) {
+      if (entry.first.starts_with("webview_navigator_mounts_")) {
+        auto key = replace(entry.first, "webview_navigator_mounts_", "");
+
+        if (key.starts_with("android") && !platform.android) continue;
+        if (key.starts_with("ios") && !platform.ios) continue;
+        if (key.starts_with("linux") && !platform.linux) continue;
+        if (key.starts_with("mac") && !platform.mac) continue;
+        if (key.starts_with("win") && !platform.win) continue;
+
+        key = replace(key, "android_", "");
+        key = replace(key, "ios_", "");
+        key = replace(key, "linux_", "");
+        key = replace(key, "mac_", "");
+        key = replace(key, "win_", "");
+
+        String path = key;
+
+        for (const auto& map : mappings) {
+          path = replace(path, map.first, map.second);
+        }
+
+        const auto& value = entry.second;
+        this->location.mounts.insert_or_assign(path, value);
+      #if SOCKET_RUNTIME_PLATFORM_LINUX
+        auto webContext = webkit_web_context_get_default();
+        webkit_web_context_add_path_to_sandbox(webContext, path.c_str(), false);
+      #endif
+      }
+    }
+  }
 }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+extern "C" {
+  using namespace SSC;
+
+  jboolean ANDROID_EXTERNAL(ipc, Navigator, isNavigationRequestAllowed) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jstring currentURLString,
+    jstring requestedURLString
+  ) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      ANDROID_THROW(env, "Invalid window requested");
+      return false;
+    }
+
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto currentURL = Android::StringWrap(attachment.env, currentURLString).str();
+    const auto requestedURL = Android::StringWrap(attachment.env, requestedURLString).str();
+
+    return window->bridge.navigator.isNavigationRequestAllowed(currentURL, requestedURL);
+  }
+}
+#endif

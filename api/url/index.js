@@ -265,6 +265,26 @@ export function format (input) {
   return formatted
 }
 
+export function fileURLToPath (url) {
+  if (typeof url === 'string') {
+    url = new URL(url, globalThis.location.origin)
+  }
+
+  if (!(url instanceof URL)) {
+    throw new TypeError(
+      `Expecting 'url' to be a URL or string. Received: ${url}`
+    )
+  }
+
+  if (url.protocol !== 'file:' && url.protocol !== 'socket:') {
+    throw new TypeError(
+      `Expecting 'url' to have a 'file:' or 'socket:' URL scheme. Received: ${url.protocol}`
+    )
+  }
+
+  return url.pathname
+}
+
 url.serializeURLOrigin = function (input) {
   const { scheme, protocol, host } = input
 

@@ -898,9 +898,10 @@ export class Package {
     }
 
     if (info.main) {
-      this.#exports['.'].require = info.main
       if (info.type === 'module') {
         this.#exports['.'].import = info.main
+      } else {
+        this.#exports['.'].require = info.main
       }
     }
 
@@ -1055,7 +1056,6 @@ export class Package {
 
     const { info } = this
     const manifest = options?.manifest ?? DEFAULT_PACKAGE_MANIFEST_FILE_NAME
-    const extname = path.extname(pathname)
     const type = options?.type ?? this.type
 
     if (info?.addon === true) {
@@ -1113,6 +1113,7 @@ export class Package {
       }
     }
 
+    const extname = path.extname(pathname)
     const extensions = extname !== '' && this.loader.extensions.has(extname)
       ? new Set([extname])
       : new Set(Array

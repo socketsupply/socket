@@ -1,7 +1,6 @@
-#ifndef SSC_CORE_URL_H
-#define SSC_CORE_URL_H
+#ifndef SOCKET_RUNTIME_CORE_URL_H
+#define SOCKET_RUNTIME_CORE_URL_H
 
-#include "types.hh"
 #include "json.hh"
 
 namespace SSC {

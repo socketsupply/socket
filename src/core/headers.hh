@@ -1,9 +1,7 @@
-#ifndef SSC_CORE_HEADERS_H
-#define SSC_CORE_HEADERS_H
+#ifndef SOCKET_RUNTIME_CORE_HEADERS_H
+#define SOCKET_RUNTIME_CORE_HEADERS_H
 
 #include "json.hh"
-#include "platform.hh"
-#include "types.hh"
 
 namespace SSC {
   class Headers {
@@ -21,7 +19,7 @@ namespace SSC {
           Value (int64_t value);
           Value (uint64_t value);
           Value (double_t value);
-        #if SSC_PLATFORM_APPLE
+        #if SOCKET_RUNTIME_PLATFORM_APPLE
           Value (ssize_t value);
         #endif
           bool operator == (const Value&) const;
@@ -76,6 +74,8 @@ namespace SSC {
       const String operator [] (const String& name) const noexcept;
       JSON::Object json () const noexcept;
   };
+
+  const String toHeaderCase (const String& source);
 }
 
 #endif

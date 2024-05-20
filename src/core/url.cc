@@ -1,5 +1,4 @@
 #include "codec.hh"
-#include "string.hh"
 #include "url.hh"
 
 namespace SSC {
@@ -125,7 +124,7 @@ namespace SSC {
         this->hostname = hostParts[0];
       }
     } else if (authorityParts.size() == 1) {
-      const auto hostParts = split(authorityParts[1], ':');
+      const auto hostParts = split(authorityParts[0], ':');
       if (hostParts.size() > 1) {
         this->port = hostParts[1];
       }
