@@ -2,11 +2,6 @@
 #include "timers.hh"
 
 namespace SSC {
-  void msleep (uint64_t ms) {
-    std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-  }
-
   const CoreTimers::ID CoreTimers::createTimer (
     uint64_t timeout,
     uint64_t interval,

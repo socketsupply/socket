@@ -35,7 +35,6 @@
 
 namespace SSC {
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
-  uint64_t rand64 ();
 
   // forward
   class Core;

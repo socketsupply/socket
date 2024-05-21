@@ -4,8 +4,6 @@
 #include "../module.hh"
 
 namespace SSC {
-  void msleep (uint64_t ms);
-
   class Core;
   class CoreTimers : public CoreModule {
     public:
