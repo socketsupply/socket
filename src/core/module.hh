@@ -6,7 +6,6 @@
 #include "post.hh"
 
 namespace SSC {
-  uint64_t rand64 ();
   // forward
   class Core;
   class CoreModule {

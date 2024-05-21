@@ -334,7 +334,7 @@ namespace SSC {
         AAsset_close(asset);
         return true;
       }
-    j}
+    }
 
     return fs::exists(this->path);
   #else

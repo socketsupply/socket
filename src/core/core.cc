@@ -1,27 +1,7 @@
 #include "core.hh"
 #include "modules/fs.hh"
 
-#define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
-#define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
-
 namespace SSC {
-  uint64_t rand64 () {
-    static const auto maxWidth = RAND_MAX_WIDTH;
-    static bool init = false;
-
-    if (!init) {
-      init = true;
-      srand(time(0));
-    }
-
-    uint64_t r = 0;
-    for (int i = 0; i < 64; i += maxWidth) {
-      r <<= maxWidth;
-      r ^= (unsigned) rand();
-    }
-    return r;
-  }
-
   Post Core::getPost (uint64_t id) {
     Lock lock(this->postsMutex);
     if (this->posts.find(id) == this->posts.end()) {
