@@ -680,6 +680,12 @@ namespace SSC {
   int App::run (int argc, char** argv) {
   #if SOCKET_RUNTIME_PLATFORM_LINUX
     gtk_main();
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    // MUST be acquired on "main" thread
+    // `run()` should called when the main activity is created
+    if (!this->androidLooper.isAcquired()) {
+      this->androidLooper.acquire();
+    }
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     [NSApp run];
   #elif SOCKET_RUNTIME_PLATFORM_IOS
@@ -801,7 +807,7 @@ namespace SSC {
       // TODO(trevnorris): Need to also check a shouldExit so this doesn't run forever in case
       // the rest of the application needs to exit before isReady is set.
       while (!this->isReady) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        msleep(16);
       }
 
       PostThreadMessage(mainThread, WM_APP, 0, threadCallback);
@@ -809,12 +815,11 @@ namespace SSC {
 
     t.detach();
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    if (this->androidLooper.isAcquired()) {
-      this->androidLooper.dispatch([=] () {
-        const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
-        callback();
-      });
-    }
+    auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
+    this->androidLooper.dispatch([=, this] () {
+      const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
+      callback();
+    });
   #endif
   }
 
@@ -926,9 +931,7 @@ namespace SSC {
 extern "C" {
   jlong ANDROID_EXTERNAL(app, App, alloc)(JNIEnv *env, jobject self) {
     if (App::sharedApplication() == nullptr) {
-      auto attachment = Android::JNIEnvironmentAttachment(env);
-      auto app = new App(attachment.env, self);
-      app->init();
+      auto app = new App(env, self);
     }
     return reinterpret_cast<jlong>(App::sharedApplication());
   }
@@ -1094,11 +1097,8 @@ extern "C" {
       app->jni->DeleteGlobalRef(app->appActivity);
     }
 
-    app->appActivity = app->jni->NewGlobalRef(appActivity);
-
-    if (!app->androidLooper.isAcquired()) {
-      app->androidLooper.acquire();
-    }
+    app->appActivity = env->NewGlobalRef(appActivity);
+    app->run();
 
     if (app->windowManager.getWindowStatus(0) == WindowManager::WINDOW_NONE) {
       auto windowManagerOptions = WindowManagerOptions {};
@@ -1181,7 +1181,7 @@ extern "C" {
     }
 
     if (app->appActivity) {
-      app->jni->DeleteGlobalRef(app->appActivity);
+      env->DeleteGlobalRef(app->appActivity);
       app->appActivity = nullptr;
     }
   }
@@ -1193,8 +1193,8 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    if (app->jni && app->self) {
-      app->jni->NewGlobalRef(app->self);
+    if (app->self) {
+      env->DeleteGlobalRef(app->self);
     }
 
     app->jni = nullptr;

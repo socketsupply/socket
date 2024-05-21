@@ -91,6 +91,7 @@ open class AppActivity : WindowManagerActivity() {
       )
     }
 
+    console.log("onCreateAppActivity")
     app.onCreateAppActivity(this)
 
     if (savedInstanceState == null) {
