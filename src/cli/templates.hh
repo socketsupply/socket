@@ -508,6 +508,7 @@ constexpr auto gAndroidManifest = R"XML(
       android:exported="true"
       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
       android:launchMode="singleTop"
+      android:enableOnBackInvokedCallback="true"
     >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
