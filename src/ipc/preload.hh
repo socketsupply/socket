@@ -46,6 +46,12 @@ namespace SSC::IPC {
      * module or running a "user script"
      */
     bool useESM = true;
+
+    /**
+     * If `true`, the feature enables the preload compiler to use include the
+     * a global `__args` object available on `globalThis`.
+     */
+    bool useGlobalArgs = true;
   };
 
   /**

@@ -166,6 +166,7 @@ namespace SSC::IPC {
         Atomic<bool> finished = false;
         SchemeHandlers* handlers = nullptr;
         PlatformResponse platformResponse = nullptr;
+
       #if SOCKET_RUNTIME_PLATFORM_LINUX
         GInputStream* platformResponseStream = nullptr;
       #endif

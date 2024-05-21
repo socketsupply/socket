@@ -49,6 +49,9 @@ namespace SSC::IPC {
       Bridge (SharedPointer<Core>core, Map userConfig = getUserConfig());
       ~Bridge ();
 
+      Bridge& operator = (const Bridge&) = delete;
+      Bridge& operator = (Bridge&&) = delete;
+
       void init ();
       void configureWebView (WebView* webview);
       void configureSchemeHandlers (const SchemeHandlers::Configuration& configuration);
@@ -62,7 +65,6 @@ namespace SSC::IPC {
         Router::ResultCallback
       );
 
-      const Vector<String>& getAllowedNodeCoreModules () const;
       bool evaluateJavaScript (const String& source);
       bool dispatch (const DispatchCallback& callback);
       bool navigate (const String& url);

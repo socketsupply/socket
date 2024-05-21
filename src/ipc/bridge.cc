@@ -367,10 +367,6 @@ namespace SSC::IPC {
     return this->emit(name, json.str());
   }
 
-  const Vector<String>& Bridge::getAllowedNodeCoreModules () const {
-    return allowedNodeCoreModules;
-  }
-
   void Bridge::configureSchemeHandlers (const SchemeHandlers::Configuration& configuration) {
     this->schemeHandlers.configure(configuration);
     this->schemeHandlers.registerSchemeHandler("ipc", [this](
@@ -771,7 +767,6 @@ namespace SSC::IPC {
       // module or stdlib import/fetch `socket:<module>/<path>` which will just
       // proxy an import into a normal resource request above
       if (request.hostname.size() == 0) {
-        static const auto allowedNodeCoreModules = this->getAllowedNodeCoreModules();
         const auto isAllowedNodeCoreModule = allowedNodeCoreModules.end() != std::find(
           allowedNodeCoreModules.begin(),
           allowedNodeCoreModules.end(),
