@@ -138,6 +138,8 @@ namespace SSC {
   };
 
   extern const RuntimePlatform platform;
+  void msleep (uint64_t ms);
+  uint64_t rand64 ();
 }
 
 #endif

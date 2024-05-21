@@ -39,11 +39,18 @@ namespace SSC::Android {
     };
 
     ALooper* looper;
+    Atomic<bool> isReady = false;
     int fds[2];
     JVMEnvironment jvm;
     SharedPointer<LoopCallbackContext> context;
 
     Looper (JVMEnvironment jvm);
+    Looper () = delete;
+    Looper (const Looper&) = delete;
+    Looper (Looper&&) = delete;
+    Looper operator= (const Looper&) = delete;
+    Looper operator= (Looper&&) = delete;
+
     bool acquire (const LoopCallback& callback = nullptr);
     void release ();
     void dispatch (const DispatchCallback& callback);

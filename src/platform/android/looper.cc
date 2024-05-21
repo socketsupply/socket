@@ -1,4 +1,5 @@
 #include "looper.hh"
+#include "../../core/debug.hh"
 
 namespace SSC::Android {
   Looper::Looper (JVMEnvironment jvm)
@@ -6,6 +7,11 @@ namespace SSC::Android {
   {}
 
   void Looper::dispatch (const DispatchCallback& callback) {
+    // TODO(@jwerle): timeout
+    while (!this->isReady) {
+      msleep(2);
+    }
+
     const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
     const auto context = new DispatchCallbackContext(callback, this);
     write(this->fds[1], &context, sizeof(DispatchCallbackContext*));
@@ -25,7 +31,7 @@ namespace SSC::Android {
 
     ALooper_acquire(this->looper);
 
-    const auto context = new LoopCallbackContext(callback, this);
+    const auto context = std::make_shared<LoopCallbackContext>(callback, this);
     const auto result = ALooper_addFd(
       this->looper,
       this->fds[0],
@@ -55,10 +61,15 @@ namespace SSC::Android {
         }
         return 1;
       },
-      context
+      context.get()
     );
 
-    this->context.reset(context);
+    if (result == -1) {
+      return false;
+    }
+
+    this->context = context;
+    this->isReady = true;
     return true;
   }
 
@@ -75,4 +86,3 @@ namespace SSC::Android {
     return this->looper != nullptr && this->context != nullptr;
   }
 }
-

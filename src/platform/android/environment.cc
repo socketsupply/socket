@@ -1,4 +1,5 @@
 #include "environment.hh"
+#include "../../core/debug.hh"
 
 namespace SSC::Android {
   JVMEnvironment::JVMEnvironment (JNIEnv* env) {
@@ -66,6 +67,8 @@ namespace SSC::Android {
       if (this->status == JNI_EDETACHED) {
         this->attached = this->jvm->AttachCurrentThread(&this->env, 0);
       }
+
+      // debug("env: %p", this->env);
     }
   }
 
