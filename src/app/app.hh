@@ -84,8 +84,6 @@ namespace SSC {
       jobject self;
       jobject appActivity;
       bool isAndroidEmulator = false;
-      int androidLooperpipeFDS[2];
-
     #endif
 
       ExitCallback onExit = nullptr;
