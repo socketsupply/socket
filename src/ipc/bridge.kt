@@ -61,7 +61,6 @@ open class Bridge (val index: Int, val activity: AppCompatActivity): WebViewClie
     )
 
     if (allowed) {
-      console.log("is allowed")
       return false
     }
 

@@ -72,17 +72,21 @@ open class SchemeHandlers (val bridge: Bridge) {
     fun getUrl (): String {
       return this.request.url.toString().replace("https:", "socket:")
     }
+
+    fun getWebResourceResponse (): WebResourceResponse? {
+      return this.response.response
+    }
   }
 
   open class Response (val request: Request) {
     val stream = PipedOutputStream()
+    var mimeType = "application/octet-stream"
     val response = WebResourceResponse(
-      "application/octet-stream",
+      mimeType,
       null,
-      PipedInputStream(stream)
+      null
     )
 
-    var mimeType = "application/octet-stream"
     val headers = mutableMapOf<String, String>()
     var pendingWrites = 0
 
@@ -107,17 +111,26 @@ open class SchemeHandlers (val bridge: Bridge) {
 
     fun write (bytes: ByteArray) {
       val stream = this.stream
+      console.log("begin response write")
+      if (this.response.data == null) {
+        try {
+          this.response.data = PipedInputStream(this.stream)
+        } catch (err: Exception) {
+          console.log("stream.connect error: ${err.toString()}")
+        }
+      }
       try {
-        pendingWrites++
-        stream.write(bytes)
+        this.pendingWrites++
+        stream.write(bytes, 0, bytes.size)
       } catch (err: Exception) {
-        console.log(err.toString())
+        console.log("stream.write error: ${err.toString()}")
         if (!err.message.toString().contains("closed")) {
           console.error("socket.runtime.ipc.SchemeHandlers.Response: ${err.toString()}")
         }
       }
 
-      pendingWrites--
+      this.pendingWrites--
+      console.log("end response write")
     }
 
     fun write (string: String) {
@@ -127,29 +140,22 @@ open class SchemeHandlers (val bridge: Bridge) {
     fun finish () {
       val stream = this.stream
       thread {
-        console.log("before close wait")
-        while (pendingWrites > 0) {
-          console.log("pending")
+        while (this.pendingWrites > 0) {
+          Thread.sleep(4)
         }
-        console.log("after close wait")
 
         stream.flush()
-        console.log("flushed")
         stream.close()
-        console.log("closed")
+        console.log("response closed")
       }
-    }
-
-    fun getWebResourceResponse (): WebResourceResponse? {
-      return this.response
     }
   }
 
   fun handleRequest (webResourceRequest: WebResourceRequest): WebResourceResponse? {
     val request = Request(this.bridge, webResourceRequest)
 
-    if (this.handleRequest(bridge.index, request)) {
-      return request.response.getWebResourceResponse()
+    if (this.handleRequest(this.bridge.index, request)) {
+      return request.getWebResourceResponse()
     }
 
     return null

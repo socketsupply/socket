@@ -1103,38 +1103,29 @@ namespace SSC::IPC {
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-      auto bytesCopy = new char[size]{0};
-      auto platformResponse = this->platformResponse;
+      const auto app = App::sharedApplication();
+      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      const auto byteArray = attachment.env->NewByteArray(size);
 
-      memcpy(bytesCopy, bytes, size);
-      this->request.bridge->dispatch([=] () mutable {
-        auto app = App::sharedApplication();
-        auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-        auto byteArray = attachment.env->NewByteArray(size);
+      attachment.env->SetByteArrayRegion(
+        byteArray,
+        0,
+        size,
+        (jbyte *) bytes
+      );
 
-        if (bytesCopy != nullptr) {
-          attachment.env->SetByteArrayRegion(
-            byteArray,
-            0,
-            size,
-            (jbyte *) bytesCopy
-          );
-        }
+      CallVoidClassMethodFromAndroidEnvironment(
+        attachment.env,
+        this->platformResponse,
+        "write",
+        "([B)V",
+        byteArray
+      );
 
-        CallVoidClassMethodFromAndroidEnvironment(
-          attachment.env,
-          platformResponse,
-          "write",
-          "([B)V",
-          byteArray
-        );
+      if (byteArray != nullptr) {
+        attachment.env->DeleteLocalRef(byteArray);
+      }
 
-        if (byteArray != nullptr) {
-          attachment.env->DeleteLocalRef(byteArray);
-        }
-
-        delete [] bytesCopy;
-      });
       return true;
     #endif
     }
@@ -1228,19 +1219,21 @@ namespace SSC::IPC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     auto platformResponse = this->platformResponse;
-    this->request.bridge->dispatch([=] () mutable {
-      auto app = App::sharedApplication();
-      auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    if (platformResponse != nullptr) {
+      this->request.bridge->dispatch([=, this] () {
+        auto app = App::sharedApplication();
+        auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
-      CallVoidClassMethodFromAndroidEnvironment(
-        attachment.env,
-        platformResponse,
-        "finish",
-        "()V"
-      );
+        CallVoidClassMethodFromAndroidEnvironment(
+          attachment.env,
+          platformResponse,
+          "finish",
+          "()V"
+        );
 
-      attachment.env->DeleteGlobalRef(platformResponse);
-    });
+        attachment.env->DeleteGlobalRef(platformResponse);
+      });
+    }
   #else
   #endif
 
@@ -1453,18 +1446,16 @@ extern "C" {
       return false;
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-
-    const auto method = Android::StringWrap(attachment.env, (jstring) CallClassMethodFromAndroidEnvironment(
-      attachment.env,
+    const auto method = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+      env,
       Object,
       requestObject,
       "getMethod",
       "()Ljava/lang/String;"
     )).str();
 
-    const auto headers = Android::StringWrap(attachment.env, (jstring) CallClassMethodFromAndroidEnvironment(
-      attachment.env,
+    const auto headers = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+      env,
       Object,
       requestObject,
       "getHeaders",
@@ -1472,7 +1463,7 @@ extern "C" {
     )).str();
 
     const auto requestBodyByteArray = (jbyteArray) CallClassMethodFromAndroidEnvironment(
-      attachment.env,
+      env,
       Object,
       requestObject,
       "getBody",
@@ -1480,7 +1471,7 @@ extern "C" {
     );
 
     const auto requestBodySize = requestBodyByteArray != nullptr
-      ? attachment.env->GetArrayLength(requestBodyByteArray)
+      ? env->GetArrayLength(requestBodyByteArray)
       : 0;
 
     const auto bytes = requestBodySize > 0
@@ -1488,7 +1479,7 @@ extern "C" {
       : nullptr;
 
     if (requestBodyByteArray) {
-      attachment.env->GetByteArrayRegion(
+      env->GetByteArrayRegion(
         requestBodyByteArray,
         0,
         requestBodySize,
@@ -1496,7 +1487,7 @@ extern "C" {
       );
     }
 
-    const auto requestObjectRef = attachment.env->NewGlobalRef(requestObject);
+    const auto requestObjectRef = env->NewGlobalRef(requestObject);
     const auto request = IPC::SchemeHandlers::Request::Builder(
       &window->bridge.schemeHandlers,
       requestObjectRef
@@ -1518,7 +1509,7 @@ extern "C" {
     });
 
     if (!handled) {
-      attachment.env->DeleteGlobalRef(requestObjectRef);
+      env->DeleteGlobalRef(requestObjectRef);
     }
 
     return handled;
