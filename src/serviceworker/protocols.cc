@@ -21,6 +21,10 @@ namespace SSC {
   bool ServiceWorkerProtocols::registerHandler (const String& scheme, const Data data) {
     Lock lock(this->mutex);
 
+    if (scheme.size() == 0) {
+      return false;
+    }
+
     if (std::find(reserved.begin(), reserved.end(), scheme) != reserved.end()) {
       return false;
     }

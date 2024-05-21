@@ -682,7 +682,11 @@ namespace SSC {
               this->core->setTimeout(8, [this, request, callback, &registration] {
                 if (!this->fetch(request, callback)) {
                   debug(
+                  #if SOCKET_RUNTIME_PLATFORM_APPLE
                     "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
+                  #else
+                    "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%lu'",
+                  #endif
                     request.method.c_str(),
                     request.pathname.c_str(),
                     (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
