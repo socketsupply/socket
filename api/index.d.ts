@@ -2450,6 +2450,7 @@ declare module "socket:url/index" {
     };
     export function resolve(from: any, to: any): any;
     export function format(input: any): any;
+    export function fileURLToPath(url: any): any;
     const URLPattern_base: {
         new (t: {}, r: any, n: any): {
             "__#21@#i": any;
@@ -6662,7 +6663,7 @@ declare module "socket:application" {
      * @param {boolean=} [opts.resizable=true] - whether the window is resizable
      * @param {boolean=} [opts.frameless=false] - whether the window is frameless
      * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
-     * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+     * @param {boolean=} [opts.shouldExitApplicationOnClose=false] - whether the window can exit the app
      * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
      * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
      * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
@@ -6691,7 +6692,7 @@ declare module "socket:application" {
         resizable?: boolean | undefined;
         frameless?: boolean | undefined;
         utility?: boolean | undefined;
-        canExit?: boolean | undefined;
+        shouldExitApplicationOnClose?: boolean | undefined;
         headless?: boolean | undefined;
         userScript?: string | undefined;
         protocolHandlers?: string[] | undefined;

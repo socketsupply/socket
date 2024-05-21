@@ -58,7 +58,7 @@ Creates a new window and returns an instance of ApplicationWindow.
 | opts.resizable | boolean | true | true | whether the window is resizable |
 | opts.frameless | boolean | false | true | whether the window is frameless |
 | opts.utility | boolean | false | true | whether the window is utility (macOS only) |
-| opts.canExit | boolean | false | true | whether the window can exit the app |
+| opts.shouldExitApplicationOnClose | boolean | false | true | whether the window can exit the app |
 | opts.headless | boolean | false | true | whether the window will be headless or not (no frame) |
 | opts.userScript | string | null | true | A user script that will be injected into the window (desktop only) |
 | opts.protocolHandlers | string |  | true | An array of protocol handler schemes to register with the new window (requires service worker) |
