@@ -231,7 +231,6 @@ namespace SSC {
       }
     }
 
-
     for (const auto& tuple : options.userConfig) {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }
@@ -240,13 +239,13 @@ namespace SSC {
       this->log("Creating Window#" + std::to_string(options.index));
     }
 
-    auto window = new ManagedWindow(*this, this->core, windowOptions);
+    auto window = std::make_shared<ManagedWindow>(*this, this->core, windowOptions);
 
     window->status = WindowStatus::WINDOW_CREATED;
     window->onExit = this->options.onExit;
     window->onMessage = this->options.onMessage;
 
-    this->windows[options.index].reset(window);
+    this->windows[options.index] = window;
 
     return this->windows.at(options.index);
   }
