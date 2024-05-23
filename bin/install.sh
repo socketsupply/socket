@@ -220,12 +220,15 @@ function _build_cli {
   # local libs=($("echo" -l{socket-runtime}))
   local libs=""
 
+  #
+  # Add libuv, socket-runtime and llama
+  #
   if [[ "$(uname -s)" != *"_NT"* ]]; then
-    libs=($("echo" -l{uv,socket-runtime}))
+    libs=($("echo" -l{uv,llama,socket-runtime}))
   fi
 
   if [[ -n "$VERBOSE" ]]; then
-    echo "# cli libs: $libs, $(uname -s)"
+    echo "# cli libs: ${libs[@]}, $(uname -s)"
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
@@ -281,6 +284,7 @@ function _build_cli {
     test_sources+=("$static_libs")
   elif [[ "$(uname -s)" == "Linux" ]]; then
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libuv.a")
+    static_libs+=("$BUILD_DIR/$arch-$platform/lib/libllama.a")
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a")
   fi
 
@@ -512,7 +516,14 @@ function _prepare {
       mv "$tempmkl" "$BUILD_DIR/uv/CMakeLists.txt"
     fi
 
-    die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
+    die $? "not ok - unable to clone libuv. See trouble shooting guide in the README.md file"
+  fi
+
+  if [ ! -d "$BUILD_DIR/llama" ]; then
+    git clone --depth=1 https://github.com/socketsupply/llama.cpp.git "$BUILD_DIR/llama" > /dev/null 2>&1
+    rm -rf $BUILD_DIR/llama/.git
+
+    die $? "not ok - unable to clone llama. See trouble shooting guide in the README.md file"
   fi
 
   echo "ok - directories prepared"
@@ -764,6 +775,95 @@ function _compile_libuv_android {
   fi
 }
 
+function _compile_llama {
+  target=$1
+  hosttarget=$1
+  platform=$2
+
+  if [ -z "$target" ]; then
+    target="$(host_arch)"
+    platform="desktop"
+  fi
+
+  echo "# building llama.cpp for $platform ($target) on $host..."
+  STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
+
+  if [ ! -d "$STAGING_DIR" ]; then
+    mkdir -p "$STAGING_DIR"
+    cp -r "$BUILD_DIR"/llama/* "$STAGING_DIR"
+    cd "$STAGING_DIR" || exit 1
+  else
+    cd "$STAGING_DIR" || exit 1
+  fi
+
+  mkdir -p "$STAGING_DIR/build/"
+
+  if [ "$platform" == "desktop" ]; then
+    if [[ "$host" != "Win32" ]]; then
+      quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform"
+      die $? "not ok - desktop configure"
+      
+      quiet cmake --build build --target clean
+      quiet cmake --build build -- -j"$CPU_CORES"
+      quiet cmake --install build
+    else
+      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/libllama.lib"; then
+        local config="Release"
+        if [[ -n "$DEBUG" ]]; then
+          config="Debug"
+        fi
+        cd "$STAGING_DIR/build/" || exit 1
+        quiet cmake -S .. -B . -DBUILD_TESTING=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_SHARED=OFF
+        quiet cmake --build . --config $config
+        mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
+        quiet echo "cp -up $STAGING_DIR/build/$config/libllama.lib "$BUILD_DIR/$target-$platform/lib$d/libllama.lib""
+        cp -up "$STAGING_DIR/build/$config/libllama.lib" "$BUILD_DIR/$target-$platform/lib$d/libllama.lib"
+        if [[ -n "$DEBUG" ]]; then
+          cp -up "$STAGING_DIR"/build/$config/llama_a.pdb "$BUILD_DIR/$target-$platform/lib$d/llama_a.pdb"
+        fi;
+      fi
+    fi
+
+    rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
+    return
+  fi
+
+  if [ "$hosttarget" == "arm64" ]; then
+    hosttarget="arm"
+  fi
+
+  local sdk="iphoneos"
+  [[ "$platform" == "iPhoneSimulator" ]] && sdk="iphonesimulator"
+
+  export PLATFORM=$platform
+  export CC="$(xcrun -sdk $sdk -find clang)"
+  export CXX="$(xcrun -sdk $sdk -find clang++)"
+  export STRIP="$(xcrun -sdk $sdk -find strip)"
+  export LD="$(xcrun -sdk $sdk -find ld)"
+  export CPP="$CC -E"
+  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
+  export AR=$(xcrun -sdk $sdk -find ar)
+  export RANLIB=$(xcrun -sdk $sdk -find ranlib)
+  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
+  export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+
+  #if ! test -f CMakeLists.txt; then
+    quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES="$target" -DCMAKE_OSX_SYSROOT=$(xcrun --sdk $sdk --show-sdk-path)
+  #fi
+
+  if [ ! $? = 0 ]; then
+    echo "WARNING! - iOS will not be enabled. iPhone simulator not found, try \"sudo xcode-select --switch /Applications/Xcode.app\"."
+    return
+  fi
+
+  cmake --build build -- -j"$CPU_CORES"
+  cmake --install build
+
+  cd "$BUILD_DIR" || exit 1
+  rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
+  echo "ok - built for $target"
+}
+
 function _compile_libuv {
   target=$1
   hosttarget=$1
@@ -840,6 +940,7 @@ function _compile_libuv {
 
   export PLATFORM=$platform
   export CC="$(xcrun -sdk $sdk -find clang)"
+  export CXX="$(xcrun -sdk $sdk -find clang++)"
   export STRIP="$(xcrun -sdk $sdk -find strip)"
   export LD="$(xcrun -sdk $sdk -find ld)"
   export CPP="$CC -E"
@@ -912,6 +1013,11 @@ cd "$BUILD_DIR" || exit 1
 
 trap onsignal INT TERM
 
+{
+  _compile_llama
+  echo "ok - built llama for $platform ($target)"
+} & _compile_llama_pid=$!
+
 # Although we're passing -j$CPU_CORES on non Win32, we still don't get max utiliztion on macos. Start this before fat libs.
 {
   _compile_libuv
@@ -931,9 +1037,14 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _setSDKVersion iPhoneOS
 
   _compile_libuv arm64 iPhoneOS & pids+=($!)
+  _compile_llama arm64 iPhoneOS & pids+=($!)
+
   _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
+  _compile_llama x86_64 iPhoneSimulator & pids+=($!)
+
   if [[ "$arch" = "arm64" ]]; then
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
+    _compile_llama arm64 iPhoneSimulator & pids+=($!)
   fi
 
   for pid in "${pids[@]}"; do wait "$pid"; done
@@ -951,6 +1062,7 @@ fi
 if [[ "$host" != "Win32" ]]; then
   # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
   wait $_compile_libuv_pid
+  wait $_compile_llama_pid
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
@@ -974,6 +1086,7 @@ _get_web_view2
 if [[ "$host" == "Win32" ]]; then
   # Wait for Win32 lib uv build
   wait $_compile_libuv_pid
+  wait $_compile_llama_pid
 fi
 
 _check_compiler_features

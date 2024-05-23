@@ -51,6 +51,50 @@ static void mapIPCRoutes (Router *router) {
 #endif
 
   /**
+   * AI
+   */
+  router->map("ai.llm.create", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "path", "prompt"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    SSC::LLMOptions options;
+    options.path = message.get("path");
+    options.prompt = message.get("prompt");
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+
+    router->bridge->core->ai.createLLM(message.seq, modelId, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("ai.llm.destroy", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+    router->bridge->core->ai.destroyLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("ai.llm.stop", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id"});
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+    router->bridge->core->ai.stopLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("ai.llm.chat", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"id", "message"});
+
+    uint64_t modelId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+
+    auto value = message.get("message");
+    router->bridge->core->ai.chatLLM(message.seq, modelId, value, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  /**
    * Attemps to exit the application
    * @param value The exit code
    */

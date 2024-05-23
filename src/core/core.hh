@@ -22,6 +22,7 @@
 #include "version.hh"
 #include "webview.hh"
 
+#include "modules/ai.hh"
 #include "modules/child_process.hh"
 #include "modules/dns.hh"
 #include "modules/fs.hh"
@@ -44,9 +45,9 @@ namespace SSC {
 
   class Core {
     public:
-    #if !SOCKET_RUNTIME_PLATFORM_IOS
-      using ChildProcess = CoreChildProcess;
-    #endif
+      #if !SOCKET_RUNTIME_PLATFORM_IOS
+        using ChildProcess = CoreChildProcess;
+      #endif
       using DNS = CoreDNS;
       using FS = CoreFS;
       using Geolocation = CoreGeolocation;
@@ -56,6 +57,7 @@ namespace SSC {
       using Platform = CorePlatform;
       using Timers = CoreTimers;
       using UDP = CoreUDP;
+      using AI = CoreAI;
 
     #if !SOCKET_RUNTIME_PLATFORM_IOS
       ChildProcess childProcess;
@@ -69,6 +71,7 @@ namespace SSC {
       Platform platform;
       Timers timers;
       UDP udp;
+      AI ai;
 
       Posts posts;
 
@@ -86,25 +89,26 @@ namespace SSC {
       uv_async_t eventLoopAsync;
       Queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
 
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
-        DISPATCH_QUEUE_SERIAL,
-        QOS_CLASS_DEFAULT,
-        -1
-      );
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
+        dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
+          DISPATCH_QUEUE_SERIAL,
+          QOS_CLASS_DEFAULT,
+          -1
+        );
 
-      dispatch_queue_t eventLoopQueue = dispatch_queue_create(
-        "socket.runtime.core.loop.queue",
-        eventLoopQueueAttrs
-      );
-    #else
-      Thread *eventLoopThread = nullptr;
-    #endif
+        dispatch_queue_t eventLoopQueue = dispatch_queue_create(
+          "socket.runtime.core.loop.queue",
+          eventLoopQueueAttrs
+        );
+      #else
+        Thread *eventLoopThread = nullptr;
+      #endif
 
       Core () :
-      #if !SOCKET_RUNTIME_PLATFORM_IOS
-        childProcess(this),
-      #endif
+        #if !SOCKET_RUNTIME_PLATFORM_IOS
+          childProcess(this),
+        #endif
+        ai(this),
         dns(this),
         fs(this),
         geolocation(this),

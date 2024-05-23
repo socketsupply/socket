@@ -105,6 +105,11 @@ declare sources=(
   $(find "$root"/src/ipc/*.cc)
   $(find "$root"/src/platform/*.cc)
   $(find "$root"/src/serviceworker/*.cc)
+  "$root/build/llama/common/common.cpp"
+  "$root/build/llama/common/sampling.cpp"
+  "$root/build/llama/common/json-schema-to-grammar.cpp"
+  "$root/build/llama/common/grammar-parser.cpp"
+  "$root/build/llama/llama.cpp"
   "$root/src/window/manager.cc"
   "$root/src/window/dialog.cc"
   "$root/src/window/hotkey.cc"
@@ -129,9 +134,11 @@ if [[ "$platform" = "android" ]]; then
   sources+=("$root/src/window/android.cc")
 elif [[ "$host" = "Darwin" ]]; then
   sources+=("$root/src/window/apple.mm")
-  if (( TARGET_OS_IPHONE)) || (( TARGET_IPHONE_SIMULATOR )); then
-    cflags=("-sdk" "iphoneos" "$clang")
-    clang="xcrun"
+
+  if (( TARGET_OS_IPHONE)); then
+    clang="xcrun -sdk iphoneos "$clang""
+  elif (( TARGET_IPHONE_SIMULATOR )); then
+    clang="xcrun -sdk iphonesimulator "$clang""
   else
     sources+=("$root/src/core/process/unix.cc")
   fi
@@ -154,17 +161,61 @@ mkdir -p "$output_directory"
 
 cd "$(dirname "$output_directory")"
 
+sources+=("$output_directory/llama/build-info.cpp")
+
 echo "# building runtime static libary ($arch-$platform)"
 for source in "${sources[@]}"; do
   declare src_directory="$root/src"
+
   declare object="${source/.cc/$d.o}"
-  declare object="${object/$src_directory/$output_directory}"
+  object="${object/.cpp/$d.o}"
+
+  declare build_dir="$root/build"
+
+  if [[ "$object" =~ ^"$src_directory" ]]; then
+    object="${object/$src_directory/$output_directory}"
+  else
+    object="${object/$build_dir/$output_directory}"
+  fi
+
   objects+=("$object")
 done
 
 if [[ -z "$ignore_header_mtimes" ]]; then
   test_headers+="$(find "$root/src"/core/*.hh)"
 fi
+
+function generate_llama_build_info () {
+  build_number="0"
+  build_commit="unknown"
+  build_compiler="unknown"
+  build_target="unknown"
+
+  if out=$(git rev-list --count HEAD); then
+    # git is broken on WSL so we need to strip extra newlines
+    build_number=$(printf '%s' "$out" | tr -d '\n')
+  fi
+
+  if out=$(git rev-parse --short HEAD); then
+    build_commit=$(printf '%s' "$out" | tr -d '\n')
+  fi
+
+  if out=$($clang --version | head -1); then
+    build_compiler=$out
+  fi
+
+  if out=$($clang -dumpmachine); then
+    build_target=$out
+  fi
+
+  echo "# generating llama build info"
+  cat > "$output_directory/llama/build-info.cpp" << LLAMA_BUILD_INFO
+    int LLAMA_BUILD_NUMBER = $build_number;
+    char const *LLAMA_COMMIT = "$build_commit";
+    char const *LLAMA_COMPILER = "$build_compiler";
+    char const *LLAMA_BUILD_TARGET = "$build_target";
+LLAMA_BUILD_INFO
+}
 
 function main () {
   trap onsignal INT TERM
@@ -177,6 +228,8 @@ function main () {
   cp -rf "$root/include"/* "$output_directory/include"
   rm -f "$output_directory/include/socket/_user-config-bytes.hh"
 
+  generate_llama_build_info
+
   for source in "${sources[@]}"; do
     if (( ${#pids[@]} > max_concurrency )); then
       wait "${pids[0]}" 2>/dev/null
@@ -185,9 +238,20 @@ function main () {
 
     {
       declare src_directory="$root/src"
+
       declare object="${source/.cc/$d.o}"
+      object="${object/.cpp/$d.o}"
+
       declare header="${source/.cc/.hh}"
-      declare object="${object/$src_directory/$output_directory}"
+      header="${header/.cpp/.h}"
+
+      declare build_dir="$root/build"
+
+      if [[ "$object" =~ ^"$src_directory" ]]; then
+        object="${object/$src_directory/$output_directory}"
+      else
+        object="${object/$build_dir/$output_directory}"
+      fi
 
       if (( force )) ||
         ! test -f "$object" ||
@@ -197,7 +261,7 @@ function main () {
       then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        quiet "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
     } & pids+=($!)

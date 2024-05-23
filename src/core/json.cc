@@ -75,6 +75,7 @@ namespace SSC::JSON {
 
   SSC::String String::str () const {
     auto escaped = replace(this->data, "\"", "\\\"");
+    escaped = replace(escaped, "\\n", "\\\\n");
     return "\"" + replace(escaped, "\n", "\\n") + "\"";
   }
 
