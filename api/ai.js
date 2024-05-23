@@ -10,6 +10,7 @@
  * ```
  */
 import ipc from './ipc.js'
+import process from './process.js'
 import gc from './gc.js'
 import { EventEmitter } from './events.js'
 import { rand64 } from './crypto.js'
@@ -22,9 +23,9 @@ import * as exports from './ai.js'
 export class LLM extends EventEmitter {
   /**
    * Constructs an LLM instance.
-   * @param {Object} options - The options for initializing the LLM.
-   * @param {string} options.path - The path to a valid model (.gguf).
-   * @param {string} options.prompt - The query that guides the model to generate a relevant and coherent responses.
+   * @param {Object} [options] - The options for initializing the LLM.
+   * @param {string} [options.path] - The path to a valid model (.gguf).
+   * @param {string} [options.prompt] - The query that guides the model to generate a relevant and coherent responses.
    * @param {string} [options.id] - The optional ID for the LLM instance.
    * @throws {Error} If the model path is not provided.
    */
@@ -45,7 +46,9 @@ export class LLM extends EventEmitter {
       path: this.path
     }
 
-    globalThis.addEventListener('data', ({ detail }) => {
+    globalThis.addEventListener('data', event => {
+      // @ts-ignore
+      const detail = event.detail
       const { err, data, source } = detail.params
 
       if (err && BigInt(err.id) === this.id) {
@@ -79,9 +82,6 @@ export class LLM extends EventEmitter {
   }
 
   /**
-   * Implements `gc.finalizer` for gc'd resource cleanup.
-   * @param {Object} options - The options for finalizer.
-   * @returns {gc.Finalizer} The finalizer object.
    * @ignore
    */
   [gc.finalizer] (options) {

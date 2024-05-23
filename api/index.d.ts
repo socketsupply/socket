@@ -1,4 +1,479 @@
 
+declare module "socket:os/constants" {
+    export type errno = number;
+    /**
+     * @typedef {number} errno
+     * @typedef {number} signal
+     */
+    /**
+     * A container for all known "errno" constant values.
+     * Unsupported values have a default value of `0`.
+     */
+    export const errno: any;
+    export type signal = number;
+    /**
+     * A container for all known "signal" constant values.
+     * Unsupported values have a default value of `0`.
+     */
+    export const signal: any;
+    namespace _default {
+        export { errno };
+        export { signal };
+    }
+    export default _default;
+}
+
+declare module "socket:errno" {
+    /**
+     * Converts an `errno` code to its corresponding string message.
+     * @param {import('./os/constants.js').errno} {code}
+     * @return {string}
+     */
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'errno' name.
+     * @param {string|number} name
+     * @return {errno}
+     */
+    export function getCode(name: string | number): errno;
+    /**
+     * Gets the name for a given 'errno' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'errno' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    /**
+     * @typedef {import('./os/constants.js').errno} errno
+     */
+    export const E2BIG: any;
+    export const EACCES: any;
+    export const EADDRINUSE: any;
+    export const EADDRNOTAVAIL: any;
+    export const EAFNOSUPPORT: any;
+    export const EAGAIN: any;
+    export const EALREADY: any;
+    export const EBADF: any;
+    export const EBADMSG: any;
+    export const EBUSY: any;
+    export const ECANCELED: any;
+    export const ECHILD: any;
+    export const ECONNABORTED: any;
+    export const ECONNREFUSED: any;
+    export const ECONNRESET: any;
+    export const EDEADLK: any;
+    export const EDESTADDRREQ: any;
+    export const EDOM: any;
+    export const EDQUOT: any;
+    export const EEXIST: any;
+    export const EFAULT: any;
+    export const EFBIG: any;
+    export const EHOSTUNREACH: any;
+    export const EIDRM: any;
+    export const EILSEQ: any;
+    export const EINPROGRESS: any;
+    export const EINTR: any;
+    export const EINVAL: any;
+    export const EIO: any;
+    export const EISCONN: any;
+    export const EISDIR: any;
+    export const ELOOP: any;
+    export const EMFILE: any;
+    export const EMLINK: any;
+    export const EMSGSIZE: any;
+    export const EMULTIHOP: any;
+    export const ENAMETOOLONG: any;
+    export const ENETDOWN: any;
+    export const ENETRESET: any;
+    export const ENETUNREACH: any;
+    export const ENFILE: any;
+    export const ENOBUFS: any;
+    export const ENODATA: any;
+    export const ENODEV: any;
+    export const ENOENT: any;
+    export const ENOEXEC: any;
+    export const ENOLCK: any;
+    export const ENOLINK: any;
+    export const ENOMEM: any;
+    export const ENOMSG: any;
+    export const ENOPROTOOPT: any;
+    export const ENOSPC: any;
+    export const ENOSR: any;
+    export const ENOSTR: any;
+    export const ENOSYS: any;
+    export const ENOTCONN: any;
+    export const ENOTDIR: any;
+    export const ENOTEMPTY: any;
+    export const ENOTSOCK: any;
+    export const ENOTSUP: any;
+    export const ENOTTY: any;
+    export const ENXIO: any;
+    export const EOPNOTSUPP: any;
+    export const EOVERFLOW: any;
+    export const EPERM: any;
+    export const EPIPE: any;
+    export const EPROTO: any;
+    export const EPROTONOSUPPORT: any;
+    export const EPROTOTYPE: any;
+    export const ERANGE: any;
+    export const EROFS: any;
+    export const ESPIPE: any;
+    export const ESRCH: any;
+    export const ESTALE: any;
+    export const ETIME: any;
+    export const ETIMEDOUT: any;
+    export const ETXTBSY: any;
+    export const EWOULDBLOCK: any;
+    export const EXDEV: any;
+    export const strings: any;
+    export { constants };
+    namespace _default {
+        export { constants };
+        export { strings };
+        export { toString };
+        export { getCode };
+        export { getMessage };
+    }
+    export default _default;
+    export type errno = import("socket:os/constants").errno;
+    import { errno as constants } from "socket:os/constants";
+}
+
+declare module "socket:errors" {
+    export default exports;
+    export const ABORT_ERR: any;
+    export const ENCODING_ERR: any;
+    export const INVALID_ACCESS_ERR: any;
+    export const INDEX_SIZE_ERR: any;
+    export const NETWORK_ERR: any;
+    export const NOT_ALLOWED_ERR: any;
+    export const NOT_FOUND_ERR: any;
+    export const NOT_SUPPORTED_ERR: any;
+    export const OPERATION_ERR: any;
+    export const SECURITY_ERR: any;
+    export const TIMEOUT_ERR: any;
+    /**
+     * An `AbortError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `AbortSignal` instance.
+     */
+    export class AbortError extends Error {
+        /**
+         * The code given to an `ABORT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `AbortError` class constructor.
+         * @param {AbortSignal|string} reasonOrSignal
+         * @param {AbortSignal=} [signal]
+         */
+        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
+        signal: AbortSignal;
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
+     * event handler on an `BadRequestSignal` instance.
+     */
+    export class BadRequestError extends Error {
+        /**
+         * The default code given to a `BadRequestError`
+         */
+        static get code(): number;
+        /**
+         * `BadRequestError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `EncodingError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class EncodingError extends Error {
+        /**
+         * The code given to an `ENCODING_ERR` `DOMException`.
+         */
+        static get code(): any;
+        /**
+         * `EncodingError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An error type derived from an `errno` code.
+     */
+    export class ErrnoError extends Error {
+        static get code(): string;
+        static errno: any;
+        /**
+         * `ErrnoError` class constructor.
+         * @param {import('./errno').errno|string} code
+         */
+        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
+        get name(): string;
+        get code(): number;
+        #private;
+    }
+    /**
+     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class FinalizationRegistryCallbackError extends Error {
+        /**
+         * The default code given to an `FinalizationRegistryCallbackError`
+         */
+        static get code(): number;
+        /**
+         * `FinalizationRegistryCallbackError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IllegalConstructorError` is an error type thrown when a constructor is
+     * called for a class constructor when it shouldn't be.
+     */
+    export class IllegalConstructorError extends TypeError {
+        /**
+         * The default code given to an `IllegalConstructorError`
+         */
+        static get code(): number;
+        /**
+         * `IllegalConstructorError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `IndexSizeError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class IndexSizeError extends Error {
+        /**
+         * The code given to an `INDEX_SIZE_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `IndexSizeError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    export const kInternalErrorCode: unique symbol;
+    /**
+     * An `InternalError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InternalError extends Error {
+        /**
+         * The default code given to an `InternalError`
+         */
+        static get code(): number;
+        /**
+         * `InternalError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, code?: number, ...args: any[]);
+        get name(): string;
+        /**
+         * @param {number|string}
+         */
+        set code(code: string | number);
+        /**
+         * @type {number|string}
+         */
+        get code(): string | number;
+        [exports.kInternalErrorCode]: number;
+    }
+    /**
+     * An `InvalidAccessError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class InvalidAccessError extends Error {
+        /**
+         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `InvalidAccessError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NetworkError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NetworkError extends Error {
+        /**
+         * The code given to an `NETWORK_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NetworkError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotAllowedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotAllowedError extends Error {
+        /**
+         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotAllowedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotFoundError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotFoundError extends Error {
+        /**
+         * The code given to an `NOT_FOUND_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotFoundError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `NotSupportedError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class NotSupportedError extends Error {
+        /**
+         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `NotSupportedError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `ModuleNotFoundError` is an error type thrown when an imported or
+     * required module is not found.
+     */
+    export class ModuleNotFoundError extends exports.NotFoundError {
+        /**
+         * `ModuleNotFoundError` class constructor.
+         * @param {string} message
+         * @param {string[]=} [requireStack]
+         */
+        constructor(message: string, requireStack?: string[] | undefined);
+        requireStack: string[];
+    }
+    /**
+     * An `OperationError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class OperationError extends Error {
+        /**
+         * The code given to an `OPERATION_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `OperationError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `SecurityError` is an error type thrown when an internal exception
+     * has occurred, such as in the native IPC layer.
+     */
+    export class SecurityError extends Error {
+        /**
+         * The code given to an `SECURITY_ERR` `DOMException`
+         */
+        static get code(): any;
+        /**
+         * `SecurityError` class constructor.
+         * @param {string} message
+         * @param {number} [code]
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    /**
+     * An `TimeoutError` is an error type thrown when an operation timesout.
+     */
+    export class TimeoutError extends Error {
+        /**
+         * The code given to an `TIMEOUT_ERR` `DOMException`
+         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
+         */
+        static get code(): any;
+        /**
+         * `TimeoutError` class constructor.
+         * @param {string} message
+         */
+        constructor(message: string, ...args: any[]);
+        get name(): string;
+        get code(): string;
+    }
+    import * as exports from "socket:errors";
+    
+}
+
 declare module "socket:buffer" {
     export default Buffer;
     export const File: {
@@ -162,6 +637,700 @@ declare module "socket:buffer" {
     function byteLength(string: any, encoding: any, ...args: any[]): any;
 }
 
+declare module "socket:url/urlpattern/urlpattern" {
+    export { me as URLPattern };
+    var me: {
+        new (t: {}, r: any, n: any): {
+            "__#3@#i": any;
+            "__#3@#n": {};
+            "__#3@#t": {};
+            "__#3@#e": {};
+            "__#3@#s": {};
+            "__#3@#l": boolean;
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+            readonly hasRegExpGroups: boolean;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+}
+
+declare module "socket:url/url/url" {
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:querystring" {
+    export function unescapeBuffer(s: any, decodeSpaces: any): any;
+    export function unescape(s: any, decodeSpaces: any): any;
+    export function escape(str: any): any;
+    export function stringify(obj: any, sep: any, eq: any, options: any): string;
+    export function parse(qs: any, sep: any, eq: any, options: any): {};
+    export function decode(qs: any, sep: any, eq: any, options: any): {};
+    export function encode(obj: any, sep: any, eq: any, options: any): string;
+    namespace _default {
+        export { decode };
+        export { encode };
+        export { parse };
+        export { stringify };
+        export { escape };
+        export { unescape };
+    }
+    export default _default;
+}
+
+declare module "socket:url/index" {
+    export function parse(input: any, options?: any): {
+        hash: any;
+        host: any;
+        hostname: any;
+        origin: any;
+        auth: string;
+        password: any;
+        pathname: any;
+        path: any;
+        port: any;
+        protocol: any;
+        search: any;
+        searchParams: any;
+        username: any;
+        [Symbol.toStringTag]: string;
+    };
+    export function resolve(from: any, to: any): any;
+    export function format(input: any): any;
+    export function fileURLToPath(url: any): any;
+    const URLPattern_base: {
+        new (t: {}, r: any, n: any): {
+            "__#3@#i": any;
+            "__#3@#n": {};
+            "__#3@#t": {};
+            "__#3@#e": {};
+            "__#3@#s": {};
+            "__#3@#l": boolean;
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+            readonly hasRegExpGroups: boolean;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+    export class URLPattern extends URLPattern_base {
+    }
+    export const protocols: Set<string>;
+    export default URL;
+    export class URL {
+        private constructor();
+    }
+    export const URLSearchParams: any;
+    export const parseURL: any;
+}
+
+declare module "socket:url" {
+    export * from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
+}
+
+declare module "socket:util/types" {
+    /**
+     * Returns `true` if input is a plan `Object` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isPlainObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncFunction`
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Function`
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncFunction` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncFunctionObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Function` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFunctionObject(input: any): boolean;
+    /**
+     * Always returns `false`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isExternal(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Date` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isDate(input: any): boolean;
+    /**
+     * Returns `true` if input is an `arguments` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArgumentsObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `BigInt` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigIntObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Boolean` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBooleanObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Number` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isNumberObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `String` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isStringObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Symbol` object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSymbolObject(input: any): boolean;
+    /**
+     * Returns `true` if input is native `Error` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isNativeError(input: any): boolean;
+    /**
+     * Returns `true` if input is a `RegExp` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isRegExp(input: any): boolean;
+    /**
+     * Returns `true` if input is a `GeneratorFunction`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isGeneratorFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an `AsyncGeneratorFunction`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncGeneratorFunction(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `Generator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isGeneratorObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Promise` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isPromise(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Map` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isMap(input: any): boolean;
+    /**
+     * Returns `true` if input is a `Set` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSet(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of an `Iterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of an `AsyncIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAsyncIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `MapIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isMapIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is an instance of a `SetIterator`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSetIterator(input: any): boolean;
+    /**
+     * Returns `true` if input is a `WeakMap` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isWeakMap(input: any): boolean;
+    /**
+     * Returns `true` if input is a `WeakSet` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isWeakSet(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArrayBuffer(input: any): boolean;
+    /**
+     * Returns `true` if input is an `DataView` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isDataView(input: any): boolean;
+    /**
+     * Returns `true` if input is a `SharedArrayBuffer`.
+     * This will always return `false` if a `SharedArrayBuffer`
+     * type is not available.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isSharedArrayBuffer(input: any): boolean;
+    /**
+     * Not supported. This function will return `false` always.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isProxy(input: any): boolean;
+    /**
+     * Returns `true` if input looks like a module namespace object.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isModuleNamespaceObject(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` of `SharedArrayBuffer`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isAnyArrayBuffer(input: any): boolean;
+    /**
+     * Returns `true` if input is a "boxed" primitive.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBoxedPrimitive(input: any): boolean;
+    /**
+     * Returns `true` if input is an `ArrayBuffer` view.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isArrayBufferView(input: any): boolean;
+    /**
+     * Returns `true` if input is a `TypedArray` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isTypedArray(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint8Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint8Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint8ClampedArray` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint8ClampedArray(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint16Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint16Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Uint32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isUint32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an Int8Array`` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt8Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Int16Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt16Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Int32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isInt32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Float32Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFloat32Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Float64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isFloat64Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `BigInt64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigInt64Array(input: any): boolean;
+    /**
+     * Returns `true` if input is an `BigUint64Array` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isBigUint64Array(input: any): boolean;
+    /**
+     * @ignore
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isKeyObject(input: any): boolean;
+    /**
+     * Returns `true` if input is a `CryptoKey` instance.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export function isCryptoKey(input: any): boolean;
+    /**
+     * Returns `true` if input is an `Array`.
+     * @param {any} input
+     * @return {boolean}
+     */
+    export const isArray: any;
+    export default exports;
+    import * as exports from "socket:util/types";
+    
+}
+
+declare module "socket:mime/index" {
+    /**
+     * Look up a MIME type in various MIME databases.
+     * @param {string} query
+     * @return {Promise<DatabaseQueryResult[]>}
+     */
+    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
+    /**
+     * Look up a MIME type in various MIME databases synchronously.
+     * @param {string} query
+     * @return {DatabaseQueryResult[]}
+     */
+    export function lookupSync(query: string): DatabaseQueryResult[];
+    /**
+     * A container for a database lookup query.
+     */
+    export class DatabaseQueryResult {
+        /**
+         * `DatabaseQueryResult` class constructor.
+         * @ignore
+         * @param {Database} database
+         * @param {string} name
+         * @param {string} mime
+         */
+        constructor(database: Database, name: string, mime: string);
+        /**
+         * @type {string}
+         */
+        name: string;
+        /**
+         * @type {string}
+         */
+        mime: string;
+        database: Database;
+    }
+    /**
+     * A container for MIME types by class (audio, video, text, etc)
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
+     */
+    export class Database {
+        /**
+         * `Database` class constructor.
+         * @param {string} name
+         */
+        constructor(name: string);
+        /**
+         * The name of the MIME database.
+         * @type {string}
+         */
+        name: string;
+        /**
+         * The URL of the MIME database.
+         * @type {URL}
+         */
+        url: URL;
+        /**
+         * The mapping of MIME name to the MIME "content type"
+         * @type {Map}
+         */
+        map: Map<any, any>;
+        /**
+         * An index of MIME "content type" to the MIME name.
+         * @type {Map}
+         */
+        index: Map<any, any>;
+        /**
+         * An enumeration of all database entries.
+         * @return {Array<Array<string>>}
+         */
+        entries(): Array<Array<string>>;
+        /**
+         * Loads database MIME entries into internal map.
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        /**
+         * Loads database MIME entries synchronously into internal map.
+         */
+        loadSync(): void;
+        /**
+         * Lookup MIME type by name or content type
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult[]>}
+         */
+        lookup(query: string): Promise<DatabaseQueryResult[]>;
+        /**
+         * Lookup MIME type by name or content type synchronously.
+         * @param {string} query
+         * @return {Promise<DatabaseQueryResult[]>}
+         */
+        lookupSync(query: string): Promise<DatabaseQueryResult[]>;
+        /**
+         * Queries database map and returns an array of results
+         * @param {string} query
+         * @return {DatabaseQueryResult[]}
+         */
+        query(query: string): DatabaseQueryResult[];
+    }
+    /**
+     * A database of MIME types for 'application/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
+     */
+    export const application: Database;
+    /**
+     * A database of MIME types for 'audio/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
+     */
+    export const audio: Database;
+    /**
+     * A database of MIME types for 'font/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
+     */
+    export const font: Database;
+    /**
+     * A database of MIME types for 'image/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
+     */
+    export const image: Database;
+    /**
+     * A database of MIME types for 'model/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
+     */
+    export const model: Database;
+    /**
+     * A database of MIME types for 'multipart/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
+     */
+    export const multipart: Database;
+    /**
+     * A database of MIME types for 'text/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
+     */
+    export const text: Database;
+    /**
+     * A database of MIME types for 'video/' content types
+     * @type {Database}
+     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
+     */
+    export const video: Database;
+    /**
+     * An array of known MIME databases. Custom databases can be added to this
+     * array in userspace for lookup with `mime.lookup()`
+     * @type {Database[]}
+     */
+    export const databases: Database[];
+    export class MIMEParams extends Map<any, any> {
+        constructor();
+        constructor(entries?: readonly (readonly [any, any])[]);
+        constructor();
+        constructor(iterable?: Iterable<readonly [any, any]>);
+    }
+    export class MIMEType {
+        constructor(input: any);
+        set type(value: any);
+        get type(): any;
+        set subtype(value: any);
+        get subtype(): any;
+        get essence(): string;
+        get params(): any;
+        toString(): string;
+        toJSON(): string;
+        #private;
+    }
+    namespace _default {
+        export { Database };
+        export { databases };
+        export { lookup };
+        export { lookupSync };
+        export { MIMEParams };
+        export { MIMEType };
+        export { application };
+        export { audio };
+        export { font };
+        export { image };
+        export { model };
+        export { multipart };
+        export { text };
+        export { video };
+    }
+    export default _default;
+}
+
+declare module "socket:mime" {
+    export * from "socket:mime/index";
+    export default exports;
+    import * as exports from "socket:mime/index";
+}
+
+declare module "socket:util" {
+    export function debug(section: any): {
+        (...args: any[]): void;
+        enabled: boolean;
+    };
+    export function hasOwnProperty(object: any, property: any): any;
+    export function isDate(object: any): boolean;
+    export function isTypedArray(object: any): boolean;
+    export function isArrayLike(input: any): boolean;
+    export function isError(object: any): boolean;
+    export function isSymbol(value: any): boolean;
+    export function isNumber(value: any): boolean;
+    export function isBoolean(value: any): boolean;
+    export function isArrayBufferView(buf: any): boolean;
+    export function isAsyncFunction(object: any): boolean;
+    export function isArgumentsObject(object: any): boolean;
+    export function isEmptyObject(object: any): boolean;
+    export function isObject(object: any): boolean;
+    export function isUndefined(value: any): boolean;
+    export function isNull(value: any): boolean;
+    export function isNullOrUndefined(value: any): boolean;
+    export function isPrimitive(value: any): boolean;
+    export function isRegExp(value: any): boolean;
+    export function isPlainObject(object: any): boolean;
+    export function isArrayBuffer(object: any): boolean;
+    export function isBufferLike(object: any): boolean;
+    export function isFunction(value: any): boolean;
+    export function isErrorLike(error: any): boolean;
+    export function isClass(value: any): boolean;
+    export function isBuffer(value: any): boolean;
+    export function isPromiseLike(object: any): boolean;
+    export function toString(object: any): any;
+    export function toBuffer(object: any, encoding?: any): any;
+    export function toProperCase(string: any): any;
+    export function splitBuffer(buffer: any, highWaterMark: any): any[];
+    export function clamp(value: any, min: any, max: any): number;
+    export function promisify(original: any): any;
+    export function inspect(value: any, options: any): any;
+    export namespace inspect {
+        let ignore: symbol;
+        let custom: symbol;
+    }
+    export function format(format: any, ...args: any[]): string;
+    export function parseJSON(string: any): any;
+    export function parseHeaders(headers: any): string[][];
+    export function noop(): void;
+    export function isValidPercentageValue(input: any): boolean;
+    export function compareBuffers(a: any, b: any): any;
+    export function inherits(Constructor: any, Super: any): void;
+    /**
+     * @ignore
+     * @param {string} source
+     * @return {boolean}
+     */
+    export function isESMSource(source: string): boolean;
+    export function deprecate(...args: any[]): void;
+    export { types };
+    export const TextDecoder: {
+        new (label?: string, options?: TextDecoderOptions): TextDecoder;
+        prototype: TextDecoder;
+    };
+    export const TextEncoder: {
+        new (): TextEncoder;
+        prototype: TextEncoder;
+    };
+    export const isArray: any;
+    export const inspectSymbols: symbol[];
+    export class IllegalConstructor {
+    }
+    export const MIMEType: typeof mime.MIMEType;
+    export const MIMEParams: typeof mime.MIMEParams;
+    export default exports;
+    import types from "socket:util/types";
+    import mime from "socket:mime";
+    import * as exports from "socket:util";
+    
+}
+
 declare module "socket:async/context" {
     /**
      * @module Async.AsyncContext
@@ -323,7 +1492,7 @@ declare module "socket:async/context" {
          * The current `Mapping` for this `AsyncContext`.
          * @type {Mapping}
          */
-        static "__#4@#current": Mapping;
+        static "__#8@#current": Mapping;
         /**
          * Returns `true` if the current `Mapping` has a
          * `AsyncContext.Variable` at `key`,
@@ -506,7 +1675,7 @@ declare module "socket:events" {
         prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#7@#detail": any;
+            "__#11@#detail": any;
             readonly detail: any;
         };
     };
@@ -515,8 +1684,8 @@ declare module "socket:events" {
         prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
-            "__#8@#detail": any;
-            "__#8@#data": any;
+            "__#12@#detail": any;
+            "__#12@#data": any;
             readonly detail: any;
             readonly data: any;
         };
@@ -526,8 +1695,8 @@ declare module "socket:events" {
         prototype: ErrorEvent;
     } | {
         new (type: any, options: any): {
-            "__#9@#detail": any;
-            "__#9@#error": any;
+            "__#13@#detail": any;
+            "__#13@#error": any;
             readonly detail: any;
             readonly error: any;
         };
@@ -553,7 +1722,7 @@ declare module "socket:events" {
         listeners(type: any): any[];
         rawListeners(type: any): any[];
         listenerCount(type: any): any;
-        eventNames(): (string | symbol)[];
+        eventNames(): any;
     }
     export namespace EventEmitter {
         export { EventEmitter };
@@ -2377,119 +3546,6 @@ declare module "socket:process" {
     export const env: any;
     export default process;
     const process: any;
-}
-
-declare module "socket:url/urlpattern/urlpattern" {
-    export { me as URLPattern };
-    var me: {
-        new (t: {}, r: any, n: any): {
-            "__#21@#i": any;
-            "__#21@#n": {};
-            "__#21@#t": {};
-            "__#21@#e": {};
-            "__#21@#s": {};
-            "__#21@#l": boolean;
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-            readonly hasRegExpGroups: boolean;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-}
-
-declare module "socket:url/url/url" {
-    const _default: any;
-    export default _default;
-}
-
-declare module "socket:querystring" {
-    export function unescapeBuffer(s: any, decodeSpaces: any): any;
-    export function unescape(s: any, decodeSpaces: any): any;
-    export function escape(str: any): any;
-    export function stringify(obj: any, sep: any, eq: any, options: any): string;
-    export function parse(qs: any, sep: any, eq: any, options: any): {};
-    export function decode(qs: any, sep: any, eq: any, options: any): {};
-    export function encode(obj: any, sep: any, eq: any, options: any): string;
-    namespace _default {
-        export { decode };
-        export { encode };
-        export { parse };
-        export { stringify };
-        export { escape };
-        export { unescape };
-    }
-    export default _default;
-}
-
-declare module "socket:url/index" {
-    export function parse(input: any, options?: any): {
-        hash: any;
-        host: any;
-        hostname: any;
-        origin: any;
-        auth: string;
-        password: any;
-        pathname: any;
-        path: any;
-        port: any;
-        protocol: any;
-        search: any;
-        searchParams: any;
-        username: any;
-        [Symbol.toStringTag]: string;
-    };
-    export function resolve(from: any, to: any): any;
-    export function format(input: any): any;
-    export function fileURLToPath(url: any): any;
-    const URLPattern_base: {
-        new (t: {}, r: any, n: any): {
-            "__#21@#i": any;
-            "__#21@#n": {};
-            "__#21@#t": {};
-            "__#21@#e": {};
-            "__#21@#s": {};
-            "__#21@#l": boolean;
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-            readonly hasRegExpGroups: boolean;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-    export class URLPattern extends URLPattern_base {
-    }
-    export const protocols: Set<string>;
-    export default URL;
-    export class URL {
-        private constructor();
-    }
-    export const URLSearchParams: any;
-    export const parseURL: any;
-}
-
-declare module "socket:url" {
-    export * from "socket:url/index";
-    export default URL;
-    import URL from "socket:url/index";
 }
 
 declare module "socket:location" {
@@ -4998,1059 +6054,43 @@ declare module "socket:ipc" {
     
 }
 
-declare module "socket:os/constants" {
-    export type errno = number;
+declare module "socket:ai" {
     /**
-     * @typedef {number} errno
-     * @typedef {number} signal
+     * A class to interact with large language models (using llama.cpp)
+     * @extends EventEmitter
      */
-    /**
-     * A container for all known "errno" constant values.
-     * Unsupported values have a default value of `0`.
-     */
-    export const errno: any;
-    export type signal = number;
-    /**
-     * A container for all known "signal" constant values.
-     * Unsupported values have a default value of `0`.
-     */
-    export const signal: any;
-    namespace _default {
-        export { errno };
-        export { signal };
+    export class LLM extends EventEmitter {
+        /**
+         * Constructs an LLM instance.
+         * @param {Object} [options] - The options for initializing the LLM.
+         * @param {string} [options.path] - The path to a valid model (.gguf).
+         * @param {string} [options.prompt] - The query that guides the model to generate a relevant and coherent responses.
+         * @param {string} [options.id] - The optional ID for the LLM instance.
+         * @throws {Error} If the model path is not provided.
+         */
+        constructor(options?: {
+            path?: string;
+            prompt?: string;
+            id?: string;
+        });
+        path: string;
+        prompt: string;
+        id: string | BigInt;
+        /**
+         * Tell the LLM to stop after the next token.
+         * @returns {Promise<void>} A promise that resolves when the LLM stops.
+         */
+        stop(): Promise<void>;
+        /**
+         * Send a message to the chat.
+         * @param {string} message - The message to send to the chat.
+         * @returns {Promise<any>} A promise that resolves with the response from the chat.
+         */
+        chat(message: string): Promise<any>;
     }
-    export default _default;
-}
-
-declare module "socket:errno" {
-    /**
-     * Converts an `errno` code to its corresponding string message.
-     * @param {import('./os/constants.js').errno} {code}
-     * @return {string}
-     */
-    export function toString(code: any): string;
-    /**
-     * Gets the code for a given 'errno' name.
-     * @param {string|number} name
-     * @return {errno}
-     */
-    export function getCode(name: string | number): errno;
-    /**
-     * Gets the name for a given 'errno' code
-     * @return {string}
-     * @param {string|number} code
-     */
-    export function getName(code: string | number): string;
-    /**
-     * Gets the message for a 'errno' code.
-     * @param {number|string} code
-     * @return {string}
-     */
-    export function getMessage(code: number | string): string;
-    /**
-     * @typedef {import('./os/constants.js').errno} errno
-     */
-    export const E2BIG: any;
-    export const EACCES: any;
-    export const EADDRINUSE: any;
-    export const EADDRNOTAVAIL: any;
-    export const EAFNOSUPPORT: any;
-    export const EAGAIN: any;
-    export const EALREADY: any;
-    export const EBADF: any;
-    export const EBADMSG: any;
-    export const EBUSY: any;
-    export const ECANCELED: any;
-    export const ECHILD: any;
-    export const ECONNABORTED: any;
-    export const ECONNREFUSED: any;
-    export const ECONNRESET: any;
-    export const EDEADLK: any;
-    export const EDESTADDRREQ: any;
-    export const EDOM: any;
-    export const EDQUOT: any;
-    export const EEXIST: any;
-    export const EFAULT: any;
-    export const EFBIG: any;
-    export const EHOSTUNREACH: any;
-    export const EIDRM: any;
-    export const EILSEQ: any;
-    export const EINPROGRESS: any;
-    export const EINTR: any;
-    export const EINVAL: any;
-    export const EIO: any;
-    export const EISCONN: any;
-    export const EISDIR: any;
-    export const ELOOP: any;
-    export const EMFILE: any;
-    export const EMLINK: any;
-    export const EMSGSIZE: any;
-    export const EMULTIHOP: any;
-    export const ENAMETOOLONG: any;
-    export const ENETDOWN: any;
-    export const ENETRESET: any;
-    export const ENETUNREACH: any;
-    export const ENFILE: any;
-    export const ENOBUFS: any;
-    export const ENODATA: any;
-    export const ENODEV: any;
-    export const ENOENT: any;
-    export const ENOEXEC: any;
-    export const ENOLCK: any;
-    export const ENOLINK: any;
-    export const ENOMEM: any;
-    export const ENOMSG: any;
-    export const ENOPROTOOPT: any;
-    export const ENOSPC: any;
-    export const ENOSR: any;
-    export const ENOSTR: any;
-    export const ENOSYS: any;
-    export const ENOTCONN: any;
-    export const ENOTDIR: any;
-    export const ENOTEMPTY: any;
-    export const ENOTSOCK: any;
-    export const ENOTSUP: any;
-    export const ENOTTY: any;
-    export const ENXIO: any;
-    export const EOPNOTSUPP: any;
-    export const EOVERFLOW: any;
-    export const EPERM: any;
-    export const EPIPE: any;
-    export const EPROTO: any;
-    export const EPROTONOSUPPORT: any;
-    export const EPROTOTYPE: any;
-    export const ERANGE: any;
-    export const EROFS: any;
-    export const ESPIPE: any;
-    export const ESRCH: any;
-    export const ESTALE: any;
-    export const ETIME: any;
-    export const ETIMEDOUT: any;
-    export const ETXTBSY: any;
-    export const EWOULDBLOCK: any;
-    export const EXDEV: any;
-    export const strings: any;
-    export { constants };
-    namespace _default {
-        export { constants };
-        export { strings };
-        export { toString };
-        export { getCode };
-        export { getMessage };
-    }
-    export default _default;
-    export type errno = import("socket:os/constants").errno;
-    import { errno as constants } from "socket:os/constants";
-}
-
-declare module "socket:errors" {
     export default exports;
-    export const ABORT_ERR: any;
-    export const ENCODING_ERR: any;
-    export const INVALID_ACCESS_ERR: any;
-    export const INDEX_SIZE_ERR: any;
-    export const NETWORK_ERR: any;
-    export const NOT_ALLOWED_ERR: any;
-    export const NOT_FOUND_ERR: any;
-    export const NOT_SUPPORTED_ERR: any;
-    export const OPERATION_ERR: any;
-    export const SECURITY_ERR: any;
-    export const TIMEOUT_ERR: any;
-    /**
-     * An `AbortError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `AbortSignal` instance.
-     */
-    export class AbortError extends Error {
-        /**
-         * The code given to an `ABORT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `AbortError` class constructor.
-         * @param {AbortSignal|string} reasonOrSignal
-         * @param {AbortSignal=} [signal]
-         */
-        constructor(reason: any, signal?: AbortSignal | undefined, ...args: any[]);
-        signal: AbortSignal;
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `BadRequestError` is an error type thrown in an `onabort()` level 0
-     * event handler on an `BadRequestSignal` instance.
-     */
-    export class BadRequestError extends Error {
-        /**
-         * The default code given to a `BadRequestError`
-         */
-        static get code(): number;
-        /**
-         * `BadRequestError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `EncodingError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class EncodingError extends Error {
-        /**
-         * The code given to an `ENCODING_ERR` `DOMException`.
-         */
-        static get code(): any;
-        /**
-         * `EncodingError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An error type derived from an `errno` code.
-     */
-    export class ErrnoError extends Error {
-        static get code(): string;
-        static errno: any;
-        /**
-         * `ErrnoError` class constructor.
-         * @param {import('./errno').errno|string} code
-         */
-        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
-        get name(): string;
-        get code(): number;
-        #private;
-    }
-    /**
-     * An `FinalizationRegistryCallbackError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class FinalizationRegistryCallbackError extends Error {
-        /**
-         * The default code given to an `FinalizationRegistryCallbackError`
-         */
-        static get code(): number;
-        /**
-         * `FinalizationRegistryCallbackError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IllegalConstructorError` is an error type thrown when a constructor is
-     * called for a class constructor when it shouldn't be.
-     */
-    export class IllegalConstructorError extends TypeError {
-        /**
-         * The default code given to an `IllegalConstructorError`
-         */
-        static get code(): number;
-        /**
-         * `IllegalConstructorError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `IndexSizeError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class IndexSizeError extends Error {
-        /**
-         * The code given to an `INDEX_SIZE_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `IndexSizeError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    export const kInternalErrorCode: unique symbol;
-    /**
-     * An `InternalError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InternalError extends Error {
-        /**
-         * The default code given to an `InternalError`
-         */
-        static get code(): number;
-        /**
-         * `InternalError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, code?: number, ...args: any[]);
-        get name(): string;
-        /**
-         * @param {number|string}
-         */
-        set code(code: string | number);
-        /**
-         * @type {number|string}
-         */
-        get code(): string | number;
-        [exports.kInternalErrorCode]: number;
-    }
-    /**
-     * An `InvalidAccessError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class InvalidAccessError extends Error {
-        /**
-         * The code given to an `INVALID_ACCESS_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `InvalidAccessError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NetworkError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NetworkError extends Error {
-        /**
-         * The code given to an `NETWORK_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NetworkError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotAllowedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotAllowedError extends Error {
-        /**
-         * The code given to an `NOT_ALLOWED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotAllowedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotFoundError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotFoundError extends Error {
-        /**
-         * The code given to an `NOT_FOUND_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotFoundError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `NotSupportedError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class NotSupportedError extends Error {
-        /**
-         * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `NotSupportedError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `ModuleNotFoundError` is an error type thrown when an imported or
-     * required module is not found.
-     */
-    export class ModuleNotFoundError extends exports.NotFoundError {
-        /**
-         * `ModuleNotFoundError` class constructor.
-         * @param {string} message
-         * @param {string[]=} [requireStack]
-         */
-        constructor(message: string, requireStack?: string[] | undefined);
-        requireStack: string[];
-    }
-    /**
-     * An `OperationError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class OperationError extends Error {
-        /**
-         * The code given to an `OPERATION_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `OperationError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `SecurityError` is an error type thrown when an internal exception
-     * has occurred, such as in the native IPC layer.
-     */
-    export class SecurityError extends Error {
-        /**
-         * The code given to an `SECURITY_ERR` `DOMException`
-         */
-        static get code(): any;
-        /**
-         * `SecurityError` class constructor.
-         * @param {string} message
-         * @param {number} [code]
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    /**
-     * An `TimeoutError` is an error type thrown when an operation timesout.
-     */
-    export class TimeoutError extends Error {
-        /**
-         * The code given to an `TIMEOUT_ERR` `DOMException`
-         * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
-         */
-        static get code(): any;
-        /**
-         * `TimeoutError` class constructor.
-         * @param {string} message
-         */
-        constructor(message: string, ...args: any[]);
-        get name(): string;
-        get code(): string;
-    }
-    import * as exports from "socket:errors";
-    
-}
-
-declare module "socket:util/types" {
-    /**
-     * Returns `true` if input is a plan `Object` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isPlainObject(input: any): boolean;
-    /**
-     * Returns `true` if input is an `AsyncFunction`
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isAsyncFunction(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Function`
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isFunction(input: any): boolean;
-    /**
-     * Returns `true` if input is an `AsyncFunction` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isAsyncFunctionObject(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Function` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isFunctionObject(input: any): boolean;
-    /**
-     * Always returns `false`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isExternal(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Date` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isDate(input: any): boolean;
-    /**
-     * Returns `true` if input is an `arguments` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isArgumentsObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `BigInt` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isBigIntObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Boolean` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isBooleanObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Number` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isNumberObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `String` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isStringObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Symbol` object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isSymbolObject(input: any): boolean;
-    /**
-     * Returns `true` if input is native `Error` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isNativeError(input: any): boolean;
-    /**
-     * Returns `true` if input is a `RegExp` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isRegExp(input: any): boolean;
-    /**
-     * Returns `true` if input is a `GeneratorFunction`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isGeneratorFunction(input: any): boolean;
-    /**
-     * Returns `true` if input is an `AsyncGeneratorFunction`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isAsyncGeneratorFunction(input: any): boolean;
-    /**
-     * Returns `true` if input is an instance of a `Generator`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isGeneratorObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Promise` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isPromise(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Map` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isMap(input: any): boolean;
-    /**
-     * Returns `true` if input is a `Set` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isSet(input: any): boolean;
-    /**
-     * Returns `true` if input is an instance of an `Iterator`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isIterator(input: any): boolean;
-    /**
-     * Returns `true` if input is an instance of an `AsyncIterator`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isAsyncIterator(input: any): boolean;
-    /**
-     * Returns `true` if input is an instance of a `MapIterator`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isMapIterator(input: any): boolean;
-    /**
-     * Returns `true` if input is an instance of a `SetIterator`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isSetIterator(input: any): boolean;
-    /**
-     * Returns `true` if input is a `WeakMap` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isWeakMap(input: any): boolean;
-    /**
-     * Returns `true` if input is a `WeakSet` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isWeakSet(input: any): boolean;
-    /**
-     * Returns `true` if input is an `ArrayBuffer` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isArrayBuffer(input: any): boolean;
-    /**
-     * Returns `true` if input is an `DataView` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isDataView(input: any): boolean;
-    /**
-     * Returns `true` if input is a `SharedArrayBuffer`.
-     * This will always return `false` if a `SharedArrayBuffer`
-     * type is not available.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isSharedArrayBuffer(input: any): boolean;
-    /**
-     * Not supported. This function will return `false` always.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isProxy(input: any): boolean;
-    /**
-     * Returns `true` if input looks like a module namespace object.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isModuleNamespaceObject(input: any): boolean;
-    /**
-     * Returns `true` if input is an `ArrayBuffer` of `SharedArrayBuffer`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isAnyArrayBuffer(input: any): boolean;
-    /**
-     * Returns `true` if input is a "boxed" primitive.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isBoxedPrimitive(input: any): boolean;
-    /**
-     * Returns `true` if input is an `ArrayBuffer` view.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isArrayBufferView(input: any): boolean;
-    /**
-     * Returns `true` if input is a `TypedArray` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isTypedArray(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Uint8Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isUint8Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Uint8ClampedArray` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isUint8ClampedArray(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Uint16Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isUint16Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Uint32Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isUint32Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an Int8Array`` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isInt8Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Int16Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isInt16Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Int32Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isInt32Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Float32Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isFloat32Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Float64Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isFloat64Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `BigInt64Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isBigInt64Array(input: any): boolean;
-    /**
-     * Returns `true` if input is an `BigUint64Array` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isBigUint64Array(input: any): boolean;
-    /**
-     * @ignore
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isKeyObject(input: any): boolean;
-    /**
-     * Returns `true` if input is a `CryptoKey` instance.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export function isCryptoKey(input: any): boolean;
-    /**
-     * Returns `true` if input is an `Array`.
-     * @param {any} input
-     * @return {boolean}
-     */
-    export const isArray: any;
-    export default exports;
-    import * as exports from "socket:util/types";
-    
-}
-
-declare module "socket:mime/index" {
-    /**
-     * Look up a MIME type in various MIME databases.
-     * @param {string} query
-     * @return {Promise<DatabaseQueryResult[]>}
-     */
-    export function lookup(query: string): Promise<DatabaseQueryResult[]>;
-    /**
-     * Look up a MIME type in various MIME databases synchronously.
-     * @param {string} query
-     * @return {DatabaseQueryResult[]}
-     */
-    export function lookupSync(query: string): DatabaseQueryResult[];
-    /**
-     * A container for a database lookup query.
-     */
-    export class DatabaseQueryResult {
-        /**
-         * `DatabaseQueryResult` class constructor.
-         * @ignore
-         * @param {Database} database
-         * @param {string} name
-         * @param {string} mime
-         */
-        constructor(database: Database, name: string, mime: string);
-        /**
-         * @type {string}
-         */
-        name: string;
-        /**
-         * @type {string}
-         */
-        mime: string;
-        database: Database;
-    }
-    /**
-     * A container for MIME types by class (audio, video, text, etc)
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml}
-     */
-    export class Database {
-        /**
-         * `Database` class constructor.
-         * @param {string} name
-         */
-        constructor(name: string);
-        /**
-         * The name of the MIME database.
-         * @type {string}
-         */
-        name: string;
-        /**
-         * The URL of the MIME database.
-         * @type {URL}
-         */
-        url: URL;
-        /**
-         * The mapping of MIME name to the MIME "content type"
-         * @type {Map}
-         */
-        map: Map<any, any>;
-        /**
-         * An index of MIME "content type" to the MIME name.
-         * @type {Map}
-         */
-        index: Map<any, any>;
-        /**
-         * An enumeration of all database entries.
-         * @return {Array<Array<string>>}
-         */
-        entries(): Array<Array<string>>;
-        /**
-         * Loads database MIME entries into internal map.
-         * @return {Promise}
-         */
-        load(): Promise<any>;
-        /**
-         * Loads database MIME entries synchronously into internal map.
-         */
-        loadSync(): void;
-        /**
-         * Lookup MIME type by name or content type
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult[]>}
-         */
-        lookup(query: string): Promise<DatabaseQueryResult[]>;
-        /**
-         * Lookup MIME type by name or content type synchronously.
-         * @param {string} query
-         * @return {Promise<DatabaseQueryResult[]>}
-         */
-        lookupSync(query: string): Promise<DatabaseQueryResult[]>;
-        /**
-         * Queries database map and returns an array of results
-         * @param {string} query
-         * @return {DatabaseQueryResult[]}
-         */
-        query(query: string): DatabaseQueryResult[];
-    }
-    /**
-     * A database of MIME types for 'application/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#application}
-     */
-    export const application: Database;
-    /**
-     * A database of MIME types for 'audio/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#audio}
-     */
-    export const audio: Database;
-    /**
-     * A database of MIME types for 'font/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#font}
-     */
-    export const font: Database;
-    /**
-     * A database of MIME types for 'image/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#image}
-     */
-    export const image: Database;
-    /**
-     * A database of MIME types for 'model/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#model}
-     */
-    export const model: Database;
-    /**
-     * A database of MIME types for 'multipart/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#multipart}
-     */
-    export const multipart: Database;
-    /**
-     * A database of MIME types for 'text/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#text}
-     */
-    export const text: Database;
-    /**
-     * A database of MIME types for 'video/' content types
-     * @type {Database}
-     * @see {@link https://www.iana.org/assignments/media-types/media-types.xhtml#video}
-     */
-    export const video: Database;
-    /**
-     * An array of known MIME databases. Custom databases can be added to this
-     * array in userspace for lookup with `mime.lookup()`
-     * @type {Database[]}
-     */
-    export const databases: Database[];
-    export class MIMEParams extends Map<any, any> {
-        constructor();
-        constructor(entries?: readonly (readonly [any, any])[]);
-        constructor();
-        constructor(iterable?: Iterable<readonly [any, any]>);
-    }
-    export class MIMEType {
-        constructor(input: any);
-        set type(value: any);
-        get type(): any;
-        set subtype(value: any);
-        get subtype(): any;
-        get essence(): string;
-        get params(): any;
-        toString(): string;
-        toJSON(): string;
-        #private;
-    }
-    namespace _default {
-        export { Database };
-        export { databases };
-        export { lookup };
-        export { lookupSync };
-        export { MIMEParams };
-        export { MIMEType };
-        export { application };
-        export { audio };
-        export { font };
-        export { image };
-        export { model };
-        export { multipart };
-        export { text };
-        export { video };
-    }
-    export default _default;
-}
-
-declare module "socket:mime" {
-    export * from "socket:mime/index";
-    export default exports;
-    import * as exports from "socket:mime/index";
-}
-
-declare module "socket:util" {
-    export function debug(section: any): {
-        (...args: any[]): void;
-        enabled: boolean;
-    };
-    export function hasOwnProperty(object: any, property: any): any;
-    export function isDate(object: any): boolean;
-    export function isTypedArray(object: any): boolean;
-    export function isArrayLike(input: any): boolean;
-    export function isError(object: any): boolean;
-    export function isSymbol(value: any): boolean;
-    export function isNumber(value: any): boolean;
-    export function isBoolean(value: any): boolean;
-    export function isArrayBufferView(buf: any): boolean;
-    export function isAsyncFunction(object: any): boolean;
-    export function isArgumentsObject(object: any): boolean;
-    export function isEmptyObject(object: any): boolean;
-    export function isObject(object: any): boolean;
-    export function isUndefined(value: any): boolean;
-    export function isNull(value: any): boolean;
-    export function isNullOrUndefined(value: any): boolean;
-    export function isPrimitive(value: any): boolean;
-    export function isRegExp(value: any): boolean;
-    export function isPlainObject(object: any): boolean;
-    export function isArrayBuffer(object: any): boolean;
-    export function isBufferLike(object: any): boolean;
-    export function isFunction(value: any): boolean;
-    export function isErrorLike(error: any): boolean;
-    export function isClass(value: any): boolean;
-    export function isBuffer(value: any): boolean;
-    export function isPromiseLike(object: any): boolean;
-    export function toString(object: any): any;
-    export function toBuffer(object: any, encoding?: any): any;
-    export function toProperCase(string: any): any;
-    export function splitBuffer(buffer: any, highWaterMark: any): any[];
-    export function clamp(value: any, min: any, max: any): number;
-    export function promisify(original: any): any;
-    export function inspect(value: any, options: any): any;
-    export namespace inspect {
-        let ignore: symbol;
-        let custom: symbol;
-    }
-    export function format(format: any, ...args: any[]): string;
-    export function parseJSON(string: any): any;
-    export function parseHeaders(headers: any): string[][];
-    export function noop(): void;
-    export function isValidPercentageValue(input: any): boolean;
-    export function compareBuffers(a: any, b: any): any;
-    export function inherits(Constructor: any, Super: any): void;
-    /**
-     * @ignore
-     * @param {string} source
-     * @return {boolean}
-     */
-    export function isESMSource(source: string): boolean;
-    export function deprecate(...args: any[]): void;
-    export { types };
-    export const TextDecoder: {
-        new (label?: string, options?: TextDecoderOptions): TextDecoder;
-        prototype: TextDecoder;
-    };
-    export const TextEncoder: {
-        new (): TextEncoder;
-        prototype: TextEncoder;
-    };
-    export const isArray: any;
-    export const inspectSymbols: symbol[];
-    export class IllegalConstructor {
-    }
-    export const MIMEType: typeof mime.MIMEType;
-    export const MIMEParams: typeof mime.MIMEParams;
-    export default exports;
-    import types from "socket:util/types";
-    import mime from "socket:mime";
-    import * as exports from "socket:util";
+    import { EventEmitter } from "socket:events";
+    import * as exports from "socket:ai";
     
 }
 
@@ -7514,6 +7554,7 @@ declare module "socket:vm" {
         filename?: string;
         context?: object;
     };
+    import { SharedWorker } from "socket:internal/shared-worker";
 }
 
 declare module "socket:worker_threads/init" {
@@ -7552,7 +7593,7 @@ declare module "socket:worker_threads" {
      * A pool of known worker threads.
      * @type {<Map<string, Worker>}
      */
-    export const workers: <Map>() => <string, Worker>() => any;
+    export const workers: <Map_1>() => <string, Worker_1>() => any;
     /**
      * `true` if this is the "main" thread, otherwise `false`
      * The "main" thread is the top level webview window.
@@ -7709,6 +7750,7 @@ declare module "socket:worker_threads" {
     import { Readable } from "socket:stream";
     import { SHARE_ENV } from "socket:worker_threads/init";
     import init from "socket:worker_threads/init";
+    import { env } from "socket:process";
     export { SHARE_ENV, init };
 }
 
@@ -7896,6 +7938,7 @@ declare module "socket:child_process" {
     import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
+    import signal from "socket:signal";
 }
 
 declare module "socket:constants" {
@@ -8410,7 +8453,7 @@ declare module "socket:fs/web" {
     export function createFile(filename: string, options?: {
         fd: fs.FileHandle;
         highWaterMark?: number;
-    } | undefined): File;
+    }): File;
     /**
      * Creates a `FileSystemWritableFileStream` instance backed
      * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
@@ -8706,6 +8749,7 @@ declare module "socket:extension" {
      * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
+    import path from "socket:path";
 }
 
 declare module "socket:fetch/fetch" {
@@ -13714,7 +13758,7 @@ declare module "socket:commonjs/package" {
         static parse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        } | undefined): ParsedPackageName | null;
+        }): ParsedPackageName | null;
         /**
          * Returns `true` if the given `input` can be parsed by `Name.parse` or given
          * as input to the `Name` class constructor.
@@ -13725,7 +13769,7 @@ declare module "socket:commonjs/package" {
         static canParse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        } | undefined): boolean;
+        }): boolean;
         /**
          * Creates a new `Name` from input.
          * @param {string|URL} input
@@ -14494,6 +14538,7 @@ declare module "socket:commonjs/module" {
     import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
+    import builtins from "socket:commonjs/builtins";
 }
 
 declare module "socket:module" {
@@ -15714,11 +15759,11 @@ declare module "socket:internal/promise" {
          */
         constructor(resolver: ResolverFunction);
         [resourceSymbol]: {
-            "__#11@#type": any;
-            "__#11@#destroyed": boolean;
-            "__#11@#asyncId": number;
-            "__#11@#triggerAsyncId": any;
-            "__#11@#requireManualDestroy": boolean;
+            "__#15@#type": any;
+            "__#15@#destroyed": boolean;
+            "__#15@#asyncId": number;
+            "__#15@#triggerAsyncId": any;
+            "__#15@#requireManualDestroy": boolean;
             readonly type: string;
             readonly destroyed: boolean;
             asyncId(): number;
@@ -15855,6 +15900,7 @@ declare module "socket:internal/pickers" {
             [keyof];
         }>;
     };
+    import { FileSystemHandle } from "socket:fs/web";
 }
 
 declare module "socket:internal/primitives" {
