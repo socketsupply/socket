@@ -109,6 +109,8 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "Network")
   ldflags+=("-framework" "UniformTypeIdentifiers")
   ldflags+=("-framework" "WebKit")
+  ldflags+=("-framework" "Metal")
+  ldflags+=("-framework" "Accelerate")
   ldflags+=("-framework" "UserNotifications")
   ldflags+=("-framework" "OSLog")
   ldflags+=("-ldl")
@@ -118,7 +120,7 @@ elif [[ "$host" = "Linux" ]]; then
 elif [[ "$host" = "Win32" ]]; then
   if [[ -n "$DEBUG" ]]; then
     # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
-    # TODO(@mribbons): Populate from vcvars64.bat
+    # TODO(@heapwolf): Populate from vcvars64.bat
     IFS=',' read -r -a libs <<< "$WIN_DEBUG_LIBS"
     for (( i = 0; i < ${#libs[@]}; ++i )); do
       ldflags+=("${libs[$i]}")

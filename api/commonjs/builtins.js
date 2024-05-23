@@ -12,6 +12,7 @@ import _async, {
 } from '../async.js'
 
 // eslint-disable-next-line
+import * as ai from '../ai.js'
 import * as application from '../application.js'
 import assert from '../assert.js'
 import * as buffer from '../buffer.js'

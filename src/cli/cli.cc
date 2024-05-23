@@ -3075,6 +3075,8 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework Network";
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
+      flags += " -framework Metal";
+      flags += " -framework Accelerate";
       flags += " -framework Carbon";
       flags += " -framework Cocoa";
       flags += " -framework OSLog";
@@ -3089,6 +3091,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
+      flags += " -lllama";
       flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
@@ -4411,6 +4414,8 @@ int main (const int argc, const char* argv[]) {
               " -framework CoreLocation" +
               " -framework Network" +
               " -framework UserNotifications" +
+              " -framework Metal" +
+              " -framework Accelerate" +
               " -framework WebKit" +
               " -framework Cocoa" +
               " -framework OSLog"
@@ -4632,6 +4637,7 @@ int main (const int argc, const char* argv[]) {
             << " -L" + libdir
             << " -lsocket-runtime"
             << " -luv"
+            << " -lllama"
             << " -isysroot " << iosSdkPath << "/"
             << " -iframeworkwithsysroot /System/Library/Frameworks/"
             << " -F " << iosSdkPath << "/System/Library/Frameworks/"
@@ -4641,6 +4647,8 @@ int main (const int argc, const char* argv[]) {
             << " -framework Foundation"
             << " -framework Network"
             << " -framework UserNotifications"
+            << " -framework Metal"
+            << " -framework Accelerate"
             << " -framework WebKit"
             << " -framework UIKit"
             << " -fembed-bitcode"
@@ -5722,6 +5730,8 @@ int main (const int argc, const char* argv[]) {
               compilerFlags += " -framework CoreLocation";
               compilerFlags += " -framework Network";
               compilerFlags += " -framework UserNotifications";
+              compilerFlags += " -framework Metal";
+              compilerFlags += " -framework Accelerate";
               compilerFlags += " -framework WebKit";
               compilerFlags += " -framework Cocoa";
               compilerFlags += " -framework OSLog";
@@ -6051,6 +6061,7 @@ int main (const int argc, const char* argv[]) {
             << " " << extraFlags
           #if defined(__linux__)
             << " -luv"
+            << " -lllama"
             << " -lsocket-runtime"
           #endif
             << (" -L" + quote + trim(prefixFile("lib/" + platform.arch + "-desktop")) + quote)
