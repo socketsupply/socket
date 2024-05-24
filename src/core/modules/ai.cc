@@ -584,6 +584,7 @@ namespace SSC {
         for (auto id : embd) {
           const String token_str = llama_token_to_piece(ctx, id, !params.conversation);
           if (this->stopped) {
+            llama_sampling_reset(this->sampling);
             this->interactive = false;
             return;
           }
@@ -743,6 +744,7 @@ namespace SSC {
 
       if (llama_token_is_eog(this->model, embd.back())) {
         if (this->stopped) {
+          llama_sampling_reset(this->sampling);
           this->interactive = false;
           return;
         }

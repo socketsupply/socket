@@ -27,12 +27,12 @@ The `Socket runtime CLI` outputs hybrid native-web apps that combine your code w
 | Module            | Node.js    | Socket    |
 | ----------------- | ---------- | --------- |
 | assert            | ✔︎          | ⏱         |
-| async/await       | ✔︎          | ✔︎         |
+| async_hooks       | ✔︎          | ✔︎         |
 | buffer            | ✔︎          | ✔︎️         |
 | child_process     | ✔︎          | ✔︎️  \*     |
 | console           | ✔︎          | ✔︎         |
 | crypto            | ✔︎          | ✔︎  \*     |
-| dgram             | ✔︎          | ✔︎️         |
+| udp/dgram         | ✔︎          | ✔︎️         |
 | dns               | ✔︎          | ✔︎️         |
 | os                | ✔︎          | ✔︎️         |
 | encoding          | ✔︎          | ✔︎         |
@@ -40,13 +40,18 @@ The `Socket runtime CLI` outputs hybrid native-web apps that combine your code w
 | fetch             | ✔︎          | ✔︎         |
 | fs/promises       | ✔︎          | ✔︎         |
 | fs                | ✔︎          | ✔︎         |
+| http              | ✔︎          | ✔︎         |
+| https             | ✔︎          | ✔︎         |
+| net               | ✔︎          | ⏱         |
 | path              | ✔︎          | ✔︎         |
 | process           | ✔︎          | ✔︎         |
 | streams           | ✔︎          | ✔︎         |
 | string_decoder    | ✔︎          | ⏱         |
 | test              | ✔︎          | ✔︎️         |
 | timers            | ✔︎          | ⏱         |
+| tty               | ✔︎          | ✔︎️         |
 | uuid              | ✔︎          | ⏱         |
+| worker_threads    | ✔︎          | ✔︎         |
 | vm                | ✔︎          | ✔︎         |
 | ESM               | ✔︎          | ✔︎         |
 | CJS               | ✔︎          | ✔︎         |
@@ -73,6 +78,26 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 
 The full documentation can be found on the [Socket Runtime](https://socketsupply.co/) website.  
 The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`, `Desktop`, and `Mobile`), `P2P` documentation, and more.
+
+
+### Development
+
+If you are developing socket, and you want your apps to point to your dev branch.
+
+
+#### Step 1
+
+```bash
+cd ~/projects/socket            # navigate into the location where you cloned this repo
+./bin/uninstall.sh              # remove existing installation
+npm rm -g @socketsupply/socket  # remove any global links or prior global npm installs
+npm run relink                  # this will call `./bin/publish-npm-modules.sh --link` (accepts NO_ANDROID=1, NO_IOS=1, and DEBUG=1)
+```
+
+```bash
+cd ~/projects/<myapp>           # navigate into your project (replacing <myapp> with whatever it's actually called
+npm link @socketsupply/socket   # link socket and you'll be ready to go.
+```
 
 
 ### Testing
