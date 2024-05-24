@@ -910,7 +910,7 @@ namespace SSC {
   }
 
   const Window::Size Window::getSize () const {
-    if (this->window == nullptr) {
+    if (this->window == nullptr || this->window->frame == nullptr) {
       return Size {0, 0};
     }
 
