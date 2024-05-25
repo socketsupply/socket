@@ -94,6 +94,10 @@ namespace SSC {
     int guidance_offset = 0;
     int original_prompt_len = 0;
     int n_ctx = 0;
+    int n_past = 0;
+    int n_consumed = 0;
+    int n_session_consumed = 0;
+    int n_past_guidance = 0;
 
     public:
       String err = "";
