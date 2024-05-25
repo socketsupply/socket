@@ -103,6 +103,8 @@ npm rm -g @socketsupply/socket  # remove any global links or prior global npm in
 npm run relink                  # this will call `./bin/publish-npm-modules.sh --link` (accepts NO_ANDROID=1, NO_IOS=1, and DEBUG=1)
 ```
 
+#### Step 2
+
 ```bash
 cd ~/projects/<myapp>           # navigate into your project (replacing <myapp> with whatever it's actually called
 npm link @socketsupply/socket   # link socket and you'll be ready to go.
