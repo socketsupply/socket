@@ -168,7 +168,7 @@ if (!/android|ios/i.test(os.platform())) {
     onSignal(event.data.signal)
   })
 
-  globalThis.addEventListener('signal', (event) => {
+  globalThis.addEventListener?.('signal', (event) => {
     onSignal(event.detail.signal)
     channel.postMessage(event.detail)
   })
