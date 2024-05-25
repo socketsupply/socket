@@ -31,8 +31,8 @@ Socket Supports both ESM and CommonJS
 | assert              | √             | ⏱        |
 | async_hooks         | √             | √        |
 | buffer              | √             | √        |
-| child_process       | √             | √ \*     |
-| cluster             | √             | NR       |
+| child_process       | √             | √        |
+| cluster             | √             | §        |
 | console             | √             | √        |
 | crypto              | √             | √ \*     |
 | dgram (udp)         | √             | √        |
@@ -57,18 +57,18 @@ Socket Supports both ESM and CommonJS
 | test                | √             | √        |
 | timers              | √             | √        |
 | tls                 | √             | ⏱        |
-| trace_events        | EXPERIMENTAL  | ⏱        |
 | tty                 | √             | √        |
 | URL                 | √             | √        |
-| uuid                | √             | ⏱  \*\*  |
+| uuid                | √             | ⏱ ☀︎      |
 | vm                  | √             | √        |
-| WASI                | EXPERIMENTAL  | NR       |
 | worker_threads      | √             | √        |
 
-_⏱ = planned support_
-_NR = Not Relevant or not necessary since socket doesn't require high-concurrency_
-_\* = Supported but Works differently; may be refactored to match the nodejs API_
-_\*\* = Use `crypto.randomUUID()` instead_
+| Symbol | Meaning                                                                     |
+| :----: | :-------------------------------------------------------------------------- |
+| ⏱      | Planned support                                                             |
+| §      | Not Relevant or not necessary since socket doesn't require high-concurrency |
+| \*     | Supported but Works differently; may be refactored to match the nodejs API  |
+| ☀︎      | Use `crypto.randomUUID()` instead                                           |
 
 
 ### FAQ
@@ -81,7 +81,7 @@ Check the FAQs on our [Website](https://socketsupply.co/guides/#faq) to learn mo
 `Create Socket App` is similar to React's `Create React App`, we provide a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
 Please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app) to get started and to learn more.  
 You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
-
+§§§
 
 ### Documentation
 
