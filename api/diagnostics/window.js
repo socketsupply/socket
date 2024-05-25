@@ -182,7 +182,8 @@ export class XMLHttpRequestMetric extends Metric {
 export class WorkerMetric extends Metric {
   constructor (options) {
     super()
-    this.GlobalWorker = globalThis.Worker
+    // TODO(@heapwolf): this fix for node causes the ts-defs to lose a lot of type info
+    this.GlobalWorker = this.isSocketRuntime ? globalThis.Worker : class {}
     this.channel = dc.channel('Worker')
     this.Worker = class Worker extends this.GlobalWorker {
       constructor (url, options, ...args) {

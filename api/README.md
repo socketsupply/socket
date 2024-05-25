@@ -1644,7 +1644,7 @@ Sends an async IPC command request with parameters.
 
 External docs: https://socketsupply.co/guides/#p2p-guide
 
- Provides a higher level API over the stream-relay protocol.
+ Provides a higher level API over the latica protocol.
 
 
 

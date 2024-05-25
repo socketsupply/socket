@@ -2035,22 +2035,12 @@ declare module "socket:diagnostics/window" {
         GlobalWorker: {
             new (scriptURL: string | URL, options?: WorkerOptions): Worker;
             prototype: Worker;
+        } | {
+            new (): {};
         };
         channel: import("socket:diagnostics/channels").Channel;
         Worker: {
-            new (url: any, options: any, ...args: any[]): {
-                onmessage: (this: Worker, ev: MessageEvent<any>) => any;
-                onmessageerror: (this: Worker, ev: MessageEvent<any>) => any;
-                postMessage(message: any, transfer: Transferable[]): void;
-                postMessage(message: any, options?: StructuredSerializeOptions): void;
-                terminate(): void;
-                addEventListener<K extends keyof WorkerEventMap>(type: K, listener: (this: Worker, ev: WorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-                addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-                removeEventListener<K_1 extends keyof WorkerEventMap>(type: K_1, listener: (this: Worker, ev: WorkerEventMap[K_1]) => any, options?: boolean | EventListenerOptions): void;
-                removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-                dispatchEvent(event: Event): boolean;
-                onerror: (this: AbstractWorker, ev: ErrorEvent) => any;
-            };
+            new (url: any, options: any, ...args: any[]): {};
         };
     }
     export const metrics: {
@@ -2439,7 +2429,7 @@ declare module "socket:async/deferred" {
     /**
      * Dispatched when a `Deferred` internal promise is rejected.
      */
-    export class DeferredRejectEvent extends ErrorEvent {
+    export class DeferredRejectEvent {
         /**
          * `DeferredRejectEvent` class constructor
          * @ignore
@@ -10796,7 +10786,7 @@ declare module "socket:i18n" {
     import Enumeration from "socket:enumeration";
 }
 
-declare module "socket:stream-relay/packets" {
+declare module "socket:latica/packets" {
     /**
      * The magic bytes prefixing every packet. They are the
      * 2nd, 3rd, 5th, and 7th, prime numbers.
@@ -11095,7 +11085,7 @@ declare module "socket:stream-relay/packets" {
     import { Buffer } from "socket:buffer";
 }
 
-declare module "socket:stream-relay/encryption" {
+declare module "socket:latica/encryption" {
     /**
      * Class for handling encryption and key management.
      */
@@ -11222,7 +11212,7 @@ declare module "socket:stream-relay/encryption" {
     import Buffer from "socket:buffer";
 }
 
-declare module "socket:stream-relay/cache" {
+declare module "socket:latica/cache" {
     /**
      * @typedef {Packet} CacheEntry
      * @typedef {function(CacheEntry, CacheEntry): number} CacheEntrySiblingResolver
@@ -11398,10 +11388,10 @@ declare module "socket:stream-relay/cache" {
     export type CacheEntry = Packet;
     export type CacheEntrySiblingResolver = (arg0: CacheEntry, arg1: CacheEntry) => number;
     import { Buffer } from "socket:buffer";
-    import { Packet } from "socket:stream-relay/packets";
+    import { Packet } from "socket:latica/packets";
 }
 
-declare module "socket:stream-relay/nat" {
+declare module "socket:latica/nat" {
     /**
      * The NAT type is encoded using 5 bits:
      *
@@ -11500,7 +11490,7 @@ declare module "socket:stream-relay/nat" {
     export function connectionStrategy(a: any, b: any): 0 | 1 | 2 | 3 | 4;
 }
 
-declare module "socket:stream-relay/index" {
+declare module "socket:latica/index" {
     /**
      * Computes rate limit predicate value for a port and address pair for a given
      * threshold updating an input rates map. This method is accessed concurrently,
@@ -11944,39 +11934,18 @@ declare module "socket:stream-relay/index" {
         }): Promise<undefined>;
     }
     export default Peer;
-    import { Packet } from "socket:stream-relay/packets";
-    import { sha256 } from "socket:stream-relay/packets";
-    import { Cache } from "socket:stream-relay/cache";
-    import { Encryption } from "socket:stream-relay/encryption";
-    import * as NAT from "socket:stream-relay/nat";
+    import { Packet } from "socket:latica/packets";
+    import { sha256 } from "socket:latica/packets";
+    import { Cache } from "socket:latica/cache";
+    import { Encryption } from "socket:latica/encryption";
+    import * as NAT from "socket:latica/nat";
     import { Buffer } from "socket:buffer";
-    import { PacketPing } from "socket:stream-relay/packets";
-    import { PacketPublish } from "socket:stream-relay/packets";
+    import { PacketPing } from "socket:latica/packets";
+    import { PacketPublish } from "socket:latica/packets";
     export { Packet, sha256, Cache, Encryption, NAT };
 }
 
-declare module "socket:node/index" {
-    export default network;
-    export const network: any;
-    import { Cache } from "socket:stream-relay/index";
-    import { sha256 } from "socket:stream-relay/index";
-    import { Encryption } from "socket:stream-relay/index";
-    import { Packet } from "socket:stream-relay/index";
-    import { NAT } from "socket:stream-relay/index";
-    export { Cache, sha256, Encryption, Packet, NAT };
-}
-
-declare module "socket:index" {
-    import { network } from "socket:node/index";
-    import { Cache } from "socket:node/index";
-    import { sha256 } from "socket:node/index";
-    import { Encryption } from "socket:node/index";
-    import { Packet } from "socket:node/index";
-    import { NAT } from "socket:node/index";
-    export { network, Cache, sha256, Encryption, Packet, NAT };
-}
-
-declare module "socket:stream-relay/proxy" {
+declare module "socket:latica/proxy" {
     export default PeerWorkerProxy;
     /**
      * `Proxy` class factory, returns a Proxy class that is a proxy to the Peer.
@@ -12013,7 +11982,7 @@ declare module "socket:stream-relay/proxy" {
     import { Deferred } from "socket:async";
 }
 
-declare module "socket:stream-relay/api" {
+declare module "socket:latica/api" {
     export default api;
     /**
      * Initializes and returns the network bus.
@@ -12028,14 +11997,35 @@ declare module "socket:stream-relay/api" {
     export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
 }
 
+declare module "socket:node/index" {
+    export default network;
+    export function network(options: any): Promise<events.EventEmitter>;
+    import { Cache } from "socket:latica/index";
+    import { sha256 } from "socket:latica/index";
+    import { Encryption } from "socket:latica/index";
+    import { Packet } from "socket:latica/index";
+    import { NAT } from "socket:latica/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
+}
+
+declare module "socket:index" {
+    import { network } from "socket:node/index";
+    import { Cache } from "socket:node/index";
+    import { sha256 } from "socket:node/index";
+    import { Encryption } from "socket:node/index";
+    import { Packet } from "socket:node/index";
+    import { NAT } from "socket:node/index";
+    export { network, Cache, sha256, Encryption, Packet, NAT };
+}
+
 declare module "socket:network" {
     export default network;
     export function network(options: any): Promise<events.EventEmitter>;
-    import { Cache } from "socket:stream-relay/index";
-    import { sha256 } from "socket:stream-relay/index";
-    import { Encryption } from "socket:stream-relay/index";
-    import { Packet } from "socket:stream-relay/index";
-    import { NAT } from "socket:stream-relay/index";
+    import { Cache } from "socket:latica/index";
+    import { sha256 } from "socket:latica/index";
+    import { Encryption } from "socket:latica/index";
+    import { Packet } from "socket:latica/index";
+    import { NAT } from "socket:latica/index";
     export { Cache, sha256, Encryption, Packet, NAT };
 }
 
@@ -15032,12 +15022,6 @@ declare module "socket:notification" {
     import URL from "socket:url";
 }
 
-declare module "socket:stream-relay" {
-    export * from "socket:stream-relay/index";
-    export default def;
-    import def from "socket:stream-relay/index";
-}
-
 declare module "socket:service-worker/instance" {
     export function createServiceWorker(currentState?: any, options?: any): any;
     export const SHARED_WORKER_URL: string;
@@ -15977,6 +15961,10 @@ declare module "socket:internal/worker" {
     export default _default;
 }
 
+declare module "socket:latica/worker" {
+    export {};
+}
+
 declare module "socket:npm/module" {
     /**
      * @typedef {{
@@ -16423,10 +16411,6 @@ declare module "socket:service-worker/storage" {
 }
 
 declare module "socket:service-worker/worker" {
-    export {};
-}
-
-declare module "socket:stream-relay/worker" {
     export {};
 }
 

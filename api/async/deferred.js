@@ -1,4 +1,5 @@
 /* global ErrorEvent */
+import { ErrorEvent } from '../events.js'
 
 /**
  * Dispatched when a `Deferred` internal promise is resolved.
