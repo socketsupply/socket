@@ -21,45 +21,54 @@ The `Socket runtime CLI` outputs hybrid native-web apps that combine your code w
 
 ### Compatibility Matrix
 
-> [!NOTE]
-> Socket supports many of the Node.js APIs. It is **NOT** a drop in replacement for Node.js, nor will it ever be since socket is for building software and node.js is for building servers. Below is a high level overview of partially supported APIs and modules.
+Socket Supports both ESM and CommonJS
 
-| Module            | Node.js    | Socket    |
-| ----------------- | ---------- | --------- |
-| assert            | ✔︎          | ⏱         |
-| async_hooks       | ✔︎          | ✔︎         |
-| buffer            | ✔︎          | ✔︎️         |
-| child_process     | ✔︎          | ✔︎️  \*     |
-| console           | ✔︎          | ✔︎         |
-| crypto            | ✔︎          | ✔︎  \*     |
-| udp/dgram         | ✔︎          | ✔︎️         |
-| dns               | ✔︎          | ✔︎️         |
-| os                | ✔︎          | ✔︎️         |
-| encoding          | ✔︎          | ✔︎         |
-| events            | ✔︎          | ✔︎         |
-| fetch             | ✔︎          | ✔︎         |
-| fs/promises       | ✔︎          | ✔︎         |
-| fs                | ✔︎          | ✔︎         |
-| http              | ✔︎          | ✔︎         |
-| https             | ✔︎          | ✔︎         |
-| net               | ✔︎          | ⏱         |
-| path              | ✔︎          | ✔︎         |
-| process           | ✔︎          | ✔︎         |
-| streams           | ✔︎          | ✔︎         |
-| string_decoder    | ✔︎          | ⏱         |
-| test              | ✔︎          | ✔︎️         |
-| timers            | ✔︎          | ⏱         |
-| tty               | ✔︎          | ✔︎️         |
-| uuid              | ✔︎          | ⏱         |
-| worker_threads    | ✔︎          | ✔︎         |
-| vm                | ✔︎          | ✔︎         |
-| ESM               | ✔︎          | ✔︎         |
-| CJS               | ✔︎          | ✔︎         |
-| URL               | ✔︎          | ✔︎         |
+> [!NOTE]
+> Socket supports many of the Node.js APIs. It is **NOT** a drop in replacement for Node.js, it most likely wont ever be since Socket is for building software and node.js is for building servers. Below is a high level overview of fully or partially supported APIs and modules.
+
+| Module              | Node.js       | Socket   |
+| -----------------   | ----------    | -------- |
+| assert              | √             | ⏱        |
+| async_hooks         | √             | √        |
+| buffer              | √             | √        |
+| child_process       | √             | √ \*     |
+| cluster             | √             | NR       |
+| console             | √             | √        |
+| crypto              | √             | √ \*     |
+| dgram (udp)         | √             | √        |
+| diagnostics_channel | √             | √        |
+| dns                 | √             | √        |
+| encoding            | √             | √        |
+| events              | √             | √        |
+| fetch               | √             | √        |
+| fs                  | √             | √        |
+| fs/promises         | √             | √        |
+| http                | √             | √        |
+| http2               | √             | √        |
+| https               | √             | √        |
+| inspector           | √             | ⏱        |
+| module              | √             | √        |
+| net                 | √             | ⏱        |
+| os                  | √             | √        |
+| path                | √             | √        |
+| process             | √             | √        |
+| streams             | √             | √        |
+| string_decoder      | √             | √        |
+| test                | √             | √        |
+| timers              | √             | √        |
+| tls                 | √             | ⏱        |
+| trace_events        | EXPERIMENTAL  | ⏱        |
+| tty                 | √             | √        |
+| URL                 | √             | √        |
+| uuid                | √             | ⏱  \*\*  |
+| vm                  | √             | √        |
+| WASI                | EXPERIMENTAL  | NR       |
+| worker_threads      | √             | √        |
 
 _⏱ = planned support_
+_NR = Not Relevant or not necessary since socket doesn't require high-concurrency_
 _\* = Supported but Works differently; may be refactored to match the nodejs API_
-_\*\* = Use fetch instead_
+_\*\* = Use `crypto.randomUUID()` instead_
 
 
 ### FAQ

@@ -385,12 +385,7 @@ namespace SSC {
     bool display = true;
     bool is_antiprompt = false;
     bool input_echo = true;
-
-    int n_past = 0;
     int n_remain = this->params.n_predict;
-    int n_consumed = 0;
-    int n_session_consumed = 0;
-    int n_past_guidance = 0;
 
     std::vector<int> input_tokens;
     this->input_tokens = &input_tokens;
@@ -414,7 +409,7 @@ namespace SSC {
     const auto cml_pfx = ::llama_tokenize(ctx, "\n<|im_start|>user\n", true, true);
     const auto cml_sfx = ::llama_tokenize(ctx, "<|im_end|>\n<|im_start|>assistant\n", false, true);
 
-    while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
+    while ((n_remain != 0 && !is_antiprompt) || this->params.interactive) {
       if (!embd.empty()) {
         int max_embd_size = n_ctx - 4;
 
@@ -426,7 +421,7 @@ namespace SSC {
 
         if (ga_n == 1) {
           if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= n_ctx) {
-            if (params.n_predict == -2) {
+            if (this->params.n_predict == -2) {
               LOG("\n\ncontext full and n_predict == -%d => stopping\n", this->params.n_predict);
               break;
             }
@@ -435,7 +430,7 @@ namespace SSC {
             const int n_discard = n_left/2;
 
             LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
-              n_past, n_left, n_ctx, params.n_keep, n_discard);
+              n_past, n_left, n_ctx, this->params.n_keep, n_discard);
 
             llama_kv_cache_seq_rm (ctx, 0, this->params.n_keep, this->params.n_keep + n_discard);
             llama_kv_cache_seq_add(ctx, 0, this->params.n_keep + n_discard, n_past, -n_discard);
@@ -517,8 +512,8 @@ namespace SSC {
             input_size = embd.size();
           }
 
-          for (int i = 0; i < input_size; i += params.n_batch) {
-            int n_eval = std::min(input_size - i, params.n_batch);
+          for (int i = 0; i < input_size; i += this->params.n_batch) {
+            int n_eval = std::min(input_size - i, this->params.n_batch);
 
             if (llama_decode(this->guidance, llama_batch_get_one(input_buf + i, n_eval, n_past_guidance, 0))) {
               LOG("failed to eval\n");
@@ -529,11 +524,11 @@ namespace SSC {
           }
         }
 
-        for (int i = 0; i < (int) embd.size(); i += params.n_batch) {
+        for (int i = 0; i < (int) embd.size(); i += this->params.n_batch) {
           int n_eval = (int) embd.size() - i;
 
-          if (n_eval > params.n_batch) {
-            n_eval = params.n_batch;
+          if (n_eval > this->params.n_batch) {
+            n_eval = this->params.n_batch;
           }
 
           LOG("eval: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
@@ -574,7 +569,7 @@ namespace SSC {
           llama_sampling_accept(this->sampling, this->ctx, this->embd_inp[n_consumed], false);
 
           ++n_consumed;
-          if ((int) embd.size() >= params.n_batch) {
+          if ((int) embd.size() >= this->params.n_batch) {
             break;
           }
         }
@@ -582,7 +577,7 @@ namespace SSC {
 
       if (input_echo && display) {
         for (auto id : embd) {
-          const String token_str = llama_token_to_piece(ctx, id, !params.conversation);
+          const String token_str = llama_token_to_piece(ctx, id, !this->params.conversation);
           if (this->stopped) {
             llama_sampling_reset(this->sampling);
             this->interactive = false;
@@ -607,7 +602,7 @@ namespace SSC {
       }
 
       if ((int)this->embd_inp.size() <= n_consumed) {
-        if (!params.antiprompt.empty()) {
+        if (!this->params.antiprompt.empty()) {
           const int n_prev = 32;
           const String last_output = llama_sampling_prev_str(this->sampling, this->ctx, n_prev);
 
@@ -670,7 +665,7 @@ namespace SSC {
             this->embd_inp.push_back(llama_token_bos(this->model));
           }
 
-          if (!params.input_prefix.empty() && !params.conversation) {
+          if (!this->params.input_prefix.empty() && !this->params.conversation) {
             LOG("appending input prefix: '%s'\n", this->params.input_prefix.c_str());
           }
 
@@ -689,18 +684,18 @@ namespace SSC {
               embd_inp.insert(this->embd_inp.end(), inp_pfx.begin(), inp_pfx.end());
             }
 
-            if (params.chatml && !is_antiprompt) {
+            if (this->params.chatml && !is_antiprompt) {
               LOG("inserting chatml prefix\n");
               n_consumed = this->embd_inp.size();
               embd_inp.insert(this->embd_inp.end(), cml_pfx.begin(), cml_pfx.end());
             }
 
-            if (params.escape) {
+            if (this->params.escape) {
               this->escape(buffer);
             }
 
             const auto line_pfx = ::llama_tokenize(this->ctx, this->params.input_prefix.c_str(), false, true);
-            const auto line_inp = ::llama_tokenize(this->ctx, buffer.c_str(), false, params.interactive_specials);
+            const auto line_inp = ::llama_tokenize(this->ctx, buffer.c_str(), false, this->params.interactive_specials);
             const auto line_sfx = ::llama_tokenize(this->ctx, this->params.input_suffix.c_str(), false, true);
 
             LOG("input tokens: %s\n", LOG_TOKENS_TOSTR_PRETTY(this->ctx, line_inp).c_str());
