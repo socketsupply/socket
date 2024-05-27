@@ -599,10 +599,14 @@ namespace SSC::IPC {
     ) {
       auto resource = FileResource(Path(userConfig.at("webview_importmap")));
 
+      debug("has importmap config");
+
       if (resource.exists()) {
+        debug("importmap exists");
         const auto bytes = resource.read();
 
         if (bytes != nullptr) {
+          debug("injecting importmap");
           preload = (
             tmpl(
               R"HTML(<script type="importmap">{{importmap}}</script>)HTML",
@@ -610,6 +614,8 @@ namespace SSC::IPC {
            ) + preload
           );
         }
+      } else {
+        debug("importmap doesn't excist");
       }
     }
 

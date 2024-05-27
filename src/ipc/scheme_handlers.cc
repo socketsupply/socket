@@ -9,13 +9,6 @@
 using namespace SSC;
 using namespace SSC::IPC;
 
-namespace SSC::IPC {
-  static struct {
-    SchemeHandlers::RequestMap map;
-    Mutex mutex;
-  } requests;
-}
-
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 using Task = id<WKURLSchemeTask>;
 
@@ -137,7 +130,6 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
   }
 
   auto bridge = &window->bridge;
-
   auto request = IPC::SchemeHandlers::Request::Builder(&bridge->schemeHandlers, schemeRequest)
     .setMethod(String(webkit_uri_scheme_request_get_http_method(schemeRequest)))
     // copies all request soup headers
@@ -146,7 +138,7 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
     .setBody(webkit_uri_scheme_request_get_http_body(schemeRequest))
     .build();
 
-  const auto handled = bridge->schemeHandlers.handleRequest(request, [=](const auto response) {
+  const auto handled = bridge->schemeHandlers.handleRequest(request, [=](const auto& response) {
     // TODO(@jwerle): handle uri scheme response
   });
 
@@ -295,7 +287,13 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::hasHandlerForScheme (const String& scheme) {
+    Lock lock(this->mutex);
     return this->handlers.contains(scheme);
+  }
+
+  SchemeHandlers::Handler& SchemeHandlers::getHandlerForScheme (const String& scheme) {
+    Lock lock(this->mutex);
+    return this->handlers.at(scheme);
   }
 
   bool SchemeHandlers::registerSchemeHandler (const String& scheme, const Handler& handler) {
@@ -378,30 +376,29 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::handleRequest (
-    const Request& request,
+    SharedPointer<Request> request,
     const HandlerCallback callback
   ) {
     // request was not finalized, likely not from a `Request::Builder`
-    if (!request.finalized) {
+    if (request == nullptr || !request->finalized) {
       return false;
     }
 
-    Lock lock(requests.mutex);
-    if (requests.map.contains(request.id)) {
+    if (this->isRequestActive(request->id)) {
       return false;
     }
 
     // respond with a 404 if somehow we are trying to respond to a
     // request scheme we do not know about, we do not need to call
     // `request.finalize()` as we'll just respond to the request right away
-    if (!this->handlers.contains(request.scheme)) {
+    if (!this->hasHandlerForScheme(request->scheme)) {
       auto response = IPC::SchemeHandlers::Response(request, 404);
       // make sure the response was finished first
       response.finish();
 
       // notify finished, even for 404
-      if (response.request.callbacks.finish != nullptr) {
-        response.request.callbacks.finish();
+      if (response.request->callbacks.finish != nullptr) {
+        response.request->callbacks.finish();
       }
 
       if (callback != nullptr) {
@@ -411,73 +408,70 @@ namespace SSC::IPC {
       return true;
     }
 
-    const auto handler = this->handlers.at(request.scheme);
+    const auto handler = this->getHandlerForScheme(request->scheme);
+    const auto id = request->id;
 
     // fail if there is somehow not a handler for this request scheme
     if (handler == nullptr) {
       return false;
     }
 
-    if (request.error != nullptr) {
+    do {
+      Lock lock(this->mutex);
+      this->activeRequests.insert_or_assign(request->id, request);
+    } while (0);
+
+    if (request->error != nullptr) {
+      Lock lock(this->mutex);
       auto response = IPC::SchemeHandlers::Response(request, 500);
-      response.fail(request.error);
+      response.fail(request->error);
+      this->activeRequests.erase(id);
       return true;
     }
 
-    const auto result = requests.map.insert_or_assign(request.id, std::move(request));
-    const auto id = request.id;
+    auto span = request->tracer.span("handler");
 
-  #if !SOCKET_RUNTIME_PLATFORM_ANDROID
-    this->bridge->dispatch([=, this] {
-  #endif
-      if (request.isActive() && !request.isCancelled()) {
-        // stored request reference
-        auto& req = result.first->second;
-
-        handler(req, this->bridge, req.callbacks, [this, id, callback](auto& response) {
+    this->bridge->dispatch([=, this] () mutable {
+      if (request != nullptr && request->isActive() && !request->isCancelled()) {
+        handler(request, this->bridge, request->callbacks, [=, this](auto& response) mutable {
           // make sure the response was finished before
           // calling the `callback` function below
           response.finish();
 
           // notify finished
-          if (response.request.callbacks.finish != nullptr) {
-            response.request.callbacks.finish();
+          if (response.request->callbacks.finish != nullptr) {
+            response.request->callbacks.finish();
           }
 
           if (callback != nullptr) {
             callback(response);
           }
 
-          Lock lock(requests.mutex);
-          requests.map.erase(id);
+          span->end();
+
+          do {
+            Lock lock(this->mutex);
+            this->activeRequests.erase(id);
+          } while (0);
         });
       }
-  #if !SOCKET_RUNTIME_PLATFORM_ANDROID
     });
-  #endif
 
     return true;
   }
 
   bool SchemeHandlers::isRequestActive (uint64_t id) {
-    Lock lock(requests.mutex);
-    return requests.map.contains(id);
+    Lock lock(this->mutex);
+    return this->activeRequests.contains(id);
   }
 
   bool SchemeHandlers::isRequestCancelled (uint64_t id) {
-    Lock lock(requests.mutex);
+    Lock lock(this->mutex);
     return (
       id > 0 &&
-      requests.map.contains(id) &&
-      requests.map.at(id).cancelled
+      this->activeRequests.contains(id) &&
+      this->activeRequests.at(id)->cancelled
     );
-  }
-
-  void SchemeHandlers::configureWebView (WebView* webview) {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-  #elif SOCKET_RUNTIME_PLATFORM_LINUX
-  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-  #endif
   }
 
   SchemeHandlers::Request::Builder::Builder (
@@ -511,13 +505,13 @@ namespace SSC::IPC {
       ? userConfig.at("meta_bundle_identifier")
       : "";
 
-    this->request.reset(new Request(
+    this->request = std::make_shared<Request>(
       handlers,
       platformRequest,
       Request::Options {
         .scheme = url.scheme
       }
-    ));
+    );
 
     // default client id, can be overloaded with 'runtime-client-id' header
     this->request->client.id = handlers->bridge->id;
@@ -674,10 +668,10 @@ namespace SSC::IPC {
     return *this;
   }
 
-  SchemeHandlers::Request& SchemeHandlers::Request::Builder::build () {
+  SharedPointer<SchemeHandlers::Request> SchemeHandlers::Request::Builder::build () {
     this->request->error = this->error;
     this->request->finalize();
-    return *this->request;
+    return this->request;
   }
 
   SchemeHandlers::Request::Request (
@@ -693,12 +687,15 @@ namespace SSC::IPC {
       pathname(options.pathname),
       query(options.query),
       fragment(options.fragment),
-      headers(options.headers)
+      headers(options.headers),
+      tracer("IPC::SchemeHandlers::Request")
   {
     this->platformRequest = platformRequest;
   }
 
-  SchemeHandlers::Request::~Request () {}
+  SchemeHandlers::Request::~Request () {
+    this->platformRequest = nullptr;
+  }
 
   static void copyRequest (
     SchemeHandlers::Request* destination,
@@ -728,15 +725,20 @@ namespace SSC::IPC {
     destination->cancelled  = source.cancelled.load();
 
     destination->bridge = source.bridge;
+    destination->tracer = source.tracer;
     destination->handlers = source.handlers;
     destination->platformRequest = source.platformRequest;
   }
 
-  SchemeHandlers::Request::Request (const Request& request) noexcept {
+  SchemeHandlers::Request::Request (const Request& request) noexcept
+    : tracer("IPC::SchemeHandlers::Request")
+  {
     copyRequest(this, request);
   }
 
-  SchemeHandlers::Request::Request (Request&& request) noexcept {
+  SchemeHandlers::Request::Request (Request&& request) noexcept
+    : tracer("SchemeHandlers::Request")
+  {
     copyRequest(this, request);
   }
 
@@ -768,7 +770,7 @@ namespace SSC::IPC {
 
   const String SchemeHandlers::Request::str () const {
     if (this->hostname.size() > 0) {
-      return (
+      return trim(
         this->scheme +
         "://" +
         this->hostname +
@@ -778,7 +780,7 @@ namespace SSC::IPC {
       );
     }
 
-    return (
+    return trim(
       this->scheme +
       ":" +
       this->pathname.substr(1) +
@@ -836,17 +838,18 @@ namespace SSC::IPC {
   }
 
   SchemeHandlers::Response::Response (
-    const Request& request,
+    SharedPointer<Request> request,
     int statusCode,
     const Headers headers
-  ) : request(std::move(request)),
-      handlers(request.handlers),
-      client(request.client),
-      id(request.id)
+  ) : request(request),
+      handlers(request->handlers),
+      client(request->client),
+      id(request->id),
+      tracer("IPC::SchemeHandlers::Response")
   {
     const auto defaultHeaders = split(
-      this->request.bridge->userConfig.contains("webview_headers")
-        ? this->request.bridge->userConfig.at("webview_headers")
+      this->request->bridge->userConfig.contains("webview_headers")
+        ? this->request->bridge->userConfig.at("webview_headers")
         : "",
       '\n'
     );
@@ -876,17 +879,20 @@ namespace SSC::IPC {
     destination->finished = source.finished.load();
     destination->handlers = source.handlers;
     destination->statusCode = source.statusCode;
+    destination->ownedBuffers = source.ownedBuffers;
     destination->platformResponse = source.platformResponse;
   }
 
   SchemeHandlers::Response::Response (const Response& response) noexcept
-    : request(response.request)
+    : request(response.request),
+      tracer("IPC::SchemeHandlers::Response")
   {
     copyResponse(this, response);
   }
 
   SchemeHandlers::Response::Response (Response&& response) noexcept
-    : request(response.request)
+    : request(response.request),
+      tracer("IPC::SchemeHandlers::Response")
   {
     copyResponse(this, response);
   }
@@ -923,7 +929,7 @@ namespace SSC::IPC {
       return false;
     }
 
-    if (this->request.platformRequest == nullptr) {
+    if (this->request->platformRequest == nullptr) {
       debug("IPC::SchemeHandlers::Response: Failed to write head. Request is in an invalid state");
       return false;
     }
@@ -949,7 +955,7 @@ namespace SSC::IPC {
       headerFields[@(entry.name.c_str())] = @(entry.value.c_str());
     }
 
-    auto platformRequest = this->request.platformRequest;
+    auto platformRequest = this->request->platformRequest;
     if (platformRequest != nullptr && platformRequest.request != nullptr) {
       const auto url = platformRequest.request.URL;
       if (url != nullptr) {
@@ -978,8 +984,11 @@ namespace SSC::IPC {
       } catch (...) {}
     }
 
-    this->platformResponseStream = g_memory_input_stream_new();
-    this->platformResponse = webkit_uri_scheme_response_new(platformResponseStream, size);
+    if (this->platformResponseStream == nullptr) {
+      this->platformResponseStream = g_memory_input_stream_new();
+    }
+
+    this->platformResponse = webkit_uri_scheme_response_new(this->platformResponseStream, size);
 
     auto requestHeaders = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
     for (const auto& entry : this->headers) {
@@ -1017,7 +1026,7 @@ namespace SSC::IPC {
       CallClassMethodFromAndroidEnvironment(
         attachment.env,
         Object,
-        this->request.platformRequest,
+        this->request->platformRequest,
         "getResponse",
         "()Lsocket/runtime/ipc/SchemeHandlers$Response;"
       )
@@ -1061,6 +1070,8 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::Response::write (size_t size, const char* bytes) {
+    Lock lock(this->mutex);
+
     if (
       !this->handlers->isRequestActive(this->id) ||
       this->handlers->isRequestCancelled(this->id)
@@ -1086,20 +1097,25 @@ namespace SSC::IPC {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       const auto data = [NSData dataWithBytes: bytes length: size];
       @try {
-        [this->request.platformRequest didReceiveData: data];
+        [this->request->platformRequest didReceiveData: data];
       } @catch (::id) {
         return false;
       }
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
-      auto data = new char[size]{0};
-      memcpy(data, bytes, size);
+      auto span = this->tracer.span("write");
+      auto buffer = new char[size]{0};
+      memcpy(buffer, bytes, size);
       g_memory_input_stream_add_data(
         reinterpret_cast<GMemoryInputStream*>(this->platformResponseStream),
-        reinterpret_cast<const void*>(data),
+        reinterpret_cast<const void*>(buffer),
         (gssize) size,
-        g_free
+        nullptr
       );
+      span->end();
+      this->request->bridge->core->setTimeout(1024, [buffer] () {
+        delete [] buffer;
+      });
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -1135,14 +1151,23 @@ namespace SSC::IPC {
 
   bool SchemeHandlers::Response::write (size_t size, SharedPointer<char[]> bytes) {
     if (bytes != nullptr && size > 0) {
-      return this->write(size, bytes.get());
+      this->ownedBuffers.push_back(bytes); // claim ownership for life time of request
+      return this->write(size, this->ownedBuffers.back().get());
     }
 
     return false;
   }
 
   bool SchemeHandlers::Response::write (const String& source) {
-    return this->write(source.size(), source.data());
+    const auto size = source.size();
+
+    if (size == 0) {
+      return false;
+    }
+
+    auto bytes = std::make_shared<char[]>(size);
+    memcpy(bytes.get(), source.c_str(), size);
+    return this->write(size, bytes);
   }
 
   bool SchemeHandlers::Response::write (const JSON::Any& json) {
@@ -1152,10 +1177,12 @@ namespace SSC::IPC {
 
   bool SchemeHandlers::Response::write (const FileResource& resource) {
     auto responseResource = FileResource(resource);
+    auto app = App::sharedApplication();
+
     const auto contentLength = responseResource.size();
     const auto contentType = responseResource.mimeType();
 
-    if (contentType.size() > 0) {
+    if (contentType.size() > 0 && !this->hasHeader("content-type")) {
       this->setHeader("content-type", contentType);
     }
 
@@ -1164,11 +1191,21 @@ namespace SSC::IPC {
     }
 
     if (contentLength > 0) {
-      const auto data = responseResource.read();
-      return this->write(responseResource.size(), data);
+      this->pendingWrites++;
+      this->writeHead();
+      const auto bytes = responseResource.read();
+      const auto result = this->write(contentLength, bytes);
+      this->pendingWrites--;
+      return result;
     }
 
     return false;
+  }
+
+  bool SchemeHandlers::Response::write (
+    const FileResource::ReadStream::Buffer& buffer
+  ) {
+    return this->write(buffer.size, buffer.bytes);
   }
 
   bool SchemeHandlers::Response::send (const String& source) {
@@ -1189,6 +1226,10 @@ namespace SSC::IPC {
       return false;
     }
 
+    while (this->pendingWrites > 0) {
+      msleep(1);
+    }
+
     if (
       !this->handlers->isRequestActive(this->id) ||
       this->handlers->isRequestCancelled(this->id)
@@ -1197,53 +1238,69 @@ namespace SSC::IPC {
     }
 
     if (!this->platformResponse) {
-      if (!this->writeHead()) {
+      if (!this->writeHead() || !this->platformResponse) {
         return false;
       }
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     @try {
-      [this->request.platformRequest didFinish];
+      [this->request->platformRequest didFinish];
     } @catch (::id) {}
   #if !__has_feature(objc_arc)
     [this->platformResponse release];
   #endif
+    this->platformResponse = nullptr;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    webkit_uri_scheme_request_finish_with_response(
-      this->request.platformRequest,
-      this->platformResponse
-    );
-    g_object_unref(this->platformResponseStream);
-    this->platformResponseStream = nullptr;
+    if (this->request->platformRequest) {
+      auto platformRequest = this->request->platformRequest;
+      auto platformResponse = this->platformResponse;
+      auto platformResponseStream = this->platformResponseStream;
+
+      this->platformResponseStream = nullptr;
+      this->platformResponse = nullptr;
+
+      //if (WEBKIT_IS_URI_SCHEME_REQUEST(platformRequest)) {
+        webkit_uri_scheme_request_finish_with_response(
+          platformRequest,
+          platformResponse
+        );
+      //}
+
+      if (platformResponseStream) {
+        g_input_stream_close(platformResponseStream, nullptr, nullptr);
+        g_object_unref(platformResponseStream);
+      }
+    }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    auto platformResponse = this->platformResponse;
-    if (platformResponse != nullptr) {
-      this->request.bridge->dispatch([=, this] () {
+    if (this->platformResponse != nullptr) {
+      auto ownedBuffers = this->ownedBuffers;
+      this->request->bridge->dispatch([=, this] () {
         auto app = App::sharedApplication();
         auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
         CallVoidClassMethodFromAndroidEnvironment(
           attachment.env,
-          platformResponse,
+          this->platformResponse,
           "finish",
           "()V"
         );
 
-        attachment.env->DeleteGlobalRef(platformResponse);
+        this->platformResponse = nullptr;
+        attachment.env->DeleteGlobalRef(this->platformResponse);
       });
     }
   #else
+    this->platformResponse = nullptr;
   #endif
 
-    this->platformResponse = nullptr;
     this->finished = true;
     return true;
   }
 
   void SchemeHandlers::Response::setHeader (const String& name, const Headers::Value& value) {
-    const auto bridge = this->request.handlers->bridge;
+    const auto bridge = this->request->handlers->bridge;
     if (toLowerCase(name) == "referer") {
       if (bridge->navigator.location.workers.contains(value.string)) {
         const auto workerLocation = bridge->navigator.location.workers[value.string];
@@ -1312,8 +1369,8 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::Response::fail (const String& reason) {
-    const auto bundleIdentifier = this->request.bridge->userConfig.contains("meta_bundle_identifier")
-      ? this->request.bridge->userConfig.at("meta_bundle_identifier")
+    const auto bundleIdentifier = this->request->bridge->userConfig.contains("meta_bundle_identifier")
+      ? this->request->bridge->userConfig.at("meta_bundle_identifier")
       : "";
 
     if (
@@ -1325,13 +1382,14 @@ namespace SSC::IPC {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
+    const auto error = [NSError
+      errorWithDomain: @(bundleIdentifier.c_str())
+                code: 1
+            userInfo: @{NSLocalizedDescriptionKey: @(reason.c_str())}
+    ];
+
     @try {
-      [this->request.platformRequest
-        didFailWithError: [NSError
-         errorWithDomain: @(bundleIdentifier.c_str())
-                    code: 1
-                userInfo: @{NSLocalizedDescriptionKey: @(reason.c_str())}
-      ]];
+      [this->request->platformRequest didFailWithError: error];
     } @catch (::id e) {
       // ignore possible 'NSInternalInconsistencyException'
       return false;
@@ -1348,11 +1406,18 @@ namespace SSC::IPC {
       return false;
     }
 
-    webkit_uri_scheme_request_finish_error(this->request.platformRequest, error);
+    if (WEBKIT_IS_URI_SCHEME_REQUEST(this->request->platformRequest)) {
+      webkit_uri_scheme_request_finish_error(this->request->platformRequest, error);
+    }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-  #else
   #endif
+
+    // notify fail
+    if (this->request->callbacks.fail != nullptr) {
+      this->request->callbacks.fail(error);
+    }
+
     this->finished = true;
     return true;
   }
@@ -1368,9 +1433,9 @@ namespace SSC::IPC {
     }
 
     if (location.starts_with("/")) {
-      this->setHeader("location", this->request.origin + location);
+      this->setHeader("location", this->request->origin + location);
     } else if (location.starts_with(".")) {
-      this->setHeader("location", this->request.origin + location.substr(1));
+      this->setHeader("location", this->request->origin + location.substr(1));
     } else {
       this->setHeader("location", location);
     }
@@ -1379,7 +1444,7 @@ namespace SSC::IPC {
       return false;
     }
 
-    if (this->request.method != "HEAD" && this->request.method != "OPTIONS") {
+    if (this->request->method != "HEAD" && this->request->method != "OPTIONS") {
       const auto content = tmpl(
         redirectSourceTemplate,
         {{"url", location}}

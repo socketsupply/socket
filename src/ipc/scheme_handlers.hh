@@ -2,11 +2,14 @@
 #define SOCKET_RUNTIME_IPC_SCHEME_HANDLERS_H
 
 #include "../core/core.hh"
+#include "../core/trace.hh"
 #include "../core/webview.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "../android/platform.hh"
 #endif
+
+#include "client.hh"
 
 namespace SSC::IPC {
   class Bridge;
@@ -14,7 +17,16 @@ namespace SSC::IPC {
 }
 
 namespace SSC::IPC {
+  /**
+   * An opaque containere for platform internals
+   */
   class SchemeHandlersInternals;
+
+  /**
+   * A container for registering scheme handlers attached to an `IPC::Bridge`
+   * that can handle WebView requests for runtime and custom user defined
+   * protocol schemes.
+   */
   class SchemeHandlers {
     private:
       SchemeHandlersInternals* internals = nullptr;
@@ -25,12 +37,8 @@ namespace SSC::IPC {
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
       using Error = GError;
     #else
-      using Error = char;
+      using Error = char*;
     #endif
-
-      struct Client {
-        uint64_t id = 0;
-      };
 
       struct Body {
         size_t size = 0;
@@ -40,6 +48,7 @@ namespace SSC::IPC {
       struct RequestCallbacks {
         Function<void()> cancel;
         Function<void()> finish;
+        Function<void(Error*)> fail;
       };
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
@@ -55,7 +64,7 @@ namespace SSC::IPC {
         using PlatformRequest = jobject;
         using PlatformResponse = jobject;
       #else
-        // TODO: error
+        #error "IPC::SchemeHandlers are not supported on this platform"
       #endif
 
       struct Request {
@@ -73,7 +82,7 @@ namespace SSC::IPC {
         struct Builder {
           String absoluteURL;
           Error* error = nullptr;
-          UniquePointer<Request> request = nullptr;
+          SharedPointer<Request> request = nullptr;
 
           Builder (
             SchemeHandlers* handlers,
@@ -101,7 +110,7 @@ namespace SSC::IPC {
           Builder& setBody (const Body& body);
           Builder& setBody (size_t size, const char* bytes);
           Builder& setCallbacks (const RequestCallbacks& callbacks);
-          Request& build ();
+          SharedPointer<Request> build ();
         };
 
         uint64_t id = rand64();
@@ -120,6 +129,8 @@ namespace SSC::IPC {
         String originalURL;
         RequestCallbacks callbacks;
 
+        Tracer tracer;
+
         Atomic<bool> finalized = false;
         Atomic<bool> cancelled = false;
 
@@ -128,6 +139,7 @@ namespace SSC::IPC {
         SchemeHandlers* handlers = nullptr;
         PlatformRequest platformRequest;
 
+        Request () = delete;
         Request (
           SchemeHandlers* handlers,
           PlatformRequest platformRequest,
@@ -158,12 +170,21 @@ namespace SSC::IPC {
           size_t count () const noexcept;
         };
 
-        const Request request;
+        SharedPointer<Request> request;
         uint64_t id = rand64();
         int statusCode = 200;
         Headers headers;
         Client client;
+
+        Mutex mutex;
+        Atomic<size_t> pendingWrites = 0;
         Atomic<bool> finished = false;
+
+        Vector<SharedPointer<char[]>> ownedBuffers;
+        Vector<Thread> writeThreads;
+
+        Tracer tracer;
+
         SchemeHandlers* handlers = nullptr;
         PlatformResponse platformResponse = nullptr;
 
@@ -172,7 +193,7 @@ namespace SSC::IPC {
       #endif
 
         Response (
-          const Request& request,
+          SharedPointer<Request> request,
           int statusCode = 200,
           const Headers headers = {}
         );
@@ -188,6 +209,7 @@ namespace SSC::IPC {
         bool write (const String& source);
         bool write (const JSON::Any& json);
         bool write (const FileResource& resource);
+        bool write (const FileResource::ReadStream::Buffer& buffer);
         bool send (const String& source);
         bool send (const JSON::Any& json);
         bool send (const FileResource& resource);
@@ -214,14 +236,14 @@ namespace SSC::IPC {
 
       using HandlerCallback = Function<void(Response&)>;
       using Handler = Function<void(
-        const Request&,
+        const SharedPointer<Request>,
         const Bridge*,
         RequestCallbacks& callbacks,
         HandlerCallback
       )>;
 
       using HandlerMap = std::map<String, Handler>;
-      using RequestMap = std::map<uint64_t, Request>;
+      using RequestMap = std::map<uint64_t, SharedPointer<Request>>;
 
       struct Configuration {
         WebViewSettings* webview;
@@ -230,7 +252,9 @@ namespace SSC::IPC {
       Configuration configuration;
       HandlerMap handlers;
 
+      Mutex mutex;
       Bridge* bridge = nullptr;
+      RequestMap activeRequests;
 
     #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       Set<ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
@@ -238,15 +262,20 @@ namespace SSC::IPC {
 
       SchemeHandlers (Bridge* bridge);
       ~SchemeHandlers ();
+      SchemeHandlers (const SchemeHandlers&) = delete;
+      SchemeHandlers (SchemeHandlers&&) = delete;
+
+      SchemeHandlers& operator= (const SchemeHandlers&) = delete;
+      SchemeHandlers& operator= (SchemeHandlers&&) = delete;
 
       void init ();
       void configure (const Configuration& configuration);
-      void configureWebView (WebView* webview);
       bool hasHandlerForScheme (const String& scheme);
       bool registerSchemeHandler (const String& scheme, const Handler& handler);
-      bool handleRequest (const Request& request, const HandlerCallback calllback = nullptr);
+      bool handleRequest (SharedPointer<Request> request, const HandlerCallback calllback = nullptr);
       bool isRequestActive (uint64_t id);
       bool isRequestCancelled (uint64_t id);
+      Handler& getHandlerForScheme (const String& scheme);
   };
 }
 #endif
