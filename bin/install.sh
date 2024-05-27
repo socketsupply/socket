@@ -146,6 +146,9 @@ if [[ "$host" != "Win32" ]]; then
   fi
 fi
 
+quiet command -v cmake
+die $? "not ok - missing cmake, \"$(advice 'cmake')\""
+
 if [[ "$(uname -s)" != *"_NT"* ]]; then
   quiet command -v make
   die $? "not ok - missing build tools, try \"$(advice "make")\""
@@ -799,13 +802,22 @@ function _compile_llama {
   mkdir -p "$STAGING_DIR/build/"
 
   if [ "$platform" == "desktop" ]; then
+    declare cmake_args=(
+      -DBUILD_TESTING=OFF
+      -DLLAMA_BUILD_TESTS=OFF
+      -DLLAMA_BUILD_SERVER=OFF
+      -DLLAMA_BUILD_SHARED=OFF
+      -DLLAMA_BUILD_EXAMPLES=OFF
+    )
+
     if [[ "$host" != "Win32" ]]; then
-      quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform"
-      die $? "not ok - desktop configure"
-      
-      quiet cmake --build build --target clean
-      quiet cmake --build build -- -j"$CPU_CORES"
+      quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" ${cmake_args[@]}
+      die $? "not ok - libllama.a (desktop)"
+
+      quiet cmake --build build --target clean &&
+      quiet cmake --build build -- -j"$CPU_CORES" &&
       quiet cmake --install build
+      die $? "not ok - libllama.a (desktop)"
     else
       if ! test -f "$BUILD_DIR/$target-$platform/lib$d/libllama.lib"; then
         local config="Release"
@@ -813,7 +825,7 @@ function _compile_llama {
           config="Debug"
         fi
         cd "$STAGING_DIR/build/" || exit 1
-        quiet cmake -S .. -B . -DBUILD_TESTING=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_SHARED=OFF
+        quiet cmake -S .. -B . ${cmake_args[@]}
         quiet cmake --build . --config $config
         mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
         quiet echo "cp -up $STAGING_DIR/build/$config/libllama.lib "$BUILD_DIR/$target-$platform/lib$d/libllama.lib""

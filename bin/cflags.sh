@@ -115,6 +115,7 @@ done
 if [[ -n "$DEBUG" ]]; then
   cflags+=("-g")
   cflags+=("-O0")
+  cflags+=("-DSOCKET_RUNTIME_BUILD_DEBUG=1")
 else
   cflags+=("-Os")
 fi
