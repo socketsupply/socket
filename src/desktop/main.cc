@@ -1114,6 +1114,10 @@ MAIN {
       serviceWorkerWindow->navigate(
         "socket://" + userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
       );
+
+      if (Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() > 0) {
+        serviceWorkerWindow->show();
+      }
     } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
       app.serviceWorkerContainer.init(&defaultWindow->bridge);
     }
