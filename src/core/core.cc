@@ -3,7 +3,6 @@
 
 namespace SSC {
   Post Core::getPost (uint64_t id) {
-    Lock lock(this->postsMutex);
     if (this->posts.find(id) == this->posts.end()) {
       return Post{};
     }
@@ -19,12 +18,10 @@ namespace SSC {
   }
 
   bool Core::hasPost (uint64_t id) {
-    Lock lock(this->postsMutex);
     return posts.find(id) != posts.end();
   }
 
   bool Core::hasPostBody (const char* body) {
-    Lock lock(this->postsMutex);
     if (body == nullptr) return false;
     for (const auto& tuple : posts) {
       auto post = tuple.second;
@@ -76,8 +73,6 @@ namespace SSC {
   }
 
   String Core::createPost (String seq, String params, Post post) {
-    Lock lock(this->postsMutex);
-
     if (post.id == 0) {
       post.id = rand64();
     }
@@ -152,14 +147,30 @@ namespace SSC {
       return *timeout == 0;
     },
 
+    /*
+    .check = [](GSource* source) -> gboolean {
+      auto core = reinterpret_cast<UVSource *>(source)->core;
+      auto loop = core->getEventLoop();
+      auto timeout = core->getEventLoopTimeout();
+
+      if (timeout == 0) {
+        return true;
+      }
+
+      //auto condition = 
+
+      return true;
+    },
+    */
+
     .dispatch = [](
       GSource *source,
       GSourceFunc callback,
       gpointer user_data
     ) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
-      Lock lock(core->loopMutex);
       auto loop = core->getEventLoop();
+      Lock lock(core->loopMutex);
       uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;
     }
@@ -175,17 +186,25 @@ namespace SSC {
     Lock lock(this->loopMutex);
     uv_loop_init(&eventLoop);
     eventLoopAsync.data = (void *) this;
+
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
-      auto core = reinterpret_cast<SSC::Core  *>(handle->data);
+      auto core = reinterpret_cast<Core*>(handle->data);
+
       while (true) {
-        std::function<void()> dispatch;
-        {
+        Function<void()> dispatch = nullptr;
+
+        do {
           Lock lock(core->loopMutex);
           if (core->eventLoopDispatchQueue.size() == 0) break;
           dispatch = core->eventLoopDispatchQueue.front();
           core->eventLoopDispatchQueue.pop();
+        } while (0);
+
+        if (dispatch == nullptr) {
+          break;
         }
-        if (dispatch != nullptr) dispatch();
+
+        dispatch();
       }
     });
 
@@ -199,6 +218,7 @@ namespace SSC {
       (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
     );
 
+    g_source_set_priority(source, G_PRIORITY_HIGH);
     g_source_attach(source, nullptr);
   #endif
   }

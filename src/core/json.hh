@@ -160,19 +160,12 @@ namespace SSC::JSON {
         this->type = Type::Null;
       }
 
-      ~Any () {
-        this->pointer = nullptr;
-        this->type = Type::Any;
-      }
-
-      Any (const Any &any) {
-        this->pointer = any.pointer;
+      Any (const Any& any) : pointer(any.pointer) {
         this->type = any.type;
       }
 
-      Any (Type type, SharedPointer<void> pointer) {
+      Any (Type type, SharedPointer<void> pointer) : pointer(pointer) {
         this->type = type;
-        this->pointer = pointer;
       }
 
       Any (std::nullptr_t);
@@ -184,6 +177,7 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
+      Any (long long);
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (size_t);
       Any (ssize_t);
@@ -204,6 +198,11 @@ namespace SSC::JSON {
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
       Any (const GError*);
     #endif
+
+      ~Any () {
+        this->pointer = nullptr;
+        this->type = Type::Any;
+      }
 
       SSC::String str () const;
 

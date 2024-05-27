@@ -4,6 +4,7 @@
 #include "../file_system_watcher.hh"
 #include "../resource.hh"
 #include "../module.hh"
+#include "../trace.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "../../platform/android.hh"
@@ -36,6 +37,7 @@ namespace SSC {
         ID id;
         SharedPointer<Descriptor> descriptor = nullptr;
         SharedPointer<char[]> buffer = nullptr;
+        Tracer tracer;
         uv_fs_t req;
         uv_buf_t buf;
         // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
@@ -44,7 +46,7 @@ namespace SSC {
         int result = 0;
         bool recursive;
 
-        RequestContext () = default;
+        RequestContext () = delete;
         RequestContext (SharedPointer<Descriptor> descriptor)
           : RequestContext(descriptor, "", nullptr)
         {}
@@ -57,7 +59,7 @@ namespace SSC {
           SharedPointer<Descriptor> descriptor,
           const String& seq,
           const Callback& callback
-        ) {
+        ) : tracer("CoreFS::RequestContext") {
           this->id = rand64();
           this->seq = seq;
           this->req.data = (void*) this;
