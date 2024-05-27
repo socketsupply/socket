@@ -144,6 +144,10 @@ export function createRequire (options) {
    * @ignore
    */
   function applyResolvers (input, options = null) {
+    if (typeof input === 'string' && input.startsWith('npm:')) {
+      input = input.slice(4)
+    }
+
     const resolvers = Array
       .from([])
       .concat(options?.resolvers)
