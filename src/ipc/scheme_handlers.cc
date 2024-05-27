@@ -53,14 +53,13 @@ using Task = id<WKURLSchemeTask>;
 -    (void) webView: (SSCWebView*) webview
   stopURLSchemeTask: (Task) task
 {
-  Lock lock(requests.mutex);
   if (tasks.contains(task)) {
     const auto id = tasks[task];
-    if (requests.map.contains(id)) {
-      auto& request = requests.map.at(id);
-      request.cancelled = true;
-      if (request.callbacks.cancel != nullptr) {
-        request.callbacks.cancel();
+    if (self.handlers->isRequestActive(id)) {
+      auto request = self.handlers->activeRequests[id];
+      request->cancelled = true;
+      if (request->callbacks.cancel != nullptr) {
+        request->callbacks.cancel();
       }
     }
   }
@@ -93,7 +92,7 @@ using Task = id<WKURLSchemeTask>;
     .setBody(task.request.HTTPBody)
     .build();
 
-  [self enqueueTask: task withRequestID: request.id];
+  [self enqueueTask: task withRequestID: request->id];
   const auto handled = self.handlers->handleRequest(request, [=](const auto& response) {
     [self finalizeTask: task];
   });

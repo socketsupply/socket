@@ -800,10 +800,11 @@ namespace SSC {
     if (buffer.size > 0 && buffer.bytes != nullptr) {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       if (this->data == nullptr) {
-        this->data = [NSData dataWithContentsOfURL: this->resource.url];
+        auto url = [NSURL fileURLWithPath: @(this->options.resourcePath.string().c_str())];
+        this->data = [NSData dataWithContentsOfURL: url];
         @try {
           [this->data
-            getBytes: buffer.bytes.get(),
+            getBytes: buffer.bytes.get()
                range: NSMakeRange(offset, size)
           ];
         } @catch (NSException* error) {
