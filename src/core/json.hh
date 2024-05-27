@@ -177,10 +177,11 @@ namespace SSC::JSON {
       Any (uint32_t);
       Any (int32_t);
       Any (double);
-      Any (long long);
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (size_t);
       Any (ssize_t);
+    #else
+      Any (long long);
     #endif
       Any (const Number);
       Any (const char);
