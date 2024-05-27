@@ -17,17 +17,15 @@ namespace SSC::IPC {
   // `socket://<bundle_identifier>/socket/<module>.js` resolve to the exact
   // same module
   static constexpr auto ESM_IMPORT_PROXY_TEMPLATE =
-  R"S(
-  /**
-   * This module exists to provide a proxy to a canonical URL for a module
-   * so `socket:<module>` and `socket://<bundle_identifier>/socket/<module>.js`
-   * resolve to the exact same module instance.
-   * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
-   */
-  import module from '{{url}}'
-  export * from '{{url}}'
-  export default module
-  )S";
+R"S(/**
+  * This module exists to provide a proxy to a canonical URL for a module
+  * so `socket:<module>` and `socket://<bundle_identifier>/socket/<module>.js`
+  * resolve to the exact same module instance.
+  * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
+  */
+import module from '{{url}}'
+export * from '{{url}}'
+export default module)S";
 
   static const Vector<String> allowedNodeCoreModules = {
     "async_hooks",
@@ -265,7 +263,6 @@ namespace SSC::IPC {
   }
 
   void Bridge::configureWebView (WebView* webview) {
-    this->schemeHandlers.configureWebView(webview);
     this->navigator.configureWebView(webview);
   }
 
@@ -370,12 +367,12 @@ namespace SSC::IPC {
   void Bridge::configureSchemeHandlers (const SchemeHandlers::Configuration& configuration) {
     this->schemeHandlers.configure(configuration);
     this->schemeHandlers.registerSchemeHandler("ipc", [this](
-      const auto& request,
+      const auto request,
       const auto bridge,
       auto& callbacks,
       auto callback
     ) {
-      auto message = Message(request.url(), true);
+      auto message = Message(request->url(), true);
 
       // handle special 'ipc://post' case
       if (message.name == "post") {
@@ -437,10 +434,10 @@ namespace SSC::IPC {
         }
       };
 
-      const auto size = request.body.size;
-      const auto bytes = request.body.bytes;
-      const auto invoked = this->router.invoke(message, request.body.bytes, size, [request, message, callback](Result result) {
-        if (!request.isActive()) {
+      const auto size = request->body.size;
+      const auto bytes = request->body.bytes;
+      const auto invoked = this->router.invoke(message, request->body.bytes, size, [request, message, callback](Result result) {
+        if (!request->isActive()) {
           return;
         }
 
@@ -461,7 +458,7 @@ namespace SSC::IPC {
             const char* data,
             bool finished
           ) mutable {
-            if (request.isCancelled()) {
+            if (request->isCancelled()) {
               if (message.cancel->handler != nullptr) {
                 message.cancel->handler(message.cancel->data);
               }
@@ -493,7 +490,7 @@ namespace SSC::IPC {
             size_t size,
             bool finished
           ) mutable {
-            if (request.isCancelled()) {
+            if (request->isCancelled()) {
               if (message.cancel->handler != nullptr) {
                 message.cancel->handler(message.cancel->data);
               }
@@ -527,7 +524,7 @@ namespace SSC::IPC {
           {"err", JSON::Object::Entries {
             {"message", "Not found"},
             {"type", "NotFoundError"},
-            {"url", request.url()}
+            {"url", request->url()}
           }}
         });
 
@@ -536,7 +533,7 @@ namespace SSC::IPC {
     });
 
     this->schemeHandlers.registerSchemeHandler("socket", [this](
-      const auto& request,
+      const auto request,
       const auto bridge,
       auto& callbacks,
       auto callback
@@ -555,18 +552,18 @@ namespace SSC::IPC {
       String contentLocation;
 
       // application resource or service worker request at `socket://<bundle_identifier>/*`
-      if (request.hostname == bundleIdentifier) {
-        const auto resolved = this->navigator.location.resolve(request.pathname, applicationResources);
+      if (request->hostname == bundleIdentifier) {
+        const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
 
         if (resolved.redirect) {
-          if (request.method == "GET") {
+          if (request->method == "GET") {
             auto location = resolved.pathname;
-            if (request.query.size() > 0) {
-              location += "?" + request.query;
+            if (request->query.size() > 0) {
+              location += "?" + request->query;
             }
 
-            if (request.fragment.size() > 0) {
-              location += "#" + request.fragment;
+            if (request->fragment.size() > 0) {
+              location += "#" + request->fragment;
             }
 
             response.redirect(location);
@@ -576,7 +573,7 @@ namespace SSC::IPC {
           resourcePath = applicationResources + resolved.pathname;
         } else if (resolved.isMount()) {
           resourcePath = applicationResources + resolved.mount.filename;
-        } else if (request.pathname == "" || request.pathname == "/") {
+        } else if (request->pathname == "" || request->pathname == "/") {
           if (userConfig.contains("webview_default_index")) {
             resourcePath = userConfig["webview_default_index"];
             if (resourcePath.starts_with("./")) {
@@ -606,7 +603,7 @@ namespace SSC::IPC {
               response.setHeader("content-location", contentLocation);
             }
 
-            if (request.method == "OPTIONS") {
+            if (request->method == "OPTIONS") {
               response.setHeader("access-control-allow-origin", "*");
               response.setHeader("access-control-allow-methods", "GET, HEAD");
               response.setHeader("access-control-allow-headers", "*");
@@ -614,7 +611,7 @@ namespace SSC::IPC {
               response.writeHead(200);
             }
 
-            if (request.method == "HEAD") {
+            if (request->method == "HEAD") {
               const auto contentType = resource.mimeType();
               const auto contentLength = resource.size();
 
@@ -629,7 +626,7 @@ namespace SSC::IPC {
               response.writeHead(200);
             }
 
-            if (request.method == "GET") {
+            if (request->method == "GET") {
               if (resource.mimeType() != "text/html") {
                 response.send(resource);
               } else {
@@ -650,18 +647,18 @@ namespace SSC::IPC {
 
         if (this->navigator.serviceWorker.registrations.size() > 0) {
           const auto fetch = ServiceWorkerContainer::FetchRequest {
-            request.method,
-            request.scheme,
-            request.hostname,
-            request.pathname,
-            request.query,
-            request.headers,
-            ServiceWorkerContainer::FetchBody { request.body.size, request.body.bytes },
-            ServiceWorkerContainer::Client { request.client.id, this->preload }
+            request->method,
+            request->scheme,
+            request->hostname,
+            request->pathname,
+            request->query,
+            request->headers,
+            ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
+            ServiceWorkerContainer::Client { request->client.id, this->preload }
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
-            if (!request.isActive()) {
+            if (!request->isActive()) {
               return;
             }
 
@@ -677,7 +674,7 @@ namespace SSC::IPC {
 
           if (fetched) {
             this->core->setTimeout(32000, [request] () mutable {
-              if (request.isActive()) {
+              if (request->isActive()) {
                 auto response = SchemeHandlers::Response(request, 408);
                 response.fail("ServiceWorker request timed out.");
               }
@@ -692,8 +689,8 @@ namespace SSC::IPC {
 
       // module or stdlib import/fetch `socket:<module>/<path>` which will just
       // proxy an import into a normal resource request above
-      if (request.hostname.size() == 0) {
-        auto pathname = request.pathname;
+      if (request->hostname.size() == 0) {
+        auto pathname = request->pathname;
 
         if (!pathname.ends_with(".js")) {
           pathname += ".js";
@@ -713,7 +710,7 @@ namespace SSC::IPC {
             "socket://" +
             bundleIdentifier +
             contentLocation +
-            (request.query.size() > 0 ? "?" + request.query : "")
+            (request->query.size() > 0 ? "?" + request->query : "")
           );
 
           const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
@@ -746,7 +743,7 @@ namespace SSC::IPC {
     });
 
     this->schemeHandlers.registerSchemeHandler("node", [this](
-      const auto& request,
+      const auto request,
       const auto router,
       auto& callbacks,
       auto callback
@@ -766,11 +763,11 @@ namespace SSC::IPC {
 
       // module or stdlib import/fetch `socket:<module>/<path>` which will just
       // proxy an import into a normal resource request above
-      if (request.hostname.size() == 0) {
+      if (request->hostname.size() == 0) {
         const auto isAllowedNodeCoreModule = allowedNodeCoreModules.end() != std::find(
           allowedNodeCoreModules.begin(),
           allowedNodeCoreModules.end(),
-          request.pathname.substr(1)
+          request->pathname.substr(1)
         );
 
         if (!isAllowedNodeCoreModule) {
@@ -778,7 +775,7 @@ namespace SSC::IPC {
           return callback(response);
         }
 
-        auto pathname = request.pathname;
+        auto pathname = request->pathname;
 
         if (!pathname.ends_with(".js")) {
           pathname += ".js";
@@ -795,7 +792,7 @@ namespace SSC::IPC {
 
         if (!resource.exists()) {
           if (!pathname.ends_with(".js")) {
-            pathname = request.pathname;
+            pathname = request->pathname;
 
             if (!pathname.starts_with("/")) {
               pathname = "/" + pathname;
@@ -905,38 +902,38 @@ namespace SSC::IPC {
       });
 
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
-        const auto& request,
+        const auto request,
         const auto bridge,
         auto& callbacks,
         auto callback
       ) {
         if (this->navigator.serviceWorker.registrations.size() > 0) {
-          auto hostname = request.hostname;
-          auto pathname = request.pathname;
+          auto hostname = request->hostname;
+          auto pathname = request->pathname;
 
-          if (request.scheme == "npm") {
+          if (request->scheme == "npm") {
             hostname = this->userConfig["meta_bundle_identifier"];
           }
 
-          const auto scope = this->navigator.serviceWorker.protocols.getServiceWorkerScope(request.scheme);
+          const auto scope = this->navigator.serviceWorker.protocols.getServiceWorkerScope(request->scheme);
 
           if (scope.size() > 0) {
             pathname = scope + pathname;
           }
 
           const auto fetch = ServiceWorkerContainer::FetchRequest {
-            request.method,
-            request.scheme,
+            request->method,
+            request->scheme,
             hostname,
             pathname,
-            request.query,
-            request.headers,
-            ServiceWorkerContainer::FetchBody { request.body.size, request.body.bytes },
-            ServiceWorkerContainer::Client { request.client.id, this->preload }
+            request->query,
+            request->headers,
+            ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
+            ServiceWorkerContainer::Client { request->client.id, this->preload }
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
-            if (!request.isActive()) {
+            if (!request->isActive()) {
               return;
             }
 
@@ -954,7 +951,7 @@ namespace SSC::IPC {
 
           if (fetched) {
             this->core->setTimeout(32000, [request] () mutable {
-              if (request.isActive()) {
+              if (request->isActive()) {
                 auto response = SchemeHandlers::Response(request, 408);
                 response.fail("Protocol handler ServiceWorker request timed out.");
               }

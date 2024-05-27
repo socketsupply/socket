@@ -1,5 +1,6 @@
 #include "bridge.hh"
 #include "router.hh"
+#include "../core/trace.hh"
 
 namespace SSC::IPC {
   Router::Router (Bridge* bridge)
@@ -149,24 +150,31 @@ namespace SSC::IPC {
       }
     }
 
+    Tracer tracer("IPC::Router");
     if (context.async) {
-      return this->bridge->dispatch([context, msg, callback, this]() mutable {
-        context.callback(msg, this, [msg, callback, this](const auto result) mutable {
+      auto span = tracer.span("invoke (async)");
+      return this->bridge->dispatch([=, this]() mutable {
+        context.callback(msg, this, [=, this](const auto result) mutable {
           if (result.seq == "-1") {
             this->bridge->send(result.seq, result.str(), result.post);
           } else {
             callback(result);
           }
+
+          span->end();
         });
       });
     }
 
-    context.callback(msg, this, [msg, callback, this](const auto result) mutable {
+    auto span = tracer.span("invoke (sync)");
+    context.callback(msg, this, [=, this](const auto result) mutable {
       if (result.seq == "-1") {
         this->bridge->send(result.seq, result.str(), result.post);
       } else {
         callback(result);
       }
+
+      span->end();
     });
 
     return true;
