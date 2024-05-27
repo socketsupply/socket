@@ -4820,6 +4820,7 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/init.cc");
       files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
       files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libllama.a");
 
       pathResources = paths.pathBin;
 
