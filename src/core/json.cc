@@ -144,6 +144,11 @@ namespace SSC::JSON {
     this->type = Type::Number;
   }
 
+  Any::Any (long long number) {
+    this->pointer = SharedPointer<void>(new Number((double) number));
+    this->type = Type::Number;
+  }
+
 #if SOCKET_RUNTIME_PLATFORM_APPLE
   Any::Any (size_t number) {
     this->pointer = SharedPointer<void>(new Number((double) number));

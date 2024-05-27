@@ -1,4 +1,5 @@
 #include "../headers.hh"
+#include "../trace.hh"
 #include "../json.hh"
 #include "../core.hh"
 #include "fs.hh"
@@ -29,6 +30,9 @@ namespace SSC {
     #endif
     #if defined(UV_DIRENT_BLOCK)
     CONSTANT(UV_DIRENT_BLOCK)
+    #endif
+    #if defined(UV_FS_O_FILEMAP)
+    CONSTANT(UV_FS_O_FILEMAP)
     #endif
     #if defined(O_RDONLY)
     CONSTANT(O_RDONLY)
@@ -961,7 +965,7 @@ namespace SSC {
     size_t offset,
     const CoreModule::Callback& callback
   ) const {
-    this->core->dispatchEventLoop([=, this]() {
+    this->core->dispatchEventLoop([=, this]() mutable {
       auto desc = getDescriptor(id);
 
       if (desc == nullptr) {

@@ -656,4 +656,284 @@ namespace SSC {
 
     return "";
   }
+
+  FileResource::ReadStream FileResource::stream (const ReadStream::Options& options) {
+    return ReadStream(ReadStream::Options(this->path, options.highWaterMark, this->size()));
+  }
+
+  FileResource::ReadStream::ReadStream (const Options& options)
+    : options(options)
+  {}
+
+  FileResource::ReadStream::~ReadStream () {
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    if (this->file != nullptr) {
+      g_object_unref(this->file);
+      this->file = nullptr;
+    }
+
+    if (this->stream != nullptr) {
+      g_input_stream_close(
+        reinterpret_cast<GInputStream*>(this->stream),
+        nullptr,
+        nullptr
+      );
+      g_object_unref(this->stream);
+      this->stream = nullptr;
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #endif
+  }
+
+  FileResource::ReadStream::ReadStream (
+    const ReadStream& stream
+  ) : options(stream.options),
+      offset(stream.offset.load()),
+      ended(stream.ended.load())
+  {
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    this->file = stream.file;
+    this->stream = stream.stream;
+
+    if (this->file) {
+      g_object_ref(this->file);
+    }
+
+    if (this->stream) {
+      g_object_ref(this->stream);
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #endif
+  }
+
+  FileResource::ReadStream::ReadStream (ReadStream&& stream)
+    : options(stream.options),
+      offset(stream.offset.load()),
+      ended(stream.ended.load())
+  {
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    this->file = stream.file;
+    this->stream = stream.stream;
+    if (stream.file) {
+      stream.file = nullptr;
+    }
+
+    if (stream.stream) {
+      stream.stream = nullptr;
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #endif
+  }
+
+  FileResource::ReadStream& FileResource::ReadStream::operator = (
+    const ReadStream& stream
+  ) {
+    this->options.highWaterMark = stream.options.highWaterMark;
+    this->options.resourcePath = stream.options.resourcePath;
+    this->options.size = stream.options.size;
+    this->offset = stream.offset.load();
+    this->ended = stream.ended.load();
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    this->file = stream.file;
+    this->stream = stream.stream;
+
+    if (this->file) {
+      g_object_ref(this->file);
+    }
+
+    if (this->stream) {
+      g_object_ref(this->stream);
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #endif
+    return *this;
+  }
+
+  FileResource::ReadStream& FileResource::ReadStream::operator = (
+    ReadStream&& stream
+  ) {
+    this->options.highWaterMark = stream.options.highWaterMark;
+    this->options.resourcePath = stream.options.resourcePath;
+    this->options.size = stream.options.size;
+    this->offset = stream.offset.load();
+    this->ended = stream.ended.load();
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    this->file = stream.file;
+    this->stream = stream.stream;
+    if (stream.file) {
+      stream.file = nullptr;
+    }
+
+    if (stream.stream) {
+      stream.stream = nullptr;
+    }
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #endif
+    return *this;
+  }
+
+  const FileResource::ReadStream::Buffer FileResource::ReadStream::read (off_t offset, size_t highWaterMark) {
+    if (offset == -1) {
+      offset = this->offset;
+    }
+
+    if (highWaterMark == -1) {
+      highWaterMark = this->options.highWaterMark;
+    }
+
+    const auto remaining = this->remaining(offset);
+    const auto size = highWaterMark > remaining ? remaining : highWaterMark;
+    auto buffer = Buffer(size);
+
+    if (buffer.size > 0 && buffer.bytes != nullptr) {
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      if (this->data == nullptr) {
+        this->data = [NSData dataWithContentsOfURL: this->resource.url];
+        @try {
+          [this->data
+            getBytes: buffer.bytes.get(),
+               range: NSMakeRange(offset, size)
+          ];
+        } @catch (NSException* error) {
+          this->error = [NSError
+              errorWithDomain: error.name
+                         code: 0
+                     userInfo: @{
+                        NSUnderlyingErrorKey: error,
+                  NSDebugDescriptionErrorKey: error.userInfo ?: @{},
+            NSLocalizedFailureReasonErrorKey: (error.reason ?: @"???")
+          }];
+        }
+      }
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
+      if (this->file == nullptr) {
+        this->file = g_file_new_for_path(this->options.resourcePath.c_str());
+      }
+
+      if (this->stream == nullptr) {
+        this->stream = g_file_read(this->file, nullptr, nullptr);
+      }
+
+      if (size == 0 || highWaterMark == 0) {
+        return buffer;
+      }
+
+      if (offset > this->offset) {
+        g_input_stream_skip(
+          reinterpret_cast<GInputStream*>(this->stream),
+          offset - this->offset,
+          nullptr,
+          nullptr
+        );
+
+        this->offset = offset;
+      }
+
+      buffer.size = g_input_stream_read(
+        reinterpret_cast<GInputStream*>(this->stream),
+        buffer.bytes.get(),
+        size,
+        nullptr,
+        &this->error
+      );
+
+    #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+    #endif
+    }
+
+    if (this->error) {
+      buffer.size = 0;
+      debug(
+        "FileResource::ReadStream: read error: %s",
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+        error.localizedDescription.UTF8String
+    #elif SOCKET_RUNTIME_PLATFORM_LINUX
+        error->message
+    #else
+        "An unknown error occurred"
+    #endif
+      );
+    }
+
+    if (buffer.size <= 0) {
+      buffer.bytes = nullptr;
+      buffer.size = 0;
+      this->ended = true;
+    } else {
+      this->offset += buffer.size;
+      this->ended = this->offset >= this->options.size;
+    }
+
+    return buffer;
+  }
+
+  size_t FileResource::ReadStream::remaining (off_t offset) const {
+    const auto size = this->options.size;
+    if (offset > -1) {
+      return size - offset;
+    }
+
+    return size - this->offset;
+  }
+
+  FileResource::ReadStream::Buffer::Buffer (size_t size)
+    : bytes(std::make_shared<char[]>(size)),
+      size(size)
+  {
+    memset(this->bytes.get(), 0, size);
+  }
+
+  FileResource::ReadStream::Buffer::Buffer (const Options& options)
+    : bytes(std::make_shared<char[]>(options.highWaterMark)),
+      size(0)
+  {
+    memset(this->bytes.get(), 0, options.highWaterMark);
+  }
+
+  FileResource::ReadStream::Buffer::Buffer (const Buffer& buffer) {
+    this->size = buffer.size.load();
+    this->bytes = buffer.bytes;
+  }
+
+  FileResource::ReadStream::Buffer::Buffer (Buffer&& buffer) {
+    this->size = buffer.size.load();
+    this->bytes = buffer.bytes;
+    buffer.size = 0;
+    buffer.bytes = nullptr;
+  }
+
+  FileResource::ReadStream::Buffer& FileResource::ReadStream::Buffer::operator = (
+    const Buffer& buffer
+  ) {
+    this->size = buffer.size.load();
+    this->bytes = buffer.bytes;
+    return *this;
+  }
+
+  FileResource::ReadStream::Buffer& FileResource::ReadStream::Buffer::operator = (
+    Buffer&& buffer
+  ) {
+    this->size = buffer.size.load();
+    this->bytes = buffer.bytes;
+    buffer.size = 0;
+    buffer.bytes = nullptr;
+    return *this;
+  }
+
+  bool FileResource::ReadStream::Buffer::isEmpty () const {
+    return this->size == 0 || this->bytes == nullptr;
+  }
 }
