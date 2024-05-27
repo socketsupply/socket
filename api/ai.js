@@ -2,11 +2,32 @@
 /**
  * @module AI
  *
- * Provides high level classes for common AI tasks
+ * Provides high level classes for common AI tasks.
+ *
+ * If you download a model like `mistral-7b-openorca.Q4_0.gguf` from Hugging
+ * Face, you can construct in JavaScript with a prompt. Prompt syntax isn't
+ * concrete like programming syntax, so you'll usually want to know what the
+ * author has to say about prompting, for example this might be worth reading...
+ *
+ * https://docs.mistral.ai/guides/prompting_capabilities
  *
  * Example usage:
+ *
  * ```js
  * import { LLM } from 'socket:ai'
+ *
+ * const llm = new LLM({
+ *   path: 'model.gguf',
+ *   prompt: '...' // insert your prompt here.
+ * })
+ *
+ * llm.on('end', () => {
+ *   // end of the token stream.
+ * })
+ *
+ * llm.on('data', data => {
+ *   // a new token has arrived in the token stream.
+ * })
  * ```
  */
 import ipc from './ipc.js'
