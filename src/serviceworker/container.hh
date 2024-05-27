@@ -3,6 +3,7 @@
 
 #include "../core/headers.hh"
 #include "../core/json.hh"
+#include "../ipc/client.hh"
 #include "../ipc/preload.hh"
 
 #include "protocols.hh"
@@ -14,7 +15,8 @@ namespace SSC {
 
   class ServiceWorkerContainer {
     public:
-      using ID = uint64_t;
+      using ID = IPC::Client::ID;
+      using Client = IPC::Client;
 
       struct RegistrationOptions {
         enum class Type { Classic, Module };
@@ -24,11 +26,6 @@ namespace SSC {
         String scriptURL;
         String scheme = "*";
         ID id = 0;
-      };
-
-      struct Client {
-        ID id = 0;
-        IPC::Preload preload;
       };
 
       struct Registration {
@@ -135,5 +132,4 @@ namespace SSC {
       bool claimClients (const String& scope);
   };
 }
-
 #endif
