@@ -25,8 +25,14 @@ export async function onRequest (request, env, ctx) {
   const url = new URL(request.url)
   const origin = url.origin.replace('npm://', 'socket://')
   const referer = request.headers.get('referer')
-  const specifier = url.pathname.replace('/socket/npm/', '')
+  let specifier = url.pathname.replace('/socket/npm/', '')
   const importOrigins = url.searchParams.getAll('origin').concat(url.searchParams.getAll('origin[]'))
+
+  if (typeof specifier === 'string') {
+    try {
+      specifier = (new URL(require.resolve(specifier))).toString()
+    } catch {}
+  }
 
   debug(`${DEBUG_LABEL}: fetch: %s`, specifier)
 

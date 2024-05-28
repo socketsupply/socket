@@ -1,5 +1,6 @@
 import { DEFAULT_PACKAGE_PREFIX, Package } from '../commonjs/package.js'
 import { Loader } from '../commonjs/loader.js'
+import { isESMSource } from '../util.js'
 import location from '../location.js'
 import path from '../path.js'
 
@@ -50,13 +51,17 @@ export async function resolve (specifier, origin = null, options = null) {
 
   try {
     pkg.load()
+
     const url = pkg.type === type
       ? pkg.resolve(pathname, { prefix, type })
       : pkg.resolve(pathname, { prefix })
+
+    const src = pkg.loader.load(url).text
+
     return {
       package: pkg,
       origin: pkg.origin,
-      type: pkg.type,
+      type: isESMSource(src) ? 'module' : 'commonjs',
       url
     }
   } catch (err) {

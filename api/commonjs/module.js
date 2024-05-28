@@ -8,6 +8,7 @@ import { Loader } from './loader.js'
 import location from '../location.js'
 import process from '../process.js'
 import path from '../path.js'
+import fs from '../fs.js'
 
 /**
  * @typedef {function(string, Module, function(string): any): any} ModuleResolver
@@ -417,23 +418,40 @@ export class Module extends EventTarget {
       return this.cache.get(location.origin)
     }
 
+    let packageInfo = ''
+
+    try {
+      packageInfo = fs.readFileSync('package.json', 'utf8')
+    } catch (err) {
+    }
+
+    if (packageInfo.length) {
+      try {
+        packageInfo = JSON.parse(packageInfo)
+      } catch (err) {
+        console.warn(err)
+        packageInfo = null
+      }
+    }
+
     const main = new Module(location.origin, {
       state: new State({ loaded: true }),
       parent: null,
       package: new Package(location.origin, {
         id: location.href,
         type: 'commonjs',
-        info: application.config,
+        info: packageInfo || application.config,
         index: '',
         prefix: '',
         manifest: '',
 
         // eslint-disable-next-line
-        name: application.config.build_name,
+        name: packageInfo?.name || application.config.build_name,
         // eslint-disable-next-line
-        version: application.config.meta_version,
+        version: packageInfo?.version || application.config.meta_version,
         // eslint-disable-next-line
-        description: application.config.meta_description,
+        description: packageInfo?.description || application.config.meta_description,
+        imports: packageInfo?.imports || {},
         exports: {
           '.': {
             default: location.pathname
@@ -620,15 +638,18 @@ export class Module extends EventTarget {
     // includes `.browser` field mapping
     for (const key in this.package.imports) {
       const value = this.package.imports[key]
-      if (value) {
-        this.#resolvers.push((specifier, ctx, next) => {
-          if (specifier === key) {
-            return value.default ?? value.browser ?? next(specifier)
-          }
+      if (!value) continue
 
-          return next(specifier)
-        })
-      }
+      this.#resolvers.push((specifier, ctx, next) => {
+        if (specifier === key) {
+          return (typeof value === 'string'
+            ? value
+            : value.default ?? value.browser ?? next(specifier)
+          )
+        }
+
+        return next(specifier)
+      })
     }
 
     if (this.#parent) {

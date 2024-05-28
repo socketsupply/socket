@@ -104,9 +104,14 @@ export function createRequire (options) {
     paths
   })
 
+  const allResolvers = module.resolvers
+    .concat(resolvers)
+    .concat(main.resolvers)
+    .filter(isFunction)
+
   return Object.assign(require, {
     extensions: loaders,
-    resolvers: module.resolvers.concat(resolvers).filter(isFunction),
+    resolvers: allResolvers,
     resolve,
     loaders,
     module,
@@ -151,8 +156,7 @@ export function createRequire (options) {
     const resolvers = Array
       .from([])
       .concat(options?.resolvers)
-      .concat(require.resolvers)
-      .concat(module.resolvers)
+      .concat(allResolvers)
       .filter(Boolean)
 
     return next(input)
