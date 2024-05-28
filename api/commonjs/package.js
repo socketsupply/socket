@@ -601,6 +601,7 @@ export class Package {
       ? options.type
       : this.#type
     this.#exports = options.exports ?? this.#exports
+    this.#imports = options.imports ?? this.#imports
     this.#license = options.license ?? DEFAULT_LICENSE
     this.#version = options.version ?? this.#name.version ?? DEFAULT_PACKAGE_VERSION
     this.#description = options.description ?? ''
