@@ -107,7 +107,7 @@ namespace SSC {
       void chat (String input, const Cb cb);
       void escape (String& input);
 
-      LLM(const LLMOptions options);
+      LLM(LLMOptions options);
       ~LLM();
 
       static void tramp(ggml_log_level level, const char* message, void* user_data);

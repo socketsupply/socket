@@ -6034,6 +6034,7 @@ int main (const int argc, const char* argv[]) {
           auto d = String(debugBuild ? "d" : "");
           auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
+          // TODO(@heapwolf): llama for win32
         #else
           auto d = "";
           auto static_uv = "";

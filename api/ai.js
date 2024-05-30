@@ -78,6 +78,11 @@ export class LLM extends EventEmitter {
 
       if (!data || BigInt(data.id) !== this.id) return
 
+      if (source === 'ai.llm.log') {
+        this.emit('log', data.message)
+        return
+      }
+
       if (source === 'ai.llm.chat') {
         if (data.complete) {
           return this.emit('end')

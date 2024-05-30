@@ -161,8 +161,6 @@ mkdir -p "$output_directory"
 
 cd "$(dirname "$output_directory")"
 
-sources+=("$output_directory/llama/build-info.cpp")
-
 echo "# building runtime static libary ($arch-$platform)"
 for source in "${sources[@]}"; do
   declare src_directory="$root/src"
@@ -180,6 +178,8 @@ for source in "${sources[@]}"; do
 
   objects+=("$object")
 done
+
+objects+=("$output_directory/llama/build-info.o")
 
 if [[ -z "$ignore_header_mtimes" ]]; then
   test_headers+="$(find "$root/src"/core/*.hh)"
@@ -209,12 +209,16 @@ function generate_llama_build_info () {
   fi
 
   echo "# generating llama build info"
-  cat > "$output_directory/llama/build-info.cpp" << LLAMA_BUILD_INFO
+  declare source="$output_directory/llama/build-info.cpp"
+
+  cat > $source << LLAMA_BUILD_INFO
     int LLAMA_BUILD_NUMBER = $build_number;
     char const *LLAMA_COMMIT = "$build_commit";
     char const *LLAMA_COMPILER = "$build_compiler";
     char const *LLAMA_BUILD_TARGET = "$build_target";
 LLAMA_BUILD_INFO
+
+  quiet $clang "${cflags[@]}" -c $source -o ${source/cpp/o} || onsignal
 }
 
 function main () {
