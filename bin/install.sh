@@ -524,7 +524,7 @@ function _prepare {
 
   if [ ! -d "$BUILD_DIR/llama" ]; then
     git clone --depth=1 https://github.com/socketsupply/llama.cpp.git "$BUILD_DIR/llama" > /dev/null 2>&1
-    rm -rf $BUILD_DIR/llama/.git
+    # rm -rf $BUILD_DIR/llama/.git
 
     die $? "not ok - unable to clone llama. See trouble shooting guide in the README.md file"
   fi
@@ -544,7 +544,7 @@ function _install {
     fi
   fi
 
-  # TODO(@mribbons): Set lib types based on platform, after mobile CI is working
+  # TODO(@heapwolf): Set lib types based on platform, after mobile CI is working
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
@@ -570,8 +570,10 @@ function _install {
     echo "# copying libraries to $SOCKET_HOME/lib$_d/$arch-$platform"
     rm -rf "$SOCKET_HOME/lib$_d/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib$_d/$arch-$platform"
+
     if [[ "$platform" != "android" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.metallib "$SOCKET_HOME/lib$_d/$arch-$platform"
     fi
     if [[ "$host" == "Win32" ]] && [[ "$platform" == "desktop" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
@@ -778,6 +780,40 @@ function _compile_libuv_android {
   fi
 }
 
+function _compile_metal {
+  target=$1
+  hosttarget=$1
+  platform=$2
+
+  if [ -z "$target" ]; then
+    target="$(host_arch)"
+    platform="desktop"
+  fi
+
+  echo "# building METAL for $platform ($target) on $host..."
+  STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
+
+  if [ ! -d "$STAGING_DIR" ]; then
+    mkdir -p "$STAGING_DIR"
+    cp -r "$BUILD_DIR"/llama/* "$STAGING_DIR"
+    cd "$STAGING_DIR" || exit 1
+  else
+    cd "$STAGING_DIR" || exit 1
+  fi
+
+  local sdk="iphoneos"
+  [[ "$platform" == "iPhoneSimulator" ]] && sdk="iphonesimulator"
+
+  mkdir -p "$STAGING_DIR/build/"
+  mkdir -p ../lib
+
+  xcrun -sdk $sdk metal -O3 -c ggml-metal.metal -o ggml-metal.air
+  xcrun -sdk $sdk metallib ggml-metal.air -o ../lib/default.metallib
+  rm *.air
+
+  echo "ok - metal built for $platform"
+}
+
 function _compile_llama {
   target=$1
   hosttarget=$1
@@ -799,22 +835,24 @@ function _compile_llama {
     cd "$STAGING_DIR" || exit 1
   fi
 
+  local sdk="iphoneos"
+  [[ "$platform" == "iPhoneSimulator" ]] && sdk="iphonesimulator"
+
   mkdir -p "$STAGING_DIR/build/"
+  mkdir -p ../bin
+
+  declare cmake_args=(
+    -DLLAMA_BUILD_TESTS=OFF
+    -DLLAMA_BUILD_SERVER=OFF
+    -DLLAMA_BUILD_EXAMPLES=OFF
+  )
 
   if [ "$platform" == "desktop" ]; then
-    declare cmake_args=(
-      -DBUILD_TESTING=OFF
-      -DLLAMA_BUILD_TESTS=OFF
-      -DLLAMA_BUILD_SERVER=OFF
-      -DLLAMA_BUILD_SHARED=OFF
-      -DLLAMA_BUILD_EXAMPLES=OFF
-    )
-
     if [[ "$host" != "Win32" ]]; then
       quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" ${cmake_args[@]}
       die $? "not ok - libllama.a (desktop)"
 
-      quiet cmake --build build --target clean &&
+      quiet cmake --build build &&
       quiet cmake --build build -- -j"$CPU_CORES" &&
       quiet cmake --install build
       die $? "not ok - libllama.a (desktop)"
@@ -840,40 +878,28 @@ function _compile_llama {
     return
   fi
 
-  if [ "$hosttarget" == "arm64" ]; then
-    hosttarget="arm"
-  fi
+  # https://github.com/ggerganov/llama.cpp/discussions/4508
 
-  local sdk="iphoneos"
-  [[ "$platform" == "iPhoneSimulator" ]] && sdk="iphonesimulator"
+  declare ar=$(xcrun -sdk $sdk -find ar)
+  declare cc=$(xcrun -sdk $sdk -find clang)
+  declare cxx=$(xcrun -sdk $sdk -find clang++)
+  declare cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON"
 
-  export PLATFORM=$platform
-  export CC="$(xcrun -sdk $sdk -find clang)"
-  export CXX="$(xcrun -sdk $sdk -find clang++)"
-  export STRIP="$(xcrun -sdk $sdk -find strip)"
-  export LD="$(xcrun -sdk $sdk -find ld)"
-  export CPP="$CC -E"
-  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
-  export AR=$(xcrun -sdk $sdk -find ar)
-  export RANLIB=$(xcrun -sdk $sdk -find ranlib)
-  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
-  export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+  echo "AR: $ar"
+  echo "CFLAGS: $cflags"
 
-  #if ! test -f CMakeLists.txt; then
-    quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES="$target" -DCMAKE_OSX_SYSROOT=$(xcrun --sdk $sdk --show-sdk-path)
-  #fi
+  AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make libllama.a 
 
   if [ ! $? = 0 ]; then
-    echo "WARNING! - iOS will not be enabled. iPhone simulator not found, try \"sudo xcode-select --switch /Applications/Xcode.app\"."
+    die $? "not ok - iOS will not be enabled. Unable to compile libllama."
     return
   fi
 
-  cmake --build build -- -j"$CPU_CORES"
-  cmake --install build
+  cp libllama.a ../lib
 
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
-  echo "ok - built for $target"
+  echo "ok - built llama for $target"
 }
 
 function _compile_libuv {
@@ -976,7 +1002,7 @@ function _compile_libuv {
 
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
-  echo "ok - built for $target"
+  echo "ok - built libuv for $target"
 }
 
 function _check_compiler_features {
@@ -1025,6 +1051,10 @@ cd "$BUILD_DIR" || exit 1
 
 trap onsignal INT TERM
 
+_compile_metal arm64 iPhoneOS
+_compile_metal x86_64 iPhoneSimulator
+_compile_metal arm64 iPhoneSimulator
+
 {
   _compile_llama
   echo "ok - built llama for $platform ($target)"
@@ -1055,6 +1085,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _compile_llama x86_64 iPhoneSimulator & pids+=($!)
 
   if [[ "$arch" = "arm64" ]]; then
+    echo "lol"
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
     _compile_llama arm64 iPhoneSimulator & pids+=($!)
   fi
@@ -1073,7 +1104,7 @@ fi
 
 if [[ "$host" != "Win32" ]]; then
   # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
-  wait $_compile_libuv_pid
+  # wait $_compile_libuv_pid
   wait $_compile_llama_pid
 fi
 
@@ -1097,7 +1128,7 @@ _get_web_view2
 
 if [[ "$host" == "Win32" ]]; then
   # Wait for Win32 lib uv build
-  wait $_compile_libuv_pid
+  # wait $_compile_libuv_pid
   wait $_compile_llama_pid
 fi
 

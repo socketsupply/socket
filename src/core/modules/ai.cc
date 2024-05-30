@@ -72,6 +72,18 @@ namespace SSC {
     }
 
     this->core->dispatchEventLoop([=, this] {
+      /* auto log = [&](String message) {
+        const auto json = JSON::Object::Entries {
+          {"source", "ai.llm.log"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"message", message}
+          }}
+        };
+
+        callback("-1", json, Post{});
+      }; */
+
       auto llm = new LLM(options);
       if (llm->err.size()) {
         auto json = ERR_AI_LLM_MESSAGE("ai.llm.create", id, llm->err);
@@ -162,12 +174,6 @@ namespace SSC {
     });
   };
 
-  LLM::Logger LLM::log = nullptr;
-
-  void LLM::tramp(ggml_log_level level, const char* message, void* user_data) {
-    if (LLM::log) LLM::log(level, message, user_data);
-  }
-
   void LLM::escape(String& input) {
     std::size_t input_len = input.length();
     std::size_t output_idx = 0;
@@ -207,15 +213,11 @@ namespace SSC {
     input.resize(output_idx);
   }
 
-  LLM::LLM (const LLMOptions options) {
-    //
-    // set up logging
-    //
-    LLM::log = [&](ggml_log_level level, const char* message, void* user_data) {
-      // std::cout << message << std::endl;
-    };
-
-    llama_log_set(LLM::tramp, nullptr);
+  LLM::LLM (LLMOptions options) {
+    llama_log_set([](ggml_log_level level, const char* message, void* llm) {
+      NSLog(@"LLMSTATUS: %s", message);
+      // llm.log(message);
+    }, this);
 
     //
     // set params and init the model and context
@@ -233,16 +235,32 @@ namespace SSC {
     this->params.prompt = "<|im_start|>system\n" + options.prompt + "<|im_end|>\n\n";
     this->params.n_ctx = 2048;
 
-    FileResource resource(options.path);
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      this->params.use_mmap = false;
+    #endif
 
-    if (!resource.exists()) {
+    FileResource modelResource(options.path);
+
+    if (!modelResource.exists()) {
       this->err = "Unable to access the model file due to permissions";
       return;
     }
 
+    FileResource metalResource(String("ggml-metal"));
+
     this->params.model = options.path;
 
     std::tie(this->model, this->ctx) = llama_init_from_gpt_params(this->params);
+
+    if (this->ctx == nullptr) {
+      this->err = "Unable to create the context";
+      return;
+    }
+
+    if (this->model == nullptr) {
+      this->err = "Unable to create the model";
+      return;
+    }
 
     this->embd_inp = ::llama_tokenize(this->ctx, this->params.prompt.c_str(), true, true);
 
