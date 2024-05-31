@@ -123,7 +123,7 @@ namespace SSC {
           {"source", "ai.llm.chat"},
           {"data", JSON::Object::Entries {
             {"id", std::to_string(id)},
-            {"token", token},
+            {"token", encodeURIComponent(token)},
             {"complete", isComplete}
           }}
         };
@@ -232,12 +232,9 @@ namespace SSC {
     if (this->params.seed == LLAMA_DEFAULT_SEED) this->params.seed = time(nullptr);
 
     this->params.chatml = true;
+    this->params.verbose_prompt = false;
     this->params.prompt = "<|im_start|>system\n" + options.prompt + "<|im_end|>\n\n";
     this->params.n_ctx = 2048;
-
-    #if SOCKET_RUNTIME_PLATFORM_IOS
-      this->params.use_mmap = false;
-    #endif
 
     FileResource modelResource(options.path);
 
@@ -402,7 +399,7 @@ namespace SSC {
 
     bool display = true;
     bool is_antiprompt = false;
-    bool input_echo = true;
+    bool input_echo = false;
     int n_remain = this->params.n_predict;
 
     std::vector<int> input_tokens;

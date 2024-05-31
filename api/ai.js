@@ -88,7 +88,7 @@ export class LLM extends EventEmitter {
           return this.emit('end')
         }
 
-        this.emit('data', data.token)
+        this.emit('data', decodeURIComponent(data.token))
       }
     })
 
