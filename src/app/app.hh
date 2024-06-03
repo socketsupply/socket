@@ -96,7 +96,7 @@ namespace SSC {
       WindowManager windowManager;
       ServiceWorkerContainer serviceWorkerContainer;
       SharedPointer<Core> core = nullptr;
-      Map userConfig = SSC::getUserConfig();
+      Map userConfig;
 
     #if SOCKET_RUNTIME_PLATFORM_WINDOWS
       App (void *);

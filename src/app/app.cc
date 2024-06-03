@@ -572,7 +572,8 @@ namespace SSC {
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
   App::App (JNIEnv* env, jobject self, SharedPointer<Core> core)
-    : core(core),
+    : userConfig(getUserConfig()),
+      core(core),
       windowManager(core),
       serviceWorkerContainer(core),
       jvm(env),
@@ -592,7 +593,8 @@ namespace SSC {
   {}
 
   App::App (SharedPointer<Core> core)
-    : core(core),
+    : userConfig(getUserConfig()),
+      core(core),
       windowManager(core),
       serviceWorkerContainer(core)
   {
@@ -615,12 +617,8 @@ namespace SSC {
   }
 
   void App::init () {
-    Env::set("UV_THREADPOOL_SIZE", "256");
   #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_LINUX
     gtk_init_check(0, nullptr);
-
-    auto webContext = webkit_web_context_get_default();
-
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     this->applicationDelegate = [SSCApplicationDelegate new];
     this->applicationDelegate.app = this;
