@@ -23,8 +23,8 @@ namespace SSC {
     size_t length = 0;
     String headers = "";
     String workerId = "";
-    SharedPointer<EventStreamCallback> eventStream;
-    SharedPointer<ChunkStreamCallback> chunkStream;
+    SharedPointer<EventStreamCallback> eventStream = nullptr;
+    SharedPointer<ChunkStreamCallback> chunkStream = nullptr;
   };
 
   using Posts = std::map<uint64_t, Post>;

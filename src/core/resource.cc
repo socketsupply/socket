@@ -406,6 +406,7 @@ namespace SSC {
     resource.bytes = nullptr;
     resource.cache.size = 0;
     resource.cache.bytes = nullptr;
+    resource.accessing = false;
 
     this->startAccessing();
   }
@@ -417,9 +418,7 @@ namespace SSC {
     this->options = resource.options;
     this->accessing = resource.accessing.load();
 
-    if (this->accessing) {
-      this->startAccessing();
-    }
+    this->startAccessing();
 
     return *this;
   }
@@ -434,10 +433,9 @@ namespace SSC {
     resource.bytes = nullptr;
     resource.cache.size = 0;
     resource.cache.bytes = nullptr;
+    resource.accessing = false;
 
-    if (this->accessing) {
-      this->startAccessing();
-    }
+    this->startAccessing();
 
     return *this;
   }

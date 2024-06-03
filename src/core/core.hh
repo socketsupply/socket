@@ -59,6 +59,11 @@ namespace SSC {
       using UDP = CoreUDP;
       using AI = CoreAI;
 
+      struct SharedPointerBuffer {
+        SharedPointer<char[]> pointer;
+        unsigned int ttl = 0;
+      };
+
     #if !SOCKET_RUNTIME_PLATFORM_IOS
       ChildProcess childProcess;
     #endif
@@ -73,8 +78,10 @@ namespace SSC {
       UDP udp;
       AI ai;
 
+      Vector<SharedPointerBuffer> sharedPointerBuffers;
       Posts posts;
 
+      Mutex mutex;
       Mutex loopMutex;
       Mutex postsMutex;
       Mutex timersMutex;
@@ -128,6 +135,9 @@ namespace SSC {
 
       // called when the application is shutting down
       void shutdown ();
+
+      void retainSharedPointerBuffer (SharedPointer<char[]> pointer, unsigned int ttl);
+      void releaseSharedPointerBuffer (SharedPointer<char[]> pointer);
 
       // core module post data management
       Post getPost (uint64_t id);

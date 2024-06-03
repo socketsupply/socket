@@ -75,13 +75,14 @@ namespace SSC {
         Callback callback;
         Socket* socket = nullptr;
         RequestContext (Callback callback) { this->callback = callback; }
-        RequestContext (size_t size, SharedPointer<char[]> bytes, Callback callback) {
+        RequestContext (size_t size, SharedPointer<char[]> bytes, Callback callback)
+          : size(size),
+            bytes(bytes),
+            callback(callback)
+        {
           if (bytes != nullptr) {
             this->buffer = uv_buf_init(bytes.get(), size);
-            this->bytes = bytes;
           }
-          this->size = size;
-          this->callback = callback;
         }
       };
 
