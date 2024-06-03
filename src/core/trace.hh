@@ -159,7 +159,7 @@ namespace SSC {
       /**
        * A collection of shared spans owned by this `Tracer` instance.
        */
-      SharedPointer<SharedSpanCollection> spans;
+      SharedPointer<SharedSpanCollection> spans = nullptr;
 
       /**
        * The shared span collection index

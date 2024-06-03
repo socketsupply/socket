@@ -80,7 +80,7 @@ namespace SSC {
 
           struct Buffer {
             Atomic<size_t> size = 0;
-            SharedPointer<char[]> bytes;
+            SharedPointer<char[]> bytes = nullptr;
             Buffer (size_t size);
             Buffer (const Options& options);
             Buffer (const Buffer& buffer);

@@ -196,6 +196,7 @@ namespace SSC {
         do {
           Lock lock(core->loopMutex);
           if (core->eventLoopDispatchQueue.size() == 0) break;
+
           dispatch = core->eventLoopDispatchQueue.front();
           core->eventLoopDispatchQueue.pop();
         } while (0);
@@ -335,8 +336,9 @@ namespace SSC {
     uv_timer_cb invoke;
   };
 
-  static Timer releaseWeakDescriptors = {
-    .timeout = 256, // in milliseconds
+  static Timer releaseStrongReferenceDescriptors = {
+    .repeated = true,
+    .timeout = 1024, // in milliseconds
     .invoke = [](uv_timer_t *handle) {
       auto core = reinterpret_cast<Core *>(handle->data);
       Vector<CoreFS::ID> ids;
@@ -374,6 +376,33 @@ namespace SSC {
     }
   };
 
+  static Timer releaseStrongReferenceSharedPointerBuffers = {
+    .repeated = true,
+    .timeout = 16, // in milliseconds
+    .invoke = [](uv_timer_t *handle) {
+      auto core = reinterpret_cast<Core *>(handle->data);
+      Lock lock(core->mutex);
+      for (int i = 0; i < core->sharedPointerBuffers.size(); ++i) {
+        auto& entry = core->sharedPointerBuffers[i];
+        // expired
+        if (entry.ttl <= 16) {
+          entry.pointer = nullptr;
+          entry.ttl = 0;
+          if (i == core->sharedPointerBuffers.size() - 1) {
+            core->sharedPointerBuffers.pop_back();
+            break;
+          }
+        } else {
+          entry.ttl = entry.ttl - 16;
+        }
+      }
+
+      if (core->sharedPointerBuffers.size() == 0) {
+        uv_timer_stop(&releaseStrongReferenceSharedPointerBuffers.handle);
+      }
+    }
+  };
+
   void Core::initTimers () {
     if (didTimersInit) {
       return;
@@ -384,7 +413,8 @@ namespace SSC {
     auto loop = getEventLoop();
 
     Vector<Timer *> timersToInit = {
-      &releaseWeakDescriptors
+      &releaseStrongReferenceDescriptors,
+      &releaseStrongReferenceSharedPointerBuffers
     };
 
     for (const auto& timer : timersToInit) {
@@ -399,7 +429,8 @@ namespace SSC {
     Lock lock(this->timersMutex);
 
     Vector<Timer *> timersToStart = {
-      &releaseWeakDescriptors
+      &releaseStrongReferenceDescriptors,
+      &releaseStrongReferenceSharedPointerBuffers
     };
 
     for (const auto &timer : timersToStart) {
@@ -419,7 +450,7 @@ namespace SSC {
       }
     }
 
-    didTimersStart = false;
+    didTimersStart = true;
   }
 
   void Core::stopTimers () {
@@ -430,7 +461,8 @@ namespace SSC {
     Lock lock(this->timersMutex);
 
     Vector<Timer *> timersToStop = {
-      &releaseWeakDescriptors
+      &releaseStrongReferenceDescriptors,
+      &releaseStrongReferenceSharedPointerBuffers
     };
 
     for (const auto& timer : timersToStop) {
@@ -472,5 +504,45 @@ namespace SSC {
 
   bool Core::clearInterval (const CoreTimers::ID id) {
     return this->timers.clearInterval(id);
+  }
+
+  void Core::retainSharedPointerBuffer (
+    SharedPointer<char[]> pointer,
+    unsigned int ttl
+  ) {
+    if (pointer == nullptr) {
+      return;
+    }
+
+    Lock lock(this->mutex);
+    for (auto& entry : this->sharedPointerBuffers) {
+      if (entry.ttl == 0 && entry.pointer == nullptr) {
+        entry.ttl = ttl;
+        entry.pointer = pointer;
+        return;
+      }
+    }
+
+    this->sharedPointerBuffers.emplace_back(SharedPointerBuffer {
+      pointer,
+      ttl
+    });
+
+    uv_timer_again(&releaseStrongReferenceSharedPointerBuffers.handle);
+  }
+
+  void Core::releaseSharedPointerBuffer (SharedPointer<char[]> pointer) {
+    if (pointer == nullptr) {
+      return;
+    }
+
+    Lock lock(this->mutex);
+    for (auto& entry : this->sharedPointerBuffers) {
+      if (entry.pointer.get() == pointer.get()) {
+        entry.pointer = nullptr;
+        entry.ttl = 0;
+        return;
+      }
+    }
   }
 }
