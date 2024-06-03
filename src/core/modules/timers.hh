@@ -17,13 +17,14 @@ namespace SSC {
       struct Timer {
         CoreTimers* timers = nullptr;
         ID id = 0;
-        Callback callback;
+        Callback callback = nullptr;
         bool repeat = false;
         bool cancelled = false;
         uv_timer_t timer;
+        Timer (CoreTimers* timers, ID id, Callback callback);
       };
 
-      using Handles = std::map<ID, Timer>;
+      using Handles = std::map<ID, SharedPointer<Timer>>;
 
       Handles handles;
       Mutex mutex;
