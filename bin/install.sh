@@ -573,7 +573,9 @@ function _install {
 
     if [[ "$platform" != "android" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.metallib "$SOCKET_HOME/lib$_d/$arch-$platform"
+      if [[ "$host" == "Darwin" ]]; then
+        cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+      fi
     fi
     if [[ "$host" == "Win32" ]] && [[ "$platform" == "desktop" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
@@ -587,7 +589,7 @@ function _install {
     exit 1
   fi
 
-  if [ "$host" == "Linux" ]; then
+  if [ "$host" == "Linux" ] || [ "$host" == "Darwin" ]; then
     echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
     rm -rf "$SOCKET_HOME/pkgconfig"
     mkdir -p "$SOCKET_HOME/pkgconfig"
