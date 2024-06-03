@@ -46,9 +46,9 @@ namespace SSC::IPC {
       };
 
       struct RequestCallbacks {
-        Function<void()> cancel;
-        Function<void()> finish;
-        Function<void(Error*)> fail;
+        Function<void()> cancel = nullptr;
+        Function<void()> finish = nullptr;
+        Function<void(Error*)> fail = nullptr;
       };
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
@@ -237,7 +237,7 @@ namespace SSC::IPC {
       using Handler = Function<void(
         const SharedPointer<Request>,
         const Bridge*,
-        RequestCallbacks& callbacks,
+        RequestCallbacks* callbacks,
         HandlerCallback
       )>;
 
@@ -274,7 +274,7 @@ namespace SSC::IPC {
       bool handleRequest (SharedPointer<Request> request, const HandlerCallback calllback = nullptr);
       bool isRequestActive (uint64_t id);
       bool isRequestCancelled (uint64_t id);
-      Handler& getHandlerForScheme (const String& scheme);
+      Handler getHandlerForScheme (const String& scheme);
   };
 }
 #endif

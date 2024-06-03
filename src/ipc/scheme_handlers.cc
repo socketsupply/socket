@@ -128,8 +128,6 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
     return;
   }
 
-  auto tracer = Tracer("onURISchemeRequest");
-
   auto bridge = &window->bridge;
   auto request = IPC::SchemeHandlers::Request::Builder(&bridge->schemeHandlers, schemeRequest)
     .setMethod(String(webkit_uri_scheme_request_get_http_method(schemeRequest)))
@@ -139,10 +137,7 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
     .setBody(webkit_uri_scheme_request_get_http_body(schemeRequest))
     .build();
 
-  auto span = tracer.begin("handleRequest");
   const auto handled = bridge->schemeHandlers.handleRequest(request, [=](const auto& response) mutable {
-    tracer.end("handleRequest");
-    // TODO(@jwerle): handle uri scheme response
   });
 
   if (!handled) {
@@ -152,7 +147,95 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
   }
 }
 #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-void ANDROID_EXTERNAL(ipc, SchemeHandlers, onWebResourceRequest) () {
+extern "C" {
+  jboolean ANDROID_EXTERNAL(ipc, SchemeHandlers, handleRequest) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jobject requestObject
+  ) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      ANDROID_THROW(env, "Invalid window requested");
+      return false;
+    }
+
+    const auto method = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+      env,
+      Object,
+      requestObject,
+      "getMethod",
+      "()Ljava/lang/String;"
+    )).str();
+
+    const auto headers = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+      env,
+      Object,
+      requestObject,
+      "getHeaders",
+      "()Ljava/lang/String;"
+    )).str();
+
+    const auto requestBodyByteArray = (jbyteArray) CallClassMethodFromAndroidEnvironment(
+      env,
+      Object,
+      requestObject,
+      "getBody",
+      "()[B"
+    );
+
+    const auto requestBodySize = requestBodyByteArray != nullptr
+      ? env->GetArrayLength(requestBodyByteArray)
+      : 0;
+
+    const auto bytes = requestBodySize > 0
+      ? new char[requestBodySize]{0}
+      : nullptr;
+
+    if (requestBodyByteArray) {
+      env->GetByteArrayRegion(
+        requestBodyByteArray,
+        0,
+        requestBodySize,
+        (jbyte*) bytes
+      );
+    }
+
+    const auto requestObjectRef = env->NewGlobalRef(requestObject);
+    const auto request = IPC::SchemeHandlers::Request::Builder(
+      &window->bridge.schemeHandlers,
+      requestObjectRef
+    )
+      .setMethod(method)
+      // copies all request soup headers
+      .setHeaders(headers)
+      // reads and copies request stream body
+      .setBody(requestBodySize, bytes)
+      .build();
+
+    const auto handled = window->bridge.schemeHandlers.handleRequest(request, [=](const auto& response) {
+      if (bytes) {
+        delete [] bytes;
+      }
+
+      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      attachment.env->DeleteGlobalRef(requestObjectRef);
+    });
+
+    if (!handled) {
+      env->DeleteGlobalRef(requestObjectRef);
+    }
+
+    return handled;
+  }
 }
 #endif
 
@@ -294,7 +377,7 @@ namespace SSC::IPC {
     return this->handlers.contains(scheme);
   }
 
-  SchemeHandlers::Handler& SchemeHandlers::getHandlerForScheme (const String& scheme) {
+  SchemeHandlers::Handler SchemeHandlers::getHandlerForScheme (const String& scheme) {
     Lock lock(this->mutex);
     return this->handlers.at(scheme);
   }
@@ -421,7 +504,7 @@ namespace SSC::IPC {
 
     do {
       Lock lock(this->mutex);
-      this->activeRequests.insert_or_assign(request->id, request);
+      this->activeRequests.emplace(request->id, request);
     } while (0);
 
     if (request->error != nullptr) {
@@ -435,8 +518,10 @@ namespace SSC::IPC {
     auto span = request->tracer.span("handler");
 
     this->bridge->dispatch([=, this] () mutable {
+      Lock lock(this->mutex);
+      auto request = this->activeRequests[id];
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
-        handler(request, this->bridge, request->callbacks, [=, this](auto& response) mutable {
+        handler(request, this->bridge, &request->callbacks, [=, this](auto& response) mutable {
           // make sure the response was finished before
           // calling the `callback` function below
           response.finish();
@@ -628,7 +713,11 @@ namespace SSC::IPC {
       return *this;
     }
 
-    if (this->request->method == "POST" || this->request->method == "PUT" || this->request->method == "PATCH") {
+    if (
+      this->request->method == "POST" ||
+      this->request->method == "PUT" ||
+      this->request->method == "PATCH"
+    ) {
       GError* error = nullptr;
       this->request->body.bytes = std::make_shared<char[]>(MAX_URI_SCHEME_REQUEST_BODY_BYTES);
       const auto success = g_input_stream_read_all(
@@ -645,7 +734,11 @@ namespace SSC::IPC {
 #endif
 
   SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (const Body& body) {
-    if (this->request->method == "POST" || this->request->method == "PUT" || this->request->method == "PATCH") {
+    if (
+      this->request->method == "POST" ||
+      this->request->method == "PUT" ||
+      this->request->method == "PATCH"
+    ) {
       this->request->body = body;
     }
     return *this;
@@ -1110,13 +1203,13 @@ namespace SSC::IPC {
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
       auto span = this->tracer.span("write");
-      this->buffers.push_back(bytes);
       g_memory_input_stream_add_data(
         reinterpret_cast<GMemoryInputStream*>(this->platformResponseStream),
         reinterpret_cast<const void*>(bytes.get()),
         (gssize) size,
         nullptr
       );
+      this->request->bridge->core->retainSharedPointerBuffer(bytes, 512);
       span->end();
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
@@ -1189,9 +1282,7 @@ namespace SSC::IPC {
 
     if (contentLength > 0) {
       this->writeHead();
-      if (responseResource.read()) {
-        return this->write(contentLength, responseResource.bytes);
-      }
+      return this->write(contentLength, responseResource.read());
     }
 
     return false;
@@ -1256,14 +1347,7 @@ namespace SSC::IPC {
         platformResponse
       );
 
-      g_object_unref(platformResponse);
-      auto buffers = this->buffers;
-      this->request->bridge->core->setInterval(16, [buffers, platformResponseStream] (auto cancel) {
-        if (!G_IS_INPUT_STREAM(platformResponseStream) || !g_input_stream_has_pending(platformResponseStream)) {
-          g_object_unref(platformResponseStream);
-          cancel();
-        }
-      });
+      g_object_unref(platformResponseStream);
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -1399,8 +1483,10 @@ namespace SSC::IPC {
       return false;
     }
 
-    if (WEBKIT_IS_URI_SCHEME_REQUEST(this->request->platformRequest)) {
+    if (this->request && WEBKIT_IS_URI_SCHEME_REQUEST(this->request->platformRequest)) {
       webkit_uri_scheme_request_finish_error(this->request->platformRequest, error);
+    } else {
+      return false;
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -1481,96 +1567,3 @@ namespace SSC::IPC {
     }
   }
 }
-
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-extern "C" {
-  jboolean ANDROID_EXTERNAL(ipc, SchemeHandlers, handleRequest) (
-    JNIEnv* env,
-    jobject self,
-    jint index,
-    jobject requestObject
-  ) {
-    auto app = App::sharedApplication();
-
-    if (!app) {
-      ANDROID_THROW(env, "Missing 'App' in environment");
-      return false;
-    }
-
-    const auto window = app->windowManager.getWindow(index);
-
-    if (!window) {
-      ANDROID_THROW(env, "Invalid window requested");
-      return false;
-    }
-
-    const auto method = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
-      env,
-      Object,
-      requestObject,
-      "getMethod",
-      "()Ljava/lang/String;"
-    )).str();
-
-    const auto headers = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
-      env,
-      Object,
-      requestObject,
-      "getHeaders",
-      "()Ljava/lang/String;"
-    )).str();
-
-    const auto requestBodyByteArray = (jbyteArray) CallClassMethodFromAndroidEnvironment(
-      env,
-      Object,
-      requestObject,
-      "getBody",
-      "()[B"
-    );
-
-    const auto requestBodySize = requestBodyByteArray != nullptr
-      ? env->GetArrayLength(requestBodyByteArray)
-      : 0;
-
-    const auto bytes = requestBodySize > 0
-      ? new char[requestBodySize]{0}
-      : nullptr;
-
-    if (requestBodyByteArray) {
-      env->GetByteArrayRegion(
-        requestBodyByteArray,
-        0,
-        requestBodySize,
-        (jbyte*) bytes
-      );
-    }
-
-    const auto requestObjectRef = env->NewGlobalRef(requestObject);
-    const auto request = IPC::SchemeHandlers::Request::Builder(
-      &window->bridge.schemeHandlers,
-      requestObjectRef
-    )
-      .setMethod(method)
-      // copies all request soup headers
-      .setHeaders(headers)
-      // reads and copies request stream body
-      .setBody(requestBodySize, bytes)
-      .build();
-
-    const auto handled = window->bridge.schemeHandlers.handleRequest(request, [=](const auto& response) {
-      if (bytes) {
-        delete [] bytes;
-      }
-
-      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-      attachment.env->DeleteGlobalRef(requestObjectRef);
-    });
-
-    if (!handled) {
-      env->DeleteGlobalRef(requestObjectRef);
-    }
-
-    return handled;
-  }
-}
-#endif

@@ -48,7 +48,7 @@ namespace SSC::IPC {
       Seq seq = "";
       Map args;
       bool isHTTP = false;
-      SharedPointer<MessageCancellation> cancel;
+      SharedPointer<MessageCancellation> cancel = nullptr;
 
       Message () = default;
       Message (const Message& message);

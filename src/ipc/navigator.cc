@@ -435,6 +435,8 @@ namespace SSC::IPC {
       }
     };
 
+    static const auto wellKnownPaths = FileResource::getWellKnownPaths();
+
     for (const auto& entry : this->bridge->userConfig) {
       if (entry.first.starts_with("webview_navigator_mounts_")) {
         auto key = replace(entry.first, "webview_navigator_mounts_", "");
@@ -461,16 +463,17 @@ namespace SSC::IPC {
         this->location.mounts.insert_or_assign(path, value);
       #if SOCKET_RUNTIME_PLATFORM_LINUX
         auto webContext = webkit_web_context_get_default();
-        webkit_web_context_add_path_to_sandbox(webContext, path.c_str(), false);
+        if (path != wellKnownPaths.home.string()) {
+          webkit_web_context_add_path_to_sandbox(webContext, path.c_str(), false);
+        }
       #endif
       }
     }
 
     #if SOCKET_RUNTIME_PLATFORM_LINUX
-      const auto wellKnownPaths = FileResource::getWellKnownPaths();
       auto webContext = webkit_web_context_get_default();
       for (const auto& entry : wellKnownPaths.entries()) {
-        if (FileResource::isDirectory(entry)) {
+        if (FileResource::isDirectory(entry) && entry != wellKnownPaths.home) {
           webkit_web_context_add_path_to_sandbox(webContext, entry.c_str(), false);
         }
       }

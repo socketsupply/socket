@@ -213,14 +213,16 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Application is invalid state" });
     }
 
-    const auto window = app->windowManager.getWindow(0);
+    app->dispatch([=]() {
+      const auto window = app->windowManager.getWindow(0);
 
-    if (window == nullptr) {
-      return reply(Result::Err { message, "Application is invalid state" });
-    }
+      if (window == nullptr) {
+        return reply(Result::Err { message, "Application is invalid state" });
+      }
 
-    window->setTrayMenu(message.value);
-    reply(Result::Data { message, JSON::Object {} });
+      window->setTrayMenu(message.value);
+      reply(Result::Data { message, JSON::Object {} });
+    });
   #else
     reply(Result::Err {
       message,
@@ -249,14 +251,16 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Application is invalid state" });
     }
 
-    const auto window = app->windowManager.getWindow(0);
+    app->dispatch([=]() {
+      const auto window = app->windowManager.getWindow(0);
 
-    if (window == nullptr) {
-      return reply(Result::Err { message, "Application is invalid state" });
-    }
+      if (window == nullptr) {
+        return reply(Result::Err { message, "Application is invalid state" });
+      }
 
-    window->setSystemMenu(message.value);
-    reply(Result::Data { message, JSON::Object {} });
+      window->setSystemMenu(message.value);
+      reply(Result::Data { message, JSON::Object {} });
+    });
   #else
     reply(Result::Err {
       message,
@@ -288,22 +292,24 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Application is invalid state" });
     }
 
-    const auto window = app->windowManager.getWindow(0);
+    app->dispatch([=]() {
+      const auto window = app->windowManager.getWindow(0);
 
-    if (window == nullptr) {
-      return reply(Result::Err { message, "Application is invalid state" });
-    }
+      if (window == nullptr) {
+        return reply(Result::Err { message, "Application is invalid state" });
+      }
 
-    const auto enabled = message.get("enabled") == "true";
-    int indexMain;
-    int indexSub;
+      const auto enabled = message.get("enabled") == "true";
+      int indexMain;
+      int indexSub;
 
-    REQUIRE_AND_GET_MESSAGE_VALUE(indexMain, "indexMain", std::stoi);
-    REQUIRE_AND_GET_MESSAGE_VALUE(indexSub, "indexSub", std::stoi);
+      REQUIRE_AND_GET_MESSAGE_VALUE(indexMain, "indexMain", std::stoi);
+      REQUIRE_AND_GET_MESSAGE_VALUE(indexSub, "indexSub", std::stoi);
 
-    window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+      window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
 
-    reply(Result::Data { message, JSON::Object {} });
+      reply(Result::Data { message, JSON::Object {} });
+    });
   #else
     reply(Result::Err {
       message,
@@ -1997,6 +2003,8 @@ static void mapIPCRoutes (Router *router) {
       message.seq,
       message.value,
       message.get("data"),
+      frameType,
+      frameSource,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
@@ -3029,83 +3037,83 @@ static void mapIPCRoutes (Router *router) {
       });
     }
 
-    if (
-      app->windowManager.getWindow(targetWindowIndex) != nullptr &&
-      app->windowManager.getWindowStatus(targetWindowIndex) != WindowManager::WindowStatus::WINDOW_NONE
-    ) {
-      return reply(Result::Err {
-        message,
-        "Window with index " + message.get("targetWindowIndex") + " already exists"
-      });
-    }
-
-    const auto window = app->windowManager.getWindow(0);
-    const auto screen = window->getScreenSize();
-    auto options = WindowOptions {};
-
-    options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
-    options.headless = app->userConfig["build_headless"] == "true";
-
-    if (message.get("headless") == "true") {
-      options.headless = true;
-    } else if (message.get("headless") == "false") {
-      options.headless = false;
-    }
-
-    if (message.has("radius")) {
-      options.radius = std::stof(message.get("radius"));
-    }
-
-    if (message.has("margin")) {
-      options.margin = std::stof(message.get("margin"));
-    }
-
-    options.width = message.get("width").size()
-      ? window->getSizeInPixels(message.get("width"), screen.width)
-      : 0;
-
-    options.height = message.get("height").size()
-      ? window->getSizeInPixels(message.get("height"), screen.height)
-      : 0;
-
-    options.minWidth = message.get("minWidth").size()
-      ? window->getSizeInPixels(message.get("minWidth"), screen.width)
-      : 0;
-
-    options.minHeight = message.get("minHeight").size()
-      ? window->getSizeInPixels(message.get("minHeight"), screen.height)
-      : 0;
-
-    options.maxWidth = message.get("maxWidth").size()
-      ? window->getSizeInPixels(message.get("maxWidth"), screen.width)
-      : screen.width;
-
-    options.maxHeight = message.get("maxHeight").size()
-      ? window->getSizeInPixels(message.get("maxHeight"), screen.height)
-      : screen.height;
-
-    options.resizable = message.get("resizable") == "true" ? true : false;
-    options.frameless = message.get("frameless") == "true" ? true : false;
-    options.closable = message.get("closable") == "true" ? true : false;
-    options.maximizable = message.get("maximizable") == "true" ? true : false;
-    options.minimizable = message.get("minimizable") == "true" ? true : false;
-    options.aspectRatio = message.get("aspectRatio");
-    options.titlebarStyle = message.get("titlebarStyle");
-    options.windowControlOffsets = message.get("windowControlOffsets");
-    options.backgroundColorLight = message.get("backgroundColorLight");
-    options.backgroundColorDark = message.get("backgroundColorDark");
-    options.utility = message.get("utility") == "true" ? true : false;
-    options.debug = message.get("debug") == "true" ? true : false;
-    options.userScript = message.get("userScript");
-    options.index = targetWindowIndex;
-    options.RUNTIME_PRIMORDIAL_OVERRIDES = message.get("__runtime_primordial_overrides__");
-    options.userConfig = INI::parse(message.get("config"));
-
-    if (options.index >= SOCKET_RUNTIME_MAX_WINDOWS) {
-      options.features.useGlobalCommonJS = false;
-    }
-
     app->dispatch([=]() {
+      if (
+        app->windowManager.getWindow(targetWindowIndex) != nullptr &&
+        app->windowManager.getWindowStatus(targetWindowIndex) != WindowManager::WindowStatus::WINDOW_NONE
+      ) {
+        return reply(Result::Err {
+          message,
+          "Window with index " + message.get("targetWindowIndex") + " already exists"
+        });
+      }
+
+      const auto window = app->windowManager.getWindow(0);
+      const auto screen = window->getScreenSize();
+      auto options = WindowOptions {};
+
+      options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
+      options.headless = app->userConfig["build_headless"] == "true";
+
+      if (message.get("headless") == "true") {
+        options.headless = true;
+      } else if (message.get("headless") == "false") {
+        options.headless = false;
+      }
+
+      if (message.has("radius")) {
+        options.radius = std::stof(message.get("radius"));
+      }
+
+      if (message.has("margin")) {
+        options.margin = std::stof(message.get("margin"));
+      }
+
+      options.width = message.get("width").size()
+        ? window->getSizeInPixels(message.get("width"), screen.width)
+        : 0;
+
+      options.height = message.get("height").size()
+        ? window->getSizeInPixels(message.get("height"), screen.height)
+        : 0;
+
+      options.minWidth = message.get("minWidth").size()
+        ? window->getSizeInPixels(message.get("minWidth"), screen.width)
+        : 0;
+
+      options.minHeight = message.get("minHeight").size()
+        ? window->getSizeInPixels(message.get("minHeight"), screen.height)
+        : 0;
+
+      options.maxWidth = message.get("maxWidth").size()
+        ? window->getSizeInPixels(message.get("maxWidth"), screen.width)
+        : screen.width;
+
+      options.maxHeight = message.get("maxHeight").size()
+        ? window->getSizeInPixels(message.get("maxHeight"), screen.height)
+        : screen.height;
+
+      options.resizable = message.get("resizable") == "true" ? true : false;
+      options.frameless = message.get("frameless") == "true" ? true : false;
+      options.closable = message.get("closable") == "true" ? true : false;
+      options.maximizable = message.get("maximizable") == "true" ? true : false;
+      options.minimizable = message.get("minimizable") == "true" ? true : false;
+      options.aspectRatio = message.get("aspectRatio");
+      options.titlebarStyle = message.get("titlebarStyle");
+      options.windowControlOffsets = message.get("windowControlOffsets");
+      options.backgroundColorLight = message.get("backgroundColorLight");
+      options.backgroundColorDark = message.get("backgroundColorDark");
+      options.utility = message.get("utility") == "true" ? true : false;
+      options.debug = message.get("debug") == "true" ? true : false;
+      options.userScript = message.get("userScript");
+      options.index = targetWindowIndex;
+      options.RUNTIME_PRIMORDIAL_OVERRIDES = message.get("__runtime_primordial_overrides__");
+      options.userConfig = INI::parse(message.get("config"));
+
+      if (options.index >= SOCKET_RUNTIME_MAX_WINDOWS) {
+        options.features.useGlobalCommonJS = false;
+      }
+
       auto createdWindow = app->windowManager.createWindow(options);
 
       if (message.has("title")) {
@@ -3142,20 +3150,22 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    app->dispatch([=]() {
+      const auto window = app->windowManager.getWindow(targetWindowIndex);
+      const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
-      return reply(Result::Err {
-        message,
-        JSON::Object::Entries {
-          {"message", "Target window not found"},
-          {"type", "NotFoundError"}
-        }
-      });
-    }
+      if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+        return reply(Result::Err {
+          message,
+          JSON::Object::Entries {
+            {"message", "Target window not found"},
+            {"type", "NotFoundError"}
+          }
+        });
+      }
 
-    reply(Result::Data { message, window->getBackgroundColor() });
+      reply(Result::Data { message, window->getBackgroundColor() });
+    });
   });
 
   /**
@@ -3178,20 +3188,22 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    app->dispatch([=]() {
+      const auto window = app->windowManager.getWindow(targetWindowIndex);
+      const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
-      return reply(Result::Err {
-        message,
-        JSON::Object::Entries {
-          {"message", "Target window not found"},
-          {"type", "NotFoundError"}
-        }
-      });
-    }
+      if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+        return reply(Result::Err {
+          message,
+          JSON::Object::Entries {
+            {"message", "Target window not found"},
+            {"type", "NotFoundError"}
+          }
+        });
+      }
 
-    reply(Result::Data { message, window->getTitle() });
+      reply(Result::Data { message, window->getTitle() });
+    });
   });
 
   /**

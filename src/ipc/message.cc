@@ -1,18 +1,18 @@
 #include "message.hh"
 
 namespace SSC::IPC {
-  Message::Message (const Message& message) {
-    this->buffer.bytes = message.buffer.bytes;
-    this->buffer.size = message.buffer.size;
-    this->value = message.value;
-    this->index = message.index;
-    this->name = message.name;
-    this->seq = message.seq;
-    this->uri = message.uri;
-    this->args = message.args;
-    this->isHTTP = message.isHTTP;
-    this->cancel = message.cancel;
-  }
+  Message::Message (const Message& message)
+    : value(message.value),
+      index(message.index),
+      name(message.name),
+      seq(message.seq),
+      uri(message.uri),
+      args(message.args),
+      isHTTP(message.isHTTP),
+      cancel(message.cancel),
+      buffer(message.buffer),
+      client(message.client)
+  {}
 
   Message::Message (const String& source)
     : Message(source, false)

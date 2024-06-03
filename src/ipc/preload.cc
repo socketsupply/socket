@@ -39,6 +39,9 @@ namespace SSC::IPC {
     : options(options)
   {
     this->configure();
+    if (this->options.userConfig.size() == 0) {
+      this->options.userConfig = getUserConfig();
+    }
   }
 
   void Preload::configure () {
