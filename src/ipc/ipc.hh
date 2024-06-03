@@ -9,13 +9,4 @@
 #include "router.hh"
 #include "scheme_handlers.hh"
 
-namespace SSC::IPC {
-  inline String getResolveToMainProcessMessage (
-    const String& seq,
-    const String& state,
-    const String& value
-  ) {
-    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
-  }
-}
 #endif

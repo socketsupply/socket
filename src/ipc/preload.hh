@@ -70,7 +70,7 @@ namespace SSC::IPC {
     Headers headers; // depends on 'features.useHTMLMarkup'
     Map metadata; // depends on 'features.useHTMLMarkup'
     Map env;
-    Map userConfig = getUserConfig();
+    Map userConfig;
     Vector<String> argv;
 
     String userScript = "";

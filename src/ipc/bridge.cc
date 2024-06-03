@@ -13,13 +13,13 @@ namespace SSC::IPC {
   static Mutex mutex;
 
   // The `ESM_IMPORT_PROXY_TEMPLATE` is used to provide an ESM module as
-  // a proxy to a canonical URL for a module so `socket:<module>` and
-  // `socket://<bundle_identifier>/socket/<module>.js` resolve to the exact
+  // a proxy to a canonical URL for a module so `{{protocol}}:{{specifier}}` and
+  // `{{protocol}}://{{bundle_identifier}}/socket/{{pathname}}` resolve to the exact
   // same module
   static constexpr auto ESM_IMPORT_PROXY_TEMPLATE =
 R"S(/**
   * This module exists to provide a proxy to a canonical URL for a module
-  * so `socket:<module>` and `socket://<bundle_identifier>/socket/<module>.js`
+  * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
   * resolve to the exact same module instance.
   * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
   */
@@ -369,7 +369,7 @@ export default module)S";
     this->schemeHandlers.registerSchemeHandler("ipc", [this](
       const auto request,
       const auto bridge,
-      auto& callbacks,
+      auto callbacks,
       auto callback
     ) {
       auto message = Message(request->url(), true);
@@ -428,7 +428,7 @@ export default module)S";
       message.isHTTP = true;
       message.cancel = std::make_shared<MessageCancellation>();
 
-      callbacks.cancel = [message] () {
+      callbacks->cancel = [message] () {
         if (message.cancel->handler != nullptr) {
           message.cancel->handler(message.cancel->data);
         }
@@ -436,7 +436,7 @@ export default module)S";
 
       const auto size = request->body.size;
       const auto bytes = request->body.bytes;
-      const auto invoked = this->router.invoke(message, request->body.bytes, size, [request, message, callback](Result result) {
+      const auto invoked = this->router.invoke(message, request->body.bytes, size, [=](Result result) {
         if (!request->isActive()) {
           return;
         }
@@ -535,7 +535,7 @@ export default module)S";
     this->schemeHandlers.registerSchemeHandler("socket", [this](
       const auto request,
       const auto bridge,
-      auto& callbacks,
+      auto callbacks,
       auto callback
     ) {
       auto userConfig = this->userConfig;
@@ -636,6 +636,7 @@ export default module)S";
 
                 response.setHeader("content-type", "text/html");
                 response.setHeader("content-length", html.size());
+                response.setHeader("cache-control", "public");
                 response.writeHead(200);
                 response.write(html);
               }
@@ -690,6 +691,7 @@ export default module)S";
       // module or stdlib import/fetch `socket:<module>/<path>` which will just
       // proxy an import into a normal resource request above
       if (request->hostname.size() == 0) {
+        const auto specifier = request->pathname.substr(1);
         auto pathname = request->pathname;
 
         if (!pathname.ends_with(".js")) {
@@ -716,7 +718,10 @@ export default module)S";
           const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
             {"url", url},
             {"commit", VERSION_HASH_STRING},
-            {"pathname", pathname}
+            {"protocol", "socket"},
+            {"pathname", pathname},
+            {"specifier", specifier},
+            {"bundle_identifier", bundleIdentifier}
           });
 
           const auto contentType = resource.mimeType();
@@ -745,7 +750,7 @@ export default module)S";
     this->schemeHandlers.registerSchemeHandler("node", [this](
       const auto request,
       const auto router,
-      auto& callbacks,
+      auto callbacks,
       auto callback
     ) {
       auto userConfig = this->userConfig;
@@ -811,21 +816,29 @@ export default module)S";
 
         if (resource.exists()) {
           const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
-          const auto module = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {{"url", url}});
+          const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
+            {"url", url},
+            {"commit", VERSION_HASH_STRING},
+            {"protocol", "node"},
+            {"pathname", pathname},
+            {"specifier", pathname.substr(1)},
+            {"bundle_identifier", bundleIdentifier}
+          });
+
           const auto contentType = resource.mimeType();
 
           if (contentType.size() > 0) {
             response.setHeader("content-type", contentType);
           }
 
-          response.setHeader("content-length", module.size());
+          response.setHeader("content-length", moduleImportProxy.size());
 
           if (contentLocation.size() > 0) {
             response.setHeader("content-location", contentLocation);
           }
 
           response.writeHead(200);
-          response.write(trim(module));
+          response.write(trim(moduleImportProxy));
         }
 
         return callback(response);
@@ -904,7 +917,7 @@ export default module)S";
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
         const auto request,
         const auto bridge,
-        auto& callbacks,
+        auto callbacks,
         auto callback
       ) {
         if (this->navigator.serviceWorker.registrations.size() > 0) {

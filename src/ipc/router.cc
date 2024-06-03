@@ -78,7 +78,9 @@ namespace SSC::IPC {
     size_t size
   ) {
     return this->invoke(uri, bytes, size, [this](auto result) {
-      this->bridge->send(result.seq, result.str(), result.post);
+      this->bridge->dispatch([=, this] () {
+        this->bridge->send(result.seq, result.str(), result.post);
+      });
     });
   }
 
@@ -150,9 +152,7 @@ namespace SSC::IPC {
       }
     }
 
-    Tracer tracer("IPC::Router");
     if (context.async) {
-      auto span = tracer.span("invoke (async)");
       return this->bridge->dispatch([=, this]() mutable {
         context.callback(msg, this, [=, this](const auto result) mutable {
           if (result.seq == "-1") {
@@ -160,21 +160,16 @@ namespace SSC::IPC {
           } else {
             callback(result);
           }
-
-          span->end();
         });
       });
     }
 
-    auto span = tracer.span("invoke (sync)");
     context.callback(msg, this, [=, this](const auto result) mutable {
       if (result.seq == "-1") {
         this->bridge->send(result.seq, result.str(), result.post);
       } else {
         callback(result);
       }
-
-      span->end();
     });
 
     return true;

@@ -34,7 +34,7 @@ namespace SSC::IPC {
       SchemeHandlers schemeHandlers;
       Preload preload;
       Router router;
-      Map userConfig = getUserConfig();
+      Map userConfig;
 
       SharedPointer<Core> core = nullptr;
       uint64_t id = 0;
@@ -46,7 +46,7 @@ namespace SSC::IPC {
       Bridge () = delete;
       Bridge (const Bridge&) = delete;
       Bridge (Bridge&&) = delete;
-      Bridge (SharedPointer<Core>core, Map userConfig = getUserConfig());
+      Bridge (SharedPointer<Core>core, Map userConfig);
       ~Bridge ();
 
       Bridge& operator = (const Bridge&) = delete;
