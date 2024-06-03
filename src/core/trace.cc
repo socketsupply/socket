@@ -61,7 +61,7 @@ namespace SSC {
     return nullptr;
   }
 
-  size_t Tracer::size (bool onlyActive) const {
+  size_t Tracer::size (bool onlyActive) const noexcept {
     size_t count = 0;
     for (const auto& span : *this->spans) {
       if (onlyActive && !span->ended) {
@@ -85,9 +85,52 @@ namespace SSC {
     }
 
     return JSON::Object::Entries {
+      {"id", this->id},
       {"name", this->name},
-      {"spans", spans}
+      {"spans", spans},
+      {"type", "Tracer"}
     };
+  }
+
+  const Tracer::SharedSpan Tracer::begin (const String& name) {
+    Lock lock(this->mutex);
+
+    for (const auto& span : *this->spans) {
+      if (span->name == name) {
+        return span;
+      }
+    }
+
+    return this->span(name);
+  }
+
+  bool Tracer::end (const String& name) {
+    Lock lock(this->mutex);
+    for (const auto& span : *this->spans) {
+      if (span->name == name) {
+        span->end();
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  const Tracer::Iterator Tracer::begin () const noexcept {
+    return this->spans->begin();
+  }
+
+  const Tracer::Iterator Tracer::end () const noexcept {
+    return this->spans->end();
+  }
+
+  const bool Tracer::clear () noexcept {
+    Lock lock(this->mutex);
+    if (this->spans->size() > 0) {
+      this->spans->clear();
+      return true;
+    }
+    return false;
   }
 
   Tracer::Duration Tracer::Timing::now () {
@@ -109,7 +152,8 @@ namespace SSC {
     return JSON::Object::Entries {
       {"start", start},
       {"end", end},
-      {"duration", duration}
+      {"duration", duration},
+      {"type", "Timing"}
     };
   }
 
@@ -147,9 +191,15 @@ namespace SSC {
     }
 
     return JSON::Object::Entries {
+      {"id", this->id},
       {"name", this->name},
       {"timing", this->timing.json()},
-      {"spans", spans}
+      {"spans", spans},
+      {"type", "Span"},
+      {"tracer", JSON::Object::Entries {
+        {"id", this->tracer.id},
+        {"name", this->tracer.name}
+      }}
     };
   }
 

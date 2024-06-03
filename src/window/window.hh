@@ -165,15 +165,15 @@ namespace SSC {
       int index = 0;
 
       /**
-       * This value is `true` when the window has closed an is indicating that the
-       * application is exiting
+       * This value is `true` when the window has closed an is indicating
+       * that the application is exiting
        */
       Atomic<bool> isExiting = false;
 
       /**
        * A pointer to the platform WebView.
        */
-      WebView* webview;
+      WebView* webview = nullptr;
 
       /**
        * A controller for showing system dialogs such as a "file picker"
@@ -198,9 +198,15 @@ namespace SSC {
       GtkWidget* menutray = nullptr;
       GtkWidget* contextMenu = nullptr;
 
+    #if SOCKET_RUNTIME_DESKTOP_EXTENSION
+      void* userContentManager;
+      void* policies;
+      void* settings;
+    #else
       WebKitUserContentManager* userContentManager;
       WebKitWebsitePolicies* policies;
       WebKitSettings* settings;
+    #endif
 
       int contextMenuID;
       double dragLastX = 0;
@@ -285,8 +291,6 @@ namespace SSC {
         if (seq.find("R") == 0) {
           this->eval(getResolveToRenderProcessJavaScript(seq, state, value));
         }
-
-        this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
 
       void resolvePromise (

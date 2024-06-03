@@ -27,7 +27,9 @@ export class ReadStream extends Readable {
       throw new AbortError(options.signal)
     }
 
-    if (typeof options?.highWaterMark !== 'number') {
+    if (typeof options?.highWaterMark === 'number') {
+      this._readableState.highWaterMark = options.highWaterMark
+    } else {
       this._readableState.highWaterMark = this.constructor.highWaterMark
     }
 
@@ -149,9 +151,8 @@ export class ReadStream extends Readable {
     }
 
     if (typeof result.bytesRead === 'number' && result.bytesRead > 0) {
-      const slice = new Uint8Array(buffer.slice(0, result.bytesRead))
       this.bytesRead += result.bytesRead
-      this.push(slice)
+      this.push(Buffer.from(buffer.slice(0, result.bytesRead)))
 
       if (this.bytesRead >= this.end) {
         this.push(null)
@@ -175,7 +176,9 @@ export class WriteStream extends Writable {
   constructor (options) {
     super(options)
 
-    if (typeof options?.highWaterMark !== 'number') {
+    if (typeof options?.highWaterMark === 'number') {
+      this._writableState.highWaterMark = options.highWaterMark
+    } else {
       this._writableState.highWaterMark = this.constructor.highWaterMark
     }
 

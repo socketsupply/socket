@@ -147,21 +147,21 @@ namespace SSC {
       return *timeout == 0;
     },
 
-    /*
     .check = [](GSource* source) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
-      auto loop = core->getEventLoop();
-      auto timeout = core->getEventLoopTimeout();
+      auto tag = reinterpret_cast<UVSource *>(source)->tag;
+      const auto timeout = core->getEventLoopTimeout();
 
       if (timeout == 0) {
         return true;
       }
 
-      //auto condition = 
-
-      return true;
+      const auto condition = g_source_query_unix_fd(source, tag);
+      return (
+        ((condition & G_IO_IN) == G_IO_IN) ||
+        ((condition & G_IO_OUT) == G_IO_OUT)
+      );
     },
-    */
 
     .dispatch = [](
       GSource *source,

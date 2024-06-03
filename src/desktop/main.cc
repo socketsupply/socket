@@ -7,6 +7,8 @@
 #if SOCKET_RUNTIME_PLATFORM_LINUX
 #include <dbus/dbus.h>
 #include <fcntl.h>
+
+#include "extension.hh"
 #endif
 
 #include <iostream>
@@ -65,7 +67,7 @@ static Function<void(int)> shutdownHandler;
 // other windows who may be subscribers
 static void defaultWindowSignalHandler (int signal) {
   auto app = App::sharedApplication();
-  if (app != nullptr) {
+  if (app != nullptr && app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
     auto defaultWindow = app->windowManager.getWindow(0);
     if (defaultWindow != nullptr) {
       if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
@@ -326,7 +328,7 @@ MAIN {
 
     static Function<void()> pollForMessage = [connection]() {
       Thread thread([connection] () {
-        while (dbus_connection_read_write_dispatch(connection, 100));
+        while (dbus_connection_read_write_dispatch(connection, 256));
         app_ptr->dispatch(pollForMessage);
       });
 
@@ -1010,9 +1012,7 @@ MAIN {
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
 #endif
 
-#if SOCKET_RUNTIME_PLATFORM_LINUX
-  //Thread mainThread([&]() {
-#endif
+  app.dispatch([=]() {
     Vector<String> properties = {
       "window_width", "window_height",
       "window_min_width", "window_min_height",
@@ -1152,7 +1152,7 @@ MAIN {
         auto app = App::sharedApplication();
 
         while (!app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(128));
+          msleep(128);
         }
 
         do {
@@ -1169,6 +1169,7 @@ MAIN {
 
       t.detach();
     }
+  });
 
     //
     // # Event Loop
@@ -1176,15 +1177,8 @@ MAIN {
     // thread and run it until it returns a non-zero int.
     //
     while (app.run(argc, argv) == 0);
-#if SOCKET_RUNTIME_PLATFORM_LINUX
-  //});
-#endif
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
-  //if (mainThread.joinable()) {
-    //mainThread.join();
-  //}
-
   dbus_connection_unref(connection);
 #endif
 

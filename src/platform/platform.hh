@@ -39,7 +39,11 @@
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
-#include <webkit2/webkit2.h>
+  #if SOCKET_RUNTIME_DESKTOP_EXTENSION
+  #include <webkit2/webkit-web-extension.h>
+  #else
+  #include <webkit2/webkit2.h>
+  #endif
 #endif // `__linux__`
 
 // Android (Linux)

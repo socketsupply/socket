@@ -128,6 +128,8 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
     return;
   }
 
+  auto tracer = Tracer("onURISchemeRequest");
+
   auto bridge = &window->bridge;
   auto request = IPC::SchemeHandlers::Request::Builder(&bridge->schemeHandlers, schemeRequest)
     .setMethod(String(webkit_uri_scheme_request_get_http_method(schemeRequest)))
@@ -137,7 +139,9 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
     .setBody(webkit_uri_scheme_request_get_http_body(schemeRequest))
     .build();
 
-  const auto handled = bridge->schemeHandlers.handleRequest(request, [=](const auto& response) {
+  auto span = tracer.begin("handleRequest");
+  const auto handled = bridge->schemeHandlers.handleRequest(request, [=](const auto& response) mutable {
+    tracer.end("handleRequest");
     // TODO(@jwerle): handle uri scheme response
   });
 
@@ -878,7 +882,7 @@ namespace SSC::IPC {
     destination->finished = source.finished.load();
     destination->handlers = source.handlers;
     destination->statusCode = source.statusCode;
-    destination->ownedBuffers = source.ownedBuffers;
+    destination->buffers = source.buffers;
     destination->platformResponse = source.platformResponse;
   }
 
@@ -1068,7 +1072,10 @@ namespace SSC::IPC {
     return false;
   }
 
-  bool SchemeHandlers::Response::write (size_t size, const char* bytes) {
+  bool SchemeHandlers::Response::write (
+    size_t size,
+    SharedPointer<char[]> bytes
+  ) {
     Lock lock(this->mutex);
 
     if (
@@ -1094,7 +1101,7 @@ namespace SSC::IPC {
 
     if (size > 0 && bytes != nullptr) {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      const auto data = [NSData dataWithBytes: bytes length: size];
+      const auto data = [NSData dataWithBytes: bytes.get() length: size];
       @try {
         [this->request->platformRequest didReceiveData: data];
       } @catch (::id) {
@@ -1103,18 +1110,14 @@ namespace SSC::IPC {
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
       auto span = this->tracer.span("write");
-      auto buffer = new char[size]{0};
-      memcpy(buffer, bytes, size);
+      this->buffers.push_back(bytes);
       g_memory_input_stream_add_data(
         reinterpret_cast<GMemoryInputStream*>(this->platformResponseStream),
-        reinterpret_cast<const void*>(buffer),
+        reinterpret_cast<const void*>(bytes.get()),
         (gssize) size,
         nullptr
       );
       span->end();
-      this->request->bridge->core->setTimeout(1024, [buffer] () {
-        delete [] buffer;
-      });
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -1148,15 +1151,6 @@ namespace SSC::IPC {
     return false;
   }
 
-  bool SchemeHandlers::Response::write (size_t size, SharedPointer<char[]> bytes) {
-    if (bytes != nullptr && size > 0) {
-      this->ownedBuffers.push_back(bytes); // claim ownership for life time of request
-      return this->write(size, this->ownedBuffers.back().get());
-    }
-
-    return false;
-  }
-
   bool SchemeHandlers::Response::write (const String& source) {
     const auto size = source.size();
 
@@ -1167,6 +1161,10 @@ namespace SSC::IPC {
     auto bytes = std::make_shared<char[]>(size);
     memcpy(bytes.get(), source.c_str(), size);
     return this->write(size, bytes);
+  }
+
+  bool SchemeHandlers::Response::write (size_t size, const char* bytes) {
+    return size > 0 && bytes != nullptr && this->write(String(bytes, size));
   }
 
   bool SchemeHandlers::Response::write (const JSON::Any& json) {
@@ -1190,12 +1188,10 @@ namespace SSC::IPC {
     }
 
     if (contentLength > 0) {
-      this->pendingWrites++;
       this->writeHead();
-      const auto bytes = responseResource.read();
-      const auto result = this->write(contentLength, bytes);
-      this->pendingWrites--;
-      return result;
+      if (responseResource.read()) {
+        return this->write(contentLength, responseResource.bytes);
+      }
     }
 
     return false;
@@ -1223,10 +1219,6 @@ namespace SSC::IPC {
     // fail if already finished
     if (this->finished) {
       return false;
-    }
-
-    while (this->pendingWrites > 0) {
-      msleep(1);
     }
 
     if (
@@ -1259,22 +1251,24 @@ namespace SSC::IPC {
       this->platformResponseStream = nullptr;
       this->platformResponse = nullptr;
 
-      //if (WEBKIT_IS_URI_SCHEME_REQUEST(platformRequest)) {
-        webkit_uri_scheme_request_finish_with_response(
-          platformRequest,
-          platformResponse
-        );
-      //}
+      webkit_uri_scheme_request_finish_with_response(
+        platformRequest,
+        platformResponse
+      );
 
-      if (platformResponseStream) {
-        g_input_stream_close(platformResponseStream, nullptr, nullptr);
-        g_object_unref(platformResponseStream);
-      }
+      g_object_unref(platformResponse);
+      auto buffers = this->buffers;
+      this->request->bridge->core->setInterval(16, [buffers, platformResponseStream] (auto cancel) {
+        if (!G_IS_INPUT_STREAM(platformResponseStream) || !g_input_stream_has_pending(platformResponseStream)) {
+          g_object_unref(platformResponseStream);
+          cancel();
+        }
+      });
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->platformResponse != nullptr) {
-      auto ownedBuffers = this->ownedBuffers;
+      auto buffers = this->buffers;
       this->request->bridge->dispatch([=, this] () {
         auto app = App::sharedApplication();
         auto attachment = Android::JNIEnvironmentAttachment(app->jvm);

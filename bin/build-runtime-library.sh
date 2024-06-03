@@ -221,6 +221,18 @@ LLAMA_BUILD_INFO
   quiet $clang "${cflags[@]}" -c $source -o ${source/cpp/o} || onsignal
 }
 
+function build_linux_desktop_extension_object () {
+  declare source="$root/src/desktop/extension/linux.cc"
+  declare destination="$root/build/$arch-$platform/objects/extensions/linux.o"
+  mkdir -p "$(dirname "$destination")"
+  if ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$destination") )); then
+    quiet $clang "${cflags[@]}" -c "$source"  -o "$destination" || onsignal
+    return $?
+  fi
+
+  return 0
+}
+
 function main () {
   trap onsignal INT TERM
   local i=0
@@ -232,7 +244,11 @@ function main () {
   cp -rf "$root/include"/* "$output_directory/include"
   rm -f "$output_directory/include/socket/_user-config-bytes.hh"
 
-  generate_llama_build_info
+  generate_llama_build_info || return $?
+
+  if [[ "$host" = "Linux" ]] && [[ "$platform" = "desktop" ]]; then
+    build_linux_desktop_extension_object || return $?
+  fi
 
   for source in "${sources[@]}"; do
     if (( ${#pids[@]} > max_concurrency )); then

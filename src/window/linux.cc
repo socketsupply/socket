@@ -1,4 +1,5 @@
 #include <fstream>
+#include <sys/utsname.h>
 
 #include "../app/app.hh"
 #include "window.hh"
@@ -11,6 +12,100 @@ static GtkTargetEntry droppableTypes[] = {
 #define DEFAULT_MONITOR_HEIGHT 364
 
 namespace SSC {
+  static void initializeWebContextFromWindow (Window* window) {
+    static Atomic<bool> isInitialized = false;
+
+    if (isInitialized) {
+      return;
+    }
+
+    auto webContext = webkit_web_context_get_default();
+
+    // mounts are configured for all contexts just once
+    window->bridge.configureNavigatorMounts();
+
+    g_signal_connect(
+      G_OBJECT(webContext),
+      "initialize-notification-permissions",
+      G_CALLBACK(+[](
+        WebKitWebContext* webContext,
+        gpointer userData
+      ) {
+        static const auto app = App::sharedApplication();
+        static const auto bundleIdentifier = app->userConfig["meta_bundle_identifier"];
+        static const auto areNotificationsAllowed = (
+          !app->userConfig.contains("permissions_allow_notifications") ||
+          app->userConfig.at("permissions_allow_notifications") != "false"
+        );
+
+        const auto uri = "socket://" + bundleIdentifier;
+        const auto origin = webkit_security_origin_new_for_uri(uri.c_str());
+
+        GList* allowed = nullptr;
+        GList* disallowed = nullptr;
+
+        webkit_security_origin_ref(origin);
+
+        if (origin && allowed && disallowed) {
+          if (areNotificationsAllowed) {
+            disallowed = g_list_append(disallowed, (gpointer) origin);
+          } else {
+            allowed = g_list_append(allowed, (gpointer) origin);
+          }
+
+          if (allowed && disallowed) {
+            webkit_web_context_initialize_notification_permissions(
+              webContext,
+              allowed,
+              disallowed
+            );
+          }
+        }
+
+        if (allowed) {
+          g_list_free(allowed);
+        }
+
+        if (disallowed) {
+          g_list_free(disallowed);
+        }
+
+        if (origin) {
+          webkit_security_origin_unref(origin);
+        }
+      }),
+      nullptr
+    );
+
+    webkit_web_context_set_sandbox_enabled(webContext, true);
+
+    auto extensionsPath = FileResource::getResourcePath(Path("lib/extensions"));
+    webkit_web_context_set_web_extensions_directory(
+      webContext,
+      extensionsPath.c_str()
+    );
+
+    auto cwd = getcwd();
+    auto bytes = socket_runtime_init_get_user_config_bytes();
+    auto size = socket_runtime_init_get_user_config_bytes_size();
+    static auto data = String(reinterpret_cast<const char*>(bytes), size);
+    data += "[web-process-extension]\ncwd = " + cwd + "\n";
+
+    webkit_web_context_set_web_extensions_initialization_user_data(
+      webContext,
+      g_variant_new_from_data(
+        G_VARIANT_TYPE("ay"), // an array of "bytes"
+        data.c_str(),
+        data.size(),
+        true,
+        nullptr,
+        nullptr
+      )
+    );
+
+    isInitialized = true;
+  }
+
   Window::Window (SharedPointer<Core> core, const WindowOptions& options)
     : core(core),
       options(options),
@@ -18,33 +113,46 @@ namespace SSC {
       hotkey(this),
       dialog(this)
   {
-    setenv("GTK_OVERLAY_SCROLLING", "1", 1);
+    Env::set("GTK_OVERLAY_SCROLLING", "1");
 
     auto userConfig = options.userConfig;
     auto webContext = webkit_web_context_get_default();
 
+    this->bridge.userConfig = userConfig;
+
     if (options.index == 0) {
-      // only Window#0 should set this value
-      webkit_web_context_set_sandbox_enabled(webContext, true);
+      initializeWebContextFromWindow(this);
     }
 
-    this->bridge.userConfig = userConfig;
-    this->bridge.configureNavigatorMounts();
     this->settings = webkit_settings_new();
-    // ALWAYS on or off
-    webkit_settings_set_enable_webgl(this->settings, true);
     // TODO(@jwerle); make configurable with '[permissions] allow_media'
-    webkit_settings_set_enable_media(this->settings, true);
-    webkit_settings_set_enable_webaudio(this->settings, true);
     webkit_settings_set_zoom_text_only(this->settings, false);
-    webkit_settings_set_enable_mediasource(this->settings, true);
+    webkit_settings_set_media_playback_allows_inline(this->settings, true);
     // TODO(@jwerle); make configurable with '[permissions] allow_dialogs'
     webkit_settings_set_allow_modal_dialogs(this->settings, true);
-    webkit_settings_set_enable_dns_prefetching(this->settings, true);
+    webkit_settings_set_hardware_acceleration_policy(
+      this->settings,
+      userConfig["permissions_hardware_acceleration_disabled"] == "true"
+        ? WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER
+        : WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS
+    );
+
+    webkit_settings_set_enable_webgl(this->settings, true);
+    webkit_settings_set_enable_media(this->settings, true);
+    webkit_settings_set_enable_webaudio(this->settings, true);
+    webkit_settings_set_enable_mediasource(this->settings, true);
     webkit_settings_set_enable_encrypted_media(this->settings, true);
-    webkit_settings_set_media_playback_allows_inline(this->settings, true);
+    webkit_settings_set_enable_dns_prefetching(this->settings, true);
+    webkit_settings_set_enable_smooth_scrolling(this->settings, true);
     webkit_settings_set_enable_developer_extras(this->settings, options.debug);
-    webkit_settings_set_allow_universal_access_from_file_urls(this->settings, true);
+    webkit_settings_set_enable_back_forward_navigation_gestures(this->settings, true);
+
+    auto userAgent = String(webkit_settings_get_user_agent(settings));
+
+    webkit_settings_set_user_agent(
+      settings,
+      (userAgent + " " + "SocketRuntime/" + SSC::VERSION_STRING).c_str()
+    );
 
     webkit_settings_set_enable_media_stream(
       this->settings,
@@ -136,11 +244,12 @@ namespace SSC {
     gtk_widget_realize(GTK_WIDGET(this->window));
 
     if (options.resizable) {
-      gtk_window_set_default_size(GTK_WINDOW(window), options.width, options.height);
+      gtk_window_set_default_size(GTK_WINDOW(this->window), options.width, options.height);
     } else {
       gtk_widget_set_size_request(this->window, options.width, options.height);
     }
 
+    gtk_window_set_decorated(GTK_WINDOW(this->window), options.frameless == false);
     gtk_window_set_resizable(GTK_WINDOW(this->window), options.resizable);
     gtk_window_set_position(GTK_WINDOW(this->window), GTK_WIN_POS_CENTER);
     gtk_widget_set_can_focus(GTK_WIDGET(this->window), true);
@@ -752,7 +861,6 @@ namespace SSC {
       G_CALLBACK(onDestroy),
       this
     );
-    */
 
     g_signal_connect(
       G_OBJECT(this->window),
@@ -770,6 +878,7 @@ namespace SSC {
       }),
       this
     );
+    */
 
     g_signal_connect(
       G_OBJECT(this->window),
@@ -835,14 +944,14 @@ namespace SSC {
     }
 
     if (this->webview) {
-      g_object_unref(this->webview);
+      g_object_unref(GTK_WIDGET(this->webview));
       this->webview = nullptr;
     }
 
     if (this->window) {
       auto w = this->window;
       this->window = nullptr;
-      gtk_widget_destroy(w);
+      // gtk_widget_destroy(w);
     }
 
     if (this->accelGroup) {
@@ -851,7 +960,7 @@ namespace SSC {
     }
 
     if (this->vbox) {
-      //g_object_unref(this->vbox);
+      g_object_unref(this->vbox);
       this->vbox = nullptr;
     }
   }
@@ -922,18 +1031,16 @@ namespace SSC {
 
   void Window::eval (const String& source) {
     if (this->webview) {
-      App::sharedApplication()->dispatch([=, this] {
-        webkit_web_view_evaluate_javascript(
-          this->webview,
-          String(source).c_str(),
-          -1,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr
-        );
-      });
+      webkit_web_view_evaluate_javascript(
+        this->webview,
+        String(source).c_str(),
+        -1,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+      );
     }
   }
 

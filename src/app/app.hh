@@ -1,9 +1,10 @@
 #ifndef SOCKET_RUNTIME_APP_APP_H
 #define SOCKET_RUNTIME_APP_APP_H
 
-#include "../core/core.hh"
 #include "../window/window.hh"
 #include "../serviceworker/container.hh"
+
+#include "../core/core.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "../platform/android.hh"
@@ -93,8 +94,8 @@ namespace SSC {
       bool w32ShowConsole = false;
 
       WindowManager windowManager;
-      SharedPointer<Core> core = nullptr;
       ServiceWorkerContainer serviceWorkerContainer;
+      SharedPointer<Core> core = nullptr;
       Map userConfig = SSC::getUserConfig();
 
     #if SOCKET_RUNTIME_PLATFORM_WINDOWS

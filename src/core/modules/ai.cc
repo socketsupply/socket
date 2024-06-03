@@ -66,12 +66,12 @@ namespace SSC {
     LLMOptions options,
     const CoreModule::Callback& callback
   ) {
-    if (this->hasLLM(id)) {
-      auto json = ERR_AI_LLM_EXISTS("ai.llm.create", id);
-      return callback(seq, json, Post{});
-    }
-
     this->core->dispatchEventLoop([=, this] {
+      if (this->hasLLM(id)) {
+        auto json = ERR_AI_LLM_EXISTS("ai.llm.create", id);
+        return callback(seq, json, Post{});
+      }
+
       /* auto log = [&](String message) {
         const auto json = JSON::Object::Entries {
           {"source", "ai.llm.log"},
@@ -84,11 +84,10 @@ namespace SSC {
         callback("-1", json, Post{});
       }; */
 
-      auto llm = new LLM(options);
+      auto llm = std::make_shared<LLM>(options);
       if (llm->err.size()) {
         auto json = ERR_AI_LLM_MESSAGE("ai.llm.create", id, llm->err);
         return callback(seq, json, Post{});
-        return;
       }
 
       const auto json = JSON::Object::Entries {
@@ -100,7 +99,7 @@ namespace SSC {
 
       callback(seq, json, Post{});
       Lock lock(this->mutex);
-      this->llms[id].reset(llm);
+      this->llms.emplace(id, llm);
     });
   };
 
@@ -215,7 +214,7 @@ namespace SSC {
 
   LLM::LLM (LLMOptions options) {
     llama_log_set([](ggml_log_level level, const char* message, void* llm) {
-      NSLog(@"LLMSTATUS: %s", message);
+      debug("LLMSTATUS: %s", message);
       // llm.log(message);
     }, this);
 
@@ -236,14 +235,27 @@ namespace SSC {
     this->params.prompt = "<|im_start|>system\n" + options.prompt + "<|im_end|>\n\n";
     this->params.n_ctx = 2048;
 
-    FileResource modelResource(options.path);
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      this->params.use_mmap = false;
+    #endif
 
-    if (!modelResource.exists()) {
+    FileResource modelResource(options.path);
+    FileResource metalResource(String("ggml-metal"));
+
+    if (!modelResource.hasAccess()) {
       this->err = "Unable to access the model file due to permissions";
       return;
     }
 
-    FileResource metalResource(String("ggml-metal"));
+    if (!modelResource.exists()) {
+      this->err = "The model file does not exist";
+      return;
+    }
+
+    if (metalResource.exists() && !metalResource.hasAccess()) {
+      this->err = "Unable to access the GGML metal file due to permissions";
+      return;
+    }
 
     this->params.model = options.path;
 

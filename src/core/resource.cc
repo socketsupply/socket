@@ -1,4 +1,5 @@
 #include "resource.hh"
+#include "config.hh"
 #include "debug.hh"
 #include "core.hh"
 
@@ -39,6 +40,16 @@ namespace SSC {
     {"video/mpeg", { ".mpeg" }},
     {"video/ogg", { ".ogv" }}
   };
+
+  Resource::Resource (const String& type, const String& name)
+    : name(name),
+      type(type),
+      tracer(name)
+  {}
+
+  bool Resource::hasAccess () const noexcept {
+    return this->accessing;
+  }
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
   static Path getRelativeAndroidAssetManagerPath (const Path& resourcePath) {
@@ -198,11 +209,170 @@ namespace SSC {
   #endif
   }
 
+  const FileResource::WellKnownPaths& FileResource::getWellKnownPaths () {
+    static const auto paths = WellKnownPaths {};
+    return paths;
+  }
+
+  FileResource::WellKnownPaths::WellKnownPaths () {
+    static auto userConfig = getUserConfig();
+    static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+    this->resources = FileResource::getResourcesPath();
+    this->tmp = fs::temp_directory_path();
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto fileManager = NSFileManager.defaultManager;
+
+  #define DIRECTORY_PATH_FROM_FILE_MANAGER(type) (                             \
+    String([fileManager                                                        \
+        URLForDirectory: type                                                  \
+               inDomain: NSUserDomainMask                                      \
+      appropriateForURL: nil                                                   \
+                 create: NO                                                    \
+                  error: nil                                                   \
+      ].path.UTF8String)                                                       \
+    )
+
+    // overload with main bundle resources path for macos/ios
+    this->downloads = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSDownloadsDirectory));
+    this->documents = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSDocumentDirectory));
+    this->pictures = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSPicturesDirectory));
+    this->desktop = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory));
+    this->videos = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory));
+    this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory));
+    this->config = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
+    this->home = Path(String(NSHomeDirectory().UTF8String));
+    this->data = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
+    this->log = Path(HOME + "/Library/Logs/" + bundleIdentifier);
+    this->tmp = Path(String(NSTemporaryDirectory().UTF8String));
+
+  #undef DIRECTORY_PATH_FROM_FILE_MANAGER
+
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+
+    static const auto XDG_DOCUMENTS_DIR = Env::get("XDG_DOCUMENTS_DIR");
+    static const auto XDG_DOWNLOAD_DIR = Env::get("XDG_DOWNLOAD_DIR");
+    static const auto XDG_PICTURES_DIR = Env::get("XDG_PICTURES_DIR");
+    static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
+    static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
+    static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+
+    static const auto XDG_CONFIG_HOME = Env::get("XDG_CONFIG_HOME", HOME + "/.config");
+    static const auto XDG_DATA_HOME = Env::get("XDG_DATA_HOME", HOME + "/.local/share");
+
+    if (XDG_DOCUMENTS_DIR.size() > 0) {
+      this->documents = Path(XDG_DOCUMENTS_DIR);
+    } else {
+      this->documents = Path(HOME) / "Documents";
+    }
+
+    if (XDG_DOWNLOAD_DIR.size() > 0) {
+      this->downloads = Path(XDG_DOWNLOAD_DIR);
+    } else {
+      this->downloads = Path(HOME) / "Downloads";
+    }
+
+    if (XDG_DESKTOP_DIR.size() > 0) {
+      this->desktop = Path(XDG_DESKTOP_DIR);
+    } else {
+      this->desktop = Path(HOME) / "Desktop";
+    }
+
+    if (XDG_PICTURES_DIR.size() > 0) {
+      this->pictures = Path(XDG_PICTURES_DIR);
+    } else if (fs::exists(Path(HOME) / "Images")) {
+      this->pictures = Path(HOME) / "Images";
+    } else if (fs::exists(Path(HOME) / "Photos")) {
+      this->pictures = Path(HOME) / "Photos";
+    } else {
+      this->pictures = Path(HOME) / "Pictures";
+    }
+
+    if (XDG_VIDEOS_DIR.size() > 0) {
+      this->videos = Path(XDG_VIDEOS_DIR);
+    } else {
+      this->videos = Path(HOME) / "Videos";
+    }
+
+    if (XDG_MUSIC_DIR.size() > 0) {
+      this->music = Path(XDG_MUSIC_DIR);
+    } else {
+      this->music = Path(HOME) / "Music";
+    }
+
+    this->config = Path(XDG_CONFIG_HOME) / bundleIdentifier;
+    this->home = Path(HOME);
+    this->data = Path(XDG_DATA_HOME) / bundleIdentifier;
+    this->log = this->config;
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+    static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
+    static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
+    this->downloads = Path(USERPROFILE) / "Downloads";
+    this->documents = Path(USERPROFILE) / "Documents";
+    this->desktop = Path(USERPROFILE) / "Desktop";
+    this->pictures = Path(USERPROFILE) / "Pictures";
+    this->videos = Path(USERPROFILE) / "Videos";
+    this->music = Path(USERPROFILE) / "Music";
+    this->config = Path(Env::get("APPDATA")) / bundleIdentifier;
+    this->home = Path(USERPROFILE);
+    this->data = Path(Env::get("APPDATA")) / bundleIdentifier;
+    this->log = this->config;
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    // TODO
+  #endif
+  }
+
+  JSON::Object FileResource::WellKnownPaths::json () const {
+    return JSON::Object::Entries {
+      {"resources", this->resources},
+      {"downloads", this->downloads},
+      {"documents", this->documents},
+      {"pictures", this->pictures},
+      {"desktop", this->desktop},
+      {"videos", this->videos},
+      {"music", this->music},
+      {"config", this->config},
+      {"home", this->home},
+      {"data", this->data},
+      {"log", this->log},
+      {"tmp", this->tmp}
+    };
+  }
+
+  const Vector<Path> FileResource::WellKnownPaths::entries () const {
+    auto entries = Vector<Path>();
+    entries.push_back(this->resources);
+    entries.push_back(this->downloads);
+    entries.push_back(this->documents);
+    entries.push_back(this->pictures);
+    entries.push_back(this->desktop);
+    entries.push_back(this->videos);
+    entries.push_back(this->music);
+    entries.push_back(this->config);
+    entries.push_back(this->home);
+    entries.push_back(this->data);
+    entries.push_back(this->log);
+    entries.push_back(this->tmp);
+    return entries;
+  }
+
   FileResource::FileResource (
     const Path& resourcePath,
     const Options& options
-  ) : options(options) {
+  ) : Resource("FileResource", resourcePath.string()) {
     this->path = fs::absolute(resourcePath);
+    this->options = options;
     this->startAccessing();
   }
 
@@ -214,7 +384,9 @@ namespace SSC {
     this->stopAccessing();
   }
 
-  FileResource::FileResource (const FileResource& resource) {
+  FileResource::FileResource (const FileResource& resource)
+    : Resource("FileResource", resource.name)
+  {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
@@ -222,7 +394,9 @@ namespace SSC {
     this->startAccessing();
   }
 
-  FileResource::FileResource (FileResource&& resource) {
+  FileResource::FileResource (FileResource&& resource)
+    : Resource("FileResource", resource.name)
+  {
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
@@ -340,10 +514,6 @@ namespace SSC {
   #else
     return fs::exists(this->path);
   #endif
-  }
-
-  bool FileResource::hasAccess () const noexcept {
-    return this->accessing;
   }
 
   const String FileResource::mimeType () const noexcept {
@@ -548,6 +718,7 @@ namespace SSC {
       memcpy(this->bytes.get(), data.bytes, data.length);
     }
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    auto span = this->tracer.span("read");
     GError* error = nullptr;
     char* contents = nullptr;
     gsize size = 0;
@@ -561,6 +732,7 @@ namespace SSC {
     if (contents) {
       g_free(contents);
     }
+    span->end();
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     auto handle = CreateFile(
       this->path.c_str(),
