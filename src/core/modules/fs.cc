@@ -2051,12 +2051,14 @@ namespace SSC {
     const String& seq,
     const CoreModule::Callback& callback
   ) const {
-    static const auto data = JSON::Object(FS_CONSTANTS);
-    static const auto json = JSON::Object::Entries {
-      {"source", "fs.constants"},
-      {"data", data}
-    };
+    this->core->dispatchEventLoop([=, this]() {
+      static const auto data = JSON::Object(FS_CONSTANTS);
+      static const auto json = JSON::Object::Entries {
+        {"source", "fs.constants"},
+        {"data", data}
+      };
 
-    callback(seq, json, Post {});
+      callback(seq, json, Post {});
+    });
   }
 }
