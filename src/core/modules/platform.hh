@@ -17,6 +17,8 @@ namespace SSC {
         const String& seq,
         const String& event,
         const String& data,
+        const String& frameType,
+        const String& frameSource,
         const CoreModule::Callback& callback
       );
 

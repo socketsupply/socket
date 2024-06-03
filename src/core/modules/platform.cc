@@ -9,6 +9,8 @@ namespace SSC {
     const String& seq,
     const String& event,
     const String& data,
+    const String& frameType,
+    const String& frameSource,
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
@@ -17,26 +19,6 @@ namespace SSC {
         Lock lock(this->core->fs.mutex);
 
         this->wasFirstDOMContentLoadedEventDispatched = true;
-
-        for (const auto& tuple : this->core->fs.descriptors) {
-          auto desc = tuple.second;
-          if (desc != nullptr) {
-            desc->stale = true;
-          } else {
-            this->core->fs.descriptors.erase(tuple.first);
-          }
-        }
-
-        #if !SOCKET_RUNTIME_PLATFORM_ANDROID
-        for (const auto& tuple : this->core->fs.watchers) {
-          auto watcher = tuple.second;
-          if (watcher != nullptr) {
-            watcher->stop();
-          }
-        }
-
-        this->core->fs.watchers.clear();
-        #endif
       }
 
       const auto json = JSON::Object::Entries {
