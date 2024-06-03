@@ -224,9 +224,11 @@ LLAMA_BUILD_INFO
 function build_linux_desktop_extension_object () {
   declare source="$root/src/desktop/extension/linux.cc"
   declare destination="$root/build/$arch-$platform/objects/extensions/linux.o"
+
   mkdir -p "$(dirname "$destination")"
+
   if ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$destination") )); then
-    quiet $clang "${cflags[@]}" -c "$source"  -o "$destination" || onsignal
+    quiet $clang "${cflags[@]}" -DSOCKET_RUNTIME_DESKTOP_EXTENSION=1 -c "$source"  -o "$destination" || onsignal
     return $?
   fi
 
