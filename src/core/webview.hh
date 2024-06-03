@@ -79,7 +79,7 @@ namespace SSC {
 #if SOCKET_RUNTIME_PLATFORM_APPLE
   using WebView = SSCWebView;
   using WebViewSettings = WKWebViewConfiguration;
-#elif SOCKET_RUNTIME_PLATFORM_LINUX
+#elif SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
   using WebView = WebKitWebView;
   using WebViewSettings = WebKitSettings;
 #elif SOCKET_RUNTIME_PLATFORM_WINDOWS

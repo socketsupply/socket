@@ -238,7 +238,10 @@ export class FileHandle extends EventEmitter {
       async handle (id) {
         if (fds.has(id)) {
           console.warn('Closing fs.FileHandle on garbage collection')
-          await ipc.request('fs.close', { id }, options)
+          await ipc.request('fs.close', { id }, {
+            ...options
+          })
+
           fds.release(id, false)
         }
       }
@@ -308,7 +311,9 @@ export class FileHandle extends EventEmitter {
 
     this[kClosing] = new Deferred()
 
-    const result = await ipc.request('fs.close', { id: this.id }, options)
+    const result = await ipc.request('fs.close', { id: this.id }, {
+      ...options
+    })
 
     if (result.err) {
       return this[kClosing].reject(result.err)
@@ -437,7 +442,9 @@ export class FileHandle extends EventEmitter {
       mode,
       path,
       flags
-    }, options)
+    }, {
+      ...options
+    })
 
     if (result.err) {
       return this[kOpening].reject(result.err)
@@ -554,7 +561,11 @@ export class FileHandle extends EventEmitter {
       id,
       size: length,
       offset: position
-    }, { signal, timeout, responseType: 'arraybuffer' })
+    }, {
+      responseType: 'arraybuffer',
+      timeout,
+      signal
+    })
 
     if (result.err) {
       throw result.err
@@ -638,7 +649,9 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
-    const result = await ipc.request('fs.fstat', { ...options, id: this.id })
+    const result = await ipc.request('fs.fstat', { id: this.id }, {
+      ...options
+    })
 
     if (result.err) {
       throw result.err
@@ -659,7 +672,9 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
-    const result = await ipc.request('fs.lstat', { ...options, path: this.path })
+    const result = await ipc.request('fs.lstat', { path: this.path }, {
+      ...options
+    })
 
     if (result.err) {
       throw result.err
@@ -1119,7 +1134,10 @@ export class DirectoryHandle extends EventEmitter {
       throw result.err
     }
 
-    return result.data
+    return result.data.map((entry) => ({
+      type: entry.type,
+      name: decodeURIComponent(entry.name)
+    }))
   }
 }
 

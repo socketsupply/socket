@@ -759,7 +759,7 @@ namespace SSC {
           for (int i = 0; i < req->result; ++i) {
             auto entry = JSON::Object::Entries {
               {"type", desc->dir->dirents[i].type},
-              {"name", desc->dir->dirents[i].name}
+              {"name", encodeURIComponent(desc->dir->dirents[i].name)}
             };
 
             entries.push_back(entry);

@@ -1,10 +1,10 @@
 #ifndef SOCKET_RUNTIME_CORE_AI_H
 #define SOCKET_RUNTIME_CORE_AI_H
 
-#include "../module.hh"
+#include <llama/common/common.h>
+#include <llama/llama.h>
 
-#include "llama/common/common.h"
-#include "llama/llama.h"
+#include "../module.hh"
 
 // #include <cassert>
 // #include <cinttypes>

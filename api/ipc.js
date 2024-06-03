@@ -1253,10 +1253,31 @@ export async function write (command, value, buffer, options) {
 
   await ready()
 
-  const signal = options?.signal
-  const request = new globalThis.XMLHttpRequest()
   const params = new IPCSearchParams(value, Date.now())
   const uri = `ipc://${command}?${params}`
+
+  if (
+    typeof GlobalIPCExtensionPostMessage === 'function' &&
+    (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
+  ) {
+    let response = null
+    try {
+      response = await GlobalIPCExtensionPostMessage(uri, buffer)
+    } catch (err) {
+      return Result.from(null, err)
+    }
+
+    if (typeof response === 'string') {
+      try {
+        response = JSON.parse(response)
+      } catch {}
+    }
+
+    return Result.from(response, null, command)
+  }
+
+  const signal = options?.signal
+  const request = new globalThis.XMLHttpRequest()
 
   let resolved = false
   let aborted = false
@@ -1350,10 +1371,33 @@ export async function request (command, value, options) {
 
   await ready()
 
-  const signal = options?.signal
-  const request = new globalThis.XMLHttpRequest()
   const params = new IPCSearchParams(value, Date.now())
   const uri = `ipc://${command}`
+
+  if (
+    typeof GlobalIPCExtensionPostMessage === 'function' &&
+    (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
+  ) {
+    let response = null
+    try {
+      response = await GlobalIPCExtensionPostMessage(`${uri}?${params}`)
+    } catch (err) {
+      return Result.from(null, err)
+    }
+
+    if (typeof response === 'string') {
+      try {
+        response = JSON.parse(response)
+      } catch (err) {
+        console.log({err, response})
+      }
+    }
+
+    return Result.from(response, null, command)
+  }
+
+  const signal = options?.signal
+  const request = new globalThis.XMLHttpRequest()
 
   let resolved = false
   let aborted = false

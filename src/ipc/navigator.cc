@@ -465,6 +465,16 @@ namespace SSC::IPC {
       #endif
       }
     }
+
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      const auto wellKnownPaths = FileResource::getWellKnownPaths();
+      auto webContext = webkit_web_context_get_default();
+      for (const auto& entry : wellKnownPaths.entries()) {
+        if (FileResource::isDirectory(entry)) {
+          webkit_web_context_add_path_to_sandbox(webContext, entry.c_str(), false);
+        }
+      }
+    #endif
   }
 }
 

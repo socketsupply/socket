@@ -42,6 +42,16 @@ namespace SSC {
       using SharedSpanColletionIndex = std::map<uint64_t, size_t>;
 
       /**
+       * A `Tracer` ID type
+       */
+      using ID = uint64_t;
+
+      /**
+       * Iterator for a `Tracer`
+       */
+      using Iterator = SharedSpanCollection::const_iterator;
+
+      /**
        * A container for `Tracer` timing.
        */
       struct Timing {
@@ -63,6 +73,11 @@ namespace SSC {
       class Span {
         public:
           using ID = uint64_t;
+
+          /**
+           * Iterator for a `Span`
+           */
+          using Iterator = Vector<SharedSpan>::const_iterator;
 
           /**
            * A unique ID for this `Span`.
@@ -162,6 +177,11 @@ namespace SSC {
       String name;
 
       /**
+       * A unique ID for this `Tracer`.
+       */
+      ID id = rand64();
+
+      /**
        * Initializes a new Tracer instance with an empty collection of spans.
        */
       Tracer (const String& name);
@@ -195,13 +215,38 @@ namespace SSC {
        * `onlyActive` boolean to get the computed "active" (not ended)
        * spans in a trace.
        */
-      size_t size (bool onlyActive = false) const;
+      size_t size (bool onlyActive = false) const noexcept;
 
       /**
        * Computed JSON representation of this `Tracer` instance and its
        * `Tracer::Span` children.
        */
       JSON::Object json () const;
+
+      /**
+       * Create or return a span by name to "begin" a span
+       */
+      const SharedSpan begin (const String& name);
+
+      /**
+       * Ends a named span if one exists.
+       */
+      bool end (const String& name);
+
+      /**
+       * Get the beginning of iterator to the vector `Span` instances.
+       */
+      const Iterator begin () const noexcept;
+
+      /**
+       * Get the end of iterator to the vector of `Span` instances.
+       */
+      const Iterator end () const noexcept;
+
+      /**
+       * Clears all `Span` entries in the `Tracer`.
+       */
+      const bool clear () noexcept;
   };
 }
 

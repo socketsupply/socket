@@ -609,6 +609,18 @@ function _install {
     cp -rfp "$root"/include/* "$SOCKET_HOME/include"
     rm -f "$SOCKET_HOME/include/socket/_user-config-bytes.hh"
 
+    mkdir -p "$SOCKET_HOME/include/llama"
+    for header in $(find "$root/build/llama" -name *.h); do
+      if [[ "$header" =~  examples/ ]]; then continue; fi
+      if [[ "$header" =~  tests/ ]]; then continue; fi
+
+      local llama_build_dir="$root/build/llama/"
+      local destination="$SOCKET_HOME/include/llama/${header/$llama_build_dir/}"
+
+      mkdir -p "$(dirname "$destination")"
+      cp -f "$header" "$destination"
+    done
+
     if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
       if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
         echo "# warn - Won't overwrite $SOCKET_HOME/$SSC_ENV_FILENAME"
@@ -940,7 +952,7 @@ function _compile_libuv {
         die $? "not ok - desktop configure"
       fi
 
-        quiet make clean
+        quiet make
         quiet make "-j$CPU_CORES"
         quiet make install
       fi

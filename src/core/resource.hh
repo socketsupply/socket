@@ -2,31 +2,28 @@
 #define SOCKET_RUNTIME_CORE_RESOURCE_H
 
 #include "../platform/platform.hh"
+
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "../platform/android.hh"
 #endif
+
+#include "trace.hh"
 
 namespace SSC {
   class Resource {
     public:
       Atomic<bool> accessing = false;
-      Resource () = default;
+      const String name;
+      const String type;
+      Tracer tracer;
+      Resource (const String& type, const String& name);
+      bool hasAccess () const noexcept;
       virtual bool startAccessing () = 0;
       virtual bool stopAccessing () = 0;
   };
 
   class FileResource : public Resource {
     public:
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      static void setSharedAndroidAssetManager (Android::AssetManager*);
-      static Android::AssetManager* getSharedAndroidAssetManager ();
-    #endif
-
-      static bool isFile (const String& resourcePath);
-      static bool isFile (const Path& resourcePath);
-      static bool isDirectory (const String& resourcePath);
-      static bool isDirectory (const Path& resourcePath);
-
       struct Cache {
         SharedPointer<char[]> bytes = nullptr;
         size_t size = 0;
@@ -34,6 +31,25 @@ namespace SSC {
 
       struct Options {
         bool cache;
+      };
+
+      struct WellKnownPaths {
+        Path resources;
+        Path downloads;
+        Path documents;
+        Path pictures;
+        Path desktop;
+        Path videos;
+        Path config;
+        Path music;
+        Path home;
+        Path data;
+        Path log;
+        Path tmp;
+
+        WellKnownPaths ();
+        const Vector<Path> entries () const;
+        JSON::Object json () const;
       };
 
       class ReadStream {
@@ -107,6 +123,16 @@ namespace SSC {
       static Path getResourcesPath ();
       static Path getResourcePath (const Path& resourcePath);
       static Path getResourcePath (const String& resourcePath);
+      static bool isFile (const String& resourcePath);
+      static bool isFile (const Path& resourcePath);
+      static bool isDirectory (const String& resourcePath);
+      static bool isDirectory (const Path& resourcePath);
+      static const WellKnownPaths& getWellKnownPaths ();
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      static void setSharedAndroidAssetManager (Android::AssetManager*);
+      static Android::AssetManager* getSharedAndroidAssetManager ();
+    #endif
 
       Path path;
 
@@ -125,7 +151,6 @@ namespace SSC {
       bool startAccessing ();
       bool stopAccessing ();
       bool exists () const noexcept;
-      bool hasAccess () const noexcept;
       const String mimeType () const noexcept;
       size_t size (bool cached = false) noexcept;
       size_t size () const noexcept;

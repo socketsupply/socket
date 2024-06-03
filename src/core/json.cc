@@ -99,6 +99,10 @@ namespace SSC::JSON {
     this->type = Type::String;
   }
 
+  Any::Any (const SSC::Path path)
+    : Any(path.string())
+  {}
+
   Any::Any (const SSC::String string) {
     this->pointer = SharedPointer<void>(new String(string));
     this->type = Type::String;

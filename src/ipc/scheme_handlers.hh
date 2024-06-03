@@ -54,7 +54,7 @@ namespace SSC::IPC {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
         using PlatformRequest = id<WKURLSchemeTask>;
         using PlatformResponse = NSHTTPURLResponse*;
-      #elif SOCKET_RUNTIME_PLATFORM_LINUX
+      #elif SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
         using PlatformRequest = WebKitURISchemeRequest*;
         using PlatformResponse = WebKitURISchemeResponse*;
       #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
@@ -64,7 +64,8 @@ namespace SSC::IPC {
         using PlatformRequest = jobject;
         using PlatformResponse = jobject;
       #else
-        #error "IPC::SchemeHandlers are not supported on this platform"
+        using PlatformRequest = void*;
+        using PlatformResponse = void*;
       #endif
 
       struct Request {
@@ -177,11 +178,9 @@ namespace SSC::IPC {
         Client client;
 
         Mutex mutex;
-        Atomic<size_t> pendingWrites = 0;
         Atomic<bool> finished = false;
 
-        Vector<SharedPointer<char[]>> ownedBuffers;
-        Vector<Thread> writeThreads;
+        Vector<SharedPointer<char[]>> buffers;
 
         Tracer tracer;
 
@@ -204,12 +203,12 @@ namespace SSC::IPC {
         Response& operator= (const Response&) noexcept;
         Response& operator= (Response&&) noexcept;
 
-        bool write (size_t size, const char* bytes);
         bool write (size_t size, SharedPointer<char[]>);
         bool write (const String& source);
         bool write (const JSON::Any& json);
         bool write (const FileResource& resource);
         bool write (const FileResource::ReadStream::Buffer& buffer);
+        bool write (size_t size, const char* bytes);
         bool send (const String& source);
         bool send (const JSON::Any& json);
         bool send (const FileResource& resource);

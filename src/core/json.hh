@@ -187,6 +187,7 @@ namespace SSC::JSON {
       Any (const char);
       Any (const char *);
       Any (const SSC::String);
+      Any (const SSC::Path);
       Any (const String);
       Any (const Object);
       Any (const ObjectEntries);

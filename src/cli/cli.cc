@@ -2130,10 +2130,11 @@ int main (const int argc, const char* argv[]) {
           }
         }
 
-        ini += "\n";
-        ini += "[ssc]\n";
-        ini += "argv = " + arguments;
-        ini += "\n";
+        if (arguments.size() > 0) {
+          ini += "\n";
+          ini += "[ssc]\n";
+          ini += "argv = " + arguments;
+        }
         ini += "\n";
 
         if (configExists) {
@@ -4814,6 +4815,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
+      flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
@@ -4846,6 +4848,34 @@ int main (const int argc, const char* argv[]) {
         "256x256" /
         "apps"
       };
+
+      {
+        auto desktopExtensionsPath = pathResources / "lib" / "extensions";
+        auto CXX = Env::get("CXX", "clang++");
+
+        fs::create_directories(desktopExtensionsPath);
+
+        StringStream command;
+        command
+          << CXX
+          << " -shared"
+          << " " << flags
+          << " " << prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a")
+          << " " << prefixFile("lib/" + platform.arch + "-desktop/libuv.a")
+          << " " << prefixFile("objects/" + platform.arch + "-desktop/extensions/linux.o")
+          << " -o " << (desktopExtensionsPath / "libsocket-runtime-desktop-extension.so").string()
+        ;
+
+        log(command.str());
+        auto result = exec(command.str().c_str());
+        if (result.exitCode != 0) {
+          log("ERROR: failed to compile desktop runtime extension");
+          if (flagVerboseMode) {
+            log(result.output);
+          }
+          exit(1);
+        }
+      }
 
       fs::create_directories(pathIcons);
       fs::create_directories(pathResources);

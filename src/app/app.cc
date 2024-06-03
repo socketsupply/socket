@@ -600,8 +600,10 @@ namespace SSC {
       applicationInstance = this;
     }
 
+  #if !SOCKET_RUNTIME_DESKTOP_EXTENSION
     const auto cwd = getcwd();
     uv_chdir(cwd.c_str());
+  #endif
     this->init();
   }
 #endif
@@ -613,63 +615,12 @@ namespace SSC {
   }
 
   void App::init () {
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    Env::set("UV_THREADPOOL_SIZE", "256");
+  #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_LINUX
     gtk_init_check(0, nullptr);
 
     auto webContext = webkit_web_context_get_default();
 
-    g_signal_connect(
-      G_OBJECT(webContext),
-      "initialize-notification-permissions",
-      G_CALLBACK(+[](
-        WebKitWebContext* webContext,
-        gpointer userData
-      ) {
-        static const auto app = App::sharedApplication();
-        static const auto bundleIdentifier = app->userConfig["meta_bundle_identifier"];
-        static const auto areNotificationsAllowed = (
-          !app->userConfig.contains("permissions_allow_notifications") ||
-          app->userConfig.at("permissions_allow_notifications") != "false"
-        );
-
-        const auto uri = "socket://" + bundleIdentifier;
-        const auto origin = webkit_security_origin_new_for_uri(uri.c_str());
-
-        GList* allowed = nullptr;
-        GList* disallowed = nullptr;
-
-        webkit_security_origin_ref(origin);
-
-        if (origin && allowed && disallowed) {
-          if (areNotificationsAllowed) {
-            disallowed = g_list_append(disallowed, (gpointer) origin);
-          } else {
-            allowed = g_list_append(allowed, (gpointer) origin);
-          }
-
-          if (allowed && disallowed) {
-            webkit_web_context_initialize_notification_permissions(
-              webContext,
-              allowed,
-              disallowed
-            );
-          }
-        }
-
-        if (allowed) {
-          g_list_free(allowed);
-        }
-
-        if (disallowed) {
-          g_list_free(disallowed);
-        }
-
-        if (origin) {
-          webkit_security_origin_unref(origin);
-        }
-      }),
-      nullptr
-    );
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     this->applicationDelegate = [SSCApplicationDelegate new];
     this->applicationDelegate.app = this;
@@ -678,7 +629,7 @@ namespace SSC {
   }
 
   int App::run (int argc, char** argv) {
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
     gtk_main();
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     // MUST be acquired on "main" thread
@@ -735,7 +686,7 @@ namespace SSC {
     this->core->shutdown();
     // Distinguish window closing with app exiting
     shouldExit = true;
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
+  #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
     gtk_main_quit();
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     // if not launched from the cli, just use `terminate()`
@@ -770,19 +721,17 @@ namespace SSC {
 
   void App::dispatch (Function<void()> callback) {
   #if SOCKET_RUNTIME_PLATFORM_LINUX
-    // @TODO
-    auto threadCallback = new Function<void()>(callback);
-
-    g_idle_add_full(
-      G_PRIORITY_HIGH_IDLE,
-      (GSourceFunc)([](void* callback) -> int {
-        (*static_cast<Function<void()>*>(callback))();
+    g_main_context_invoke(
+      nullptr,
+      +[](gpointer userData) -> gboolean {
+        auto callback = reinterpret_cast<Function<void()>*>(userData);
+        if (*callback != nullptr) {
+          (*callback)();
+          delete callback;
+        }
         return G_SOURCE_REMOVE;
-      }),
-      threadCallback,
-      [](void* callback) {
-        delete static_cast<Function<void()>*>(callback);
-      }
+      },
+      new Function<void()>(callback)
     );
   #elif SOCKET_RUNTIME_PLATFORM_APPLE
     auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
