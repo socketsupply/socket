@@ -221,7 +221,15 @@ namespace SSC::IPC {
         WebKitPolicyDecisionType decisionType,
         gpointer userData
       ) {
-        auto navigator = reinterpret_cast<Navigator*>(userData);
+        auto app = App::sharedApplication();
+        auto window = app->windowManager.getWindowForWebView(webview);
+
+        if (!window) {
+          webkit_policy_decision_ignore(decision);
+          return false;
+        }
+
+        auto navigator = &window->bridge.navigator;
 
         if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
           webkit_policy_decision_use(decision);

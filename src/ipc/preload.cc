@@ -91,10 +91,10 @@ namespace SSC::IPC {
         {"argv", JSON::Array {}},
         {"client", JSON::Object {}},
         {"config", JSON::Object {}},
-        {"debug", options.debug},
-        {"headless", options.headless},
+        {"debug", this->options.debug},
+        {"headless", this->options.headless},
         {"env", JSON::Object {}},
-        {"index", options.index}
+        {"index", this->options.index}
       }
     };
 

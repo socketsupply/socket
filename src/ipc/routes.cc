@@ -2975,7 +2975,7 @@ static void mapIPCRoutes (Router *router) {
 
     reply(Result::Data { message, window->json() });
 
-    App::sharedApplication()->core->setTimeout(16, [=] () {
+    app->core->setTimeout(16, [=] () {
       app->windowManager.destroyWindow(targetWindowIndex);
     });
   });
