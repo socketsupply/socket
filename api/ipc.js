@@ -1257,12 +1257,12 @@ export async function write (command, value, buffer, options) {
   const uri = `ipc://${command}?${params}`
 
   if (
-    typeof GlobalIPCExtensionPostMessage === 'function' &&
+    typeof __global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     let response = null
     try {
-      response = await GlobalIPCExtensionPostMessage(uri, buffer)
+      response = await __global_ipc_extension_handler(uri, buffer)
     } catch (err) {
       return Result.from(null, err)
     }
@@ -1372,15 +1372,15 @@ export async function request (command, value, options) {
   await ready()
 
   const params = new IPCSearchParams(value, Date.now())
-  const uri = `ipc://${command}`
+  const uri = `ipc://${command}?${params}`
 
   if (
-    typeof GlobalIPCExtensionPostMessage === 'function' &&
+    typeof __global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     let response = null
     try {
-      response = await GlobalIPCExtensionPostMessage(`${uri}?${params}`)
+      response = await __global_ipc_extension_handler(uri)
     } catch (err) {
       return Result.from(null, err)
     }
@@ -1416,14 +1416,12 @@ export async function request (command, value, options) {
     })
   }
 
-  const query = `?${params}`
-
   request.responseType = options?.responseType ?? ''
-  request.open('GET', uri + query)
+  request.open('GET', uri)
   request.send(null)
 
   if (debug.enabled) {
-    debug.log('ipc.request:', uri + query)
+    debug.log('ipc.request:', uri)
   }
 
   return await new Promise((resolve) => {
