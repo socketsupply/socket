@@ -138,9 +138,9 @@ extern "C" {
   ) {
     auto frame = webkit_web_page_get_main_frame(page);
     auto context = webkit_frame_get_js_context(frame);
-    auto GlobalIPCExtensionPostMessage = jsc_value_new_function(
+    auto __global_ipc_extension_handler = jsc_value_new_function(
       context,
-      "GlobalIPCExtensionPostMessage",
+      "__global_ipc_extension_handler",
       G_CALLBACK(onMessage),
       context,
       nullptr,
@@ -152,8 +152,8 @@ extern "C" {
 
     jsc_context_set_value(
       context,
-      "GlobalIPCExtensionPostMessage",
-      GlobalIPCExtensionPostMessage
+      "__global_ipc_extension_handler",
+      __global_ipc_extension_handler
     );
   }
 

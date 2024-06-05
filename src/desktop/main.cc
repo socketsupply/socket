@@ -68,18 +68,20 @@ static Function<void(int)> shutdownHandler;
 static void defaultWindowSignalHandler (int signal) {
   auto app = App::sharedApplication();
   if (app != nullptr && app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
-    auto defaultWindow = app->windowManager.getWindow(0);
-    if (defaultWindow != nullptr) {
-      if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
-        const auto json = JSON::Object {
-          JSON::Object::Entries {
-            {"signal", signal}
-          }
-        };
+    app->dispatch([=] () {
+      auto defaultWindow = app->windowManager.getWindow(0);
+      if (defaultWindow != nullptr) {
+        if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
+          const auto json = JSON::Object {
+            JSON::Object::Entries {
+              {"signal", signal}
+            }
+          };
 
-        defaultWindow->eval(getEmitToRenderProcessJavaScript("signal", json.str()));
+          defaultWindow->eval(getEmitToRenderProcessJavaScript("signal", json.str()));
+        }
       }
-    }
+    });
   }
 }
 
@@ -116,7 +118,7 @@ static void handleApplicationURLEvent (const String url) {
   if (app_ptr != nullptr) {
     for (auto window : app_ptr->windowManager.windows) {
       if (window != nullptr) {
-        if (window->index == 0) {
+        if (window->index == 0 && window->window && window->webview) {
           gtk_widget_show_all(GTK_WIDGET(window->window));
           gtk_widget_grab_focus(GTK_WIDGET(window->webview));
           gtk_widget_grab_focus(GTK_WIDGET(window->window));
@@ -287,7 +289,7 @@ MAIN {
   auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
   auto appProtocol = userConfig["meta_application_protocol"];
   auto dbusError = DBusError {}; dbus_error_init(&dbusError);
-  auto connection = dbus_bus_get(DBUS_BUS_SESSION, &dbusError);
+  static auto connection = dbus_bus_get(DBUS_BUS_SESSION, &dbusError);
   auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
 
   // instance is running if fd was acquired
@@ -326,8 +328,8 @@ MAIN {
 
     dbus_connection_add_filter(connection, onDBusMessage, nullptr, nullptr);
 
-    static Function<void()> pollForMessage = [connection]() {
-      Thread thread([connection] () {
+    static Function<void()> pollForMessage = []() {
+      Thread thread([] () {
         while (dbus_connection_read_write_dispatch(connection, 256));
         app_ptr->dispatch(pollForMessage);
       });
@@ -575,7 +577,7 @@ MAIN {
   static Process* process = nullptr;
   static Function<void(bool)> createProcess;
 
-  auto killProcess = [&](Process* processToKill) {
+  auto killProcess = [](Process* processToKill) {
     if (processToKill != nullptr) {
       processToKill->kill();
       processToKill->wait();
@@ -588,7 +590,7 @@ MAIN {
     }
   };
 
-  auto createProcessTemplate = [&]<class... Args>(Args... args) {
+  auto createProcessTemplate = [killProcess]<class... Args>(Args... args) {
     return [=](bool force) {
       if (process != nullptr && force) {
         killProcess(process);
@@ -604,7 +606,7 @@ MAIN {
       cmd,
       argvForward.str(),
       cwd,
-      [&](String const &out) {
+      [&exitCode](String const &out) mutable {
         IPC::Message message(out);
 
         if (message.name == "exit") {
@@ -625,7 +627,7 @@ MAIN {
 
     createProcess(true);
 
-    shutdownHandler = [&](int signum) {
+    shutdownHandler = [=](int signum) mutable {
     #if SOCKET_RUNTIME_PLATFORM_LINUX
       unlink(appInstanceLock.c_str());
     #endif
@@ -656,7 +658,7 @@ MAIN {
   );
   #endif
 
-  const auto onStdErr = [&](const auto& output) {
+  const auto onStdErr = [](const auto& output) {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", output.c_str());
   #endif
@@ -673,7 +675,7 @@ MAIN {
   // # "Backend" -> Main
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
-  const auto onStdOut = [&](const auto& output) {
+  const auto onStdOut = [](const auto& output) {
     const auto message = IPC::Message(output);
 
     if (message.index > 0 && message.name.size() == 0) {
@@ -882,7 +884,7 @@ MAIN {
   // When a window or the app wants to exit,
   // we clean up the windows and the backend process.
   //
-  shutdownHandler = [&](int code) {
+  shutdownHandler = [](int code) {
   #if SOCKET_RUNTIME_PLATFORM_LINUX
     unlink(appInstanceLock.c_str());
   #endif
@@ -1012,14 +1014,13 @@ MAIN {
   SET_DEFAULT_WINDOW_SIGNAL_HANDLER(SIGSYS)
 #endif
 
-  app.dispatch([=]() {
     Vector<String> properties = {
       "window_width", "window_height",
       "window_min_width", "window_min_height",
       "window_max_width", "window_max_height"
     };
 
-    auto setDefaultValue = [&](String property) {
+    auto setDefaultValue = [](String property) {
       // for min values set 0
       if (property.find("min") != -1) {
         return "0";
@@ -1045,7 +1046,7 @@ MAIN {
       }
     }
 
-    auto getProperty = [&](String property) {
+    auto getProperty = [](String property) {
       if (userConfig.count(property) > 0) {
         return userConfig[property];
       }
@@ -1097,7 +1098,8 @@ MAIN {
       auto screen = defaultWindow->getScreenSize();
 
       serviceWorkerUserConfig["webview_watch_reload"] = "false";
-      serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
+      // if the service worker window dies, then the app should too
+      serviceWorkerWindowOptions.shouldExitApplicationOnClose = true;
       serviceWorkerWindowOptions.minHeight = defaultWindow->getSizeInPixels("30%", screen.height);
       serviceWorkerWindowOptions.height = defaultWindow->getSizeInPixels("80%", screen.height);
       serviceWorkerWindowOptions.minWidth = defaultWindow->getSizeInPixels("40%", screen.width);
@@ -1122,6 +1124,7 @@ MAIN {
       app.serviceWorkerContainer.init(&defaultWindow->bridge);
     }
 
+    msleep(256);
     defaultWindow->show();
 
     if (devPort > 0) {
@@ -1148,8 +1151,9 @@ MAIN {
       String value;
       std::getline(std::cin, value);
 
-      auto t = Thread([&](String value) {
+      auto t = Thread([](String value) {
         auto app = App::sharedApplication();
+        auto defaultWindow = app->windowManager.getWindow(0);
 
         while (!app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
           msleep(128);
@@ -1169,7 +1173,6 @@ MAIN {
 
       t.detach();
     }
-  });
 
     //
     // # Event Loop
