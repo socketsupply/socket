@@ -4,7 +4,6 @@
 #include "../core/headers.hh"
 #include "../core/json.hh"
 #include "../ipc/client.hh"
-#include "../ipc/preload.hh"
 
 #include "protocols.hh"
 
@@ -16,7 +15,11 @@ namespace SSC {
   class ServiceWorkerContainer {
     public:
       using ID = IPC::Client::ID;
-      using Client = IPC::Client;
+
+      struct Client {
+        ID id = 0;
+        int index = 0;
+      };
 
       struct RegistrationOptions {
         enum class Type { Classic, Module };
