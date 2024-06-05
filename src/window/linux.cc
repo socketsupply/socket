@@ -89,7 +89,10 @@ namespace SSC {
     auto bytes = socket_runtime_init_get_user_config_bytes();
     auto size = socket_runtime_init_get_user_config_bytes_size();
     static auto data = String(reinterpret_cast<const char*>(bytes), size);
-    data += "[web-process-extension]\ncwd = " + cwd + "\n";
+    data += "[web-process-extension]\n";
+    data += "cwd = " + cwd + "\n";
+    data += "host = " + getDevHost() + "\n";
+    data += "port = " + std::to_string(getDevPort()) + "\n";
 
     webkit_web_context_set_web_extensions_initialization_user_data(
       webContext,
@@ -189,6 +192,9 @@ namespace SSC {
       userConfig["permissions_allow_data_access"] != "false"
     );
 
+    this->accelGroup = gtk_accel_group_new();
+    this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
     auto cookieManager = webkit_web_context_get_cookie_manager(webContext);
     webkit_cookie_manager_set_accept_policy(cookieManager, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
 
@@ -218,8 +224,6 @@ namespace SSC {
     this->contextMenu = nullptr;
     this->contextMenuID = 0;
 
-    this->accelGroup = gtk_accel_group_new();
-    this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     this->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     this->bridge.navigateFunction = [this] (const auto url) {
@@ -232,6 +236,7 @@ namespace SSC {
 
     this->bridge.preload = IPC::createPreload({
       .clientId = this->bridge.id,
+      .index = options.index,
       .userScript = options.userScript
     });
 
@@ -260,29 +265,24 @@ namespace SSC {
     bool isDarkMode = false;
 
     auto isKDEDarkMode = []() -> bool {
-      std::string home = std::getenv("HOME") ? std::getenv("HOME") : "";
-      std::string filepath = home + "/.config/kdeglobals";
-      std::ifstream file(filepath);
+      static const auto paths = FileResource::getWellKnownPaths();
+      static const auto kdeglobals = paths.home / ".config" / "kdeglobals";
 
-      if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filepath << std::endl;
+      if (!FileResource::isFile(kdeglobals)) {
         return false;
       }
 
-      std::string line;
+      auto file = FileResource(kdeglobals);
 
-      while (getline(file, line)) {
-        std::string lower_line;
+      if (!file.exists() || !file.hasAccess()) {
+        return false;
+      }
 
-        std::transform(
-          line.begin(),
-          line.end(),
-          std::back_inserter(lower_line),
-          [](unsigned char c) { return std::tolower(c); }
-        );
+      const auto bytes = file.read();
+      const auto lines = split(bytes, '\n');
 
-        if (lower_line.find("dark") != std::string::npos) {
-          std::cout << "Found dark setting in line: " << line << std::endl;
+      for (const auto& line : lines) {
+        if (toLowerCase(line).find("dark") != String::npos) {
           return true;
         }
       }
@@ -290,10 +290,10 @@ namespace SSC {
       return false;
     };
 
-    auto isGnomeDarkMode = [&]() -> bool {
-     GtkStyleContext* context = gtk_widget_get_style_context(window);
-
+    auto isGnomeDarkMode = [this]() -> bool {
+      GtkStyleContext* context = gtk_widget_get_style_context(this->window);
       GdkRGBA background_color;
+      // FIXME(@jwerle): this is deprecated
       gtk_style_context_get_background_color(context, GTK_STATE_FLAG_NORMAL, &background_color);
 
       bool is_dark_theme = (0.299*  background_color.red +
@@ -320,7 +320,8 @@ namespace SSC {
         gdk_rgba_parse(&color, this->options.backgroundColorLight.c_str());
       }
 
-      gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
+      // FIXME(@jwerle): this is deprecated
+      gtk_widget_override_background_color(this->window, GTK_STATE_FLAG_NORMAL, &color);
     }
 
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &webviewBackground);
@@ -834,51 +835,49 @@ namespace SSC {
     );
     */
 
-    /*
-    * FIXME(@jwerle): this can race - ideally, this is fixed in an abstraction
-    auto onDestroy = +[](GtkWidget*, gpointer arg) {
-      auto* w = static_cast<Window*>(arg);
-      auto* app = App::sharedApplication();
-      app->windowManager.destroyWindow(w->index);
-
-      for (auto window : app->windowManager.windows) {
-        if (window == nullptr || window.get() == w) {
-          continue;
-        }
-
-        JSON::Object json = JSON::Object::Entries {
-          {"data", w->index}
-        };
-
-        window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
-      }
-      return FALSE;
-    };
-
     g_signal_connect(
       G_OBJECT(this->window),
       "destroy",
-      G_CALLBACK(onDestroy),
-      this
-    );
+      G_CALLBACK((+[](GtkWidget* object, gpointer arg) {
+        auto w = reinterpret_cast<Window*>(arg);
+        auto app = App::sharedApplication();
+        int index = w != nullptr ? w->index : -1;
 
-    g_signal_connect(
-      G_OBJECT(this->window),
-      "delete-event",
-      G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
-        auto* w = static_cast<Window*>(arg);
+        for (auto& window : app->windowManager.windows) {
+          if (window == nullptr) {
+            continue;
+          }
 
-        if (w->options.shouldExitApplicationOnClose == false) {
-          w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-          return gtk_widget_hide_on_delete(widget);
+          if (window->window == object) {
+            index = window->index;
+            if (window->webview) {
+              window->webview = g_object_ref(window->webview);
+            }
+            window->window = nullptr;
+            window->vbox = nullptr;
+            break;
+          }
         }
 
-        w->close(0);
+        if (index >= 0) {
+          for (auto window : app->windowManager.windows) {
+            if (window == nullptr || window->index == index) {
+              continue;
+            }
+
+            JSON::Object json = JSON::Object::Entries {
+              {"data", index}
+            };
+
+            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+          }
+
+          app->windowManager.destroyWindow(index);
+        }
         return FALSE;
-      }),
+      })),
       this
     );
-    */
 
     g_signal_connect(
       G_OBJECT(this->window),
@@ -943,25 +942,25 @@ namespace SSC {
       this->userContentManager = nullptr;
     }
 
-    if (this->webview) {
-      g_object_unref(GTK_WIDGET(this->webview));
-      this->webview = nullptr;
-    }
-
-    if (this->window) {
-      auto w = this->window;
-      this->window = nullptr;
-      // gtk_widget_destroy(w);
-    }
-
     if (this->accelGroup) {
       g_object_unref(this->accelGroup);
       this->accelGroup = nullptr;
     }
 
+    if (this->webview) {
+      gtk_widget_set_can_focus(GTK_WIDGET(this->webview), false);
+      this->webview = nullptr;
+    }
+
     if (this->vbox) {
-      g_object_unref(this->vbox);
+      gtk_container_remove(GTK_CONTAINER(this->window), this->vbox);
       this->vbox = nullptr;
+    }
+
+    if (this->window) {
+      auto window = this->window;
+      this->window = nullptr;
+      g_object_unref(window);
     }
   }
 
@@ -1030,38 +1029,70 @@ namespace SSC {
   }
 
   void Window::eval (const String& source) {
-    if (this->webview) {
-      webkit_web_view_evaluate_javascript(
-        this->webview,
-        String(source).c_str(),
-        -1,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr
-      );
-    }
+    auto app = App::sharedApplication();
+    app->dispatch([=, this] () {
+      if (this->webview) {
+        webkit_web_view_evaluate_javascript(
+          this->webview,
+          source.c_str(),
+          source.size(),
+          nullptr, // world name
+          nullptr, // source URI
+          nullptr, // cancellable
+          +[]( // callback
+            GObject* object,
+            GAsyncResult* result,
+            gpointer userData
+          ) {
+            webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(object), result, nullptr);
+          },
+          nullptr // user data
+        );
+      }
+    });
   }
 
   void Window::show () {
-    gtk_widget_realize(this->window);
+    auto app = App::sharedApplication();
+    app->dispatch([=, this] () {
+      if (this->window != nullptr) {
+        gtk_widget_realize(this->window);
 
-    this->index = this->options.index;
-    if (this->options.headless == false) {
-      gtk_widget_show_all(this->window);
-      gtk_window_present(GTK_WINDOW(this->window));
-    }
+        this->index = this->options.index;
+        if (this->options.headless == false) {
+          gtk_widget_show_all(this->window);
+          gtk_window_present(GTK_WINDOW(this->window));
+        }
+      }
+    });
   }
 
   void Window::hide () {
     gtk_widget_realize(this->window);
     gtk_widget_hide(this->window);
-    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
   }
 
   void Window::setBackgroundColor (const String& rgba) {
+    const auto parts = split(trim(replace(replace(rgba, "rgba(", ""), ")", "")), ',');
+    int r = 0, g = 0, b = 0;
+    float a = 1.0;
 
+    if (parts.size() == 4) {
+      try { r = std::stoi(trim(parts[0])); }
+      catch (...) {}
+
+      try { g = std::stoi(trim(parts[1])); }
+      catch (...) {}
+
+      try { b = std::stoi(trim(parts[2])); }
+      catch (...) {}
+
+      try { a = std::stof(trim(parts[3])); }
+      catch (...) {}
+
+      return this->setBackgroundColor(r, g, b, a);
+    }
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
@@ -1071,51 +1102,60 @@ namespace SSC {
     color.blue = b / 255.0;
     color.alpha = a;
 
-    gtk_widget_realize(this->window);
-    // FIXME(@jwerle): this is deprecated
-    gtk_widget_override_background_color(
-      this->window, GTK_STATE_FLAG_NORMAL, &color
-    );
+    if (this->window) {
+      gtk_widget_realize(this->window);
+      // FIXME(@jwerle): this is deprecated
+      gtk_widget_override_background_color(
+        this->window, GTK_STATE_FLAG_NORMAL, &color
+      );
+    }
   }
 
   String Window::getBackgroundColor () {
     GtkStyleContext* context = gtk_widget_get_style_context(this->window);
 
     GdkRGBA color;
+    // FIXME(@jwerle): this is deprecated
     gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
 
-    char str[100];
+    char string[100];
 
     snprintf(
-      str,
-      sizeof(str),
+      string,
+      sizeof(string),
       "rgba(%d, %d, %d, %f)",
-      (int)(color.red*  255),
-      (int)(color.green*  255),
-      (int)(color.blue*  255),
+      (int) (255 * color.red),
+      (int) (255 * color.green),
+      (int) (255 * color.blue),
       color.alpha
     );
 
-    return String(str);
+    return string;
   }
 
   void Window::showInspector () {
-    auto inspector = webkit_web_view_get_inspector(this->webview);
-    if (inspector) {
-      webkit_web_inspector_show(inspector);
+    if (this->webview) {
+      const auto inspector = webkit_web_view_get_inspector(this->webview);
+      if (inspector) {
+        webkit_web_inspector_show(inspector);
+      }
     }
   }
 
   void Window::exit (int code) {
-    auto cb = this->onExit;
+    const auto callback = this->onExit;
     this->onExit = nullptr;
-    if (cb != nullptr) cb(code);
+    if (callback != nullptr) {
+      callback(code);
+    }
   }
 
-  void Window::kill () {}
+  void Window::kill () {
+  }
 
   void Window::close (int _) {
     if (this->window) {
+      g_object_ref(this->window);
       gtk_window_close(GTK_WINDOW(this->window));
     }
   }
@@ -1133,8 +1173,12 @@ namespace SSC {
   }
 
   void Window::navigate (const String& url) {
-    if (this->webview) {
-      webkit_web_view_load_uri(this->webview, url.c_str());
+    static auto app = App::sharedApplication();
+    auto webview = this->webview;
+    if (webview) {
+      app->dispatch([=] () {
+        webkit_web_view_load_uri(webview, url.c_str());
+      });
     }
   }
 
@@ -1271,7 +1315,9 @@ namespace SSC {
       GList* children = gtk_container_get_children(GTK_CONTAINER(menu));
 
       for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
-        gtk_widget_destroy(GTK_WIDGET(iter->data));
+        if (iter && iter->data) {
+          gtk_widget_destroy(GTK_WIDGET(iter->data));
+        }
       }
 
       g_list_free(children);

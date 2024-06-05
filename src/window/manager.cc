@@ -1,10 +1,6 @@
 #include "../app/app.hh"
 #include "window.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
-#endif
-
 namespace SSC {
   WindowManager::WindowManager (SharedPointer<Core> core)
     : core(core),
@@ -60,10 +56,12 @@ namespace SSC {
     return this->getWindow(index, WindowStatus::WINDOW_EXITING);
   }
 
-  SharedPointer<WindowManager::ManagedWindow> WindowManager::getWindowForBridge (IPC::Bridge* bridge) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::getWindowForBridge (
+    const IPC::Bridge* bridge
+  ) {
     for (const auto& window : this->windows) {
       if (window != nullptr && &window->bridge == bridge) {
-        return window;
+        return this->getWindow(window->index);
       }
     }
     return nullptr;
@@ -123,28 +121,29 @@ namespace SSC {
 
     auto window = this->windows[index];
     if (window != nullptr) {
-      if (window->status < WINDOW_CLOSING) {
-        window->close();
-      }
+      window->close();
 
-      if (window->status < WINDOW_KILLING) {
-        window->kill();
-      }
-
-      Lock lock(this->mutex);
       this->windows[index] = nullptr;
       if (window->options.shouldExitApplicationOnClose) {
         App::sharedApplication()->dispatch([window]() {
           window->exit(0);
         });
+      } else {
+        window->kill();
       }
     }
   }
 
-  SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (const WindowOptions& options) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (
+    const WindowOptions& options
+  ) {
     Lock lock(this->mutex);
 
-    if (this->destroyed || options.index < 0 || options.index >= this->windows.size()) {
+    if (
+      this->destroyed ||
+      options.index < 0 ||
+      options.index >= this->windows.size()
+    ) {
       return nullptr;
     }
 
@@ -235,10 +234,6 @@ namespace SSC {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }
 
-    if (options.debug || isDebugEnabled()) {
-      this->log("Creating Window#" + std::to_string(options.index));
-    }
-
     auto window = std::make_shared<ManagedWindow>(*this, this->core, windowOptions);
 
     window->status = WindowStatus::WINDOW_CREATED;
@@ -280,8 +275,7 @@ namespace SSC {
 
     const auto window = this->createWindow(windowOptions);
 
-    if (isDebugEnabled()) {
-      this->lastDebugLogLine = std::chrono::system_clock::now();
+    if (isDebugEnabled() && window->index == 0) {
     #if SOCKET_RUNTIME_PLATFORM_LINUX
       if (devHost.starts_with("http:")) {
         auto webContext = webkit_web_context_get_default();
@@ -321,8 +315,7 @@ namespace SSC {
   WindowManager::ManagedWindow::~ManagedWindow () {}
 
   void WindowManager::ManagedWindow::show () {
-    auto index = std::to_string(this->options.index);
-    manager.log("Showing Window#" + index);
+    auto index = std::to_string(this->index);
     status = WindowStatus::WINDOW_SHOWING;
     Window::show();
     status = WindowStatus::WINDOW_SHOWN;
@@ -333,8 +326,7 @@ namespace SSC {
       status > WindowStatus::WINDOW_HIDDEN &&
       status < WindowStatus::WINDOW_EXITING
     ) {
-      auto index = std::to_string(this->options.index);
-      manager.log("Hiding Window#" + index);
+      auto index = std::to_string(this->index);
       status = WindowStatus::WINDOW_HIDING;
       Window::hide();
       status = WindowStatus::WINDOW_HIDDEN;
@@ -343,22 +335,16 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::close (int code) {
     if (status < WindowStatus::WINDOW_CLOSING) {
-      auto index = std::to_string(this->options.index);
-      manager.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
+      auto index = std::to_string(this->index);
       status = WindowStatus::WINDOW_CLOSING;
       Window::close(code);
-      if (this->options.shouldExitApplicationOnClose) {
-        status = WindowStatus::WINDOW_EXITED;
-      } else {
-        status = WindowStatus::WINDOW_CLOSED;
-      }
+      status = WindowStatus::WINDOW_CLOSED;
     }
   }
 
   void WindowManager::ManagedWindow::exit (int code) {
     if (status < WindowStatus::WINDOW_EXITING) {
-      auto index = std::to_string(this->options.index);
-      manager.log("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
+      auto index = std::to_string(this->index);
       status = WindowStatus::WINDOW_EXITING;
       Window::exit(code);
       status = WindowStatus::WINDOW_EXITED;
@@ -367,17 +353,15 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::kill () {
     if (status < WindowStatus::WINDOW_KILLING) {
-      auto index = std::to_string(this->options.index);
-      manager.log("Killing Window#" + index);
+      auto index = std::to_string(this->index);
       status = WindowStatus::WINDOW_KILLING;
       Window::kill();
       status = WindowStatus::WINDOW_KILLED;
-      manager.destroyWindow(this->options.index);
     }
   }
 
   JSON::Object WindowManager::ManagedWindow::json () const {
-    const auto index = this->options.index;
+    const auto index = this->index;
     const auto size = this->getSize();
     const auto id = this->bridge.id;
 
@@ -395,8 +379,3 @@ namespace SSC {
     };
   }
 }
-
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-extern "C" {
-}
-#endif

@@ -1577,7 +1577,7 @@ namespace SSC {
   void Window::hide () {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
   }
 
   void Window::resize (HWND window) {
