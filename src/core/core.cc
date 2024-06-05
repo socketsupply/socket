@@ -184,10 +184,11 @@ namespace SSC {
 
     didLoopInit = true;
     Lock lock(this->loopMutex);
-    uv_loop_init(&eventLoop);
-    eventLoopAsync.data = (void *) this;
+    uv_loop_init(&this->eventLoop);
+    uv_loop_set_data(&this->eventLoop, reinterpret_cast<void*>(this));
+    this->eventLoopAsync.data = reinterpret_cast<void*>(this);
 
-    uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
+    uv_async_init(&this->eventLoop, &this->eventLoopAsync, [](uv_async_t *handle) {
       auto core = reinterpret_cast<Core*>(handle->data);
 
       while (true) {
@@ -376,16 +377,19 @@ namespace SSC {
     }
   };
 
+  #define RELEASE_STRONG_REFERENCE_SHARED_POINTER_BUFFERS_RESOLUTION 8
+
   static Timer releaseStrongReferenceSharedPointerBuffers = {
     .repeated = true,
-    .timeout = 16, // in milliseconds
+    .timeout = RELEASE_STRONG_REFERENCE_SHARED_POINTER_BUFFERS_RESOLUTION, // in milliseconds
     .invoke = [](uv_timer_t *handle) {
       auto core = reinterpret_cast<Core *>(handle->data);
+      static constexpr auto resolution = RELEASE_STRONG_REFERENCE_SHARED_POINTER_BUFFERS_RESOLUTION;
       Lock lock(core->mutex);
       for (int i = 0; i < core->sharedPointerBuffers.size(); ++i) {
         auto& entry = core->sharedPointerBuffers[i];
         // expired
-        if (entry.ttl <= 16) {
+        if (entry.ttl <= resolution) {
           entry.pointer = nullptr;
           entry.ttl = 0;
           if (i == core->sharedPointerBuffers.size() - 1) {
@@ -393,7 +397,7 @@ namespace SSC {
             break;
           }
         } else {
-          entry.ttl = entry.ttl - 16;
+          entry.ttl = entry.ttl - resolution;
         }
       }
 
@@ -515,13 +519,6 @@ namespace SSC {
     }
 
     Lock lock(this->mutex);
-    for (auto& entry : this->sharedPointerBuffers) {
-      if (entry.ttl == 0 && entry.pointer == nullptr) {
-        entry.ttl = ttl;
-        entry.pointer = pointer;
-        return;
-      }
-    }
 
     this->sharedPointerBuffers.emplace_back(SharedPointerBuffer {
       pointer,
