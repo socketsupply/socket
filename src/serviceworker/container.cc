@@ -430,7 +430,8 @@ namespace SSC {
           (html.find("<script") != String::npos || html.find("<SCRIPT") != String::npos)
         )
       ) {
-        request.client.preload.metadata["runtime-frame-source"] = "serviceworker";
+        auto preload = IPC::Preload(this->bridge->preload.options);
+        preload.metadata["runtime-frame-source"] = "serviceworker";
 
         auto begin = String("<meta name=\"begin-runtime-preload\">");
         auto end = String("<meta name=\"end-runtime-preload\">");
@@ -441,7 +442,8 @@ namespace SSC {
           html.erase(x, (y - x) + end.size());
         }
 
-        html = request.client.preload.insertIntoHTML(html, {
+        preload.compile();
+        html = preload.insertIntoHTML(html, {
           .protocolHandlerSchemes = this->protocols.getSchemes()
         });
 
