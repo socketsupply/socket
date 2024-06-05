@@ -33,27 +33,46 @@ namespace SSC {
       Lock lock(this->mutex);
       if (this->handles.contains(id)) {
         auto handle = this->handles.at(id);
-        uv_handle_set_data((uv_handle_t*) &handle->timer, handle.get());
+        uv_handle_set_data((uv_handle_t*) &handle->timer, (void*) id);
         uv_timer_init(loop, &handle->timer);
         uv_timer_start(
           &handle->timer,
           [](uv_timer_t* timer) {
-            auto handle = reinterpret_cast<Timer*>(uv_handle_get_data((uv_handle_t*) timer));
-            if (handle != nullptr) {
-              handle->callback([handle] () {
-                handle->timers->core->dispatchEventLoop([handle]() {
-                  handle->timers->cancelTimer(handle->id);
-                });
-              });
+            auto loop = uv_handle_get_loop(reinterpret_cast<uv_handle_t*>(timer));
+            auto core = reinterpret_cast<Core*>(uv_loop_get_data(loop));
+            auto id = reinterpret_cast<ID>(uv_handle_get_data(reinterpret_cast<uv_handle_t*>(timer)));
 
-              do {
-                Lock lock(handle->timers->mutex);
-                if (!handle->repeat) {
-                  if (handle->timers->handles.contains(handle->id)) {
-                    handle->timers->handles.erase(handle->id);
-                  }
-                }
-              } while (0);
+            // bad state
+            if (core == nullptr) {
+              uv_timer_stop(timer);
+              return;
+            }
+
+            Lock lock(core->timers.mutex);
+
+            // cancelled (removed from 'handles')
+            if (!core->timers.handles.contains(id)) {
+              uv_timer_stop(timer);
+              return;
+            }
+
+            auto handle = core->timers.handles.at(id);
+
+            // bad ref
+            if (handle == nullptr) {
+              uv_timer_stop(timer);
+              return;
+            }
+
+            // `callback` to timer callback is a "cancel" function
+            handle->callback([=] () {
+              core->timers.cancelTimer(id);
+            });
+
+            if (!handle->repeat) {
+              if (core->timers.handles.contains(id)) {
+                core->timers.handles.erase(id);
+              }
             }
           },
           timeout,
