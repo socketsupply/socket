@@ -77,14 +77,14 @@ namespace SSC {
     using Logger = std::function<void(ggml_log_level, const char*, void*)>;
 
     gpt_params params;
-    llama_model* model;
-    llama_context* ctx;
+    llama_model* model = nullptr;
+    llama_context* ctx = nullptr;
     llama_context* guidance = nullptr;
     struct llama_sampling_context* sampling;
 
-    std::vector<llama_token>* input_tokens;
-    std::ostringstream* output_ss;
-    std::vector<llama_token>* output_tokens;
+    std::vector<llama_token>* input_tokens = nullptr;
+    std::ostringstream* output_ss = nullptr;
+    std::vector<llama_token>* output_tokens = nullptr;
     std::vector<llama_token> session_tokens;
     std::vector<llama_token> embd_inp;
     std::vector<llama_token> guidance_inp;
