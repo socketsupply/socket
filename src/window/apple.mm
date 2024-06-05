@@ -142,35 +142,22 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   auto window = (Window*) objc_getAssociatedObject(self, "window");
   auto app = App::sharedApplication();
 
-  if (!app || !window || !window->isExiting) {
+  if (!app || !window || window->isExiting) {
     return true;
   }
 
+  auto index = window->index;
   const JSON::Object json = JSON::Object::Entries {
     {"data", window->index}
   };
 
   for (auto window : app->windowManager.windows) {
-    if (window != nullptr) {
+    if (window != nullptr && window->index != index) {
       window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
     }
   }
 
-#if !__has_feature(objc_arc)
-  if (window->window) {
-    [window->window release];
-  }
-#endif
-
-  window->window = nullptr;
-  if (window->options.shouldExitApplicationOnClose) {
-    window->isExiting = true;
-    window->exit(0);
-    return true;
-  }
-
-  window->eval(getEmitToRenderProcessJavaScript("window-hide", ""));
-  window->hide();
+  app->windowManager.destroyWindow(index);
   return true;
 }
 #elif SOCKET_RUNTIME_PLATFORM_IOS
@@ -729,59 +716,59 @@ namespace SSC {
 
   void Window::exit (int code) {
     isExiting = true;
-    this->close(code);;
-    if (onExit != nullptr) onExit(code);
+    const auto callback = this->onExit;
+    this->onExit = nullptr;
+    if (callback != nullptr) {
+      callback(code);
+    }
   }
 
-  void Window::kill () {
-  }
+  void Window::kill () {}
 
   void Window::close (int code) {
     const auto app = App::sharedApplication();
-    App::sharedApplication()->dispatch([this]() {
-      if (this->windowDelegate != nullptr) {
-        objc_removeAssociatedObjects(this->windowDelegate);
+    if (this->windowDelegate != nullptr) {
+      objc_removeAssociatedObjects(this->windowDelegate);
+    }
+
+    if (this->webview != nullptr) {
+      objc_removeAssociatedObjects(this->webview);
+      [this->webview stopLoading];
+      [this->webview.configuration.userContentController removeAllScriptMessageHandlers];
+      [this->webview removeFromSuperview];
+      this->webview.navigationDelegate = nullptr;
+      this->webview.UIDelegate = nullptr;
+    }
+
+    if (this->window != nullptr) {
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
+      auto contentView = this->window.contentView;
+      auto subviews = NSMutableArray.array;
+
+      for (NSView* view in contentView.subviews) {
+        if (view == this->webview) {
+          this->webview = nullptr;
+        }
+        [view removeFromSuperview];
+        [view release];
       }
 
-      if (this->webview != nullptr) {
-        objc_removeAssociatedObjects(this->webview);
-        [this->webview stopLoading];
-        [this->webview.configuration.userContentController removeAllScriptMessageHandlers];
-        [this->webview removeFromSuperview];
-        this->webview.navigationDelegate = nullptr;
-        this->webview.UIDelegate = nullptr;
-      }
+      [this->window performClose: nullptr];
+      this->window = nullptr;
+      this->window.webview = nullptr;
+      this->window.delegate = nullptr;
+      this->window.contentView = nullptr;
 
-      if (this->window != nullptr) {
-      #if SOCKET_RUNTIME_PLATFORM_MACOS
-        auto contentView = this->window.contentView;
-        auto subviews = NSMutableArray.array;
-
-        for (NSView* view in contentView.subviews) {
-          if (view == this->webview) {
-            this->webview = nullptr;
-          }
-          [view removeFromSuperview];
-          [view release];
-        }
-
-        [this->window performClose: nil];
-        this->window = nullptr;
-        this->window.webview = nullptr;
-        this->window.delegate = nullptr;
-        this->window.contentView = nullptr;
-
-        if (this->window.titleBarView) {
-          [this->window.titleBarView removeFromSuperview];
-        #if !__has_feature(objc_arc)
-          [this->window.titleBarView release];
-        #endif
-        }
-
-        this->window.titleBarView = nullptr;
+      if (this->window.titleBarView) {
+        [this->window.titleBarView removeFromSuperview];
+      #if !__has_feature(objc_arc)
+        [this->window.titleBarView release];
       #endif
       }
-    });
+
+      this->window.titleBarView = nullptr;
+    #endif
+    }
   }
 
   void Window::maximize () {
@@ -812,7 +799,7 @@ namespace SSC {
       this->window.hidden = YES;
     }
   #endif
-    this->eval(getEmitToRenderProcessJavaScript("window-hide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
   }
 
   void Window::eval (const String& source) {

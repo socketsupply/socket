@@ -1150,8 +1150,7 @@ namespace SSC {
     }
   }
 
-  void Window::kill () {
-  }
+  void Window::kill () {}
 
   void Window::close (int _) {
     if (this->window) {
