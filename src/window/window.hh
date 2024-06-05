@@ -371,8 +371,6 @@ namespace SSC {
           JSON::Object json () const;
       };
 
-      std::chrono::system_clock::time_point lastDebugLogLine = std::chrono::system_clock::now();
-
       Vector<SharedPointer<ManagedWindow>> windows;
       WindowManagerOptions options;
       SharedPointer<Core> core = nullptr;
@@ -384,29 +382,12 @@ namespace SSC {
       WindowManager (const WindowManager&) = delete;
       ~WindowManager ();
 
-      void inline log (const String& line) {
-        using namespace std::chrono;
-
-        if (this->destroyed || !isDebugEnabled()) {
-          return;
-        }
-
-        const auto now = system_clock::now();
-        const auto delta = duration_cast<milliseconds>(now - this->lastDebugLogLine).count();
-
-        std::cout << "• " << line;
-        std::cout << " \033[0;32m+" << delta << "ms\033[0m";
-        std::cout << std::endl;
-
-        this->lastDebugLogLine = now;
-      }
-
       void destroy ();
       void configure (const WindowManagerOptions& configuration);
 
       SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
       SharedPointer<ManagedWindow> getWindow (int index);
-      SharedPointer<ManagedWindow> getWindowForBridge (IPC::Bridge* bridge);
+      SharedPointer<ManagedWindow> getWindowForBridge (const IPC::Bridge* bridge);
       SharedPointer<ManagedWindow> getWindowForWebView (WebView* webview);;
       SharedPointer<ManagedWindow> getOrCreateWindow (int index);
       SharedPointer<ManagedWindow> getOrCreateWindow (int index, const WindowOptions& options);
