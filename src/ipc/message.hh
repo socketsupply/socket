@@ -46,7 +46,7 @@ namespace SSC::IPC {
       String uri = "";
       int index = -1;
       Seq seq = "";
-      Map args;
+      Map args = {};
       bool isHTTP = false;
       SharedPointer<MessageCancellation> cancel = nullptr;
 

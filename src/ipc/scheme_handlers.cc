@@ -347,6 +347,10 @@ namespace SSC::IPC {
   }
 
   SchemeHandlers::~SchemeHandlers () {
+    Lock lock(this->mutex);
+    for (auto& entry : this->activeRequests) {
+      entry.second->handlers = nullptr;
+    }
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->configuration.webview = nullptr;
   #endif
@@ -911,11 +915,28 @@ namespace SSC::IPC {
   }
 
   bool SchemeHandlers::Request::isActive () const {
-    return this->handlers != nullptr && this->handlers->isRequestActive(this->id);
+    auto app = App::sharedApplication();
+    auto window = app->windowManager.getWindowForBridge(this->bridge);
+
+    // only a scheme handler owned by this bridge and attached to a
+    // window should be considered "active"
+    // scheme handlers SHOULD only work windows that have a navigator
+    if (window != nullptr && this->handlers != nullptr) {
+      return this->handlers->isRequestActive(this->id);
+    }
+
+    return false;
   }
 
   bool SchemeHandlers::Request::isCancelled () const {
-    return this->handlers != nullptr && this->handlers->isRequestCancelled(this->id);
+    auto app = App::sharedApplication();
+    auto window = app->windowManager.getWindowForBridge(this->bridge);
+
+    if (window != nullptr && this->handlers != nullptr) {
+      return this->handlers->isRequestCancelled(this->id);
+    }
+
+    return false;
   }
 
   JSON::Object SchemeHandlers::Request::json () const {
@@ -1209,7 +1230,7 @@ namespace SSC::IPC {
         (gssize) size,
         nullptr
       );
-      this->request->bridge->core->retainSharedPointerBuffer(bytes, 512);
+      this->request->bridge->core->retainSharedPointerBuffer(bytes, 256);
       span->end();
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS

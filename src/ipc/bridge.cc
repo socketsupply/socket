@@ -364,7 +364,9 @@ export default module)S";
     return this->emit(name, json.str());
   }
 
-  void Bridge::configureSchemeHandlers (const SchemeHandlers::Configuration& configuration) {
+  void Bridge::configureSchemeHandlers (
+    const SchemeHandlers::Configuration& configuration
+  ) {
     this->schemeHandlers.configure(configuration);
     this->schemeHandlers.registerSchemeHandler("ipc", [this](
       const auto request,
@@ -540,6 +542,19 @@ export default module)S";
     ) {
       auto userConfig = this->userConfig;
       auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+      auto app = App::sharedApplication();
+      auto window = app->windowManager.getWindowForBridge(bridge);
+
+      // if there was no window, then this is a bad request as scheme
+      // handlers should only be handled directly in a window with
+      // a navigator and a connected IPC bridge
+      if (window == nullptr) {
+        auto response = SchemeHandlers::Response(request);
+        response.writeHead(400);
+        callback(response);
+        return;
+      }
+
       // the location of static application resources
       const auto applicationResources = FileResource::getResourcesPath().string();
       // default response is 404
@@ -655,7 +670,7 @@ export default module)S";
             request->query,
             request->headers,
             ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            ServiceWorkerContainer::Client { request->client.id, this->preload }
+            ServiceWorkerContainer::Client { request->client.id, window->index }
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
@@ -674,7 +689,7 @@ export default module)S";
           });
 
           if (fetched) {
-            this->core->setTimeout(32000, [request] () mutable {
+            this->core->setTimeout(32000, [=] () mutable {
               if (request->isActive()) {
                 auto response = SchemeHandlers::Response(request, 408);
                 response.fail("ServiceWorker request timed out.");
@@ -915,11 +930,21 @@ export default module)S";
       });
 
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
-        const auto request,
-        const auto bridge,
+        auto request,
+        auto bridge,
         auto callbacks,
         auto callback
       ) {
+        auto app = App::sharedApplication();
+        auto window = app->windowManager.getWindowForBridge(bridge);
+
+        if (window == nullptr) {
+          auto response = SchemeHandlers::Response(request);
+          response.writeHead(400);
+          callback(response);
+          return;
+        }
+
         if (this->navigator.serviceWorker.registrations.size() > 0) {
           auto hostname = request->hostname;
           auto pathname = request->pathname;
@@ -942,7 +967,7 @@ export default module)S";
             request->query,
             request->headers,
             ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            ServiceWorkerContainer::Client { request->client.id, this->preload }
+            ServiceWorkerContainer::Client { request->client.id, window->index }
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
