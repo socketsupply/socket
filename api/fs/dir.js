@@ -127,7 +127,6 @@ export class Dir {
       }
     }
 
-    console.log({ results })
     results = results.map((result) => {
       if (this.withFileTypes) {
         result = Dirent.from(result)
