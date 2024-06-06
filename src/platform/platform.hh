@@ -95,6 +95,7 @@
 #pragma comment(lib, "Gdi32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "libuv.lib")
+#pragma comment(lib, "libllama.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "Shlwapi.lib")
