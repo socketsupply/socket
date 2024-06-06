@@ -650,11 +650,7 @@ MAIN {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
   static auto SOCKET_RUNTIME_OS_LOG_BUNDLE = os_log_create(
     bundleIdentifier.c_str(),
-    #if SOCKET_RUNTIME_PLATFORM_MOBILE
-      "socket.runtime.mobile"
-    #else
-      "socket.runtime.desktop"
-    #endif
+    "socket.runtime"
   );
   #endif
 

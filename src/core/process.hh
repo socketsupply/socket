@@ -124,9 +124,11 @@ namespace SSC {
     String command;
     String argv;
     String path;
+    Vector<String> env;
     Atomic<bool> closed = true;
     Atomic<int> status = -1;
     Atomic<int> lastWriteStatus = 0;
+    bool detached = false;
     bool openStdin;
     PID id = 0;
 
@@ -153,6 +155,7 @@ namespace SSC {
     Process(
       const String &command,
       const String &argv,
+      const SSC::Vector<SSC::String> &env,
       const String &path = String(""),
       MessageCallback readStdout = nullptr,
       MessageCallback readStderr = nullptr,
@@ -161,18 +164,29 @@ namespace SSC {
       const ProcessConfig &config = {}
     ) noexcept;
 
-  #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
-    // Starts a process with the environment of the calling process.
-    // Supported on Unix-like systems only.
-    Process (
-      const std::function<int()> &function,
+    Process(
+      const String &command,
+      const String &argv,
+      const String &path = String(""),
       MessageCallback readStdout = nullptr,
       MessageCallback readStderr = nullptr,
       MessageCallback onExit = nullptr,
       bool openStdin = true,
       const ProcessConfig &config = {}
     ) noexcept;
-  #endif
+
+    #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
+      // Starts a process with the environment of the calling process.
+      // Supported on Unix-like systems only.
+      Process (
+        const std::function<int()> &function,
+        MessageCallback readStdout = nullptr,
+        MessageCallback readStderr = nullptr,
+        MessageCallback onExit = nullptr,
+        bool openStdin = true,
+        const ProcessConfig &config = {}
+      ) noexcept;
+    #endif
 
     ~Process () noexcept {
       closeFDs();

@@ -13,6 +13,7 @@ namespace SSC {
 
       struct SpawnOptions {
         String cwd;
+        const Vector<String> env;
         bool allowStdin = true;
         bool allowStdout = true;
         bool allowStderr = true;
@@ -20,6 +21,7 @@ namespace SSC {
 
       struct ExecOptions {
         String cwd;
+        const Vector<String> env;
         bool allowStdout = true;
         bool allowStderr = true;
         uint64_t timeout = 0;

@@ -15,11 +15,34 @@
 #include "../debug.hh"
 #include "../modules/timers.hh"
 
+extern char **environ;
+
 namespace SSC {
   static StringStream initial;
 
   Process::Data::Data () noexcept
     : id(-1)
+  {}
+
+  Process::Process (
+    const String &command,
+    const String &argv,
+    const Vector<String> &env,
+    const String &path,
+    MessageCallback readStdout,
+    MessageCallback readStderr,
+    MessageCallback onExit,
+    bool openStdin,
+    const ProcessConfig &config
+  ) noexcept
+    : openStdin(true),
+      readStdout(std::move(readStdout)),
+      readStderr(std::move(readStderr)),
+      onExit(std::move(onExit)),
+      env(env),
+      command(command),
+      argv(argv),
+      path(path)
   {}
 
   Process::Process (
@@ -55,16 +78,17 @@ namespace SSC {
       openStdin(openStdin),
       config(config)
   {
-  #if !SOCKET_RUNTIME_PLATFORM_IOS
-    open(function);
-    read();
-  #endif
+    #if !SOCKET_RUNTIME_PLATFORM_IOS
+      open(function);
+      read();
+    #endif
   }
 
   Process::PID Process::open (const Function<int()> &function) noexcept {
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    return -1; // -EPERM
-  #else
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      return -1; // -EPERM
+    #else
+
     if (openStdin) {
       stdinFD = UniquePointer<FD>(new FD);
     }
@@ -218,37 +242,50 @@ namespace SSC {
   }
 
   Process::PID Process::open (const String &command, const String &path) noexcept {
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    return -1; // -EPERM
-  #else
-    return open([&command, &path, this] {
-      auto command_c_str = command.c_str();
-      String cd_path_and_command;
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      return -1; // -EPERM
+    #else
 
-      if (!path.empty()) {
-        auto path_escaped = path;
-        size_t pos = 0;
+     std::vector<char*> newEnv;
 
-        // Based on https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxsxyb7
-        while ((pos = path_escaped.find('\'', pos)) != String::npos) {
-          path_escaped.replace(pos, 1, "'\\''");
-          pos += 4;
+     for (char** env = environ; *env != nullptr; ++env) {
+        newEnv.push_back(strdup(*env));
+      }
+
+      for (const auto& str : this->env) {
+        newEnv.push_back(const_cast<char*>(str.c_str()));
+      }
+
+      newEnv.push_back(nullptr);
+
+      return open([&command, &path, &newEnv, this] {
+        auto command_c_str = command.c_str();
+        String cd_path_and_command;
+
+        if (!path.empty()) {
+          auto path_escaped = path;
+          size_t pos = 0;
+
+          while ((pos = path_escaped.find('\'', pos)) != String::npos) {
+            path_escaped.replace(pos, 1, "'\\''");
+            pos += 4;
+          }
+
+          cd_path_and_command = "cd '" + path_escaped + "' && " + command; // To avoid resolving symbolic links
+          command_c_str = cd_path_and_command.c_str();
         }
 
-        cd_path_and_command = "cd '" + path_escaped + "' && " + command; // To avoid resolving symbolic links
-        command_c_str = cd_path_and_command.c_str();
-      }
+        #if SOCKET_RUNTIME_PLATFORM_APPLE
+          setpgid(0, 0);
+        #endif
 
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      setpgid(0, 0);
+        if (this->shell.size() > 0) {
+          return execle(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, (char*)nullptr, newEnv.data());
+        } else {
+          return execle("/bin/sh", "/bin/sh", "-c", command_c_str, (char*)nullptr, newEnv.data());
+        }
+      });
     #endif
-      if (this->shell.size() > 0) {
-        return execl(this->shell.c_str(), this->shell.c_str(), "-c", command_c_str, nullptr);
-      } else {
-        return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
-      }
-    });
-  #endif
   }
 
   int Process::wait () {
