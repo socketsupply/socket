@@ -593,7 +593,7 @@ function _install {
     echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
     rm -rf "$SOCKET_HOME/pkgconfig"
     mkdir -p "$SOCKET_HOME/pkgconfig"
-    cp -rfp "$BUILD_DIR/$arch-$platform/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
+    cp -rfp "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
   fi
 
   if [ "$platform" == "desktop" ]; then
@@ -794,7 +794,7 @@ function _compile_libuv_android {
   fi
 }
 
-function _compile_metal {
+function _compile_llama_metal {
   target=$1
   hosttarget=$1
   platform=$2
@@ -890,23 +890,35 @@ function _compile_llama {
 
     rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
     return
-  fi
+  elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
+    # https://github.com/ggerganov/llama.cpp/discussions/4508
 
-  # https://github.com/ggerganov/llama.cpp/discussions/4508
+    local ar="$(xcrun -sdk $sdk -find ar)"
+    local cc="$(xcrun -sdk $sdk -find clang)"
+    local cxx="$(xcrun -sdk $sdk -find clang++)"
+    local cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON"
 
-  declare ar=$(xcrun -sdk $sdk -find ar)
-  declare cc=$(xcrun -sdk $sdk -find clang)
-  declare cxx=$(xcrun -sdk $sdk -find clang++)
-  declare cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON"
+    AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make libllama.a
 
-  echo "AR: $ar"
-  echo "CFLAGS: $cflags"
+    if [ ! $? = 0 ]; then
+      die $? "not ok - Unable to compile libllama for '$platform'"
+      return
+    fi
+  elif [ "$platform" == "android" ]; then
+    local android_includes=$(android_arch_includes "$1")
+    local host_arch="$(host_arch)"
+    local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+    local cxx="$cc"
+    local clang_target="$(android_clang_target "$target")"
+    local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+    local cflags=("$clang_target" -std=c++2a -g -pedantic "${android_includes[*]}")
 
-  AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make libllama.a 
+    AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_M="$1" UNAME_P="$1" LLAMA_FAST=1 libllama.a
 
-  if [ ! $? = 0 ]; then
-    die $? "not ok - iOS will not be enabled. Unable to compile libllama."
-    return
+    if [ ! $? = 0 ]; then
+      die $? "not ok - Unable to compile libllama for '$platform'"
+      return
+    fi
   fi
 
   cp libllama.a ../lib
@@ -1065,9 +1077,14 @@ cd "$BUILD_DIR" || exit 1
 
 trap onsignal INT TERM
 
-_compile_metal arm64 iPhoneOS
-_compile_metal x86_64 iPhoneSimulator
-_compile_metal arm64 iPhoneSimulator
+if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
+  quiet xcode-select -p
+  die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
+
+  _compile_llama_metal arm64 iPhoneOS
+  _compile_llama_metal x86_64 iPhoneSimulator
+  _compile_llama_metal arm64 iPhoneSimulator
+fi
 
 {
   _compile_llama
@@ -1125,6 +1142,7 @@ fi
 if [[ -n "$BUILD_ANDROID" ]]; then
   for abi in $(android_supported_abis); do
     _compile_libuv_android "$abi" & pids+=($!)
+    _compile_llama "$abi" android & pids+=($!)
   done
 fi
 
