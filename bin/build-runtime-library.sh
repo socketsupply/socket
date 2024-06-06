@@ -335,8 +335,10 @@ function main () {
     fi
   fi
 
-  if [[ "$host" = "Linux" ]] && [[ "$platform" = "desktop" ]]; then
-    "$root/bin/generate-socket-runtime-pkg-config.sh"
+  if [[ "$platform" = "desktop" ]]; then
+    if [[ "$host" = "Linux" ]] || [[ "$host" = "Darwin" ]]; then
+      "$root/bin/generate-socket-runtime-pkg-config.sh"
+    fi
   fi
 
   if [[ "$platform" == "android" ]]; then
