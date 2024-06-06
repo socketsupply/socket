@@ -38,6 +38,7 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <future>
 #include <regex>
 #include <span>
 #include <unordered_set>
@@ -307,194 +308,83 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 #if defined(__APPLE__)
-void pollOSLogStream (bool isForDesktop, String bundleIdentifier, int processIdentifier) {
-  // It appears there is a bug with `:predicateWithFormat:` as the
-  // following does not appear to work:
-  //
-  // [NSPredicate
-  //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
-  //   app.processIdentifier,
-  //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
-  // ];
-  //
-  // We can build the predicate query string manually, instead.
-  auto queryStream = StringStream {};
-  auto pid = std::to_string(processIdentifier);
-  auto bid = bundleIdentifier.c_str();
-  queryStream
-    << "("
-    << (isForDesktop
-        ? "category == 'socket.runtime.desktop'"
-        : "category == 'socket.runtime.mobile'")
-    << " OR category == 'socket.runtime.debug'"
-    << ") AND ";
+unsigned short createLogSocket() {
+  std::promise<int> p;
+  std::future<int> future = p.get_future();
+  int port = 0;
 
-    if (processIdentifier > 0) {
-      queryStream << "processIdentifier == " << pid << " AND ";
-    }
+  auto t = std::thread([](std::promise<int>&& p) {
+    uv_loop_t *loop = uv_default_loop();
+    uv_udp_t socket;
 
-  queryStream << "subsystem == '" << bid << "'";
-  // log store query and predicate for filtering logs based on the currently
-  // running application that was just launched and those of a subsystem
-  // directly related to the application's bundle identifier which allows us
-  // to just get logs that came from the application (not foundation/cocoa/webkit)
-  const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
-  const auto predicate = [NSPredicate predicateWithFormat: query];
+    uv_udp_init(loop, &socket);
+    struct sockaddr_in addr;
+    int port;
 
-  // use the launch date as the initial marker
-  const auto now = [NSDate now];
-  // and offset it by 1 second in the past as the initial position in the eumeration
-  auto offset = [now dateByAddingTimeInterval: -1];
+    uv_ip4_addr("0.0.0.0", 0, &addr);
+    uv_udp_bind(&socket, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
-  // tracks the latest log entry date so we ignore older ones
-  NSDate* latest = nil;
-  NSError* error = nil;
+    uv_udp_recv_start(
+      &socket,
+      [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+        *buf = uv_buf_init(new char[suggested_size], suggested_size);
+      },
+      [](uv_udp_t *req, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+        if (nread > 0) {
+          String data = trim(String(buf->base, nread));
+          if (data[0] != '+') return;
 
-  int pollsAfterTermination = 16;
-  int backoffIndex = 0;
+          @autoreleasepool {
+            NSError *err = nil;
+            auto logs = [OSLogStore storeWithScope: OSLogStoreSystem error: &err]; // get snapshot
 
-  // lucas series of backoffs
-  static int backoffs[] = {
-    16*2,
-    16*1,
-    16*3,
-    16*4,
-    16*7,
-    16*11,
-    16*18,
-    16*29,
-    32*2,
-    32*1,
-    32*3,
-    32*4,
-    32*7,
-    32*11,
-    32*18,
-    32*29,
-    64*2,
-    64*1,
-    64*3,
-    64*4,
-    64*7,
-    64*11,
-    64*18,
-    64*29,
-  };
-
-  if (processIdentifier > 0) {
-    dispatch_async(queue, ^{
-      while (kill(processIdentifier, 0) == 0) {
-        msleep(256);
-      }
-    });
-  }
-
-  while (appStatus < 0 || pollsAfterTermination > 0) {
-    if (appStatus >= 0) {
-      pollsAfterTermination = pollsAfterTermination - 1;
-      checkLogStore = true;
-    }
-
-    if (!checkLogStore) {
-      auto backoff = backoffs[backoffIndex];
-      backoffIndex = (
-        (backoffIndex + 1) %
-        (sizeof(backoffs) / sizeof(backoffs[0]))
-      );
-
-      msleep(backoff);
-      if (processIdentifier > 0) {
-        continue;
-      }
-    }
-
-    // this is may be set to `true` from a `SIGUSR1` signal
-    checkLogStore = false;
-    @autoreleasepool {
-      // We need a new `OSLogStore` in each so we can keep enumeratoring
-      // the logs until the application terminates. This is required because
-      // each `OSLogStore` instance is a snapshot of the system's universal
-      // log archive at the time of instantiation.
-      auto logs = [OSLogStore
-        storeWithScope: OSLogStoreSystem
-        error: &error
-      ];
-
-      if (error) {
-        appStatus = 1;
-        debug(
-          "ERROR: OSLogStore: (code=%lu, domain=%@) %@",
-          error.code,
-          error.domain,
-          error.localizedDescription
-        );
-        break;
-      }
-
-      auto position = [logs positionWithDate: offset];
-      auto enumerator = [logs
-        entriesEnumeratorWithOptions: 0
-        position: position
-        predicate: predicate
-        error: &error
-      ];
-
-      if (error) {
-        appStatus = 1;
-        debug(
-          "ERROR: OSLogEnumerator: (code=%lu, domain=%@) %@",
-          error.code,
-          error.domain,
-          error.localizedDescription
-        );
-        break;
-      }
-
-      // Enumerate all the logs in this loop and print unredacted and most
-      // recently log entries to stdout
-      for (OSLogEntryLog* entry in enumerator) {
-        if (
-          entry.composedMessage &&
-          (processIdentifier == 0 || entry.processIdentifier == processIdentifier)
-        ) {
-          // visit latest log
-          if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
-            auto message = entry.composedMessage.UTF8String;
-
-            // the OSLogStore may redact log messages the user does not
-            // have access to, filter them out
-            if (String(message) != "<private>") {
-              if (String(message).starts_with("__EXIT_SIGNAL__")) {
-                if (appStatus == -1) {
-                  appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
-                }
-              } else if (
-                entry.level == OSLogEntryLogLevelDebug ||
-                entry.level == OSLogEntryLogLevelError ||
-                entry.level == OSLogEntryLogLevelFault
-              ) {
-                if (entry.level == OSLogEntryLogLevelDebug) {
-                  if (flagDebugMode) {
-                    std::cerr << message << std::endl;
-                  }
-                } else {
-                  std::cerr << message << std::endl;
-                }
-              } else {
-                std::cout << message << std::endl;
-              }
+            if (err) {
+              debug("ERROR: Failed to open logstore");
+              return;
             }
 
-            backoffIndex = 0;
-            latest = entry.date;
-            offset = latest;
+            auto offset = [[NSDate now] dateByAddingTimeInterval: -1]; // this may not be enough
+            auto position = [logs positionWithDate: offset];
+            auto predicate = [NSPredicate predicateWithFormat: @"(category == 'socket.runtime')"];
+            auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
+
+            if (err) {
+              debug("ERROR: Failed to open logstore");
+              return;
+            }
+
+            int count = 0;
+            id logEntry;
+
+            while ((logEntry = [enumerator nextObject]) != nil) {
+              count++;
+              OSLogEntryLog *entry = (OSLogEntryLog *)logEntry;
+              NSString *message = [entry composedMessage];
+              std::cout << message.UTF8String << std::endl;
+            }
           }
         }
-      }
-    }
-  }
 
-  appMutex.unlock();
+        if (buf->base) delete[] buf->base;
+      }
+    );
+
+    int len = sizeof(addr);
+
+    if (uv_udp_getsockname(&socket, (struct sockaddr *)&addr, &len) == 0) {
+      auto port = ntohs(addr.sin_port);
+      debug("Listening on UDP port %d\n", port);
+      p.set_value(port);
+    } else {
+      debug("Failed to get socket name\n");
+    }
+
+    uv_run(loop, UV_RUN_DEFAULT);
+  }, std::move(p));
+
+  port = future.get();
+  t.detach();
+  return port;
 }
 #endif
 
@@ -536,10 +426,13 @@ void handleBuildPhaseForUser (
       buildScript = "cmd.exe";
     }
 
+    auto scriptPath = (cwd / targetPath).string();
+    log("running build script (cmd='" + buildScript + "', args='" + scriptArgs + "', pwd='" + scriptPath + "')");
+
     auto process = new SSC::Process(
       buildScript,
       scriptArgs,
-      (cwd / targetPath).string(),
+      scriptPath,
       [](SSC::String const &out) { IO::write(out, false); },
       [](SSC::String const &out) { IO::write(out, true); }
     );
@@ -981,6 +874,10 @@ int runApp (const Path& path, const String& args, bool headless) {
 
     for (auto const &envKey : parseStringList(settings["build_env"])) {
       auto cleanKey = trim(envKey);
+
+      cleanKey.erase(0, cleanKey.find_first_not_of(","));
+      cleanKey.erase(cleanKey.find_last_not_of(",") + 1);
+
       auto envValue = Env::get(cleanKey.c_str());
       auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
       auto value = [NSString stringWithUTF8String: envValue.c_str()];
