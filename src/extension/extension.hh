@@ -186,6 +186,7 @@ extern "C" {
       sapi_process_spawn (
         const char* command,
         const char* argv,
+        SSC::Vector<SSC::String> env,
         const char* path,
         sapi_process_spawn_stderr_callback_t onstdout,
         sapi_process_spawn_stderr_callback_t onstderr,
@@ -193,6 +194,7 @@ extern "C" {
       ) : SSC::Process(
         command,
         argv,
+        env,
         path,
         [this, onstdout] (auto output) { if (onstdout) { onstdout(this, output.c_str(), output.size()); }},
         [this, onstderr] (auto output) { if (onstderr) { onstderr(this, output.c_str(), output.size()); }},

@@ -894,6 +894,14 @@ int runApp (const Path& path, const String& args, bool headless) {
 
     [arguments addObject: @"--from-ssc"];
 
+    auto port = std::to_string(createLogSocket());
+    env[@"SSC_LOG_SOCKET"] = @(port.c_str());
+
+    auto parentLogSocket = Env::get("SSC_PARENT_LOG_SOCKET");
+    if (parentLogSocket.size() > 0) {
+      env[@"SSC_PARENT_LOG_SOCKET"] = @(parentLogSocket.c_str());
+    }
+
     configuration.createsNewApplicationInstance = YES;
     configuration.promptsUserIfNeeded = YES;
     configuration.environment = env;
@@ -923,16 +931,8 @@ int runApp (const Path& path, const String& args, bool headless) {
           error.domain,
           error.localizedDescription
         );
-        return;
       }
 
-      appPid = app.processIdentifier;
-
-      pollOSLogStream(
-        true,
-        String(bundle.bundleIdentifier.UTF8String),
-        app.processIdentifier
-      );
     }];
 
     // wait for `NSRunningApplication` to terminate

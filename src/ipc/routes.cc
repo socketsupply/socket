@@ -39,16 +39,11 @@ static JSON::Any validateMessageParameters (
 
 static void mapIPCRoutes (Router *router) {
   auto userConfig = router->bridge->userConfig;
-#if SOCKET_RUNTIME_PLATFORM_APPLE
-  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  auto SOCKET_RUNTIME_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(),
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    "socket.runtime.mobile"
-  #else
-    "socket.runtime.desktop"
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+    auto SOCKET_RUNTIME_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime");
   #endif
-  );
-#endif
 
   /**
    * AI
@@ -468,115 +463,129 @@ static void mapIPCRoutes (Router *router) {
    * @param args (command, ...args)
    */
   router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
-
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"args", "id"});
-
-    if (err.type != JSON::Type::Null) {
-      return reply(Result::Err { message, err });
-    }
-
-    auto args = split(message.get("args"), 0x0001);
-
-    if (args.size() == 0 || args.at(0).size() == 0) {
-      auto json = JSON::Object::Entries {
-        {"source", "child_process.spawn"},
-        {"err", JSON::Object::Entries {
-          {"message", "Spawn requires at least one argument with a length greater than zero"},
-        }}
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
       };
 
-      return reply(Result { message.seq, message, json });
-    }
+      return reply(Result::Err { message, err });
+    #else
+      auto err = validateMessageParameters(message, {"args", "id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-
-    const auto options = Core::ChildProcess::SpawnOptions {
-      .cwd = message.get("cwd", getcwd()),
-      .allowStdin = message.get("stdin") != "false",
-      .allowStdout = message.get("stdout") != "false",
-      .allowStderr = message.get("stderr") != "false"
-    };
-
-    router->bridge->core->childProcess.spawn(
-      message.seq,
-      id,
-      args,
-      options,
-      [message, reply](auto seq, auto json, auto post) {
-        reply(Result { seq, message, json, post });
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
       }
-    );
-  #endif
+
+      auto args = split(message.get("args"), 0x0001);
+
+      if (args.size() == 0 || args.at(0).size() == 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "child_process.spawn"},
+          {"err", JSON::Object::Entries {
+            {"message", "Spawn requires at least one argument with a length greater than zero"},
+          }}
+        };
+
+        return reply(Result { message.seq, message, json });
+      }
+
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      SSC::Vector<SSC::String> env{};
+
+      if (message.has("env")) {
+        env = split(message.get("env"), 0x0001);
+      }
+
+      const auto options = Core::ChildProcess::SpawnOptions {
+        .cwd = message.get("cwd", getcwd()),
+        .env = env,
+        .allowStdin = message.get("stdin") != "false",
+        .allowStdout = message.get("stdout") != "false",
+        .allowStderr = message.get("stderr") != "false"
+      };
+
+      router->bridge->core->childProcess.spawn(
+        message.seq,
+        id,
+        args,
+        options,
+        [message, reply](auto seq, auto json, auto post) {
+          reply(Result { seq, message, json, post });
+        }
+      );
+    #endif
   });
 
   router->map("child_process.exec", [=](auto message, auto router, auto reply) {
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
-
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"args", "id"});
-
-    if (err.type != JSON::Type::Null) {
-      return reply(Result::Err { message, err });
-    }
-
-    auto args = split(message.get("args"), 0x0001);
-
-    if (args.size() == 0 || args.at(0).size() == 0) {
-      auto json = JSON::Object::Entries {
-        {"source", "child_process.exec"},
-        {"err", JSON::Object::Entries {
-          {"message", "Spawn requires at least one argument with a length greater than zero"},
-        }}
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
       };
 
-      return reply(Result { message.seq, message, json });
-    }
+      return reply(Result::Err { message, err });
+    #else
+      auto err = validateMessageParameters(message, {"args", "id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-
-    uint64_t timeout = 0;
-    int killSignal = 0;
-
-    if (message.has("timeout")) {
-      REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
-    }
-
-    if (message.has("killSignal")) {
-      REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
-    }
-
-    const auto options = Core::ChildProcess::ExecOptions {
-      .cwd = message.get("cwd", getcwd()),
-      .allowStdout = message.get("stdout") != "false",
-      .allowStderr = message.get("stderr") != "false",
-      .timeout = timeout,
-      .killSignal = killSignal
-    };
-
-    router->bridge->core->childProcess.exec(
-      message.seq,
-      id,
-      args,
-      options,
-      [message, reply](auto seq, auto json, auto post) {
-        reply(Result { seq, message, json, post });
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
       }
-    );
-  #endif
+
+      auto args = split(message.get("args"), 0x0001);
+
+      if (args.size() == 0 || args.at(0).size() == 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "child_process.exec"},
+          {"err", JSON::Object::Entries {
+            {"message", "Spawn requires at least one argument with a length greater than zero"},
+          }}
+        };
+
+        return reply(Result { message.seq, message, json });
+      }
+
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      uint64_t timeout = 0;
+      int killSignal = 0;
+
+      if (message.has("timeout")) {
+        REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoull);
+      }
+
+      if (message.has("killSignal")) {
+        REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
+      }
+
+      SSC::Vector<SSC::String> env{};
+
+      if (message.has("env")) {
+        env = split(message.get("env"), 0x0001);
+      }
+
+      const auto options = Core::ChildProcess::ExecOptions {
+        .cwd = message.get("cwd", getcwd()),
+        .env = env,
+        .allowStdout = message.get("stdout") != "false",
+        .allowStderr = message.get("stderr") != "false",
+        .timeout = timeout,
+        .killSignal = killSignal
+      };
+
+      router->bridge->core->childProcess.exec(
+        message.seq,
+        id,
+        args,
+        options,
+        [message, reply](auto seq, auto json, auto post) {
+          reply(Result { seq, message, json, post });
+        }
+      );
+    #endif
   });
 
   /**
@@ -585,31 +594,31 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    */
   router->map("child_process.write", [=](auto message, auto router, auto reply) {
-  #if SOCKET_RUNTIME_PLATFORM_IOS
-    auto err = JSON::Object::Entries {
-      {"type", "NotSupportedError"},
-      {"message", "Operation is not supported on this platform"}
-    };
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      auto err = JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Operation is not supported on this platform"}
+      };
 
-    return reply(Result::Err { message, err });
-  #else
-    auto err = validateMessageParameters(message, {"id"});
-
-    if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
-    }
+    #else
+      auto err = validateMessageParameters(message, {"id"});
 
-    uint64_t id;
-    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+      if (err.type != JSON::Type::Null) {
+        return reply(Result::Err { message, err });
+      }
 
-    router->bridge->core->childProcess.write(
-      message.seq,
-      id,
-      message.buffer.bytes,
-      message.buffer.size,
-      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
-    );
-  #endif
+      uint64_t id;
+      REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+
+      router->bridge->core->childProcess.write(
+        message.seq,
+        id,
+        message.buffer.bytes,
+        message.buffer.size,
+        RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+      );
+    #endif
   });
 
   /**
@@ -1620,14 +1629,14 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    NSLog(@"%s", value);
-    os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
-  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
-  #else
-    printf("%s\n", value);
-  #endif
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      NSLog(@"%s", value);
+      os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
+    #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
+    #else
+      printf("%s\n", value);
+    #endif
   });
 
   router->map("notification.show", [=](auto message, auto router, auto reply) {
@@ -2262,6 +2271,16 @@ static void mapIPCRoutes (Router *router) {
     if (message.value.size() > 0) {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
+
+      if (Env::get("SSC_LOG_SOCKET").size() > 0) {
+        Core::UDP::SendOptions options;
+        options.size = 2;
+        options.bytes = SharedPointer<char[]>(new char[3]{ '+', 'N', '\0' });
+        options.address = "0.0.0.0";
+        options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+        options.ephemeral = true;
+        router->bridge->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+      }
     #endif
       IO::write(message.value, false);
     } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {
@@ -2283,6 +2302,16 @@ static void mapIPCRoutes (Router *router) {
     } else if (message.value.size() > 0) {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+
+      if (Env::get("SSC_LOG_SOCKET").size() > 0) {
+        Core::UDP::SendOptions options;
+        options.size = 2;
+        options.bytes = SharedPointer<char[]>(new char[3]{ '+', 'N', '\0' });
+        options.address = "0.0.0.0";
+        options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+        options.ephemeral = true;
+        router->bridge->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+      }
     #endif
       IO::write(message.value, true);
     } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {

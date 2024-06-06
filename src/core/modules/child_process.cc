@@ -168,6 +168,7 @@ namespace SSC {
       process.reset(new Process(
         command,
         argv,
+        options.env,
         options.cwd,
         onStdout,
         onStderr,
@@ -361,6 +362,7 @@ namespace SSC {
       process.reset(new Process(
         command,
         argv,
+        options.env,
         options.cwd,
         onStdout,
         onStderr,

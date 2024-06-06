@@ -570,24 +570,21 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
     output = message;
   }
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-  __android_log_print(ANDROID_LOG_INFO, "Console", "%s", message);
-#else
-  SSC::IO::write(output, false);
-#endif
-
-#if SOCKET_RUNTIME_PLATFORM_APPLE
-  static auto userConfig = SSC::getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-  static auto SOCKET_RUNTIME_OS_LOG_INFO = os_log_create(bundleIdentifier.c_str(),
-  #if SOCKET_RUNTIME_PLATFORM_MOBILE
-    "socket.runtime.mobile"
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    __android_log_print(ANDROID_LOG_INFO, "Console", "%s", message);
   #else
-    "socket.runtime.desktop"
+    SSC::IO::write(output, false);
   #endif
-  );
-  os_log_with_type(SOCKET_RUNTIME_OS_LOG_INFO, OS_LOG_TYPE_INFO, "%{public}s", output.c_str());
-#endif
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    static auto userConfig = SSC::getUserConfig();
+    static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+    static auto SOCKET_RUNTIME_OS_LOG_INFO = os_log_create(
+      bundleIdentifier.c_str(),
+      "socket.runtime"
+    );
+    os_log_with_type(SOCKET_RUNTIME_OS_LOG_INFO, OS_LOG_TYPE_INFO, "%{public}s", output.c_str());
+  #endif
 }
 
 void sapi_debug (const sapi_context_t* ctx, const char* message) {
