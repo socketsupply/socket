@@ -789,10 +789,7 @@ void signalHandler (int signal) {
 
   if (appStatus == -1) {
     appStatus = signal;
-    log("App result (sighandler): " + std::to_string(signal));
-
-    if (loop && uv_loop_alive(loop)) uv_stop(loop);
-    exit(signal);
+    log("App result: " + std::to_string(signal));
   }
 }
 
@@ -983,11 +980,6 @@ int runApp (const Path& path, const String& args, bool headless) {
   if (appStatus == -1) {
     appStatus = status;
     log("App result: " + std::to_string(appStatus.load()));
-
-    if (loop) {
-      std::cout << "KILLING LOOP" << std::endl;
-      uv_stop(loop);
-    }
   }
 
   p = nullptr;
