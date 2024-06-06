@@ -589,14 +589,14 @@ function _install {
     exit 1
   fi
 
-  if [ "$host" == "Linux" ] || [ "$host" == "Darwin" ]; then
-    echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
-    rm -rf "$SOCKET_HOME/pkgconfig"
-    mkdir -p "$SOCKET_HOME/pkgconfig"
-    cp -rfp "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
-  fi
-
   if [ "$platform" == "desktop" ]; then
+    if [ "$host" == "Linux" ] || [ "$host" == "Darwin" ]; then
+      echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
+      rm -rf "$SOCKET_HOME/pkgconfig"
+      mkdir -p "$SOCKET_HOME/pkgconfig"
+      cp -rfp "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
+    fi
+
     echo "# copying js api to $SOCKET_HOME/api"
     mkdir -p "$SOCKET_HOME/api"
     cp -frp "$root"/api/* "$SOCKET_HOME/api"
