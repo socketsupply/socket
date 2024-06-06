@@ -1538,9 +1538,11 @@ LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =                                                              \
   init.cc
 
+LOCAL_STATIC_LIBRARIES :=                                                      \
+  libllama                                                                     \
+
 LOCAL_WHOLE_STATIC_LIBRARIES :=                                                \
   libuv                                                                        \
-  libllama                                                                     \
   libsocket-runtime-static
 
 include $(BUILD_SHARED_LIBRARY)

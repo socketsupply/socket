@@ -1263,18 +1263,16 @@ bool setupAndroidAvd (AndroidCliState& state) {
   String package = state.quote + "system-images;" + state.platform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + state.quote;
 
   state.avdmanager << state.androidHome;
-  if (Env::get("ANDROID_SDK_MANAGER").size() > 0)
-  {
+  if (Env::get("ANDROID_SDK_MANAGER").size() > 0) {
     state.avdmanager << "/" << replace(Env::get("ANDROID_SDK_MANAGER"), "sdkmanager", "avdmanager");
-  }
-  else {
+  } else {
     if (!platform.win) {
       if (std::system(("avdmanager list " + state.devNull).c_str()) != 0) {
         state.avdmanager << "/cmdline-tools/latest/bin/";
       }
-    }
-    else
+    } else {
       state.avdmanager << "\\cmdline-tools\\latest\\bin\\";
+    }
   }
 
   if (!fs::exists(state.avdmanager.str())) {
