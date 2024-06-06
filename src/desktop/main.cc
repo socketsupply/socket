@@ -85,7 +85,7 @@ static void defaultWindowSignalHandler (int signal) {
   }
 }
 
-void signalHandler (int signal) {
+void signalHandler (int signum) {
   static auto app = App::sharedApplication();
   static auto userConfig = getUserConfig();
   static const auto signalsDisabled = userConfig["application_signals"] == "false";
@@ -93,19 +93,24 @@ void signalHandler (int signal) {
   String name;
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    name = String(sys_signame[signal]);
+    name = String(sys_signame[signum]);
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    name = strsignal(signal);
+    name = strsignal(signum);
   #endif
 
   if (!signalsDisabled || std::find(signals.begin(), signals.end(), name) != signals.end()) {
-    defaultWindowSignalHandler(signal);
+    defaultWindowSignalHandler(signum);
   }
 
-  if (shutdownHandler != nullptr) {
-    app->dispatch([signal] () {
-      shutdownHandler(signal);
-    });
+  if (signum == SIGTERM || signum == SIGINT) {
+    signal(signum, SIG_DFL);
+    if (shutdownHandler != nullptr) {
+      app->dispatch([signum] () {
+        shutdownHandler(signum);
+      });
+    } else {
+      raise(signum);
+    }
   }
 }
 
@@ -791,7 +796,6 @@ MAIN {
   // main thread.
   //
   const auto onMessage = [&](const auto& output) {
-    // debug("onMessage %s", out.c_str());
     const auto message = IPC::Message(output, true);
 
     auto window = app.windowManager.getWindow(message.index);
