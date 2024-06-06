@@ -1499,6 +1499,13 @@ LOCAL_MODULE := libuv
 LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libuv.a
 include $(PREBUILT_STATIC_LIBRARY)
 
+## libllama.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := libllama
+
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libllama.a
+include $(PREBUILT_STATIC_LIBRARY)
+
 ## libsocket-runtime.a
 include $(CLEAR_VARS)
 LOCAL_MODULE := libsocket-runtime-static
@@ -1513,26 +1520,27 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := socket-runtime
 
-LOCAL_CFLAGS +=              \
-  -std=c++2a                 \
-  -g                         \
-  -I$(LOCAL_PATH)/include    \
-  -I$(LOCAL_PATH)            \
-  -pthreads                  \
-  -fexceptions               \
-  -fPIC                      \
-  -frtti                     \
-  -fsigned-char              \
+LOCAL_CFLAGS +=                                                                \
+  -std=c++2a                                                                   \
+  -g                                                                           \
+  -I$(LOCAL_PATH)/include                                                      \
+  -I$(LOCAL_PATH)                                                              \
+  -pthreads                                                                    \
+  -fexceptions                                                                 \
+  -fPIC                                                                        \
+  -frtti                                                                       \
+  -fsigned-char                                                                \
   -O0
 
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES =         \
+LOCAL_SRC_FILES =                                                              \
   init.cc
 
-LOCAL_WHOLE_STATIC_LIBRARIES := \
-  libuv                         \
+LOCAL_WHOLE_STATIC_LIBRARIES :=                                                \
+  libuv                                                                        \
+  libllama                                                                     \
   libsocket-runtime-static
 
 include $(BUILD_SHARED_LIBRARY)

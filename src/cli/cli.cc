@@ -25,6 +25,7 @@
 #pragma comment(lib, "userenv.lib")
 #pragma comment(lib, "uuid.lib")
 #pragma comment(lib, "libuv.lib")
+#pragma comment(lib, "libllama.lib")
 #pragma comment(lib, "winspool.lib")
 #pragma comment(lib, "ws2_32.lib")
 #endif
