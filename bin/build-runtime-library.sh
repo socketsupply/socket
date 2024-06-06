@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
-declare clang="${CXX:-"$CLANG"}"
+declare clang="${CXX:-"${CLANG:-$(which clang++)}"}"
 declare cache_path="$root/build/cache"
 
 source "$root/bin/functions.sh"
@@ -10,13 +10,13 @@ export CPU_CORES=$(set_cpu_cores)
 declare args=()
 declare pids=()
 declare force=0
+declare d=""
 
 declare arch="$(host_arch)"
 declare host_arch=$arch
 declare host=$(host_os)
 declare platform="desktop"
 
-declare d=""
 if [[ "$host" == "Win32" ]]; then
   # We have to differentiate release and debug for Win32
   if [[ -n "$DEBUG" ]]; then
@@ -88,11 +88,6 @@ while (( $# > 0 )); do
     continue
   fi
 
-  # Don't rebuild if header mtimes are newer than .o files - Be sure to manually delete affected assets as required
-  if [[ "$arg" == "--ignore-header-mtimes" ]]; then
-    ignore_header_mtimes=1; continue
-  fi
-
   args+=("$arg")
 done
 
@@ -115,7 +110,6 @@ declare sources=(
   "$root/src/window/hotkey.cc"
 )
 
-declare test_headers=()
 declare cflags
 
 if [[ "$platform" = "android" ]]; then
@@ -181,10 +175,6 @@ done
 
 objects+=("$output_directory/llama/build-info.o")
 
-if [[ -z "$ignore_header_mtimes" ]]; then
-  test_headers+="$(find "$root/src"/core/*.hh)"
-fi
-
 function generate_llama_build_info () {
   build_number="0"
   build_commit="unknown"
@@ -240,8 +230,6 @@ function main () {
   local i=0
   local max_concurrency=$CPU_CORES
 
-  local newest_mtime=0
-
   mkdir -p "$output_directory/include"
   cp -rf "$root/include"/* "$output_directory/include"
   rm -f "$output_directory/include/socket/_user-config-bytes.hh"
@@ -260,14 +248,12 @@ function main () {
 
     {
       declare src_directory="$root/src"
-
       declare object="${source/.cc/$d.o}"
-      object="${object/.cpp/$d.o}"
-
       declare header="${source/.cc/.hh}"
-      header="${header/.cpp/.h}"
-
       declare build_dir="$root/build"
+
+      object="${object/.cpp/$d.o}"
+      header="${header/.cpp/.h}"
 
       if [[ "$object" =~ ^"$src_directory" ]]; then
         object="${object/$src_directory/$output_directory}"
@@ -275,16 +261,21 @@ function main () {
         object="${object/$build_dir/$output_directory}"
       fi
 
-      if (( force )) ||
+      if
+        (( force )) ||
         ! test -f "$object" ||
-        (( newest_mtime > $(stat_mtime "$object") )) ||
         (( $(stat_mtime "$source") > $(stat_mtime "$object") )) ||
         (( $(stat_mtime "$header") > $(stat_mtime "$source") ));
       then
         mkdir -p "$(dirname "$object")"
+
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
+
+        if (( $(stat_mtime "$header") > $(stat_mtime "$source") )); then
+          touch "$source"
+        fi
       fi
     } & pids+=($!)
   done
