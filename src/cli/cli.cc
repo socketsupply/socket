@@ -374,10 +374,7 @@ unsigned short createLogSocket() {
 
     if (uv_udp_getsockname(&logsocket, (struct sockaddr *)&addr, &len) == 0) {
       auto port = ntohs(addr.sin_port);
-      debug("Listening on UDP port %d\n", port);
       p.set_value(port);
-    } else {
-      debug("Failed to get socket name\n");
     }
 
     uv_run(loop, UV_RUN_DEFAULT);
@@ -735,9 +732,9 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
   return copyMapFiles;
 }
 
-void signalHandler (int signal) {
+void signalHandler (int signum) {
   #if !defined(_WIN32)
-    if (signal == SIGUSR1) {
+    if (signum == SIGUSR1) {
     #if defined(__APPLE__)
       checkLogStore = true;
     #endif
@@ -749,7 +746,7 @@ void signalHandler (int signal) {
 
   #if !defined(_WIN32)
     if (appPid > 0) {
-      kill(appPid, signal);
+      kill(appPid, signum);
     }
   #endif
 
@@ -788,8 +785,13 @@ void signalHandler (int signal) {
   }
 
   if (appStatus == -1) {
-    appStatus = signal;
-    log("App result: " + std::to_string(signal));
+    appStatus = signum;
+    log("App result!: " + std::to_string(signum));
+  }
+
+  if (signum == SIGTERM || signum == SIGINT) {
+    signal(signum, SIG_DFL);
+    raise(signum);
   }
 }
 
@@ -932,22 +934,16 @@ int runApp (const Path& path, const String& args, bool headless) {
             error.domain,
             error.localizedDescription
           );
+        } else {
+          appPid = app.processIdentifier;
         }
       }];
 
-      // wait for `NSRunningApplication` to terminate
       std::lock_guard<std::mutex> lock(appMutex);
 
       if (appStatus != -1) {
         log("App result: " + std::to_string(appStatus.load()));
-        auto code = appStatus.load();
-
-        if (loop) {
-          std::cout << "KILLING LOOP" << std::endl;
-          uv_stop(loop);
-        }
-
-        return code;
+        return appStatus.load();
       }
 
       return 0;
