@@ -306,6 +306,8 @@ static Process::PID appPid = 0;
 static SharedPointer<Process> appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
+static uv_loop_t *loop = nullptr;
+static uv_udp_t logsocket;
 
 #if defined(__APPLE__)
 unsigned short createLogSocket() {
@@ -314,18 +316,17 @@ unsigned short createLogSocket() {
   int port = 0;
 
   auto t = std::thread([](std::promise<int>&& p) {
-    uv_loop_t *loop = uv_default_loop();
-    uv_udp_t socket;
+    loop = uv_default_loop();
 
-    uv_udp_init(loop, &socket);
+    uv_udp_init(loop, &logsocket);
     struct sockaddr_in addr;
     int port;
 
     uv_ip4_addr("0.0.0.0", 0, &addr);
-    uv_udp_bind(&socket, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
+    uv_udp_bind(&logsocket, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
     uv_udp_recv_start(
-      &socket,
+      &logsocket,
       [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
         *buf = uv_buf_init(new char[suggested_size], suggested_size);
       },
@@ -371,7 +372,7 @@ unsigned short createLogSocket() {
 
     int len = sizeof(addr);
 
-    if (uv_udp_getsockname(&socket, (struct sockaddr *)&addr, &len) == 0) {
+    if (uv_udp_getsockname(&logsocket, (struct sockaddr *)&addr, &len) == 0) {
       auto port = ntohs(addr.sin_port);
       debug("Listening on UDP port %d\n", port);
       p.set_value(port);
@@ -735,22 +736,22 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 }
 
 void signalHandler (int signal) {
-#if !defined(_WIN32)
-  if (signal == SIGUSR1) {
-  #if defined(__APPLE__)
-    checkLogStore = true;
+  #if !defined(_WIN32)
+    if (signal == SIGUSR1) {
+    #if defined(__APPLE__)
+      checkLogStore = true;
+    #endif
+      return;
+    }
   #endif
-    return;
-  }
-#endif
 
   Lock lock(signalHandlerMutex);
 
-#if !defined(_WIN32)
-  if (appPid > 0) {
-    kill(appPid, signal);
-  }
-#endif
+  #if !defined(_WIN32)
+    if (appPid > 0) {
+      kill(appPid, signal);
+    }
+  #endif
 
   if (appProcess != nullptr) {
     appProcess->kill();
@@ -759,11 +760,11 @@ void signalHandler (int signal) {
 
   appPid = 0;
 
-#if defined(__linux__) && !defined(__ANDROID__)
-  if (gtk_main_level() > 0) {
-    gtk_main_quit();
-  }
-#endif
+  #if defined(__linux__) && !defined(__ANDROID__)
+    if (gtk_main_level() > 0) {
+      gtk_main_quit();
+    }
+  #endif
 
   if (sourcesWatcher != nullptr) {
     sourcesWatcher->stop();
@@ -788,7 +789,10 @@ void signalHandler (int signal) {
 
   if (appStatus == -1) {
     appStatus = signal;
-    log("App result: " + std::to_string(signal));
+    log("App result (sighandler): " + std::to_string(signal));
+
+    if (loop && uv_loop_alive(loop)) uv_stop(loop);
+    exit(signal);
   }
 }
 
@@ -856,105 +860,112 @@ int runApp (const Path& path, const String& args, bool headless) {
     }
   }
 
-#if defined(__APPLE__)
-  if (platform.mac) {
-    auto sharedWorkspace = [NSWorkspace sharedWorkspace];
-    auto configuration = [NSWorkspaceOpenConfiguration configuration];
-    auto stringPath = path.string();
-    auto slice = stringPath.substr(0, stringPath.rfind(".app") + 4);
+  #if defined(__APPLE__)
+    if (platform.mac) {
+      auto sharedWorkspace = [NSWorkspace sharedWorkspace];
+      auto configuration = [NSWorkspaceOpenConfiguration configuration];
+      auto stringPath = path.string();
+      auto slice = stringPath.substr(0, stringPath.rfind(".app") + 4);
 
-    auto url = [NSURL
-      fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
-    ];
+      auto url = [NSURL
+        fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
+      ];
 
-    auto bundle = [NSBundle bundleWithURL: url];
-    auto env = [[NSMutableDictionary alloc] init];
+      auto bundle = [NSBundle bundleWithURL: url];
+      auto env = [[NSMutableDictionary alloc] init];
 
-    env[@"SSC_CLI_PID"] = [NSString stringWithFormat: @"%d", getpid()];
+      env[@"SSC_CLI_PID"] = [NSString stringWithFormat: @"%d", getpid()];
 
-    for (auto const &envKey : parseStringList(settings["build_env"])) {
-      auto cleanKey = trim(envKey);
+      for (auto const &envKey : parseStringList(settings["build_env"])) {
+        auto cleanKey = trim(envKey);
 
-      cleanKey.erase(0, cleanKey.find_first_not_of(","));
-      cleanKey.erase(cleanKey.find_last_not_of(",") + 1);
+        cleanKey.erase(0, cleanKey.find_first_not_of(","));
+        cleanKey.erase(cleanKey.find_last_not_of(",") + 1);
 
-      auto envValue = Env::get(cleanKey.c_str());
-      auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
-      auto value = [NSString stringWithUTF8String: envValue.c_str()];
+        auto envValue = Env::get(cleanKey.c_str());
+        auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
+        auto value = [NSString stringWithUTF8String: envValue.c_str()];
 
-      env[key] = value;
-    }
-
-    auto splitArgs = split(args, ' ');
-    auto arguments = [[NSMutableArray alloc] init];
-
-    for (auto arg : splitArgs) {
-      [arguments addObject: [NSString stringWithUTF8String: arg.c_str()]];
-    }
-
-    [arguments addObject: @"--from-ssc"];
-
-    auto port = std::to_string(createLogSocket());
-    env[@"SSC_LOG_SOCKET"] = @(port.c_str());
-
-    auto parentLogSocket = Env::get("SSC_PARENT_LOG_SOCKET");
-    if (parentLogSocket.size() > 0) {
-      env[@"SSC_PARENT_LOG_SOCKET"] = @(parentLogSocket.c_str());
-    }
-
-    configuration.createsNewApplicationInstance = YES;
-    configuration.promptsUserIfNeeded = YES;
-    configuration.environment = env;
-    configuration.arguments = arguments;
-    configuration.activates = headless ? NO : YES;
-
-    if (!bundle) {
-      log("Unable to find the application bundle");
-      return 1;
-    }
-
-    log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
-
-    appMutex.lock();
-
-    [sharedWorkspace
-      openApplicationAtURL: bundle.bundleURL
-             configuration: configuration
-         completionHandler: ^(NSRunningApplication* app, NSError* error)
-    {
-      if (error) {
-        appMutex.unlock();
-        appStatus = 1;
-        debug(
-          "ERROR: NSWorkspace: (code=%lu, domain=%@) %@",
-          error.code,
-          error.domain,
-          error.localizedDescription
-        );
+        env[key] = value;
       }
 
-    }];
+      auto splitArgs = split(args, ' ');
+      auto arguments = [[NSMutableArray alloc] init];
 
-    // wait for `NSRunningApplication` to terminate
-    std::lock_guard<std::mutex> lock(appMutex);
-    if (appStatus != -1) {
-      log("App result: " + std::to_string(appStatus.load()));
-      return appStatus.load();
+      for (auto arg : splitArgs) {
+        [arguments addObject: [NSString stringWithUTF8String: arg.c_str()]];
+      }
+
+      [arguments addObject: @"--from-ssc"];
+
+      auto port = std::to_string(createLogSocket());
+      env[@"SSC_LOG_SOCKET"] = @(port.c_str());
+
+      auto parentLogSocket = Env::get("SSC_PARENT_LOG_SOCKET");
+      if (parentLogSocket.size() > 0) {
+        env[@"SSC_PARENT_LOG_SOCKET"] = @(parentLogSocket.c_str());
+      }
+
+      configuration.createsNewApplicationInstance = YES;
+      configuration.promptsUserIfNeeded = YES;
+      configuration.environment = env;
+      configuration.arguments = arguments;
+      configuration.activates = headless ? NO : YES;
+
+      if (!bundle) {
+        log("Unable to find the application bundle");
+        return 1;
+      }
+
+      log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
+
+      appMutex.lock();
+
+      [sharedWorkspace
+        openApplicationAtURL: bundle.bundleURL
+               configuration: configuration
+           completionHandler: ^(NSRunningApplication* app, NSError* error)
+      {
+        if (error) {
+          appMutex.unlock();
+          appStatus = 1;
+          debug(
+            "ERROR: NSWorkspace: (code=%lu, domain=%@) %@",
+            error.code,
+            error.domain,
+            error.localizedDescription
+          );
+        }
+      }];
+
+      // wait for `NSRunningApplication` to terminate
+      std::lock_guard<std::mutex> lock(appMutex);
+
+      if (appStatus != -1) {
+        log("App result: " + std::to_string(appStatus.load()));
+        auto code = appStatus.load();
+
+        if (loop) {
+          std::cout << "KILLING LOOP" << std::endl;
+          uv_stop(loop);
+        }
+
+        return code;
+      }
+
+      return 0;
     }
-
-    return 0;
-  }
-#endif
+  #endif
 
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
-#if defined(__linux__)
+  #if defined(__linux__)
     // unlink lock file that may existk
     static const auto bundleIdentifier = settings["meta_bundle_identifier"];
     static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
     static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
     unlink(appInstanceLock.c_str());
-#endif
+  #endif
 
   appProcess = std::make_shared<Process>(
     headlessCommand + prefix + cmd,
@@ -968,9 +979,15 @@ int runApp (const Path& path, const String& args, bool headless) {
   auto p = appProcess;
   appPid = p->open();
   const auto status = p->wait();
+
   if (appStatus == -1) {
     appStatus = status;
     log("App result: " + std::to_string(appStatus.load()));
+
+    if (loop) {
+      std::cout << "KILLING LOOP" << std::endl;
+      uv_stop(loop);
+    }
   }
 
   p = nullptr;
@@ -1028,13 +1045,17 @@ void runIOSSimulator (const Path& path, Map& settings) {
     }
 
     StringStream listDevicesCommand;
+
     listDevicesCommand
       << "xcrun"
       << " simctl"
       << " list devices available";
+
     auto rListDevices = exec(listDevicesCommand.str().c_str());
+
     if (rListDevices.exitCode != 0) {
       log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
+
       if (rListDevices.output.size() > 0) {
         log(rListDevices.output);
       }
@@ -1848,11 +1869,11 @@ int main (const int argc, const char* argv[]) {
 
   auto const subcommand = argv[1];
 
-#ifndef _WIN32
-  signal(SIGHUP, signalHandler);
-  signal(SIGUSR1, signalHandler);
-  signal(SIGUSR2, signalHandler);
-#endif
+  #ifndef _WIN32
+    signal(SIGHUP, signalHandler);
+    signal(SIGUSR1, signalHandler);
+    signal(SIGUSR2, signalHandler);
+  #endif
 
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
