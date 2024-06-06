@@ -60,6 +60,7 @@ sapi_process_spawn_t* sapi_process_spawn (
     ctx,
     command,
     argv,
+    SSC::Vector<SSC::String>{},
     path,
     onstdout,
     onstderr,
