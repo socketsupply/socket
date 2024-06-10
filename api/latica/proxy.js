@@ -10,7 +10,6 @@
  * Protocol
  *
  */
-import { Deferred } from '../async.js'
 import path from '../path.js'
 const { pathname } = new URL(import.meta.url)
 
@@ -236,7 +235,10 @@ class PeerWorkerProxy {
     }
 
     const seq = ++this.#index
-    const d = new Deferred()
+    let { promise, resolve, reject } = Promise.withResolvers();
+    const d = promise
+    d.resolve = resolve
+    d.reject = reject
 
     this.#channel.port1.postMessage(
       { prop, data, seq },

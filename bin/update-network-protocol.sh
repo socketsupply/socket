@@ -1,5 +1,7 @@
 #!/bin/sh
 
+npm link @socketsupply/latica
+
 version="${1:-"1.0.23-0"}"
 
 rm -rf api/latica.js || exit $?

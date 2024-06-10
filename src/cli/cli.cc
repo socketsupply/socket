@@ -43,15 +43,19 @@
 #include <span>
 #include <unordered_set>
 
+#ifndef CMD_RUNNER
+#define CMD_RUNNER
+#endif
+
+#ifndef SSC_CLI
+#define SSC_CLI 1
+#endif
+
 #include "../extension/extension.hh"
 #include "../core/core.hh"
 
 #include "templates.hh"
 #include "cli.hh"
-
-#ifndef CMD_RUNNER
-#define CMD_RUNNER
-#endif
 
 #ifndef SOCKET_RUNTIME_BUILD_TIME
 #define SOCKET_RUNTIME_BUILD_TIME 0

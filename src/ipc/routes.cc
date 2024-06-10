@@ -58,9 +58,29 @@ static void mapIPCRoutes (Router *router) {
     SSC::LLMOptions options;
     options.path = message.get("path");
     options.prompt = message.get("prompt");
+    options.antiprompt = message.get("antiprompt");
 
     uint64_t modelId = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+
+    if (message.has("n_batch")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_batch, "n_batch", std::stoi);
+    if (message.has("n_ctx")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_ctx, "n_ctx", std::stoi);
+    if (message.has("n_gpu_layers")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_gpu_layers, "n_gpu_layers", std::stoi);
+    if (message.has("n_keep")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_keep, "n_keep", std::stoi);
+    if (message.has("n_threads")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_threads, "n_threads", std::stoi);
+    if (message.has("n_predict")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_predict, "n_predict", std::stoi);
+    if (message.has("grp_attn_n")) REQUIRE_AND_GET_MESSAGE_VALUE(options.grp_attn_n, "grp_attn_n", std::stoi);
+    if (message.has("grp_attn_w")) REQUIRE_AND_GET_MESSAGE_VALUE(options.grp_attn_w, "grp_attn_w", std::stoi);
+    if (message.has("max_tokens")) REQUIRE_AND_GET_MESSAGE_VALUE(options.max_tokens, "max_tokens", std::stoi);
+    if (message.has("seed")) REQUIRE_AND_GET_MESSAGE_VALUE(options.seed, "seed", std::stoi);
+    if (message.has("temp")) REQUIRE_AND_GET_MESSAGE_VALUE(options.temp, "temp", std::stof);
+    if (message.has("top_k")) REQUIRE_AND_GET_MESSAGE_VALUE(options.top_k, "top_k", std::stoi);
+    if (message.has("top_p")) REQUIRE_AND_GET_MESSAGE_VALUE(options.top_p, "top_p", std::stof);
+    if (message.has("min_p")) REQUIRE_AND_GET_MESSAGE_VALUE(options.min_p, "min_p", std::stof);
+    if (message.has("tfs_z")) REQUIRE_AND_GET_MESSAGE_VALUE(options.tfs_z, "tfs_z", std::stof);
+    if (message.has("conversation")) options.conversation = message.get("conversation") == "true";
+    if (message.has("chatml")) options.chatml = message.get("chatml") == "true";
+    if (message.has("instruct")) options.instruct = message.get("instruct") == "true";
 
     router->bridge->core->ai.createLLM(message.seq, modelId, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });

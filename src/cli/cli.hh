@@ -6,6 +6,10 @@
 
 #include <signal.h>
 
+#ifndef SOCKET_CLI
+#define SOCKET_CLI 1
+#endif
+
 namespace SSC::CLI {
   inline void notify (int signal) {
   #if !defined(_WIN32)

@@ -30,6 +30,8 @@ namespace SSC {
       using NotificationPresentedObserver = CoreModule::Observer<JSON::Object>;
       using NotificationPresentedObservers = CoreModule::Observers<NotificationPresentedObserver>;
 
+      bool isUtility = false;
+
       struct Notification {
         String identifier;
         const JSON::Object json () const;
@@ -66,7 +68,7 @@ namespace SSC {
       NotificationResponseObservers notificationResponseObservers;
       NotificationPresentedObservers notificationPresentedObservers;
 
-      CoreNotifications (Core* core);
+      CoreNotifications (Core* core, bool isUtility);
       ~CoreNotifications ();
 
       bool removePermissionChangeObserver (const PermissionChangeObserver& observer);

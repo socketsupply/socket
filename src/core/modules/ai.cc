@@ -225,15 +225,44 @@ namespace SSC {
     llama_numa_init(this->params.numa);
 
     llama_sampling_params& sparams = this->params.sparams;
+
+    if (options.temp) sparams.temp = options.temp;
+    if (options.top_k) sparams.top_k = options.top_k;
+    if (options.top_p) sparams.top_p = options.top_p;
+    if (options.tfs_z) sparams.tfs_z = options.tfs_z;
+    if (options.min_p) sparams.min_p = options.min_p;
+    if (options.typical_p) sparams.typical_p = options.typical_p;
+
     this->sampling = llama_sampling_init(sparams);
 
     if (!this->sampling) this->err = "failed to initialize sampling subsystem";
     if (this->params.seed == LLAMA_DEFAULT_SEED) this->params.seed = time(nullptr);
 
-    this->params.chatml = true;
+    this->params.conversation = options.conversation;
+    this->params.chatml = options.chatml;
+    this->params.instruct = options.instruct;
+
+    this->params.n_ctx = options.n_ctx;
+
+    if (this->params.n_ctx != 0 && this->params.n_ctx < 8) {
+      this->params.n_ctx = 8;
+    }
+
+    if (options.n_keep > 0) this->params.n_keep = options.n_keep;
+    if (options.n_batch > 0) this->params.n_batch = options.n_batch;
+    if (options.n_predict > 0) this->params.n_predict = options.n_predict;
+    if (options.grp_attn_n > 0) this->params.grp_attn_n = options.grp_attn_n;
+    if (options.grp_attn_w > 0) this->params.grp_attn_w = options.grp_attn_w;
+
     this->params.verbose_prompt = false;
-    this->params.prompt = "<|im_start|>system\n" + options.prompt + "<|im_end|>\n\n";
-    this->params.n_ctx = 2048;
+
+    if (this->params.chatml) {
+      this->params.prompt = "<|im_start|>system\n" + options.prompt + "<|im_end|>\n\n";
+    }
+
+    if (options.antiprompt.size()) {
+      this->params.antiprompt = Vector<String> { options.antiprompt };
+    }
 
     #if SOCKET_RUNTIME_PLATFORM_IOS
       this->params.use_mmap = false;
@@ -426,7 +455,6 @@ namespace SSC {
     std::vector<llama_token> embd;
     std::vector<llama_token> embd_guidance;
 
-    const int n_ctx = this->n_ctx;
     const auto inp_pfx = ::llama_tokenize(ctx, "\n\n### Instruction:\n\n", true,  true);
     const auto inp_sfx = ::llama_tokenize(ctx, "\n\n### Response:\n\n",    false, true);
 
@@ -436,9 +464,9 @@ namespace SSC {
     const auto cml_pfx = ::llama_tokenize(ctx, "\n<|im_start|>user\n", true, true);
     const auto cml_sfx = ::llama_tokenize(ctx, "<|im_end|>\n<|im_start|>assistant\n", false, true);
 
-    while ((n_remain != 0 && !is_antiprompt) || this->params.interactive) {
+    while (((n_remain != 0 && !is_antiprompt) || this->params.interactive) && this->stopped == false) {
       if (!embd.empty()) {
-        int max_embd_size = n_ctx - 4;
+        int max_embd_size = this->params.n_ctx - 4;
 
         if ((int) embd.size() > max_embd_size) {
           const int skipped_tokens = (int)embd.size() - max_embd_size;
@@ -447,7 +475,7 @@ namespace SSC {
         }
 
         if (ga_n == 1) {
-          if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= n_ctx) {
+          if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= this->params.n_ctx) {
             if (this->params.n_predict == -2) {
               LOG("\n\ncontext full and n_predict == -%d => stopping\n", this->params.n_predict);
               break;
@@ -457,7 +485,7 @@ namespace SSC {
             const int n_discard = n_left/2;
 
             LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
-              n_past, n_left, n_ctx, this->params.n_keep, n_discard);
+              n_past, n_left, this->params.n_ctx, this->params.n_keep, n_discard);
 
             llama_kv_cache_seq_rm (ctx, 0, this->params.n_keep, this->params.n_keep + n_discard);
             llama_kv_cache_seq_add(ctx, 0, this->params.n_keep + n_discard, n_past, -n_discard);
@@ -475,6 +503,8 @@ namespace SSC {
           }
         } else {
           while (n_past >= ga_i + ga_w) {
+            if (this->stopped) return;
+
             const int ib = (ga_n*ga_i)/ga_w;
             const int bd = (ga_w/ga_n)*(ga_n - 1);
             const int dd = (ga_w/ga_n) - ib*bd - ga_w;
@@ -500,6 +530,8 @@ namespace SSC {
           size_t i = 0;
 
           for ( ; i < embd.size(); i++) {
+            if (this->stopped) return;
+
             if (embd[i] != this->session_tokens[n_session_consumed]) {
               this->session_tokens.resize(n_session_consumed);
               break;
@@ -540,6 +572,8 @@ namespace SSC {
           }
 
           for (int i = 0; i < input_size; i += this->params.n_batch) {
+            if (this->stopped) return;
+
             int n_eval = std::min(input_size - i, this->params.n_batch);
 
             if (llama_decode(this->guidance, llama_batch_get_one(input_buf + i, n_eval, n_past_guidance, 0))) {
@@ -552,6 +586,8 @@ namespace SSC {
         }
 
         for (int i = 0; i < (int) embd.size(); i += this->params.n_batch) {
+          if (this->stopped) return;
+
           int n_eval = (int) embd.size() - i;
 
           if (n_eval > this->params.n_batch) {
@@ -592,6 +628,8 @@ namespace SSC {
         LOG("embd_inp.size(): %d, n_consumed: %d\n", (int)this->embd_inp.size(), n_consumed);
 
         while ((int)this->embd_inp.size() > n_consumed) {
+          if (this->stopped) return;
+
           embd.push_back(this->embd_inp[n_consumed]);
           llama_sampling_accept(this->sampling, this->ctx, this->embd_inp[n_consumed], false);
 
@@ -636,6 +674,8 @@ namespace SSC {
           is_antiprompt = false;
 
           for (String & antiprompt : this->params.antiprompt) {
+            if (this->stopped) return;
+
             size_t extra_padding = this->params.interactive ? 0 : 2;
             size_t search_start_pos = last_output.length() > static_cast<size_t>(antiprompt.length() + extra_padding)
               ? last_output.length() - static_cast<size_t>(antiprompt.length() + extra_padding)
@@ -653,6 +693,8 @@ namespace SSC {
 
           llama_token last_token = llama_sampling_last(this->sampling);
           for (std::vector<llama_token> ids : antiprompt_ids) {
+            if (this->stopped) return;
+
             if (ids.size() == 1 && last_token == ids[0]) {
               if (this->params.interactive) {
                 this->interactive = true;

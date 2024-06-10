@@ -24,10 +24,29 @@ namespace SSC {
   class Core;
 
   struct LLMOptions {
-    int attentionCapacity;
-    int seed;
+    bool conversation = false;
+    bool chatml = false;
+    bool instruct = false;
+    int n_ctx = 0;
+    int n_keep = 0;
+    int n_batch = 0;
+    int n_threads = 0;
+    int n_gpu_layers = 0;
+    int n_predict = 0;
+    int grp_attn_n = 0;
+    int grp_attn_w = 0;
+    int seed = 0;
+    int max_tokens = 0;
+    int top_k = 0;
+    float top_p = 0.0;
+    float min_p = 0.0;
+    float tfs_z = 0.0;
+    float typical_p = 0.0;
+    float temp;
+
     String path;
     String prompt;
+    String antiprompt;
   };
 
   class CoreAI : public CoreModule {

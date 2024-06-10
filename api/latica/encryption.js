@@ -174,7 +174,7 @@ export class Encryption {
       throw new Error('ENOTVERIFIED')
     }
 
-    return Buffer.from(sodium.crypto_box_seal_open(ct, pk, sk))
+    return sodium.crypto_box_seal_open(ct, pk, sk)
   }
 
   /**

@@ -572,7 +572,7 @@ export class Peer {
 
       await this.mcast(packet)
       debug(this.peerId, `-> RESEND (packetId=${packetId})`)
-      if (this.onState) await this.onState(this.getState())
+      if (this.onState) this.onState(this.getState())
     }
   }
 
@@ -580,7 +580,7 @@ export class Peer {
    * Get the serializable state of the peer (can be passed to the constructor or create method)
    * @return {undefined}
    */
-  async getState () {
+  getState () {
     this.config.clock = this.clock // save off the clock
 
     const peers = this.peers.map(p => {
@@ -939,7 +939,7 @@ export class Peer {
     })
 
     debug(this.peerId, `-> JOIN (clusterId=${cid}, subclusterId=${scid}, clock=${packet.clock}/${this.clock})`)
-    if (this.onState) await this.onState(this.getState())
+    if (this.onState) this.onState(this.getState())
 
     this.mcast(packet)
     this.gate.set(packet.packetId.toString('hex'), 1)
@@ -1097,6 +1097,7 @@ export class Peer {
 
     this.closing = true
     this.socket.close()
+    this.probeSocket.close()
 
     if (this.onClose) this.onClose()
   }
