@@ -147,7 +147,6 @@ export class LLM extends EventEmitter {
       }
     })
 
-    console.log('NEW LLM', opts)
     const result = ipc.request('ai.llm.create', opts)
 
     if (result.err) {
