@@ -43,13 +43,49 @@ import * as exports from './ai.js'
  */
 export class LLM extends EventEmitter {
   /**
-   * Constructs an LLM instance.
-   * @param {Object} [options] - The options for initializing the LLM.
-   * @param {string} [options.path] - The path to a valid model (.gguf).
-   * @param {string} [options.prompt] - The query that guides the model to generate a relevant and coherent responses.
-   * @param {string} [options.id] - The optional ID for the LLM instance.
-   * @throws {Error} If the model path is not provided.
+   * Constructs an LLM instance. Each parameter is designed to configure and control
+   * the behavior of the underlying large language model provided by llama.cpp.
+   * @param {Object} options - Configuration options for the LLM instance.
+   * @param {string} options.path - The file path to the model in .gguf format. This model file contains
+   *                                the weights and configuration necessary for initializing the language model.
+   * @param {string} options.prompt - The initial input text to the model, setting the context or query
+   *                                  for generating responses. The model uses this as a starting point for text generation.
+   * @param {string} [options.id] - An optional unique identifier for this specific instance of the model,
+   *                                useful for tracking or referencing the model in multi-model setups.
+   * @param {number} [options.n_ctx=1024] - Specifies the maximum number of tokens that the model can consider
+   *                                        for a single query. This is crucial for managing memory and computational
+   *                                        efficiency. Exceeding the model's configuration may lead to errors or truncated outputs.
+   * @param {number} [options.n_threads=8] - The number of threads allocated for the model's computation,
+   *                                         affecting performance and speed of response generation.
+   * @param {number} [options.temp=1.1] - Sampling temperature controls the randomness of predictions.
+   *                                      Higher values increase diversity, potentially at the cost of coherence.
+   * @param {number} [options.max_tokens=512] - The upper limit on the number of tokens that the model can generate
+   *                                            in response to a single prompt. This prevents runaway generations.
+   * @param {number} [options.n_gpu_layers=32] - The number of GPU layers dedicated to the model processing.
+   *                                             More layers can increase accuracy and complexity of the outputs.
+   * @param {number} [options.n_keep=0] - Determines how many of the top generated responses are retained after
+   *                                      the initial generation phase. Useful for models that generate multiple outputs.
+   * @param {number} [options.n_batch=0] - The size of processing batches. Larger batch sizes can reduce
+   *                                       the time per token generation by parallelizing computations.
+   * @param {number} [options.n_predict=0] - Specifies how many forward predictions the model should make
+   *                                         from the current state. This can pre-generate responses or calculate probabilities.
+   * @param {number} [options.grp_attn_n=0] - Group attention parameter 'N' modifies how attention mechanisms
+   *                                          within the model are grouped and interact, affecting the model’s focus and accuracy.
+   * @param {number} [options.grp_attn_w=0] - Group attention parameter 'W' adjusts the width of each attention group,
+   *                                          influencing the breadth of context considered by each attention group.
+   * @param {number} [options.seed=0] - A seed for the random number generator used in the model. Setting this ensures
+   *                                    consistent results in model outputs, important for reproducibility in experiments.
+   * @param {number} [options.top_k=0] - Limits the model's output choices to the top 'k' most probable next words,
+   *                                     reducing the risk of less likely, potentially nonsensical outputs.
+   * @param {float} [options.tok_p=0.0] - Top-p (nucleus) sampling threshold, filtering the token selection pool
+   *                                      to only those whose cumulative probability exceeds this value, enhancing output relevance.
+   * @param {float} [options.min_p=0.0] - Sets a minimum probability filter for token generation, ensuring
+   *                                      that generated tokens have at least this likelihood of being relevant or coherent.
+   * @param {float} [options.tfs_z=0.0] - Temperature factor scale for zero-shot learning scenarios, adjusting how
+   *                                      the model weights novel or unseen prompts during generation.
+   * @throws {Error} Throws an error if the model path is not provided, as the model cannot initialize without it.
    */
+
   constructor (options = {}) {
     super()
 
@@ -63,8 +99,27 @@ export class LLM extends EventEmitter {
 
     const opts = {
       id: this.id,
+      path: this.path,
       prompt: this.prompt,
-      path: this.path
+      antiprompt: options.antiprompt,
+      conversation: options.conversation === true,  // Convert to boolean, more idiomatic than String(true/false)
+      chatml: options.chatml === true,
+      instruct: options.instruct === true,
+      n_ctx: options.n_ctx || 1024, // Simplified, assuming default value of 1024 if not specified
+      n_threads: options.n_threads || 8,
+      temp: options.temp || 1.1,  // Assuming `temp` should be a number, not a string
+      max_tokens: options.max_tokens || 512,
+      n_gpu_layers: options.n_gpu_layers || 32,
+      n_keep: options.n_keep || 0,
+      n_batch: options.n_batch || 0,
+      n_predict: options.n_predict || 0,
+      grp_attn_n: options.grp_attn_n || 0,
+      grp_attn_w: options.grp_attn_w || 0,
+      seed: options.seed || 0,  // Default seed if not specified
+      top_k: options.top_k || 0,  // Default top_k if not specified
+      tok_p: options.tok_p || 0.0,  // Default tok_p if not specified
+      min_p: options.min_p || 0.0,  // Default min_p if not specified
+      tfs_z: options.tfs_z || 0.0  // Default tfs_z if not specified
     }
 
     globalThis.addEventListener('data', event => {
@@ -92,7 +147,8 @@ export class LLM extends EventEmitter {
       }
     })
 
-    const result = ipc.sendSync('ai.llm.create', opts)
+    console.log('NEW LLM', opts)
+    const result = ipc.request('ai.llm.create', opts)
 
     if (result.err) {
       throw result.err

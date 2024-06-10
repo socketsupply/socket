@@ -88,69 +88,73 @@ namespace SSC {
     };
   }
 
-  CoreNotifications::CoreNotifications (Core* core)
+  CoreNotifications::CoreNotifications (Core* core, bool isUtility = false)
     : CoreModule(core),
+      isUtility(isUtility),
       permissionChangeObservers(),
       notificationResponseObservers(),
       notificationPresentedObservers()
   {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      if (this->isUtility) return;
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
-    this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
-    this->userNotificationCenterDelegate.notifications = this;
+      this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
+      this->userNotificationCenterDelegate.notifications = this;
 
-    if (!notificationCenter.delegate) {
-      notificationCenter.delegate = this->userNotificationCenterDelegate;
-    }
+      if (!notificationCenter.delegate) {
+        notificationCenter.delegate = this->userNotificationCenterDelegate;
+      }
 
-    [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-      this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
-      this->userNotificationCenterPollTimer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
-        // look for authorization status changes
-        [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-          JSON::Object json;
-          if (this->currentUserNotificationAuthorizationStatus != settings.authorizationStatus) {
-            this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
+      [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+        this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
+        this->userNotificationCenterPollTimer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
+          // look for authorization status changes
+          [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+            JSON::Object json;
+            if (this->currentUserNotificationAuthorizationStatus != settings.authorizationStatus) {
+              this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
 
-            if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
-              json = JSON::Object::Entries {{"state", "denied"}};
-            } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
-              json = JSON::Object::Entries {{"state", "prompt"}};
-            } else {
-              json = JSON::Object::Entries {{"state", "granted"}};
+              if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+                json = JSON::Object::Entries {{"state", "denied"}};
+              } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+                json = JSON::Object::Entries {{"state", "prompt"}};
+              } else {
+                json = JSON::Object::Entries {{"state", "granted"}};
+              }
+
+              this->permissionChangeObservers.dispatch(json);
             }
-
-            this->permissionChangeObservers.dispatch(json);
-          }
+          }];
         }];
-      }];
 
-      [NSRunLoop.mainRunLoop
-        addTimer: this->userNotificationCenterPollTimer
-          forMode: NSDefaultRunLoopMode
-      ];
-    }];
-  #endif
+        [NSRunLoop.mainRunLoop
+          addTimer: this->userNotificationCenterPollTimer
+            forMode: NSDefaultRunLoopMode
+        ];
+      }];
+    #endif
   }
 
   CoreNotifications::~CoreNotifications () {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      if (this->isUtility) return;
 
-    if (notificationCenter.delegate == this->userNotificationCenterDelegate) {
-      notificationCenter.delegate = nullptr;
-    }
+      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
-    [this->userNotificationCenterPollTimer invalidate];
+      if (notificationCenter.delegate == this->userNotificationCenterDelegate) {
+        notificationCenter.delegate = nullptr;
+      }
 
-  #if !__has_feature(objc_arc)
-    [this->userNotificationCenterDelegate release];
-  #endif
+      [this->userNotificationCenterPollTimer invalidate];
 
-    this->userNotificationCenterDelegate = nullptr;
-    this->userNotificationCenterPollTimer = nullptr;
-  #endif
+      #if !__has_feature(objc_arc)
+        [this->userNotificationCenterDelegate release];
+      #endif
+
+      this->userNotificationCenterDelegate = nullptr;
+      this->userNotificationCenterPollTimer = nullptr;
+    #endif
   }
 
   bool CoreNotifications::addPermissionChangeObserver (

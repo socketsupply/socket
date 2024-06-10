@@ -111,7 +111,7 @@ namespace SSC {
         Thread *eventLoopThread = nullptr;
       #endif
 
-      Core () :
+      Core (bool isUtility = false) :
         #if !SOCKET_RUNTIME_PLATFORM_IOS
           childProcess(this),
         #endif
@@ -120,7 +120,7 @@ namespace SSC {
         fs(this),
         geolocation(this),
         networkStatus(this),
-        notifications(this),
+        notifications(this, isUtility),
         os(this),
         platform(this),
         timers(this),

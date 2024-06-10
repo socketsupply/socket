@@ -21,6 +21,7 @@ globalThis.addEventListener('message', ({ data: source }) => {
       case 'create': {
         peer = new Peer(data, dgram)
 
+        peer.onDebug = (...args) => this.callMainThread('onDebug', args)
         peer.onConnecting = (...args) => this.callMainThread('onConnecting', args)
         peer.onConnection = (...args) => this.callMainThread('onConnection', args)
         peer.onDisconnection = (...args) => this.callMainThread('onDisconnection', args)

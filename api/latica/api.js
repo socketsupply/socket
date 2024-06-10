@@ -55,6 +55,7 @@ async function api (options = {}, events, dgram) {
   }
 
   _peer.onData = (...args) => bus._emit('#data', ...args)
+  _peer.onDebug = (...args) => bus._emit('#debug', ...args)
   _peer.onSend = (...args) => bus._emit('#send', ...args)
   _peer.onFirewall = (...args) => bus._emit('#firewall', ...args)
   _peer.onMulticast = (...args) => bus._emit('#multicast', ...args)
@@ -126,6 +127,8 @@ async function api (options = {}, events, dgram) {
   bus.seal = (m, v = options.signingKeys) => _peer.seal(m, v)
   bus.open = (m, v = options.signingKeys) => _peer.open(m, v)
 
+  bus.send = (...args) => _peer.send(...args)
+
   bus.query = (...args) => _peer.query(...args)
 
   const pack = async (eventName, value, opts = {}) => {
@@ -163,10 +166,10 @@ async function api (options = {}, events, dgram) {
     const sub = bus.subclusters.get(scid)
     if (!sub) return {}
 
-    try {
-      opened = await _peer.open(packet.message, scid)
-    } catch (err) {
-      sub._emit('warning', err)
+    const { err: errOpen, data: dataOpened } = await _peer.open(packet.message, scid)
+
+    if (errOpen) {
+      sub._emit('warning', errOpen)
       return {}
     }
 

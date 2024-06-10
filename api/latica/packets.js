@@ -320,7 +320,7 @@ export class Packet {
       p.message = String(p.message)
     }
 
-    if (p.message?.length > Packet.MESSAGE_BYTES) throw new Error('ETOOBIG')
+    if (p.message?.length > Packet.maxLength) throw new Error('ETOOBIG')
 
     // we only have p.nextId when we know ahead of time, if it's empty that's fine.
     if (p.packetId.length === 1 && p.packetId[0] === 0) {
