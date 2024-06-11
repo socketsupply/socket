@@ -84,11 +84,12 @@ open class SchemeHandlers (val bridge: Bridge) {
     val response = WebResourceResponse(
       mimeType,
       null,
-      null
+      PipedInputStream(this.stream)
     )
 
     val headers = mutableMapOf<String, String>()
     var pendingWrites = 0
+    var finished = false
 
     fun setStatus (statusCode: Int, statusText: String) {
       val headers = this.headers
@@ -104,33 +105,39 @@ open class SchemeHandlers (val bridge: Bridge) {
     fun setHeader (name: String, value: String) {
       if (name.lowercase() == "content-type") {
         this.mimeType = value
+        this.response.setMimeType(value)
       } else {
+        this.headers.remove(name)
+
+        if (this.response.responseHeaders != null) {
+          this.response.responseHeaders.remove(name)
+        }
+
         this.headers += mapOf(name to value)
+        this.response.responseHeaders = this.headers
       }
     }
 
     fun write (bytes: ByteArray) {
       val stream = this.stream
-      console.log("begin response write")
-      if (this.response.data == null) {
+      val response = this
+      this.pendingWrites++
         try {
-          this.response.data = PipedInputStream(this.stream)
+          console.log("before write")
+          stream.write(bytes, 0, bytes.size)
         } catch (err: Exception) {
-          console.log("stream.connect error: ${err.toString()}")
+          if (!err.message.toString().contains("closed")) {
+            console.error("socket.runtime.ipc.SchemeHandlers.Response: ${err.toString()}")
+          }
         }
-      }
-      try {
-        this.pendingWrites++
-        stream.write(bytes, 0, bytes.size)
-      } catch (err: Exception) {
-        console.log("stream.write error: ${err.toString()}")
-        if (!err.message.toString().contains("closed")) {
-          console.error("socket.runtime.ipc.SchemeHandlers.Response: ${err.toString()}")
-        }
-      }
 
-      this.pendingWrites--
-      console.log("end response write")
+        response.pendingWrites--
+        console.log("after write pending=${response.pendingWrites}")
+
+        if (response.pendingWrites == 0) {
+          response.finished = true
+          stream.close()
+        }
     }
 
     fun write (string: String) {
@@ -139,14 +146,25 @@ open class SchemeHandlers (val bridge: Bridge) {
 
     fun finish () {
       val stream = this.stream
+      val response = this
       thread {
-        while (this.pendingWrites > 0) {
-          Thread.sleep(4)
-        }
+        if (!response.finished) {
+          console.log("waiting for writes to finish")
+          while (response.pendingWrites > 0) {
+            Thread.sleep(4)
+          }
 
-        stream.flush()
-        stream.close()
-        console.log("response closed")
+          if (!response.finished) {
+            console.log("writes finished")
+
+            for (entry in response.headers) {
+              console.log("${entry.key}: ${entry.value}")
+            }
+
+            stream.flush()
+            stream.close()
+          }
+        }
       }
     }
   }
@@ -155,12 +173,25 @@ open class SchemeHandlers (val bridge: Bridge) {
     val request = Request(this.bridge, webResourceRequest)
 
     if (this.handleRequest(this.bridge.index, request)) {
-      return request.getWebResourceResponse()
+      val response = request.getWebResourceResponse()
+      response?.responseHeaders = mapOf(
+        "Access-Control-Allow-Origin" to "*",
+        "Access-Control-Allow-Headers" to "*",
+        "Access-Control-Allow-Methods" to "*"
+      )
+      return response
     }
 
     return null
   }
 
+  fun hasHandlerForScheme (scheme: String): Boolean {
+    return this.hasHandlerForScheme(this.bridge.index, scheme)
+  }
+
   @Throws(Exception::class)
   external fun handleRequest (index: Int, request: Request): Boolean
+
+  @Throws(Exception::class)
+  external fun hasHandlerForScheme (index: Int, scheme: String): Boolean
 }

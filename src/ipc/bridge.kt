@@ -35,7 +35,10 @@ private fun isAndroidAssetsUri (uri: android.net.Uri): Boolean {
   return false
 }
 
-open class Bridge (val index: Int, val activity: AppCompatActivity): WebViewClient() {
+open class Bridge (
+  val index: Int,
+  val activity: AppCompatActivity
+): WebViewClient() {
   open val schemeHandlers = SchemeHandlers(this)
   open val navigator = Navigator(this)
   open val buffers = mutableMapOf<String, ByteArray>()
@@ -44,6 +47,7 @@ open class Bridge (val index: Int, val activity: AppCompatActivity): WebViewClie
     view: WebView,
     request: WebResourceRequest
   ): Boolean {
+    console.log("request.url.scheme: ${request.url.scheme}")
     if (isAndroidAssetsUri(request.url)) {
       return false
     }
@@ -55,13 +59,27 @@ open class Bridge (val index: Int, val activity: AppCompatActivity): WebViewClie
       return false
     }
 
+    if (
+      request.url.scheme == "ipc" ||
+      request.url.scheme == "node" ||
+      request.url.scheme == "npm" ||
+      request.url.scheme == "socket"
+    ) {
+      return false
+    }
+
+    val scheme = request.url.scheme
+    if (scheme != null && schemeHandlers.hasHandlerForScheme(scheme)) {
+      return true
+    }
+
     val allowed = this.navigator.isNavigationRequestAllowed(
       view.url ?: "",
       request.url.toString()
     )
 
     if (allowed) {
-      return false
+      return true
     }
 
     val intent = Intent(Intent.ACTION_VIEW, request.url)

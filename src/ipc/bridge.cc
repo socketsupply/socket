@@ -183,7 +183,11 @@ export default module)S";
     };
 
     this->dispatchFunction = [] (auto callback) {
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      callback();
+    #else
       App::sharedApplication()->dispatch(callback);
+    #endif
     };
 
     core->networkStatus.addObserver(this->networkStatusObserver, [this](auto json) {
@@ -376,6 +380,11 @@ export default module)S";
     ) {
       auto message = Message(request->url(), true);
 
+      if (request->method == "OPTIONS") {
+        auto response = SchemeHandlers::Response(request, 200);
+        return callback(response);
+      }
+
       // handle special 'ipc://post' case
       if (message.name == "post") {
         uint64_t id = 0;
@@ -390,8 +399,7 @@ export default module)S";
             }}
           });
 
-          callback(response);
-          return;
+          return callback(response);
         }
 
         if (!this->core->hasPost(id)) {
@@ -403,8 +411,7 @@ export default module)S";
             }}
           });
 
-          callback(response);
-          return;
+          return callback(response);
         }
 
         auto response = SchemeHandlers::Response(request, 200);
@@ -446,10 +453,6 @@ export default module)S";
         auto response = SchemeHandlers::Response(request);
 
         response.setHeaders(result.headers);
-        response.setHeader("access-control-allow-origin", "*");
-        response.setHeader("access-control-allow-methods", "GET, POST, PUT, DELETE");
-        response.setHeader("access-control-allow-headers", "*");
-        response.setHeader("access-control-allow-credentials", "true");
 
         // handle event source streams
         if (result.post.eventStream != nullptr) {
@@ -619,10 +622,6 @@ export default module)S";
             }
 
             if (request->method == "OPTIONS") {
-              response.setHeader("access-control-allow-origin", "*");
-              response.setHeader("access-control-allow-methods", "GET, HEAD");
-              response.setHeader("access-control-allow-headers", "*");
-              response.setHeader("access-control-allow-credentials", "true");
               response.writeHead(200);
             }
 
