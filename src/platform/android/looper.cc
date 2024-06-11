@@ -7,7 +7,6 @@ namespace SSC::Android {
   {}
 
   void Looper::dispatch (const DispatchCallback& callback) {
-    // TODO(@jwerle): timeout
     while (!this->isReady) {
       msleep(2);
     }

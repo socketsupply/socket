@@ -16,7 +16,6 @@ namespace SSC {
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
-    this->index = this->options.index;
     this->bridge.userConfig = options.userConfig;
     this->bridge.configureNavigatorMounts();
 
@@ -30,6 +29,7 @@ namespace SSC {
 
     this->bridge.preload = IPC::createPreload({
       .clientId = this->bridge.id,
+      .index = options.index,
       .userScript = options.userScript
     });
 
