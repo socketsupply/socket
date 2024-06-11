@@ -1,14 +1,13 @@
 #ifndef SOCKET_RUNTIME_IPC_CLIENT_H
 #define SOCKET_RUNTIME_IPC_CLIENT_H
 
-#include "../core/core.hh"
+#include "../core/unique_client.hh"
 #include "preload.hh"
 
 namespace SSC::IPC {
-  struct Client {
-    using ID = uint64_t;
-    ID id = 0;
-    IPC::Preload preload;
+  struct Client : public UniqueClient {
+    using ID = Client::ID;
+    IPC::Preload preload = {};
   };
 }
 #endif

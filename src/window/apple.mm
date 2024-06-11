@@ -215,6 +215,7 @@ namespace SSC {
 
     this->bridge.preload = IPC::createPreload({
       .clientId = this->bridge.id,
+      .index = options.index,
       .userScript = options.userScript
     });
 

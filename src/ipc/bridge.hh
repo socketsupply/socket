@@ -4,6 +4,7 @@
 #include "../core/core.hh"
 #include "../core/webview.hh"
 
+#include "client.hh"
 #include "preload.hh"
 #include "navigator.hh"
 #include "router.hh"
@@ -37,6 +38,7 @@ namespace SSC::IPC {
       Map userConfig;
 
       SharedPointer<Core> core = nullptr;
+      Client client = {};
       uint64_t id = 0;
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
