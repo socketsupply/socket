@@ -790,7 +790,7 @@ void signalHandler (int signum) {
 
   if (appStatus == -1) {
     appStatus = signum;
-    log("App result!: " + std::to_string(signum));
+    log("App result: " + std::to_string(signum));
   }
 
   if (signum == SIGTERM || signum == SIGINT) {
