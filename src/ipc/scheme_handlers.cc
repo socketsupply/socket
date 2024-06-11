@@ -236,6 +236,30 @@ extern "C" {
 
     return handled;
   }
+
+  jboolean ANDROID_EXTERNAL(ipc, SchemeHandlers, hasHandlerForScheme) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jstring schemeString
+  ) {
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      ANDROID_THROW(env, "Invalid window requested");
+      return false;
+    }
+
+    const auto scheme = Android::StringWrap(env, schemeString).str();
+    return window->bridge.schemeHandlers.hasHandlerForScheme(scheme);
+  }
 }
 #endif
 
@@ -523,7 +547,6 @@ namespace SSC::IPC {
 
     this->bridge->dispatch([=, this] () mutable {
       Lock lock(this->mutex);
-      auto request = this->activeRequests[id];
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [=, this](auto& response) mutable {
           // make sure the response was finished before
@@ -978,7 +1001,6 @@ namespace SSC::IPC {
     this->setHeader("access-control-allow-origin", "*");
     this->setHeader("access-control-allow-methods", "*");
     this->setHeader("access-control-allow-headers", "*");
-    this->setHeader("access-control-allow-credentials", "true");
 
     for (const auto& entry : defaultHeaders) {
       const auto parts = split(trim(entry), ':');
@@ -1150,7 +1172,7 @@ namespace SSC::IPC {
     );
 
     for (const auto& header : this->headers) {
-      const auto name = attachment.env->NewStringUTF(header.name.c_str());
+      const auto name = attachment.env->NewStringUTF(toHeaderCase(header.name).c_str());
       const auto value = attachment.env->NewStringUTF(header.value.c_str());
 
       CallVoidClassMethodFromAndroidEnvironment(
@@ -1243,7 +1265,7 @@ namespace SSC::IPC {
         byteArray,
         0,
         size,
-        (jbyte *) bytes
+        (jbyte *) bytes.get()
       );
 
       CallVoidClassMethodFromAndroidEnvironment(
@@ -1373,21 +1395,18 @@ namespace SSC::IPC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->platformResponse != nullptr) {
-      auto buffers = this->buffers;
-      this->request->bridge->dispatch([=, this] () {
-        auto app = App::sharedApplication();
-        auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      auto app = App::sharedApplication();
+      auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
-        CallVoidClassMethodFromAndroidEnvironment(
-          attachment.env,
-          this->platformResponse,
-          "finish",
-          "()V"
-        );
+      CallVoidClassMethodFromAndroidEnvironment(
+        attachment.env,
+        this->platformResponse,
+        "finish",
+        "()V"
+      );
 
-        this->platformResponse = nullptr;
-        attachment.env->DeleteGlobalRef(this->platformResponse);
-      });
+      this->platformResponse = nullptr;
+      attachment.env->DeleteGlobalRef(this->platformResponse);
     }
   #else
     this->platformResponse = nullptr;
@@ -1460,7 +1479,7 @@ namespace SSC::IPC {
 
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   #else
-    return this->fail(String(error));
+    //return this->fail(String(error));
   #endif
 
     return this->fail("Request failed for an unknown reason");
@@ -1514,9 +1533,9 @@ namespace SSC::IPC {
   #endif
 
     // notify fail
-    if (this->request->callbacks.fail != nullptr) {
-      this->request->callbacks.fail(error);
-    }
+    //if (this->request->callbacks.fail != nullptr) {
+      //this->request->callbacks.fail(error);
+    //}
 
     this->finished = true;
     return true;

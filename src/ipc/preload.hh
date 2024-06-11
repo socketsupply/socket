@@ -67,7 +67,7 @@ namespace SSC::IPC {
     uint64_t clientId = 0;
     int index = 0;
 
-    Headers headers; // depends on 'features.useHTMLMarkup'
+    Headers headers = {}; // depends on 'features.useHTMLMarkup'
     Map metadata; // depends on 'features.useHTMLMarkup'
     Map env;
     Map userConfig;
@@ -98,7 +98,7 @@ namespace SSC::IPC {
        * tags into the preload output.
        * This depends on the 'useHTMLMarkup' feature.
        */
-      Headers headers;
+      Headers headers = {};
 
       /**
        * A mapping of key-value metadata to be injected as HTML `<meta>` tags
