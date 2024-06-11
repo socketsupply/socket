@@ -1008,8 +1008,9 @@ export async function ready () {
     function loop () {
       // this can hang on android. Give it some time because emulators can be slow.
       if (Date.now() - startReady > 10000) {
-        reject(new Error('failed to resolve globalThis.__args'))
+        reject(new Error('Failed to resolve globalThis.__args'))
       } else if (globalThis.__args) {
+        // @ts-ignore
         queueMicrotask(() => resolve())
       } else {
         queueMicrotask(loop)
@@ -1090,7 +1091,7 @@ class IPCSearchParams extends URLSearchParams {
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, value, options = {}, buffer) {
+export function sendSync (command, value = '', options = {}, buffer = null) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1199,7 +1200,7 @@ export async function resolve (seq, value) {
  * @param {boolean=} [options.bytes=false]
  * @return {Promise<Result>}
  */
-export async function send (command, value, options) {
+export async function send (command, value, options = null) {
   await ready()
 
   if (options?.cache === true && cache[command]) {
@@ -1560,6 +1561,7 @@ if (
 }
 
 Object.freeze(primordials)
+
 initializeXHRIntercept()
 
 if (typeof globalThis?.window !== 'undefined') {

@@ -1195,8 +1195,6 @@ export class Script extends EventTarget {
 /**
  * Gets the VM context window.
  * This function will create it if it does not already exist.
- * The current window will be used on Android platforms as there can
- * only be one window.
  * @return {Promise<import('./window.js').ApplicationWindow}
  */
 export async function getContextWindow () {
@@ -1207,11 +1205,7 @@ export async function getContextWindow () {
 
   const currentWindow = await application.getCurrentWindow()
 
-  // just return the current window for android as there can only ever be one
-  if (
-    os.platform() === 'android' ||
-    (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
-  ) {
+  if (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE) {
     contextWindow = currentWindow
 
     if (!contextWindow.frame) {
@@ -1312,11 +1306,7 @@ export async function getContextWorker () {
     return await contextWorker.ready
   }
 
-  // just return the current window for android as there can only ever be one
-  if (
-    os.platform() === 'android' ||
-    (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE)
-  ) {
+  if (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE) {
     if (globalThis.window && globalThis.top === globalThis.window) {
       // inside global top window
       contextWorker = new ContextWorkerInterface()
