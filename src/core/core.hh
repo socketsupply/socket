@@ -18,6 +18,7 @@
 #include "socket.hh"
 #include "post.hh"
 #include "resource.hh"
+#include "unique_client.hh"
 #include "url.hh"
 #include "version.hh"
 #include "webview.hh"

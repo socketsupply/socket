@@ -399,7 +399,7 @@ namespace SSC::IPC {
         }
       }
 
-        // 13. compile "internal init" import
+      // 13. compile "internal init" import
       if (this->options.features.useHTMLMarkup && this->options.features.useESM) {
         buffers.push_back(tmpl(
           R"JAVASCRIPT(

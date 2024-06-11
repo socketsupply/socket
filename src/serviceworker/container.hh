@@ -15,11 +15,7 @@ namespace SSC {
   class ServiceWorkerContainer {
     public:
       using ID = IPC::Client::ID;
-
-      struct Client {
-        ID id = 0;
-        int index = 0;
-      };
+      using Client = IPC::Client;
 
       struct RegistrationOptions {
         enum class Type { Classic, Module };

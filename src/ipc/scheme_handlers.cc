@@ -628,8 +628,7 @@ namespace SSC::IPC {
       }
     );
 
-    // default client id, can be overloaded with 'runtime-client-id' header
-    this->request->client.id = handlers->bridge->id;
+    this->request->client = handlers->bridge->client;
 
     // build request URL components from parsed URL components
     this->request->originalURL = this->absoluteURL;

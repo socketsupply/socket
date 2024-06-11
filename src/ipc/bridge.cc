@@ -669,7 +669,7 @@ export default module)S";
             request->query,
             request->headers,
             ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            ServiceWorkerContainer::Client { request->client.id, window->index }
+            request->client
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
@@ -966,7 +966,7 @@ export default module)S";
             request->query,
             request->headers,
             ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            ServiceWorkerContainer::Client { request->client.id, window->index }
+            request->client
           };
 
           const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback] (auto res) mutable {
