@@ -127,7 +127,9 @@ namespace SSC {
       static bool isFile (const Path& resourcePath);
       static bool isDirectory (const String& resourcePath);
       static bool isDirectory (const Path& resourcePath);
+      static bool isMountedPath (const Path& path);
       static const WellKnownPaths& getWellKnownPaths ();
+      static const Map getMountedPaths ();
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       static void setSharedAndroidAssetManager (Android::AssetManager*);
