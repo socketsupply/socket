@@ -205,7 +205,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
   self.app->windowManager.configure(windowManagerOptions);
 
-  auto defaultWindow = self.app->windowManager.createDefaultWindow(WindowOptions {
+  auto defaultWindow = self.app->windowManager.createDefaultWindow(Window::Options {
      .shouldExitApplicationOnClose = true
     });
 
@@ -218,7 +218,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     self.app->userConfig["webview_service_worker_mode"] != "hybrid" &&
     self.app->userConfig["permissions_allow_service_worker"] != "false"
   ) {
-    auto serviceWorkerWindowOptions = WindowOptions {};
+    auto serviceWorkerWindowOptions = Window::Options {};
     auto serviceWorkerUserConfig = self.app->userConfig;
     const auto screen = defaultWindow->getScreenSize();
 
@@ -1063,7 +1063,7 @@ extern "C" {
       app->windowManager.configure(windowManagerOptions);
 
       app->dispatch([=]() {
-        auto defaultWindow = app->windowManager.createDefaultWindow(WindowOptions {
+        auto defaultWindow = app->windowManager.createDefaultWindow(Window::Options {
           .shouldExitApplicationOnClose = true
         });
 
@@ -1074,7 +1074,7 @@ extern "C" {
           app->userConfig["permissions_allow_service_worker"] != "false"
         ) {
           if (app->windowManager.getWindowStatus(SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX) == WindowManager::WINDOW_NONE) {
-            auto serviceWorkerWindowOptions = WindowOptions {};
+            auto serviceWorkerWindowOptions = Window::Options {};
             auto serviceWorkerUserConfig = app->userConfig;
             auto screen = defaultWindow->getScreenSize();
 

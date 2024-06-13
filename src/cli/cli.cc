@@ -1692,22 +1692,23 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
   exit(1);
 }
 
-struct Option {
+struct CommandLineOption {
   std::vector<String> aliases;
   bool isOptional;
   bool shouldHaveValue;
 };
-using Options = std::vector<Option>;
+
+using CommandLineOptions = Vector<CommandLineOption>;
 
 struct optionsAndEnv {
   Map optionsWithValue;
   std::unordered_set<String> optionsWithoutValue;
-  std::vector<String> envs;
+  Vector<String> envs;
 };
 
 optionsAndEnv parseCommandLineOptions (
   const std::span<const char*>& options,
-  const Options& availableOptions,
+  const CommandLineOptions& availableOptions,
   const String& subcommand
 ) {
   optionsAndEnv result;
@@ -1755,7 +1756,7 @@ optionsAndEnv parseCommandLineOptions (
     }
 
     // find option
-    Option recognizedOption;
+    CommandLineOption recognizedOption;
     bool found = false;
     for (const auto option : availableOptions) {
       for (const auto alias : option.aliases) {
@@ -1988,7 +1989,7 @@ int main (const int argc, const char* argv[]) {
 
   auto createSubcommand = [&](
     const String& subcommand,
-    const Options& availableOptions,
+    const CommandLineOptions& availableOptions,
     const bool& needsConfig,
     std::function<void(Map, std::unordered_set<String>)> subcommandHandler
   ) -> void {
@@ -2187,7 +2188,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options initOptions = {
+  CommandLineOptions initOptions = {
     { { "--config", "-C" }, true, false },
     { { "--name", "-n" }, true, true }
   };
@@ -2246,7 +2247,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options listDevicesOptions = {
+  CommandLineOptions listDevicesOptions = {
     { { "--platform" }, false, true },
     { { "--ecid" }, true, false },
     { { "--udid" }, true, false },
@@ -2352,7 +2353,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options installAppOptions = {
+  CommandLineOptions installAppOptions = {
     { { "--debug", "-D" }, true, false },
     { { "--device" }, true, true },
     { { "--platform" }, true, true },
@@ -2571,7 +2572,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options printBuildDirOptions = {
+  CommandLineOptions printBuildDirOptions = {
     { { "--platform" }, true, true }, { { "--root" }, true, false}
   };
 
@@ -2592,7 +2593,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options runOptions = {
+  CommandLineOptions runOptions = {
     { { "--platform" }, true, true },
     { { "--prod", "-P" }, true, false },
     { { "--test", "-t" }, true, true },
@@ -2604,7 +2605,7 @@ int main (const int argc, const char* argv[]) {
     { { "--host"}, true, true }
   };
 
-  Options buildOptions = {
+  CommandLineOptions buildOptions = {
     { { "--quiet", "-q" }, true, false },
     { { "--only-build", "-o" }, true, false },
     { { "--run", "-r" }, true, false },
@@ -7125,7 +7126,7 @@ int main (const int argc, const char* argv[]) {
 
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
-  Options setupOptions = {
+  CommandLineOptions setupOptions = {
     { { "--platform" }, true, true },
     { { "--yes", "-y" }, true, false },
     { { "--quiet", "-q" }, true, false },

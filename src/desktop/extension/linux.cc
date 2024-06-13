@@ -28,7 +28,8 @@ extern "C" {
 
     if (bridge == nullptr) {
       g_object_ref(context);
-      bridge = std::make_shared<IPC::Bridge>(app->core, app->userConfig);
+      auto options = IPC::Bridge::Options(app->userConfig);
+      bridge = std::make_shared<IPC::Bridge>(app->core, options);
       bridge->evaluateJavaScriptFunction = [context] (const auto source) {
         auto _ = jsc_context_evaluate(context, source.c_str(), source.size());
       };

@@ -77,19 +77,19 @@ namespace SSC {
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (int index) {
-    return this->getOrCreateWindow(index, WindowOptions {});
+    return this->getOrCreateWindow(index, Window::Options {});
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (
     int index,
-    const WindowOptions& options
+    const Window::Options& options
   ) {
     if (this->destroyed || index < 0 || index >= this->windows.size()) {
       return nullptr;
     }
 
     if (this->getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
-      WindowOptions optionsCopy = options;
+      Window::Options optionsCopy = options;
       optionsCopy.index = index;
       return this->createWindow(optionsCopy);
     }
@@ -135,7 +135,7 @@ namespace SSC {
   }
 
   SharedPointer<WindowManager::ManagedWindow> WindowManager::createWindow (
-    const WindowOptions& options
+    const Window::Options& options
   ) {
     Lock lock(this->mutex);
 
@@ -172,7 +172,7 @@ namespace SSC {
       ? Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height)
       : options.maxHeight;
 
-    WindowOptions windowOptions = {
+    Window::Options windowOptions = {
       .minimizable = options.minimizable,
       .maximizable = options.maximizable,
       .resizable = options.resizable,
@@ -245,9 +245,9 @@ namespace SSC {
     return this->windows.at(options.index);
   }
 
-  SharedPointer<WindowManager::ManagedWindow> WindowManager::createDefaultWindow (const WindowOptions& options) {
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::createDefaultWindow (const Window::Options& options) {
     static const auto devHost = SSC::getDevHost();
-    auto windowOptions = WindowOptions {
+    auto windowOptions = Window::Options {
       .minimizable = options.minimizable,
       .maximizable = options.maximizable,
       .resizable = options.resizable,
@@ -306,7 +306,7 @@ namespace SSC {
   WindowManager::ManagedWindow::ManagedWindow (
     WindowManager &manager,
     SharedPointer<Core> core,
-    const WindowOptions& options
+    const Window::Options& options
   ) : index(options.index),
       Window(core, options),
       manager(manager)

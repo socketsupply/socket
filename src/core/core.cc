@@ -387,17 +387,21 @@ namespace SSC {
       static constexpr auto resolution = RELEASE_STRONG_REFERENCE_SHARED_POINTER_BUFFERS_RESOLUTION;
       Lock lock(core->mutex);
       for (int i = 0; i < core->sharedPointerBuffers.size(); ++i) {
-        auto& entry = core->sharedPointerBuffers[i];
+        auto entry = &core->sharedPointerBuffers[i];
+        if (entry == nullptr) {
+          continue;
+        }
+
         // expired
-        if (entry.ttl <= resolution) {
-          entry.pointer = nullptr;
-          entry.ttl = 0;
+        if (entry->ttl <= resolution) {
+          entry->pointer = nullptr;
+          entry->ttl = 0;
           if (i == core->sharedPointerBuffers.size() - 1) {
             core->sharedPointerBuffers.pop_back();
             break;
           }
         } else {
-          entry.ttl = entry.ttl - resolution;
+          entry->ttl = entry->ttl - resolution;
         }
       }
 

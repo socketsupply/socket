@@ -602,7 +602,7 @@ namespace SSC {
     };
   };
 
-  Window::Window (App& app, WindowOptions opts)
+  Window::Window (App& app, Window::Options opts)
     : app(app),
       opts(opts),
       hotkey(this)

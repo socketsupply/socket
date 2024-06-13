@@ -123,12 +123,6 @@ namespace SSC {
       void dispatch (Function<void()>);
       String getcwd ();
       bool hasRuntimePermission (const String& permission) const;
-
-      /*
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      bool isAndroidPermissionAllowed (const String& permission);
-    #endif
-    */
   };
 }
 #endif

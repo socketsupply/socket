@@ -114,7 +114,7 @@ namespace SSC::IPC {
           SharedPointer<Request> build ();
         };
 
-        uint64_t id = rand64();
+        Client::ID id = rand64();
         String scheme = "";
         String method = "GET";
         String hostname = "";

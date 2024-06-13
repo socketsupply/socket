@@ -109,10 +109,13 @@ namespace SSC {
     isInitialized = true;
   }
 
-  Window::Window (SharedPointer<Core> core, const WindowOptions& options)
+  Window::Window (SharedPointer<Core> core, const Window::Options& options)
     : core(core),
       options(options),
-      bridge(core, options.userConfig),
+      bridge(core, IPC::Bridge::Options {
+        options.userConfig,
+        options.as<IPC::Preload::Options>()
+      }),
       hotkey(this),
       dialog(this)
   {
@@ -234,8 +237,8 @@ namespace SSC {
       this->eval(source);
     };
 
-    this->bridge.preload = IPC::createPreload({
-      .clientId = this->bridge.id,
+    this->bridge.client.preload = IPC::Preload::compile({
+      .client = this->bridge.client,
       .index = options.index,
       .userScript = options.userScript
     });

@@ -385,10 +385,7 @@ namespace SSC {
             {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
           }});
         }
-      } while (0);
 
-      do {
-        Lock lock(this->mutex);
         callback = this->fetchCallbacks.at(id);
         request = this->fetchRequests.at(id);
       } while (0);
@@ -430,10 +427,10 @@ namespace SSC {
           (html.find("<script") != String::npos || html.find("<SCRIPT") != String::npos)
         )
       ) {
-        auto preloadOptions = this->bridge->preload.options;
+        auto preloadOptions = request.client.preload.options;
         preloadOptions.metadata["runtime-frame-source"] = "serviceworker";
 
-        auto preload = IPC::createPreload(preloadOptions);
+        auto preload = IPC::Preload::compile(preloadOptions);
         auto begin = String("<meta name=\"begin-runtime-preload\">");
         auto end = String("<meta name=\"end-runtime-preload\">");
         auto x = html.find(begin);

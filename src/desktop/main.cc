@@ -1075,7 +1075,7 @@ MAIN {
     auto isMinimizable = getProperty("window_minimizable");
     auto isClosable = getProperty("window_closable");
 
-    auto defaultWindow = app.windowManager.createDefaultWindow(WindowOptions {
+    auto defaultWindow = app.windowManager.createDefaultWindow(Window::Options {
       .minimizable = (isMinimizable == "" || isMinimizable == "true") ? true : false,
       .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
       .resizable = getProperty("window_resizable") == "false" ? false : true,
@@ -1093,7 +1093,7 @@ MAIN {
       userConfig["webview_service_worker_mode"] != "hybrid" &&
       userConfig["permissions_allow_service_worker"] != "false"
     ) {
-      auto serviceWorkerWindowOptions = WindowOptions {};
+      auto serviceWorkerWindowOptions = Window::Options {};
       auto serviceWorkerUserConfig = userConfig;
       auto screen = defaultWindow->getScreenSize();
 
