@@ -2948,7 +2948,16 @@ static void mapIPCRoutes (Router *router) {
     const auto app = App::sharedApplication();
     const auto window = app->windowManager.getWindowForBridge(router->bridge);
 
+    Dialog* dialog = nullptr;
+
+    if (window) {
+      dialog = &window->dialog;
+    } else {
+      dialog = new Dialog();
+    }
+
     const auto options = Dialog::FileSystemPickerOptions {
+      .prefersDarkMode = message.get("prefersDarkMode") == "true",
       .directories = allowDirs,
       .multiple = allowMultiple,
       .files = allowFiles,
@@ -2959,7 +2968,7 @@ static void mapIPCRoutes (Router *router) {
     };
 
     if (isSave) {
-      const auto result = window->dialog.showSaveFilePicker(options);
+      const auto result = dialog->showSaveFilePicker(options);
 
       if (result.size() == 0) {
         const auto err = JSON::Object::Entries {{"type", "AbortError"}};
@@ -2974,8 +2983,8 @@ static void mapIPCRoutes (Router *router) {
       JSON::Array paths;
       const auto results = (
         allowFiles && !allowDirs
-          ? window->dialog.showOpenFilePicker(options)
-          : window->dialog.showDirectoryPicker(options)
+          ? dialog->showOpenFilePicker(options)
+          : dialog->showDirectoryPicker(options)
       );
 
       for (const auto& result : results) {
@@ -2987,6 +2996,10 @@ static void mapIPCRoutes (Router *router) {
       };
 
       reply(Result::Data { message, data });
+    }
+
+    if (!window) {
+      delete dialog;
     }
   });
 
