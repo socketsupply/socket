@@ -92,8 +92,8 @@ namespace SSC {
   class Window {
     public:
       struct Position {
-        float x;
-        float y;
+        float x = 0.0f;
+        float y = 0.0f;
       };
 
       struct Size {

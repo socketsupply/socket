@@ -647,8 +647,10 @@ namespace SSC {
 
     this->window.rootViewController = this->viewController;
     this->window.rootViewController.view.frame = frame;
-
   #endif
+
+    this->position.x = this->window.frame.origin.x;
+    this->position.y = this->window.frame.origin.y;
   }
 
   Window::~Window () {
@@ -705,6 +707,9 @@ namespace SSC {
       [this->window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
     }
+
+    this->position.x = this->window.frame.origin.x;
+    this->position.y = this->window.frame.origin.y;
   #elif SOCKET_RUNTIME_PLATFORM_IOS
     [this->webview becomeFirstResponder];
     [this->window makeKeyAndVisible];
