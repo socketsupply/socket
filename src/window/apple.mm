@@ -197,19 +197,6 @@ namespace SSC {
       this->navigate(url);
     };
 
-    this->bridge.dispatchFunction = [this] (auto callback) {
-    #if SOCKET_RUNTIME_PLATFORM_MACOS
-      const auto app = App::sharedApplication();
-      if (app != nullptr) {
-        app->dispatch(callback);
-      }
-    #elif SOCKET_RUNTIME_PLATFORM_IOS
-      dispatch_async(queue, ^{
-        callback();
-      });
-    #endif
-    };
-
     this->bridge.evaluateJavaScriptFunction = [this](auto source) {
       dispatch_async(dispatch_get_main_queue(), ^{
         this->eval(source);
