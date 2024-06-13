@@ -399,83 +399,17 @@ namespace SSC::IPC {
   }
 
   void Navigator::configureMounts () {
-    // determine HOME
-  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
-  #elif SOCKET_RUNTIME_PLATFORM_IOS
-    static const auto HOME = String(NSHomeDirectory().UTF8String);
-  #else
-    static const auto uid = getuid();
-    static const auto pwuid = getpwuid(uid);
-    static const auto HOME = pwuid != nullptr
-      ? String(pwuid->pw_dir)
-      : Env::get("HOME", getcwd());
-  #endif
-
-    static const Map mappings = {
-      {"\\$HOST_HOME", HOME},
-      {"~", HOME},
-
-      {"\\$HOST_CONTAINER",
-      #if SOCKET_RUNTIME_PLATFORM_IOS
-        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
-      #elif SOCKET_RUNTIME_PLATFORM_MACOS
-        // `homeDirectoryForCurrentUser` resolves to sandboxed container
-        // directory when in "sandbox" mode, otherwise the user's HOME directory
-        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
-      #elif SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_ANDROID
-        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux/Android
-        getcwd()
-      #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
-        getcwd()
-      #else
-        getcwd()
-      #endif
-      },
-
-      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
-      #if SOCKET_RUNTIME_PLATFORM_APPLE
-        NSBundle.mainBundle.resourcePath.UTF8String
-      #else
-        getcwd()
-      #endif
-      }
-    };
-
     static const auto wellKnownPaths = FileResource::getWellKnownPaths();
+    this->location.mounts = FileResource::getMountedPaths();
 
-    for (const auto& entry : this->bridge->userConfig) {
-      if (entry.first.starts_with("webview_navigator_mounts_")) {
-        auto key = replace(entry.first, "webview_navigator_mounts_", "");
-
-        if (key.starts_with("android") && !platform.android) continue;
-        if (key.starts_with("ios") && !platform.ios) continue;
-        if (key.starts_with("linux") && !platform.linux) continue;
-        if (key.starts_with("mac") && !platform.mac) continue;
-        if (key.starts_with("win") && !platform.win) continue;
-
-        key = replace(key, "android_", "");
-        key = replace(key, "ios_", "");
-        key = replace(key, "linux_", "");
-        key = replace(key, "mac_", "");
-        key = replace(key, "win_", "");
-
-        String path = key;
-
-        for (const auto& map : mappings) {
-          path = replace(path, map.first, map.second);
-        }
-
-        const auto& value = entry.second;
-        this->location.mounts.insert_or_assign(path, value);
+    for (const auto& entry : this->location.mounts) {
+      const auto& path = entry.first;
       #if SOCKET_RUNTIME_PLATFORM_LINUX
         auto webContext = webkit_web_context_get_default();
         if (path != wellKnownPaths.home.string()) {
           webkit_web_context_add_path_to_sandbox(webContext, path.c_str(), false);
         }
       #endif
-      }
     }
 
     #if SOCKET_RUNTIME_PLATFORM_LINUX
