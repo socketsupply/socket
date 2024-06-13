@@ -351,6 +351,8 @@ namespace SSC {
       GtkWidget* menutray = nullptr;
       GtkWidget* contextMenu = nullptr;
 
+      bool isDarkMode = false;
+
     #if SOCKET_RUNTIME_DESKTOP_EXTENSION
       void* userContentManager;
       void* policies;

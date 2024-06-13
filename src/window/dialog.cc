@@ -68,6 +68,7 @@ namespace SSC {
     const FileSystemPickerOptions& options
   ) {
     const auto results = this->showFileSystemPicker({
+      .prefersDarkMode = options.prefersDarkMode,
       .directories = false,
       .multiple = false,
       .files = true,
@@ -90,6 +91,7 @@ namespace SSC {
     const FileSystemPickerOptions& options
   ) {
     return this->showFileSystemPicker({
+      .prefersDarkMode = options.prefersDarkMode,
       .directories = false,
       .multiple = options.multiple,
       .files = true,
@@ -105,6 +107,7 @@ namespace SSC {
     const FileSystemPickerOptions& options
   ) {
     return this->showFileSystemPicker({
+      .prefersDarkMode = options.prefersDarkMode,
       .directories = true,
       .multiple = options.multiple,
       .files = false,
@@ -150,7 +153,7 @@ namespace SSC {
       // <mime>:<ext>,<ext>|<mime>:<ext>|...
       for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
         const auto parts = split(contentTypeSpec, ":");
-        const auto mime = parts[0];
+        const auto mime = trim(parts[0]);
         const auto classes = split(mime, "/");
         UTType* supertype = nullptr;
 
@@ -355,9 +358,40 @@ namespace SSC {
       return FALSE;
     };
 
+    g_object_set(
+      gtk_settings_get_default(),
+      "gtk-application-prefer-dark-theme",
+      options.prefersDarkMode,
+      nullptr
+    );
+
+    if (isSavePicker) {
+      action = GTK_FILE_CHOOSER_ACTION_SAVE;
+    } else {
+      action = GTK_FILE_CHOOSER_ACTION_OPEN;
+    }
+
+    if (!allowFiles && allowDirectories) {
+      action = (GtkFileChooserAction) (action | GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
+    }
+
+    String dialogTitle = isSavePicker ? "Save File" : "Open File";
+    if (title.size() > 0) {
+      dialogTitle = title;
+    }
+
+    dialog = gtk_file_chooser_dialog_new(
+      dialogTitle.c_str(),
+      nullptr,
+      action,
+      "_Cancel",
+      GTK_RESPONSE_CANCEL,
+      nullptr
+    );
+
     for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
       const auto parts = split(contentTypeSpec, ":");
-      const auto mime = parts[0];
+      const auto mime = trim(parts[0]);
       const auto classes = split(mime, "/");
 
       // malformed MIME
@@ -366,6 +400,7 @@ namespace SSC {
       }
 
       auto filter = gtk_file_filter_new();
+      Set<String> filterExtensionPatterns;
 
     #define MAKE_FILTER(userData)                                              \
       gtk_file_filter_add_custom(                                              \
@@ -403,39 +438,20 @@ namespace SSC {
             extension
           );
 
+          filterExtensionPatterns.insert(pattern);
+
           gtk_file_filter_add_pattern(filter, pattern.c_str());
         }
       }
 
+      gtk_file_filter_set_name(
+        filter,
+        join(filterExtensionPatterns, ", ").c_str()
+      );
+
       gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
       filters.push_back(filter);
     }
-
-    if (isSavePicker) {
-      action = GTK_FILE_CHOOSER_ACTION_SAVE;
-    } else {
-      action = GTK_FILE_CHOOSER_ACTION_OPEN;
-    }
-
-    if (!allowFiles && allowDirectories) {
-      action = (GtkFileChooserAction) (action | GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
-    }
-
-    gtk_init_check(nullptr, nullptr);
-
-    String dialogTitle = isSavePicker ? "Save File" : "Open File";
-    if (title.size() > 0) {
-      dialogTitle = title;
-    }
-
-    dialog = gtk_file_chooser_dialog_new(
-      dialogTitle.c_str(),
-      nullptr,
-      action,
-      "_Cancel",
-      GTK_RESPONSE_CANCEL,
-      nullptr
-    );
 
     chooser = GTK_FILE_CHOOSER(dialog);
 
@@ -477,11 +493,9 @@ namespace SSC {
       }
     }
 
+    // FIXME(@jwerle, @heapwolf): hitting 'ESC' or cancelling the dialog
+    // causes 'assertion 'G_IS_OBJECT (object)' failed' messages
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
-
-    for (const auto& filter : filters) {
-      g_object_unref(filter);
-    }
 
     filters.clear();
 
@@ -499,13 +513,14 @@ namespace SSC {
     GSList* filenames = gtk_file_chooser_get_filenames(chooser);
 
     for (int i = 0; filenames != nullptr; ++i) {
-      const auto file = (const char*) filenames->data;
-      paths.push_back(file);
+      const auto filename = (const char*) filenames->data;
+      paths.push_back(filename);
+      g_free(const_cast<char*>(reinterpret_cast<const char*>(filename)));
       filenames = filenames->next;
     }
 
     g_slist_free(filenames);
-    gtk_widget_destroy(dialog);
+    gtk_widget_destroy(GTK_WIDGET(dialog));
   #elif defined(_WIN32)
     IShellItemArray *openResults;
     IShellItem *saveResult;
@@ -772,7 +787,7 @@ namespace SSC {
       // <mime>:<ext>,<ext>|<mime>:<ext>|...
       for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
         const auto parts = split(contentTypeSpec, ":");
-        const auto mime = parts[0];
+        const auto mime = trim(parts[0]);
         const auto classes = split(mime, "/");
         if (classes.size() == 2) {
           if (mimeTypes.size() == 0) {
