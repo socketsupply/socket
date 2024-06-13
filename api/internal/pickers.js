@@ -125,13 +125,12 @@ function normalizeShowFileSystemPickerOptions (options) {
 
   return {
     contentTypeSpecs: contentTypeSpecs.join('|'),
+    prefersDarkMode: globalThis?.matchMedia?.('(prefers-color-scheme: dark)')?.matches || false,
     allowMultiple: options?.multiple === true,
     defaultName: options?.suggestedName ?? '',
     defaultPath: resolveStartInPath(options?.startIn, options?.id) ?? '',
-    // eslint-disable-next-line
-    allowFiles: options?.files === true ? true : false,
-    // eslint-disable-next-line
-    allowDirs: options?.directories === true ? true : false
+    allowFiles: options?.files === true,
+    allowDirs: options?.directories === true
   }
 }
 
@@ -141,6 +140,7 @@ function normalizeShowFileSystemPickerOptions (options) {
  *   mode?: 'read' | 'readwrite'
  *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
  * }} ShowDirectoryPickerOptions
+ *
  */
 
 /**
