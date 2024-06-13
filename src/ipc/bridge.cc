@@ -598,7 +598,7 @@ export default module)S";
         } else if (resolved.isResource()) {
           resourcePath = applicationResources + resolved.pathname;
         } else if (resolved.isMount()) {
-          resourcePath = applicationResources + resolved.mount.filename;
+          resourcePath = resolved.mount.filename;
         } else if (request->pathname == "" || request->pathname == "/") {
           if (userConfig.contains("webview_default_index")) {
             resourcePath = userConfig["webview_default_index"];
