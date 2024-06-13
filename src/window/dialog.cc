@@ -175,7 +175,7 @@ namespace SSC {
           supertype = UTTypeVideo;
           prefersMedia = true;
         } else if (classes[0] == "*") {
-          supertype = UTTypeContent;
+          supertype = UTTypeData;
         } else {
           supertype = UTTypeCompositeContent;
         }
@@ -200,13 +200,13 @@ namespace SSC {
           const auto extensions = split(parts[1], ",");
 
           for (const auto& extension : extensions) {
-            [contentTypes
-              addObjectsFromArray: [UTType
-                typesWithTag: @(extension.c_str())
-                        tagClass: UTTagClassFilenameExtension
-                conformingToType: supertype
-              ]
+            auto types = [UTType
+                  typesWithTag: @(extension.c_str())
+                      tagClass: UTTagClassFilenameExtension
+              conformingToType: supertype
             ];
+
+            [contentTypes addObjectsFromArray: types];
           }
         }
       }
@@ -337,7 +337,7 @@ namespace SSC {
     const guint SELECT_RESPONSE = 0;
     GtkFileChooserAction action;
     GtkFileChooser *chooser;
-    GtkFileFilter *filter; // TODO(@jwerle): `gtk_file_filter_add_custom, gtk_file_chooser_add_filter`
+    GtkFileFilter *filter;
     GtkWidget *dialog;
     Vector<GtkFileFilter*> filters;
 
@@ -451,9 +451,7 @@ namespace SSC {
       gtk_dialog_add_button(GTK_DIALOG(dialog), "Select", SELECT_RESPONSE);
     }
 
-    // if (FILE_DIALOG_OVERWRITE_CONFIRMATION) {
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, true);
-    // }
 
     if ((!isSavePicker || allowDirectories) && allowMultiple) {
       gtk_file_chooser_set_select_multiple(chooser, true);
