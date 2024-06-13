@@ -154,10 +154,18 @@ export default module)S";
     }
   }
 #endif
+  Bridge::Options::Options (
+    const Map& userConfig,
+    const Preload::Options& preload
+  ) : userConfig(userConfig),
+      preload(preload)
+  {}
 
-  Bridge::Bridge (SharedPointer<Core> core, Map userConfig)
-    : core(core),
-      userConfig(userConfig),
+  Bridge::Bridge (
+    SharedPointer<Core> core,
+    const Options& options
+  ) : core(core),
+      userConfig(options.userConfig),
       router(this),
       navigator(this),
       schemeHandlers(this)
@@ -644,7 +652,7 @@ export default module)S";
               if (resource.mimeType() != "text/html") {
                 response.send(resource);
               } else {
-                const auto html = this->preload.insertIntoHTML(resource.str(), {
+                const auto html = this->client.preload.insertIntoHTML(resource.str(), {
                   .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
                 });
 

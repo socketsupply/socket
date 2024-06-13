@@ -3099,7 +3099,7 @@ static void mapIPCRoutes (Router *router) {
 
       const auto window = app->windowManager.getWindow(0);
       const auto screen = window->getScreenSize();
-      auto options = WindowOptions {};
+      auto options = Window::Options {};
 
       options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
       options.headless = app->userConfig["build_headless"] == "true";

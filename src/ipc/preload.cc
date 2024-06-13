@@ -35,7 +35,13 @@ namespace SSC::IPC {
     R"HTML(</script>)HTML"
   );
 
-  Preload::Preload (const PreloadOptions& options)
+  const Preload Preload::compile (const Options& options) {
+    auto preload = Preload(options);
+    preload.compile();
+    return preload;
+  }
+
+  Preload::Preload (const Options& options)
     : options(options)
   {
     this->configure();
@@ -48,7 +54,7 @@ namespace SSC::IPC {
     this->configure(this->options);
   }
 
-  void Preload::configure (const PreloadOptions& options) {
+  void Preload::configure (const Options& options) {
     this->options = options;
     this->headers = options.headers;
     this->metadata = options.metadata;
@@ -236,7 +242,7 @@ namespace SSC::IPC {
         )JAVASCRIPT",
         Map {
           {"id", std::to_string(rand64())},
-          {"clientId", std::to_string(this->options.clientId)}
+          {"clientId", std::to_string(this->options.client.id)}
         }
       )));
 
@@ -662,11 +668,5 @@ namespace SSC::IPC {
     }
 
     return output;
-  }
-
-  const Preload createPreload (const PreloadOptions& options) {
-    auto preload = Preload(options);
-    preload.compile();
-    return preload;
   }
 }

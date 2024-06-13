@@ -2,6 +2,7 @@
 #define SOCKET_RUNTIME_IPC_BRIDGE_H
 
 #include "../core/core.hh"
+#include "../core/options.hh"
 #include "../core/webview.hh"
 
 #include "client.hh"
@@ -18,6 +19,15 @@ namespace SSC::IPC {
       using DispatchCallback = Function<void()>;
       using DispatchFunction = Function<void(DispatchCallback)>;
 
+      struct Options : public SSC::Options {
+        Map userConfig = {};
+        Preload::Options preload;
+        Options (
+          const Map& userConfig = {},
+          const Preload::Options& preload = {}
+        );
+      };
+
       static Vector<Bridge*> getInstances();
 
       const CoreNetworkStatus::Observer networkStatusObserver;
@@ -31,24 +41,23 @@ namespace SSC::IPC {
       DispatchFunction dispatchFunction = nullptr;
 
       Bluetooth bluetooth;
-      Navigator navigator;
-      SchemeHandlers schemeHandlers;
-      Preload preload;
-      Router router;
+      Client client = {};
       Map userConfig;
+      Navigator navigator;
+      Router router;
+      SchemeHandlers schemeHandlers;
 
       SharedPointer<Core> core = nullptr;
-      Client client = {};
       uint64_t id = 0;
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       bool isAndroidEmulator = false;
     #endif
 
+      Bridge (SharedPointer<Core>core, const Options& options);
       Bridge () = delete;
       Bridge (const Bridge&) = delete;
       Bridge (Bridge&&) = delete;
-      Bridge (SharedPointer<Core>core, Map userConfig);
       ~Bridge ();
 
       Bridge& operator = (const Bridge&) = delete;

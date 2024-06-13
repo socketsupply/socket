@@ -11,7 +11,6 @@
 
 #include "dialog.hh"
 #include "hotkey.hh"
-#include "options.hh"
 
 #ifndef SOCKET_RUNTIME_MAX_WINDOWS
 #define SOCKET_RUNTIME_MAX_WINDOWS 32
@@ -103,9 +102,163 @@ namespace SSC {
       };
 
       /**
+       * `Window::Options` is an extended `IPC::Preload::Options` container for
+       * configuring a new `Window`.
+       */
+      struct Options : public IPC::Preload::Options {
+        /**
+         * If `true`, the window can be minimized.
+         * This option value is only supported on desktop.
+         */
+        bool minimizable = true;
+
+        /**
+         * If `true`, the window can be maximized.
+         * This option value is only supported on desktop.
+         */
+        bool maximizable = true;
+
+        /**
+         * If `true`, the window can be resized.
+         * This option value is only supported on desktop.
+         */
+        bool resizable = true;
+
+        /**
+         * If `true`, the window can be closed.
+         * This option value is only supported on desktop.
+         */
+        bool closable = true;
+
+        /**
+         * If `true`, the window can be "frameless".
+         * This option value is only supported on desktop.
+         */
+        bool frameless = false;
+
+        /**
+         * If `true`, the window is considered a "utility" window.
+         * This option value is only supported on desktop.
+         */
+        bool utility = false;
+
+        /**
+         * If `true`, the window, when the window is "closed", it can
+         * exit the application.
+         * This option value is only supported on desktop.
+         */
+        bool shouldExitApplicationOnClose = false;
+
+        /**
+         * The maximum height in screen pixels the window can be.
+         */
+        float maxHeight = 0.0;
+
+        /**
+         * The minimum height in screen pixels the window can be.
+         */
+        float minHeight = 0.0;
+
+        /**
+         * The absolute height in screen pixels the window can be.
+         */
+        float height = 0.0;
+
+        /**
+         * The maximum width in screen pixels the window can be.
+         */
+        float maxWidth = 0.0;
+
+        /**
+         * The minimum width in screen pixels the window can be.
+         */
+        float minWidth = 0.0;
+
+        /**
+         * The absolute width in screen pixels the window can be.
+         */
+        float width = 0.0;
+
+        /**
+         * The window border/corner radius.
+         * This option value is only supported on macOS.
+         */
+        float radius = 0.0;
+
+        /**
+         * Thw window frame margin.
+         * This option value is only supported on macOS.
+         */
+        float margin = 0.0;
+
+        /**
+         * A string (split on ':') provides two float values which will
+         * set the window's aspect ratio.
+         * This option value is only supported on desktop.
+         */
+        String aspectRatio = "";
+
+        /**
+         * A string that describes a style for the window title bar.
+         * Valid values are:
+         *   - hidden
+         *   - hiddenInset
+         * This option value is only supported on macOS and Windows.
+         */
+        String titlebarStyle = "";
+
+        /**
+         * A string value (split on 'x') in the form of `XxY` where
+         *   - `X` is the value in screen pixels offset from the left of the
+         *         window frame
+         *   - `Y` is the value in screen pixels offset from the top of the
+         *         window frame
+         * The values control the offset of the "close", "minimize", and "maximize"
+         * button controls for a window.
+         * This option value is only supported on macOS.
+         */
+        String windowControlOffsets = "";
+
+        /**
+         * A string value in the form of `rgba(r, g, b, a)` where
+         *   - `r` is the "red" channel value, an integer between `0` and `255`
+         *   - `g` is the "green" channel value, an integer between `0` and `255`
+         *   - `b` is the "blue" channel value, an integer between `0` and `255`
+         *   - `a` is the "alpha" channel value, a float between `0` and `1`
+         * The values represent the background color of a window when the platform
+         * system theme is in "light mode". This also be the "default" theme.
+         */
+        String backgroundColorLight = "";
+
+        /**
+         * A string value in the form of `rgba(r, g, b, a)` where
+         *   - `r` is the "red" channel value, an integer between `0` and `255`
+         *   - `g` is the "green" channel value, an integer between `0` and `255`
+         *   - `b` is the "blue" channel value, an integer between `0` and `255`
+         *   - `a` is the "alpha" channel value, a float between `0` and `1`
+         * The values represent the background color of a window when the platform
+         * system theme is in "dark mode".
+         */
+        String backgroundColorDark = "";
+
+        /**
+         * A callback function that is called when a "script message" is received
+         * from the WebVew.
+         */
+        MessageCallback onMessage = [](const String) {};
+
+        /**
+         * A callback function that is called when the window wants to exit the
+         * application. This function is called _only_ when the
+         * `shouldExitApplicationOnClose` option is `true`.
+         */
+        ExitCallback onExit = nullptr;
+      };
+
+      /**
        * The options used to create this window.
        */
-      const WindowOptions options;
+      const Window::Options options;
 
       /**
        * The "hot key" context for this window.
@@ -246,7 +399,7 @@ namespace SSC {
       jobject androidWindowRef;
     #endif
 
-      Window (SharedPointer<Core> core, const WindowOptions&);
+      Window (SharedPointer<Core> core, const Window::Options&);
       ~Window ();
 
       static ScreenSize getScreenSize ();
@@ -314,7 +467,7 @@ namespace SSC {
       }
   };
 
-  struct WindowManagerOptions : WindowOptions {
+  struct WindowManagerOptions : Window::Options {
     String defaultHeight = "0";
     String defaultWidth = "0";
     String defaultMinWidth = "0";
@@ -357,7 +510,7 @@ namespace SSC {
           ManagedWindow (
             WindowManager &manager,
             SharedPointer<Core> core,
-            const WindowOptions& options
+            const Window::Options& options
           );
 
           ~ManagedWindow ();
@@ -390,13 +543,13 @@ namespace SSC {
       SharedPointer<ManagedWindow> getWindowForBridge (const IPC::Bridge* bridge);
       SharedPointer<ManagedWindow> getWindowForWebView (WebView* webview);;
       SharedPointer<ManagedWindow> getOrCreateWindow (int index);
-      SharedPointer<ManagedWindow> getOrCreateWindow (int index, const WindowOptions& options);
+      SharedPointer<ManagedWindow> getOrCreateWindow (int index, const Window::Options& options);
       WindowStatus getWindowStatus (int index);
 
       void destroyWindow (int index);
 
-      SharedPointer<ManagedWindow> createWindow (const WindowOptions& options);
-      SharedPointer<ManagedWindow> createDefaultWindow (const WindowOptions& options);
+      SharedPointer<ManagedWindow> createWindow (const Window::Options& options);
+      SharedPointer<ManagedWindow> createDefaultWindow (const Window::Options& options);
 
       JSON::Array json (const Vector<int>& indices);
   };

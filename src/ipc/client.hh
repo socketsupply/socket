@@ -6,7 +6,8 @@
 
 namespace SSC::IPC {
   struct Client : public UniqueClient {
-    using ID = Client::ID;
+    using ID = UniqueClient::ID;
+    ID id = 0;
     IPC::Preload preload = {};
   };
 }

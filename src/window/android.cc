@@ -6,10 +6,10 @@
 using namespace SSC;
 
 namespace SSC {
-  Window::Window (SharedPointer<Core> core, const WindowOptions& options)
+  Window::Window (SharedPointer<Core> core, const Window::Options& options)
     : options(options),
       core(core),
-      bridge(core, options.userConfig),
+      bridge(core, options.as<IPC::Bridge::Options>()),
       hotkey(this),
       dialog(this)
   {
@@ -28,7 +28,7 @@ namespace SSC {
     };
 
     this->bridge.preload = IPC::createPreload({
-      .clientId = this->bridge.id,
+      .client = this->bridge.client,
       .index = options.index,
       .userScript = options.userScript
     });
