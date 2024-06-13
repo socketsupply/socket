@@ -263,7 +263,6 @@ namespace SSC {
     GdkRGBA webviewBackground = {0.0, 0.0, 0.0, 0.0};
     bool hasDarkValue = this->options.backgroundColorDark.size();
     bool hasLightValue = this->options.backgroundColorLight.size();
-    bool isDarkMode = false;
 
     auto isKDEDarkMode = []() -> bool {
       static const auto paths = FileResource::getWellKnownPaths();
@@ -310,12 +309,12 @@ namespace SSC {
       const gchar* desktop_env = getenv("XDG_CURRENT_DESKTOP");
 
       if (desktop_env != NULL && g_str_has_prefix(desktop_env, "GNOME")) {
-        isDarkMode = isGnomeDarkMode();
+        this->isDarkMode = isGnomeDarkMode();
       } else {
-        isDarkMode = isKDEDarkMode();
+        this->isDarkMode = isKDEDarkMode();
       }
 
-      if (isDarkMode && hasDarkValue) {
+      if (this->isDarkMode && hasDarkValue) {
         gdk_rgba_parse(&color, this->options.backgroundColorDark.c_str());
       } else if (hasLightValue) {
         gdk_rgba_parse(&color, this->options.backgroundColorLight.c_str());

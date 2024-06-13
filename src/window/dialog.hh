@@ -36,6 +36,7 @@ namespace SSC {
     public:
       struct FileSystemPickerOptions {
         enum class Type { Open, Save };
+        bool prefersDarkMode = false;
         bool directories = false;
         bool multiple = false;
         bool files = false;
