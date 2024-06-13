@@ -124,8 +124,6 @@ namespace SSC {
     auto userConfig = options.userConfig;
     auto webContext = webkit_web_context_get_default();
 
-    this->bridge.userConfig = userConfig;
-
     if (options.index == 0) {
       initializeWebContextFromWindow(this);
     }
