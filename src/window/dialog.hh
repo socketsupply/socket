@@ -62,7 +62,6 @@ namespace SSC {
       Dialog& operator = (const Dialog&) = delete;
       Dialog& operator = (Dialog&&) = delete;
 
-
       String showSaveFilePicker (
         const FileSystemPickerOptions& options
       );
