@@ -33,6 +33,8 @@ namespace SSC {
   const Vector<String> split (const String& source, const String& needle);
   const String join (const Vector<String>& vector, const String& separator);
   const String join (const Vector<String>& vector, const char separator);
+  const String join (const Set<String>& set, const String& separator);
+  const String join (const Set<String>& set, const char separator);
   Vector<String> parseStringList (const String& string, const Vector<char>& separators);
   Vector<String> parseStringList (const String& string, const char separator);
   Vector<String> parseStringList (const String& string);

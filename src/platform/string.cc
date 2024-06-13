@@ -164,6 +164,14 @@ namespace SSC {
     return join(vector, String(1, separator));
   }
 
+  const String join (const Set<String>& set, const String& separator) {
+    return join(Vector<String>(set.begin(), set.end()), separator);
+  }
+
+  const String join (const Set<String>& set, const char separator) {
+    return join(set, String(1, separator));
+  }
+
   Vector<String> parseStringList (const String& string, const Vector<char>& separators) {
     auto list = Vector<String>();
     for (const auto& separator : separators) {
