@@ -352,6 +352,8 @@ export class ApplicationWindow {
     const result = await ipc.request('window.showFileSystemPicker', {
       type: 'open',
       ...options
+    }, {
+      useExtensionIPCIfAvailable: true
     })
 
     if (result.err) {
@@ -370,6 +372,8 @@ export class ApplicationWindow {
     const result = await ipc.request('window.showFileSystemPicker', {
       type: 'save',
       ...options
+    }, {
+      useExtensionIPCIfAvailable: true
     })
 
     if (result.err) {
@@ -389,6 +393,8 @@ export class ApplicationWindow {
       type: 'open',
       allowDirs: true,
       ...options
+    }, {
+      useExtensionIPCIfAvailable: true
     })
 
     if (result.err) {
