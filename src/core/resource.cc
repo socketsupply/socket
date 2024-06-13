@@ -139,6 +139,101 @@ namespace SSC {
     return fs::is_directory(resourcePath);
   }
 
+  bool FileResource::isMountedPath (const Path& path) {
+    static auto userConfig = getUserConfig();
+    static auto mounts = FileResource::getMountedPaths();
+    for (const auto& entry : mounts) {
+      if (path.string().starts_with(entry.first)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const Map FileResource::getMountedPaths () {
+    static auto userConfig = getUserConfig();
+    static Map mounts = {};
+
+    if (mounts.size() > 0) {
+      return mounts;
+    }
+
+    // determine HOME
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    static const auto HOME = Env::get("HOMEPATH", Env::get("USERPROFILE", Env::get("HOME")));
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
+    static const auto HOME = String(NSHomeDirectory().UTF8String);
+  #else
+    static const auto uid = getuid();
+    static const auto pwuid = getpwuid(uid);
+    static const auto HOME = pwuid != nullptr
+      ? String(pwuid->pw_dir)
+      : Env::get("HOME", getcwd());
+  #endif
+
+    static const Map mappings = {
+      {"\\$HOST_HOME", HOME},
+      {"~", HOME},
+
+      {"\\$HOST_CONTAINER",
+      #if SOCKET_RUNTIME_PLATFORM_IOS
+        [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) objectAtIndex: 0].UTF8String
+      #elif SOCKET_RUNTIME_PLATFORM_MACOS
+        // `homeDirectoryForCurrentUser` resolves to sandboxed container
+        // directory when in "sandbox" mode, otherwise the user's HOME directory
+        NSFileManager.defaultManager.homeDirectoryForCurrentUser.absoluteString.UTF8String
+      #elif SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_ANDROID
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Linux/Android
+        getcwd()
+      #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+        // TODO(@jwerle): figure out `$HOST_CONTAINER` for Windows
+        getcwd()
+      #else
+        getcwd()
+      #endif
+      },
+
+      {"\\$HOST_PROCESS_WORKING_DIRECTORY",
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
+        NSBundle.mainBundle.resourcePath.UTF8String
+      #else
+        getcwd()
+      #endif
+      }
+    };
+
+    static const auto wellKnownPaths = FileResource::getWellKnownPaths();
+
+    for (const auto& entry : userConfig) {
+      if (entry.first.starts_with("webview_navigator_mounts_")) {
+        auto key = replace(entry.first, "webview_navigator_mounts_", "");
+
+        if (key.starts_with("android") && !platform.android) continue;
+        if (key.starts_with("ios") && !platform.ios) continue;
+        if (key.starts_with("linux") && !platform.linux) continue;
+        if (key.starts_with("mac") && !platform.mac) continue;
+        if (key.starts_with("win") && !platform.win) continue;
+
+        key = replace(key, "android_", "");
+        key = replace(key, "ios_", "");
+        key = replace(key, "linux_", "");
+        key = replace(key, "mac_", "");
+        key = replace(key, "win_", "");
+
+        String path = key;
+
+        for (const auto& map : mappings) {
+          path = replace(path, map.first, map.second);
+        }
+
+        const auto& value = entry.second;
+        mounts.insert_or_assign(path, value);
+      }
+    }
+
+     return mounts;
+  }
+
   Path FileResource::getResourcesPath () {
     static String value;
 
@@ -453,13 +548,19 @@ namespace SSC {
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (this->url == nullptr) {
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
       this->url = [NSURL fileURLWithPath: @(this->path.string().c_str())];
-    #endif
+    }
+  #endif
+
+    if (FileResource::isMountedPath(this->path)) {
+      this->accessing = true;
+      return true;
     }
 
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (!this->path.string().starts_with(resourcesPath.string())) {
       if (![this->url startAccessingSecurityScopedResource]) {
+        this->url = nullptr;
         return false;
       }
     }
