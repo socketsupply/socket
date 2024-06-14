@@ -61,6 +61,35 @@ namespace SSC {
       using UDP = CoreUDP;
       using AI = CoreAI;
 
+      struct Options : SSC::Options {
+        struct Features {
+        #if !SOCKET_RUNTIME_PLATFORM_IOS
+          bool useChildProcess = true;
+        #endif
+
+          bool useDNS = true;
+          bool useFS = true;
+          bool useGeolocation = true;
+          bool useNetworkStatus = true;
+          bool useNotifications = true;
+          bool useOS = true;
+          bool usePlatform = true;
+          bool useTimers = true;
+          bool useUDP = true;
+          bool useAI = true;
+        };
+
+        Features features;
+
+      #if SOCKET_RUNTIME_PLATFORM_LINUX
+        // this is turned on in the WebKitWebProcess extension to avoid
+        // deadlocking the GTK loop AND WebKit WebView thread as they
+        // are shared and we typically "interpolate" loop execution
+        // with the GTK thread on the main runtime process
+        bool dedicatedLoopThread = false;
+      #endif
+      };
+
       struct SharedPointerBuffer {
         SharedPointer<char[]> pointer;
         unsigned int ttl = 0;
@@ -81,6 +110,7 @@ namespace SSC {
       AI ai;
 
       Vector<SharedPointerBuffer> sharedPointerBuffers;
+      Options options = {};
       Posts posts;
 
       Mutex mutex;
@@ -113,7 +143,8 @@ namespace SSC {
         Thread *eventLoopThread = nullptr;
       #endif
 
-      Core (bool isUtility = false) :
+      Core (const Options& options) :
+        options(options),
         #if !SOCKET_RUNTIME_PLATFORM_IOS
           childProcess(this),
         #endif
@@ -122,7 +153,7 @@ namespace SSC {
         fs(this),
         geolocation(this),
         networkStatus(this),
-        notifications(this, isUtility),
+        notifications(this, { options.features.useNotifications }),
         os(this),
         platform(this),
         timers(this),
@@ -130,6 +161,10 @@ namespace SSC {
       {
         initEventLoop();
       }
+
+      Core ()
+        : Core(Options {})
+      {}
 
       ~Core () {
         this->shutdown();
