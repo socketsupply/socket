@@ -160,31 +160,30 @@ async function api (options = {}, events, dgram) {
   }
 
   const unpack = async packet => {
-    let opened
     let verified
     const scid = Buffer.from(packet.subclusterId).toString('base64')
     const sub = bus.subclusters.get(scid)
     if (!sub) return {}
 
-    const { err: errOpen, data: dataOpened } = await _peer.open(packet.message, scid)
+    const opened = await _peer.open(packet.message, scid)
 
-    if (errOpen) {
-      sub._emit('warning', errOpen)
+    if (!opened) {
+      sub._emit('unopened', { packet })
       return {}
     }
 
     if (packet.sig) {
       try {
-        if (Encryption.verify(opened.data || opened, packet.sig, packet.usr2)) {
+        if (Encryption.verify(opened, packet.sig, packet.usr2)) {
           verified = true
         }
       } catch (err) {
-        sub._emit('warning', err)
+        sub._emit('unverified', packet)
         return {}
       }
     }
 
-    return { opened, verified }
+    return { opened: Buffer.from(opened), verified }
   }
 
   /**

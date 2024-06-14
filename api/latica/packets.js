@@ -1,7 +1,6 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import { debug } from './index.js'
 
 /**
  * Hash function factory.
@@ -153,13 +152,13 @@ export const validatePacket = (o, constraints) => {
 
   for (const [key, con] of Object.entries(constraints)) {
     if (con.required && !o[key]) {
-      debug(new Error(`${key} is required (${JSON.stringify(o, null, 2)})`), JSON.stringify(o))
+      // console.warn(new Error(`${key} is required (${JSON.stringify(o, null, 2)})`), JSON.stringify(o))
     }
 
     const type = ({}).toString.call(o[key]).slice(8, -1).toLowerCase()
 
     if (o[key] && type !== con.type) {
-      debug(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
+      // console.warn(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
     }
   }
 }

@@ -117,7 +117,7 @@ namespace SSC {
 
       auto llm = this->getLLM(id);
 
-      llm->chat(message, [=](auto self, auto token, auto isComplete) {
+      llm->chat(message, [&](auto self, auto token, auto isComplete) {
         const auto json = JSON::Object::Entries {
           {"source", "ai.llm.chat"},
           {"data", JSON::Object::Entries {
@@ -264,9 +264,9 @@ namespace SSC {
       this->params.antiprompt = Vector<String> { options.antiprompt };
     }
 
-    #if SOCKET_RUNTIME_PLATFORM_IOS
-      this->params.use_mmap = false;
-    #endif
+    // #if SOCKET_RUNTIME_PLATFORM_IOS
+    //  this->params.use_mmap = false;
+    // #endif
 
     FileResource modelResource(options.path);
     FileResource metalResource(String("ggml-metal"));
