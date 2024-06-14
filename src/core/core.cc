@@ -170,7 +170,6 @@ namespace SSC {
     ) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
       auto loop = core->getEventLoop();
-      Lock lock(core->loopMutex);
       uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;
     }
@@ -196,10 +195,10 @@ namespace SSC {
 
         do {
           Lock lock(core->loopMutex);
-          if (core->eventLoopDispatchQueue.size() == 0) break;
-
-          dispatch = core->eventLoopDispatchQueue.front();
-          core->eventLoopDispatchQueue.pop();
+          if (core->eventLoopDispatchQueue.size() > 0) {
+            dispatch = core->eventLoopDispatchQueue.front();
+            core->eventLoopDispatchQueue.pop();
+          }
         } while (0);
 
         if (dispatch == nullptr) {
@@ -211,17 +210,19 @@ namespace SSC {
     });
 
   #if SOCKET_RUNTIME_PLATFORM_LINUX
-    GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
-    UVSource *uvSource = (UVSource *) source;
-    uvSource->core = this;
-    uvSource->tag = g_source_add_unix_fd(
-      source,
-      uv_backend_fd(&eventLoop),
-      (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
-    );
+    if (!this->options.dedicatedLoopThread) {
+      GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
+      UVSource *uvSource = (UVSource *) source;
+      uvSource->core = this;
+      uvSource->tag = g_source_add_unix_fd(
+        source,
+        uv_backend_fd(&eventLoop),
+        (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
+      );
 
-    g_source_set_priority(source, G_PRIORITY_HIGH);
-    g_source_attach(source, nullptr);
+      g_source_set_priority(source, G_PRIORITY_HIGH);
+      g_source_attach(source, nullptr);
+    }
   #endif
   }
 
@@ -243,7 +244,10 @@ namespace SSC {
   void Core::stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
-  #if SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #if !SOCKET_RUNTIME_PLATFORM_APPLE
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    if (this->options.dedicatedLoopThread) {
+  #endif
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -252,6 +256,9 @@ namespace SSC {
       delete eventLoopThread;
       eventLoopThread = nullptr;
     }
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    }
+  #endif
   #endif
   }
 
@@ -270,6 +277,7 @@ namespace SSC {
   void Core::signalDispatchEventLoop () {
     initEventLoop();
     runEventLoop();
+    Lock lock(this->loopMutex);
     uv_async_send(&eventLoopAsync);
   }
 
@@ -312,7 +320,10 @@ namespace SSC {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     Lock lock(this->loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-  #elif SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_WINDOWS
+  #else
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    if (this->options.dedicatedLoopThread) {
+  #endif
     Lock lock(this->loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
@@ -325,6 +336,9 @@ namespace SSC {
     }
 
     eventLoopThread = new std::thread(&pollEventLoop, this);
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    }
+  #endif
   #endif
   }
 

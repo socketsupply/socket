@@ -88,15 +88,15 @@ namespace SSC {
     };
   }
 
-  CoreNotifications::CoreNotifications (Core* core, bool isUtility = false)
+  CoreNotifications::CoreNotifications (Core* core, const Options& options)
     : CoreModule(core),
-      isUtility(isUtility),
+      options(options),
       permissionChangeObservers(),
       notificationResponseObservers(),
       notificationPresentedObservers()
   {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      if (this->isUtility) return;
+      if (!this->options.enabled) return;
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
       this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
@@ -138,7 +138,7 @@ namespace SSC {
 
   CoreNotifications::~CoreNotifications () {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      if (this->isUtility) return;
+      if (!this->options.enabled) return;
 
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 

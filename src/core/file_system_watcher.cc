@@ -125,8 +125,9 @@ namespace SSC {
     // a loop may be configured for the instance already, perhaps here or
     // manually by the caller
     if (this->core == nullptr) {
-      const bool isUtility = true;
-      this->core = new Core(isUtility);
+      Core::Options options;
+      options.features.useNotifications = false;
+      this->core = new Core(options);
       this->ownsCore = true;
     }
 
