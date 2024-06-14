@@ -1,4 +1,1069 @@
 
+declare module "socket:async/context" {
+    /**
+     * @module Async.AsyncContext
+     *
+     * Async Context for JavaScript based on the TC39 proposal.
+     *
+     * Example usage:
+     * ```js
+     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
+     * import AsyncContext from 'socket:async/context'
+     *
+     * const var = new AsyncContext.Variable()
+     * var.run('top', () => {
+     *   console.log(var.get()) // 'top'
+     *   queueMicrotask(() => {
+     *     var.run('nested', () => {
+     *       console.log(var.get()) // 'nested'
+     *     })
+     *   })
+     * })
+     * ```
+     *
+     * @see {@link https://tc39.es/proposal-async-context}
+     * @see {@link https://github.com/tc39/proposal-async-context}
+     */
+    /**
+     * @template T
+     * @typedef {{
+     *   name?: string,
+     *   defaultValue?: T
+     * }} VariableOptions
+     */
+    /**
+     * @callback AnyFunc
+     * @template T
+     * @this T
+     * @param {...any} args
+     * @returns {any}
+     */
+    /**
+     * `FrozenRevert` holds a frozen Mapping that will be simply restored
+     * when the revert is run.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     */
+    export class FrozenRevert {
+        /**
+         * `FrozenRevert` class constructor.
+         * @param {Mapping} mapping
+         */
+        constructor(mapping: Mapping);
+        /**
+         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
+         * called by `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping=} [unused]
+         * @return {Mapping}
+         */
+        restore(unused?: Mapping | undefined): Mapping;
+        #private;
+    }
+    /**
+     * Revert holds the state on how to revert a change to the
+     * `AsyncContext.Storage` current `Mapping`
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     * @template T
+     */
+    export class Revert<T> {
+        /**
+         * `Revert` class constructor.
+         * @param {Mapping} mapping
+         * @param {Variable<T>} key
+         */
+        constructor(mapping: Mapping, key: Variable<T>);
+        /**
+         * @type {T|undefined}
+         */
+        get previousVariable(): T;
+        /**
+         * Restores a mapping from this `Revert`. This function is called by
+         * `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping} current
+         * @return {Mapping}
+         */
+        restore(current: Mapping): Mapping;
+        #private;
+    }
+    /**
+     * A container for all `AsyncContext.Variable` instances and snapshot state.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
+     */
+    export class Mapping {
+        /**
+         * `Mapping` class constructor.
+         * @param {Map<Variable<any>, any>} data
+         */
+        constructor(data: Map<Variable<any>, any>);
+        /**
+         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
+         * `set()` and `delete()`.
+         */
+        freeze(): void;
+        /**
+         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
+         * @return {boolean}
+         */
+        isFrozen(): boolean;
+        /**
+         * Optionally returns a new `Mapping` if the current one is "frozen",
+         * otherwise it just returns the current instance.
+         * @return {Mapping}
+         */
+        fork(): Mapping;
+        /**
+         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
+         * returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        get<T_1>(key: Variable<T_1>): boolean;
+        /**
+         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
+         * then a "forked" (new) instance with the value set on it is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
+        /**
+         * Delete  an `AsyncContext.Variable` value at `key`.
+         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        delete<T_3>(key: Variable<T_3>): Mapping;
+        #private;
+    }
+    /**
+     * A container of all `AsyncContext.Variable` data.
+     * @ignore
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
+     */
+    export class Storage {
+        /**
+         * The current `Mapping` for this `AsyncContext`.
+         * @type {Mapping}
+         */
+        static "__#4@#current": Mapping;
+        /**
+         * Returns `true` if the current `Mapping` has a
+         * `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        static has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
+         * If not set, this function returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {T|undefined}
+         */
+        static get<T_1>(key: Variable<T_1>): T_1;
+        /**
+         * Set updates the `AsyncContext.Variable` with a new value and returns a
+         * revert action that allows the modification to be reversed in the future.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Revert<T>|FrozenRevert}
+         */
+        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
+        /**
+         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
+         * or `Revert` which can restore the storage state to the state at
+         * the time of the snapshot.
+         * @return {FrozenRevert}
+         */
+        static snapshot(): FrozenRevert;
+        /**
+         * Restores the storage `Mapping` state to state at the time the
+         * "revert" (`FrozenRevert` or `Revert`) was created.
+         * @template T
+         * @param {Revert<T>|FrozenRevert} revert
+         */
+        static restore<T_3>(revert: FrozenRevert | Revert<T_3>): void;
+        /**
+         * Switches storage `Mapping` state to the state at the time of a
+         * "snapshot".
+         * @param {FrozenRevert} snapshot
+         * @return {FrozenRevert}
+         */
+        static switch(snapshot: FrozenRevert): FrozenRevert;
+    }
+    /**
+     * `AsyncContext.Variable` is a container for a value that is associated with
+     * the current execution flow. The value is propagated through async execution
+     * flows, and can be snapshot and restored with Snapshot.
+     * @template T
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+     */
+    export class Variable<T> {
+        /**
+         * `Variable` class constructor.
+         * @param {VariableOptions<T>=} [options]
+         */
+        constructor(options?: VariableOptions<T> | undefined);
+        set defaultValue(defaultValue: T);
+        /**
+         * @ignore
+         */
+        get defaultValue(): T;
+        /**
+         * @ignore
+         */
+        get revert(): FrozenRevert | Revert<T>;
+        /**
+         * The name of this async context variable.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Executes a function `fn` with specified arguments,
+         * setting a new value to the current context before the call,
+         * and ensuring the environment is reverted back afterwards.
+         * The function allows for the modification of a specific context's
+         * state in a controlled manner, ensuring that any changes can be undone.
+         * @template T, F extends AnyFunc<null>
+         * @param {T} value
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        /**
+         * Get the `AsyncContext.Variable` value.
+         * @template T
+         * @return {T|undefined}
+         */
+        get<T_2>(): T_2;
+        #private;
+    }
+    /**
+     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+     * all `AsyncContext.Variable` instances and execute a function at a later time
+     * as if those values were still the current values (a snapshot and restore).
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+     */
+    export class Snapshot {
+        /**
+         * Wraps a given function `fn` with additional logic to take a snapshot of
+         * `Storage` before invoking `fn`. Returns a new function with the same
+         * signature as `fn` that when called, will invoke `fn` with the current
+         * `this` context and provided arguments, after restoring the `Storage`
+         * snapshot.
+         *
+         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
+         * of all Variables and returns a wrapped function. When invoked, this
+         * wrapped function restores the state of all Variables and executes the
+         * inner function.
+         *
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
+         *
+         * @template F
+         * @param {F} fn
+         * @returns {F}
+         */
+        static wrap<F_1>(fn: F_1): F_1;
+        /**
+         * Runs the given function `fn` with arguments `args`, using a `null`
+         * context and the current snapshot.
+         *
+         * @template F extends AnyFunc<null>
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        #private;
+    }
+    /**
+     * `AsyncContext` container.
+     */
+    export class AsyncContext {
+        /**
+         * `AsyncContext.Variable` is a container for a value that is associated with
+         * the current execution flow. The value is propagated through async execution
+         * flows, and can be snapshot and restored with Snapshot.
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+         * @type {typeof Variable}
+         */
+        static Variable: typeof Variable;
+        /**
+         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+         * all `AsyncContext.Variable` instances and execute a function at a later time
+         * as if those values were still the current values (a snapshot and restore).
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
+    }
+    export default AsyncContext;
+    export type VariableOptions<T> = {
+        name?: string;
+        defaultValue?: T;
+    };
+    export type AnyFunc = () => any;
+}
+
+declare module "socket:events" {
+    export const Event: {
+        new (type: string, eventInitDict?: EventInit): Event;
+        prototype: Event;
+        readonly NONE: 0;
+        readonly CAPTURING_PHASE: 1;
+        readonly AT_TARGET: 2;
+        readonly BUBBLING_PHASE: 3;
+    } | {
+        new (): {};
+    };
+    export const EventTarget: {
+        new (): {};
+    };
+    export const CustomEvent: {
+        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
+        prototype: CustomEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#7@#detail": any;
+            readonly detail: any;
+        };
+    };
+    export const MessageEvent: {
+        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
+        prototype: MessageEvent<any>;
+    } | {
+        new (type: any, options: any): {
+            "__#8@#detail": any;
+            "__#8@#data": any;
+            readonly detail: any;
+            readonly data: any;
+        };
+    };
+    export const ErrorEvent: {
+        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
+        prototype: ErrorEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#9@#detail": any;
+            "__#9@#error": any;
+            readonly detail: any;
+            readonly error: any;
+        };
+    };
+    export default EventEmitter;
+    export function EventEmitter(): void;
+    export class EventEmitter {
+        _events: any;
+        _contexts: any;
+        _eventsCount: number;
+        _maxListeners: number;
+        setMaxListeners(n: any): this;
+        getMaxListeners(): any;
+        emit(type: any, ...args: any[]): boolean;
+        addListener(type: any, listener: any): any;
+        on(arg0: any, arg1: any): any;
+        prependListener(type: any, listener: any): any;
+        once(type: any, listener: any): this;
+        prependOnceListener(type: any, listener: any): this;
+        removeListener(type: any, listener: any): this;
+        off(type: any, listener: any): this;
+        removeAllListeners(type: any, ...args: any[]): this;
+        listeners(type: any): any[];
+        rawListeners(type: any): any[];
+        listenerCount(type: any): any;
+        eventNames(): (string | symbol)[];
+    }
+    export namespace EventEmitter {
+        export { EventEmitter };
+        export let defaultMaxListeners: number;
+        export function init(): void;
+        export function listenerCount(emitter: any, type: any): any;
+        export { once };
+    }
+    export function once(emitter: any, name: any): Promise<any>;
+}
+
+declare module "socket:buffer" {
+    export default Buffer;
+    export const File: {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        prototype: File;
+    };
+    export const Blob: {
+        new (blobParts?: BlobPart[], options?: BlobPropertyBag): Blob;
+        prototype: Blob;
+    };
+    export namespace constants {
+        export { kMaxLength as MAX_LENGTH };
+        export { kMaxLength as MAX_STRING_LENGTH };
+    }
+    export const btoa: any;
+    export const atob: any;
+    /**
+     * The Buffer constructor returns instances of `Uint8Array` that have their
+     * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
+     * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
+     * and the `Uint8Array` methods. Square bracket notation works as expected -- it
+     * returns a single octet.
+     *
+     * The `Uint8Array` prototype remains unmodified.
+     */
+    /**
+     * @name Buffer
+     * @extends {Uint8Array}
+     */
+    export function Buffer(arg: any, encodingOrOffset: any, length: any): any;
+    export class Buffer {
+        /**
+         * The Buffer constructor returns instances of `Uint8Array` that have their
+         * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
+         * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
+         * and the `Uint8Array` methods. Square bracket notation works as expected -- it
+         * returns a single octet.
+         *
+         * The `Uint8Array` prototype remains unmodified.
+         */
+        /**
+         * @name Buffer
+         * @extends {Uint8Array}
+         */
+        constructor(arg: any, encodingOrOffset: any, length: any);
+        get parent(): any;
+        get offset(): any;
+        _isBuffer: boolean;
+        swap16(): this;
+        swap32(): this;
+        swap64(): this;
+        toString(...args: any[]): any;
+        toLocaleString: any;
+        equals(b: any): boolean;
+        inspect(): string;
+        compare(target: any, start: any, end: any, thisStart: any, thisEnd: any): 0 | 1 | -1;
+        includes(val: any, byteOffset: any, encoding: any): boolean;
+        indexOf(val: any, byteOffset: any, encoding: any): any;
+        lastIndexOf(val: any, byteOffset: any, encoding: any): any;
+        write(string: any, offset: any, length: any, encoding: any): number;
+        toJSON(): {
+            type: string;
+            data: any;
+        };
+        slice(start: any, end: any): any;
+        readUintLE: (offset: any, byteLength: any, noAssert: any) => any;
+        readUIntLE(offset: any, byteLength: any, noAssert: any): any;
+        readUintBE: (offset: any, byteLength: any, noAssert: any) => any;
+        readUIntBE(offset: any, byteLength: any, noAssert: any): any;
+        readUint8: (offset: any, noAssert: any) => any;
+        readUInt8(offset: any, noAssert: any): any;
+        readUint16LE: (offset: any, noAssert: any) => number;
+        readUInt16LE(offset: any, noAssert: any): number;
+        readUint16BE: (offset: any, noAssert: any) => number;
+        readUInt16BE(offset: any, noAssert: any): number;
+        readUint32LE: (offset: any, noAssert: any) => number;
+        readUInt32LE(offset: any, noAssert: any): number;
+        readUint32BE: (offset: any, noAssert: any) => number;
+        readUInt32BE(offset: any, noAssert: any): number;
+        readBigUInt64LE: any;
+        readBigUInt64BE: any;
+        readIntLE(offset: any, byteLength: any, noAssert: any): any;
+        readIntBE(offset: any, byteLength: any, noAssert: any): any;
+        readInt8(offset: any, noAssert: any): any;
+        readInt16LE(offset: any, noAssert: any): number;
+        readInt16BE(offset: any, noAssert: any): number;
+        readInt32LE(offset: any, noAssert: any): number;
+        readInt32BE(offset: any, noAssert: any): number;
+        readBigInt64LE: any;
+        readBigInt64BE: any;
+        readFloatLE(offset: any, noAssert: any): number;
+        readFloatBE(offset: any, noAssert: any): number;
+        readDoubleLE(offset: any, noAssert: any): number;
+        readDoubleBE(offset: any, noAssert: any): number;
+        writeUintLE: (value: any, offset: any, byteLength: any, noAssert: any) => any;
+        writeUIntLE(value: any, offset: any, byteLength: any, noAssert: any): any;
+        writeUintBE: (value: any, offset: any, byteLength: any, noAssert: any) => any;
+        writeUIntBE(value: any, offset: any, byteLength: any, noAssert: any): any;
+        writeUint8: (value: any, offset: any, noAssert: any) => any;
+        writeUInt8(value: any, offset: any, noAssert: any): any;
+        writeUint16LE: (value: any, offset: any, noAssert: any) => any;
+        writeUInt16LE(value: any, offset: any, noAssert: any): any;
+        writeUint16BE: (value: any, offset: any, noAssert: any) => any;
+        writeUInt16BE(value: any, offset: any, noAssert: any): any;
+        writeUint32LE: (value: any, offset: any, noAssert: any) => any;
+        writeUInt32LE(value: any, offset: any, noAssert: any): any;
+        writeUint32BE: (value: any, offset: any, noAssert: any) => any;
+        writeUInt32BE(value: any, offset: any, noAssert: any): any;
+        writeBigUInt64LE: any;
+        writeBigUInt64BE: any;
+        writeIntLE(value: any, offset: any, byteLength: any, noAssert: any): any;
+        writeIntBE(value: any, offset: any, byteLength: any, noAssert: any): any;
+        writeInt8(value: any, offset: any, noAssert: any): any;
+        writeInt16LE(value: any, offset: any, noAssert: any): any;
+        writeInt16BE(value: any, offset: any, noAssert: any): any;
+        writeInt32LE(value: any, offset: any, noAssert: any): any;
+        writeInt32BE(value: any, offset: any, noAssert: any): any;
+        writeBigInt64LE: any;
+        writeBigInt64BE: any;
+        writeFloatLE(value: any, offset: any, noAssert: any): any;
+        writeFloatBE(value: any, offset: any, noAssert: any): any;
+        writeDoubleLE(value: any, offset: any, noAssert: any): any;
+        writeDoubleBE(value: any, offset: any, noAssert: any): any;
+        copy(target: any, targetStart: any, start: any, end: any): number;
+        fill(val: any, start: any, end: any, encoding: any): this;
+    }
+    export namespace Buffer {
+        export let TYPED_ARRAY_SUPPORT: boolean;
+        export let poolSize: number;
+        /**
+         * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
+         * if value is a number.
+         * Buffer.from(str[, encoding])
+         * Buffer.from(array)
+         * Buffer.from(buffer)
+         * Buffer.from(arrayBuffer[, byteOffset[, length]])
+         **/
+        export function from(value: any, encodingOrOffset?: any, length?: any): any;
+        /**
+         * Creates a new filled Buffer instance.
+         * alloc(size[, fill[, encoding]])
+         **/
+        export function alloc(size: any, fill: any, encoding: any): Uint8Array;
+        /**
+         * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
+         * */
+        export function allocUnsafe(size: any): Uint8Array;
+        /**
+         * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
+         */
+        export function allocUnsafeSlow(size: any): Uint8Array;
+        export function isBuffer(b: any): boolean;
+        export function compare(a: any, b: any): 0 | 1 | -1;
+        export function isEncoding(encoding: any): boolean;
+        export function concat(list: any, length: any): Uint8Array;
+        export { byteLength };
+    }
+    export const kMaxLength: 2147483647;
+    export function SlowBuffer(length: any): Uint8Array;
+    export const INSPECT_MAX_BYTES: 50;
+    function byteLength(string: any, encoding: any, ...args: any[]): any;
+}
+
+declare module "socket:url/urlpattern/urlpattern" {
+    export { me as URLPattern };
+    var me: {
+        new (t: {}, r: any, n: any): {
+            "__#11@#i": any;
+            "__#11@#n": {};
+            "__#11@#t": {};
+            "__#11@#e": {};
+            "__#11@#s": {};
+            "__#11@#l": boolean;
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+            readonly hasRegExpGroups: boolean;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+}
+
+declare module "socket:url/url/url" {
+    const _default: any;
+    export default _default;
+}
+
+declare module "socket:querystring" {
+    export function unescapeBuffer(s: any, decodeSpaces: any): any;
+    export function unescape(s: any, decodeSpaces: any): any;
+    export function escape(str: any): any;
+    export function stringify(obj: any, sep: any, eq: any, options: any): string;
+    export function parse(qs: any, sep: any, eq: any, options: any): {};
+    export function decode(qs: any, sep: any, eq: any, options: any): {};
+    export function encode(obj: any, sep: any, eq: any, options: any): string;
+    namespace _default {
+        export { decode };
+        export { encode };
+        export { parse };
+        export { stringify };
+        export { escape };
+        export { unescape };
+    }
+    export default _default;
+}
+
+declare module "socket:url/index" {
+    export function parse(input: any, options?: any): {
+        hash: any;
+        host: any;
+        hostname: any;
+        origin: any;
+        auth: string;
+        password: any;
+        pathname: any;
+        path: any;
+        port: any;
+        protocol: any;
+        search: any;
+        searchParams: any;
+        username: any;
+        [Symbol.toStringTag]: string;
+    };
+    export function resolve(from: any, to: any): any;
+    export function format(input: any): any;
+    export function fileURLToPath(url: any): any;
+    const URLPattern_base: {
+        new (t: {}, r: any, n: any): {
+            "__#11@#i": any;
+            "__#11@#n": {};
+            "__#11@#t": {};
+            "__#11@#e": {};
+            "__#11@#s": {};
+            "__#11@#l": boolean;
+            test(t: {}, r: any): boolean;
+            exec(t: {}, r: any): {
+                inputs: any[] | {}[];
+            };
+            readonly protocol: any;
+            readonly username: any;
+            readonly password: any;
+            readonly hostname: any;
+            readonly port: any;
+            readonly pathname: any;
+            readonly search: any;
+            readonly hash: any;
+            readonly hasRegExpGroups: boolean;
+        };
+        compareComponent(t: any, r: any, n: any): number;
+    };
+    export class URLPattern extends URLPattern_base {
+    }
+    export const protocols: Set<string>;
+    export default URL;
+    export class URL {
+        private constructor();
+    }
+    export const URLSearchParams: any;
+    export const parseURL: any;
+}
+
+declare module "socket:url" {
+    export * from "socket:url/index";
+    export default URL;
+    import URL from "socket:url/index";
+}
+
+declare module "socket:ipc" {
+    export function maybeMakeError(error: any, caller: any): any;
+    /**
+     * Parses `seq` as integer value
+     * @param {string|number} seq
+     * @param {object=} [options]
+     * @param {boolean} [options.bigint = false]
+     * @ignore
+     */
+    export function parseSeq(seq: string | number, options?: object | undefined): number | bigint;
+    /**
+     * If `debug.enabled === true`, then debug output will be printed to console.
+     * @param {(boolean)} [enable]
+     * @return {boolean}
+     * @ignore
+     */
+    export function debug(enable?: (boolean)): boolean;
+    export namespace debug {
+        let enabled: any;
+        function log(...args: any[]): any;
+    }
+    /**
+     * Find transfers for an in worker global `postMessage`
+     * that is proxied to the main thread.
+     * @ignore
+     */
+    export function findMessageTransfers(transfers: any, object: any): any;
+    /**
+     * @ignore
+     */
+    export function postMessage(message: any, ...args: any[]): any;
+    /**
+     * Waits for the native IPC layer to be ready and exposed on the
+     * global window object.
+     * @ignore
+     */
+    export function ready(): Promise<any>;
+    /**
+     * Sends a synchronous IPC command over XHR returning a `Result`
+     * upon success or error.
+     * @param {string} command
+     * @param {any?} [value]
+     * @param {object?} [options]
+     * @return {Result}
+     * @ignore
+     */
+    export function sendSync(command: string, value?: any | null, options?: object | null, buffer?: any): Result;
+    /**
+     * Emit event to be dispatched on `window` object.
+     * @param {string} name
+     * @param {any} value
+     * @param {EventTarget=} [target = window]
+     * @param {Object=} options
+     */
+    export function emit(name: string, value: any, target?: EventTarget | undefined, options?: any | undefined): Promise<void>;
+    /**
+     * Resolves a request by `seq` with possible value.
+     * @param {string} seq
+     * @param {any} value
+     * @ignore
+     */
+    export function resolve(seq: string, value: any): Promise<void>;
+    /**
+     * Sends an async IPC command request with parameters.
+     * @param {string} command
+     * @param {any=} value
+     * @param {object=} [options]
+     * @param {boolean=} [options.cache=false]
+     * @param {boolean=} [options.bytes=false]
+     * @return {Promise<Result>}
+     */
+    export function send(command: string, value?: any | undefined, options?: object | undefined): Promise<Result>;
+    /**
+     * Sends an async IPC command request with parameters and buffered bytes.
+     * @param {string} command
+     * @param {any=} value
+     * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
+     * @param {object=} options
+     * @ignore
+     */
+    export function write(command: string, value?: any | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
+    /**
+     * Sends an async IPC command request with parameters requesting a response
+     * with buffered bytes.
+     * @param {string} command
+     * @param {any=} value
+     * @param {object=} options
+     * @ignore
+     */
+    export function request(command: string, value?: any | undefined, options?: object | undefined): Promise<any>;
+    /**
+     * Factory for creating a proxy based IPC API.
+     * @param {string} domain
+     * @param {(function|object)=} ctx
+     * @param {string=} [ctx.default]
+     * @return {Proxy}
+     * @ignore
+     */
+    export function createBinding(domain: string, ctx?: (Function | object) | undefined): ProxyConstructor;
+    /**
+     * Represents an OK IPC status.
+     * @ignore
+     */
+    export const OK: 0;
+    /**
+     * Represents an ERROR IPC status.
+     * @ignore
+     */
+    export const ERROR: 1;
+    /**
+     * Timeout in milliseconds for IPC requests.
+     * @ignore
+     */
+    export const TIMEOUT: number;
+    /**
+     * Symbol for the `ipc.debug.enabled` property
+     * @ignore
+     */
+    export const kDebugEnabled: unique symbol;
+    /**
+     * @ignore
+     */
+    export class Headers extends globalThis.Headers {
+        /**
+         * @ignore
+         */
+        static from(input: any): any;
+        /**
+         * @ignore
+         */
+        get length(): number;
+        /**
+         * @ignore
+         */
+        toJSON(): {
+            [k: string]: string;
+        };
+    }
+    const Message_base: any;
+    /**
+     * A container for a IPC message based on a `ipc://` URI scheme.
+     * @ignore
+     */
+    export class Message extends Message_base {
+        [x: string]: any;
+        /**
+         * The expected protocol for an IPC message.
+         * @ignore
+         */
+        static get PROTOCOL(): string;
+        /**
+         * Creates a `Message` instance from a variety of input.
+         * @param {string|URL|Message|Buffer|object} input
+         * @param {(object|string|URLSearchParams)=} [params]
+         * @param {(ArrayBuffer|Uint8Array|string)?} [bytes]
+         * @return {Message}
+         * @ignore
+         */
+        static from(input: string | URL | Message | Buffer | object, params?: (object | string | URLSearchParams) | undefined, bytes?: (ArrayBuffer | Uint8Array | string) | null): Message;
+        /**
+         * Predicate to determine if `input` is valid for constructing
+         * a new `Message` instance.
+         * @param {string|URL|Message|Buffer|object} input
+         * @return {boolean}
+         * @ignore
+         */
+        static isValidInput(input: string | URL | Message | Buffer | object): boolean;
+        /**
+         * `Message` class constructor.
+         * @protected
+         * @param {string|URL} input
+         * @param {(object|Uint8Array)?} [bytes]
+         * @ignore
+         */
+        protected constructor();
+        /**
+         *  @type {Uint8Array?}
+         *  @ignore
+         */
+        bytes: Uint8Array | null;
+        /**
+         * Computed IPC message name.
+         * @type {string}
+         * @ignore
+         */
+        get command(): string;
+        /**
+         * Computed IPC message name.
+         * @type {string}
+         * @ignore
+         */
+        get name(): string;
+        /**
+         * Computed `id` value for the command.
+         * @type {string}
+         * @ignore
+         */
+        get id(): string;
+        /**
+         * Computed `seq` (sequence) value for the command.
+         * @type {string}
+         * @ignore
+         */
+        get seq(): string;
+        /**
+         * Computed message value potentially given in message parameters.
+         * This value is automatically decoded, but not treated as JSON.
+         * @type {string}
+         * @ignore
+         */
+        get value(): string;
+        /**
+         * Computed `index` value for the command potentially referring to
+         * the window index the command is scoped to or originating from. If not
+         * specified in the message parameters, then this value defaults to `-1`.
+         * @type {number}
+         * @ignore
+         */
+        get index(): number;
+        /**
+         * Computed value parsed as JSON. This value is `null` if the value is not present
+         * or it is invalid JSON.
+         * @type {object?}
+         * @ignore
+         */
+        get json(): any;
+        /**
+         * Computed readonly object of message parameters.
+         * @type {object}
+         * @ignore
+         */
+        get params(): any;
+        /**
+         * Gets unparsed message parameters.
+         * @type {Array<Array<string>>}
+         * @ignore
+         */
+        get rawParams(): string[][];
+        /**
+         * Returns computed parameters as entries
+         * @return {Array<Array<any>>}
+         * @ignore
+         */
+        entries(): Array<Array<any>>;
+        /**
+         * Set a parameter `value` by `key`.
+         * @param {string} key
+         * @param {any} value
+         * @ignore
+         */
+        set(key: string, value: any): any;
+        /**
+         * Get a parameter value by `key`.
+         * @param {string} key
+         * @param {any} defaultValue
+         * @return {any}
+         * @ignore
+         */
+        get(key: string, defaultValue: any): any;
+        /**
+         * Delete a parameter by `key`.
+         * @param {string} key
+         * @return {boolean}
+         * @ignore
+         */
+        delete(key: string): boolean;
+        /**
+         * Computed parameter keys.
+         * @return {Array<string>}
+         * @ignore
+         */
+        keys(): Array<string>;
+        /**
+         * Computed parameter values.
+         * @return {Array<any>}
+         * @ignore
+         */
+        values(): Array<any>;
+        /**
+         * Predicate to determine if parameter `key` is present in parameters.
+         * @param {string} key
+         * @return {boolean}
+         * @ignore
+         */
+        has(key: string): boolean;
+    }
+    /**
+     * A result type used internally for handling
+     * IPC result values from the native layer that are in the form
+     * of `{ err?, data? }`. The `data` and `err` properties on this
+     * type of object are in tuple form and be accessed at `[data?,err?]`
+     * @ignore
+     */
+    export class Result {
+        /**
+         * Creates a `Result` instance from input that may be an object
+         * like `{ err?, data? }`, an `Error` instance, or just `data`.
+         * @param {(object|Error|any)?} result
+         * @param {Error|object} [maybeError]
+         * @param {string} [maybeSource]
+         * @param {object|string|Headers} [maybeHeaders]
+         * @return {Result}
+         * @ignore
+         */
+        static from(result: (object | Error | any) | null, maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
+        /**
+         * `Result` class constructor.
+         * @private
+         * @param {string?} [id = null]
+         * @param {Error?} [err = null]
+         * @param {object?} [data = null]
+         * @param {string?} [source = null]
+         * @param {(object|string|Headers)?} [headers = null]
+         * @ignore
+         */
+        private constructor();
+        /**
+         * The unique ID for this result.
+         * @type {string}
+         * @ignore
+         */
+        id: string;
+        /**
+         * An optional error in the result.
+         * @type {Error?}
+         * @ignore
+         */
+        err: Error | null;
+        /**
+         * Result data if given.
+         * @type {(string|object|Uint8Array)?}
+         * @ignore
+         */
+        data: (string | object | Uint8Array) | null;
+        /**
+         * The source of this result.
+         * @type {string?}
+         * @ignore
+         */
+        source: string | null;
+        /**
+         * Result headers, if given.
+         * @type {Headers?}
+         * @ignore
+         */
+        headers: Headers | null;
+        /**
+         * Computed result length.
+         * @ignore
+         */
+        get length(): any;
+        /**
+         * @ignore
+         */
+        toJSON(): {
+            headers: {
+                [k: string]: string;
+            };
+            source: string;
+            data: any;
+            err: {
+                name: string;
+                message: string;
+                stack?: string;
+                cause?: unknown;
+                type: any;
+                code: any;
+            };
+        };
+        /**
+         * Generator for an `Iterable` interface over this instance.
+         * @ignore
+         */
+        [Symbol.iterator](): Generator<any, void, unknown>;
+    }
+    /**
+     * @ignore
+     */
+    export const primordials: any;
+    export default exports;
+    import { Buffer } from "socket:buffer";
+    import { URL } from "socket:url/index";
+    import * as exports from "socket:ipc";
+    
+}
+
 declare module "socket:os/constants" {
     export type errno = number;
     /**
@@ -472,282 +1537,6 @@ declare module "socket:errors" {
     }
     import * as exports from "socket:errors";
     
-}
-
-declare module "socket:buffer" {
-    export default Buffer;
-    export const File: {
-        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
-        prototype: File;
-    };
-    export const Blob: {
-        new (blobParts?: BlobPart[], options?: BlobPropertyBag): Blob;
-        prototype: Blob;
-    };
-    export namespace constants {
-        export { kMaxLength as MAX_LENGTH };
-        export { kMaxLength as MAX_STRING_LENGTH };
-    }
-    export const btoa: any;
-    export const atob: any;
-    /**
-     * The Buffer constructor returns instances of `Uint8Array` that have their
-     * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
-     * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
-     * and the `Uint8Array` methods. Square bracket notation works as expected -- it
-     * returns a single octet.
-     *
-     * The `Uint8Array` prototype remains unmodified.
-     */
-    /**
-     * @name Buffer
-     * @extends {Uint8Array}
-     */
-    export function Buffer(arg: any, encodingOrOffset: any, length: any): any;
-    export class Buffer {
-        /**
-         * The Buffer constructor returns instances of `Uint8Array` that have their
-         * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
-         * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
-         * and the `Uint8Array` methods. Square bracket notation works as expected -- it
-         * returns a single octet.
-         *
-         * The `Uint8Array` prototype remains unmodified.
-         */
-        /**
-         * @name Buffer
-         * @extends {Uint8Array}
-         */
-        constructor(arg: any, encodingOrOffset: any, length: any);
-        get parent(): any;
-        get offset(): any;
-        _isBuffer: boolean;
-        swap16(): this;
-        swap32(): this;
-        swap64(): this;
-        toString(...args: any[]): any;
-        toLocaleString: any;
-        equals(b: any): boolean;
-        inspect(): string;
-        compare(target: any, start: any, end: any, thisStart: any, thisEnd: any): 0 | 1 | -1;
-        includes(val: any, byteOffset: any, encoding: any): boolean;
-        indexOf(val: any, byteOffset: any, encoding: any): any;
-        lastIndexOf(val: any, byteOffset: any, encoding: any): any;
-        write(string: any, offset: any, length: any, encoding: any): number;
-        toJSON(): {
-            type: string;
-            data: any;
-        };
-        slice(start: any, end: any): any;
-        readUintLE: (offset: any, byteLength: any, noAssert: any) => any;
-        readUIntLE(offset: any, byteLength: any, noAssert: any): any;
-        readUintBE: (offset: any, byteLength: any, noAssert: any) => any;
-        readUIntBE(offset: any, byteLength: any, noAssert: any): any;
-        readUint8: (offset: any, noAssert: any) => any;
-        readUInt8(offset: any, noAssert: any): any;
-        readUint16LE: (offset: any, noAssert: any) => number;
-        readUInt16LE(offset: any, noAssert: any): number;
-        readUint16BE: (offset: any, noAssert: any) => number;
-        readUInt16BE(offset: any, noAssert: any): number;
-        readUint32LE: (offset: any, noAssert: any) => number;
-        readUInt32LE(offset: any, noAssert: any): number;
-        readUint32BE: (offset: any, noAssert: any) => number;
-        readUInt32BE(offset: any, noAssert: any): number;
-        readBigUInt64LE: any;
-        readBigUInt64BE: any;
-        readIntLE(offset: any, byteLength: any, noAssert: any): any;
-        readIntBE(offset: any, byteLength: any, noAssert: any): any;
-        readInt8(offset: any, noAssert: any): any;
-        readInt16LE(offset: any, noAssert: any): number;
-        readInt16BE(offset: any, noAssert: any): number;
-        readInt32LE(offset: any, noAssert: any): number;
-        readInt32BE(offset: any, noAssert: any): number;
-        readBigInt64LE: any;
-        readBigInt64BE: any;
-        readFloatLE(offset: any, noAssert: any): number;
-        readFloatBE(offset: any, noAssert: any): number;
-        readDoubleLE(offset: any, noAssert: any): number;
-        readDoubleBE(offset: any, noAssert: any): number;
-        writeUintLE: (value: any, offset: any, byteLength: any, noAssert: any) => any;
-        writeUIntLE(value: any, offset: any, byteLength: any, noAssert: any): any;
-        writeUintBE: (value: any, offset: any, byteLength: any, noAssert: any) => any;
-        writeUIntBE(value: any, offset: any, byteLength: any, noAssert: any): any;
-        writeUint8: (value: any, offset: any, noAssert: any) => any;
-        writeUInt8(value: any, offset: any, noAssert: any): any;
-        writeUint16LE: (value: any, offset: any, noAssert: any) => any;
-        writeUInt16LE(value: any, offset: any, noAssert: any): any;
-        writeUint16BE: (value: any, offset: any, noAssert: any) => any;
-        writeUInt16BE(value: any, offset: any, noAssert: any): any;
-        writeUint32LE: (value: any, offset: any, noAssert: any) => any;
-        writeUInt32LE(value: any, offset: any, noAssert: any): any;
-        writeUint32BE: (value: any, offset: any, noAssert: any) => any;
-        writeUInt32BE(value: any, offset: any, noAssert: any): any;
-        writeBigUInt64LE: any;
-        writeBigUInt64BE: any;
-        writeIntLE(value: any, offset: any, byteLength: any, noAssert: any): any;
-        writeIntBE(value: any, offset: any, byteLength: any, noAssert: any): any;
-        writeInt8(value: any, offset: any, noAssert: any): any;
-        writeInt16LE(value: any, offset: any, noAssert: any): any;
-        writeInt16BE(value: any, offset: any, noAssert: any): any;
-        writeInt32LE(value: any, offset: any, noAssert: any): any;
-        writeInt32BE(value: any, offset: any, noAssert: any): any;
-        writeBigInt64LE: any;
-        writeBigInt64BE: any;
-        writeFloatLE(value: any, offset: any, noAssert: any): any;
-        writeFloatBE(value: any, offset: any, noAssert: any): any;
-        writeDoubleLE(value: any, offset: any, noAssert: any): any;
-        writeDoubleBE(value: any, offset: any, noAssert: any): any;
-        copy(target: any, targetStart: any, start: any, end: any): number;
-        fill(val: any, start: any, end: any, encoding: any): this;
-    }
-    export namespace Buffer {
-        export let TYPED_ARRAY_SUPPORT: boolean;
-        export let poolSize: number;
-        /**
-         * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
-         * if value is a number.
-         * Buffer.from(str[, encoding])
-         * Buffer.from(array)
-         * Buffer.from(buffer)
-         * Buffer.from(arrayBuffer[, byteOffset[, length]])
-         **/
-        export function from(value: any, encodingOrOffset?: any, length?: any): any;
-        /**
-         * Creates a new filled Buffer instance.
-         * alloc(size[, fill[, encoding]])
-         **/
-        export function alloc(size: any, fill: any, encoding: any): Uint8Array;
-        /**
-         * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
-         * */
-        export function allocUnsafe(size: any): Uint8Array;
-        /**
-         * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
-         */
-        export function allocUnsafeSlow(size: any): Uint8Array;
-        export function isBuffer(b: any): boolean;
-        export function compare(a: any, b: any): 0 | 1 | -1;
-        export function isEncoding(encoding: any): boolean;
-        export function concat(list: any, length: any): Uint8Array;
-        export { byteLength };
-    }
-    export const kMaxLength: 2147483647;
-    export function SlowBuffer(length: any): Uint8Array;
-    export const INSPECT_MAX_BYTES: 50;
-    function byteLength(string: any, encoding: any, ...args: any[]): any;
-}
-
-declare module "socket:url/urlpattern/urlpattern" {
-    export { me as URLPattern };
-    var me: {
-        new (t: {}, r: any, n: any): {
-            "__#3@#i": any;
-            "__#3@#n": {};
-            "__#3@#t": {};
-            "__#3@#e": {};
-            "__#3@#s": {};
-            "__#3@#l": boolean;
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-            readonly hasRegExpGroups: boolean;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-}
-
-declare module "socket:url/url/url" {
-    const _default: any;
-    export default _default;
-}
-
-declare module "socket:querystring" {
-    export function unescapeBuffer(s: any, decodeSpaces: any): any;
-    export function unescape(s: any, decodeSpaces: any): any;
-    export function escape(str: any): any;
-    export function stringify(obj: any, sep: any, eq: any, options: any): string;
-    export function parse(qs: any, sep: any, eq: any, options: any): {};
-    export function decode(qs: any, sep: any, eq: any, options: any): {};
-    export function encode(obj: any, sep: any, eq: any, options: any): string;
-    namespace _default {
-        export { decode };
-        export { encode };
-        export { parse };
-        export { stringify };
-        export { escape };
-        export { unescape };
-    }
-    export default _default;
-}
-
-declare module "socket:url/index" {
-    export function parse(input: any, options?: any): {
-        hash: any;
-        host: any;
-        hostname: any;
-        origin: any;
-        auth: string;
-        password: any;
-        pathname: any;
-        path: any;
-        port: any;
-        protocol: any;
-        search: any;
-        searchParams: any;
-        username: any;
-        [Symbol.toStringTag]: string;
-    };
-    export function resolve(from: any, to: any): any;
-    export function format(input: any): any;
-    export function fileURLToPath(url: any): any;
-    const URLPattern_base: {
-        new (t: {}, r: any, n: any): {
-            "__#3@#i": any;
-            "__#3@#n": {};
-            "__#3@#t": {};
-            "__#3@#e": {};
-            "__#3@#s": {};
-            "__#3@#l": boolean;
-            test(t: {}, r: any): boolean;
-            exec(t: {}, r: any): {
-                inputs: any[] | {}[];
-            };
-            readonly protocol: any;
-            readonly username: any;
-            readonly password: any;
-            readonly hostname: any;
-            readonly port: any;
-            readonly pathname: any;
-            readonly search: any;
-            readonly hash: any;
-            readonly hasRegExpGroups: boolean;
-        };
-        compareComponent(t: any, r: any, n: any): number;
-    };
-    export class URLPattern extends URLPattern_base {
-    }
-    export const protocols: Set<string>;
-    export default URL;
-    export class URL {
-        private constructor();
-    }
-    export const URLSearchParams: any;
-    export const parseURL: any;
-}
-
-declare module "socket:url" {
-    export * from "socket:url/index";
-    export default URL;
-    import URL from "socket:url/index";
 }
 
 declare module "socket:util/types" {
@@ -1322,6 +2111,7 @@ declare module "socket:util" {
     export const inspectSymbols: symbol[];
     export class IllegalConstructor {
     }
+    export const ESM_TEST_REGEX: RegExp;
     export const MIMEType: typeof mime.MIMEType;
     export const MIMEParams: typeof mime.MIMEParams;
     export default exports;
@@ -1329,409 +2119,6 @@ declare module "socket:util" {
     import mime from "socket:mime";
     import * as exports from "socket:util";
     
-}
-
-declare module "socket:async/context" {
-    /**
-     * @module Async.AsyncContext
-     *
-     * Async Context for JavaScript based on the TC39 proposal.
-     *
-     * Example usage:
-     * ```js
-     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
-     * import AsyncContext from 'socket:async/context'
-     *
-     * const var = new AsyncContext.Variable()
-     * var.run('top', () => {
-     *   console.log(var.get()) // 'top'
-     *   queueMicrotask(() => {
-     *     var.run('nested', () => {
-     *       console.log(var.get()) // 'nested'
-     *     })
-     *   })
-     * })
-     * ```
-     *
-     * @see {@link https://tc39.es/proposal-async-context}
-     * @see {@link https://github.com/tc39/proposal-async-context}
-     */
-    /**
-     * @template T
-     * @typedef {{
-     *   name?: string,
-     *   defaultValue?: T
-     * }} VariableOptions
-     */
-    /**
-     * @callback AnyFunc
-     * @template T
-     * @this T
-     * @param {...any} args
-     * @returns {any}
-     */
-    /**
-     * `FrozenRevert` holds a frozen Mapping that will be simply restored
-     * when the revert is run.
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
-     */
-    export class FrozenRevert {
-        /**
-         * `FrozenRevert` class constructor.
-         * @param {Mapping} mapping
-         */
-        constructor(mapping: Mapping);
-        /**
-         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
-         * called by `AsyncContext.Storage` when it reverts a current mapping to the
-         * previous state before a "fork".
-         * @param {Mapping=} [unused]
-         * @return {Mapping}
-         */
-        restore(unused?: Mapping | undefined): Mapping;
-        #private;
-    }
-    /**
-     * Revert holds the state on how to revert a change to the
-     * `AsyncContext.Storage` current `Mapping`
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
-     * @template T
-     */
-    export class Revert<T> {
-        /**
-         * `Revert` class constructor.
-         * @param {Mapping} mapping
-         * @param {Variable<T>} key
-         */
-        constructor(mapping: Mapping, key: Variable<T>);
-        /**
-         * @type {T|undefined}
-         */
-        get previousVariable(): T;
-        /**
-         * Restores a mapping from this `Revert`. This function is called by
-         * `AsyncContext.Storage` when it reverts a current mapping to the
-         * previous state before a "fork".
-         * @param {Mapping} current
-         * @return {Mapping}
-         */
-        restore(current: Mapping): Mapping;
-        #private;
-    }
-    /**
-     * A container for all `AsyncContext.Variable` instances and snapshot state.
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
-     */
-    export class Mapping {
-        /**
-         * `Mapping` class constructor.
-         * @param {Map<Variable<any>, any>} data
-         */
-        constructor(data: Map<Variable<any>, any>);
-        /**
-         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
-         * `set()` and `delete()`.
-         */
-        freeze(): void;
-        /**
-         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
-         * @return {boolean}
-         */
-        isFrozen(): boolean;
-        /**
-         * Optionally returns a new `Mapping` if the current one is "frozen",
-         * otherwise it just returns the current instance.
-         * @return {Mapping}
-         */
-        fork(): Mapping;
-        /**
-         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
-         * otherwise `false.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        has<T>(key: Variable<T>): boolean;
-        /**
-         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
-         * returns `undefined`.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        get<T_1>(key: Variable<T_1>): boolean;
-        /**
-         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
-         * then a "forked" (new) instance with the value set on it is returned,
-         * otherwise the current instance.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Mapping}
-         */
-        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
-        /**
-         * Delete  an `AsyncContext.Variable` value at `key`.
-         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
-         * otherwise the current instance.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Mapping}
-         */
-        delete<T_3>(key: Variable<T_3>): Mapping;
-        #private;
-    }
-    /**
-     * A container of all `AsyncContext.Variable` data.
-     * @ignore
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
-     */
-    export class Storage {
-        /**
-         * The current `Mapping` for this `AsyncContext`.
-         * @type {Mapping}
-         */
-        static "__#8@#current": Mapping;
-        /**
-         * Returns `true` if the current `Mapping` has a
-         * `AsyncContext.Variable` at `key`,
-         * otherwise `false.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        static has<T>(key: Variable<T>): boolean;
-        /**
-         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
-         * If not set, this function returns `undefined`.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {T|undefined}
-         */
-        static get<T_1>(key: Variable<T_1>): T_1;
-        /**
-         * Set updates the `AsyncContext.Variable` with a new value and returns a
-         * revert action that allows the modification to be reversed in the future.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Revert<T>|FrozenRevert}
-         */
-        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
-        /**
-         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
-         * or `Revert` which can restore the storage state to the state at
-         * the time of the snapshot.
-         * @return {FrozenRevert}
-         */
-        static snapshot(): FrozenRevert;
-        /**
-         * Restores the storage `Mapping` state to state at the time the
-         * "revert" (`FrozenRevert` or `Revert`) was created.
-         * @template T
-         * @param {Revert<T>|FrozenRevert} revert
-         */
-        static restore<T_3>(revert: FrozenRevert | Revert<T_3>): void;
-        /**
-         * Switches storage `Mapping` state to the state at the time of a
-         * "snapshot".
-         * @param {FrozenRevert} snapshot
-         * @return {FrozenRevert}
-         */
-        static switch(snapshot: FrozenRevert): FrozenRevert;
-    }
-    /**
-     * `AsyncContext.Variable` is a container for a value that is associated with
-     * the current execution flow. The value is propagated through async execution
-     * flows, and can be snapshot and restored with Snapshot.
-     * @template T
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
-     */
-    export class Variable<T> {
-        /**
-         * `Variable` class constructor.
-         * @param {VariableOptions<T>=} [options]
-         */
-        constructor(options?: VariableOptions<T> | undefined);
-        set defaultValue(defaultValue: T);
-        /**
-         * @ignore
-         */
-        get defaultValue(): T;
-        /**
-         * @ignore
-         */
-        get revert(): FrozenRevert | Revert<T>;
-        /**
-         * The name of this async context variable.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * Executes a function `fn` with specified arguments,
-         * setting a new value to the current context before the call,
-         * and ensuring the environment is reverted back afterwards.
-         * The function allows for the modification of a specific context's
-         * state in a controlled manner, ensuring that any changes can be undone.
-         * @template T, F extends AnyFunc<null>
-         * @param {T} value
-         * @param {F} fn
-         * @param {...Parameters<F>} args
-         * @returns {ReturnType<F>}
-         */
-        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
-        /**
-         * Get the `AsyncContext.Variable` value.
-         * @template T
-         * @return {T|undefined}
-         */
-        get<T_2>(): T_2;
-        #private;
-    }
-    /**
-     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
-     * all `AsyncContext.Variable` instances and execute a function at a later time
-     * as if those values were still the current values (a snapshot and restore).
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
-     */
-    export class Snapshot {
-        /**
-         * Wraps a given function `fn` with additional logic to take a snapshot of
-         * `Storage` before invoking `fn`. Returns a new function with the same
-         * signature as `fn` that when called, will invoke `fn` with the current
-         * `this` context and provided arguments, after restoring the `Storage`
-         * snapshot.
-         *
-         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
-         * of all Variables and returns a wrapped function. When invoked, this
-         * wrapped function restores the state of all Variables and executes the
-         * inner function.
-         *
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
-         *
-         * @template F
-         * @param {F} fn
-         * @returns {F}
-         */
-        static wrap<F_1>(fn: F_1): F_1;
-        /**
-         * Runs the given function `fn` with arguments `args`, using a `null`
-         * context and the current snapshot.
-         *
-         * @template F extends AnyFunc<null>
-         * @param {F} fn
-         * @param {...Parameters<F>} args
-         * @returns {ReturnType<F>}
-         */
-        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
-        #private;
-    }
-    /**
-     * `AsyncContext` container.
-     */
-    export class AsyncContext {
-        /**
-         * `AsyncContext.Variable` is a container for a value that is associated with
-         * the current execution flow. The value is propagated through async execution
-         * flows, and can be snapshot and restored with Snapshot.
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
-         * @type {typeof Variable}
-         */
-        static Variable: typeof Variable;
-        /**
-         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
-         * all `AsyncContext.Variable` instances and execute a function at a later time
-         * as if those values were still the current values (a snapshot and restore).
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
-         * @type {typeof Snapshot}
-         */
-        static Snapshot: typeof Snapshot;
-    }
-    export default AsyncContext;
-    export type VariableOptions<T> = {
-        name?: string;
-        defaultValue?: T;
-    };
-    export type AnyFunc = () => any;
-}
-
-declare module "socket:events" {
-    export const Event: {
-        new (type: string, eventInitDict?: EventInit): Event;
-        prototype: Event;
-        readonly NONE: 0;
-        readonly CAPTURING_PHASE: 1;
-        readonly AT_TARGET: 2;
-        readonly BUBBLING_PHASE: 3;
-    } | {
-        new (): {};
-    };
-    export const EventTarget: {
-        new (): {};
-    };
-    export const CustomEvent: {
-        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
-        prototype: CustomEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#11@#detail": any;
-            readonly detail: any;
-        };
-    };
-    export const MessageEvent: {
-        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
-        prototype: MessageEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#12@#detail": any;
-            "__#12@#data": any;
-            readonly detail: any;
-            readonly data: any;
-        };
-    };
-    export const ErrorEvent: {
-        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
-        prototype: ErrorEvent;
-    } | {
-        new (type: any, options: any): {
-            "__#13@#detail": any;
-            "__#13@#error": any;
-            readonly detail: any;
-            readonly error: any;
-        };
-    };
-    export default EventEmitter;
-    export function EventEmitter(): void;
-    export class EventEmitter {
-        _events: any;
-        _contexts: any;
-        _eventsCount: number;
-        _maxListeners: number;
-        setMaxListeners(n: any): this;
-        getMaxListeners(): any;
-        emit(type: any, ...args: any[]): boolean;
-        addListener(type: any, listener: any): any;
-        on(arg0: any, arg1: any): any;
-        prependListener(type: any, listener: any): any;
-        once(type: any, listener: any): this;
-        prependOnceListener(type: any, listener: any): this;
-        removeListener(type: any, listener: any): this;
-        off(type: any, listener: any): this;
-        removeAllListeners(type: any, ...args: any[]): this;
-        listeners(type: any): any[];
-        rawListeners(type: any): any[];
-        listenerCount(type: any): any;
-        eventNames(): any;
-    }
-    export namespace EventEmitter {
-        export { EventEmitter };
-        export let defaultMaxListeners: number;
-        export function init(): void;
-        export function listenerCount(emitter: any, type: any): any;
-        export { once };
-    }
-    export function once(emitter: any, name: any): Promise<any>;
 }
 
 declare module "socket:async/wrap" {
@@ -4102,6 +4489,7 @@ declare module "socket:fs/constants" {
     export const UV_DIRENT_BLOCK: any;
     export const UV_FS_SYMLINK_DIR: any;
     export const UV_FS_SYMLINK_JUNCTION: any;
+    export const UV_FS_O_FILEMAP: any;
     export const O_RDONLY: any;
     export const O_WRONLY: any;
     export const O_RDWR: any;
@@ -4461,9 +4849,10 @@ declare module "socket:fs/handle" {
         /**
          * Creates a `FileHandle` from a given `id` or `fd`
          * @param {string|number|DirectoryHandle|object} id
+         * @param {object} options
          * @return {DirectoryHandle}
          */
-        static from(id: string | number | DirectoryHandle | object): DirectoryHandle;
+        static from(id: string | number | DirectoryHandle | object, options: object): DirectoryHandle;
         /**
          * Asynchronously open a directory.
          * @param {string | Buffer | URL} path
@@ -4582,21 +4971,33 @@ declare module "socket:fs/dir" {
          */
         close(options?: object | Function, callback?: Function | undefined): Promise<any>;
         /**
+         * Closes container and underlying handle
+         * synchronously.
+         * @param {object=} [options]
+         */
+        closeSync(options?: object | undefined): void;
+        /**
          * Reads and returns directory entry.
          * @param {object|function} options
          * @param {function=} callback
-         * @return {Dirent|string}
+         * @return {Promise<Dirent[]|string[]>}
          */
-        read(options: object | Function, callback?: Function | undefined): Dirent | string;
+        read(options: object | Function, callback?: Function | undefined): Promise<Dirent[] | string[]>;
+        /**
+         * Reads and returns directory entry synchronously.
+         * @param {object|function} options
+         * @return {Dirent[]|string[]}
+         */
+        readSync(options?: object | Function): Dirent[] | string[];
         /**
          * AsyncGenerator which yields directory entries.
          * @param {object=} options
          */
-        entries(options?: object | undefined): AsyncGenerator<any, void, unknown>;
+        entries(options?: object | undefined): AsyncGenerator<string | exports.Dirent, void, unknown>;
         /**
          * `for await (...)` AsyncGenerator support.
          */
-        get [Symbol.asyncIterator](): (options?: object | undefined) => AsyncGenerator<any, void, unknown>;
+        get [Symbol.asyncIterator](): (options?: object | undefined) => AsyncGenerator<string | exports.Dirent, void, unknown>;
     }
     /**
      * A container for a directory entry.
@@ -5129,7 +5530,7 @@ declare module "socket:fs/promises" {
      * @param {string?} [options.encoding = 'utf8']
      * @param {boolean?} [options.withFileTypes = false]
      */
-    export function readdir(path: string | Buffer | URL, options: object | null): Promise<any[]>;
+    export function readdir(path: string | Buffer | URL, options: object | null): Promise<(string | Dirent)[]>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
      * @param {string} path
@@ -5223,11 +5624,11 @@ declare module "socket:fs/promises" {
     export type TypedArray = Uint8Array | Int8Array;
     import { FileHandle } from "socket:fs/handle";
     import { Dir } from "socket:fs/dir";
+    import { Dirent } from "socket:fs/dir";
     import { Stats } from "socket:fs/stats";
     import { Watcher } from "socket:fs/watcher";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
-    import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
@@ -5307,6 +5708,11 @@ declare module "socket:fs/index" {
      * @param {function(Error?)?} [callback]
      */
     export function close(fd: number, callback?: ((arg0: Error | null) => any) | null): void;
+    /**
+     * Synchronously close a file descriptor.
+     * @param {number} fd  - fd
+     */
+    export function closeSync(fd: number): void;
     /**
      * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
      * @param {string} src - The source file path.
@@ -5399,6 +5805,14 @@ declare module "socket:fs/index" {
      */
     export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
     /**
+     * Synchronously open a file.
+     * @param {string | Buffer | URL} path
+     * @param {string?} [flags = 'r']
+     * @param {string?} [mode = 0o666]
+     * @param {object?|function?} [options]
+     */
+    export function openSync(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any): any;
+    /**
      * Asynchronously open a directory calling `callback` upon success or error.
      * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
@@ -5408,6 +5822,16 @@ declare module "socket:fs/index" {
      * @param {function(Error?, Dir?)?} callback
      */
     export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
+    /**
+     * Synchronously open a directory.
+     * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
+     * @param {string | Buffer | URL} path
+     * @param {object?|function(Error?, Dir?)} [options]
+     * @param {string?} [options.encoding = 'utf8']
+     * @param {boolean?} [options.withFileTypes = false]
+     * @return {Dir}
+     */
+    export function opendirSync(path: string | Buffer | URL, options?: {}): Dir;
     /**
      * Asynchronously read from an open file descriptor.
      * @see {@link https://nodejs.org/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
@@ -5441,6 +5865,15 @@ declare module "socket:fs/index" {
      */
     export function readdir(path: string | Buffer | URL, options: {}, callback: (arg0: Error | null, arg1: object[]) => any): void;
     /**
+     * Synchronously read all entries in a directory.
+     * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
+     * @param {string | Buffer | URL } path
+     * @param {object?|function(Error?, object[])} [options]
+     * @param {string?} [options.encoding ? 'utf8']
+     * @param {boolean?} [options.withFileTypes ? false]
+     */
+    export function readdirSync(path: string | Buffer | URL, options?: {}): any[];
+    /**
      * @param {string | Buffer | URL | number } path
      * @param {object?|function(Error?, Buffer?)} [options]
      * @param {string?} [options.encoding ? 'utf8']
@@ -5450,13 +5883,15 @@ declare module "socket:fs/index" {
      */
     export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
     /**
-     * @param {string | Buffer | URL | number } path
+     * @param {string|Buffer|URL|number} path
+     * @param {{ encoding?: string = 'utf8', flags?: string = 'r'}} [options]
      * @param {object?|function(Error?, Buffer?)} [options]
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.flag ? 'r']
      * @param {AbortSignal?} [options.signal]
      */
-    export function readFileSync(path: string | Buffer | URL | number, options?: {}): any;
+    export function readFileSync(path: string | Buffer | URL | number, options?: {
+        encoding?: string;
+        flags?: string;
+    }): any;
     /**
      * Reads link at `path`
      * @param {string} path
@@ -5470,6 +5905,11 @@ declare module "socket:fs/index" {
      */
     export function realpath(path: string, callback: (arg0: err, arg1: string) => any): void;
     /**
+     * Computes real path for `path`
+     * @param {string} path
+     */
+    export function realpathSync(path: string): void;
+    /**
      * Renames file or directory at `src` to `dest`.
      * @param {string} src
      * @param {string} dest
@@ -5477,11 +5917,22 @@ declare module "socket:fs/index" {
      */
     export function rename(src: string, dest: string, callback: Function): void;
     /**
+     * Renames file or directory at `src` to `dest`, synchronously.
+     * @param {string} src
+     * @param {string} dest
+     */
+    export function renameSync(src: string, dest: string): void;
+    /**
      * Removes directory at `path`.
      * @param {string} path
      * @param {function} callback
      */
     export function rmdir(path: string, callback: Function): void;
+    /**
+     * Removes directory at `path`, synchronously.
+     * @param {string} path
+     */
+    export function rmdirSync(path: string): void;
     /**
      * Synchronously get the stats of a file
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -5489,7 +5940,7 @@ declare module "socket:fs/index" {
      * @param {string?} [options.encoding ? 'utf8']
      * @param {string?} [options.flag ? 'r']
      */
-    export function statSync(path: string | Buffer | URL | number, options: object | null): promises.Stats;
+    export function statSync(path: string | Buffer | URL | number, options?: object | null): promises.Stats;
     /**
      * Get the stats of a file
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -5522,6 +5973,11 @@ declare module "socket:fs/index" {
      * @param {function} callback
      */
     export function unlink(path: string, callback: Function): void;
+    /**
+     * Unlinks (removes) file at `path`, synchronously.
+     * @param {string} path
+     */
+    export function unlinkSync(path: string): void;
     /**
      * @see {@url https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
      * @param {string | Buffer | URL | number } path - filename or file descriptor
@@ -5658,410 +6114,73 @@ declare module "socket:crypto" {
     
 }
 
-declare module "socket:ipc" {
-    export function maybeMakeError(error: any, caller: any): any;
-    /**
-     * Parses `seq` as integer value
-     * @param {string|number} seq
-     * @param {object=} [options]
-     * @param {boolean} [options.bigint = false]
-     * @ignore
-     */
-    export function parseSeq(seq: string | number, options?: object | undefined): number | bigint;
-    /**
-     * If `debug.enabled === true`, then debug output will be printed to console.
-     * @param {(boolean)} [enable]
-     * @return {boolean}
-     * @ignore
-     */
-    export function debug(enable?: (boolean)): boolean;
-    export namespace debug {
-        let enabled: any;
-        function log(...args: any[]): any;
-    }
-    /**
-     * Find transfers for an in worker global `postMessage`
-     * that is proxied to the main thread.
-     * @ignore
-     */
-    export function findMessageTransfers(transfers: any, object: any): any;
-    /**
-     * @ignore
-     */
-    export function postMessage(message: any, ...args: any[]): any;
-    /**
-     * Waits for the native IPC layer to be ready and exposed on the
-     * global window object.
-     * @ignore
-     */
-    export function ready(): Promise<any>;
-    /**
-     * Sends a synchronous IPC command over XHR returning a `Result`
-     * upon success or error.
-     * @param {string} command
-     * @param {any?} [value]
-     * @param {object?} [options]
-     * @return {Result}
-     * @ignore
-     */
-    export function sendSync(command: string, value?: any | null, options?: object | null, buffer: any): Result;
-    /**
-     * Emit event to be dispatched on `window` object.
-     * @param {string} name
-     * @param {any} value
-     * @param {EventTarget=} [target = window]
-     * @param {Object=} options
-     */
-    export function emit(name: string, value: any, target?: EventTarget | undefined, options?: any | undefined): Promise<void>;
-    /**
-     * Resolves a request by `seq` with possible value.
-     * @param {string} seq
-     * @param {any} value
-     * @ignore
-     */
-    export function resolve(seq: string, value: any): Promise<void>;
-    /**
-     * Sends an async IPC command request with parameters.
-     * @param {string} command
-     * @param {any=} value
-     * @param {object=} [options]
-     * @param {boolean=} [options.cache=false]
-     * @param {boolean=} [options.bytes=false]
-     * @return {Promise<Result>}
-     */
-    export function send(command: string, value?: any | undefined, options?: object | undefined): Promise<Result>;
-    /**
-     * Sends an async IPC command request with parameters and buffered bytes.
-     * @param {string} command
-     * @param {any=} value
-     * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
-     * @param {object=} options
-     * @ignore
-     */
-    export function write(command: string, value?: any | undefined, buffer?: (Buffer | Uint8Array | ArrayBuffer | string | any[]) | undefined, options?: object | undefined): Promise<any>;
-    /**
-     * Sends an async IPC command request with parameters requesting a response
-     * with buffered bytes.
-     * @param {string} command
-     * @param {any=} value
-     * @param {object=} options
-     * @ignore
-     */
-    export function request(command: string, value?: any | undefined, options?: object | undefined): Promise<any>;
-    /**
-     * Factory for creating a proxy based IPC API.
-     * @param {string} domain
-     * @param {(function|object)=} ctx
-     * @param {string=} [ctx.default]
-     * @return {Proxy}
-     * @ignore
-     */
-    export function createBinding(domain: string, ctx?: (Function | object) | undefined): ProxyConstructor;
-    /**
-     * Represents an OK IPC status.
-     * @ignore
-     */
-    export const OK: 0;
-    /**
-     * Represents an ERROR IPC status.
-     * @ignore
-     */
-    export const ERROR: 1;
-    /**
-     * Timeout in milliseconds for IPC requests.
-     * @ignore
-     */
-    export const TIMEOUT: number;
-    /**
-     * Symbol for the `ipc.debug.enabled` property
-     * @ignore
-     */
-    export const kDebugEnabled: unique symbol;
-    /**
-     * @ignore
-     */
-    export class Headers extends globalThis.Headers {
-        /**
-         * @ignore
-         */
-        static from(input: any): any;
-        /**
-         * @ignore
-         */
-        get length(): number;
-        /**
-         * @ignore
-         */
-        toJSON(): {
-            [k: string]: string;
-        };
-    }
-    const Message_base: any;
-    /**
-     * A container for a IPC message based on a `ipc://` URI scheme.
-     * @ignore
-     */
-    export class Message extends Message_base {
-        [x: string]: any;
-        /**
-         * The expected protocol for an IPC message.
-         * @ignore
-         */
-        static get PROTOCOL(): string;
-        /**
-         * Creates a `Message` instance from a variety of input.
-         * @param {string|URL|Message|Buffer|object} input
-         * @param {(object|string|URLSearchParams)=} [params]
-         * @param {(ArrayBuffer|Uint8Array|string)?} [bytes]
-         * @return {Message}
-         * @ignore
-         */
-        static from(input: string | URL | Message | Buffer | object, params?: (object | string | URLSearchParams) | undefined, bytes?: (ArrayBuffer | Uint8Array | string) | null): Message;
-        /**
-         * Predicate to determine if `input` is valid for constructing
-         * a new `Message` instance.
-         * @param {string|URL|Message|Buffer|object} input
-         * @return {boolean}
-         * @ignore
-         */
-        static isValidInput(input: string | URL | Message | Buffer | object): boolean;
-        /**
-         * `Message` class constructor.
-         * @protected
-         * @param {string|URL} input
-         * @param {(object|Uint8Array)?} [bytes]
-         * @ignore
-         */
-        protected constructor();
-        /**
-         *  @type {Uint8Array?}
-         *  @ignore
-         */
-        bytes: Uint8Array | null;
-        /**
-         * Computed IPC message name.
-         * @type {string}
-         * @ignore
-         */
-        get command(): string;
-        /**
-         * Computed IPC message name.
-         * @type {string}
-         * @ignore
-         */
-        get name(): string;
-        /**
-         * Computed `id` value for the command.
-         * @type {string}
-         * @ignore
-         */
-        get id(): string;
-        /**
-         * Computed `seq` (sequence) value for the command.
-         * @type {string}
-         * @ignore
-         */
-        get seq(): string;
-        /**
-         * Computed message value potentially given in message parameters.
-         * This value is automatically decoded, but not treated as JSON.
-         * @type {string}
-         * @ignore
-         */
-        get value(): string;
-        /**
-         * Computed `index` value for the command potentially referring to
-         * the window index the command is scoped to or originating from. If not
-         * specified in the message parameters, then this value defaults to `-1`.
-         * @type {number}
-         * @ignore
-         */
-        get index(): number;
-        /**
-         * Computed value parsed as JSON. This value is `null` if the value is not present
-         * or it is invalid JSON.
-         * @type {object?}
-         * @ignore
-         */
-        get json(): any;
-        /**
-         * Computed readonly object of message parameters.
-         * @type {object}
-         * @ignore
-         */
-        get params(): any;
-        /**
-         * Gets unparsed message parameters.
-         * @type {Array<Array<string>>}
-         * @ignore
-         */
-        get rawParams(): string[][];
-        /**
-         * Returns computed parameters as entries
-         * @return {Array<Array<any>>}
-         * @ignore
-         */
-        entries(): Array<Array<any>>;
-        /**
-         * Set a parameter `value` by `key`.
-         * @param {string} key
-         * @param {any} value
-         * @ignore
-         */
-        set(key: string, value: any): any;
-        /**
-         * Get a parameter value by `key`.
-         * @param {string} key
-         * @param {any} defaultValue
-         * @return {any}
-         * @ignore
-         */
-        get(key: string, defaultValue: any): any;
-        /**
-         * Delete a parameter by `key`.
-         * @param {string} key
-         * @return {boolean}
-         * @ignore
-         */
-        delete(key: string): boolean;
-        /**
-         * Computed parameter keys.
-         * @return {Array<string>}
-         * @ignore
-         */
-        keys(): Array<string>;
-        /**
-         * Computed parameter values.
-         * @return {Array<any>}
-         * @ignore
-         */
-        values(): Array<any>;
-        /**
-         * Predicate to determine if parameter `key` is present in parameters.
-         * @param {string} key
-         * @return {boolean}
-         * @ignore
-         */
-        has(key: string): boolean;
-    }
-    /**
-     * A result type used internally for handling
-     * IPC result values from the native layer that are in the form
-     * of `{ err?, data? }`. The `data` and `err` properties on this
-     * type of object are in tuple form and be accessed at `[data?,err?]`
-     * @ignore
-     */
-    export class Result {
-        /**
-         * Creates a `Result` instance from input that may be an object
-         * like `{ err?, data? }`, an `Error` instance, or just `data`.
-         * @param {(object|Error|any)?} result
-         * @param {Error|object} [maybeError]
-         * @param {string} [maybeSource]
-         * @param {object|string|Headers} [maybeHeaders]
-         * @return {Result}
-         * @ignore
-         */
-        static from(result: (object | Error | any) | null, maybeError?: Error | object, maybeSource?: string, maybeHeaders?: object | string | Headers): Result;
-        /**
-         * `Result` class constructor.
-         * @private
-         * @param {string?} [id = null]
-         * @param {Error?} [err = null]
-         * @param {object?} [data = null]
-         * @param {string?} [source = null]
-         * @param {(object|string|Headers)?} [headers = null]
-         * @ignore
-         */
-        private constructor();
-        /**
-         * The unique ID for this result.
-         * @type {string}
-         * @ignore
-         */
-        id: string;
-        /**
-         * An optional error in the result.
-         * @type {Error?}
-         * @ignore
-         */
-        err: Error | null;
-        /**
-         * Result data if given.
-         * @type {(string|object|Uint8Array)?}
-         * @ignore
-         */
-        data: (string | object | Uint8Array) | null;
-        /**
-         * The source of this result.
-         * @type {string?}
-         * @ignore
-         */
-        source: string | null;
-        /**
-         * Result headers, if given.
-         * @type {Headers?}
-         * @ignore
-         */
-        headers: Headers | null;
-        /**
-         * Computed result length.
-         * @ignore
-         */
-        get length(): any;
-        /**
-         * @ignore
-         */
-        toJSON(): {
-            headers: {
-                [k: string]: string;
-            };
-            source: string;
-            data: any;
-            err: {
-                name: string;
-                message: string;
-                stack?: string;
-                cause?: unknown;
-                type: any;
-                code: any;
-            };
-        };
-        /**
-         * Generator for an `Iterable` interface over this instance.
-         * @ignore
-         */
-        [Symbol.iterator](): Generator<any, void, unknown>;
-    }
-    /**
-     * @ignore
-     */
-    export const primordials: any;
-    export default exports;
-    import { Buffer } from "socket:buffer";
-    import { URL } from "socket:url/index";
-    import * as exports from "socket:ipc";
-    
-}
-
 declare module "socket:ai" {
     /**
      * A class to interact with large language models (using llama.cpp)
-     * @extends EventEmitter
      */
     export class LLM extends EventEmitter {
         /**
-         * Constructs an LLM instance.
-         * @param {Object} [options] - The options for initializing the LLM.
-         * @param {string} [options.path] - The path to a valid model (.gguf).
-         * @param {string} [options.prompt] - The query that guides the model to generate a relevant and coherent responses.
-         * @param {string} [options.id] - The optional ID for the LLM instance.
-         * @throws {Error} If the model path is not provided.
+         * Constructs an LLM instance. Each parameter is designed to configure and control
+         * the behavior of the underlying large language model provided by llama.cpp.
+         * @param {Object} options - Configuration options for the LLM instance.
+         * @param {string} options.path - The file path to the model in .gguf format. This model file contains
+         *                                the weights and configuration necessary for initializing the language model.
+         * @param {string} options.prompt - The initial input text to the model, setting the context or query
+         *                                  for generating responses. The model uses this as a starting point for text generation.
+         * @param {string} [options.id] - An optional unique identifier for this specific instance of the model,
+         *                                useful for tracking or referencing the model in multi-model setups.
+         * @param {number} [options.n_ctx=1024] - Specifies the maximum number of tokens that the model can consider
+         *                                        for a single query. This is crucial for managing memory and computational
+         *                                        efficiency. Exceeding the model's configuration may lead to errors or truncated outputs.
+         * @param {number} [options.n_threads=8] - The number of threads allocated for the model's computation,
+         *                                         affecting performance and speed of response generation.
+         * @param {number} [options.temp=1.1] - Sampling temperature controls the randomness of predictions.
+         *                                      Higher values increase diversity, potentially at the cost of coherence.
+         * @param {number} [options.max_tokens=512] - The upper limit on the number of tokens that the model can generate
+         *                                            in response to a single prompt. This prevents runaway generations.
+         * @param {number} [options.n_gpu_layers=32] - The number of GPU layers dedicated to the model processing.
+         *                                             More layers can increase accuracy and complexity of the outputs.
+         * @param {number} [options.n_keep=0] - Determines how many of the top generated responses are retained after
+         *                                      the initial generation phase. Useful for models that generate multiple outputs.
+         * @param {number} [options.n_batch=0] - The size of processing batches. Larger batch sizes can reduce
+         *                                       the time per token generation by parallelizing computations.
+         * @param {number} [options.n_predict=0] - Specifies how many forward predictions the model should make
+         *                                         from the current state. This can pre-generate responses or calculate probabilities.
+         * @param {number} [options.grp_attn_n=0] - Group attention parameter 'N' modifies how attention mechanisms
+         *                                          within the model are grouped and interact, affecting the model’s focus and accuracy.
+         * @param {number} [options.grp_attn_w=0] - Group attention parameter 'W' adjusts the width of each attention group,
+         *                                          influencing the breadth of context considered by each attention group.
+         * @param {number} [options.seed=0] - A seed for the random number generator used in the model. Setting this ensures
+         *                                    consistent results in model outputs, important for reproducibility in experiments.
+         * @param {number} [options.top_k=0] - Limits the model's output choices to the top 'k' most probable next words,
+         *                                     reducing the risk of less likely, potentially nonsensical outputs.
+         * @param {number} [options.tok_p=0.0] - Top-p (nucleus) sampling threshold, filtering the token selection pool
+         *                                      to only those whose cumulative probability exceeds this value, enhancing output relevance.
+         * @param {number} [options.min_p=0.0] - Sets a minimum probability filter for token generation, ensuring
+         *                                      that generated tokens have at least this likelihood of being relevant or coherent.
+         * @param {number} [options.tfs_z=0.0] - Temperature factor scale for zero-shot learning scenarios, adjusting how
+         *                                      the model weights novel or unseen prompts during generation.
+         * @throws {Error} Throws an error if the model path is not provided, as the model cannot initialize without it.
          */
         constructor(options?: {
-            path?: string;
-            prompt?: string;
+            path: string;
+            prompt: string;
             id?: string;
+            n_ctx?: number;
+            n_threads?: number;
+            temp?: number;
+            max_tokens?: number;
+            n_gpu_layers?: number;
+            n_keep?: number;
+            n_batch?: number;
+            n_predict?: number;
+            grp_attn_n?: number;
+            grp_attn_w?: number;
+            seed?: number;
+            top_k?: number;
+            tok_p?: number;
+            min_p?: number;
+            tfs_z?: number;
         });
         path: string;
         prompt: string;
@@ -7191,8 +7310,6 @@ declare module "socket:vm" {
     /**
      * Gets the VM context window.
      * This function will create it if it does not already exist.
-     * The current window will be used on Android platforms as there can
-     * only be one window.
      * @return {Promise<import('./window.js').ApplicationWindow}
      */
     export function getContextWindow(): Promise<import("socket:window").ApplicationWindow>;
@@ -7544,7 +7661,6 @@ declare module "socket:vm" {
         filename?: string;
         context?: object;
     };
-    import { SharedWorker } from "socket:internal/shared-worker";
 }
 
 declare module "socket:worker_threads/init" {
@@ -7583,7 +7699,7 @@ declare module "socket:worker_threads" {
      * A pool of known worker threads.
      * @type {<Map<string, Worker>}
      */
-    export const workers: <Map_1>() => <string, Worker_1>() => any;
+    export const workers: <Map>() => <string, Worker>() => any;
     /**
      * `true` if this is the "main" thread, otherwise `false`
      * The "main" thread is the top level webview window.
@@ -7740,7 +7856,6 @@ declare module "socket:worker_threads" {
     import { Readable } from "socket:stream";
     import { SHARE_ENV } from "socket:worker_threads/init";
     import init from "socket:worker_threads/init";
-    import { env } from "socket:process";
     export { SHARE_ENV, init };
 }
 
@@ -7928,7 +8043,6 @@ declare module "socket:child_process" {
     import { AsyncResource } from "socket:async/resource";
     import { EventEmitter } from "socket:events";
     import { Worker } from "socket:worker_threads";
-    import signal from "socket:signal";
 }
 
 declare module "socket:constants" {
@@ -8443,7 +8557,7 @@ declare module "socket:fs/web" {
     export function createFile(filename: string, options?: {
         fd: fs.FileHandle;
         highWaterMark?: number;
-    }): File;
+    } | undefined): File;
     /**
      * Creates a `FileSystemWritableFileStream` instance backed
      * by `socket:fs:` module from a given `FileSystemFileHandle` instance.
@@ -8739,7 +8853,6 @@ declare module "socket:extension" {
      * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
-    import path from "socket:path";
 }
 
 declare module "socket:fetch/fetch" {
@@ -11503,7 +11616,6 @@ declare module "socket:latica/index" {
      * @return {boolean}
      */
     export function rateLimit(rates: Map<any, any>, type: number, port: number, address: string, subclusterIdQuota: any): boolean;
-    export function debug(pid: any, ...args: any[]): void;
     /**
      * Retry delay in milliseconds for ping.
      * @type {number}
@@ -11687,6 +11799,7 @@ declare module "socket:latica/index" {
          * @ignore
          */
         _setTimeout(fn: any, t: any): number;
+        _debug(pid: any, ...args: any[]): void;
         /**
          * A method that encapsulates the listing procedure
          * @return {undefined}
@@ -11974,12 +12087,11 @@ declare module "socket:latica/proxy" {
         close(...args: any[]): Promise<any>;
         query(...args: any[]): Promise<any>;
         compileCachePredicate(src: any): Promise<any>;
-        callWorkerThread(prop: any, data: any): Deferred;
+        callWorkerThread(prop: any, data: any): any;
         callMainThread(prop: any, args: any): void;
-        resolveMainThread(seq: any, data: any): void;
+        resolveMainThread(seq: any, result: any): any;
         #private;
     }
-    import { Deferred } from "socket:async";
 }
 
 declare module "socket:latica/api" {
@@ -12016,6 +12128,12 @@ declare module "socket:index" {
     import { Packet } from "socket:node/index";
     import { NAT } from "socket:node/index";
     export { network, Cache, sha256, Encryption, Packet, NAT };
+}
+
+declare module "socket:latica" {
+    export * from "socket:latica/index";
+    export default def;
+    import def from "socket:latica/index";
 }
 
 declare module "socket:network" {
@@ -13748,7 +13866,7 @@ declare module "socket:commonjs/package" {
         static parse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        }): ParsedPackageName | null;
+        } | undefined): ParsedPackageName | null;
         /**
          * Returns `true` if the given `input` can be parsed by `Name.parse` or given
          * as input to the `Name` class constructor.
@@ -13759,7 +13877,7 @@ declare module "socket:commonjs/package" {
         static canParse(input: string | URL, options?: {
             origin?: string | URL;
             manifest?: string;
-        }): boolean;
+        } | undefined): boolean;
         /**
          * Creates a new `Name` from input.
          * @param {string|URL} input
@@ -14528,7 +14646,6 @@ declare module "socket:commonjs/module" {
     import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
-    import builtins from "socket:commonjs/builtins";
 }
 
 declare module "socket:module" {
@@ -15799,6 +15916,7 @@ declare module "socket:internal/pickers" {
      *   mode?: 'read' | 'readwrite'
      *   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos',
      * }} ShowDirectoryPickerOptions
+     *
      */
     /**
      * Shows a directory picker which allows the user to select a directory.
@@ -15884,7 +16002,6 @@ declare module "socket:internal/pickers" {
             [keyof];
         }>;
     };
-    import { FileSystemHandle } from "socket:fs/web";
 }
 
 declare module "socket:internal/primitives" {

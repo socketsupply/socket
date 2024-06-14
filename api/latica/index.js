@@ -26,10 +26,15 @@ import {
   VERSION
 } from './packets.js'
 
+// eslint-disable-next-line
 let logcount = 0
+// eslint-disable-next-line
 const process = globalThis.process || globalThis.window?.__args
+// eslint-disable-next-line
 const COLOR_GRAY = '\x1b[90m'
+// eslint-disable-next-line
 const COLOR_WHITE = '\x1b[37m'
+// eslint-disable-next-line
 const COLOR_RESET = '\x1b[0m'
 
 export { Packet, sha256, Cache, Encryption, NAT }

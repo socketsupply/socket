@@ -1,4 +1,3 @@
-/* global ErrorEvent */
 import { ErrorEvent } from '../events.js'
 
 /**

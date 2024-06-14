@@ -413,6 +413,10 @@ export function init () {
           targetWindowIndex: globalThis.__args.index,
           value: title
         })
+
+        if (result.err) {
+          console.warn(result.err)
+        }
       }
     })
 
@@ -425,6 +429,10 @@ export function init () {
             targetWindowIndex: globalThis.__args.index,
             value: title
           })
+
+          if (result.err) {
+            console.warn(result.err)
+          }
         }
       }
     })
