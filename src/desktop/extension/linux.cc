@@ -14,9 +14,32 @@ using namespace SSC;
 #if defined(__cplusplus)
 extern "C" {
 #endif
-  static WebExtensionContext context;
-  static SharedPointer<IPC::Bridge> bridge = nullptr;
+  static SharedPointer<IPC::Bridge> sharedBridge = nullptr;
   static bool isMainApplicationDebugEnabled = false;
+  static WebExtensionContext context;
+  static Mutex sharedMutex;
+
+  static SharedPointer<IPC::Bridge> getSharedBridge (JSCContext* context) {
+    static auto app = App::sharedApplication();
+    Lock lock(sharedMutex);
+
+    if (sharedBridge == nullptr) {
+      g_object_ref(context);
+      auto options = IPC::Bridge::Options(app->userConfig);
+      sharedBridge = std::make_shared<IPC::Bridge>(app->core, options);
+      sharedBridge->dispatchFunction = [](auto callback) {
+        callback();
+      };
+      sharedBridge->evaluateJavaScriptFunction = [context] (const auto source) {
+        app->dispatch([=] () {
+          auto _ = jsc_context_evaluate(context, source.c_str(), source.size());
+        });
+      };
+      sharedBridge->init();
+    }
+
+    return sharedBridge;
+  }
 
   static void onMessageResolver (
     JSCValue* resolve,
@@ -24,51 +47,44 @@ extern "C" {
     IPC::Message* message
   ) {
     auto context = jsc_value_get_context(resolve);
+    auto bridge = getSharedBridge(context);
     auto app = App::sharedApplication();
 
-    if (bridge == nullptr) {
-      g_object_ref(context);
-      auto options = IPC::Bridge::Options(app->userConfig);
-      bridge = std::make_shared<IPC::Bridge>(app->core, options);
-      bridge->evaluateJavaScriptFunction = [context] (const auto source) {
-        auto _ = jsc_context_evaluate(context, source.c_str(), source.size());
-      };
-      bridge->init();
-    }
-
     auto routed = bridge->route(message->str(), message->buffer.bytes, message->buffer.size, [=](auto result) {
-      if (result.post.body != nullptr) {
-        auto array = jsc_value_new_typed_array(
-          context,
-          JSC_TYPED_ARRAY_UINT8,
-          result.post.length
-        );
+      app->dispatch([=] () {
+        if (result.post.body != nullptr) {
+          auto array = jsc_value_new_typed_array(
+            context,
+            JSC_TYPED_ARRAY_UINT8,
+            result.post.length
+          );
 
-        gsize size = 0;
-        auto bytes = jsc_value_typed_array_get_data(array, &size);
-        memcpy(bytes, result.post.body.get(), size);
+          gsize size = 0;
+          auto bytes = jsc_value_typed_array_get_data(array, &size);
+          memcpy(bytes, result.post.body.get(), size);
 
-        auto _ = jsc_value_function_call(
-          resolve,
-          JSC_TYPE_VALUE,
-          array,
-          G_TYPE_NONE
-        );
-      } else {
-        auto json = result.json().str();
-        if (json.size() > 0) {
-          auto _ = jsc_value_function_call(
+          const auto _ = jsc_value_function_call(
             resolve,
             JSC_TYPE_VALUE,
-            jsc_value_new_string(context, json.c_str()),
+            array,
             G_TYPE_NONE
           );
+        } else {
+          const auto json = result.json().str();
+          if (json.size() > 0) {
+            auto _ = jsc_value_function_call(
+              resolve,
+              JSC_TYPE_VALUE,
+              jsc_value_new_string(context, json.c_str()),
+              G_TYPE_NONE
+            );
+          }
         }
-      }
 
-      g_object_unref(context);
-      g_object_unref(resolve);
-      g_object_unref(reject);
+        g_object_unref(context);
+        g_object_unref(resolve);
+        g_object_unref(reject);
+      });
     });
 
     if (routed) {
@@ -76,7 +92,7 @@ extern "C" {
       g_object_ref(resolve);
       g_object_ref(reject);
     } else {
-      auto json = JSON::Object::Entries {
+      const auto json = JSON::Object::Entries {
         {"err", JSON::Object::Entries {
           {"message", "Not found"},
           {"type", "NotFoundError"},
@@ -84,7 +100,7 @@ extern "C" {
         }}
       };
 
-      auto _ = jsc_value_function_call(
+      const auto _ = jsc_value_function_call(
         resolve,
         JSC_TYPE_VALUE,
         jsc_value_new_string(context, JSON::Object(json).str().c_str()),
@@ -99,6 +115,70 @@ extern "C" {
     auto context = reinterpret_cast<JSCContext*>(userData);
     auto Promise = jsc_context_get_value(context, "Promise");
     auto message = new IPC::Message(source);
+
+    if (jsc_value_is_typed_array(value)) {
+      auto bytes = jsc_value_typed_array_get_data(value, &message->buffer.size);
+      message->buffer.bytes = std::make_shared<char[]>(message->buffer.size);
+      memcpy(
+        message->buffer.bytes.get(),
+        bytes,
+        message->buffer.size
+      );
+    }
+
+    if (message->get("__sync__") == "true") {
+      auto bridge = getSharedBridge(context);
+      auto app = App::sharedApplication();
+      auto semaphore = new std::binary_semaphore{0};
+
+      IPC::Result returnResult;
+
+      auto routed = bridge->route(
+        message->str(),
+        message->buffer.bytes,
+        message->buffer.size,
+        [&returnResult, &semaphore] (auto result) mutable {
+          returnResult = std::move(result);
+          semaphore->release();
+        }
+      );
+
+      semaphore->acquire();
+
+      delete semaphore;
+      delete message;
+
+      if (routed) {
+        if (returnResult.post.body != nullptr) {
+          auto array = jsc_value_new_typed_array(
+            context,
+            JSC_TYPED_ARRAY_UINT8,
+            returnResult.post.length
+          );
+
+          gsize size = 0;
+          auto bytes = jsc_value_typed_array_get_data(array, &size);
+          memcpy(bytes, returnResult.post.body.get(), size);
+          return array;
+        } else {
+          auto json = returnResult.json().str();
+          if (json.size() > 0) {
+            return jsc_value_new_string(context, json.c_str());
+          }
+        }
+      }
+
+      const auto json = JSON::Object::Entries {
+        {"err", JSON::Object::Entries {
+          {"message", "Not found"},
+          {"type", "NotFoundError"},
+          {"source", source}
+        }}
+      };
+
+      return jsc_value_new_string(context, JSON::Object(json).str().c_str());
+    }
+
     auto resolver = jsc_value_new_function(
       context,
       nullptr,
@@ -110,16 +190,6 @@ extern "C" {
       JSC_TYPE_VALUE,
       JSC_TYPE_VALUE
     );
-
-    if (jsc_value_is_typed_array(value)) {
-      auto bytes = jsc_value_typed_array_get_data(value, &message->buffer.size);
-      message->buffer.bytes = std::make_shared<char[]>(message->buffer.size);
-      memcpy(
-        message->buffer.bytes.get(),
-        bytes,
-        message->buffer.size
-      );
-    }
 
     auto promise = jsc_value_constructor_call(
       Promise,
@@ -196,9 +266,12 @@ extern "C" {
       }
     }
 
-    static App app(0);
+    Core::Options options;
+    options.dedicatedLoopThread = true;
+    static App app(std::move(std::make_shared<Core>(options)));
     auto userConfig = getUserConfig();
     auto cwd = userConfig["web-process-extension_cwd"];
+
     if (cwd.size() > 0) {
       setcwd(cwd);
       uv_chdir(cwd.c_str());
