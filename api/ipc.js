@@ -33,7 +33,7 @@
  * ```
  */
 
-/* global webkit, chrome, external, reportError */
+/* global webkit, chrome, external, reportError, __global_ipc_extension_handler */
 import {
   AbortError,
   InternalError,
@@ -1101,9 +1101,31 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
     return cache[command]
   }
 
-  const request = new globalThis.XMLHttpRequest()
   const params = new IPCSearchParams(value, Date.now())
+  params.set('__sync__', 'true')
   const uri = `ipc://${command}?${params}`
+
+  if (
+    typeof __global_ipc_extension_handler === 'function' &&
+    (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
+  ) {
+    let response = null
+    try {
+      response = __global_ipc_extension_handler(uri)
+    } catch (err) {
+      return Result.from(null, err)
+    }
+
+    if (typeof response === 'string') {
+      try {
+        response = JSON.parse(response)
+      } catch {}
+    }
+
+    return Result.from(response, null, command)
+  }
+
+  const request = new globalThis.XMLHttpRequest()
 
   if (debug.enabled) {
     debug.log('ipc.sendSync: %s', uri)
@@ -1389,9 +1411,7 @@ export async function request (command, value, options) {
     if (typeof response === 'string') {
       try {
         response = JSON.parse(response)
-      } catch (err) {
-        console.log({err, response})
-      }
+      } catch {}
     }
 
     return Result.from(response, null, command)

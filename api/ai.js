@@ -30,16 +30,16 @@
  * })
  * ```
  */
-import ipc from './ipc.js'
-import process from './process.js'
-import gc from './gc.js'
 import { EventEmitter } from './events.js'
 import { rand64 } from './crypto.js'
+import process from './process.js'
+import ipc from './ipc.js'
+import gc from './gc.js'
+
 import * as exports from './ai.js'
 
 /**
  * A class to interact with large language models (using llama.cpp)
- * @extends EventEmitter
  */
 export class LLM extends EventEmitter {
   /**
@@ -77,18 +77,19 @@ export class LLM extends EventEmitter {
    *                                    consistent results in model outputs, important for reproducibility in experiments.
    * @param {number} [options.top_k=0] - Limits the model's output choices to the top 'k' most probable next words,
    *                                     reducing the risk of less likely, potentially nonsensical outputs.
-   * @param {float} [options.tok_p=0.0] - Top-p (nucleus) sampling threshold, filtering the token selection pool
+   * @param {number} [options.tok_p=0.0] - Top-p (nucleus) sampling threshold, filtering the token selection pool
    *                                      to only those whose cumulative probability exceeds this value, enhancing output relevance.
-   * @param {float} [options.min_p=0.0] - Sets a minimum probability filter for token generation, ensuring
+   * @param {number} [options.min_p=0.0] - Sets a minimum probability filter for token generation, ensuring
    *                                      that generated tokens have at least this likelihood of being relevant or coherent.
-   * @param {float} [options.tfs_z=0.0] - Temperature factor scale for zero-shot learning scenarios, adjusting how
+   * @param {number} [options.tfs_z=0.0] - Temperature factor scale for zero-shot learning scenarios, adjusting how
    *                                      the model weights novel or unseen prompts during generation.
    * @throws {Error} Throws an error if the model path is not provided, as the model cannot initialize without it.
    */
 
-  constructor (options = {}) {
+  constructor (options = null) {
     super()
 
+    options = { ...options }
     if (!options.path) {
       throw new Error('expected a path to a valid model (.gguf)')
     }
@@ -101,13 +102,17 @@ export class LLM extends EventEmitter {
       id: this.id,
       path: this.path,
       prompt: this.prompt,
+      // @ts-ignore
       antiprompt: options.antiprompt,
-      conversation: options.conversation === true,  // Convert to boolean, more idiomatic than String(true/false)
+      // @ts-ignore
+      conversation: options.conversation === true,
+      // @ts-ignore
       chatml: options.chatml === true,
+      // @ts-ignore
       instruct: options.instruct === true,
-      n_ctx: options.n_ctx || 1024, // Simplified, assuming default value of 1024 if not specified
+      n_ctx: options.n_ctx || 1024, // simplified, assuming default value of 1024 if not specified
       n_threads: options.n_threads || 8,
-      temp: options.temp || 1.1,  // Assuming `temp` should be a number, not a string
+      temp: options.temp || 1.1, // assuming `temp` should be a number, not a string
       max_tokens: options.max_tokens || 512,
       n_gpu_layers: options.n_gpu_layers || 32,
       n_keep: options.n_keep || 0,
@@ -115,11 +120,11 @@ export class LLM extends EventEmitter {
       n_predict: options.n_predict || 0,
       grp_attn_n: options.grp_attn_n || 0,
       grp_attn_w: options.grp_attn_w || 0,
-      seed: options.seed || 0,  // Default seed if not specified
-      top_k: options.top_k || 0,  // Default top_k if not specified
-      tok_p: options.tok_p || 0.0,  // Default tok_p if not specified
-      min_p: options.min_p || 0.0,  // Default min_p if not specified
-      tfs_z: options.tfs_z || 0.0  // Default tfs_z if not specified
+      seed: options.seed || 0,
+      top_k: options.top_k || 0,
+      tok_p: options.tok_p || 0.0,
+      min_p: options.min_p || 0.0,
+      tfs_z: options.tfs_z || 0.0
     }
 
     globalThis.addEventListener('data', event => {
@@ -147,11 +152,14 @@ export class LLM extends EventEmitter {
       }
     })
 
-    const result = ipc.request('ai.llm.create', opts)
-
-    if (result.err) {
-      throw result.err
-    }
+    ipc.request('ai.llm.create', opts)
+      .then((result) => {
+        if (result.err) {
+          this.emit('error', result.err)
+        }
+      }, (err) => {
+        this.emit('error', err)
+      })
   }
 
   /**
@@ -159,7 +167,7 @@ export class LLM extends EventEmitter {
    * @returns {Promise<void>} A promise that resolves when the LLM stops.
    */
   async stop () {
-    return ipc.request('ai.llm.stop', { id: this.id })
+    return await ipc.request('ai.llm.stop', { id: this.id })
   }
 
   /**
@@ -170,7 +178,7 @@ export class LLM extends EventEmitter {
       args: [this.id, options],
       async handle (id) {
         if (process.env.DEBUG) {
-          console.warn('Closing Socket on garbage collection')
+          console.warn('Closing LLM on garbage collection')
         }
 
         await ipc.request('ai.llm.destroy', { id }, options)
@@ -184,7 +192,7 @@ export class LLM extends EventEmitter {
    * @returns {Promise<any>} A promise that resolves with the response from the chat.
    */
   async chat (message) {
-    return ipc.request('ai.llm.chat', { id: this.id, message })
+    return await ipc.request('ai.llm.chat', { id: this.id, message })
   }
 }
 

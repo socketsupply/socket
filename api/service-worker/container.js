@@ -7,9 +7,8 @@ import application from '../application.js'
 import location from '../location.js'
 import state from './state.js'
 import ipc from '../ipc.js'
-import os from '../os.js'
 
-const SERVICE_WINDOW_PATH = `${globalThis.origin}/socket/service-worker/index.html`
+const SERVICE_WORKER_WINDOW_PATH = `${location.origin}/socket/service-worker/index.html`
 
 class ServiceWorkerContainerInternalStateMap extends Map {
   define (container, property, descriptor) {
@@ -87,7 +86,7 @@ class ServiceWorkerContainerRealm {
 
     this.frame = globalThis.top.document.createElement('iframe')
     this.frame.id = frameId
-    this.frame.src = SERVICE_WINDOW_PATH
+    this.frame.src = SERVICE_WORKER_WINDOW_PATH
     this.frame.setAttribute('loading', 'eager')
     this.frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
 
