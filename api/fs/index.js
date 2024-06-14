@@ -307,6 +307,19 @@ export function close (fd, callback) {
 }
 
 /**
+ * Synchronously close a file descriptor.
+ * @param {number} fd  - fd
+ */
+export function closeSync (fd) {
+  const id = fds.get(fd) || fd
+  const result = ipc.sendSync('fs.close', { id })
+  if (result.err) {
+    throw result.err
+  }
+  fds.release(id)
+}
+
+/**
  * Asynchronously copies `src` to `dest` calling `callback` upon success or error.
  * @param {string} src - The source file path.
  * @param {string} dest - The destination file path.
@@ -710,6 +723,51 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
 }
 
 /**
+ * Synchronously open a file.
+ * @param {string | Buffer | URL} path
+ * @param {string?} [flags = 'r']
+ * @param {string?} [mode = 0o666]
+ * @param {object?|function?} [options]
+ */
+export function openSync (path, flags = 'r', mode = 0o666, options = null) {
+  if (typeof flags === 'object') {
+    options = flags
+    flags = FileHandle.DEFAULT_OPEN_FLAGS
+    mode = FileHandle.DEFAULT_OPEN_MODE
+  }
+
+  if (typeof mode === 'object') {
+    options = mode
+    flags = FileHandle.DEFAULT_OPEN_FLAGS
+    mode = FileHandle.DEFAULT_OPEN_MODE
+  }
+
+  path = normalizePath(path)
+
+  const id = String(options?.id || rand64())
+  const result = ipc.sendSync('fs.open', {
+    id,
+    mode,
+    path,
+    flags
+  }, {
+    ...options
+  })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  if (result.data?.fd) {
+    fds.set(id, result.data.fd, 'file')
+  } else {
+    fds.set(id, id, 'file')
+  }
+
+  return result.data?.fd || id
+}
+
+/**
  * Asynchronously open a directory calling `callback` upon success or error.
  * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL} path
@@ -734,6 +792,32 @@ export function opendir (path, options = {}, callback) {
     .open(path, options)
     .then((handle) => callback(null, new Dir(handle, options)))
     .catch((err) => callback(err))
+}
+
+/**
+ * Synchronously open a directory.
+ * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
+ * @param {string | Buffer | URL} path
+ * @param {object?|function(Error?, Dir?)} [options]
+ * @param {string?} [options.encoding = 'utf8']
+ * @param {boolean?} [options.withFileTypes = false]
+ * @return {Dir}
+ */
+export function opendirSync (path, options = {}) {
+  path = normalizePath(path)
+  // @ts-ignore
+  const id = String(options?.id || rand64())
+  const result = ipc.sendSync('fs.opendir', { id, path }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  fds.set(id, id, 'directory')
+
+  // @ts-ignore
+  const handle = new DirectoryHandle({ id, path })
+  return new Dir(handle, options)
 }
 
 /**
@@ -860,6 +944,36 @@ export function readdir (path, options = {}, callback) {
 }
 
 /**
+ * Synchronously read all entries in a directory.
+ * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
+ * @param {string | Buffer | URL } path
+ * @param {object?|function(Error?, object[])} [options]
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {boolean?} [options.withFileTypes ? false]
+ */
+export function readdirSync (path, options = {}) {
+  options = {
+    entries: DirectoryHandle.MAX_ENTRIES,
+    withFileTypes: false,
+    ...options
+  }
+  const dir = opendirSync(path, options)
+  const entries = []
+
+  do {
+    const entry = dir.readSync(options)
+    if (!entry || entry.length === 0) {
+      break
+    }
+
+    entries.push(...[].concat(entry))
+  } while (true)
+
+  dir.closeSync()
+  return entries
+}
+
+/**
  * @param {string | Buffer | URL | number } path
  * @param {object?|function(Error?, Buffer?)} [options]
  * @param {string?} [options.encoding ? 'utf8']
@@ -904,30 +1018,36 @@ export function readFile (path, options = {}, callback) {
 }
 
 /**
- * @param {string | Buffer | URL | number } path
+ * @param {string|Buffer|URL|number} path
+ * @param {{ encoding?: string = 'utf8', flags?: string = 'r'}} [options]
  * @param {object?|function(Error?, Buffer?)} [options]
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.flag ? 'r']
  * @param {AbortSignal?} [options.signal]
  */
-export function readFileSync (path, options = {}) {
+export function readFileSync (path, options = null) {
   if (typeof options === 'string') {
     options = { encoding: options }
   }
 
   path = normalizePath(path)
-  options = { flags: 'r', ...options }
+  options = {
+    flags: 'r',
+    encoding: options?.encoding ?? 'utf8',
+    ...options
+  }
 
   let result = null
 
-  const id = String(options?.id || rand64())
   const stats = statSync(path)
+  const flags = normalizeFlags(options.flags)
+  const mode = FileHandle.DEFAULT_OPEN_MODE
+  // @ts-ignore
+  const id = String(options?.id || rand64())
 
   result = ipc.sendSync('fs.open', {
+    mode,
+    flags,
     id,
-    mode: FileHandle.DEFAULT_OPEN_MODE,
-    path,
-    flags: normalizeFlags(options.flags)
+    path
   }, options)
 
   if (result.err) {
@@ -1001,6 +1121,22 @@ export function realpath (path, callback) {
 }
 
 /**
+ * Computes real path for `path`
+ * @param {string} path
+ */
+export function realpathSync (path) {
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = ipc.sendSync('fs.realpath', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Renames file or directory at `src` to `dest`.
  * @param {string} src
  * @param {string} dest
@@ -1028,6 +1164,30 @@ export function rename (src, dest, callback) {
 }
 
 /**
+ * Renames file or directory at `src` to `dest`, synchronously.
+ * @param {string} src
+ * @param {string} dest
+ */
+export function renameSync (src, dest) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  const result = ipc.sendSync('fs.rename', { src, dest })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Removes directory at `path`.
  * @param {string} path
  * @param {function} callback
@@ -1049,13 +1209,31 @@ export function rmdir (path, callback) {
 }
 
 /**
+ * Removes directory at `path`, synchronously.
+ * @param {string} path
+ */
+export function rmdirSync (path) {
+  path = normalizePath(path)
+
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = ipc.sendSync('fs.rmdir', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Synchronously get the stats of a file
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {object?} options
  * @param {string?} [options.encoding ? 'utf8']
  * @param {string?} [options.flag ? 'r']
  */
-export function statSync (path, options) {
+export function statSync (path, options = null) {
   path = normalizePath(path)
   const result = ipc.sendSync('fs.stat', { path })
 
@@ -1204,6 +1382,24 @@ export function unlink (path, callback) {
   ipc.request('fs.unlink', { path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
+}
+
+/**
+ * Unlinks (removes) file at `path`, synchronously.
+ * @param {string} path
+ */
+export function unlinkSync (path) {
+  path = normalizePath(path)
+
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  const result = ipc.sendSync('fs.unlink', { path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**

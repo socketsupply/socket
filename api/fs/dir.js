@@ -1,5 +1,6 @@
 import { DirectoryHandle } from './handle.js'
 import { Buffer } from '../buffer.js'
+import { clamp } from '../util.js'
 import {
   UV_DIRENT_UNKNOWN,
   UV_DIRENT_FILE,
@@ -10,6 +11,9 @@ import {
   UV_DIRENT_CHAR,
   UV_DIRENT_BLOCK
 } from './constants.js'
+import fds from './fds.js'
+
+import ipc from '../ipc.js'
 
 import * as exports from './dir.js'
 
@@ -83,7 +87,7 @@ export class Dir {
    * @param {object|function} options
    * @param {function=} callback
    */
-  async close (options = null, callback) {
+  async close (options = null, callback = null) {
     if (typeof options === 'function') {
       callback = options
       options = {}
@@ -103,10 +107,25 @@ export class Dir {
   }
 
   /**
+   * Closes container and underlying handle
+   * synchronously.
+   * @param {object=} [options]
+   */
+  closeSync (options = null) {
+    const { id } = this.handle
+    const result = ipc.sendSync('fs.closedir', { id }, options)
+    if (result.err) {
+      throw result.err
+    }
+
+    fds.release(id, false)
+  }
+
+  /**
    * Reads and returns directory entry.
    * @param {object|function} options
    * @param {function=} callback
-   * @return {Dirent|string}
+   * @return {Promise<Dirent[]|string[]>}
    */
   async read (options, callback) {
     if (typeof options === 'function') {
@@ -156,6 +175,61 @@ export class Dir {
     if (typeof callback === 'function') {
       callback(null, results)
       return
+    }
+
+    return results
+  }
+
+  /**
+   * Reads and returns directory entry synchronously.
+   * @param {object|function} options
+   * @return {Dirent[]|string[]}
+   */
+  readSync (options = null) {
+    const { encoding } = this
+    const { id } = this.handle
+    const entries = clamp(
+      options?.entries || DirectoryHandle.MAX_ENTRIES,
+      1, // MIN_ENTRIES
+      DirectoryHandle.MAX_ENTRIES
+    )
+
+    const result = ipc.sendSync('fs.readdir', { id, entries }, options)
+
+    if (result.err) {
+      throw result.err
+    }
+
+    const results = result.data
+      .map((entry) => ({
+        type: entry.type,
+        name: decodeURIComponent(entry.name)
+      }))
+      .map((result) => {
+        const { name } = result
+
+        if (this.withFileTypes) {
+          result = Dirent.from(result)
+
+          if (encoding === 'buffer') {
+            result.name = Buffer.from(name)
+          } else {
+            result.name = Buffer.from(name).toString(encoding)
+          }
+          return result
+        }
+
+        if (encoding === 'buffer') {
+          return Buffer.from(name)
+        } else {
+          return Buffer.from(name).toString(encoding)
+        }
+      })
+
+    if (results.length === 1) {
+      return results[0]
+    } else if (results.length === 0) {
+      return null
     }
 
     return results

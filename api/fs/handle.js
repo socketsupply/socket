@@ -871,9 +871,10 @@ export class DirectoryHandle extends EventEmitter {
   /**
    * Creates a `FileHandle` from a given `id` or `fd`
    * @param {string|number|DirectoryHandle|object} id
+   * @param {object} options
    * @return {DirectoryHandle}
    */
-  static from (id) {
+  static from (id, options) {
     if (id?.id) {
       return this.from(id.id)
     } else if (id?.fd) {
@@ -884,7 +885,7 @@ export class DirectoryHandle extends EventEmitter {
       throw new Error('Invalid file descriptor for directory handle.')
     }
 
-    return new this({ id })
+    return new this({ id, ...options })
   }
 
   /**
