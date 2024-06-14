@@ -19,12 +19,14 @@ function deepClone (object, map = new Map()) {
   const isNull = object === null
   const isNotObject = typeof object !== 'object'
   const isArrayBuffer = object instanceof ArrayBuffer
+  const isNodeBuffer = object?.constructor?.name === 'Buffer'
   const isArray = Array.isArray(object)
   const isUint8Array = object instanceof Uint8Array
   const isMessagePort = object instanceof MessagePort
 
   if (isMessagePort || isNotObject || isNull || isArrayBuffer) return object
   if (isUint8Array) return new Uint8Array(object)
+  if (isNodeBuffer) return Uint8Array.from(object)
   if (isArrayBuffer) return object.slice(0)
 
   if (isArray) {
@@ -128,6 +130,7 @@ class PeerWorkerProxy {
         if (err) {
           p.reject(err)
         } else {
+          if (prop === 'open') console.log('<<<', data)
           p.resolve(data)
         }
 
@@ -235,7 +238,7 @@ class PeerWorkerProxy {
     }
 
     const seq = ++this.#index
-    let { promise, resolve, reject } = Promise.withResolvers();
+    const { promise, resolve, reject } = Promise.withResolvers()
     const d = promise
     d.resolve = resolve
     d.reject = reject
@@ -267,13 +270,17 @@ class PeerWorkerProxy {
     }
   }
 
-  resolveMainThread (seq, data) {
+  resolveMainThread (seq, result) {
+    if (result.err) { // err result of the worker try/catch
+      return this.#port.postMessage({ data: { err: result.err.message } })
+    }
+
     try {
       this.#port.postMessage(
-        { data: deepClone(data), seq },
-        { transfer: transferOwnership(data) }
+        { data: deepClone(result.data), seq },
+        { transfer: transferOwnership(result.data) }
       )
-    } catch (err) {
+    } catch (err) { // can't post the data
       this.#port.postMessage({ data: { err: err.message } })
     }
   }

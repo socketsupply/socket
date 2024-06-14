@@ -32,15 +32,6 @@ const COLOR_GRAY = '\x1b[90m'
 const COLOR_WHITE = '\x1b[37m'
 const COLOR_RESET = '\x1b[0m'
 
-export const debug = (pid, ...args) => {
-  if (typeof process === 'undefined' || !process.env.DEBUG) return
-  const output = COLOR_GRAY +
-    String(logcount++).padStart(6) + ' │ ' + COLOR_WHITE +
-    pid.slice(0, 4) + ' ' + args.join(' ') + COLOR_RESET
-
-  if (new RegExp(process.env.DEBUG).test(output)) console.log(output)
-}
-
 export { Packet, sha256, Cache, Encryption, NAT }
 
 /**
@@ -197,13 +188,13 @@ export class RemotePeer {
     const packets = await this.localPeer._message2packets(PacketStream, args.message, args)
 
     if (this.proxy) {
-      debug(this.localPeer.peerId, `>> WRITE STREAM HAS PROXY ${this.proxy.address}:${this.proxy.port}`)
+      this.localPeer.debug(this.localPeer.peerId, `>> WRITE STREAM HAS PROXY ${this.proxy.address}:${this.proxy.port}`)
     }
 
     for (const packet of packets) {
       const from = this.localPeer.peerId.slice(0, 6)
       const to = this.peerId.slice(0, 6)
-      debug(this.localPeer.peerId, `>> WRITE STREAM (from=${from}, to=${to}, via=${rinfo.address}:${rinfo.port})`)
+      this.localPeer.debug(this.localPeer.peerId, `>> WRITE STREAM (from=${from}, to=${to}, via=${rinfo.address}:${rinfo.port})`)
 
       this.localPeer.gate.set(Buffer.from(packet.packetId).toString('hex'), 1)
       await this.localPeer.send(await Packet.encode(packet), rinfo.port, rinfo.address, this.socket)
@@ -366,6 +357,10 @@ export class Peer {
     return setTimeout(fn, t)
   }
 
+  _debug (pid, ...args) {
+    if (this.onDebug) this.onDebug(pid, ...args)
+  }
+
   /**
    * A method that encapsulates the listing procedure
    * @return {undefined}
@@ -401,7 +396,7 @@ export class Peer {
     if (this.onListening) this.onListening()
     this.isListening = true
 
-    debug(this.peerId, `++ INIT (config.internalPort=${this.config.port}, config.probeInternalPort=${this.config.probeInternalPort})`)
+    this._debug(this.peerId, `++ INIT (config.internalPort=${this.config.port}, config.probeInternalPort=${this.config.probeInternalPort})`)
   }
 
   /*
@@ -462,7 +457,7 @@ export class Peer {
       if (deadline <= ts) {
         if (p.hops < this.maxHops) this.mcast(p)
         this.cache.delete(k)
-        debug(this.peerId, '-- DELETE', k, this.cache.size)
+        this._debug(this.peerId, '-- DELETE', k, this.cache.size)
         if (this.onDelete) this.onDelete(p)
       }
     }
@@ -552,7 +547,7 @@ export class Peer {
       this.metrics.o[packet.type]++
       delete this.unpublished[packet.packetId.toString('hex')]
       if (this.onSend && packet.type) this.onSend(packet, port, address)
-      debug(this.peerId, `>> SEND (from=${this.address}:${this.port}, to=${address}:${port}, type=${packet.type})`)
+      this._debug(this.peerId, `>> SEND (from=${this.address}:${this.port}, to=${address}:${port}, type=${packet.type})`)
     })
   }
 
@@ -571,7 +566,7 @@ export class Peer {
       }
 
       await this.mcast(packet)
-      debug(this.peerId, `-> RESEND (packetId=${packetId})`)
+      this._debug(this.peerId, `-> RESEND (packetId=${packetId})`)
       if (this.onState) this.onState(this.getState())
     }
   }
@@ -721,16 +716,16 @@ export class Peer {
    */
   async requestReflection () {
     if (this.closing || this.indexed || this.reflectionId) {
-      debug(this.peerId, '<> REFLECT ABORTED', this.reflectionId)
+      this._debug(this.peerId, '<> REFLECT ABORTED', this.reflectionId)
       return
     }
 
     if (this.natType && (this.lastUpdate > 0 && (Date.now() - this.config.keepalive) < this.lastUpdate)) {
-      debug(this.peerId, `<> REFLECT NOT NEEDED (last-recv=${Date.now() - this.lastUpdate}ms)`)
+      this._debug(this.peerId, `<> REFLECT NOT NEEDED (last-recv=${Date.now() - this.lastUpdate}ms)`)
       return
     }
 
-    debug(this.peerId, '-> REQ REFLECT', this.reflectionId, this.reflectionStage)
+    this._debug(this.peerId, '-> REQ REFLECT', this.reflectionId, this.reflectionStage)
     if (this.onConnecting) this.onConnecting({ code: -1, status: `Entering reflection (lastUpdate ${Date.now() - this.lastUpdate}ms)` })
 
     const peers = [...this.peers]
@@ -739,7 +734,7 @@ export class Peer {
 
     if (peers.length < 2) {
       if (this.onConnecting) this.onConnecting({ code: -1, status: 'Not enough pingable peers' })
-      debug(this.peerId, 'XX REFLECT NOT ENOUGH PINGABLE PEERS - RETRYING')
+      this._debug(this.peerId, 'XX REFLECT NOT ENOUGH PINGABLE PEERS - RETRYING')
 
       if (++this.reflectionRetry > 16) this.reflectionRetry = 1
       return this._setTimeout(() => this.requestReflection(), this.reflectionRetry * 256)
@@ -766,7 +761,7 @@ export class Peer {
       if (this.reflectionTimeout) this._clearTimeout(this.reflectionTimeout)
       this.reflectionStage = 1
 
-      debug(this.peerId, '-> NAT REFLECT - STAGE1: A', this.reflectionId)
+      this._debug(this.peerId, '-> NAT REFLECT - STAGE1: A', this.reflectionId)
       const list = peers.filter(p => p.probed).sort(() => Math.random() - 0.5)
       const peer = list.length ? list[0] : peers[0]
       peer.probed = Date.now() // mark this peer as being used to provide port info
@@ -776,7 +771,7 @@ export class Peer {
       this.probeReflectionTimeout = this._setTimeout(() => {
         this.probeReflectionTimeout = null
         if (this.reflectionStage !== 1) return
-        debug(this.peerId, 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId)
+        this._debug(this.peerId, 'XX NAT REFLECT - STAGE1: C - TIMEOUT', this.reflectionId)
         if (this.onConnecting) this.onConnecting({ code: 1, status: 'Timeout' })
 
         this.reflectionStage = 1
@@ -784,7 +779,7 @@ export class Peer {
         this.requestReflection()
       }, 1024)
 
-      debug(this.peerId, '-> NAT REFLECT - STAGE1: B', this.reflectionId)
+      this._debug(this.peerId, '-> NAT REFLECT - STAGE1: B', this.reflectionId)
       return
     }
 
@@ -814,12 +809,12 @@ export class Peer {
       const peer2 = peers.filter(p => !p.probed).sort(() => Math.random() - 0.5)[0]
 
       if (!peer1 || !peer2) {
-        debug(this.peerId, 'XX NAT REFLECT - STAGE2: INSUFFICENT PEERS - RETRYING')
+        this._debug(this.peerId, 'XX NAT REFLECT - STAGE2: INSUFFICENT PEERS - RETRYING')
         if (this.onConnecting) this.onConnecting({ code: 1.5, status: 'Insufficent Peers' })
         return this._setTimeout(() => this.requestReflection(), 256)
       }
 
-      debug(this.peerId, '-> NAT REFLECT - STAGE2: START', this.reflectionId)
+      this._debug(this.peerId, '-> NAT REFLECT - STAGE2: START', this.reflectionId)
 
       // reset reflection variables to defaults
       this.nextNatType = NAT.UNKNOWN
@@ -844,7 +839,7 @@ export class Peer {
         if (this.onConnecting) this.onConnecting({ code: 2, status: 'Timeout' })
         this.reflectionStage = 1
         this.reflectionId = null
-        debug(this.peerId, 'XX NAT REFLECT - STAGE2: TIMEOUT', this.reflectionId)
+        this._debug(this.peerId, 'XX NAT REFLECT - STAGE2: TIMEOUT', this.reflectionId)
         return this.requestReflection()
       }, 2048)
     }
@@ -938,7 +933,7 @@ export class Peer {
       }
     })
 
-    debug(this.peerId, `-> JOIN (clusterId=${cid}, subclusterId=${scid}, clock=${packet.clock}/${this.clock})`)
+    this._debug(this.peerId, `-> JOIN (clusterId=${cid}, subclusterId=${scid}, clock=${packet.clock}/${this.clock})`)
     if (this.onState) this.onState(this.getState())
 
     this.mcast(packet)
@@ -1079,7 +1074,7 @@ export class Peer {
     this.lastSync = Date.now()
     const summary = await this.cache.summarize('', this.cachePredicate)
 
-    debug(this.peerId, `-> SYNC START (dest=${peer.peerId.slice(0, 8)}, to=${rinfo.address}:${rinfo.port})`)
+    this._debug(this.peerId, `-> SYNC START (dest=${peer.peerId.slice(0, 8)}, to=${rinfo.address}:${rinfo.port})`)
     if (this.onSyncStart) this.onSyncStart(peer, rinfo.port, rinfo.address)
 
     // if we are out of sync send our cache summary
@@ -1123,7 +1118,7 @@ export class Peer {
     this.returnRoutes.set(p.usr3.toString('hex'), {})
     this.gate.set(pid, 1) // don't accidentally spam
 
-    debug(this.peerId, `-> QUERY (type=question, query=${query}, packet=${pid.slice(0, 8)})`)
+    this._debug(this.peerId, `-> QUERY (type=question, query=${query}, packet=${pid.slice(0, 8)})`)
 
     await this.mcast(p)
   }
@@ -1187,7 +1182,7 @@ export class Peer {
     if (!peer.localPeer) peer.localPeer = this
     if (!this.connections) this.connections = new Map()
 
-    debug(this.peerId, '<- CONNECTION ( ' +
+    this._debug(this.peerId, '<- CONNECTION ( ' +
       `peerId=${peer.peerId.slice(0, 6)}, ` +
       `address=${address}:${port}, ` +
       `type=${packet.type}, ` +
@@ -1232,7 +1227,7 @@ export class Peer {
     if (this.onSync) this.onSync(packet, port, address, { remote, local })
 
     const remoteBuckets = remote.buckets.filter(Boolean).length
-    debug(this.peerId, `<- ON SYNC (from=${address}:${port}, local=${local.hash.slice(0, 8)}, remote=${remote.hash.slice(0, 8)} remote-buckets=${remoteBuckets})`)
+    this._debug(this.peerId, `<- ON SYNC (from=${address}:${port}, local=${local.hash.slice(0, 8)}, remote=${remote.hash.slice(0, 8)} remote-buckets=${remoteBuckets})`)
 
     for (let i = 0; i < local.buckets.length; i++) {
       //
@@ -1251,7 +1246,7 @@ export class Peer {
           if (!this.cachePredicate(packet)) continue
 
           const pid = packet.packetId.toString('hex')
-          debug(this.peerId, `-> SYNC SEND PACKET (type=data, packetId=${pid.slice(0, 8)}, to=${address}:${port})`)
+          this._debug(this.peerId, `-> SYNC SEND PACKET (type=data, packetId=${pid.slice(0, 8)}, to=${address}:${port})`)
 
           this.send(await Packet.encode(packet), port, address)
         }
@@ -1304,7 +1299,7 @@ export class Peer {
     if (queryTimestamp < (Date.now() - 2048)) return
 
     const type = queryType === 1 ? 'question' : 'answer'
-    debug(this.peerId, `<- QUERY (type=${type}, from=${address}:${port}, packet=${pid.slice(0, 8)})`)
+    this._debug(this.peerId, `<- QUERY (type=${type}, from=${address}:${port}, packet=${pid.slice(0, 8)})`)
 
     let rinfo = { port, address }
 
@@ -1365,7 +1360,7 @@ export class Peer {
     }
 
     if (packet.hops >= this.maxHops) return
-    debug(this.peerId, '>> QUERY RELAY', port, address)
+    this._debug(this.peerId, '>> QUERY RELAY', port, address)
     return await this.mcast(packet)
   }
 
@@ -1454,7 +1449,7 @@ export class Peer {
 
     const { reflectionId, pingId, isReflection, responderPeerId } = packet.message
 
-    debug(this.peerId, `<- PONG (from=${address}:${port}, hash=${packet.message.cacheSummaryHash}, isConnection=${!!packet.message.isConnection})`)
+    this._debug(this.peerId, `<- PONG (from=${address}:${port}, hash=${packet.message.cacheSummaryHash}, isConnection=${!!packet.message.isConnection})`)
     const peer = this.getPeer(packet.message.responderPeerId)
 
     if (packet.message.isConnection) {
@@ -1473,10 +1468,10 @@ export class Peer {
       if (!this.reflectionFirstResponder) {
         this.reflectionFirstResponder = { port, address, responderPeerId, reflectionId, packet }
         if (this.onConnecting) this.onConnecting({ code: 2.5, status: `Received reflection from ${address}:${port}` })
-        debug(this.peerId, '<- NAT REFLECT - STAGE2: FIRST RESPONSE', port, address, this.reflectionId)
+        this._debug(this.peerId, '<- NAT REFLECT - STAGE2: FIRST RESPONSE', port, address, this.reflectionId)
       } else {
         if (this.onConnecting) this.onConnecting({ code: 2.5, status: `Received reflection from ${address}:${port}` })
-        debug(this.peerId, '<- NAT REFLECT - STAGE2: SECOND RESPONSE', port, address, this.reflectionId)
+        this._debug(this.peerId, '<- NAT REFLECT - STAGE2: SECOND RESPONSE', port, address, this.reflectionId)
         if (packet.message.address !== this.address) return
 
         this.nextNatType |= (
@@ -1485,7 +1480,7 @@ export class Peer {
           ? NAT.MAPPING_ENDPOINT_INDEPENDENT
           : NAT.MAPPING_ENDPOINT_DEPENDENT
 
-        debug(
+        this._debug(
           this.peerId,
           `++ NAT REFLECT - STATE UPDATE (natType=${this.natType}, nextType=${this.nextNatType})`,
           packet.message.port,
@@ -1515,7 +1510,7 @@ export class Peer {
             for (const peer of this.peers) {
               peer.lastRequest = Date.now()
 
-              debug(this.peerId, `-> PING (to=${peer.address}:${peer.port}, peer-id=${peer.peerId.slice(0, 8)}, is-connection=true)`)
+              this._debug(this.peerId, `-> PING (to=${peer.address}:${peer.port}, peer-id=${peer.peerId.slice(0, 8)}, is-connection=true)`)
 
               await this.ping(peer, false, {
                 message: {
@@ -1529,7 +1524,7 @@ export class Peer {
 
             if (this.onNat) this.onNat(this.natType)
 
-            debug(this.peerId, `++ NAT (type=${NAT.toString(this.natType)})`)
+            this._debug(this.peerId, `++ NAT (type=${NAT.toString(this.natType)})`)
             this.sendUnpublished()
             // }
 
@@ -1544,7 +1539,7 @@ export class Peer {
 
       this.address = packet.message.address
       this.port = packet.message.port
-      debug(this.peerId, `++ NAT UPDATE STATE (address=${this.address}, port=${this.port})`)
+      this._debug(this.peerId, `++ NAT UPDATE STATE (address=${this.address}, port=${this.port})`)
     }
   }
 
@@ -1597,7 +1592,7 @@ export class Peer {
     const cid = clusterId.toString('base64')
     const scid = subclusterId.toString('base64')
 
-    debug(this.peerId, '<- INTRO (' +
+    this._debug(this.peerId, '<- INTRO (' +
       `isRendezvous=${packet.message.isRendezvous}, ` +
       `from=${address}:${port}, ` +
       `to=${packet.message.address}:${packet.message.port}, ` +
@@ -1636,13 +1631,13 @@ export class Peer {
     }, 1024 * 2)
 
     if (packet.message.isRendezvous) {
-      debug(this.peerId, `<- INTRO FROM RENDEZVOUS (to=${packet.message.address}:${packet.message.port}, dest=${packet.message.requesterPeerId.slice(0, 6)}, via=${address}:${port}, strategy=${NAT.toStringStrategy(strategy)})`)
+      this._debug(this.peerId, `<- INTRO FROM RENDEZVOUS (to=${packet.message.address}:${packet.message.port}, dest=${packet.message.requesterPeerId.slice(0, 6)}, via=${address}:${port}, strategy=${NAT.toStringStrategy(strategy)})`)
     }
 
-    debug(this.peerId, `++ NAT INTRO (strategy=${NAT.toStringStrategy(strategy)}, from=${this.address}:${this.port} [${NAT.toString(this.natType)}], to=${packet.message.address}:${packet.message.port} [${NAT.toString(packet.message.natType)}])`)
+    this._debug(this.peerId, `++ NAT INTRO (strategy=${NAT.toStringStrategy(strategy)}, from=${this.address}:${this.port} [${NAT.toString(this.natType)}], to=${packet.message.address}:${packet.message.port} [${NAT.toString(packet.message.natType)}])`)
 
     if (strategy === NAT.STRATEGY_TRAVERSAL_CONNECT) {
-      debug(this.peerId, `## NAT CONNECT (from=${this.address}:${this.port}, to=${peerAddress}:${peerPort}, pingId=${pingId})`)
+      this._debug(this.peerId, `## NAT CONNECT (from=${this.address}:${this.port}, to=${peerAddress}:${peerPort}, pingId=${pingId})`)
 
       let i = 0
       if (!this.socketPool) {
@@ -1746,7 +1741,7 @@ export class Peer {
     if (strategy === NAT.STRATEGY_PROXY && !peer.proxy) {
       // TODO could allow multiple proxies
       this._onConnection(packet, peer.peerId, peerPort, peerAddress, proxyCandidate)
-      debug(this.peerId, '++ INTRO CHOSE PROXY STRATEGY')
+      this._debug(this.peerId, '++ INTRO CHOSE PROXY STRATEGY')
     }
 
     if (strategy === NAT.STRATEGY_TRAVERSAL_OPEN) {
@@ -1766,11 +1761,11 @@ export class Peer {
     }
 
     if (strategy === NAT.STRATEGY_DIRECT_CONNECT) {
-      debug(this.peerId, '++ NAT STRATEGY_DIRECT_CONNECT')
+      this._debug(this.peerId, '++ NAT STRATEGY_DIRECT_CONNECT')
     }
 
     if (strategy === NAT.STRATEGY_DEFER) {
-      debug(this.peerId, '++ NAT STRATEGY_DEFER')
+      this._debug(this.peerId, '++ NAT STRATEGY_DEFER')
     }
 
     this.ping(peer, true, props)
@@ -1808,7 +1803,7 @@ export class Peer {
     const cid = clusterId.toString('base64')
     const scid = subclusterId.toString('base64')
 
-    debug(this.peerId, '<- JOIN (' +
+    this._debug(this.peerId, '<- JOIN (' +
       `peerId=${peerId.slice(0, 6)}, ` +
       `clock=${packet.clock}, ` +
       `hops=${packet.hops}, ` +
@@ -1831,7 +1826,7 @@ export class Peer {
         // TODO it would tighten up the transition time between dropped peers
         // if we check strategy from (packet.message.natType, this.natType) and
         // make introductions that create more mutually known peers.
-        debug(this.peerId, `<- JOIN RENDEZVOUS START (to=${peerAddress}:${peerPort}, via=${packet.message.rendezvousAddress}:${packet.message.rendezvousPort})`)
+        this._debug(this.peerId, `<- JOIN RENDEZVOUS START (to=${peerAddress}:${peerPort}, via=${packet.message.rendezvousAddress}:${packet.message.rendezvousPort})`)
 
         const data = await Packet.encode(new PacketJoin({
           clock: packet.clock,
@@ -1873,14 +1868,14 @@ export class Peer {
       const peer = this.peers.find(p => p.peerId === packet.message.rendezvousRequesterPeerId)
 
       if (!peer) {
-        debug(this.peerId, '<- INTRO FROM RENDEZVOUS FAILED', packet)
+        this._debug(this.peerId, '<- INTRO FROM RENDEZVOUS FAILED', packet)
         return
       }
 
       // peer.natType = packet.message.rendezvousType
       peers = [peer]
 
-      debug(this.peerId, `<- JOIN EXECUTING RENDEZVOUS (from=${packet.message.address}:${packet.message.port}, to=${peer.address}:${peer.port})`)
+      this._debug(this.peerId, `<- JOIN EXECUTING RENDEZVOUS (from=${packet.message.address}:${packet.message.port}, to=${peer.address}:${peer.port})`)
     }
 
     for (const peer of peers) {
@@ -1916,8 +1911,8 @@ export class Peer {
       // Send intro1 to the peer described in the message
       // Send intro2 to the peer in this loop
       //
-      debug(this.peerId, `>> INTRO SEND (from=${peer.address}:${peer.port}, to=${packet.message.address}:${packet.message.port})`)
-      debug(this.peerId, `>> INTRO SEND (from=${packet.message.address}:${packet.message.port}, to=${peer.address}:${peer.port})`)
+      this._debug(this.peerId, `>> INTRO SEND (from=${peer.address}:${peer.port}, to=${packet.message.address}:${packet.message.port})`)
+      this._debug(this.peerId, `>> INTRO SEND (from=${packet.message.address}:${packet.message.port}, to=${peer.address}:${peer.port})`)
 
       peer.lastRequest = Date.now()
 
@@ -1941,7 +1936,7 @@ export class Peer {
       packet.message.rendezvousDeadline = Date.now() + this.config.keepalive
     }
 
-    debug(this.peerId, `-> JOIN RELAY (peerId=${peerId.slice(0, 6)}, from=${peerAddress}:${peerPort})`)
+    this._debug(this.peerId, `-> JOIN RELAY (peerId=${peerId.slice(0, 6)}, from=${peerAddress}:${peerPort})`)
     this.mcast(packet, [{ port, address }, { port: peerPort, address: peerAddress }])
 
     if (packet.hops <= 1) {
@@ -1963,11 +1958,11 @@ export class Peer {
 
     const pid = packet.packetId.toString('hex')
     if (this.cache.has(pid)) {
-      debug(this.peerId, `<- PUBLISH DUPE (packetId=${pid.slice(0, 8)}, from=${address}:${port})`)
+      this._debug(this.peerId, `<- PUBLISH DUPE (packetId=${pid.slice(0, 8)}, from=${address}:${port})`)
       return
     }
 
-    debug(this.peerId, `<- PUBLISH (packetId=${pid.slice(0, 8)}, from=${address}:${port}, is-sync=${packet.usr4.toString() === 'SYNC'})`)
+    this._debug(this.peerId, `<- PUBLISH (packetId=${pid.slice(0, 8)}, from=${address}:${port}, is-sync=${packet.usr4.toString() === 'SYNC'})`)
     this.cacheInsert(packet)
 
     const ignorelist = [{ address, port }]
@@ -2040,16 +2035,16 @@ export class Peer {
     // stream message is for another peer
     const peerTo = this.peers.find(p => p.peerId === streamTo)
     if (!peerTo) {
-      debug(this.peerId, `XX STREAM RELAY FORWARD DESTINATION NOT REACHABLE (to=${streamTo})`)
+      this._debug(this.peerId, `XX STREAM RELAY FORWARD DESTINATION NOT REACHABLE (to=${streamTo})`)
       return
     }
 
     if (packet.hops >= this.maxHops) {
-      debug(this.peerId, `XX STREAM RELAY MAX HOPS EXCEEDED (to=${streamTo})`)
+      this._debug(this.peerId, `XX STREAM RELAY MAX HOPS EXCEEDED (to=${streamTo})`)
       return
     }
 
-    debug(this.peerId, `>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
+    this._debug(this.peerId, `>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
     this.send(await Packet.encode(packet), peerTo.port, peerTo.address)
     if (packet.hops <= 2 && this.natType === NAT.UNRESTRICTED) this.mcast(packet)
   }
@@ -2072,7 +2067,7 @@ export class Peer {
     this.gate.set(pid, 1)
 
     const { reflectionId } = packet.message
-    debug(this.peerId, `<- NAT PROBE (from=${address}:${port}, stage=${this.reflectionStage}, id=${reflectionId})`)
+    this._debug(this.peerId, `<- NAT PROBE (from=${address}:${port}, stage=${this.reflectionStage}, id=${reflectionId})`)
 
     if (this.onProbe) this.onProbe(data, port, address)
     if (this.reflectionId !== reflectionId || !this.reflectionId) return
@@ -2081,7 +2076,7 @@ export class Peer {
     // const reflectionStage = reflectionId ? parseInt(reflectionId.slice(-1), 16) : 0
 
     if (this.reflectionStage === 1) {
-      debug(this.peerId, '<- NAT REFLECT - STAGE1: probe received', reflectionId)
+      this._debug(this.peerId, '<- NAT REFLECT - STAGE1: probe received', reflectionId)
       if (!packet.message?.port) return // message must include a port number
 
       // successfully discovered the probe socket external port
@@ -2095,16 +2090,16 @@ export class Peer {
     }
 
     if (this.reflectionStage === 2) {
-      debug(this.peerId, '<- NAT REFLECT - STAGE2: probe received', reflectionId)
+      this._debug(this.peerId, '<- NAT REFLECT - STAGE2: probe received', reflectionId)
 
       // if we have previously sent an outbount message to this peer on the probe port
       // then our NAT will have a mapping for their IP, but not their IP+Port.
       if (!NAT.isFirewallDefined(this.nextNatType)) {
         this.nextNatType |= NAT.FIREWALL_ALLOW_KNOWN_IP
-        debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_KNOWN_IP (${packet.message.port} -> ${this.nextNatType})`)
+        this._debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_KNOWN_IP (${packet.message.port} -> ${this.nextNatType})`)
       } else {
         this.nextNatType |= NAT.FIREWALL_ALLOW_ANY
-        debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_ANY (${packet.message.port} -> ${this.nextNatType})`)
+        this._debug(this.peerId, `<> PROBE STATUS: NAT.FIREWALL_ALLOW_ANY (${packet.message.port} -> ${this.nextNatType})`)
       }
 
       // wait for all messages to arrive
@@ -2135,7 +2130,7 @@ export class Peer {
 
     if (!this.config.limitExempt) {
       if (rateLimit(this.rates, packet.type, port, address, subcluster)) {
-        debug(this.peerId, `XX RATE LIMIT HIT (from=${address}, type=${packet.type})`)
+        this._debug(this.peerId, `XX RATE LIMIT HIT (from=${address}, type=${packet.type})`)
         this.metrics.i.REJECTED++
         return
       }
