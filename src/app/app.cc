@@ -369,24 +369,16 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillHide: (NSNotification*) notification {
-  NSDictionary *userInfo = notification.userInfo;
-  CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-  CGFloat keyboardHeight = keyboardFrame.size.height;
+  const auto info = notification.userInfo;
+  const auto keyboardFrameBegin = (NSValue*) [info valueForKey: UIKeyboardFrameEndUserInfoKey];
+  const auto rect = [keyboardFrameBegin CGRectValue];
+  const auto height = rect.size.height;
 
-  self.keyboardHeight = keyboardFrame.size.height;
-  self.animationDuration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
-
-  self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardHide:)];
-  self.displayLink.preferredFramesPerSecond = 120;
-  [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+  const auto window = self.app->windowManager.getWindow(0);
+  window->webview.scrollView.scrollEnabled = YES;
 
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
-      const auto info = notification.userInfo;
-      const auto keyboardFrameBegin = (NSValue*) [info valueForKey: UIKeyboardFrameEndUserInfoKey];
-      const auto rect = [keyboardFrameBegin CGRectValue];
-      const auto height = rect.size.height;
-
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
           {"event", "will-hide"},
@@ -410,24 +402,16 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void)keyboardWillShow: (NSNotification*) notification {
-  NSDictionary *userInfo = notification.userInfo;
-  CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-  CGFloat keyboardHeight = keyboardFrame.size.height;
+  const auto info = notification.userInfo;
+  const auto keyboardFrameBegin = (NSValue*) [info valueForKey: UIKeyboardFrameEndUserInfoKey];
+  const auto rect = [keyboardFrameBegin CGRectValue];
+  const auto height = rect.size.height;
 
-  self.keyboardHeight = keyboardFrame.size.height;
-  self.animationDuration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
-
-  self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(keyboardShow:)];
-  self.displayLink.preferredFramesPerSecond = 120;
-  [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+  const auto window = self.app->windowManager.getWindow(0);
+  window->webview.scrollView.scrollEnabled = NO;
 
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
-      const auto info = notification.userInfo;
-      const auto keyboardFrameBegin = (NSValue*) [info valueForKey: UIKeyboardFrameEndUserInfoKey];
-      const auto rect = [keyboardFrameBegin CGRectValue];
-      const auto height = rect.size.height;
-
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
         {"event", "will-show"},
@@ -436,64 +420,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
       });
     }
   }
-}
-
-- (void) keyboardShow: (CADisplayLink*) displayLink {
-  if (self.inMotion) return;
-  self.inMotion = true;
-
-  const auto window = self.app->windowManager.getWindow(0);
-
-  auto timer = [NSTimer scheduledTimerWithTimeInterval: 0.0008 repeats: YES block:^(NSTimer * _Nonnull timer) {
-    CGRect newFrame = window->webview.frame;
-
-    CGFloat p = self.progress / self.keyboardHeight;
-    p = p > 1.0 ? 1.0 : p;
-
-    CGFloat easedHeightChange = 0.5 + pow(1.4 - p, 8);
-    newFrame.size.height -= easedHeightChange;
-
-    window->webview.frame = newFrame;
-
-    self.progress += easedHeightChange > 0 ? easedHeightChange : 0;
-
-    if (self.progress >= self.keyboardHeight) {
-      [displayLink invalidate];
-      [timer invalidate];
-      self.inMotion = false;
-    }
-  }];
-
-  [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-}
-
-- (void) keyboardHide: (CADisplayLink*) displayLink {
-  if (self.inMotion) return;
-  self.inMotion = true;
-
-  const auto window = self.app->windowManager.getWindow(0);
-  const auto stepDuration = self.animationDuration / 60.0;
-
-  auto timer = [NSTimer scheduledTimerWithTimeInterval:stepDuration repeats:YES block:^(NSTimer * _Nonnull timer) {
-    CGRect newFrame = window->webview.frame;
-
-    CGFloat p = (self.progress / self.keyboardHeight || 1);
-    CGFloat easedHeightChange = 8 + pow(--p, 4);
-    newFrame.size.height += easedHeightChange; // Adjusted to increase the height
-
-    window->webview.frame = newFrame;
-
-    CGFloat progressIncrement = easedHeightChange > 0 ? easedHeightChange : 0;
-    self.progress -= progressIncrement; // Decrease the progress
-
-    if (self.progress <= 0) { // Check if progress is zero or less
-      [displayLink invalidate];
-      [timer invalidate];
-      self.inMotion = false;
-    }
-  }];
-
-  [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
 }
 
 - (void) keyboardDidShow: (NSNotification*) notification {
@@ -509,14 +435,14 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) keyboardWillChange: (NSNotification*) notification {
+  const auto keyboardInfo = notification.userInfo;
+  const auto keyboardFrameBegin = (NSValue* )[keyboardInfo valueForKey: UIKeyboardFrameEndUserInfoKey];
+  const auto rect = [keyboardFrameBegin CGRectValue];
+  const auto width = rect.size.width;
+  const auto height = rect.size.height;
+
   for (const auto window : self.app->windowManager.windows) {
     if (window && !window->window.isHidden) {
-      const auto keyboardInfo = notification.userInfo;
-      const auto keyboardFrameBegin = (NSValue* )[keyboardInfo valueForKey: UIKeyboardFrameEndUserInfoKey];
-      const auto rect = [keyboardFrameBegin CGRectValue];
-      const auto width = rect.size.width;
-      const auto height = rect.size.height;
-
       window->bridge.emit("keyboard", JSON::Object::Entries {
         {"value", JSON::Object::Entries {
           {"event", "will-change"},
