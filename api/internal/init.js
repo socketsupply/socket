@@ -25,6 +25,7 @@ import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import mime from '../mime.js'
 import path from '../path.js'
+import process from '../process.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -209,6 +210,78 @@ if ((globalThis.window) === globalThis) {
       }))
     }
   })
+
+  if (process.platform === 'ios') {
+    let keyboardHeight
+    let isKeyboardOpen = false
+    let initialHeight = 0
+    const duration = 346
+
+    globalThis.window.addEventListener('keyboard', ({ detail }) => {
+      if (initialHeight === 0) {
+        initialHeight = document.body.offsetHeight
+      }
+
+      if (detail.value.event === 'will-show') {
+        if (isKeyboardOpen) {
+          document.body.style.height = initialHeight
+        }
+
+        keyboardHeight = detail.value.height
+        let start = null
+
+        const bezier = t => {
+          const p1 = 0.9
+          const p2 = 0.95
+          return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+        }
+
+        const animate = (timestamp) => {
+          if (!start) start = timestamp
+          const elapsed = timestamp - start
+          const progress = Math.min(elapsed / duration, 1)
+          const easeProgress = bezier(progress)
+          const currentHeight = initialHeight - (easeProgress * keyboardHeight)
+
+          document.body.style.height = `${currentHeight}px`
+
+          if (progress < 1) {
+            isKeyboardOpen = true
+            window.requestAnimationFrame(animate)
+          }
+        }
+        window.requestAnimationFrame(animate)
+      }
+
+      if (detail.value.event === 'will-hide') {
+        let start = null
+        const initialHeight = document.body.offsetHeight
+
+        const bezier = t => {
+          const p1 = 0.86
+          const p2 = 0.95
+          return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+        }
+
+        const animate = (timestamp) => {
+          if (!start) start = timestamp
+          const elapsed = timestamp - start
+          const progress = Math.min(elapsed / duration, 1)
+          const easeProgress = bezier(progress)
+          const currentHeight = initialHeight + (easeProgress * keyboardHeight)
+
+          document.body.style.height = `${currentHeight}px`
+
+          if (progress < 1) {
+            window.requestAnimationFrame(animate)
+          } else {
+            isKeyboardOpen = false
+          }
+        }
+        window.requestAnimationFrame(animate)
+      }
+    })
+  }
 }
 
 class RuntimeWorker extends GlobalWorker {
