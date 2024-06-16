@@ -871,7 +871,7 @@ function _compile_llama {
       quiet cmake --install build
       die $? "not ok - libllama.a (desktop)"
     else
-      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/libllama.lib"; then
+      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/llama.lib"; then
         local config="Release"
         if [[ -n "$DEBUG" ]]; then
           config="Debug"
@@ -880,8 +880,8 @@ function _compile_llama {
         quiet cmake -S .. -B . ${cmake_args[@]}
         quiet cmake --build . --config $config
         mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
-        quiet echo "cp -up $STAGING_DIR/build/$config/libllama.lib "$BUILD_DIR/$target-$platform/lib$d/libllama.lib""
-        cp -up "$STAGING_DIR/build/$config/libllama.lib" "$BUILD_DIR/$target-$platform/lib$d/libllama.lib"
+        quiet echo "cp -up $STAGING_DIR/build/$config/llama.lib "$BUILD_DIR/$target-$platform/lib$d/llama.lib""
+        cp -up "$STAGING_DIR/build/$config/llama.lib" "$BUILD_DIR/$target-$platform/lib$d/llama.lib"
         if [[ -n "$DEBUG" ]]; then
           cp -up "$STAGING_DIR"/build/$config/llama_a.pdb "$BUILD_DIR/$target-$platform/lib$d/llama_a.pdb"
         fi;

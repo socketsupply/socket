@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
-declare clang="${CXX:-"${CLANG:-$(which clang++)}"}"
+declare clang="${CXX:-"${CLANG:-"$(which clang++)"}"}"
 declare cache_path="$root/build/cache"
 
 source "$root/bin/functions.sh"
@@ -190,12 +190,12 @@ function generate_llama_build_info () {
     build_commit=$(printf '%s' "$out" | tr -d '\n')
   fi
 
-  if out=$($clang --version | head -1); then
-    build_compiler=$out
+  if out=$("$clang" --version | head -1); then
+    build_compiler="$out"
   fi
 
-  if out=$($clang -dumpmachine); then
-    build_target=$out
+  if out=$("$clang" -dumpmachine); then
+    build_target="$out"
   fi
 
   echo "# generating llama build info"
@@ -208,7 +208,7 @@ function generate_llama_build_info () {
     char const *LLAMA_BUILD_TARGET = "$build_target";
 LLAMA_BUILD_INFO
 
-  quiet $clang "${cflags[@]}" -c $source -o ${source/cpp/o} || onsignal
+  quiet "$clang" "${cflags[@]}" -c $source -o ${source/cpp/o} || onsignal
 }
 
 function build_linux_desktop_extension_object () {
@@ -270,7 +270,7 @@ function main () {
         mkdir -p "$(dirname "$object")"
 
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        quiet "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
 
         if (( $(stat_mtime "$header") > $(stat_mtime "$source") )); then
