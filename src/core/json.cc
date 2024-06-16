@@ -158,7 +158,7 @@ namespace SSC::JSON {
     this->pointer = SharedPointer<void>(new Number((double) number));
     this->type = Type::Number;
   }
-#else
+#elif !SOCKET_RUNTIME_PLATFORM_WINDOWS
   Any::Any (long long number) {
     this->pointer = SharedPointer<void>(new Number((double) number));
     this->type = Type::Number;

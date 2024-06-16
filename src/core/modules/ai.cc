@@ -2,6 +2,13 @@
 #include "../resource.hh"
 #include "ai.hh"
 
+#if defined (_WIN32)
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+#endif
+
+
 namespace SSC {
   static JSON::Object::Entries ERR_AI_LLM_NOEXISTS (
     const String& source,
