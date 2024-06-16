@@ -1444,7 +1444,7 @@ namespace SSC::IPC {
     this->setHeader(name, std::to_string(value));
   }
 
-#if !SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_ANDROID
+#if !SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_ANDROID && !SOCKET_RUNTIME_PLATFORM_WINDOWS
   void SchemeHandlers::Response::setHeader (const String& name, uint64_t value) {
     this->setHeader(name, std::to_string(value));
   }

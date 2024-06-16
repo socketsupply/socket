@@ -84,7 +84,7 @@ namespace SSC {
   using WebViewSettings = WebKitSettings;
 #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   using WebView = ICoreWebView2;
-  using WebViewSettings = ComPtr<CoreWebView2EnvironmentOptions>;
+  using WebViewSettings = Microsoft::WRL::ComPtr<CoreWebView2EnvironmentOptions>;
 #elif SOCKET_RUNTIME_PLATFORM_ANDROID
   using WebView = CoreAndroidWebView;
   using WebViewSettings = CoreAndroidWebViewSettings;

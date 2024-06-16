@@ -180,7 +180,7 @@ namespace SSC::JSON {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (size_t);
       Any (ssize_t);
-    #else
+    #elif !SOCKET_RUNTIME_PLATFORM_WINDOWS
       Any (long long);
     #endif
       Any (const Number);

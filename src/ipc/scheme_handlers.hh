@@ -217,7 +217,7 @@ namespace SSC::IPC {
         void setHeader (const String& name, const Headers::Value& value);
         void setHeader (const String& name, size_t value);
         void setHeader (const String& name, int64_t value);
-      #if !SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_ANDROID
+      #if !SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_PLATFORM_ANDROID && !SOCKET_RUNTIME_PLATFORM_WINDOWS
         void setHeader (const String& name, uint64_t value);
       #endif
         void setHeader (const Headers::Header& header);
@@ -256,7 +256,7 @@ namespace SSC::IPC {
       RequestMap activeRequests;
 
     #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-      Set<ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
+      Set<Microsoft::WRL::ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
     #endif
 
       SchemeHandlers (Bridge* bridge);

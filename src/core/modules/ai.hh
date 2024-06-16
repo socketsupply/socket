@@ -11,14 +11,6 @@
 // #include <cmath>
 // #include <ctime>
 
-#if defined (_WIN32)
-  #define WIN32_LEAN_AND_MEAN
-
-  #ifndef NOMINMAX
-    #define NOMINMAX
-  #endif
-#endif
-
 namespace SSC {
   class LLM;
   class Core;
