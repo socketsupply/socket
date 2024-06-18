@@ -199,10 +199,10 @@ export default module)S";
     };
 
     core->networkStatus.addObserver(this->networkStatusObserver, [this](auto json) {
-      if (json.has("name")) {
-        this->emit(json["name"].str(), json.str());
-      }
+      if (json.has("name")) this->emit(json["name"].str(), json.str());
     });
+
+    core->networkStatus.start();
 
     core->geolocation.addPermissionChangeObserver(this->geolocationPermissionChangeObserver, [this] (auto json) {
       JSON::Object event = JSON::Object::Entries {

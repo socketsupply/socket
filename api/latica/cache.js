@@ -196,7 +196,7 @@ export class Cache {
 
     // follow the chain to get the buffers in order
     const bufs = [...source.values()]
-      .filter(p => Buffer.from(p.previousId).toString('hex') === Buffer.from(previous.packetId).toString('hex'))
+      .filter(p => Buffer.from(p.previousId || '').toString('hex') === Buffer.from(previous.packetId).toString('hex'))
       .sort((a, b) => a.index - b.index)
 
     if (!indexes || bufs.length < indexes) return null
@@ -208,7 +208,7 @@ export class Cache {
 
     if (!meta.ts) meta.ts = ts
     // generate a new packet ID
-    const packetId = await sha256(Buffer.concat([packet.previousId, message]), { bytes: true })
+    const packetId = await sha256(Buffer.concat([Buffer.from(packet.previousId || ''), message]), { bytes: true })
 
     return Packet.from({
       ...packet,
