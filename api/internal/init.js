@@ -217,30 +217,34 @@ if ((globalThis.window) === globalThis) {
     let initialHeight = 0
     const duration = 346
 
+    const bezierShow = t => {
+      const p1 = 0.9
+      const p2 = 0.95
+      return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+    }
+
+    const bezierHide = t => {
+      const p1 = 0.86
+      const p2 = 0.95
+      return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+    }
+
     globalThis.window.addEventListener('keyboard', ({ detail }) => {
       if (initialHeight === 0) {
         initialHeight = document.body.offsetHeight
       }
 
       if (detail.value.event === 'will-show') {
-        if (isKeyboardOpen) {
-          document.body.style.height = initialHeight
-        }
+        if (isKeyboardOpen) return
 
         keyboardHeight = detail.value.height
         let start = null
-
-        const bezier = t => {
-          const p1 = 0.9
-          const p2 = 0.95
-          return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
-        }
 
         const animate = (timestamp) => {
           if (!start) start = timestamp
           const elapsed = timestamp - start
           const progress = Math.min(elapsed / duration, 1)
-          const easeProgress = bezier(progress)
+          const easeProgress = bezierShow(progress)
           const currentHeight = initialHeight - (easeProgress * keyboardHeight)
 
           document.body.style.height = `${currentHeight}px`
@@ -254,21 +258,17 @@ if ((globalThis.window) === globalThis) {
       }
 
       if (detail.value.event === 'will-hide') {
+        isKeyboardOpen = false
         let start = null
         const initialHeight = document.body.offsetHeight
-
-        const bezier = t => {
-          const p1 = 0.86
-          const p2 = 0.95
-          return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
-        }
 
         const animate = (timestamp) => {
           if (!start) start = timestamp
           const elapsed = timestamp - start
           const progress = Math.min(elapsed / duration, 1)
-          const easeProgress = bezier(progress)
+          const easeProgress = bezierHide(progress)
           const currentHeight = initialHeight + (easeProgress * keyboardHeight)
+          if (currentHeight <= 0) progress = 1
 
           document.body.style.height = `${currentHeight}px`
 

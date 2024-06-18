@@ -160,6 +160,10 @@ namespace SSC {
         udp(this)
       {
         initEventLoop();
+
+        if (options.features.useNetworkStatus) {
+          this->networkStatus.start();
+        }
       }
 
       Core ()

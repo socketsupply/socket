@@ -93,6 +93,7 @@ async function api (options = {}, events, dgram) {
    * @returns {object} - The general information.
    */
   bus.getInfo = () => _peer.getInfo()
+  bus.getMetrics = () => _peer.getMetrics()
 
   /**
    * Gets the read only state of the network peer.
@@ -257,6 +258,15 @@ async function api (options = {}, events, dgram) {
 
           _peer.mcast(packet)
         }
+
+        const head = packets.find(p => p.index === 0)
+
+        if (_peer.onPacket && head) { // try to emit a single packet
+          const p = await _peer.cache.compose(head)
+          _peer.onPacket(p, _peer.port, _peer.address, true)
+          return [p]
+        }
+
         return packets
       } else {
         const packets = await _peer.publish(sub.sharedKey, args)

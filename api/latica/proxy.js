@@ -161,6 +161,10 @@ class PeerWorkerProxy {
     return await this.callWorkerThread('getInfo')
   }
 
+  async getMetrics () {
+    return await this.callWorkerThread('metrics')
+  }
+
   async getState () {
     return await this.callWorkerThread('getState')
   }
