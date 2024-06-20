@@ -88,9 +88,8 @@ namespace SSC {
     };
   }
 
-  CoreNotifications::CoreNotifications (Core* core, const Options& options)
+  CoreNotifications::CoreNotifications (Core* core)
     : CoreModule(core),
-      options(options),
       permissionChangeObservers(),
       notificationResponseObservers(),
       notificationPresentedObservers()
