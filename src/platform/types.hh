@@ -5,6 +5,7 @@
 #include <atomic>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <map>
 #include <mutex>
 #include <queue>
@@ -44,9 +45,9 @@ namespace SSC {
   template <typename T = String> using Set = std::set<T>;
   template <typename T> using SharedPointer = std::shared_ptr<T>;
   template <typename T> using UniquePointer = std::unique_ptr<T>;
+  template <typename T> using Promise = std::promise<T>;
 
   using ExitCallback = Function<void(int code)>;
   using MessageCallback = Function<void(const String)>;
 }
-
 #endif

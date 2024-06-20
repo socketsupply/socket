@@ -1,6 +1,10 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_PLATFORM_H
 #define SOCKET_RUNTIME_PLATFORM_PLATFORM_H
 
+#if SOCKET_RUNTIME_PLATFORM_WANTS_MINGW
+#include <_mingw.h>
+#endif
+
 // All Platforms
 #include <errno.h>
 #include <math.h>
@@ -66,7 +70,7 @@
 #undef _WINSOCKAPI_
 #define _WINSOCKAPI_
 
-#include <WinSock2.h>
+#include <winsock2.h>
 #include <windows.h>
 
 #include <dwmapi.h>
@@ -75,7 +79,7 @@
 #include <objidl.h>
 #include <signal.h>
 #include <shellapi.h>
-#include <shlobj_core.h>
+#include <shlobj.h>
 #include <shlwapi.h>
 #include <shobjidl.h>
 #include <tchar.h>
@@ -120,20 +124,22 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <dlfcn.h>
+#else
+#endif
+
+#if SOCKET_RUNTIME_CROSS_COMPILED_HOST
+#include <windows.foundation.h>
 #endif
 
 #include <socket/platform.h>
 #include "string.hh"
 #include "types.hh"
 
-#if !SOCKET_RUNTIME_PLATFORM_WINDOWS
-#include <dlfcn.h>
-#endif
-
 namespace SSC {
   struct RuntimePlatform {
-    const String arch = "";
-    const String os = "";
+    const String arch;
+    const String os;
     bool mac = false;
     bool ios = false;
     bool win = false;
@@ -146,5 +152,4 @@ namespace SSC {
   void msleep (uint64_t ms);
   uint64_t rand64 ();
 }
-
 #endif
