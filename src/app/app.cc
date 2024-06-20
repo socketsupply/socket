@@ -477,6 +477,7 @@ namespace SSC {
   static App* applicationInstance = nullptr;
 
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+  static Atomic<bool> isConsoleVisible = false;
   static FILE* console = nullptr;
 
   static inline void alert (const WString &ws) {
@@ -489,6 +490,201 @@ namespace SSC {
 
   static inline void alert (const char* s) {
     MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
+
+  static void showWindowsConsole () {
+    if (!isConsoleVisible) {
+      isConsoleVisible = true;
+      AllocConsole();
+      freopen_s(&console, "CONOUT$", "w", stdout);
+    }
+  }
+
+  static void hideWindowsConsole () {
+    if (isConsoleVisible) {
+      isConsoleVisible = false;
+      fclose(console);
+      FreeConsole();
+    }
+  }
+
+  // message is defined in WinUser.h
+  // https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/WinUser.h
+  static LRESULT CALLBACK onWindowProcMessage (
+    HWND hWnd,
+    UINT message,
+    WPARAM wParam,
+    LPARAM lParam
+  ) {
+    auto app = SSC::App::sharedApplication();
+
+    if (app == nullptr) {
+      return 0;
+    }
+
+    auto window = reinterpret_cast<WindowManager::ManagedWindow*>(
+      GetWindowLongPtr(hWnd, GWLP_USERDATA)
+    );
+
+    // invalidate `window` pointer that potentially is leaked
+    if (window != nullptr && app->windowManager.getWindow(window) != window) {
+      window = nullptr;
+    }
+
+    auto userConfig = window != nullptr
+      ? reinterpret_cast<Window*>(window)->options.userConfig
+      : getUserConfig();
+
+    if (message == WM_COPYDATA) {
+      auto copyData = reinterpret_cast<PCOPYDATASTRUCT>(lParam);
+      message = (UINT) copyData->dwData;
+      wParam = (WPARAM) copyData->cbData;
+      lParam = (LPARAM) copyData->lpData;
+    }
+
+    switch (message) {
+      case WM_SIZE: {
+        if (window == nullptr || window->controller == nullptr) {
+          break;
+        }
+
+        RECT bounds;
+        GetClientRect(hWnd, &bounds);
+        window->size.height = bounds.bottom - bounds.top;
+        window->size.width = bounds.right - bounds.left;
+        window->controller->put_Bounds(bounds);
+        break;
+      }
+
+      case WM_SOCKET_TRAY: {
+        // XXX(@jwerle, @heapwolf): is this a correct for an `isAgent` predicate?
+        auto isAgent = userConfig.count("tray_icon") != 0;
+
+        if (lParam == WM_LBUTTONDOWN) {
+          SetForegroundWindow(hWnd);
+          if (isAgent) {
+            POINT point;
+            GetCursorPos(&point);
+            TrackPopupMenu(
+              window->menutray,
+              TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+              point.x,
+              point.y,
+              0,
+              hWnd,
+              NULL
+            );
+          }
+
+          PostMessage(hWnd, WM_NULL, 0, 0);
+
+          // broadcast an event to all the windows that the tray icon was clicked
+          for (auto window : app->windowManager->windows) {
+            if (window != nullptr) {
+              window->bridge->router.emit("tray", "true");
+            }
+          }
+        }
+
+        // XXX: falls through to `WM_COMMAND` below
+      }
+
+      case WM_COMMAND: {
+        if (window == nullptr) {
+          break;
+        }
+
+        if (window->menuMap.contains(wParam)) {
+          String meta(window->menuMap[wParam]);
+          auto parts = split(meta, '\t');
+
+          if (parts.size() > 1) {
+            auto title = parts[0];
+            auto parent = parts[1];
+
+            if (title.find("About") == 0) {
+              reinterpret_cast<Window*>(window)->about();
+              break;
+            }
+
+            if (title.find("Quit") == 0) {
+              window->exit(0);
+              break;
+            }
+
+            window->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
+          }
+        } else if (window->menuTrayMap.contains(wParam)) {
+          String meta(window->menuTrayMap[wParam]);
+          auto parts = split(meta, ':');
+
+          if (parts.size() > 0) {
+            auto title = trim(parts[0]);
+            auto tag = parts.size() > 1 ? trim(parts[1]) : "";
+            window->eval(getResolveMenuSelectionJavaScript("0", title, tag, "tray"));
+          }
+        }
+
+        break;
+      }
+
+      case WM_SETTINGCHANGE: {
+        // TODO(heapwolf): Dark mode
+        break;
+      }
+
+      case WM_CREATE: {
+        // TODO(heapwolf): Dark mode
+        SetWindowTheme(hWnd, L"Explorer", NULL);
+        SetMenu(hWnd, CreateMenu());
+        break;
+      }
+
+      case WM_CLOSE: {
+        if (!window->options.closable) {
+          break;
+        }
+
+        auto index = window->index;
+        const JSON::Object json = JSON::Object::Entries {
+          {"data", window->index}
+        };
+
+        for (auto window : app->windowManager->windows) {
+          if (window != nullptr && window->index != index) {
+            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+          }
+        }
+
+        app->windowManager->destroyWindow(index);
+        break;
+      }
+
+      case WM_HOTKEY: {
+        window->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
+        break;
+      }
+
+      case WM_HANDLE_DEEP_LINK: {
+        auto url = SSC::String(reinterpret_cast<const char*>(lParam), wParam);
+        const JSON::Object json = JSON::Object::Entries {
+          {"url", url}
+        };
+
+        for (auto window : app->windowManager->windows) {
+          if (window != nullptr) {
+            window->bridge->router.emit("applicationurl", json.str());
+          }
+        }
+        break;
+      }
+
+      default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+        break;
+    }
+
+    return 0;
   }
 #endif
 
@@ -514,11 +710,7 @@ namespace SSC {
     this->init();
   }
 #else
-  App::App (int _, SharedPointer<Core> core)
-    : App(core)
-  {}
-
-  App::App (SharedPointer<Core> core)
+  App::App (int instanceId, SharedPointer<Core> core)
     : userConfig(getUserConfig()),
       core(core),
       windowManager(core),
@@ -527,6 +719,49 @@ namespace SSC {
     if (applicationInstance == nullptr) {
       applicationInstance = this;
     }
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    this->hInstance = reinterpret_cast<HINSTANCE>(instanceId);
+
+    // this fixes bad default quality DPI.
+    SetProcessDPIAware();
+
+    if (userConfig["win_logo"].size() == 0 && userConfig["win_icon"].size() > 0) {
+      userConfig["win_logo"] = fs::path(userConfig["win_icon"]).filename().string();
+    }
+
+    auto iconPath = fs::path { getcwd() / fs::path { userConfig["win_logo"] } };
+
+    HICON icon = (HICON) LoadImageA(
+      NULL,
+      iconPath.string().c_str(),
+      IMAGE_ICON,
+      GetSystemMetrics(SM_CXICON),
+      GetSystemMetrics(SM_CXICON),
+      LR_LOADFROMFILE
+    );
+
+    auto windowClassName = userConfig["meta_bundle_identifier"];
+
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = windowClassName.c_str();
+    wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
+    wcex.hIcon = icon;
+    wcex.lpfnWndProc = onWindowProcMessage;
+
+    if (!RegisterClassEx(&wcex)) {
+      alert("Application could not launch, possible missing resources.");
+    }
+
+  #endif
 
   #if !SOCKET_RUNTIME_DESKTOP_EXTENSION
     const auto cwd = getcwd();
@@ -549,6 +784,8 @@ namespace SSC {
     this->applicationDelegate = [SSCApplicationDelegate new];
     this->applicationDelegate.app = this;
     NSApplication.sharedApplication.delegate = this->applicationDelegate;
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+    OleInitialize(nullptr);
   #endif
   }
 
@@ -606,7 +843,6 @@ namespace SSC {
 
   void App::kill () {
     this->killed = true;
-    this->core->shuttingDown = true;
     this->core->shutdown();
     // Distinguish window closing with app exiting
     shouldExit = true;
@@ -619,11 +855,6 @@ namespace SSC {
       [NSApp terminate: nil];
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-    if (isDebugEnabled()) {
-      if (w32ShowConsole) {
-        HideConsole();
-      }
-    }
     PostQuitMessage(0);
   #endif
   }
@@ -739,64 +970,14 @@ namespace SSC {
   }
 
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-  void App::ShowConsole () {
-    if (!isConsoleVisible) {
-      isConsoleVisible = true;
-      AllocConsole();
-      freopen_s(&console, "CONOUT$", "w", stdout);
-    }
+  LRESULT App::forwardWindowProcMessage (
+    HWND hWnd,
+    UINT message,
+    WPARAM wParam,
+    LPARAM lParam
+  ) {
+    return onWindowProcMessage(hWnd, message, wParam, lParam);
   }
-
-  void App::HideConsole () {
-    if (isConsoleVisible) {
-      isConsoleVisible = false;
-      fclose(console);
-      FreeConsole();
-    }
-  }
-
-  App::App (void* h) : App() {
-    static auto userConfig = getUserConfig();
-    this->hInstance = (HINSTANCE) h;
-
-    // this fixes bad default quality DPI.
-    SetProcessDPIAware();
-
-    if (userConfig["win_logo"].size() == 0 && userConfig["win_icon"].size() > 0) {
-      userConfig["win_logo"] = fs::path(userConfig["win_icon"]).filename().string();
-    }
-
-    auto iconPath = fs::path { getcwd() / fs::path { userConfig["win_logo"] } };
-
-    HICON icon = (HICON) LoadImageA(
-      NULL,
-      iconPath.string().c_str(),
-      IMAGE_ICON,
-      GetSystemMetrics(SM_CXICON),
-      GetSystemMetrics(SM_CXICON),
-      LR_LOADFROMFILE
-    );
-
-    auto windowClassName = userConfig["meta_bundle_identifier"];
-
-    wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.cbClsExtra = 0;
-    wcex.cbWndExtra = 0;
-    wcex.hInstance = hInstance;
-    wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
-    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wcex.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
-    wcex.lpszMenuName = NULL;
-    wcex.lpszClassName = windowClassName.c_str();
-    wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
-    wcex.hIcon = icon;
-    wcex.lpfnWndProc = Window::WndProc;
-
-    if (!RegisterClassEx(&wcex)) {
-      alert("Application could not launch, possible missing resources.");
-    }
-  };
 #endif
 }
 
