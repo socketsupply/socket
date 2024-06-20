@@ -343,14 +343,14 @@ function _build_runtime_library() {
 }
 
 function _get_web_view2() {
-  if [[ "$(uname -s)" != *"_NT"* ]]; then
+  if [[ "$(uname -s)" != *"_NT"* ]] && [ -z "$FORCE_WEBVIEW2_DOWNLOAD" ]; then
     return
   fi
 
   local arch="$(host_arch)"
   local platform="desktop"
 
-  if test -f "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"; then
+  if [ -z "$FORCE_WEBVIEW2_DOWNLOAD" ] && test -f "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"; then
     echo "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib exists."
     return
   fi
