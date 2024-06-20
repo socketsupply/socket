@@ -68,12 +68,10 @@ namespace SSC {
       // created and set in `App::App()` on macOS or
       // created by `UIApplicationMain` and set in `application:didFinishLaunchingWithOptions:` on iOS
       SSCApplicationDelegate* applicationDelegate = nullptr;
-    #endif
-
-    #if SOCKET_RUNTIME_PLATFORM_MACOS
-      NSAutoreleasePool* pool = [NSAutoreleasePool new];
+      #if SOCKET_RUNTIME_PLATFORM_MACOS
+        NSAutoreleasePool* pool = [NSAutoreleasePool new];
+      #endif
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-      Atomic<bool> isConsoleVisible = false;
       _In_ HINSTANCE hInstance;
       WNDCLASSEX wcex;
       MSG msg;
@@ -91,29 +89,43 @@ namespace SSC {
       AtomicBool shouldExit = false;
       AtomicBool killed = false;
       bool wasLaunchedFromCli = false;
-      bool w32ShowConsole = false;
 
       WindowManager windowManager;
       ServiceWorkerContainer serviceWorkerContainer;
       SharedPointer<Core> core = nullptr;
       Map userConfig;
 
-    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-      App (void *);
-      void ShowConsole ();
-      void HideConsole ();
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      /**
+       * `App` class constructor for Android.
+       * The `App` instance is constructed from the context of
+       * the shared `Application` singleton on Android. This is a
+       * special case constructor.
+       */
+      App (
+        JNIEnv* env,
+        jobject self,
+        SharedPointer<Core> core = SharedPointer<Core>(new Core())
+      );
+    #else
+      /**
+       * `App` class constructor for desktop (Linux, macOS, Windows) and
+       * iOS (iPhoneOS, iPhoneSimulator, iPad) where `instanceId` can be
+       * a `HINSTANCE` on Windows or an empty value (`0`) on other platforms.
+       */
+      App (
+        int instanceId = 0,
+        SharedPointer<Core> core = SharedPointer<Core>(new Core())
+      );
     #endif
 
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      App (JNIEnv* env, jobject self, SharedPointer<Core> core = SharedPointer<Core>(new Core()));
-    #else
-      App (int instanceId, SharedPointer<Core> core = SharedPointer<Core>(new Core()));
-      App (SharedPointer<Core> core = SharedPointer<Core>(new Core()));
-    #endif
       App () = delete;
       App (const App&) = delete;
       App (App&&) = delete;
       ~App ();
+
+      App& operator = (App&) = delete;
+      App& operator = (App&&) = delete;
 
       int run (int argc = 0, char** argv = nullptr);
       void init ();
@@ -123,6 +135,10 @@ namespace SSC {
       void dispatch (Function<void()>);
       String getcwd ();
       bool hasRuntimePermission (const String& permission) const;
+
+    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+      LRESULT forwardWindowProcMessage (HWND, UINT, WPARAM, LPARAM);
+    #endif
   };
 }
 #endif
