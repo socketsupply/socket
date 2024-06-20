@@ -22,17 +22,18 @@
 // magically gives us argc and argv.
 //
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-#define MAIN                         \
-  static const int argc = __argc;    \
-  static char** argv = __argv;       \
-  int CALLBACK WinMain (             \
-    _In_ HINSTANCE instanceId,       \
-    _In_ HINSTANCE hPrevInstance,    \
-    _In_ LPSTR lpCmdLine,            \
-    _In_ int nCmdShow)
+#define MAIN                                                                   \
+  static const int argc = __argc;                                              \
+  static char** argv = __argv;                                                 \
+  int CALLBACK WinMain (                                                       \
+    _In_ HINSTANCE instanceId,                                                 \
+    _In_ HINSTANCE hPrevInstance,                                              \
+    _In_ LPSTR lpCmdLine,                                                      \
+    _In_ int nCmdShow                                                          \
+  )
 #else
-#define MAIN                                   \
-  const int instanceId = 0;                    \
+#define MAIN                                                                   \
+  static const int instanceId = 0;                                             \
   int main (int argc, char** argv)
 #endif
 
@@ -57,8 +58,6 @@ static void installSignalHandler (int signum, void (*handler)(int)) {
 
 
 using namespace SSC;
-
-static App *app_ptr = nullptr;
 
 static Function<void(int)> shutdownHandler;
 
@@ -116,12 +115,14 @@ void signalHandler (int signum) {
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
 static void handleApplicationURLEvent (const String url) {
+  auto app = App::sharedApplication();
+
   JSON::Object json = JSON::Object::Entries {{
     "url", url
   }};
 
-  if (app_ptr != nullptr) {
-    for (auto window : app_ptr->windowManager.windows) {
+  if (app != nullptr) {
+    for (auto window : app->windowManager.windows) {
       if (window != nullptr) {
         if (window->index == 0 && window->window && window->webview) {
           gtk_widget_show_all(GTK_WIDGET(window->window));
@@ -254,13 +255,6 @@ MAIN {
   static App app(instanceId);
   static auto userConfig = getUserConfig();
 
-  // TODO(trevnorris): Since App is a singleton, follow the CppCoreGuidelines
-  // better in how it's handled in the future.
-  // For now make a pointer reference since there is some member variable name
-  // collision in the call to shutdownHandler when it's being called from the
-  // windowManager instance.
-  app_ptr = &app;
-
   const String devHost = getDevHost();
   const auto devPort = getDevPort();
 
@@ -335,18 +329,19 @@ MAIN {
 
     static Function<void()> pollForMessage = []() {
       Thread thread([] () {
+        auto app = App::sharedApplication();
         while (dbus_connection_read_write_dispatch(connection, 256));
-        app_ptr->dispatch(pollForMessage);
+        app->dispatch(pollForMessage);
       });
 
       thread.detach();
     };
 
-    app_ptr->dispatch(pollForMessage);
+    app.dispatch(pollForMessage);
     if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
       const auto uri = String(argv[1]);
-      app_ptr->dispatch([uri]() {
-        app_ptr->core->dispatchEventLoop([uri]() {
+      app.dispatch([uri]() {
+        app.core->dispatchEventLoop([uri]() {
           handleApplicationURLEvent(uri);
         });
       });
@@ -447,8 +442,8 @@ MAIN {
         reinterpret_cast<LPARAM>(&data)
       );
     } else {
-      app_ptr->dispatch([hWnd, lpCmdLine]() {
-        Window::WndProc(
+      app.dispatch([hWnd, lpCmdLine]() {
+        app.forwardWindowProcMessage(
           hWnd,
           WM_HANDLE_DEEP_LINK,
           (WPARAM) strlen(lpCmdLine),
@@ -508,13 +503,6 @@ MAIN {
 
     // launched from the `ssc` cli
     app.wasLaunchedFromCli = s.find("--from-ssc") == 0 ? true : false;
-
-    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    if (!app.w32ShowConsole && s.find("--w32-console") == 0) {
-      app.w32ShowConsole = true;
-      app.ShowConsole();
-    }
-    #endif
 
     if (s.find("--test") == 0) {
       suffix = "-test";
@@ -896,13 +884,13 @@ MAIN {
     app.windowManager.destroy();
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (app_ptr->wasLaunchedFromCli) {
+    if (app.wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", 0);
       CLI::notify();
     }
   #endif
 
-    app_ptr->kill();
+    app.kill();
     exit(code);
   };
 
