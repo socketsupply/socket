@@ -143,7 +143,6 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
   if (!handled) {
     auto response = IPC::SchemeHandlers::Response(request, 404);
     response.finish();
-    return;
   }
 }
 #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -452,6 +451,7 @@ namespace SSC::IPC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
     static const int MAX_CUSTOM_SCHEME_REGISTRATIONS = 64;
+    int registrationsCount = 0;
 
     auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
       convertStringToWString(scheme).c_str()
@@ -466,12 +466,12 @@ namespace SSC::IPC {
       allowedOrigins[i++] = convertStringToWString(entry.first + "://*").c_str();
     }
 
-    registration->put_HasAuthorityComponent(TRUE);
+    registration->put_HasAuthorityComponent(true);
     registration->SetAllowedOrigins(this->handlers.size(), allowedOrigins);
 
     this->coreWebView2CustomSchemeRegistrations.insert(registration);
 
-    if (this->configuration.webview.As(&options) != S_OK) {
+    if (this->configuration.webview->As(&options) != S_OK) {
       return false;
     }
 
@@ -590,8 +590,14 @@ namespace SSC::IPC {
   }
 
   SchemeHandlers::Request::Builder::Builder (
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    SchemeHandlers* handlers,
+    PlatformRequest platformRequest,
+    ICoreWebView2Environment* env
+  #else
     SchemeHandlers* handlers,
     PlatformRequest platformRequest
+  #endif
   ) {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->absoluteURL = platformRequest.request.URL.absoluteString.UTF8String;
@@ -627,6 +633,10 @@ namespace SSC::IPC {
         .scheme = url.scheme
       }
     );
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    this->request->env = env;
+  #endif
 
     this->request->client = handlers->bridge->client;
 
@@ -850,6 +860,10 @@ namespace SSC::IPC {
     destination->tracer = source.tracer;
     destination->handlers = source.handlers;
     destination->platformRequest = source.platformRequest;
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    destination->env = source.env;
+  #endif
   }
 
   SchemeHandlers::Request::Request (const Request& request) noexcept
@@ -1156,6 +1170,19 @@ namespace SSC::IPC {
 
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+    const auto statusText = String(
+      STATUS_CODES.contains(this->statusCode)
+        ? STATUS_CODES.at(this->statusCode)
+        : ""
+    );
+    this->platformResponseStream = SHCreateMemStream(nullptr, 0);
+    return S_OK == this->request->env->CreateWebResourceResponse(
+      this->platformResponseStream,
+      this->statusCode,
+      convertStringToWString(statusText).c_str(),
+      convertStringToWString(this->headers.str()).c_str(),
+      &this->platformResponse
+    );
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
@@ -1244,7 +1271,6 @@ namespace SSC::IPC {
       }
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
-      auto span = this->tracer.span("write");
       g_memory_input_stream_add_data(
         reinterpret_cast<GMemoryInputStream*>(this->platformResponseStream),
         reinterpret_cast<const void*>(bytes.get()),
@@ -1252,9 +1278,13 @@ namespace SSC::IPC {
         nullptr
       );
       this->request->bridge->core->retainSharedPointerBuffer(bytes, 256);
-      span->end();
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+      return S_OK == this->platformResponseStream->Write(
+        reinterpret_cast<const void*>(bytes.get()),
+        (ULONG) size,
+        nullptr
+      );
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       const auto app = App::sharedApplication();
       const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
@@ -1392,6 +1422,8 @@ namespace SSC::IPC {
       g_object_unref(platformResponseStream);
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+    this->platformResponseStream = nullptr;
+    // TODO(@jwerle): move more `WebResourceRequested` logic to here
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->platformResponse != nullptr) {
       auto app = App::sharedApplication();
@@ -1475,10 +1507,6 @@ namespace SSC::IPC {
     if (error != nullptr && error->message != nullptr) {
       return this->fail(error->message);
     }
-
-  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-  #else
-    //return this->fail(String(error));
   #endif
 
     return this->fail("Request failed for an unknown reason");
@@ -1510,6 +1538,11 @@ namespace SSC::IPC {
       // ignore possible 'NSInternalInconsistencyException'
       return false;
     }
+
+    // notify fail callback
+    if (this->request->callbacks.fail != nullptr) {
+      this->request->callbacks.fail(error);
+    }
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
     const auto quark = g_quark_from_string(bundleIdentifier.c_str());
     if (!quark) {
@@ -1527,14 +1560,16 @@ namespace SSC::IPC {
     } else {
       return false;
     }
-  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-  #endif
 
-    // notify fail
-    //if (this->request->callbacks.fail != nullptr) {
-      //this->request->callbacks.fail(error);
-    //}
+    // notify fail callback
+    if (this->request->callbacks.fail != nullptr) {
+      this->request->callbacks.fail(error);
+    }
+  #else
+    // XXX(@jwerle): there doesn't appear to be a way to notify a failure for all platforms
+    this->finished = true;
+    return false;
+  #endif
 
     this->finished = true;
     return true;

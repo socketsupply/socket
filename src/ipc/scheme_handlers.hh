@@ -85,10 +85,18 @@ namespace SSC::IPC {
           Error* error = nullptr;
           SharedPointer<Request> request = nullptr;
 
+        #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+          Builder (
+            SchemeHandlers* handlers,
+            PlatformRequest platformRequest,
+            ICoreWebView2Environment* env
+          );
+        #else
           Builder (
             SchemeHandlers* handlers,
             PlatformRequest platformRequest
           );
+        #endif
 
           Builder& setScheme (const String& scheme);
           Builder& setMethod (const String& method);
@@ -140,6 +148,10 @@ namespace SSC::IPC {
         SchemeHandlers* handlers = nullptr;
         PlatformRequest platformRequest;
 
+      #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+        ICoreWebView2Environment* env = nullptr;
+      #endif
+
         Request () = delete;
         Request (
           SchemeHandlers* handlers,
@@ -189,6 +201,8 @@ namespace SSC::IPC {
 
       #if SOCKET_RUNTIME_PLATFORM_LINUX
         GInputStream* platformResponseStream = nullptr;
+      #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
+        IStream* platformResponseStream = nullptr;
       #endif
 
         Response (
